@@ -4,11 +4,15 @@ import enum
 import os
 import struct
 import time
-from typing import Any, Dict, Iterator, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, Tuple, Union
+from operator import gt, lt
 
+# TODO: framework-dependant imports
 import jax
 import jax.numpy as jnp
-# import numpy as np
+import numpy as np
+import torch
+import random
 # import tensorflow as tf
 
 
@@ -37,9 +41,13 @@ class ComparisonDirection(enum.Enum):
   MAXIMIZE = 1
 
 
+class InputQueueMode(enum.Enum):
+    TRAIN = 0
+    EVAL = 1
+
 # Of course, Tensor knows its shape and dtype.
 # Tensor = Union[jnp.array, np.array, tf.Tensor, ...]
-Tensor = Union[jnp.array]  # DeviceArray??
+Tensor = Union[jnp.array, np.array, torch.Tensor]  # DeviceArray??
 
 # TODO(znado): variadic tuples??
 Shape = Union[
@@ -56,20 +64,26 @@ ParameterKey = str
 ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
 
-Seed = Union[int, bytes, jax.PRNGKey]
+OutputTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+Seed = Union[int, bytes, jax.random.PRNGKey]
 
 OptimizerState = Any
-Hyperparamters = Any
+Hyperparameters = Any
 Timing = int
 Steps = int
 
+InputQueue = Iterator[Tuple[Tensor, Tensor]]
 # Training algorithm track fixed functions.
 
 def _has_reached_goal(
     eval_result: float,
     workload_target: float,
     workload_comparison_direction: ComparisonDirection) -> bool:
-  pass
+
+  op = {ComparisonDirection.MAXIMIZE: gt,
+        ComparisonDirection.MINIMIZE: lt}
+
+  return op[workload_comparison_direction](eval_result, workload_target)
 
 
 # Return whether or not a key in ParameterTree is the output layer parameters.
@@ -86,8 +100,9 @@ def preprocess_for_train(
     selected_label_batch: Tensor,
     train_mean: Tensor,
     train_stddev: Tensor,
-    seed: Seed) -> Tensor:
+    seed: Seed) -> Tuple[Tensor, Tensor]:
   # return augmented_and_preprocessed_input_batch
+  # and preprocessed_label_batch
   pass
 
 
@@ -114,9 +129,10 @@ def model_fn(
     augmented_and_preprocessed_input_batch: Tensor,
     mode: ForwardPassMode,
     seed: Seed,
-    update_batch_norm: bool) -> Tensor:
+    update_batch_norm: bool) -> Tuple[OutputTree, Tensor]:
   # return logits_batch
   # Possible side effect of updating BN.
+  # OutputTree needed to return intermediate activations
   pass
 
 
@@ -149,7 +165,7 @@ def loss_fn(
 
 def init_optimizer_state(
     params_shapes: ParameterShapeTree,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     seed: Seed) -> OptimizerState:
   # return initial_optimizer_state
   pass
@@ -159,11 +175,12 @@ def init_optimizer_state(
 def update_params(
     current_params: ParameterTree,
     current_params_types: ParameterTypeTree,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     augmented_and_preprocessed_input_batch: Tensor,
     label_batch: Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
+    model_fn: Callable,
     optimizer_state: OptimizerState,
     global_step: int,
     seed: Seed) -> Tuple[OptimizerState, ParameterTree]:
@@ -178,7 +195,7 @@ def data_selection(
     optimizer_state: OptimizerState,
     current_params: ParameterTree,
     loss_type: LossType,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     global_step: int,
     seed: Seed) -> Tuple[Tensor, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
@@ -213,40 +230,61 @@ def score_submission_on_workload(workload):
     all_timings.append(timing)
   return min(all_timings)
 
-
-def _build_input_queue(workload, seed):
+# need batch size to initiate dataloader
+def _build_input_queue(workload, batch_size, seed):
   pass
 
 
 def _build_model_fn(workload):
   pass
 
+def eval_model(
+  model_fn,
+  model_params: ParameterTree,
+  loss_fn,
+  eval_metric):
+  pass
+
 
 # Example reference implementation showing how to use the above functions
 # together.
 def train_once(
-    workload,
+    workload,  # framework-independant
+    reference,  # fixed functions reference implementation
     init_optimizer_state,
     update_params,
     data_selection,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     seed: Seed) -> Tuple[Timing, Steps]:
 
   # Workload setup.
-  input_queue = _build_input_queue(workload, seed)
-  model_fn = _build_model_fn(workload)
-  optimizer_state = init_optimizer_state()
-  model_params = init_model_fn(workload.param_shapes, seed)
+  input_queue = reference._build_input_queue(
+    InputQueueMode.TRAIN,
+    hyperparameters['batch_size'],
+    seed)
+  input_queue_eval = reference._build_input_queue(
+    InputQueueMode.EVAL,
+    hyperparameters['batch_size'],
+    seed)
+  model_fn = reference._build_model_fn()
+  optimizer_state = init_optimizer_state(workload.param_shapes,
+      hyperparameters, seed)
+  model_params = reference.init_model_fn(workload.param_shapes, seed)
 
   # Bookkeeping.
   goal_reached = False
   is_time_remaining = True
-  last_eval_time = 0
+  last_eval_time = time.time()
   accumulated_submission_time = 0
   eval_results = []
   global_step = 0
 
+  step_seed_generator = random.Random(seed)
+
   while (is_time_remaining and not goal_reached):
+    # get a random seed for each step
+    step_seed = step_seed_generator.randint(0, 2**16)
+
     start_time = time.time()
     selected_train_input_batch, selected_train_label_batch = data_selection(
         input_queue,
@@ -255,13 +293,13 @@ def train_once(
         workload.loss_type,
         hyperparameters,
         global_step,
-        seed)
-    augmented_train_input_batch, augmented_train_label_batch = preprocess_for_train(
-        selected_train_batch,
+        step_seed)
+    augmented_train_input_batch, augmented_train_label_batch = reference.preprocess_for_train(
+        selected_train_input_batch,
         selected_train_label_batch,
         workload.train_mean,
         workload.train_stddev,
-        seed)
+        step_seed)
     optimizer_state, model_params = update_params(
         model_params,
         workload.model_params_types,
@@ -269,20 +307,64 @@ def train_once(
         augmented_train_input_batch,
         augmented_train_label_batch,
         workload.loss_type,
+        model_fn,
         optimizer_state,
         global_step,
-        seed)
+        step_seed)
     global_step += 1
+
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
-    is_time_remaining = accumulated_submission_time > workload.max_allowed_runtime
+    is_time_remaining = accumulated_submission_time < workload.max_allowed_runtime
     # Check if submission is eligible for an untimed eval.
     if current_time - last_eval_time >= workload.eval_period_time:
-      latest_eval_result = eval_model()
-      last_eval_time = current_time
+      latest_eval_result = eval_model(input_queue_eval,
+                                      reference.preprocess_for_eval,
+                                      model_fn,
+                                      model_params,
+                                      reference.eval_metric,
+                                      workload.train_mean,
+                                      workload.train_stddev,
+                                      global_step,
+                                      step_seed)
+      last_eval_time = time.time()  # exclude time spent on eval in eval frequency
+
+      # TODO: metrics with display
+      print(f'Step: {global_step}, Time Elapsed {accumulated_submission_time:.2f}, '
+            f'score: {latest_eval_result:.4}')
+
       eval_results.append(latest_eval_result)
       goal_reached = _has_reached_goal(
           latest_eval_result,
           workload.target_metric_value,
           workload.comparison_direction)
   return accumulated_submission_time, global_step
+
+
+def eval_model(input_queue: InputQueue,
+               preprocess_for_eval,
+               model_fn,
+               model_params: ParameterTree,
+               eval_metric,
+               train_mean: tuple,
+               train_stddev: tuple,
+               global_step: int,
+               seed: Seed):
+
+  metric = []
+  for (input_batch, label_batch) in input_queue:
+    preprocessed_input_batch = preprocess_for_eval(input_batch,
+                                                   train_mean,
+                                                   train_stddev)
+
+    _, logits_batch = model_fn(model_params,
+                               preprocessed_input_batch,
+                               ForwardPassMode.EVAL,
+                               seed,
+                               False)
+    metric.append(eval_metric(logits_batch, label_batch))
+
+  # TODO: more complex metrics (e.g. mAP)
+  score = np.mean(metric)
+  return score
+
