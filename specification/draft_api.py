@@ -61,7 +61,7 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+ParameterTree = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]], torch.nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
 
 OutputTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
@@ -166,6 +166,7 @@ def loss_fn(
 def init_optimizer_state(
     params_shapes: ParameterShapeTree,
     hyperparameters: Hyperparameters,
+    model_params: ParameterTree,  # torch optimizer needs references to torch variables
     seed: Seed) -> OptimizerState:
   # return initial_optimizer_state
   pass
@@ -230,8 +231,12 @@ def score_submission_on_workload(workload):
     all_timings.append(timing)
   return min(all_timings)
 
-# need batch size to initiate dataloader
-def _build_input_queue(workload, batch_size, seed):
+# for pytorch, we would
+# need to set it at batch_size=1, and then accumulate
+# the right batch size inside data_selection.
+# TODO: understand perf impact, to see if workloads
+# would be input-bound (e.g. noncontiguous block of memory, etc.)
+def _build_input_queue(workload, seed):
   pass
 
 
@@ -267,10 +272,10 @@ def train_once(
     hyperparameters['batch_size'],
     seed)
   model_fn = reference._build_model_fn()
-  optimizer_state = init_optimizer_state(workload.param_shapes,
-      hyperparameters, seed)
-  model_params = reference.init_model_fn(workload.param_shapes, seed)
 
+  model_params = reference.init_model_fn(workload.param_shapes, seed)
+  optimizer_state = init_optimizer_state(workload.param_shapes,
+      hyperparameters, model_params, seed)
   # Bookkeeping.
   goal_reached = False
   is_time_remaining = True
@@ -278,7 +283,6 @@ def train_once(
   accumulated_submission_time = 0
   eval_results = []
   global_step = 0
-
   step_seed_generator = random.Random(seed)
 
   while (is_time_remaining and not goal_reached):

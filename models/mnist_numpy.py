@@ -179,6 +179,7 @@ class MNISTNumpySubmission:
     @staticmethod
     def init_optimizer_state(params_shapes: ParameterShapeTree,
                              hyperparameters: Hyperparameters,
+                             model: Any,
                              seed: Seed) -> OptimizerState:
 
         optimizer_state = OrderedDict()
