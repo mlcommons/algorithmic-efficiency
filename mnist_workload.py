@@ -18,10 +18,6 @@ class Workload:
 
 
 # Return whether or not a key in spec.ParameterTree is the output layer parameters.
-def prng(seed: spec.Seed) -> bytes:
-  return jax.PRNGKey(seed)
-
-
 def is_output_params(param_key: ParameterKey) -> bool:
   pass
 
@@ -31,10 +27,10 @@ def preprocess_for_train(
     selected_label_batch: spec.Tensor,
     train_mean: spec.Tensor,
     train_stddev: spec.Tensor,
-    seed: spec.Seed) -> spec.Tensor:
+    rng: spec.RandomState) -> spec.Tensor:
   del train_mean
   del train_stddev
-  del seed
+  del rng
   return preprocess_for_eval(
       selected_raw_input_batch, selected_label_batch, None, None)
 
@@ -52,7 +48,7 @@ def preprocess_for_eval(
 # InitModelFn = Callable[Tuple[spec.ParameterShapeTree, spec.Seed], spec.ParameterTree]
 def init_model_fn(
     param_shapes: spec.ParameterShapeTree,
-    seed: spec.Seed) -> spec.ParameterTree:
+    rng: spec.RandomState) -> spec.ParameterTree:
   # return initial_params
   pass
 
@@ -64,7 +60,7 @@ def model_fn(
     augmented_and_preprocessed_input_batch: spec.Tensor,
     model_state: spec.ModelAuxillaryState,
     mode: spec.ForwardPassMode,
-    seed: spec.Seed,
+    rng: spec.RandomState,
     update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
   # return logits_batch
   # Possible side effect of updating BN.
@@ -83,16 +79,13 @@ def loss_fn(
   return -jnp.sum(one_hot_targets * nn.log_softmax(logits_batch), axis=-1)
 
 
-
 # TODO(all): finish this for different rulesets
 def score_submission_on_workload(workload):
   tuning_search_space = []
   all_timings = []
   for hyperparameters in tuning_search_space:
-    # rng_seed = struct.unpack('q', os.urandom(8))[0]
-    # rng_seed = np.sum(rng_seed)
-    rng_seed = 0
-    seed = jax.random.PRNGKey(rng_seed)
+    rng_seed = struct.unpack('q', os.urandom(8))[0]
+    rng = jax.random.PRNGKey(rng_seed)
     # Generate a new seed from hardware sources of randomness for each trial.
     timing = train_once(
         workload,
@@ -100,7 +93,7 @@ def score_submission_on_workload(workload):
         update_params,
         data_selection,
         hyperparameters,
-        seed)
+        rng)
     all_timings.append(timing)
   return min(all_timings)
 
@@ -113,13 +106,17 @@ def train_once(
     update_params,
     data_selection,
     hyperparameters: Hyperparamters,
-    seed: spec.Seed) -> Tuple[Timing, Steps]:
+    rng: spec.RandomState) -> Tuple[Timing, Steps]:
+  data_rng, opt_init_rng, model_init_rng, rng = jax.random.split(rng, 4)
 
   # Workload setup.
-  input_queue = workload.build_input_queue(workload, seed)
+  input_queue = workload.build_input_queue(workload, data_rng)
   model_fn = workload.build_model_fn(workload)
-  optimizer_state = init_optimizer_state()
-  model_params = init_model_fn(workload.param_shapes, seed)
+  optimizer_state = init_optimizer_state(
+      workload.params_shapes,
+      hyperparameters,
+      opt_init_rng)
+  model_params = init_model_fn(workload.param_shapes, model_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -131,6 +128,8 @@ def train_once(
   eval_now = False
 
   while (is_time_remaining and not goal_reached):
+    step_rng = jax.random.fold_in(rng, global_step)
+    data_select_rng, preprocess_rng, update_rng = jax.random.split(step_rng, 3)
     start_time = time.time()
     selected_train_input_batch, selected_train_label_batch = data_selection(
         input_queue,
@@ -139,13 +138,13 @@ def train_once(
         workload.loss_type,
         hyperparameters,
         global_step,
-        seed)
+        data_select_rng)
     augmented_train_input_batch, augmented_train_label_batch = preprocess_for_train(
-        selected_train_batch,
+        selected_train_input_batch,
         selected_train_label_batch,
         workload.train_mean,
         workload.train_stddev,
-        seed)
+        preprocess_rng)
     try:
       optimizer_state, model_params = update_params(
           model_params,
@@ -157,7 +156,7 @@ def train_once(
           optimizer_state,
           eval_results,
           global_step,
-          seed)
+          update_rng)
     except spec.TrainingCompleteError:
       eval_now = True
     global_step += 1
@@ -174,3 +173,4 @@ def train_once(
           workload.target_metric_value,
           workload.comparison_direction)
   return accumulated_submission_time, global_step
+

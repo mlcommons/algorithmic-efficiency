@@ -54,7 +54,7 @@ ParameterKey = str
 ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
 
-Seed = Union[int, bytes, jax.PRNGKey]
+RandomState = jax.PRNGKey
 
 OptimizerState = Any
 Hyperparamters = Any
@@ -74,10 +74,6 @@ def _has_reached_goal(
 
 
 # Return whether or not a key in ParameterTree is the output layer parameters.
-def prng(seed: Seed) -> bytes:
-  pass
-
-
 def is_output_params(param_key: ParameterKey) -> bool:
   pass
 
@@ -87,7 +83,7 @@ def preprocess_for_train(
     selected_label_batch: Tensor,
     train_mean: Tensor,
     train_stddev: Tensor,
-    seed: Seed) -> Tensor:
+    rng: RandomState) -> Tensor:
   # return augmented_and_preprocessed_input_batch
   pass
 
@@ -100,22 +96,22 @@ def preprocess_for_eval(
   pass
 
 
-# InitModelFn = Callable[Tuple[ParameterShapeTree, Seed], ParameterTree]
+# InitModelFn = Callable[Tuple[ParameterShapeTree, RandomState], ParameterTree]
 def init_model_fn(
     param_shapes: ParameterShapeTree,
-    seed: Seed) -> ParameterTree:
+    rng: RandomState) -> ParameterTree:
   # return initial_params
   pass
 
 
 # ModelFn = Callable[
-#     Tuple[ParameterTree, Tensor, ForwardPassMode, Seed, bool], Tensor]
+#     Tuple[ParameterTree, Tensor, ForwardPassMode, RandomState, bool], Tensor]
 def model_fn(
     params: ParameterTree,
     augmented_and_preprocessed_input_batch: Tensor,
     model_state: spec.ModelAuxillaryState,
     mode: ForwardPassMode,
-    seed: Seed,
+    rng: RandomState,
     update_batch_norm: bool) -> Tuple[Tensor, spec.ModelAuxillaryState]:
   # return logits_batch
   # Possible side effect of updating BN.
@@ -156,7 +152,7 @@ class TrainingCompleteError(Exception):
 def init_optimizer_state(
     params_shapes: ParameterShapeTree,
     hyperparameters: Hyperparamters,
-    seed: Seed) -> OptimizerState:
+    rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
   pass
 
@@ -181,7 +177,7 @@ def update_params(
     optimizer_state: OptimizerState,
     eval_results: List[Tuple[int, float]],
     global_step: int,
-    seed: Seed) -> _UpdateReturn:
+    rng: RandomState) -> _UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   pass
 
@@ -195,7 +191,7 @@ def data_selection(
     loss_type: LossType,
     hyperparameters: Hyperparamters,
     global_step: int,
-    seed: Seed) -> Tuple[Tensor, Tensor]:
+    rng: RandomState) -> Tuple[Tensor, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
   Each element of the queue is a single training example and label.
@@ -213,10 +209,8 @@ def score_submission_on_workload(workload):
   tuning_search_space = []
   all_timings = []
   for hyperparameters in tuning_search_space:
-    # rng_seed = struct.unpack('q', os.urandom(8))[0]
-    # rng_seed = np.sum(rng_seed)
-    rng_seed = 0
-    seed = jax.random.PRNGKey(rng_seed)
+    rng_seed = struct.unpack('q', os.urandom(8))[0]
+    rng = jax.random.PRNGKey(rng_seed)
     # Generate a new seed from hardware sources of randomness for each trial.
     timing = train_once(
         workload,
@@ -224,12 +218,12 @@ def score_submission_on_workload(workload):
         update_params,
         data_selection,
         hyperparameters,
-        seed)
+        rng)
     all_timings.append(timing)
   return min(all_timings)
 
 
-def _build_input_queue(workload, seed):
+def _build_input_queue(workload, rng):
   pass
 
 
@@ -245,13 +239,17 @@ def train_once(
     update_params,
     data_selection,
     hyperparameters: Hyperparamters,
-    seed: Seed) -> Tuple[Timing, Steps]:
+    rng: RandomState) -> Tuple[Timing, Steps]:
+  data_rng, opt_init_rng, model_init_rng, rng = jax.random.split(rng, 4)
 
   # Workload setup.
-  input_queue = _build_input_queue(workload, seed)
+  input_queue = _build_input_queue(workload, data_rng)
   model_fn = _build_model_fn(workload)
-  optimizer_state = init_optimizer_state()
-  model_params = init_model_fn(workload.param_shapes, seed)
+  optimizer_state = init_optimizer_state(
+      workload.params_shapes,
+      hyperparameters,
+      opt_init_rng)
+  model_params = init_model_fn(workload.param_shapes, model_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -263,6 +261,8 @@ def train_once(
   eval_now = False
 
   while (is_time_remaining and not goal_reached):
+    step_rng = jax.random.fold_in(rng, global_step)
+    data_select_rng, preprocess_rng, update_rng = jax.random.split(step_rng, 3)
     start_time = time.time()
     selected_train_input_batch, selected_train_label_batch = data_selection(
         input_queue,
@@ -271,13 +271,13 @@ def train_once(
         workload.loss_type,
         hyperparameters,
         global_step,
-        seed)
+        data_select_rng)
     augmented_train_input_batch, augmented_train_label_batch = preprocess_for_train(
-        selected_train_batch,
+        selected_train_input_batch,
         selected_train_label_batch,
         workload.train_mean,
         workload.train_stddev,
-        seed)
+        preprocess_rng)
     try:
       optimizer_state, model_params = update_params(
           model_params,
@@ -289,7 +289,7 @@ def train_once(
           optimizer_state,
           eval_results,
           global_step,
-          seed)
+          update_rng)
     except TrainingCompleteError:
       eval_now = True
     global_step += 1
@@ -306,3 +306,4 @@ def train_once(
           workload.target_metric_value,
           workload.comparison_direction)
   return accumulated_submission_time, global_step
+

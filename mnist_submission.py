@@ -23,8 +23,8 @@ def _optimizer(hyperparameters):
 def init_optimizer_state(
     params_shapes: spec.ParameterShapeTree,
     hyperparameters: spec.Hyperparamters,
-    seed: spec.Seed) -> spec.OptimizerState:
-  del seed
+    rng: spec.RandomState) -> spec.OptimizerState:
+  del rng
   opt_init, _ = _optimizer(hyperparameters)
   return opt_init(jax.tree_map(jnp.zeros, params_shapes))
 
@@ -45,7 +45,7 @@ def update_params(
     optimizer_state: spec.OptimizerState,
     eval_results: List[Tuple[int, float]],
     global_step: int,
-    seed: spec.Seed) -> _UpdateReturn:
+    rng: spec.RandomState) -> _UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
   del eval_results
@@ -57,7 +57,7 @@ def update_params(
         augmented_and_preprocessed_input_batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
-        seed,
+        rng,
         update_batch_norm=True)
     loss = mnist_spec.loss_fn(label_batch, logits_batch, loss_type)
     return loss, new_model_state
@@ -79,7 +79,7 @@ def data_selection(
     loss_type: spec.LossType,
     hyperparameters: spec.Hyperparamters,
     global_step: int,
-    seed: spec.Seed) -> Tuple[spec.Tensor, spec.Tensor]:
+    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
   Each element of the queue is a single training example and label.
@@ -91,6 +91,7 @@ def data_selection(
   del current_params
   del loss_type
   del global_step
-  del seed
+  del rng
   return [next(input_queue) for _ in range(hyperparameters.batch_size)]
+
 
