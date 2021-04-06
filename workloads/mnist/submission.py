@@ -1,39 +1,38 @@
-"""Training algorithm track submission functions."""
+"""Training algorithm track submission functions for MNIST."""
 from typing import Iterator, List, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 import optax
 
-import mnist_spec
 import spec
+from . import workload
 
 
-def _optimizer(hyperparameters):
-  opt_init, opt_update = optax.chain(
+def optimizer(hyperparameters):
+  opt_init_fn, opt_update_fn = optax.chain(
       optax.scale_by_adam(
           b1=hyperparameters.beta_1,
           b2=hyperparameters.beta_2,
           eps=hyperparameters.epsilon),
       optax.scale(-hyperparameters.learning_rate)
   )
-  return opt_init, opt_update
+  return opt_init_fn, opt_update_fn
 
 
 def init_optimizer_state(
-    params_shapes: spec.ParameterShapeTree,
+    workload: spec.Workload,
+    param_shapes: spec.ParameterShapeTree,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
   del rng
-  opt_init, _ = _optimizer(hyperparameters)
-  return opt_init(jax.tree_map(jnp.zeros, params_shapes))
-
-
-_UpdateReturn = Tuple[
-    spec.OptimizerState, spec.ParameterTree, spec.ModelAuxillaryState]
+  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape), param_shapes)
+  opt_init_fn, _ = optimizer(hyperparameters)
+  return opt_init_fn(params_zeros_like)
 
 
 def update_params(
+    workload: spec.Workload,
     current_params: spec.ParameterTree,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxillaryState,
@@ -45,34 +44,36 @@ def update_params(
     optimizer_state: spec.OptimizerState,
     eval_results: List[Tuple[int, float]],
     global_step: int,
-    rng: spec.RandomState) -> _UpdateReturn:
+    rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
   del eval_results
   del global_step
 
-  def loss_fn():
-    logits_batch, new_model_state = mnist_spec.model_fn(
-        current_params,
+  def loss_fn(params):
+    logits_batch, new_model_state = workload.model_fn(
+        params,
         augmented_and_preprocessed_input_batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = mnist_spec.loss_fn(label_batch, logits_batch, loss_type)
-    return loss, new_model_state
+    loss = workload.loss_fn(label_batch, logits_batch, loss_type)
+    return jnp.mean(loss), new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn()
-  _, opt_update = _optimizer(hyperparameters)
-  updates, new_opt_state = opt_update(grad, optimizer_state, current_params)
+  (_, new_model_state), grad = grad_fn(current_params)
+  _, opt_update_fn = optimizer(hyperparameters)
+  updates, new_optimizer_state = opt_update_fn(
+      grad, optimizer_state, current_params)
   updated_params = optax.apply_updates(current_params, updates)
-  return new_opt_state, updated_params, new_model_state
+  return new_optimizer_state, updated_params, new_model_state
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
 def data_selection(
+    workload: spec.Workload,
     input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
     optimizer_state: spec.OptimizerState,
     current_params: spec.ParameterTree,
@@ -86,12 +87,18 @@ def data_selection(
 
   We left out `current_params_types` because we do not believe that it would
   # be necessary for this function.
+
+  Return a tuple of input label batches.
   """
   del optimizer_state
   del current_params
   del loss_type
   del global_step
   del rng
-  return [next(input_queue) for _ in range(hyperparameters.batch_size)]
-
-
+  image_batch = []
+  label_batch = []
+  for _ in range(hyperparameters.batch_size):
+    x = next(input_queue)
+    image_batch.append(x['image'])
+    label_batch.append(x['label'])
+  return image_batch, label_batch
