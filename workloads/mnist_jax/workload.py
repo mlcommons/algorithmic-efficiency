@@ -1,4 +1,4 @@
-"""MNIST workload."""
+"""MNIST workload implemented in Jax."""
 
 import struct
 import time
@@ -10,9 +10,6 @@ import jax
 import jax.numpy as jnp
 import spec
 import tensorflow_datasets as tfds
-
-# pylint: disable=unused-argument
-# Training algorithm track fixed functions.
 
 
 class _Model(nn.Module):
@@ -36,25 +33,34 @@ class _Model(nn.Module):
 
 class MnistWorkload(spec.Workload):
 
+  def __init__(self):
+    self._eval_ds = None
+
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result > 0.9
 
-  def build_input_queue(
-      self,
+  def _build_dataset(self,
       data_rng: jax.random.PRNGKey,
       split: str,
-      batch_size: int):
+      batch_size):
     ds = tfds.load('mnist', split=split, try_gcs=True)
     ds = ds.cache()
     if split == 'train':
       ds = ds.shuffle(1024, seed=data_rng[0])
       ds = ds.repeat()
     ds = ds.batch(batch_size)
-    return iter(tfds.as_numpy(ds))
+    return tfds.as_numpy(ds)
+
+  def build_input_queue(
+      self,
+      data_rng: jax.random.PRNGKey,
+      split: str,
+      batch_size: int):
+    return iter(self._build_dataset(data_rng, split, batch_size))
 
   @property
   def param_shapes(self):
-    init_params, _ = self.init_model_fn(None, jax.random.PRNGKey(0))
+    init_params, _ = self.init_model_fn(jax.random.PRNGKey(0))
     return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), init_params)
 
   @property
@@ -89,11 +95,7 @@ class MnistWorkload(spec.Workload):
       self,
       selected_raw_input_batch: spec.Tensor,
       selected_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor,
       rng: spec.RandomState) -> spec.Tensor:
-    del train_mean
-    del train_stddev
     del rng
     return self.preprocess_for_eval(
         selected_raw_input_batch, selected_label_batch, None, None)
@@ -108,11 +110,8 @@ class MnistWorkload(spec.Workload):
     del train_stddev
     return (raw_input_batch, raw_label_batch)
 
-  def init_model_fn(
-      self,
-      param_shapes: spec.ParameterShapeTree,
-      rng: spec.RandomState) -> spec.ParameterTree:
-    del param_shapes
+  _InitState = Tuple[spec.ParameterTree, spec.ModelAuxillaryState]
+  def init_model_fn(self, rng: spec.RandomState) -> _InitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
     initial_params = _Model().init(rng, init_val, train=True)['params']
     return initial_params, None
@@ -154,8 +153,10 @@ class MnistWorkload(spec.Workload):
     data_rng, model_rng = jax.random.split(rng, 2)
     eval_batch_size = 2000
     num_batches = 10000 // eval_batch_size
-    eval_iter = self.build_input_queue(
-        data_rng, split='test', batch_size=eval_batch_size)
+    if self._eval_ds is None:
+      self._eval_ds = self._build_dataset(
+          data_rng, split='test', batch_size=eval_batch_size)
+    eval_iter = iter(self._eval_ds)
     total_loss = 0.
     total_accuracy = 0.
     for x in eval_iter:
@@ -172,5 +173,3 @@ class MnistWorkload(spec.Workload):
       # total_loss += self.loss_fn(labels, logits, self.loss_type)
       total_accuracy += jnp.mean(jnp.argmax(logits, axis=-1) == labels)
     return float(total_accuracy / num_batches)
-
-# pylint: enable=unused-argument

@@ -161,8 +161,6 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       selected_raw_input_batch: Tensor,
       selected_label_batch: Tensor,
-      train_mean: Tensor,
-      train_stddev: Tensor,
       rng: RandomState) -> Tensor:
     """return augmented_and_preprocessed_input_batch"""
 
@@ -178,10 +176,8 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[ParameterShapeTree, RandomState], ParameterTree]
   @abc.abstractmethod
   def init_model_fn(
-      self,
-      param_shapes: ParameterShapeTree,
-      rng: RandomState) -> [ParameterTree, ModelAuxillaryState]:
-    """return initial_params"""
+      self, rng: RandomState) -> Tuple[ParameterTree, ModelAuxillaryState]:
+    """return initial_params, initial_model_state"""
 
   # ModelFn = Callable[
   #     Tuple[ParameterTree, Tensor, ForwardPassMode, RandomState, bool],
@@ -241,7 +237,6 @@ class TrainingCompleteError(Exception):
 
 def init_optimizer_state(
     workload: Workload,
-    param_shapes: ParameterShapeTree,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state

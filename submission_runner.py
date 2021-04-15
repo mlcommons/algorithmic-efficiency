@@ -73,8 +73,7 @@ def train_once(
       workload,
       hyperparameters,
       opt_init_rng)
-  model_params, model_state = workload.init_model_fn(
-      workload.param_shapes, model_init_rng)
+  model_params, model_state = workload.init_model_fn(model_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -102,8 +101,6 @@ def train_once(
      augmented_train_label_batch) = workload.preprocess_for_train(
         selected_train_input_batch,
         selected_train_label_batch,
-        workload.train_mean,
-        workload.train_stddev,
         preprocess_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
@@ -124,10 +121,8 @@ def train_once(
     global_step += 1
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
-    print('accumulated_submission_time:', accumulated_submission_time)
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
-    print('is_time_remaining:', is_time_remaining)
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         eval_now):
@@ -135,10 +130,7 @@ def train_once(
           model_params, model_state, eval_rng)
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
-      print('latest_eval_result:', latest_eval_result)
       goal_reached = workload.has_reached_goal(latest_eval_result)
-      print('global_step:', global_step)
-      print('goal_reached:', goal_reached)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics
 
@@ -216,7 +208,7 @@ def main(_):
       FLAGS.tuning_ruleset,
       FLAGS.tuning_search_space,
       FLAGS.num_tuning_trials)
-  logging.info('Final %s score: %d', FLAGS.workload, score)
+  logging.info('Final %s score: %f', FLAGS.workload, score)
 
 
 if __name__ == '__main__':
