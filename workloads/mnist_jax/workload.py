@@ -37,7 +37,7 @@ class _Model(nn.Module):
 class MnistWorkload(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result < 0.02
+    return eval_result > 0.9
 
   def build_input_queue(
       self,
@@ -49,6 +49,7 @@ class MnistWorkload(spec.Workload):
     if split == 'train':
       ds = ds.shuffle(1024, seed=data_rng[0])
       ds = ds.repeat()
+    ds = ds.batch(batch_size)
     return iter(tfds.as_numpy(ds))
 
   @property
@@ -72,12 +73,12 @@ class MnistWorkload(spec.Workload):
     pass
 
   @property
-  def max_allowed_runtime(self):
-    return 10000
+  def max_allowed_runtime_sec(self):
+    return 60
 
   @property
-  def eval_period_time(self):
-    return 60
+  def eval_period_time_sec(self):
+    return 10
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
@@ -151,11 +152,15 @@ class MnistWorkload(spec.Workload):
       rng: spec.RandomState):
     """Run a full evaluation of the model."""
     data_rng, model_rng = jax.random.split(rng, 2)
-    eval_iter = self.build_input_queue(data_rng, split='test', batch_size=2000)
+    eval_batch_size = 2000
+    num_batches = 10000 // eval_batch_size
+    eval_iter = self.build_input_queue(
+        data_rng, split='test', batch_size=eval_batch_size)
     total_loss = 0.
+    total_accuracy = 0.
     for x in eval_iter:
-      images = [x['image']]
-      labels = [x['label']]
+      images = x['image']
+      labels = x['label']
       logits, _ = self.model_fn(
           params,
           images,
@@ -164,7 +169,8 @@ class MnistWorkload(spec.Workload):
           model_rng,
           update_batch_norm=False)
       # TODO(znado): add additional eval metrics?
-      total_loss += self.loss_fn(labels, logits, self.loss_type)
-    return total_loss
+      # total_loss += self.loss_fn(labels, logits, self.loss_type)
+      total_accuracy += jnp.mean(jnp.argmax(logits, axis=-1) == labels)
+    return float(total_accuracy / num_batches)
 
 # pylint: enable=unused-argument

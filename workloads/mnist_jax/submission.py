@@ -9,11 +9,16 @@ import spec
 from . import workload
 
 
+def get_batch_size(workload_name):
+  batch_sizes = {'mnist_jax': 1024}
+  return batch_sizes[workload_name]
+
+
 def optimizer(hyperparameters):
   opt_init_fn, opt_update_fn = optax.chain(
       optax.scale_by_adam(
-          b1=hyperparameters.beta_1,
-          b2=hyperparameters.beta_2,
+          b1=1.0 - hyperparameters.one_minus_beta_1,
+          b2=0.999,
           eps=hyperparameters.epsilon),
       optax.scale(-hyperparameters.learning_rate)
   )
@@ -22,11 +27,11 @@ def optimizer(hyperparameters):
 
 def init_optimizer_state(
     workload: spec.Workload,
-    param_shapes: spec.ParameterShapeTree,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
   del rng
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape), param_shapes)
+  params_zeros_like = jax.tree_map(
+      lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters)
   return opt_init_fn(params_zeros_like)
 
@@ -77,7 +82,6 @@ def data_selection(
     input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
     optimizer_state: spec.OptimizerState,
     current_params: spec.ParameterTree,
-    loss_type: spec.LossType,
     hyperparameters: spec.Hyperparamters,
     global_step: int,
     rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
@@ -92,13 +96,7 @@ def data_selection(
   """
   del optimizer_state
   del current_params
-  del loss_type
   del global_step
   del rng
-  image_batch = []
-  label_batch = []
-  for _ in range(hyperparameters.batch_size):
-    x = next(input_queue)
-    image_batch.append(x['image'])
-    label_batch.append(x['label'])
-  return image_batch, label_batch
+  x = next(input_queue)
+  return x['image'], x['label']

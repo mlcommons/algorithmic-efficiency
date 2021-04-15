@@ -45,8 +45,8 @@ Tensor = Union[jnp.array]  # DeviceArray??
 # over the model shapes pytree without iterating over the shape tuples.
 class ShapeTuple:
 
-  def __init__(self, shape):
-    self.shape = shape
+  def __init__(self, shape_tuple):
+    self.shape_tuple = shape_tuple
 
 Shape = Union[
     Tuple[int],
@@ -145,12 +145,12 @@ class Workload(metaclass=abc.ABCMeta):
     """The stddev of the training data."""
 
   @abc.abstractproperty
-  def max_allowed_runtime(self):
-    """The max allowed runtime of the workload."""
+  def max_allowed_runtime_sec(self):
+    """The max allowed runtime of the workload in seconds."""
 
   @abc.abstractproperty
-  def eval_period_time(self):
-    """The eval period of the workload."""
+  def eval_period_time_sec(self):
+    """The eval period of the workload in seconds."""
 
   @abc.abstractmethod
   def is_output_params(self, param_key: ParameterKey) -> bool:
@@ -281,7 +281,6 @@ def data_selection(
     input_queue: Iterator[Tuple[Tensor, Tensor]],
     optimizer_state: OptimizerState,
     current_params: ParameterTree,
-    loss_type: LossType,
     hyperparameters: Hyperparamters,
     global_step: int,
     rng: RandomState) -> Tuple[Tensor, Tensor]:
@@ -293,5 +292,9 @@ def data_selection(
   # be necessary for this function.
   """
   # return input_batch, label_batch
-  # return [next(input_queue) for _ in hyperparameters['batch_size']]
+  pass
+
+
+def get_batch_size(workload_name):
+  """Return a batch size to use for a given workload."""
   pass
