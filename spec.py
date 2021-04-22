@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 import abc
 import jax
 import jax.numpy as jnp
+import torch
 # import numpy as np
 # import tensorflow as tf
 
@@ -38,7 +39,7 @@ class ComparisonDirection(enum.Enum):
 
 # Of course, Tensor knows its shape and dtype.
 # Tensor = Union[jnp.array, np.array, tf.Tensor, ...]
-Tensor = Union[jnp.array]  # DeviceArray??
+Tensor = Union[jnp.array, torch.Tensor]  # DeviceArray??
 
 
 # Define this so that if using pytree iteration utilities, can iterate
@@ -60,10 +61,11 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+# TODO: resolve naming
+ParameterTree = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]], torch.nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
 
-RandomState = jax.random.PRNGKey
+RandomState = Union[jax.random.PRNGKey, int]
 
 OptimizerState = Any
 Hyperparamters = Any
