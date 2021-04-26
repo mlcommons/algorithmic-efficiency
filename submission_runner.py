@@ -87,10 +87,10 @@ def train_once(
   accumulated_submission_time = 0
   eval_results = []
   global_step = 0
-  eval_now = False
+  training_complete = False
   global_start_time = time.time()
 
-  while (is_time_remaining and not goal_reached):
+  while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = jax.random.fold_in(rng, global_step)
     data_select_rng, preprocess_rng, update_rng, eval_rng = jax.random.split(
         step_rng, 4)
@@ -123,7 +123,7 @@ def train_once(
           global_step=global_step,
           rng=update_rng)
     except spec.TrainingCompleteError:
-      eval_now = True
+      training_complete = True
     global_step += 1
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
@@ -131,7 +131,7 @@ def train_once(
         accumulated_submission_time < workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
-        eval_now):
+        training_complete):
       latest_eval_result = workload.eval_model(
           model_params, model_state, eval_rng)
 
