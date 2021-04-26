@@ -3,7 +3,9 @@
 import contextlib
 import struct
 import time
+import itertools
 from typing import Tuple
+from collections import OrderedDict
 
 import spec
 import torch
@@ -12,12 +14,15 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
+DATA_DIR = '~/'
+DEVICE='cuda'
+
 """
 TODO: match network definition in mnist_jax
 """
 class _Model(nn.Module):
 
-    def __init__(self, input_size, num_hidden, num_classes=10):
+    def __init__(self, input_size=28*28, num_hidden=128, num_classes=10):
         super(_Model, self).__init__()
 
         self.net = nn.Sequential(OrderedDict([
@@ -27,7 +32,7 @@ class _Model(nn.Module):
             ('output',     torch.nn.LogSoftmax(dim=1))
         ]))
 
-    def forward(self, x: spec.Tensor, train: bool):
+    def forward(self, x: spec.Tensor):
         output = self.net(x)
 
         return output
@@ -54,16 +59,19 @@ class MnistWorkload(spec.Workload):
     train_set = MNIST(DATA_DIR, train=True, download=True, transform=transform)
     test_set = MNIST(DATA_DIR, train=False, transform=transform)
 
+    # TODO: set seeds properly
+
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=batch_size,
                                                shuffle=True,
-                                               seed=data_rng)
+                                               pin_memory=True)
     test_loader = torch.utils.data.DataLoader(test_set,
                                               batch_size=batch_size,
-                                              shuffle=False)
+                                              shuffle=False,
+                                              pin_memory=True)
     loaders = {
-      'train': train_loader,
-      'eval': test_loader
+      'train': itertools.cycle(train_loader),
+      'test': test_loader
     }
 
     return loaders[split]
@@ -131,17 +139,18 @@ class MnistWorkload(spec.Workload):
 
     N = raw_input_batch.size()[0]
     raw_input_batch = raw_input_batch.view(N, -1)
-    return (raw_input_batch, raw_label_batch)
+    return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
 
   _InitState = Tuple[spec.ParameterTree, spec.ModelAuxillaryState]
   def init_model_fn(self, rng: spec.RandomState) -> _InitState:
-    torch.random.manual_seed(rng)
-    model = _Model(input_size=(28, 28))
+    torch.random.manual_seed(rng[0])
+    model = _Model(input_size=28*28).to(DEVICE)
+
     return model, None
 
   def model_fn(
       self,
-      model: spec.ParameterTree,
+      params: spec.ParameterTree,
       augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxillaryState,
       mode: spec.ForwardPassMode,
@@ -151,16 +160,18 @@ class MnistWorkload(spec.Workload):
     del rng
     del update_batch_norm
 
+    model = params
+
     if mode == spec.ForwardPassMode.EVAL:
         model.eval()
 
-        contexts = {
-            spec.ForwardPassMode.EVAL: torch.no_grad,
-            spec.ForwardPassMode.TRAIN: contextlib.nullcontext
-        }
+    contexts = {
+      spec.ForwardPassMode.EVAL: torch.no_grad,
+      spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+    }
 
-        with contexts[mode]():
-            logits_batch = model(augmented_and_preprocessed_input_batch)
+    with contexts[mode]():
+      logits_batch = model(augmented_and_preprocessed_input_batch)
 
 
     return logits_batch, None
@@ -173,7 +184,6 @@ class MnistWorkload(spec.Workload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor,
       loss_type: spec.LossType) -> spec.Tensor:  # differentiable
-    del loss_type
 
     if loss_type is not spec.LossType.SOFTMAX_CROSS_ENTROPY:
       raise NotImplementedError
@@ -183,9 +193,8 @@ class MnistWorkload(spec.Workload):
 
   def _eval_metric(self, logits, labels):
     _, predicted = torch.max(logits.data, 1)
-    return (predicted == labels).mean()).cpu().numpy()
-
-
+    accuracy = (predicted == labels).cpu().numpy().mean()
+    return accuracy
 
   def eval_model(
       self,
@@ -205,9 +214,8 @@ class MnistWorkload(spec.Workload):
     eval_iter = iter(self._eval_ds)
     total_loss = 0.
     total_accuracy = 0.
-    for x in eval_iter:
-      images = x['image']
-      labels = x['label']
+    for (images, labels) in eval_iter:
+      (images, labels) = self.preprocess_for_eval(images, labels, None, None)
       logits, _ = self.model_fn(
           params,
           images,

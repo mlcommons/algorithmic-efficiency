@@ -162,6 +162,8 @@ class MnistWorkload(spec.Workload):
     for x in eval_iter:
       images = x['image']
       labels = x['label']
+      (images, labels) = self.preprocess_for_eval(images, labels, None, None)
+
       logits, _ = self.model_fn(
           params,
           images,

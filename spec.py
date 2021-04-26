@@ -239,6 +239,8 @@ class TrainingCompleteError(Exception):
 
 def init_optimizer_state(
     workload: Workload,
+    model_params: ParameterTree,
+    model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state

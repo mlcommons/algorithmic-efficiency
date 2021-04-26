@@ -1,28 +1,15 @@
 """Training algorithm track submission functions for MNIST."""
 from typing import Iterator, List, Tuple, Union
 
-import jax
-import jax.numpy as jnp
-import optax
-
+import torch
 import spec
 from . import workload
 
+DEVICE='cuda'
 
 def get_batch_size(workload_name):
-  batch_sizes = {'mnist_jax': 1024}
+  batch_sizes = {'mnist_pytorch': 1024}
   return batch_sizes[workload_name]
-
-
-def optimizer(hyperparameters):
-  opt_init_fn, opt_update_fn = optax.chain(
-      optax.scale_by_adam(
-          b1=1.0 - hyperparameters.one_minus_beta_1,
-          b2=0.999,
-          eps=hyperparameters.epsilon),
-      optax.scale(-hyperparameters.learning_rate)
-  )
-  return opt_init_fn, opt_update_fn
 
 
 def init_optimizer_state(
@@ -31,14 +18,17 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  del model_params
-  del model_state
-  del rng
-  params_zeros_like = jax.tree_map(
-      lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
-  opt_init_fn, _ = optimizer(hyperparameters)
-  return opt_init_fn(params_zeros_like)
 
+  del rng
+  del model_state
+  del workload
+
+  optimizer_state = {
+    'optimizer': torch.optim.Adam(model_params.parameters(),
+                                  lr=hyperparameters.learning_rate)
+        }
+
+  return optimizer_state
 
 def update_params(
     workload: spec.Workload,
@@ -59,24 +49,30 @@ def update_params(
   del eval_results
   del global_step
 
-  def loss_fn(params):
-    logits_batch, new_model_state = workload.model_fn(
-        params,
-        augmented_and_preprocessed_input_batch,
-        model_state,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        update_batch_norm=True)
-    loss = workload.loss_fn(label_batch, logits_batch, loss_type)
-    return jnp.mean(loss), new_model_state
+  current_model = current_params
+  current_params.train()
 
-  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn(current_params)
-  _, opt_update_fn = optimizer(hyperparameters)
-  updates, new_optimizer_state = opt_update_fn(
-      grad, optimizer_state, current_params)
-  updated_params = optax.apply_updates(current_params, updates)
-  return new_optimizer_state, updated_params, new_model_state
+  input_batch = augmented_and_preprocessed_input_batch
+  optimizer_state['optimizer'].zero_grad()
+
+  output, new_model_state = workload.model_fn(
+    params=current_model,
+    augmented_and_preprocessed_input_batch=input_batch,
+    model_state=model_state,
+    mode=spec.ForwardPassMode.TRAIN,
+    rng=rng,
+    update_batch_norm=True
+  )
+
+  loss = workload.loss_fn(
+    label_batch=label_batch,
+    logits_batch=output,
+    loss_type=loss_type)
+
+  loss.backward()
+  optimizer_state['optimizer'].step()
+
+  return (optimizer_state, current_params, new_model_state)
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
@@ -102,5 +98,4 @@ def data_selection(
   del current_params
   del global_step
   del rng
-  x = next(input_queue)
-  return x['image'], x['label']
+  return next(input_queue)

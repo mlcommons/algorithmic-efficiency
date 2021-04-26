@@ -24,7 +24,7 @@ import jax
 import halton
 import spec
 from workloads.mnist_jax import workload as mnist_jax_workload
-
+from workloads.mnist_pytorch import workload as mnist_pytorch_workload
 
 flags.DEFINE_string(
     'submission_path',
@@ -51,6 +51,7 @@ FLAGS = flags.FLAGS
 # TODO(znado): make a nicer registry of workloads that lookup in.
 WORKLOADS = {
     'mnist_jax': mnist_jax_workload.MnistWorkload(),
+    'mnist_pytorch': mnist_pytorch_workload.MnistWorkload(),
 }
 
 
@@ -69,11 +70,15 @@ def train_once(
   # Workload setup.
   input_queue = workload.build_input_queue(
       data_rng, 'train', batch_size=batch_size)
+
+  model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(
       workload,
+      model_params,
+      model_state,
       hyperparameters,
       opt_init_rng)
-  model_params, model_state = workload.init_model_fn(model_init_rng)
+
 
   # Bookkeeping.
   goal_reached = False
@@ -83,6 +88,7 @@ def train_once(
   eval_results = []
   global_step = 0
   eval_now = False
+  global_start_time = time.time()
 
   while (is_time_remaining and not goal_reached):
     step_rng = jax.random.fold_in(rng, global_step)
@@ -128,7 +134,9 @@ def train_once(
         eval_now):
       latest_eval_result = workload.eval_model(
           model_params, model_state, eval_rng)
-      last_eval_time = current_time
+
+      print(f"{current_time - global_start_time:.2}s\t{global_step}\t{latest_eval_result:.3}")
+      last_eval_time = time.time()
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
@@ -169,6 +177,7 @@ def score_submission_on_workload(
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('q', os.urandom(8))[0]
       rng = jax.random.PRNGKey(rng_seed)
+      print('--- RUN ---')
       timing, metrics = train_once(
           workload,
           batch_size,
