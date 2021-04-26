@@ -22,6 +22,6 @@ pip3 install -r requirements.txt
 
 ## Running a workload
 ```
-python3 submission_runner.py --workload=mnist --submission_path=workloads/mnist/submission.py
+python3 submission_runner.py --workload=mnist_jax --submission_path=workloads/mnist/mnist_jax/submission.py
 ```
 Note that the current MNIST example uses `tf.data` loaders and the `Flax` library for `Jax` models, but these may not be required dependencies for other implementations of the spec (e.g. PyTorch).

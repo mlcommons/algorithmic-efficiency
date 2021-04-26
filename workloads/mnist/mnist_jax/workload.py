@@ -3,6 +3,7 @@
 import struct
 import time
 from typing import Tuple
+from workloads.mnist.workload import Mnist
 
 from flax import linen as nn
 
@@ -31,7 +32,7 @@ class _Model(nn.Module):
     return x
 
 
-class MnistWorkload(spec.Workload):
+class MnistWorkload(Mnist):
 
   def __init__(self):
     self._eval_ds = None

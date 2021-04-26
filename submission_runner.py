@@ -23,8 +23,8 @@ import time
 import jax
 import halton
 import spec
-from workloads.mnist_jax import workload as mnist_jax_workload
-from workloads.mnist_pytorch import workload as mnist_pytorch_workload
+from workloads.mnist.mnist_jax import workload as mnist_jax_workload
+from workloads.mnist.mnist_pytorch import workload as mnist_pytorch_workload
 
 flags.DEFINE_string(
     'submission_path',
@@ -38,7 +38,7 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'workloads/mnist_jax/tuning_search_space.json',
+    'workloads/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer(
     'num_tuning_trials',
@@ -135,7 +135,7 @@ def train_once(
       latest_eval_result = workload.eval_model(
           model_params, model_state, eval_rng)
 
-      print(f"{current_time - global_start_time:.2}s\t{global_step}\t{latest_eval_result:.3}")
+      logging.info(f"{current_time - global_start_time:.2f}s\t{global_step}\t{latest_eval_result:.3f}")
       last_eval_time = time.time()
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
@@ -177,7 +177,7 @@ def score_submission_on_workload(
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('q', os.urandom(8))[0]
       rng = jax.random.PRNGKey(rng_seed)
-      print('--- RUN ---')
+      logging.info('--- Tuning RUN ---')
       timing, metrics = train_once(
           workload,
           batch_size,
