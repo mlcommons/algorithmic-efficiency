@@ -6,6 +6,8 @@ import time
 import itertools
 from typing import Tuple
 from collections import OrderedDict
+
+from jax.interpreters.batching import batch
 from workloads.mnist.workload import Mnist
 
 import spec
@@ -49,30 +51,28 @@ class MnistWorkload(Mnist):
       split: str,
       batch_size: int):
 
+    assert split in ['train', 'test']
+    is_train = split == 'train'
+
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307, ), (0.3081, ))
     ])
 
-    train_set = MNIST(DATA_DIR, train=True, download=True, transform=transform)
-    test_set = MNIST(DATA_DIR, train=False, transform=transform)
+    dataset = MNIST(DATA_DIR, train=is_train, download=True, transform=transform)
 
     # TODO: set seeds properly
+    dataloader = torch.utils.data.DataLoader(
+      dataset,
+      batch_size=batch_size,
+      shuffle=is_train,
+      pin_memory=True
+    )
 
-    train_loader = torch.utils.data.DataLoader(train_set,
-                                               batch_size=batch_size,
-                                               shuffle=True,
-                                               pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(test_set,
-                                              batch_size=batch_size,
-                                              shuffle=False,
-                                              pin_memory=True)
-    loaders = {
-      'train': itertools.cycle(train_loader),
-      'test': test_loader
-    }
+    if is_train:
+      dataloader = itertools.cycle(dataloader)
 
-    return loaders[split]
+    return dataloader
 
 
   def build_input_queue(
