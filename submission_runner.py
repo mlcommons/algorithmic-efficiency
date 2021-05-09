@@ -4,9 +4,9 @@ Example command:
 
 python3 submission_runner.py \
     --workload=mnist_jax \
-    --submission_path=workloads/mnist_jax/submission.py \
+    --submission_path=workloads/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=workloads/mnist_jax/tuning_search_space.json \
+    --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
     --num_tuning_trials=3
 """
 from typing import Optional, Tuple
@@ -38,7 +38,7 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'workloads/mnist/tuning_search_space.json',
+    'workloads/mnist/mnist_jax/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer(
     'num_tuning_trials',
@@ -70,7 +70,6 @@ def train_once(
   # Workload setup.
   input_queue = workload.build_input_queue(
       data_rng, 'train', batch_size=batch_size)
-
   model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(
       workload,
@@ -78,7 +77,6 @@ def train_once(
       model_state,
       hyperparameters,
       opt_init_rng)
-
 
   # Bookkeeping.
   goal_reached = False
@@ -134,9 +132,10 @@ def train_once(
         training_complete):
       latest_eval_result = workload.eval_model(
           model_params, model_state, eval_rng)
-
-      logging.info(f"{current_time - global_start_time:.2f}s\t{global_step}\t{latest_eval_result:.3f}")
-      last_eval_time = time.time()
+      logging.info(
+          f'{current_time - global_start_time:.2f}s\t{global_step}'
+          '\t{latest_eval_result:.3f}')
+      last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
@@ -173,11 +172,11 @@ def score_submission_on_workload(
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for hyperparameters in tuning_search_space:
+    for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('q', os.urandom(8))[0]
       rng = jax.random.PRNGKey(rng_seed)
-      logging.info('--- Tuning RUN ---')
+      logging.info(f'--- Tuning run {hi}{num_tuning_trials} ---')
       timing, metrics = train_once(
           workload,
           batch_size,
