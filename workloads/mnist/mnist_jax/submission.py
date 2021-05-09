@@ -40,10 +40,9 @@ def init_optimizer_state(
   return opt_init_fn(params_zeros_like)
 
 
-def update_params(
+def _update_params(
     workload: spec.Workload,
     current_params: spec.ParameterTree,
-    current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     augmented_and_preprocessed_input_batch: spec.Tensor,
@@ -51,14 +50,7 @@ def update_params(
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
-  """Return (updated_optimizer_state, updated_params)."""
-  del current_params_types
-  del eval_results
-  del global_step
-
   def loss_fn(params):
     logits_batch, new_model_state = workload.model_fn(
         params,
@@ -77,6 +69,28 @@ def update_params(
       grad, optimizer_state, current_params)
   updated_params = optax.apply_updates(current_params, updates)
   return new_optimizer_state, updated_params, new_model_state
+
+def update_params(
+    workload: spec.Workload,
+    current_params: spec.ParameterTree,
+    current_params_types: spec.ParameterTypeTree,
+    model_state: spec.ModelAuxillaryState,
+    hyperparameters: spec.Hyperparamters,
+    augmented_and_preprocessed_input_batch: spec.Tensor,
+    label_batch: spec.Tensor,
+    # This will define the output activation via `output_activation_fn`.
+    loss_type: spec.LossType,
+    optimizer_state: spec.OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: spec.RandomState) -> spec.UpdateReturn:
+  """Return (updated_optimizer_state, updated_params)."""
+  del current_params_types
+  del eval_results
+  del global_step
+  num_devices = jax.local_device_count()
+  pmapped_update_params = jax.pmap(_update_params)
+  return pmapped_update_params()
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or

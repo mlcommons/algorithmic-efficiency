@@ -6,10 +6,6 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 
 import abc
 import jax
-import jax.numpy as jnp
-import torch
-# import numpy as np
-# import tensorflow as tf
 
 
 class LossType(enum.Enum):
@@ -39,11 +35,11 @@ class ComparisonDirection(enum.Enum):
 
 # Of course, Tensor knows its shape and dtype.
 # Tensor = Union[jnp.array, np.array, tf.Tensor, ...]
-Tensor = Union[jnp.array, torch.Tensor]  # DeviceArray??
+Tensor = Any
 
 
-# Define this so that if using pytree iteration utilities, can iterate
-# over the model shapes pytree without iterating over the shape tuples.
+# Define this so that if using pytree iteration utilities, can iterate over the
+# model shapes pytree without iterating over the shape tuples.
 class ShapeTuple:
 
   def __init__(self, shape_tuple):
@@ -61,11 +57,10 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-# TODO: resolve naming
-ParameterTree = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]], torch.nn.Module]
+ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
 
-RandomState = Union[jax.random.PRNGKey, int]
+RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
 OptimizerState = Any
 Hyperparamters = Any
@@ -239,8 +234,6 @@ class TrainingCompleteError(Exception):
 
 def init_optimizer_state(
     workload: Workload,
-    model_params: ParameterTree,
-    model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
