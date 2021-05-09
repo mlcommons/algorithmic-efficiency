@@ -20,25 +20,22 @@ from torchvision.datasets import MNIST
 DATA_DIR = '~/'
 DEVICE='cuda'
 
-"""
-TODO: match network definition in mnist_jax
-"""
 class _Model(nn.Module):
 
-    def __init__(self, input_size=28*28, num_hidden=128, num_classes=10):
-        super(_Model, self).__init__()
-
-        self.net = nn.Sequential(OrderedDict([
-            ('layer1',     torch.nn.Linear(input_size, num_hidden, bias=True)),
-            ('layer1_sig', torch.nn.Sigmoid()),
-            ('layer2',     torch.nn.Linear(num_hidden, num_classes, bias=True)),
-            ('output',     torch.nn.LogSoftmax(dim=1))
-        ]))
+    def __init__(self):
+      super(_Model, self).__init__()
+      input_size = 28 * 28
+      num_hidden = 128
+      num_classes = 10
+      self.net = nn.Sequential(OrderedDict([
+          ('layer1',     torch.nn.Linear(input_size, num_hidden, bias=True)),
+          ('layer1_sig', torch.nn.Sigmoid()),
+          ('layer2',     torch.nn.Linear(num_hidden, num_classes, bias=True)),
+          ('output',     torch.nn.LogSoftmax(dim=1))
+      ]))
 
     def forward(self, x: spec.Tensor):
-        output = self.net(x)
-
-        return output
+      return self.net(x)
 
 
 class MnistWorkload(Mnist):
@@ -46,28 +43,24 @@ class MnistWorkload(Mnist):
   def __init__(self):
     self._eval_ds = None
 
-  def _build_dataloader(self,
+  def _build_dataset(self,
       data_rng: spec.RandomState,
       split: str,
       batch_size: int):
 
     assert split in ['train', 'test']
     is_train = split == 'train'
-
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307, ), (0.3081, ))
+        transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-
     dataset = MNIST(DATA_DIR, train=is_train, download=True, transform=transform)
-
     # TODO: set seeds properly
     dataloader = torch.utils.data.DataLoader(
       dataset,
       batch_size=batch_size,
       shuffle=is_train,
-      pin_memory=True
-    )
+      pin_memory=True)
 
     if is_train:
       dataloader = itertools.cycle(dataloader)
@@ -80,7 +73,7 @@ class MnistWorkload(Mnist):
       data_rng: spec.RandomState,
       split: str,
       batch_size: int):
-    return iter(self._build_dataloader(data_rng, split, batch_size))
+    return iter(self._build_dataset(data_rng, split, batch_size))
 
   @property
   def param_shapes(self):
@@ -101,6 +94,8 @@ class MnistWorkload(Mnist):
       self,
       selected_raw_input_batch: spec.Tensor,
       selected_label_batch: spec.Tensor,
+      train_mean: spec.Tensor,
+      train_stddev: spec.Tensor,
       rng: spec.RandomState) -> spec.Tensor:
     del rng
     return self.preprocess_for_eval(
@@ -114,16 +109,13 @@ class MnistWorkload(Mnist):
       train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-
     N = raw_input_batch.size()[0]
     raw_input_batch = raw_input_batch.view(N, -1)
     return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
 
-  _InitState = Tuple[spec.ParameterTree, spec.ModelAuxillaryState]
-  def init_model_fn(self, rng: spec.RandomState) -> _InitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = _Model(input_size=28*28).to(DEVICE)
-
+    model = _Model().to(DEVICE)
     return model, None
 
   def model_fn(
@@ -151,10 +143,8 @@ class MnistWorkload(Mnist):
     with contexts[mode]():
       logits_batch = model(augmented_and_preprocessed_input_batch)
 
-
     return logits_batch, None
 
-  # LossFn = Callable[Tuple[spec.Tensor, spec.Tensor], spec.Tensor]
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
@@ -169,38 +159,8 @@ class MnistWorkload(Mnist):
     return F.nll_loss(logits_batch, label_batch)
 
   def _eval_metric(self, logits, labels):
+    """Return the mean accuracy and loss as a dict."""
     _, predicted = torch.max(logits.data, 1)
     accuracy = (predicted == labels).cpu().numpy().mean()
-    return accuracy
-
-  def eval_model(
-      self,
-      params: spec.ParameterTree,
-      model_state: spec.ModelAuxillaryState,
-      rng: spec.RandomState):
-    """Run a full evaluation of the model."""
-    # TODO: use a split rng
-    # data_rng, model_rng = jax.random.split(rng, 2)
-    data_rng, model_rng = rng[:2]
-
-    eval_batch_size = 2000
-    num_batches = 10000 // eval_batch_size
-    if self._eval_ds is None:
-      self._eval_ds = self._build_dataloader(
-          data_rng, split='test', batch_size=eval_batch_size)
-    eval_iter = iter(self._eval_ds)
-    total_loss = 0.
-    total_accuracy = 0.
-    for (images, labels) in eval_iter:
-      (images, labels) = self.preprocess_for_eval(images, labels, None, None)
-      logits, _ = self.model_fn(
-          params,
-          images,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      # TODO(znado): add additional eval metrics?
-      # total_loss += self.loss_fn(labels, logits, self.loss_type)
-      total_accuracy += self._eval_metric(logits, labels)
-    return float(total_accuracy / num_batches)
+    loss = self.loss_fn(labels, logits).cpu().numpy().mean()
+    return {'accuracy': accuracy, 'loss': loss}

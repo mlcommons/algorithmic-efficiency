@@ -20,17 +20,12 @@ class ForwardPassMode(enum.Enum):
   # ... ?
 
 
-class ParamType(enum.Enum):
+class ParameterType(enum.Enum):
   WEIGHT = 0
   BIAS = 1
   CONV_WEIGHT = 2
   BATCH_NORM = 3
   EMBEDDING = 4
-
-
-class ComparisonDirection(enum.Enum):
-  MINIMIZE = 0
-  MAXIMIZE = 1
 
 
 # Of course, Tensor knows its shape and dtype.
@@ -58,7 +53,7 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 ParameterKey = str
 # Dicts can be arbitrarily nested.
 ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
-ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
+ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
@@ -69,6 +64,7 @@ Steps = int
 
 # BN EMAs.
 ModelAuxillaryState = Any
+ModelInitState = Tuple[ParameterTree, ModelAuxillaryState]
 
 
 UpdateReturn = Tuple[
@@ -126,7 +122,7 @@ class Workload(metaclass=abc.ABCMeta):
     """The shapes of the parameters in the workload model."""
 
   @abc.abstractmethod
-  def model_params_types(self):
+  def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
 
   @abc.abstractproperty
@@ -158,6 +154,8 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       selected_raw_input_batch: Tensor,
       selected_label_batch: Tensor,  # Dense (not one-hot) labels.
+      train_mean: Tensor,
+      train_stddev: Tensor,
       rng: RandomState) -> Tensor:
     """return augmented_and_preprocessed_input_batch"""
 

@@ -1,9 +1,10 @@
 import spec
+import jax
 
 class Mnist(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result > 0.9
+    return eval_result['accuracy'] > 0.9
 
   @property
   def loss_type(self):
@@ -11,11 +12,11 @@ class Mnist(spec.Workload):
 
   @property
   def train_mean(self):
-    return 0.0
+    return 0.1307
 
   @property
   def train_stddev(self):
-    return 1.0
+    return 0.3081
 
   @property
   def max_allowed_runtime_sec(self):
@@ -24,3 +25,40 @@ class Mnist(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 10
+
+  def _eval_metric(self, logits, labels):
+    """Return the mean accuracy and loss as a dict."""
+    raise NotImplementedError
+
+  def eval_model(
+      self,
+      params: spec.ParameterTree,
+      model_state: spec.ModelAuxillaryState,
+      rng: spec.RandomState):
+    """Run a full evaluation of the model."""
+    data_rng, model_rng = jax.random.split(rng, 2)
+    eval_batch_size = 2000
+    num_batches = 10000 // eval_batch_size
+    if self._eval_ds is None:
+      self._eval_ds = self._build_dataset(
+          data_rng, split='test', batch_size=eval_batch_size)
+    eval_iter = iter(self._eval_ds)
+    total_metrics = {
+        'accuracy': 0.,
+        'loss': 0.,
+    }
+    for (images, labels) in eval_iter:
+      images = self.preprocess_for_eval(images, None, None)
+      logits, _ = self.model_fn(
+          params,
+          images,
+          model_state,
+          spec.ForwardPassMode.EVAL,
+          model_rng,
+          update_batch_norm=False)
+      # TODO(znado): add additional eval metrics?
+      batch_metrics = self._eval_metric(logits, labels)
+      total_metrics = {
+          k: v + batch_metrics[k] for k, v in total_metrics.items()
+      }
+    return {k: float(v / num_batches) for k, v in total_metrics.items()}

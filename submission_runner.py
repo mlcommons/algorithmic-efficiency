@@ -61,8 +61,8 @@ def _import_workload(
 
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
-  a submitter only wants to write PyTorch code, the try/except below will catch
-  the import errors caused if they do not have all the Jax dependencies
+  a submitter only wants to write Jax code, the try/except below will catch
+  the import errors caused if they do not have the PyTorch dependencies
   installed on their system.
 
   Args:
@@ -92,7 +92,7 @@ def _import_workload(
   except ModuleNotFoundError as err:
     logging.warning(
       f'Could not import workload module {workload_path}, '
-      f'continuing:\n\n{err}\n\n')
+      f'continuing:\n\n{err}\n')
 
 
 # Example reference implementation showing how to use the above functions
@@ -145,7 +145,9 @@ def train_once(
      augmented_train_label_batch) = workload.preprocess_for_train(
         selected_train_input_batch,
         selected_train_label_batch,
-        preprocess_rng)
+        train_mean=workload.train_mean,
+        train_stddev=workload.train_stddev,
+        rng=preprocess_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -174,7 +176,7 @@ def train_once(
           model_params, model_state, eval_rng)
       logging.info(
           f'{current_time - global_start_time:.2f}s\t{global_step}'
-          f'\t{latest_eval_result:.3f}')
+          f'\t{latest_eval_result}')
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)

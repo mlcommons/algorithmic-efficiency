@@ -18,7 +18,6 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-
   del rng
   del model_state
   del workload
@@ -26,9 +25,9 @@ def init_optimizer_state(
   optimizer_state = {
     'optimizer': torch.optim.Adam(model_params.parameters(),
                                   lr=hyperparameters.learning_rate)
-        }
-
+  }
   return optimizer_state
+
 
 def update_params(
     workload: spec.Workload,
@@ -56,18 +55,17 @@ def update_params(
   optimizer_state['optimizer'].zero_grad()
 
   output, new_model_state = workload.model_fn(
-    params=current_model,
-    augmented_and_preprocessed_input_batch=input_batch,
-    model_state=model_state,
-    mode=spec.ForwardPassMode.TRAIN,
-    rng=rng,
-    update_batch_norm=True
-  )
+      params=current_model,
+      augmented_and_preprocessed_input_batch=input_batch,
+      model_state=model_state,
+      mode=spec.ForwardPassMode.TRAIN,
+      rng=rng,
+      update_batch_norm=True)
 
   loss = workload.loss_fn(
-    label_batch=label_batch,
-    logits_batch=output,
-    loss_type=loss_type)
+      label_batch=label_batch,
+      logits_batch=output,
+      loss_type=loss_type)
 
   loss.backward()
   optimizer_state['optimizer'].step()

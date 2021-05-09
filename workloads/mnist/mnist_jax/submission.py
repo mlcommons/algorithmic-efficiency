@@ -56,7 +56,6 @@ def pmapped_update_params(
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
-    # This will define the output activation via `output_activation_fn`.
     optimizer_state: spec.OptimizerState,
     rng: spec.RandomState,
     local_device_index) -> spec.UpdateReturn:
@@ -64,6 +63,7 @@ def pmapped_update_params(
   # Note that `rng` is the same across all devices! If a per-device RNG is
   # required, then `local_device_index` can be folded into `rng`.
   del local_device_index
+
   def loss_fn(params):
     logits_batch, new_model_state = workload.model_fn(
         params,
@@ -97,7 +97,7 @@ def update_params(
     eval_results: List[Tuple[int, float]],
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
-  """Return (updated_optimizer_state, updated_params)."""
+  """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
   del eval_results
@@ -113,17 +113,7 @@ def update_params(
       (num_devices, label_batch.shape[0] // num_devices,
        *label_batch.shape[1:]))
 
-  # DO NOT SUBMIT znado need to be more efficient than always replicating jax state each step.
-  # new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
-  #     workload=workload,
-  #     current_params=jax_utils.replicate(current_params),
-  #     model_state=jax_utils.replicate(model_state),
-  #     hyperparameters=hyperparameters,
-  #     input_batch=reshaped_input_batch,
-  #     label_batch=reshaped_label_batch,
-  #     optimizer_state=jax_utils.replicate(optimizer_state),
-  #     rng=rng,
-  #     local_device_index=jnp.arange(num_devices))
+  # TODO(znado) we should be more efficient than replicating state each step.
   new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
       workload,
       jax_utils.replicate(current_params),
@@ -134,10 +124,6 @@ def update_params(
       jax_utils.replicate(optimizer_state),
       rng,
       jnp.arange(num_devices))
-  # return new_optimizer_state[0], updated_params[0], new_model_state[0]
-  # print('new_optimizer_state:', jax.tree_map(lambda x: x.shape, new_optimizer_state))
-  # print('updated_params:', jax.tree_map(lambda x: x.shape, updated_params))
-  # print('new_model_state:', jax.tree_map(lambda x: x.shape, new_model_state))
   return (
       jax_utils.unreplicate(new_optimizer_state),
       jax_utils.unreplicate(updated_params),
@@ -163,9 +149,10 @@ def data_selection(
 
   Return a tuple of input label batches.
   """
+  del workload
   del optimizer_state
   del current_params
+  del hyperparameters
   del global_step
   del rng
-  x = next(input_queue)
-  return x['image'], x['label']
+  return next(input_queue)
