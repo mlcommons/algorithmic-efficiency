@@ -36,6 +36,7 @@ class MnistWorkload(Mnist):
 
   def __init__(self):
     self._eval_ds = None
+    self._model = _Model()
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result > 0.9
@@ -114,7 +115,7 @@ class MnistWorkload(Mnist):
   _InitState = Tuple[spec.ParameterTree, spec.ModelAuxillaryState]
   def init_model_fn(self, rng: spec.RandomState) -> _InitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    initial_params = _Model().init(rng, init_val, train=True)['params']
+    initial_params = self._model.init(rng, init_val, train=True)['params']
     return initial_params, None
 
   def model_fn(
@@ -129,7 +130,7 @@ class MnistWorkload(Mnist):
     del rng
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits_batch = _Model().apply(
+    logits_batch = self._model.apply(
         {'params': params}, augmented_and_preprocessed_input_batch, train=train)
     return logits_batch, None
 
@@ -139,9 +140,7 @@ class MnistWorkload(Mnist):
   def loss_fn(
       self,
       label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      loss_type: spec.LossType) -> spec.Tensor:  # differentiable
-    del loss_type
+      logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     return -jnp.sum(one_hot_targets * nn.log_softmax(logits_batch), axis=-1)
 

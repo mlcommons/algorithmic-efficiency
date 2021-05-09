@@ -157,7 +157,7 @@ class Workload(metaclass=abc.ABCMeta):
   def preprocess_for_train(
       self,
       selected_raw_input_batch: Tensor,
-      selected_label_batch: Tensor,
+      selected_label_batch: Tensor,  # Dense (not one-hot) labels.
       rng: RandomState) -> Tensor:
     """return augmented_and_preprocessed_input_batch"""
 
@@ -210,9 +210,8 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def loss_fn(
       self,
-      label_batch: Tensor,
-      logits_batch: Tensor,
-      loss_type: LossType) -> Tensor:  # differentiable
+      label_batch: Tensor,  # Dense (not one-hot) labels.
+      logits_batch: Tensor) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
@@ -257,7 +256,7 @@ def update_params(
     model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
     augmented_and_preprocessed_input_batch: Tensor,
-    label_batch: Tensor,
+    label_batch: Tensor,  # Dense (not one-hot) labels.
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
     optimizer_state: OptimizerState,
@@ -285,7 +284,7 @@ def data_selection(
   We left out `current_params_types` because we do not believe that it would
   # be necessary for this function.
   """
-  # return input_batch, label_batch
+  # return input_batch, label_batch (dense (not one-hot) labels)
   pass
 
 

@@ -15,6 +15,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import importlib
+import inspect
 import json
 import os
 import struct
@@ -23,8 +24,8 @@ import time
 import jax
 import halton
 import spec
-from workloads.mnist.mnist_jax import workload as mnist_jax_workload
-from workloads.mnist.mnist_pytorch import workload as mnist_pytorch_workload
+
+
 
 flags.DEFINE_string(
     'submission_path',
@@ -49,10 +50,49 @@ FLAGS = flags.FLAGS
 
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
-WORKLOADS = {
-    'mnist_jax': mnist_jax_workload.MnistWorkload(),
-    'mnist_pytorch': mnist_pytorch_workload.MnistWorkload(),
-}
+WORKLOADS = {}
+
+
+def _import_workload(
+    workload_path,
+    workload_registry_name,
+    workload_class_name):
+  """Import and add the workload to the registry.
+
+  This importlib loading is nice to have because it allows runners to avoid
+  installing the dependencies of all the supported frameworks. For example, if
+  a submitter only wants to write PyTorch code, the try/except below will catch
+  the import errors caused if they do not have all the Jax dependencies
+  installed on their system.
+
+  Args:
+    workload_path: the path to the `workload.py` file to load.
+    workload_registry_name: the name to register the workload class under.
+    workload_class_name: the name of the Workload class that implements the
+      `Workload` abstract class in `spec.py`.
+  """
+  # Remove the trailing '.py' and convert the filepath to a Python module.
+  workload_path = workload_path[:-3].replace('/', '.')
+  try:
+    # Import the workload module.
+    workload_module = importlib.import_module(workload_path)
+    # Get everything defined in the workload module (including our class).
+    workload_module_members = inspect.getmembers(workload_module)
+    workload_class = None
+    for name, value in workload_module_members:
+      if name == workload_class_name:
+        workload_class = value
+        break
+    if workload_class is None:
+      raise ValueError(
+          f'Could not find member {workload_class_name} in {workload_path}. '
+          'Make sure the Workload class is spelled correctly and defined in '
+          'the top scope of the module.')
+    WORKLOADS[workload_registry_name] = workload_class()
+  except ModuleNotFoundError as err:
+    logging.warning(
+      f'Could not import workload module {workload_path}, '
+      f'continuing:\n\n{err}\n\n')
 
 
 # Example reference implementation showing how to use the above functions
@@ -134,7 +174,7 @@ def train_once(
           model_params, model_state, eval_rng)
       logging.info(
           f'{current_time - global_start_time:.2f}s\t{global_step}'
-          '\t{latest_eval_result:.3f}')
+          f'\t{latest_eval_result:.3f}')
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
@@ -176,7 +216,7 @@ def score_submission_on_workload(
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('q', os.urandom(8))[0]
       rng = jax.random.PRNGKey(rng_seed)
-      logging.info(f'--- Tuning run {hi}{num_tuning_trials} ---')
+      logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
       timing, metrics = train_once(
           workload,
           batch_size,
@@ -210,6 +250,15 @@ def score_submission_on_workload(
 
 
 def main(_):
+  _import_workload(
+      'workloads/mnist/mnist_pytorch/workload.py',
+      'mnist_pytorch',
+      'MnistWorkload')
+  _import_workload(
+      'workloads/mnist/mnist_jax/workload.py',
+      'mnist_jax',
+      'MnistWorkload')
+
   score = score_submission_on_workload(
       FLAGS.workload,
       FLAGS.submission_path,
