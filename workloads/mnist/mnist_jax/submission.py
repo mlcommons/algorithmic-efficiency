@@ -59,7 +59,6 @@ def pmapped_update_params(
     optimizer_state: spec.OptimizerState,
     rng: spec.RandomState,
     local_device_index) -> spec.UpdateReturn:
-  print('recompiling!') # DO NOT SUBMIT
   # Note that `rng` is the same across all devices! If a per-device RNG is
   # required, then `local_device_index` can be folded into `rng`.
   del local_device_index

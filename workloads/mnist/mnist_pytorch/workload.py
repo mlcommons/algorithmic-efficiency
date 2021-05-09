@@ -67,7 +67,6 @@ class MnistWorkload(Mnist):
 
     return dataloader
 
-
   def build_input_queue(
       self,
       data_rng: spec.RandomState,

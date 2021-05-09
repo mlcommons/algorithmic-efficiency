@@ -68,28 +68,8 @@ class MnistWorkload(Mnist):
           'before workload.param_shapes!')
     return self._param_shapes
 
-  @property
-  def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
-
-  @property
-  def train_mean(self):
-    return 0.0
-
-  @property
-  def train_stddev(self):
-    return 1.0
-
   def model_params_types(self):
     pass
-
-  @property
-  def max_allowed_runtime_sec(self):
-    return 60
-
-  @property
-  def eval_period_time_sec(self):
-    return 10
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
