@@ -41,15 +41,15 @@ class Mnist(spec.Workload):
     eval_batch_size = 2000
     num_batches = 10000 // eval_batch_size
     if self._eval_ds is None:
-      self._eval_ds = self._build_dataset(
+      self._eval_ds = self.build_input_queue(
           data_rng, 'test', data_dir, batch_size=eval_batch_size)
-    eval_iter = iter(self._eval_ds)
+
     total_metrics = {
         'accuracy': 0.,
         'loss': 0.,
     }
-    for (images, labels) in eval_iter:
-      images = self.preprocess_for_eval(images, None, None)
+    for (images, labels) in self._eval_ds:
+      images, labels = self.preprocess_for_eval(images, labels, None, None)
       logits, _ = self.model_fn(
           params,
           images,

@@ -43,6 +43,7 @@ class MnistWorkload(Mnist):
   def _build_dataset(self,
       data_rng: jax.random.PRNGKey,
       split: str,
+      data_dir: str,
       batch_size):
     ds = tfds.load('mnist', split=split, try_gcs=True)
     ds = ds.cache()
@@ -59,7 +60,7 @@ class MnistWorkload(Mnist):
       split: str,
       data_dir: str,
       batch_size: int):
-    return iter(self._build_dataset(data_rng, split, batch_size))
+    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   @property
   def param_shapes(self):
@@ -90,11 +91,12 @@ class MnistWorkload(Mnist):
   def preprocess_for_eval(
       self,
       raw_input_batch: spec.Tensor,
+      raw_label_batch: spec.Tensor,
       train_mean: spec.Tensor,
       train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    return raw_input_batch
+    return raw_input_batch, raw_label_batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
