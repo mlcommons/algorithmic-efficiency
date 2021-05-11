@@ -34,14 +34,15 @@ class Mnist(spec.Workload):
       self,
       params: spec.ParameterTree,
       model_state: spec.ModelAuxillaryState,
-      rng: spec.RandomState):
+      rng: spec.RandomState,
+      data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = jax.random.split(rng, 2)
     eval_batch_size = 2000
     num_batches = 10000 // eval_batch_size
     if self._eval_ds is None:
       self._eval_ds = self._build_dataset(
-          data_rng, split='test', batch_size=eval_batch_size)
+          data_rng, 'test', data_dir, batch_size=eval_batch_size)
     eval_iter = iter(self._eval_ds)
     total_metrics = {
         'accuracy': 0.,

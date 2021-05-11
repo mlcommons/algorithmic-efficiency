@@ -57,6 +57,7 @@ class MnistWorkload(Mnist):
       self,
       data_rng: jax.random.PRNGKey,
       split: str,
+      data_dir: str,
       batch_size: int):
     return iter(self._build_dataset(data_rng, split, batch_size))
 

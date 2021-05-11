@@ -45,6 +45,11 @@ flags.DEFINE_integer(
     'num_tuning_trials',
     20,
     'The number of external hyperparameter trials to run.')
+flags.DEFINE_string(
+    'data_dir',
+    '~/',
+    'Dataset location'
+)
 
 FLAGS = flags.FLAGS
 
@@ -100,6 +105,7 @@ def _import_workload(
 def train_once(
     workload: spec.Workload,
     batch_size: int,
+    data_dir: str,
     init_optimizer_state: spec.InitOptimizerFn,
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
@@ -109,7 +115,7 @@ def train_once(
 
   # Workload setup.
   input_queue = workload.build_input_queue(
-      data_rng, 'train', batch_size=batch_size)
+      data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
   model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(
       workload,
@@ -173,7 +179,7 @@ def train_once(
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
       latest_eval_result = workload.eval_model(
-          model_params, model_state, eval_rng)
+          model_params, model_state, eval_rng, data_dir)
       logging.info(
           f'{current_time - global_start_time:.2f}s\t{global_step}'
           f'\t{latest_eval_result}')
@@ -187,6 +193,7 @@ def train_once(
 def score_submission_on_workload(
     workload_name: str,
     submission_path: str,
+    data_dir: str,
     tuning_ruleset: str,
     tuning_search_space: Optional[str] = None,
     num_tuning_trials: Optional[int] = None):
@@ -222,6 +229,7 @@ def score_submission_on_workload(
       timing, metrics = train_once(
           workload,
           batch_size,
+          data_dir,
           init_optimizer_state,
           update_params,
           data_selection,
@@ -264,6 +272,7 @@ def main(_):
   score = score_submission_on_workload(
       FLAGS.workload,
       FLAGS.submission_path,
+      FLAGS.data_dir,
       FLAGS.tuning_ruleset,
       FLAGS.tuning_search_space,
       FLAGS.num_tuning_trials)

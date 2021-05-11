@@ -1,13 +1,10 @@
-"""MNIST workload implemented in Jax."""
+"""MNIST workload implemented in PyTorch."""
 
 import contextlib
-import struct
-import time
 import itertools
 from typing import Tuple
 from collections import OrderedDict
 
-from jax.interpreters.batching import batch
 from workloads.mnist.workload import Mnist
 
 import spec
@@ -17,7 +14,6 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
-DATA_DIR = '~/'
 DEVICE='cuda'
 
 class _Model(nn.Module):
@@ -46,6 +42,7 @@ class MnistWorkload(Mnist):
   def _build_dataset(self,
       data_rng: spec.RandomState,
       split: str,
+      data_dir: str,
       batch_size: int):
 
     assert split in ['train', 'test']
@@ -54,7 +51,7 @@ class MnistWorkload(Mnist):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = MNIST(DATA_DIR, train=is_train, download=True, transform=transform)
+    dataset = MNIST(data_dir, train=is_train, download=True, transform=transform)
     # TODO: set seeds properly
     dataloader = torch.utils.data.DataLoader(
       dataset,
@@ -71,8 +68,9 @@ class MnistWorkload(Mnist):
       self,
       data_rng: spec.RandomState,
       split: str,
+      data_dir: str,
       batch_size: int):
-    return iter(self._build_dataset(data_rng, split, batch_size))
+    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   @property
   def param_shapes(self):
@@ -149,11 +147,7 @@ class MnistWorkload(Mnist):
   def loss_fn(
       self,
       label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      loss_type: spec.LossType) -> spec.Tensor:  # differentiable
-
-    if loss_type is not spec.LossType.SOFTMAX_CROSS_ENTROPY:
-      raise NotImplementedError
+      logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
     return F.nll_loss(logits_batch, label_batch)
 

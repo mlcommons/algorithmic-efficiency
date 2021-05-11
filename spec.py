@@ -111,6 +111,7 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       data_rng: RandomState,
       split: str,
+      data_dir: str,
       batch_size: int):
     """Build the input queue for the workload data.
 
