@@ -26,13 +26,25 @@ import halton
 import spec
 
 
+# TODO(znado): make a nicer registry of workloads that lookup in.
+WORKLOADS = {
+  'mnist_jax': {
+    'workload_path': 'workloads/mnist/mnist_jax/workload.py',
+    'workload_class_name': 'MnistWorkload'
+  },
+  'mnist_pytorch': {
+    'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
+    'workload_class_name': 'MnistWorkload'
+  }
+}
 
 flags.DEFINE_string(
     'submission_path',
     'workloads/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
-flags.DEFINE_string('workload', 'mnist', 'The name of the workload to run.')
+flags.DEFINE_string('workload', 'mnist_jax',
+    help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}')
 flags.DEFINE_enum(
     'tuning_ruleset', 'external',
     enum_values=['external', 'self'],
@@ -54,8 +66,13 @@ flags.DEFINE_string(
 FLAGS = flags.FLAGS
 
 
-# TODO(znado): make a nicer registry of workloads that lookup in.
-WORKLOADS = {}
+def _convert_filepath_to_module(path: str):
+  base, extension = os.path.splitext(path)
+
+  if extension != '.py':
+    raise ValueError(f'Path: {path} must be a python file (*.py)')
+
+  return base.replace('/', '.')
 
 
 def _import_workload(
@@ -76,8 +93,10 @@ def _import_workload(
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
   """
+
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  workload_path = workload_path[:-3].replace('/', '.')
+  workload_path = _convert_filepath_to_module(workload_path)
+
   try:
     # Import the workload module.
     workload_module = importlib.import_module(workload_path)
@@ -198,8 +217,9 @@ def score_submission_on_workload(
     tuning_search_space: Optional[str] = None,
     num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = FLAGS.submission_path[:-3].replace('/', '.')
+  submission_module_path = _convert_filepath_to_module(FLAGS.submission_path)
   submission_module = importlib.import_module(submission_module_path)
+
   init_optimizer_state = submission_module.init_optimizer_state
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
@@ -260,14 +280,12 @@ def score_submission_on_workload(
 
 
 def main(_):
-  _import_workload(
-      'workloads/mnist/mnist_pytorch/workload.py',
-      'mnist_pytorch',
-      'MnistWorkload')
-  _import_workload(
-      'workloads/mnist/mnist_jax/workload.py',
-      'mnist_jax',
-      'MnistWorkload')
+  for workload_name, workload in WORKLOADS.items():
+    _import_workload(
+      workload_path=workload['workload_path'],
+      workload_registry_name=workload_name,
+      workload_class_name=workload['workload_class_name']
+    )
 
   score = score_submission_on_workload(
       FLAGS.workload,
