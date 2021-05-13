@@ -1,4 +1,4 @@
-# MLPerf Algorithmic Efficiency
+# MLPerf™ Algorithmic Efficiency
 
 ## Installation
 

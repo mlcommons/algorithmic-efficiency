@@ -1,4 +1,4 @@
-"""MLPerf Algorithmic Efficiency API."""
+"""MLPerf™ Algorithmic Efficiency API."""
 
 import enum
 import time
