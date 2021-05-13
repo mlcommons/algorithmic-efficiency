@@ -6,9 +6,6 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 
 import abc
 import jax
-import jax.numpy as jnp
-# import numpy as np
-# import tensorflow as tf
 
 
 class LossType(enum.Enum):
@@ -23,7 +20,7 @@ class ForwardPassMode(enum.Enum):
   # ... ?
 
 
-class ParamType(enum.Enum):
+class ParameterType(enum.Enum):
   WEIGHT = 0
   BIAS = 1
   CONV_WEIGHT = 2
@@ -31,18 +28,13 @@ class ParamType(enum.Enum):
   EMBEDDING = 4
 
 
-class ComparisonDirection(enum.Enum):
-  MINIMIZE = 0
-  MAXIMIZE = 1
-
-
 # Of course, Tensor knows its shape and dtype.
 # Tensor = Union[jnp.array, np.array, tf.Tensor, ...]
-Tensor = Union[jnp.array]  # DeviceArray??
+Tensor = Any
 
 
-# Define this so that if using pytree iteration utilities, can iterate
-# over the model shapes pytree without iterating over the shape tuples.
+# Define this so that if using pytree iteration utilities, can iterate over the
+# model shapes pytree without iterating over the shape tuples.
 class ShapeTuple:
 
   def __init__(self, shape_tuple):
@@ -61,9 +53,9 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 ParameterKey = str
 # Dicts can be arbitrarily nested.
 ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
-ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParamType]]
+ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
-RandomState = jax.random.PRNGKey
+RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
 OptimizerState = Any
 Hyperparamters = Any
@@ -72,6 +64,7 @@ Steps = int
 
 # BN EMAs.
 ModelAuxillaryState = Any
+ModelInitState = Tuple[ParameterTree, ModelAuxillaryState]
 
 
 UpdateReturn = Tuple[
@@ -118,6 +111,7 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       data_rng: RandomState,
       split: str,
+      data_dir: str,
       batch_size: int):
     """Build the input queue for the workload data.
 
@@ -129,7 +123,7 @@ class Workload(metaclass=abc.ABCMeta):
     """The shapes of the parameters in the workload model."""
 
   @abc.abstractmethod
-  def model_params_types(self):
+  def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
 
   @abc.abstractproperty
@@ -160,7 +154,9 @@ class Workload(metaclass=abc.ABCMeta):
   def preprocess_for_train(
       self,
       selected_raw_input_batch: Tensor,
-      selected_label_batch: Tensor,
+      selected_label_batch: Tensor,  # Dense (not one-hot) labels.
+      train_mean: Tensor,
+      train_stddev: Tensor,
       rng: RandomState) -> Tensor:
     """return augmented_and_preprocessed_input_batch"""
 
@@ -213,9 +209,8 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def loss_fn(
       self,
-      label_batch: Tensor,
-      logits_batch: Tensor,
-      loss_type: LossType) -> Tensor:  # differentiable
+      label_batch: Tensor,  # Dense (not one-hot) labels.
+      logits_batch: Tensor) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
@@ -237,6 +232,8 @@ class TrainingCompleteError(Exception):
 
 def init_optimizer_state(
     workload: Workload,
+    model_params: ParameterTree,
+    model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
@@ -258,7 +255,7 @@ def update_params(
     model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
     augmented_and_preprocessed_input_batch: Tensor,
-    label_batch: Tensor,
+    label_batch: Tensor,  # Dense (not one-hot) labels.
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
     optimizer_state: OptimizerState,
@@ -286,7 +283,7 @@ def data_selection(
   We left out `current_params_types` because we do not believe that it would
   # be necessary for this function.
   """
-  # return input_batch, label_batch
+  # return input_batch, label_batch (dense (not one-hot) labels)
   pass
 
 

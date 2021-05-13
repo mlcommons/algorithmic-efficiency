@@ -1,7 +1,0 @@
-absl-py
-flax
-jax
-numpy
-optax
-tensorflow-cpu
-tensorflow_datasets

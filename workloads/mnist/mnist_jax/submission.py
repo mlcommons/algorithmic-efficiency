@@ -1,11 +1,13 @@
 """Training algorithm track submission functions for MNIST."""
 from typing import Iterator, List, Tuple, Union
 
+import functools
 import jax
 import jax.numpy as jnp
 import optax
-
 import spec
+from flax import jax_utils
+
 from . import workload
 
 
@@ -27,14 +29,58 @@ def optimizer(hyperparameters):
 
 def init_optimizer_state(
     workload: spec.Workload,
+    model_params: spec.ParameterTree,
+    model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
+  del model_params
+  del model_state
   del rng
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters)
   return opt_init_fn(params_zeros_like)
 
+
+# We need to jax.pmap here instead of inside update_params because the latter
+# the latter would recompile the function every step.
+@functools.partial(
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, 0, 0, None, 0, 0, 0, None, 0),
+    static_broadcasted_argnums=(0,))
+def pmapped_update_params(
+    workload: spec.Workload,
+    current_params: spec.ParameterTree,
+    model_state: spec.ModelAuxillaryState,
+    hyperparameters: spec.Hyperparamters,
+    input_batch: spec.Tensor,
+    label_batch: spec.Tensor,
+    optimizer_state: spec.OptimizerState,
+    rng: spec.RandomState,
+    local_device_index) -> spec.UpdateReturn:
+  # Note that `rng` is the same across all devices! If a per-device RNG is
+  # required, then `local_device_index` can be folded into `rng`.
+  del local_device_index
+
+  def loss_fn(params):
+    logits_batch, new_model_state = workload.model_fn(
+        params,
+        input_batch,
+        model_state,
+        spec.ForwardPassMode.TRAIN,
+        rng,
+        update_batch_norm=True)
+    loss = workload.loss_fn(label_batch, logits_batch)
+    return jnp.mean(loss), new_model_state
+
+  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
+  (_, new_model_state), grad = grad_fn(current_params)
+  _, opt_update_fn = optimizer(hyperparameters)
+  updates, new_optimizer_state = opt_update_fn(
+      grad, optimizer_state, current_params)
+  updated_params = optax.apply_updates(current_params, updates)
+  return new_optimizer_state, updated_params, new_model_state
 
 def update_params(
     workload: spec.Workload,
@@ -50,29 +96,37 @@ def update_params(
     eval_results: List[Tuple[int, float]],
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
-  """Return (updated_optimizer_state, updated_params)."""
+  """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
+  del loss_type
   del eval_results
   del global_step
 
-  def loss_fn(params):
-    logits_batch, new_model_state = workload.model_fn(
-        params,
-        augmented_and_preprocessed_input_batch,
-        model_state,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        update_batch_norm=True)
-    loss = workload.loss_fn(label_batch, logits_batch, loss_type)
-    return jnp.mean(loss), new_model_state
+  num_devices = jax.local_device_count()
+  input_shape = augmented_and_preprocessed_input_batch.shape
+  reshaped_input_batch = jnp.reshape(
+      augmented_and_preprocessed_input_batch,
+      (num_devices, input_shape[0] // num_devices, *input_shape[1:]))
+  reshaped_label_batch = jnp.reshape(
+      label_batch,
+      (num_devices, label_batch.shape[0] // num_devices,
+       *label_batch.shape[1:]))
 
-  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn(current_params)
-  _, opt_update_fn = optimizer(hyperparameters)
-  updates, new_optimizer_state = opt_update_fn(
-      grad, optimizer_state, current_params)
-  updated_params = optax.apply_updates(current_params, updates)
-  return new_optimizer_state, updated_params, new_model_state
+  # TODO(znado) we should be more efficient than replicating state each step.
+  new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
+      workload,
+      jax_utils.replicate(current_params),
+      jax_utils.replicate(model_state),
+      hyperparameters,
+      reshaped_input_batch,
+      reshaped_label_batch,
+      jax_utils.replicate(optimizer_state),
+      rng,
+      jnp.arange(num_devices))
+  return (
+      jax_utils.unreplicate(new_optimizer_state),
+      jax_utils.unreplicate(updated_params),
+      jax_utils.unreplicate(new_model_state))
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
@@ -94,9 +148,10 @@ def data_selection(
 
   Return a tuple of input label batches.
   """
+  del workload
   del optimizer_state
   del current_params
+  del hyperparameters
   del global_step
   del rng
-  x = next(input_queue)
-  return x['image'], x['label']
+  return next(input_queue)
