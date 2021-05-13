@@ -41,6 +41,10 @@ WORKLOADS = {
   'mnist_pytorch': {
     'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
     'workload_class_name': 'MnistWorkload'
+  },
+  'resnet_pytorch': {
+    'workload_path': 'workloads/resnet/resnet_pytorch/workload.py',
+    'workload_class_name': 'ResnetWorkload'
   }
 }
 
