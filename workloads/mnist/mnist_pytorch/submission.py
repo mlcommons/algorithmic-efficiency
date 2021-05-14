@@ -3,7 +3,6 @@ from typing import Iterator, List, Tuple, Union
 
 import torch
 import spec
-from . import workload
 
 DEVICE='cuda'
 

@@ -1,9 +1,11 @@
-"""MNIST workload implemented in PyTorch."""
+"""Resnet workload implemented in PyTorch."""
 import contextlib
 import itertools
 import os
 from collections import OrderedDict
 from typing import Tuple
+
+from torchvision.datasets.folder import ImageFolder
 
 import spec
 import torch
@@ -12,6 +14,7 @@ from torchvision import transforms
 from torchvision.datasets import ImageNet
 from workloads.resnet.resnet_pytorch.resnet import resnet50
 from workloads.resnet.workload import Resnet
+from .utils import fast_collate
 
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -37,13 +40,17 @@ class ResnetWorkload(Resnet):
           ratio=self.aspect_ratio_range),
         transforms.RandomHorizontalFlip(),
         ]),
-      "val": transforms.Compose([
+      "test": transforms.Compose([
         transforms.Resize(self.resize_size),
         transforms.CenterCrop(self.center_crop_size),
         ])
     }
 
-    dataset = ImageNet(root=data_dir, split=split, transform=transform_config[split])
+    folder = {'train': 'train', 'test': 'val'}
+
+    dataset = ImageFolder(
+      os.path.join(data_dir, folder[split]),
+      transform=transform_config[split])
 
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -52,6 +59,7 @@ class ResnetWorkload(Resnet):
         num_workers=os.cpu_count(),
         pin_memory=True,
         drop_last=is_train,
+        collate_fn=fast_collate
     )
 
     if is_train:
@@ -102,9 +110,7 @@ class ResnetWorkload(Resnet):
       train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    N = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(N, -1)
-    return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
+    return (raw_input_batch.float().to(DEVICE), raw_label_batch.to(DEVICE))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
