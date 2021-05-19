@@ -162,7 +162,7 @@ def train_once(
     data_select_rng, preprocess_rng, update_rng, eval_rng = jax.random.split(
         step_rng, 4)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch = data_selection(
+    selected_data = data_selection(
         workload,
         input_queue,
         optimizer_state,
@@ -170,10 +170,8 @@ def train_once(
         hyperparameters,
         global_step,
         data_select_rng)
-    (augmented_train_input_batch,
-     augmented_train_label_batch) = workload.preprocess_for_train(
-        selected_train_input_batch,
-        selected_train_label_batch,
+    augmented_train_batch = workload.preprocess_for_train(
+        selected_data,
         train_mean=workload.train_mean,
         train_stddev=workload.train_stddev,
         rng=preprocess_rng)
@@ -184,8 +182,7 @@ def train_once(
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
-          augmented_and_preprocessed_input_batch=augmented_train_input_batch,
-          label_batch=augmented_train_label_batch,
+          augmented_and_preprocessed_input_batch=augmented_train_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,

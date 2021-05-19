@@ -15,14 +15,15 @@ import tensorflow as tf
 
 
 class WMTWorkload(spec.Workload):
+
   def __init__(self):
     self._eval_ds = None
     self._train_ds = None
     self._sp_tokenizer = None
-    self._train_config = models.TransformerConfig(
+    self.train_config = models.TransformerConfig(
         vocab_size=config.config.vocab_size,
         output_vocab_size=config.config.vocab_size,
-        share_embeddings=config.onfig.share_embeddings,
+        share_embeddings=config.config.share_embeddings,
         logits_via_embedding=config.config.logits_via_embedding,
         dtype=jnp.bfloat16 if config.config.use_bfloat16 else jnp.float32,
         emb_dim=config.config.emb_dim,
@@ -38,13 +39,13 @@ class WMTWorkload(spec.Workload):
         decode=False,
         kernel_init=nn.initializers.xavier_uniform(),
         bias_init=nn.initializers.normal(stddev=1e-6))
-    self._eval_config = self._train_config.replace(deterministic=True)
+    self.eval_config = self.train_config.replace(deterministic=True)
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result["accuracy"] > 0.5
 
   def build_input_queue(self, data_rng: jax.random.PRNGKey, split: str,
-                        batch_size: int):
+                        data_dir: str, batch_size: int):
     tf.io.gfile.makedirs(config.config.workdir)
     self._train_ds, self._eval_ds, _, self._sp_tokenizer = input_pipeline.get_wmt_datasets(
         batch_size=jax.local_device_count() * batch_size,
@@ -87,24 +88,28 @@ class WMTWorkload(spec.Workload):
     pass
 
   def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
+                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
                            rng: spec.RandomState) -> spec.Tensor:
+    del train_mean
+    del train_stddev
     del rng
-    return (selected_raw_input_batch, selected_label_batch)
+    return selected_raw_input_batch
 
   def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor, train_mean: spec.Tensor,
+                          train_mean: spec.Tensor,
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    return (raw_input_batch, raw_label_batch)
+    return raw_input_batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     rng, init_rng = jax.random.split(rng)
-    input_shape = (config.per_device_batch_size, config.max_target_length)
-    target_shape = (config.per_device_batch_size, config.max_target_length)
+    input_shape = (config.config.per_device_batch_size,
+                   config.config.max_target_length)
+    target_shape = (config.config.per_device_batch_size,
+                    config.config.max_target_length)
 
-    initial_variables = jax.jit(models.Transformer(self._eval_config).init)(
+    initial_variables = jax.jit(models.Transformer(self.eval_config).init)(
         init_rng, jnp.ones(input_shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))
 
@@ -122,7 +127,7 @@ class WMTWorkload(spec.Workload):
     del rng
     del update_batch_norm
 
-    model_config = self._train_config if mode == spec.ForwardPassMode.TRAIN else self._eval_config
+    model_config = self.train_config if mode == spec.ForwardPassMode.TRAIN else self.eval_config
     inputs, targets = augmented_and_preprocessed_input_batch[
         "inputs"], augmented_and_preprocessed_input_batch["targets"]
     logits_batch = models.Transformer(model_config).apply({"params": params},
@@ -130,17 +135,15 @@ class WMTWorkload(spec.Workload):
 
     return logits_batch, None
 
-  # LossFn = Callable[Tuple[spec.Tensor, spec.Tensor], spec.Tensor]
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor, logits_batch: spec.Tensor,
-              loss_type: spec.LossType) -> spec.Tensor:  # differentiable
-    del loss_type
-    weights = jnp.where(label_batch > 0, 1, 0).astype(jnp.float32)
-    loss, weight_sum = train.compute_weighted_cross_entropy(
-        logits_batch, label_batch, weights, config.config.label_smoothing)
-    mean_loss = loss / weight_sum
-    return mean_loss
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense (not one-hot) labels.
+      logits_batch: spec.Tensor) -> spec.Tensor:
+
+    weights = jnp.where(label_batch > 0, 1.0, 0.0)
+    metrics = train.compute_metrics(logits_batch, label_batch, weights)
+
+    return metrics
 
   def eval_model(self, params: spec.ParameterTree,
                  model_state: spec.ModelAuxillaryState, rng: spec.RandomState):
@@ -161,9 +164,7 @@ class WMTWorkload(spec.Workload):
           model_rng,
           update_batch_norm=False)
 
-      weights = jnp.where(targets > 0, 1.0, 0.0)
-
-      metrics = train.compute_metrics(logits, targets, weights)
+      metrics = self.loss_fn(targets, logits)
       eval_metrics.append(metrics)
 
     eval_metrics = common_utils.get_metrics(eval_metrics)

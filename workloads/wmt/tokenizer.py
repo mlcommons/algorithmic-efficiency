@@ -8,10 +8,9 @@ from typing import Any, Dict, Iterable, Tuple
 from absl import logging
 import dataclasses
 import jax
+from sentencepiece import SentencePieceTrainer
 import tensorflow as tf
 import tensorflow_text as tftxt
-
-from google3.third_party.sentencepiece.src.python.sentencepiece_trainer import SentencePieceTrainer
 
 Features = Dict[str, tf.Tensor]
 

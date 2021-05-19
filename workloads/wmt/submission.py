@@ -2,6 +2,8 @@
 from typing import Iterator, List, Tuple
 
 from . import config
+from . import models
+from . import train
 from flax.training import common_utils
 import jax
 import jax.numpy as jnp
@@ -11,22 +13,27 @@ import spec
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {'wmt_jax': config.config.per_device_batch_size}
+  batch_sizes = {"wmt_jax": config.config.per_device_batch_size}
   return batch_sizes[workload_name]
 
 
 def optimizer(hyperparameters):
   opt_init_fn, opt_update_fn = optax.chain(
       optax.scale_by_adam(
-          b1=1.0 - hyperparameters.beta_1, b2=0.98,
+          b1=1.0 - hyperparameters.one_minus_beta_1,
+          b2=0.98,
           eps=hyperparameters.epsilon),
       optax.scale(-hyperparameters.learning_rate))
   return opt_init_fn, opt_update_fn
 
 
 def init_optimizer_state(workload: spec.Workload,
+                         model_params: spec.ParameterTree,
+                         model_state: spec.ModelAuxillaryState,
                          hyperparameters: spec.Hyperparamters,
                          rng: spec.RandomState) -> spec.OptimizerState:
+  del model_params
+  del model_state
   del rng
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
@@ -41,7 +48,6 @@ def update_params(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     augmented_and_preprocessed_input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -52,17 +58,36 @@ def update_params(
   del current_params_types
   del eval_results
   del global_step
+  del model_state
+  del loss_type
+  del rng
+
+  train_keys = [
+      "inputs", "targets", "inputs_position", "targets_position",
+      "inputs_segmentation", "targets_segmentation"
+  ]
+  (inputs, targets, inputs_positions, targets_positions, inputs_segmentation,
+   targets_segmentation) = [
+       augmented_and_preprocessed_input_batch.get(k, None) for k in train_keys
+   ]
+
+  weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
 
   def loss_fn(params):
-    logits_batch, new_model_state = workload.model_fn(
-        params,
-        augmented_and_preprocessed_input_batch,
-        model_state,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        update_batch_norm=True)
-    loss = workload.loss_fn(label_batch, logits_batch, loss_type)
-    return loss, new_model_state
+    """loss function used for training."""
+    logits = models.Transformer(workload.train_config).apply(
+        {"params": params},
+        inputs,
+        targets,
+        inputs_positions=inputs_positions,
+        targets_positions=targets_positions,
+        inputs_segmentation=inputs_segmentation,
+        targets_segmentation=targets_segmentation)
+
+    loss, weight_sum = train.compute_weighted_cross_entropy(
+        logits, targets, weights, config.config.label_smoothing)
+    mean_loss = loss / weight_sum
+    return mean_loss, None
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_params)
