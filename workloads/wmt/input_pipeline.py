@@ -3,8 +3,8 @@
 import os
 from typing import Any, Dict, Optional, List, Union, Tuple
 
+from . import tokenizer
 from clu import deterministic_data
-from flax.examples.wmt import tokenizer
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
