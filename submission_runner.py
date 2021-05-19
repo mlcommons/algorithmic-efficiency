@@ -28,14 +28,18 @@ import spec
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 WORKLOADS = {
-  'mnist_jax': {
-    'workload_path': 'workloads/mnist/mnist_jax/workload.py',
-    'workload_class_name': 'MnistWorkload'
-  },
-  'mnist_pytorch': {
-    'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
-    'workload_class_name': 'MnistWorkload'
-  }
+    'mnist_jax': {
+        'workload_path': 'workloads/mnist/mnist_jax/workload.py',
+        'workload_class_name': 'MnistWorkload'
+    },
+    'mnist_pytorch': {
+        'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
+        'workload_class_name': 'MnistWorkload'
+    },
+    'wmt_jax': {
+        'workload_path': 'workloads/wmt/workload.py',
+        'workload_class_name': 'WMTWorkload'
+    }
 }
 
 flags.DEFINE_string(
@@ -308,3 +312,4 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
+
