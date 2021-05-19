@@ -10,20 +10,20 @@ python3 submission_runner.py \
     --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
     --num_tuning_trials=3
 """
-from typing import Optional, Tuple
-
-from absl import app
-from absl import flags
-from absl import logging
 import importlib
 import inspect
 import json
 import os
 import struct
 import time
+from typing import Optional, Tuple
 
 import halton
 import random_utils as prng
+from absl import app
+from absl import flags
+from absl import logging
+import jax
 import spec
 
 
@@ -41,11 +41,14 @@ WORKLOADS = {
     'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
     'workload_class_name': 'ImagenetWorkload'
   },
+  'wmt_jax': {
+    'workload_path': 'workloads/wmt/workload.py',
+    'workload_class_name': 'WMTWorkload'
+  }
 }
 
 flags.DEFINE_string(
-    'submission_path',
-    'workloads/mnist_jax/submission.py',
+    'submission_path', 'workloads/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string('workload', 'mnist_jax',
@@ -143,9 +146,12 @@ def train_once(
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
+  logging.info('Initializing dataset.')
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
+  logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
+  logging.info('Initializing optimizer.')
   optimizer_state = init_optimizer_state(
       workload,
       model_params,
@@ -163,6 +169,7 @@ def train_once(
   training_complete = False
   global_start_time = time.time()
 
+  logging.info('Starting training loop.')
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(
@@ -197,6 +204,10 @@ def train_once(
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
+    logging.log_first_n(logging.INFO,
+                        'Finished training step %d, accumulated time %f.', 5,
+                        global_step, accumulated_submission_time)
+
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
@@ -317,3 +328,4 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
+
