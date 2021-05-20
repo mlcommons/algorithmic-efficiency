@@ -3,12 +3,14 @@ import functools
 from typing import Tuple
 
 from . import config
+from . import decode
 from . import input_pipeline
 from . import models
 from . import train
 from flax import linen as nn
 import jax
 import jax.numpy as jnp
+import numpy as np
 import spec
 import tensorflow as tf
 
@@ -18,42 +20,28 @@ class WMTWorkload(spec.Workload):
   def __init__(self):
     self._eval_ds = None
     self._train_ds = None
-    self._sp_tokenizer = None
-    self.train_config = models.TransformerConfig(
-        vocab_size=config.config.vocab_size,
-        output_vocab_size=config.config.vocab_size,
-        share_embeddings=config.config.share_embeddings,
-        logits_via_embedding=config.config.logits_via_embedding,
-        dtype=jnp.bfloat16 if config.config.use_bfloat16 else jnp.float32,
-        emb_dim=config.config.emb_dim,
-        num_heads=config.config.num_heads,
-        num_layers=config.config.num_layers,
-        qkv_dim=config.config.qkv_dim,
-        mlp_dim=config.config.mlp_dim,
-        max_len=max(config.config.max_target_length,
-                    config.config.max_eval_target_length),
-        dropout_rate=config.config.dropout_rate,
-        attention_dropout_rate=config.config.attention_dropout_rate,
-        deterministic=False,
-        decode=False,
-        kernel_init=nn.initializers.xavier_uniform(),
-        bias_init=nn.initializers.normal(stddev=1e-6))
-    self.eval_config = self.train_config.replace(deterministic=True)
-    self.p_eval_step = jax.pmap(
-        functools.partial(train.eval_step, config=self.eval_config),
-        axis_name="batch")
+    self._predict_ds = None
+    self._encoder = None
+    self._vocab_size = None
+    self.train_config = None
+    self.eval_config = None
+    self.predict_config = None
+    self.p_eval_step = None
+    self.p_init_cache = None
+    self.p_pred_step = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result["accuracy"] > 0.5
+    return eval_result["bleu"] > 20
 
   def build_input_queue(self, data_rng: jax.random.PRNGKey, split: str,
                         data_dir: str, batch_size: int):
     tf.io.gfile.makedirs(config.config.workdir)
-    self._train_ds, self._eval_ds, _, self._sp_tokenizer = input_pipeline.get_wmt_datasets(
+    self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
         batch_size=jax.local_device_count() * batch_size,
         config=config.config,
         reverse_translation=config.config.reverse_translation,
         vocab_path=config.config.vocab_path)
+    self._vocab_size = int(self._encoder.vocab_size())
     return iter(self._train_ds)
 
   @property
@@ -78,11 +66,15 @@ class WMTWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 60
+    return 80000
 
   @property
   def eval_period_time_sec(self):
-    return 10
+    return 800
+
+  def _decode_tokens(self, toks):
+    valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
+    return self._encoder.detokenize(valid_toks).numpy().decode("utf-8")
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
@@ -105,6 +97,45 @@ class WMTWorkload(spec.Workload):
     return raw_input_batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+    self.train_config = models.TransformerConfig(
+        vocab_size=self._vocab_size,
+        output_vocab_size=self._vocab_size,
+        share_embeddings=config.config.share_embeddings,
+        logits_via_embedding=config.config.logits_via_embedding,
+        dtype=jnp.bfloat16 if config.config.use_bfloat16 else jnp.float32,
+        emb_dim=config.config.emb_dim,
+        num_heads=config.config.num_heads,
+        num_layers=config.config.num_layers,
+        qkv_dim=config.config.qkv_dim,
+        mlp_dim=config.config.mlp_dim,
+        max_len=max(config.config.max_target_length,
+                    config.config.max_eval_target_length),
+        dropout_rate=config.config.dropout_rate,
+        attention_dropout_rate=config.config.attention_dropout_rate,
+        deterministic=False,
+        decode=False,
+        kernel_init=nn.initializers.xavier_uniform(),
+        bias_init=nn.initializers.normal(stddev=1e-6))
+    self.eval_config = self.train_config.replace(deterministic=True)
+    self.predict_config = self.train_config.replace(
+        deterministic=True, decode=True)
+    self.p_eval_step = jax.pmap(
+        functools.partial(train.eval_step, config=self.eval_config),
+        axis_name="batch")
+    self.p_init_cache = jax.pmap(
+        functools.partial(
+            train.initialize_cache,
+            max_decode_len=config.config.max_predict_length,
+            config=self.predict_config),
+        axis_name="batch")
+    self.p_pred_step = jax.pmap(
+        functools.partial(
+            train.predict_step,
+            config=self.predict_config,
+            beam_size=config.config.beam_size),
+        axis_name="batch",
+        static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
+
     rng, init_rng = jax.random.split(rng)
     input_shape = (config.config.per_device_batch_size,
                    config.config.max_target_length)
@@ -150,11 +181,22 @@ class WMTWorkload(spec.Workload):
   def eval_model(self, params: spec.ParameterTree,
                  model_state: spec.ModelAuxiliaryState, rng: spec.RandomState):
     """Run a full evaluation of the model."""
+
     eval_results = train.evaluate(
         p_eval_step=self.p_eval_step,
         target=params,
         eval_ds=self._eval_ds,
         num_eval_steps=config.config.num_eval_steps)
+
+    _, bleu_score = train.translate_and_calculate_bleu(
+        p_pred_step=self.p_pred_step,
+        p_init_cache=self.p_init_cache,
+        target=params,
+        predict_ds=self._predict_ds,
+        decode_tokens=self._decode_tokens,
+        max_predict_length=config.config.max_predict_length)
+
+    eval_results["bleu"] = bleu_score
 
     return eval_results
 

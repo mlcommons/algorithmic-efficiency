@@ -31,5 +31,5 @@ config = types.SimpleNamespace(
     use_bfloat16=True,
     workdir='./wmt_256',
     per_device_batch_size=16,
-    eval_dataset_name='')
+    eval_dataset_name='wmt14_translate/de-en')
 
