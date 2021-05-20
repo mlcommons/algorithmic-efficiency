@@ -1,5 +1,5 @@
 """WMT workload implemented in Jax."""
-
+import functools
 from typing import Tuple
 
 from . import config

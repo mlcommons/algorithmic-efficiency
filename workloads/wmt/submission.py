@@ -1,14 +1,14 @@
 """Training algorithm track submission functions for MNIST."""
+import functools
 from typing import Iterator, List, Tuple
 
 from . import config
-from . import models
 from . import train
+from flax import jax_utils
+from flax import optim
 from flax.training import common_utils
 import jax
-import jax.numpy as jnp
 import numpy as np
-import optax
 import spec
 
 
@@ -17,28 +17,39 @@ def get_batch_size(workload_name):
   return batch_sizes[workload_name]
 
 
-def optimizer(hyperparameters):
-  opt_init_fn, opt_update_fn = optax.chain(
-      optax.scale_by_adam(
-          b1=1.0 - hyperparameters.one_minus_beta_1,
-          b2=0.98,
-          eps=hyperparameters.epsilon),
-      optax.scale(-hyperparameters.learning_rate))
-  return opt_init_fn, opt_update_fn
-
-
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterTree,
                          model_state: spec.ModelAuxillaryState,
                          hyperparameters: spec.Hyperparamters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  del model_params
   del model_state
   del rng
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
-                                   workload.param_shapes)
-  opt_init_fn, _ = optimizer(hyperparameters)
-  return opt_init_fn(params_zeros_like)
+
+  optimizer_def = optim.Adam(
+      learning_rate=hyperparameters.learning_rate,
+      beta1=1.0 - hyperparameters.one_minus_beta_1,
+      beta2=0.98,
+      eps=hyperparameters.epsilon)
+  optimizer = optimizer_def.create(model_params)
+
+  # Replicate optimizer.
+  optimizer = jax_utils.replicate(optimizer)
+
+  learning_rate_fn = train.create_learning_rate_scheduler(
+      base_learning_rate=hyperparameters.learning_rate,
+      warmup_steps=config.config.warmup_steps)
+
+  # compile multidevice versions of train/eval/predict step and cache init fn.
+  p_train_step = jax.pmap(
+      functools.partial(
+          train.train_step,
+          config=workload.train_config,
+          learning_rate_fn=learning_rate_fn,
+          label_smoothing=config.config.label_smoothing),
+      axis_name="batch",
+      donate_argnums=(0,))  # pytype: disable=wrong-arg-types
+
+  return optimizer, p_train_step
 
 
 def update_params(
@@ -55,47 +66,23 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
+  del workload
+  del current_params
   del current_params_types
   del eval_results
   del global_step
   del model_state
   del loss_type
-  del rng
+  del hyperparameters
 
-  train_keys = [
-      "inputs", "targets", "inputs_position", "targets_position",
-      "inputs_segmentation", "targets_segmentation"
-  ]
-  (inputs, targets, inputs_positions, targets_positions, inputs_segmentation,
-   targets_segmentation) = [
-       augmented_and_preprocessed_input_batch.get(k, None) for k in train_keys
-   ]
+  optimizer, p_train_step = optimizer_state
+  dropout_rngs = jax.random.split(rng, jax.local_device_count())
+  optimizer, _ = p_train_step(
+      optimizer,
+      augmented_and_preprocessed_input_batch,
+      dropout_rng=dropout_rngs)
 
-  weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
-
-  def loss_fn(params):
-    """loss function used for training."""
-    logits = models.Transformer(workload.train_config).apply(
-        {"params": params},
-        inputs,
-        targets,
-        inputs_positions=inputs_positions,
-        targets_positions=targets_positions,
-        inputs_segmentation=inputs_segmentation,
-        targets_segmentation=targets_segmentation)
-
-    loss, weight_sum = train.compute_weighted_cross_entropy(
-        logits, targets, weights, config.config.label_smoothing)
-    mean_loss = loss / weight_sum
-    return mean_loss, None
-
-  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn(current_params)
-  _, opt_update_fn = optimizer(hyperparameters)
-  updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-                                               current_params)
-  updated_params = optax.apply_updates(current_params, updates)
-  return new_optimizer_state, updated_params, new_model_state
+  return (optimizer, p_train_step), None, None
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or

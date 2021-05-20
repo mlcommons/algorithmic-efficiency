@@ -316,7 +316,6 @@ class Encoder(nn.Module):
       output of a transformer encoder.
     """
     cfg = self.config
-    print('ddd', inputs.shape) # TODO
     assert inputs.ndim == 2  # (batch, len)
 
     # Input Embedding
