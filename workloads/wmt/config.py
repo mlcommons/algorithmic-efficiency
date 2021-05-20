@@ -30,6 +30,6 @@ config = types.SimpleNamespace(
     attention_dropout_rate=0.1,
     use_bfloat16=True,
     workdir='./wmt_256',
-    per_device_batch_size=64,
+    per_device_batch_size=16,
     eval_dataset_name='')
 

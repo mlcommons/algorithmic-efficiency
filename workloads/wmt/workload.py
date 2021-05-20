@@ -7,7 +7,6 @@ from . import input_pipeline
 from . import models
 from . import train
 from flax import linen as nn
-from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import spec
@@ -40,6 +39,9 @@ class WMTWorkload(spec.Workload):
         kernel_init=nn.initializers.xavier_uniform(),
         bias_init=nn.initializers.normal(stddev=1e-6))
     self.eval_config = self.train_config.replace(deterministic=True)
+    self.p_eval_step = jax.pmap(
+        functools.partial(train.eval_step, config=self.eval_config),
+        axis_name="batch")
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result["accuracy"] > 0.5
@@ -120,9 +122,9 @@ class WMTWorkload(spec.Workload):
   def model_fn(
       self, params: spec.ParameterTree,
       augmented_and_preprocessed_input_batch: spec.Tensor,
-      model_state: spec.ModelAuxillaryState, mode: spec.ForwardPassMode,
+      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -146,32 +148,13 @@ class WMTWorkload(spec.Workload):
     return metrics
 
   def eval_model(self, params: spec.ParameterTree,
-                 model_state: spec.ModelAuxillaryState, rng: spec.RandomState):
+                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState):
     """Run a full evaluation of the model."""
-    _, model_rng = jax.random.split(rng, 2)
+    eval_results = train.evaluate(
+        p_eval_step=self.p_eval_step,
+        target=params,
+        eval_ds=self._eval_ds,
+        num_eval_steps=config.config.num_eval_steps)
 
-    eval_iter = iter(self._eval_ds)
-    eval_metrics = []
-    for batch in eval_iter:
-      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
-      batch = common_utils.shard(batch)
-      inputs, targets = batch["inputs"], batch["targets"]
-      logits, _ = self.model_fn(
-          params,
-          inputs,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-
-      metrics = self.loss_fn(targets, logits)
-      eval_metrics.append(metrics)
-
-    eval_metrics = common_utils.get_metrics(eval_metrics)
-    eval_metrics_sums = jax.tree_map(jnp.sum, eval_metrics)
-    eval_denominator = eval_metrics_sums.pop("denominator")
-    eval_summary = jax.tree_map(
-        lambda x: x / eval_denominator,  # pylint: disable=cell-var-from-loop
-        eval_metrics_sums)
-    return eval_summary
+    return eval_results
 
