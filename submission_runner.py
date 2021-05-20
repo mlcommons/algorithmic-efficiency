@@ -37,7 +37,7 @@ WORKLOADS = {
         'workload_class_name': 'MnistWorkload'
     },
     'wmt_jax': {
-        'workload_path': 'workloads/wmt/workload.py',
+        'workload_path': 'workloads/wmt/wmt_jax/workload.py',
         'workload_class_name': 'WMTWorkload'
     }
 }
