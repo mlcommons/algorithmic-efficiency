@@ -109,10 +109,10 @@ class MnistWorkload(Mnist):
       self,
       params: spec.ParameterTree,
       augmented_and_preprocessed_input_batch: spec.Tensor,
-      model_state: spec.ModelAuxillaryState,
+      model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm

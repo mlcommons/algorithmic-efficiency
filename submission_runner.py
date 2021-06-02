@@ -245,6 +245,15 @@ def score_submission_on_workload(
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('q', os.urandom(8))[0]
       rng = jax.random.PRNGKey(rng_seed)
+      # Each returned rng is actually 2 32 bit ints. Because of the way that Jax
+      # initializes its PRNKeys, if the provided seed is only 32 bits (or
+      # truncated to 32 bits because Jax support for 64 bit arithmetic is not
+      # enabled!), then rng[0] is all zeros, which means this could lead to
+      # unintentionally reusing the same seed of only rng[0] were ever used. By
+      # splitting the JAX PRNGKey into 2, we mix the lower and upper 32 bit
+      # ints, ensuring we can safely use either rng[0] or rng[1] as a random
+      # number.
+      rng, _ = jax.random.split(rng, 2)
       logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
       timing, metrics = train_once(
           workload,
