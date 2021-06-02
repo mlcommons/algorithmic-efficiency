@@ -33,7 +33,7 @@ class Mnist(spec.Workload):
   def eval_model(
       self,
       params: spec.ParameterTree,
-      model_state: spec.ModelAuxillaryState,
+      model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""

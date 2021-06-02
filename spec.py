@@ -63,12 +63,12 @@ Timing = int
 Steps = int
 
 # BN EMAs.
-ModelAuxillaryState = Any
-ModelInitState = Tuple[ParameterTree, ModelAuxillaryState]
+ModelAuxiliaryState = Any
+ModelInitState = Tuple[ParameterTree, ModelAuxiliaryState]
 
 
 UpdateReturn = Tuple[
-    OptimizerState, ParameterTree, ModelAuxillaryState]
+    OptimizerState, ParameterTree, ModelAuxiliaryState]
 InitOptimizerFn = Callable[
     [ParameterShapeTree, Hyperparamters, RandomState],
     OptimizerState]
@@ -76,7 +76,7 @@ UpdateParamsFn = Callable[
     [
         ParameterTree,
         ParameterTypeTree,
-        ModelAuxillaryState,
+        ModelAuxiliaryState,
         Hyperparamters,
         Tensor,
         Tensor,
@@ -172,7 +172,7 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[ParameterShapeTree, RandomState], ParameterTree]
   @abc.abstractmethod
   def init_model_fn(
-      self, rng: RandomState) -> Tuple[ParameterTree, ModelAuxillaryState]:
+      self, rng: RandomState) -> Tuple[ParameterTree, ModelAuxiliaryState]:
     """return initial_params, initial_model_state"""
 
   # ModelFn = Callable[
@@ -183,10 +183,10 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       params: ParameterTree,
       augmented_and_preprocessed_input_batch: Tensor,
-      model_state: ModelAuxillaryState,
+      model_state: ModelAuxiliaryState,
       mode: ForwardPassMode,
       rng: RandomState,
-      update_batch_norm: bool) -> Tuple[Tensor, ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
     # Possible side effect of updating BN.
 
@@ -217,7 +217,7 @@ class Workload(metaclass=abc.ABCMeta):
   def eval_model(
       self,
       params: ParameterTree,
-      model_state: ModelAuxillaryState,
+      model_state: ModelAuxiliaryState,
       rng: RandomState):
     """Run a full evaluation of the model."""
 
@@ -233,7 +233,7 @@ class TrainingCompleteError(Exception):
 def init_optimizer_state(
     workload: Workload,
     model_params: ParameterTree,
-    model_state: ModelAuxillaryState,
+    model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
@@ -241,7 +241,7 @@ def init_optimizer_state(
 
 
 _UpdateReturn = Tuple[
-    OptimizerState, ParameterTree, ModelAuxillaryState]
+    OptimizerState, ParameterTree, ModelAuxiliaryState]
 # Each call to this function is considered a "step".
 # Can raise a TrainingCompleteError if it believe it has achieved the goal and
 # wants to end the run and receive a final free eval. It will not be restarted,
@@ -252,7 +252,7 @@ def update_params(
     workload: Workload,
     current_params: ParameterTree,
     current_params_types: ParameterTypeTree,
-    model_state: ModelAuxillaryState,
+    model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
     augmented_and_preprocessed_input_batch: Tensor,
     label_batch: Tensor,  # Dense (not one-hot) labels.

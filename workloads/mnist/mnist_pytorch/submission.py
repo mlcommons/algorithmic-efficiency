@@ -15,7 +15,7 @@ def get_batch_size(workload_name):
 def init_optimizer_state(
     workload: spec.Workload,
     model_params: spec.ParameterTree,
-    model_state: spec.ModelAuxillaryState,
+    model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
   del rng
@@ -33,7 +33,7 @@ def update_params(
     workload: spec.Workload,
     current_params: spec.ParameterTree,
     current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxillaryState,
+    model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     augmented_and_preprocessed_input_batch: spec.Tensor,
     label_batch: spec.Tensor,
