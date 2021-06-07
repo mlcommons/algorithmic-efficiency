@@ -176,7 +176,7 @@ def train_once(
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
-          current_params=model_params,
+          current_param_container=model_params,
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,

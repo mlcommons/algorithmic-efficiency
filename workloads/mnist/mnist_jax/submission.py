@@ -29,7 +29,7 @@ def optimizer(hyperparameters):
 
 def init_optimizer_state(
     workload: spec.Workload,
-    model_params: spec.ParameterTree,
+    model_params: spec.ParameterContainer,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
@@ -51,7 +51,7 @@ def init_optimizer_state(
     static_broadcasted_argnums=(0,))
 def pmapped_update_params(
     workload: spec.Workload,
-    current_params: spec.ParameterTree,
+    current_param_container: spec.ParameterContainer,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
@@ -75,16 +75,16 @@ def pmapped_update_params(
     return jnp.mean(loss), new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn(current_params)
+  (_, new_model_state), grad = grad_fn(current_param_container)
   _, opt_update_fn = optimizer(hyperparameters)
   updates, new_optimizer_state = opt_update_fn(
-      grad, optimizer_state, current_params)
-  updated_params = optax.apply_updates(current_params, updates)
+      grad, optimizer_state, current_param_container)
+  updated_params = optax.apply_updates(current_param_container, updates)
   return new_optimizer_state, updated_params, new_model_state
 
 def update_params(
     workload: spec.Workload,
-    current_params: spec.ParameterTree,
+    current_param_container: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
@@ -115,7 +115,7 @@ def update_params(
   # TODO(znado) we should be more efficient than replicating state each step.
   new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
       workload,
-      jax_utils.replicate(current_params),
+      jax_utils.replicate(current_param_container),
       jax_utils.replicate(model_state),
       hyperparameters,
       reshaped_input_batch,
@@ -135,7 +135,7 @@ def data_selection(
     workload: spec.Workload,
     input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
     optimizer_state: spec.OptimizerState,
-    current_params: spec.ParameterTree,
+    current_param_container: spec.ParameterContainer,
     hyperparameters: spec.Hyperparamters,
     global_step: int,
     rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
@@ -150,7 +150,7 @@ def data_selection(
   """
   del workload
   del optimizer_state
-  del current_params
+  del current_param_container
   del hyperparameters
   del global_step
   del rng
