@@ -82,7 +82,7 @@ class MnistWorkload(Mnist):
   def model_params_types(self):
     pass
 
-  # Return whether or not a key in spec.ParameterTree is the output layer
+  # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
@@ -117,7 +117,7 @@ class MnistWorkload(Mnist):
 
   def model_fn(
       self,
-      params: spec.ParameterTree,
+      params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
