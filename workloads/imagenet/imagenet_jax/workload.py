@@ -53,7 +53,6 @@ class ImagenetWorkload(spec.Workload):
       batch_size):
     if config.batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    local_batch_size = config.batch_size // jax.host_count()
     mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
     stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
@@ -68,7 +67,7 @@ class ImagenetWorkload(spec.Workload):
     ds_builder = tfds.builder(config.dataset)
     ds = input_pipeline.create_input_iter(
       ds_builder,
-      local_batch_size,
+      config.batch_size,
       config.image_size,
       input_dtype,
       mean_rgb,
