@@ -131,13 +131,14 @@ def _decode_and_center_crop(image_bytes, image_size):
   return image
 
 
-def normalize_image(image):
-  image -= tf.constant(MEAN_RGB, shape=[1, 1, 3], dtype=image.dtype)
-  image /= tf.constant(STDDEV_RGB, shape=[1, 1, 3], dtype=image.dtype)
+def normalize_image(image, mean_rgb, stddev_rgb):
+  image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
+  image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image
 
 
-def preprocess_for_train(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
+def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
+                         image_size=IMAGE_SIZE):
   """Preprocesses the given image for training.
 
   Args:
@@ -151,12 +152,13 @@ def preprocess_for_train(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
   image = _decode_and_random_crop(image_bytes, image_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
-  image = normalize_image(image)
+  image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
 
 
-def preprocess_for_eval(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
+def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
+                        image_size=IMAGE_SIZE):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -169,13 +171,14 @@ def preprocess_for_eval(image_bytes, dtype=tf.float32, image_size=IMAGE_SIZE):
   """
   image = _decode_and_center_crop(image_bytes, image_size)
   image = tf.reshape(image, [image_size, image_size, 3])
-  image = normalize_image(image)
+  image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
 
 
 def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
-                 image_size=IMAGE_SIZE, cache=False):
+      image_size=IMAGE_SIZE, mean_rgb=MEAN_RGB, stddev_rgb=STDDEV_RGB,
+      cache=False):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
 
   Args:
@@ -201,9 +204,11 @@ def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
 
   def decode_example(example):
     if train:
-      image = preprocess_for_train(example['image'], dtype, image_size)
+      image = preprocess_for_train(example['image'], mean_rgb, stddev_rgb,
+                                   dtype, image_size)
     else:
-      image = preprocess_for_eval(example['image'], dtype, image_size)
+      image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb,
+                                   dtype, image_size)
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(split=split, decoders={
@@ -244,10 +249,17 @@ def prepare_tf_data(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def create_input_iter(dataset_builder, batch_size, image_size, dtype, train, cache):
+def create_input_iter(dataset_builder,
+    batch_size,
+    image_size,
+    dtype,
+    mean_rgb,
+    stddev_rgb,
+    train,
+    cache):
   ds = create_split(
       dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-      train=train, cache=cache)
+      train=train, mean_rgb=mean_rgb, stddev_rgb=stddev_rgb, cache=cache)
   it = map(prepare_tf_data, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
