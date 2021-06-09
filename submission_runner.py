@@ -39,7 +39,7 @@ WORKLOADS = {
   'imagenet_jax': {
     'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
     'workload_class_name': 'ImagenetWorkload'
-  }
+  },
 }
 
 flags.DEFINE_string(
