@@ -67,7 +67,7 @@ class ImagenetWorkload(spec.Workload):
     ds_builder = tfds.builder(config.dataset)
     ds = input_pipeline.create_input_iter(
       ds_builder,
-      config.batch_size,
+      batch_size,
       config.image_size,
       input_dtype,
       mean_rgb,
