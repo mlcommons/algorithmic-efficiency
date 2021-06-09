@@ -60,7 +60,6 @@ class ImagenetWorkload(spec.Workload):
     ds = input_pipeline.create_input_iter(
       ds_builder,
       batch_size,
-      config.image_size,
       mean_rgb,
       stddev_rgb,
       train=split=='train',
@@ -150,8 +149,8 @@ class ImagenetWorkload(spec.Workload):
                      dtype=jnp.float32,
                      **kwargs)
 
-  def initialized(self, key, image_size, model):
-    input_shape = (1, image_size, image_size, 3)
+  def initialized(self, key, model):
+    input_shape = (1, 224, 224, 3)
     @jax.jit
     def init(*args):
       return model.init(*args)
@@ -165,7 +164,7 @@ class ImagenetWorkload(spec.Workload):
       rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, config.model)
     model = self.create_model(model_cls=model_cls)
-    params, model_state = self.initialized(rng, config.image_size, model)
+    params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
