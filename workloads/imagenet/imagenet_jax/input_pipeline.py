@@ -229,8 +229,12 @@ def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
 
   return ds
 
-def prepare_tf_data(xs):
-  """Convert a input batch from tf Tensors to numpy arrays."""
+def shard_numpy_ds(xs):
+  """Prepare tf data for JAX
+
+  Convert an input batch from tf Tensors to numpy arrays and reshape it to be
+  sharded across devices.
+  """
   local_device_count = jax.local_device_count()
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
@@ -254,7 +258,7 @@ def create_input_iter(dataset_builder,
   ds = create_split(
       dataset_builder, batch_size, image_size=image_size, dtype=dtype,
       train=train, mean_rgb=mean_rgb, stddev_rgb=stddev_rgb, cache=cache)
-  it = map(prepare_tf_data, ds)
+  it = map(shard_numpy_ds, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it
 
