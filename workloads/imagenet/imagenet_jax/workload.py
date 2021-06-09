@@ -62,7 +62,7 @@ class ImagenetWorkload(spec.Workload):
       batch_size,
       mean_rgb,
       stddev_rgb,
-      train=split=='train',
+      train=True,
       cache=config.cache)
 
     self.num_train_examples = ds_builder.info.splits['train'].num_examples
