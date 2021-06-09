@@ -27,7 +27,8 @@ class TrainState:
 
 
 def get_batch_size(workload_name):
-  return config.batch_size
+  del workload_name
+  return 128
 
 
 def cosine_decay(lr, step, total_steps):
