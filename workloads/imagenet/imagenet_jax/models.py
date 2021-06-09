@@ -35,7 +35,7 @@ class ResNetBlock(nn.Module):
   strides: Tuple[int, int] = (1, 1)
 
   @nn.compact
-  def __call__(self, x,):
+  def __call__(self, x):
     residual = x
     y = self.conv(self.filters, (3, 3), self.strides)(x)
     y = self.norm()(y)
