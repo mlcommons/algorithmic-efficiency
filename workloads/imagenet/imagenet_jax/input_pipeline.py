@@ -250,14 +250,13 @@ def shard_numpy_ds(xs):
 def create_input_iter(dataset_builder,
     batch_size,
     image_size,
-    dtype,
     mean_rgb,
     stddev_rgb,
     train,
     cache):
   ds = create_split(
-      dataset_builder, batch_size, image_size=image_size, dtype=dtype,
-      train=train, mean_rgb=mean_rgb, stddev_rgb=stddev_rgb, cache=cache)
+      dataset_builder, batch_size, image_size=image_size, train=train,
+      mean_rgb=mean_rgb, stddev_rgb=stddev_rgb, cache=cache)
   it = map(shard_numpy_ds, ds)
   it = jax_utils.prefetch_to_device(it, 2)
   return it

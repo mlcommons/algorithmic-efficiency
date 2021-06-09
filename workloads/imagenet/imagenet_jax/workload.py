@@ -56,20 +56,11 @@ class ImagenetWorkload(spec.Workload):
     mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
     stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-    if config.half_precision:
-      if platform == 'tpu':
-        input_dtype = tf.bfloat16
-      else:
-        input_dtype = tf.float16
-    else:
-      input_dtype = tf.float32
-
     ds_builder = tfds.builder(config.dataset)
     ds = input_pipeline.create_input_iter(
       ds_builder,
       batch_size,
       config.image_size,
-      input_dtype,
       mean_rgb,
       stddev_rgb,
       train=split=='train',
@@ -154,17 +145,9 @@ class ImagenetWorkload(spec.Workload):
       train_stddev: spec.Tensor) -> spec.Tensor:
     return (raw_input_batch, raw_label_batch)
 
-  def create_model(self, *, model_cls, half_precision, **kwargs):
-    platform = jax.local_devices()[0].platform
-    if half_precision:
-      if platform == 'tpu':
-        model_dtype = jnp.bfloat16
-      else:
-        model_dtype = jnp.float16
-    else:
-      model_dtype = jnp.float32
+  def create_model(self, *, model_cls, **kwargs):
     return model_cls(num_classes=config.num_classes,
-                     dtype=model_dtype,
+                     dtype=jnp.float32,
                      **kwargs)
 
   def initialized(self, key, image_size, model):
@@ -181,8 +164,7 @@ class ImagenetWorkload(spec.Workload):
       self,
       rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, config.model)
-    model = self.create_model(
-      model_cls=model_cls, half_precision=config.half_precision)
+    model = self.create_model(model_cls=model_cls)
     params, model_state = self.initialized(rng, config.image_size, model)
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
