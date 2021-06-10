@@ -34,7 +34,40 @@ class ImagenetWorkload(spec.Workload):
     self.epoch_metrics = []
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result > 0.6
+    return eval_result > 0.69
+
+  @property
+  def loss_type(self):
+    return spec.LossType.SOFTMAX_CROSS_ENTROPY
+
+  @property
+  def train_mean(self):
+    return 0.0
+
+  @property
+  def train_stddev(self):
+    return 1.0
+
+  def model_params_types(self):
+    pass
+
+  @property
+  def max_allowed_runtime_sec(self):
+    return 360
+
+  @property
+  def max_allowed_eval_time_sec(self):
+    return 50
+
+  @property
+  def eval_period_time_sec(self):
+    return 60
+
+  # Return whether or not a key in spec.ParameterTree is the output layer
+  # parameters.
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
+
 
   def _build_dataset(self,
       data_rng: jax.random.PRNGKey,
@@ -84,38 +117,6 @@ class ImagenetWorkload(spec.Workload):
       raise ValueError('This should not happen, workload.init_model_fn() '
                        'should be called before workload.param_shapes!')
     return self._param_shapes
-
-  @property
-  def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
-
-  @property
-  def train_mean(self):
-    return 0.0
-
-  @property
-  def train_stddev(self):
-    return 1.0
-
-  def model_params_types(self):
-    pass
-
-  @property
-  def max_allowed_runtime_sec(self):
-    return 60
-
-  @property
-  def max_allowed_eval_time_sec(self):
-    return 20
-
-  @property
-  def eval_period_time_sec(self):
-    return 30
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   def preprocess_for_train(
       self,
