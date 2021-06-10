@@ -1,11 +1,10 @@
 """Training algorithm track submission functions for ImageNet."""
 
-from typing import Iterator, List, Tuple, Any
+from typing import Iterator, List, Tuple
 
 import jax
 import jax.numpy as jnp
 from jax import lax
-import flax
 from flax import optim
 from flax import jax_utils
 import ml_collections
@@ -15,15 +14,6 @@ from . import config as config_lib
 
 config = config_lib.get_config()
 
-
-
-# flax.struct.dataclass enables instances of this class to be passed into jax
-# transformations like tree_map and pmap.
-@flax.struct.dataclass
-class TrainState:
-  step: int
-  optimizer: optim.Optimizer
-  model_state: Any
 
 
 def get_batch_size(workload_name):
@@ -64,18 +54,19 @@ def init_optimizer_state(
     beta=config.momentum,
     nesterov=True)
   optimizer = optimizer.create(model_params)
+  optimizer = jax_utils.replicate(optimizer)
   return optimizer
 
 
-def train_step(apply_fn, state, batch, learning_rate_fn, model_fn,
+def train_step(apply_fn, model_state, optimizer_state, step, batch, learning_rate_fn, model_fn,
     compute_metrics, loss_fn, loss_type):
   def _loss_fn(params):
     """loss function used for training."""
-    variables = {'params': params, **state.model_state}
+    variables = {'params': params, **model_state}
     logits, new_model_state = model_fn(
         params,
         batch,
-        state,
+        model_state,
         spec.ForwardPassMode.TRAIN,
         update_batch_norm=False,
          mutable=['batch_stats'],
@@ -90,26 +81,20 @@ def train_step(apply_fn, state, batch, learning_rate_fn, model_fn,
     loss = loss + weight_penalty
     return loss, (new_model_state, logits)
 
-  step = state.step
-  optimizer = state.optimizer
   lr = learning_rate_fn(step)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  aux, grad = grad_fn(optimizer.target)
+  aux, grad = grad_fn(optimizer_state.target)
   grad = lax.pmean(grad, axis_name='batch')
   new_model_state, logits = aux[1]
-  new_optimizer = optimizer.apply_gradient(grad, learning_rate=lr)
+  new_optimizer = optimizer_state.apply_gradient(grad, learning_rate=lr)
   metrics = compute_metrics(logits, batch['label'])
   metrics['learning_rate'] = lr
 
-  new_state = state.replace(
-      step=step + 1, optimizer=new_optimizer, model_state=new_model_state)
-
-  return new_state, metrics
+  return new_model_state, new_optimizer, metrics
 
 
-def eval_step(apply_fn, state, batch, model_fn, compute_metrics):
-  params = state.optimizer.target
+def eval_step(apply_fn, state, params, batch, model_fn, compute_metrics):
   logits, _ = model_fn(
       params,
       batch,
@@ -135,21 +120,15 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
-  if model_state.optimizer is None:
-    # This is the first time we have the model and optimizer state together so
-    # replicate it to all devices
-    model_state = TrainState(
-      step=0,
-      optimizer=optimizer_state,
-      model_state=model_state.model_state)
-    model_state = jax_utils.replicate(model_state)
-
+  step = jax_utils.replicate(global_step)
   batch = {
     'image': augmented_and_preprocessed_input_batch,
     'label': label_batch
   }
 
-  model_state, metrics = workload.p_train_step(model_state, batch)
+  new_model_state, new_optimizer, metrics = workload.p_train_step(
+    model_state, optimizer_state, step, batch)
+  new_params = new_optimizer.target
 
   workload.epoch_metrics.append(metrics)
 
@@ -157,7 +136,7 @@ def update_params(
     # sync batch statistics across replicas once per epoch
     model_state = workload.sync_batch_stats(model_state)
 
-  return None, None, model_state
+  return new_optimizer, new_params, new_model_state
 
 
 def data_selection(

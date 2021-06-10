@@ -17,6 +17,7 @@ from jax import lax
 import flax
 from flax import optim
 from flax.training import common_utils
+from flax import jax_utils
 
 import spec
 from . import input_pipeline
@@ -26,15 +27,6 @@ from . import config as config_lib
 
 config = config_lib.get_config()
 
-
-
-# flax.struct.dataclass enables instances of this class to be passed into jax
-# transformations like tree_map and pmap.
-@flax.struct.dataclass
-class TrainState:
-  step: int
-  optimizer: optim.Optimizer
-  model_state: Any
 
 
 class ImagenetWorkload(spec.Workload):
@@ -78,15 +70,15 @@ class ImagenetWorkload(spec.Workload):
       batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
-  def sync_batch_stats(self, state):
+  def sync_batch_stats(self, model_state):
     """Sync the batch statistics across replicas."""
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics and
     # we average them.
     avg = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-    new_model_state = state.model_state.copy({
-      'batch_stats': avg(state.model_state['batch_stats'])})
-    return state.replace(model_state=new_model_state)
+    new_model_state = model_state.copy({
+      'batch_stats': avg(model_state['batch_stats'])})
+    return new_model_state
 
   @property
   def param_shapes(self):
@@ -191,11 +183,8 @@ class ImagenetWorkload(spec.Workload):
         compute_metrics=self.compute_metrics),
       axis_name='batch')
 
-    state = TrainState(
-      step=0,
-      optimizer=None,
-      model_state=model_state)
-    return params, state
+    model_state = jax_utils.replicate(model_state)
+    return params, model_state
 
   def model_fn(
       self,
@@ -209,7 +198,7 @@ class ImagenetWorkload(spec.Workload):
       mutable: bool, # TODO: Question— Is this redundant to param
       # "update_batch_norm"?
       apply_fn: Callable) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
-    variables = {'params': params, **model_state.model_state}
+    variables = {'params': params, **model_state}
     train = mode == spec.ForwardPassMode.TRAIN
     if mutable:
       logits, new_model_state = apply_fn(
@@ -257,12 +246,10 @@ class ImagenetWorkload(spec.Workload):
     # sync batch statistics across replicas once per epoch
     model_state = self.sync_batch_stats(model_state)
 
-    step = int(model_state.step[0])
-    epoch = step // self.steps_per_epoch
     epoch_metrics = common_utils.get_metrics(self.epoch_metrics)
     summary = jax.tree_map(lambda x: x.mean(), epoch_metrics)
-    logging.info('train epoch: %d, step: %d, loss: %.4f, accuracy: %.2f',
-                  epoch, step, summary['loss'], summary['accuracy'] * 100)
+    logging.info('train loss: %.4f, accuracy: %.2f',
+                  summary['loss'], summary['accuracy'] * 100)
     self.epoch_metrics = []
     eval_metrics = []
 
@@ -278,7 +265,7 @@ class ImagenetWorkload(spec.Workload):
     start_time = time.time()
     accumulated_eval_time = 0
     for batch in eval_iter:
-      metrics = self.p_eval_step(model_state, batch)
+      metrics = self.p_eval_step(model_state, params, batch)
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
       eval_step += 1
@@ -293,6 +280,6 @@ class ImagenetWorkload(spec.Workload):
 
     eval_metrics = common_utils.get_metrics(eval_metrics)
     summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-    logging.info('eval epoch: %d, loss: %.4f, accuracy: %.2f',
-                  epoch, summary['loss'], summary['accuracy'] * 100)
+    logging.info('eval loss: %.4f, accuracy: %.2f',
+                  summary['loss'], summary['accuracy'] * 100)
     return float(total_accuracy / num_batches)
