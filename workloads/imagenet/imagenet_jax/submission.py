@@ -5,8 +5,8 @@ from typing import Iterator, List, Tuple
 import jax
 import jax.numpy as jnp
 from jax import lax
-from flax import optim
-from flax import jax_utils
+import optax
+from flax import jax_utils, optim
 import ml_collections
 
 import spec
@@ -43,23 +43,33 @@ def create_learning_rate_fn(config: ml_collections.ConfigDict, num_examples):
   return step_fn
 
 
+def optimizer(hyperparameters):
+  opt_init_fn, opt_update_fn = optax.chain(
+      optax.scale_by_adam(
+          b1=1.0 - hyperparameters.one_minus_beta_1,
+          b2=0.999,
+          eps=hyperparameters.epsilon),
+      optax.scale(-hyperparameters.learning_rate)
+  )
+  return opt_init_fn, opt_update_fn
+
+
 def init_optimizer_state(
     workload: spec.Workload,
     model_params: spec.ParameterTree,
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  # TODO: Use hyperparameters from external search space
-  optimizer = optim.Momentum(
-    beta=config.momentum,
-    nesterov=True)
-  optimizer = optimizer.create(model_params)
-  optimizer = jax_utils.replicate(optimizer)
-  return optimizer
+  params_zeros_like = jax.tree_map(
+      lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
+  opt_init_fn, _ = optimizer(hyperparameters)
+  optimizer_state = opt_init_fn(params_zeros_like)
+  optimizer_state = jax_utils.replicate(optimizer_state)
+  return optimizer_state
 
 
-def train_step(apply_fn, model_state, optimizer_state, step, batch, learning_rate_fn, model_fn,
-    compute_metrics, loss_fn, loss_type):
+def train_step(apply_fn, model_state, optimizer_state, current_params, step,
+    hyperparameters, batch, learning_rate_fn, model_fn, compute_metrics, loss_fn, loss_type):
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
@@ -82,16 +92,17 @@ def train_step(apply_fn, model_state, optimizer_state, step, batch, learning_rat
     return loss, (new_model_state, logits)
 
   lr = learning_rate_fn(step)
-
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  aux, grad = grad_fn(optimizer_state.target)
-  grad = lax.pmean(grad, axis_name='batch')
+  aux, grad = grad_fn(current_params)
+  _, opt_update_fn = optimizer(hyperparameters)
   new_model_state, logits = aux[1]
-  new_optimizer = optimizer_state.apply_gradient(grad, learning_rate=lr)
+  updates, new_optimizer_state = opt_update_fn(
+      grad, optimizer_state, current_params)
+  updated_params = optax.apply_updates(current_params, updates)
   metrics = compute_metrics(logits, batch['label'])
   metrics['learning_rate'] = lr
 
-  return new_model_state, new_optimizer, metrics
+  return new_model_state, new_optimizer_state, updated_params, metrics
 
 
 def eval_step(apply_fn, state, params, batch, model_fn, compute_metrics):
@@ -120,15 +131,15 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
-  step = jax_utils.replicate(global_step)
   batch = {
     'image': augmented_and_preprocessed_input_batch,
     'label': label_batch
   }
 
-  new_model_state, new_optimizer, metrics = workload.p_train_step(
-    model_state, optimizer_state, step, batch)
-  new_params = new_optimizer.target
+  step = jax_utils.replicate(global_step) # TODO REPLACE THIS WITH STATIC ARGS
+  hyperparameters = jax_utils.replicate(hyperparameters) # TODO REPLACE THIS WITH STATIC ARGS
+  new_model_state, new_optimizer, new_params, metrics = workload.p_train_step(
+    model_state, optimizer_state, current_params, step, hyperparameters, batch)
 
   workload.epoch_metrics.append(metrics)
 

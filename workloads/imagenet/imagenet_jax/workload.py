@@ -14,8 +14,6 @@ import tensorflow_datasets as tfds
 import jax
 import jax.numpy as jnp
 from jax import lax
-import flax
-from flax import optim
 from flax.training import common_utils
 from flax import jax_utils
 
@@ -184,6 +182,7 @@ class ImagenetWorkload(spec.Workload):
       axis_name='batch')
 
     model_state = jax_utils.replicate(model_state)
+    params = jax_utils.replicate(params)
     return params, model_state
 
   def model_fn(
