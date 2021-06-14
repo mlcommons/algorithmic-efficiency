@@ -61,8 +61,7 @@ def init_optimizer_state(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters)
   optimizer_state = opt_init_fn(params_zeros_like)
-  optimizer_state = jax_utils.replicate(optimizer_state)
-  return optimizer_state
+  return jax_utils.replicate(optimizer_state)
 
 
 # We need to jax.pmap here instead of inside update_params because the latter
