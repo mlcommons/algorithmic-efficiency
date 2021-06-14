@@ -53,15 +53,15 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 60
+    return 20
 
   @property
   def max_allowed_eval_time_sec(self):
-    return 30
+    return 10
 
   @property
   def eval_period_time_sec(self):
-    return 30
+    return 10
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
@@ -165,25 +165,6 @@ class ImagenetWorkload(spec.Workload):
       self.num_train_examples) # TODO DELETE ME
     self.learning_rate_fn = learning_rate_fn
 
-    # self.p_train_step = jax.pmap(
-    #   functools.partial(
-    #     submission.train_step,
-    #     model.apply,
-    #     learning_rate_fn=learning_rate_fn,
-    #     loss_fn=self.loss_fn,
-    #     loss_type=self.loss_type,
-    #     model_fn=self.model_fn,
-    #     compute_metrics=self.compute_metrics),
-    #   axis_name='batch')
-
-    self.p_eval_step = jax.pmap(
-      functools.partial(
-        submission.eval_step,
-        model.apply,
-        model_fn=self.model_fn,
-        compute_metrics=self.compute_metrics),
-      axis_name='batch')
-
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
@@ -227,6 +208,30 @@ class ImagenetWorkload(spec.Workload):
                                           num_classes=config.num_classes)
     return -jnp.sum(one_hot_targets * logits_batch) / label_batch.size
 
+  ###
+  ### TODO: Can't figure out a solution to this harmless stacktrace that gets printed at end of run. Nothing on google. The problem is isolated within this commit.
+  ###
+  # Exception ignored in: <bound method IteratorResourceDeleter.__del__ of <tensorflow.python.data.ops.iterator_ops.IteratorResourceDeleter object at 0x7f2f201e6d08>>
+  # Traceback (most recent call last):
+  #   File "/usr/local/lib/python3.6/dist-packages/tensorflow/python/data/ops/iterator_ops.py", line 533, in __del__
+  #   File "/usr/local/lib/python3.6/dist-packages/tensorflow/python/eager/context.py", line 2031, in eager_mode
+  #   File "/usr/lib/python3.6/contextlib.py", line 159, in helper
+  # TypeError: 'NoneType' object is not callable
+  @functools.partial(
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, 0, 0, 0),
+    static_broadcasted_argnums=(0,))
+  def pmapped_eval_step(self, state, params, batch):
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        state,
+        spec.ForwardPassMode.EVAL,
+        update_batch_norm=False,
+        mutable=False)
+    return self.compute_metrics(logits, batch['label'])
+
   def compute_metrics(self, logits, labels):
     loss = self.loss_fn(labels, logits)
     accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
@@ -244,6 +249,7 @@ class ImagenetWorkload(spec.Workload):
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""
+
     # sync batch statistics across replicas once per epoch
     model_state = self.sync_batch_stats(model_state)
 
@@ -266,7 +272,7 @@ class ImagenetWorkload(spec.Workload):
     start_time = time.time()
     accumulated_eval_time = 0
     for batch in eval_iter:
-      metrics = self.p_eval_step(model_state, params, batch)
+      metrics = self.pmapped_eval_step(model_state, params, batch)
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
       eval_step += 1
@@ -284,3 +290,5 @@ class ImagenetWorkload(spec.Workload):
     logging.info('eval loss: %.4f, accuracy: %.2f',
                   summary['loss'], summary['accuracy'] * 100)
     return float(total_accuracy / num_batches)
+
+

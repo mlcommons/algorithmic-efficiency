@@ -71,10 +71,10 @@ def init_optimizer_state(
 # We need to jax.pmap here instead of inside update_params because the latter
 # the latter would recompile the function every step.
 @functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, 0, 0, 0, None, None, 0,),
-    static_broadcasted_argnums=(0,))
+  jax.pmap,
+  axis_name='batch',
+  in_axes=(None, 0, 0, 0, None, None, 0,),
+  static_broadcasted_argnums=(0,))
 def pmapped_train_step(workload, model_state, optimizer_state, current_params, step, hyperparameters, batch):
   def _loss_fn(params):
     """loss function used for training."""
@@ -110,17 +110,6 @@ def pmapped_train_step(workload, model_state, optimizer_state, current_params, s
   return new_model_state, new_optimizer_state, updated_params, metrics
 
 
-def eval_step(apply_fn, state, params, batch, model_fn, compute_metrics):
-  logits, _ = model_fn(
-      params,
-      batch,
-      state,
-      spec.ForwardPassMode.EVAL,
-      update_batch_norm=False,
-      mutable=False)
-  return compute_metrics(logits, batch['label'])
-
-
 def update_params(
     workload: spec.Workload,
     current_params: spec.ParameterTree,
@@ -140,8 +129,6 @@ def update_params(
     'label': label_batch
   }
 
-  # step = jax_utils.replicate(global_step) # TODO REPLACE THIS WITH STATIC ARGS
-  # hyperparameters = jax_utils.replicate(hyperparameters) # TODO REPLACE THIS WITH STATIC ARGS
   new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(workload, model_state, optimizer_state, current_params, global_step, hyperparameters, batch)
 
   workload.epoch_metrics.append(metrics)
