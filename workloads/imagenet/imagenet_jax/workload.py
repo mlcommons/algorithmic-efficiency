@@ -26,6 +26,15 @@ from . import config as config_lib
 config = config_lib.get_config()
 
 
+def eval_model_fn(compute_metrics, model_fn, params, batch, state):
+  logits, _ = model_fn(
+    params,
+    batch,
+    state,
+    spec.ForwardPassMode.EVAL,
+    update_batch_norm=False,
+    mutable=False)
+  return compute_metrics(logits, batch['label'])
 
 class ImagenetWorkload(spec.Workload):
   def __init__(self):
@@ -169,16 +178,6 @@ class ImagenetWorkload(spec.Workload):
     params = jax_utils.replicate(params)
     return params, model_state
 
-  def eval_model_fn(self, params, batch, state):
-    logits, _ = self.model_fn(
-      params,
-      batch,
-      state,
-      spec.ForwardPassMode.EVAL,
-      update_batch_norm=False,
-      mutable=False)
-    return self.compute_metrics(logits, batch['label'])
-
   def model_fn(
       self,
       params: spec.ParameterTree,
@@ -258,7 +257,8 @@ class ImagenetWorkload(spec.Workload):
     start_time = time.time()
     accumulated_eval_time = 0
     for batch in eval_iter:
-      metrics = jax.pmap(self.eval_model_fn, axis_name='batch')(
+      p_eval_model_fn = functools.partial(eval_model_fn, self.compute_metrics, self.model_fn)
+      metrics = jax.pmap(p_eval_model_fn, axis_name='batch')(
         params,
         batch,
         model_state)
