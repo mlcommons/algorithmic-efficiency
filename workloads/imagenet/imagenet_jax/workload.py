@@ -1,6 +1,6 @@
 """ImageNet workload implemented in Jax."""
 
-from typing import Tuple, Any, Callable
+from typing import Tuple
 import time
 import functools
 from absl import logging
@@ -53,15 +53,15 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 360
+    return 60
 
   @property
   def max_allowed_eval_time_sec(self):
-    return 50
+    return 30
 
   @property
   def eval_period_time_sec(self):
-    return 60
+    return 30
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
@@ -155,24 +155,26 @@ class ImagenetWorkload(spec.Workload):
       rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, config.model)
     model = self.create_model(model_cls=model_cls)
+    self._model = model
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
     learning_rate_fn = submission.create_learning_rate_fn(
       config,
-      self.num_train_examples)
+      self.num_train_examples) # TODO DELETE ME
+    self.learning_rate_fn = learning_rate_fn
 
-    self.p_train_step = jax.pmap(
-      functools.partial(
-        submission.train_step,
-        model.apply,
-        learning_rate_fn=learning_rate_fn,
-        loss_fn=self.loss_fn,
-        loss_type=self.loss_type,
-        model_fn=self.model_fn,
-        compute_metrics=self.compute_metrics),
-      axis_name='batch')
+    # self.p_train_step = jax.pmap(
+    #   functools.partial(
+    #     submission.train_step,
+    #     model.apply,
+    #     learning_rate_fn=learning_rate_fn,
+    #     loss_fn=self.loss_fn,
+    #     loss_type=self.loss_type,
+    #     model_fn=self.model_fn,
+    #     compute_metrics=self.compute_metrics),
+    #   axis_name='batch')
 
     self.p_eval_step = jax.pmap(
       functools.partial(
@@ -197,18 +199,18 @@ class ImagenetWorkload(spec.Workload):
       update_batch_norm: bool,
       mutable: bool, # TODO: Question— Is this redundant to param
       # "update_batch_norm"?
-      apply_fn: Callable) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      ) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
     variables = {'params': params, **model_state}
     train = mode == spec.ForwardPassMode.TRAIN
     if mutable:
-      logits, new_model_state = apply_fn(
+      logits, new_model_state = self._model.apply(
         variables,
         jax.numpy.squeeze(augmented_and_preprocessed_input_batch['image']),
         train=train,
         mutable=mutable)
       return logits, new_model_state
     else:
-      logits = apply_fn(
+      logits = self._model.apply(
         variables,
         jax.numpy.squeeze(augmented_and_preprocessed_input_batch['image']),
         train=train,
@@ -220,14 +222,13 @@ class ImagenetWorkload(spec.Workload):
   def loss_fn(
       self,
       label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      loss_type: spec.LossType) -> spec.Tensor:  # differentiable
+      logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     one_hot_targets = common_utils.onehot(label_batch,
                                           num_classes=config.num_classes)
     return -jnp.sum(one_hot_targets * logits_batch) / label_batch.size
 
   def compute_metrics(self, logits, labels):
-    loss = self.loss_fn(labels, logits, self.loss_type)
+    loss = self.loss_fn(labels, logits)
     accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
     metrics = {
       'loss': loss,

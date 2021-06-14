@@ -1,12 +1,12 @@
 """Training algorithm track submission functions for ImageNet."""
 
+import functools
 from typing import Iterator, List, Tuple
 
 import jax
 import jax.numpy as jnp
-from jax import lax
 import optax
-from flax import jax_utils, optim
+from flax import jax_utils
 import ml_collections
 
 import spec
@@ -68,20 +68,25 @@ def init_optimizer_state(
   return optimizer_state
 
 
-def train_step(apply_fn, model_state, optimizer_state, current_params, step,
-    hyperparameters, batch, learning_rate_fn, model_fn, compute_metrics, loss_fn, loss_type):
+# We need to jax.pmap here instead of inside update_params because the latter
+# the latter would recompile the function every step.
+@functools.partial(
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, 0, 0, 0, None, None, 0,),
+    static_broadcasted_argnums=(0,))
+def pmapped_train_step(workload, model_state, optimizer_state, current_params, step, hyperparameters, batch):
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
-    logits, new_model_state = model_fn(
+    logits, new_model_state = workload.model_fn(
         params,
         batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
         update_batch_norm=False,
-         mutable=['batch_stats'],
-        apply_fn=apply_fn)
-    loss = loss_fn(batch['label'], logits, loss_type)
+        mutable=['batch_stats'])
+    loss = workload.loss_fn(batch['label'], logits)
     weight_penalty_params = jax.tree_leaves(variables['params'])
     weight_decay = 0.0001
     weight_l2 = sum([jnp.sum(x ** 2)
@@ -91,7 +96,7 @@ def train_step(apply_fn, model_state, optimizer_state, current_params, step,
     loss = loss + weight_penalty
     return loss, (new_model_state, logits)
 
-  lr = learning_rate_fn(step)
+  lr = workload.learning_rate_fn(step)
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   aux, grad = grad_fn(current_params)
   _, opt_update_fn = optimizer(hyperparameters)
@@ -99,7 +104,7 @@ def train_step(apply_fn, model_state, optimizer_state, current_params, step,
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_params)
   updated_params = optax.apply_updates(current_params, updates)
-  metrics = compute_metrics(logits, batch['label'])
+  metrics = workload.compute_metrics(logits, batch['label'])
   metrics['learning_rate'] = lr
 
   return new_model_state, new_optimizer_state, updated_params, metrics
@@ -112,8 +117,7 @@ def eval_step(apply_fn, state, params, batch, model_fn, compute_metrics):
       state,
       spec.ForwardPassMode.EVAL,
       update_batch_norm=False,
-      mutable=False,
-      apply_fn=apply_fn)
+      mutable=False)
   return compute_metrics(logits, batch['label'])
 
 
@@ -136,10 +140,9 @@ def update_params(
     'label': label_batch
   }
 
-  step = jax_utils.replicate(global_step) # TODO REPLACE THIS WITH STATIC ARGS
-  hyperparameters = jax_utils.replicate(hyperparameters) # TODO REPLACE THIS WITH STATIC ARGS
-  new_model_state, new_optimizer, new_params, metrics = workload.p_train_step(
-    model_state, optimizer_state, current_params, step, hyperparameters, batch)
+  # step = jax_utils.replicate(global_step) # TODO REPLACE THIS WITH STATIC ARGS
+  # hyperparameters = jax_utils.replicate(hyperparameters) # TODO REPLACE THIS WITH STATIC ARGS
+  new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(workload, model_state, optimizer_state, current_params, global_step, hyperparameters, batch)
 
   workload.epoch_metrics.append(metrics)
 
