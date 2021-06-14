@@ -169,6 +169,16 @@ class ImagenetWorkload(spec.Workload):
     params = jax_utils.replicate(params)
     return params, model_state
 
+  def eval_model_fn(self, params, batch, state):
+    logits, _ = self.model_fn(
+      params,
+      batch,
+      state,
+      spec.ForwardPassMode.EVAL,
+      update_batch_norm=False,
+      mutable=False)
+    return self.compute_metrics(logits, batch['label'])
+
   def model_fn(
       self,
       params: spec.ParameterTree,
@@ -207,30 +217,6 @@ class ImagenetWorkload(spec.Workload):
     one_hot_targets = common_utils.onehot(label_batch,
                                           num_classes=config.num_classes)
     return -jnp.sum(one_hot_targets * logits_batch) / label_batch.size
-
-  ###
-  ### TODO: Can't figure out a solution to this harmless stacktrace that gets printed at end of run. Nothing on google. The problem is isolated within this commit.
-  ###
-  # Exception ignored in: <bound method IteratorResourceDeleter.__del__ of <tensorflow.python.data.ops.iterator_ops.IteratorResourceDeleter object at 0x7f2f201e6d08>>
-  # Traceback (most recent call last):
-  #   File "/usr/local/lib/python3.6/dist-packages/tensorflow/python/data/ops/iterator_ops.py", line 533, in __del__
-  #   File "/usr/local/lib/python3.6/dist-packages/tensorflow/python/eager/context.py", line 2031, in eager_mode
-  #   File "/usr/lib/python3.6/contextlib.py", line 159, in helper
-  # TypeError: 'NoneType' object is not callable
-  @functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, 0, 0, 0),
-    static_broadcasted_argnums=(0,))
-  def pmapped_eval_step(self, state, params, batch):
-    logits, _ = self.model_fn(
-        params,
-        batch,
-        state,
-        spec.ForwardPassMode.EVAL,
-        update_batch_norm=False,
-        mutable=False)
-    return self.compute_metrics(logits, batch['label'])
 
   def compute_metrics(self, logits, labels):
     loss = self.loss_fn(labels, logits)
@@ -272,7 +258,10 @@ class ImagenetWorkload(spec.Workload):
     start_time = time.time()
     accumulated_eval_time = 0
     for batch in eval_iter:
-      metrics = self.pmapped_eval_step(model_state, params, batch)
+      metrics = jax.pmap(self.eval_model_fn, axis_name='batch')(
+        params,
+        batch,
+        model_state)
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
       eval_step += 1
