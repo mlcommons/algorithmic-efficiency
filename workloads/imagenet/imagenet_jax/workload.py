@@ -176,8 +176,7 @@ class ImagenetWorkload(spec.Workload):
       state,
       spec.ForwardPassMode.EVAL,
       rng,
-      update_batch_norm=False,
-      mutable=False)
+      update_batch_norm=False)
     return self.compute_metrics(logits, batch['label'])
 
   def model_fn(
@@ -187,25 +186,22 @@ class ImagenetWorkload(spec.Workload):
       model_state: spec.ModelAuxillaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool,
-      mutable: bool, # TODO: Question— Is this redundant to param
-      # "update_batch_norm"?
-      ) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
     variables = {'params': params, **model_state}
     train = mode == spec.ForwardPassMode.TRAIN
-    if mutable:
+    if update_batch_norm:
       logits, new_model_state = self._model.apply(
         variables,
         jax.numpy.squeeze(augmented_and_preprocessed_input_batch['image']),
         train=train,
-        mutable=mutable)
+        mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
         variables,
         jax.numpy.squeeze(augmented_and_preprocessed_input_batch['image']),
         train=train,
-        mutable=mutable)
+        mutable=False)
       return logits, None
 
   # Does NOT apply regularization, which is left to the submitter to do in

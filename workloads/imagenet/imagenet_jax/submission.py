@@ -85,8 +85,7 @@ def pmapped_train_step(workload, model_state, optimizer_state, current_params, s
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
-        update_batch_norm=False,
-        mutable=['batch_stats'])
+        update_batch_norm=True)
     loss = workload.loss_fn(batch['label'], logits)
     weight_penalty_params = jax.tree_leaves(variables['params'])
     weight_decay = 0.0001
