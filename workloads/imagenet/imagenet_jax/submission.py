@@ -73,9 +73,9 @@ def init_optimizer_state(
 @functools.partial(
   jax.pmap,
   axis_name='batch',
-  in_axes=(None, 0, 0, 0, None, None, 0,),
+  in_axes=(None, 0, 0, 0, None, None, 0, None),
   static_broadcasted_argnums=(0,))
-def pmapped_train_step(workload, model_state, optimizer_state, current_params, step, hyperparameters, batch):
+def pmapped_train_step(workload, model_state, optimizer_state, current_params, step, hyperparameters, batch, rng):
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
@@ -84,6 +84,7 @@ def pmapped_train_step(workload, model_state, optimizer_state, current_params, s
         batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
+        rng,
         update_batch_norm=False,
         mutable=['batch_stats'])
     loss = workload.loss_fn(batch['label'], logits)
@@ -128,8 +129,7 @@ def update_params(
     'image': augmented_and_preprocessed_input_batch,
     'label': label_batch
   }
-
-  new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(workload, model_state, optimizer_state, current_params, global_step, hyperparameters, batch)
+  new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(workload, model_state, optimizer_state, current_params, global_step, hyperparameters, batch, rng)
 
   workload.epoch_metrics.append(metrics)
 

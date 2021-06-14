@@ -169,12 +169,13 @@ class ImagenetWorkload(spec.Workload):
     params = jax_utils.replicate(params)
     return params, model_state
 
-  def eval_model_fn(self, params, batch, state):
+  def eval_model_fn(self, params, batch, state, rng):
     logits, _ = self.model_fn(
       params,
       batch,
       state,
       spec.ForwardPassMode.EVAL,
+      rng,
       update_batch_norm=False,
       mutable=False)
     return self.compute_metrics(logits, batch['label'])
@@ -185,8 +186,7 @@ class ImagenetWorkload(spec.Workload):
       augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxillaryState,
       mode: spec.ForwardPassMode,
-      # rng: spec.RandomState, # TODO: Question— I'm not sure how to pass rng in
-      # correctly when using pmap
+      rng: spec.RandomState,
       update_batch_norm: bool,
       mutable: bool, # TODO: Question— Is this redundant to param
       # "update_batch_norm"?
@@ -261,7 +261,8 @@ class ImagenetWorkload(spec.Workload):
       metrics = jax.pmap(self.eval_model_fn, axis_name='batch')(
         params,
         batch,
-        model_state)
+        model_state,
+        jax_utils.replicate(rng))
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
       eval_step += 1
