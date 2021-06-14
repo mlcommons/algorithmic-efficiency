@@ -4,6 +4,7 @@ from typing import Tuple
 import time
 import functools
 from absl import logging
+from jax.interpreters.batching import batch
 
 import tensorflow as tf
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make it
@@ -20,10 +21,6 @@ from flax import jax_utils
 import spec
 from . import input_pipeline
 from . import models
-from . import submission
-from . import config as config_lib
-
-config = config_lib.get_config()
 
 
 
@@ -32,6 +29,12 @@ class ImagenetWorkload(spec.Workload):
     self._eval_ds = None
     self._param_shapes = None
     self.epoch_metrics = []
+    # self.model_name = 'ResNet50'
+    # self.dataset = 'imagenet2012:5.*.*'
+    # self.num_classes = 1000
+    self.model_name = '_ResNet1'
+    self.dataset = 'imagenette'
+    self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result > 0.69
@@ -74,23 +77,24 @@ class ImagenetWorkload(spec.Workload):
       split: str,
       data_dir: str,
       batch_size):
-    if config.batch_size % jax.device_count() > 0:
+    if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
     stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-    ds_builder = tfds.builder(config.dataset)
+    ds_builder = tfds.builder(self.dataset)
     ds = input_pipeline.create_input_iter(
       ds_builder,
       batch_size,
       mean_rgb,
       stddev_rgb,
       train=True,
-      cache=config.cache)
+      cache=False)
 
     self.num_train_examples = ds_builder.info.splits['train'].num_examples
     self.num_eval_examples = ds_builder.info.splits['validation'].num_examples
-    self.steps_per_epoch = self.num_train_examples // config.batch_size
+    self.steps_per_epoch = self.num_train_examples // batch_size
+    self.batch_size = batch_size
     return ds
 
   def build_input_queue(
@@ -136,7 +140,7 @@ class ImagenetWorkload(spec.Workload):
     return (raw_input_batch, raw_label_batch)
 
   def create_model(self, *, model_cls, **kwargs):
-    return model_cls(num_classes=config.num_classes,
+    return model_cls(num_classes=self.num_classes,
                      dtype=jnp.float32,
                      **kwargs)
 
@@ -153,18 +157,13 @@ class ImagenetWorkload(spec.Workload):
   def init_model_fn(
       self,
       rng: spec.RandomState) -> _InitState:
-    model_cls = getattr(models, config.model)
+    model_cls = getattr(models, self.model_name)
     model = self.create_model(model_cls=model_cls)
     self._model = model
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
-    learning_rate_fn = submission.create_learning_rate_fn(
-      config,
-      self.num_train_examples) # TODO DELETE ME
-    self.learning_rate_fn = learning_rate_fn
-
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
@@ -211,7 +210,7 @@ class ImagenetWorkload(spec.Workload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     one_hot_targets = common_utils.onehot(label_batch,
-                                          num_classes=config.num_classes)
+                                          num_classes=self.num_classes)
     return -jnp.sum(one_hot_targets * logits_batch) / label_batch.size
 
   def compute_metrics(self, logits, labels):
@@ -243,7 +242,7 @@ class ImagenetWorkload(spec.Workload):
     eval_metrics = []
 
     data_rng, model_rng = jax.random.split(rng, 2)
-    eval_batch_size = config.batch_size
+    eval_batch_size = self.batch_size
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
       self._eval_ds = self._build_dataset(

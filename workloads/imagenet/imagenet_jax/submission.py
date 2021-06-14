@@ -7,12 +7,8 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import jax_utils
-import ml_collections
 
 import spec
-from . import config as config_lib
-
-config = config_lib.get_config()
 
 
 
@@ -27,18 +23,16 @@ def cosine_decay(lr, step, total_steps):
   return mult * lr
 
 
-def create_learning_rate_fn(config: ml_collections.ConfigDict, num_examples):
-  steps_per_epoch = (
-      num_examples // config.batch_size
-  )
-  base_learning_rate = config.learning_rate * config.batch_size / 256.
+def create_learning_rate_fn(hyperparameters: spec.Hyperparamters, num_examples):
+  steps_per_epoch = num_examples // get_batch_size('imagenet')
+  base_learning_rate = hyperparameters.learning_rate * get_batch_size('imagenet') / 256.
 
   def step_fn(step):
     epoch = step / steps_per_epoch
     lr = cosine_decay(base_learning_rate,
-                      epoch - config.warmup_epochs,
-                      config.num_epochs - config.warmup_epochs)
-    warmup = jnp.minimum(1., epoch / config.warmup_epochs)
+                      epoch - hyperparameters.warmup_epochs,
+                      hyperparameters.num_epochs - hyperparameters.warmup_epochs)
+    warmup = jnp.minimum(1., epoch / hyperparameters.warmup_epochs)
     return lr * warmup
   return step_fn
 
@@ -60,6 +54,9 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
+  workload.learning_rate_fn = create_learning_rate_fn(
+      hyperparameters,
+      workload.num_train_examples)
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters)

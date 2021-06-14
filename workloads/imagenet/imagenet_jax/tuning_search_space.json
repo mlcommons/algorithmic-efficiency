@@ -1,5 +1,7 @@
 {
     "learning_rate": {"min": 1e-4, "max": 1e-2, "scaling": "log"},
     "one_minus_beta_1": {"min": 0.9, "max": 0.999, "scaling": "log"},
-    "epsilon": {"feasible_points": [1e-8, 1e-5, 1e-3]}
+    "epsilon": {"feasible_points": [1e-8, 1e-5, 1e-3]},
+    "warmup_epochs": {"feasible_points": [5.0]},
+    "num_epochs": {"feasible_points": [100.0]}
 }
