@@ -134,7 +134,7 @@ def update_params(
 
   if global_step % workload.steps_per_epoch == 0:
     # sync batch statistics across replicas once per epoch
-    model_state = workload.sync_batch_stats(model_state)
+    new_model_state = workload.sync_batch_stats(new_model_state)
 
   return new_optimizer, new_params, new_model_state
 
