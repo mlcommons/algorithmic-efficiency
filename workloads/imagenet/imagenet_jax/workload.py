@@ -56,15 +56,15 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 20
+    return 60
 
   @property
   def max_allowed_eval_time_sec(self):
-    return 10
+    return 20
 
   @property
   def eval_period_time_sec(self):
-    return 10
+    return 30
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
@@ -253,11 +253,13 @@ class ImagenetWorkload(spec.Workload):
     start_time = time.time()
     accumulated_eval_time = 0
     for batch in eval_iter:
-      metrics = jax.pmap(self.eval_model_fn, axis_name='batch')(
-        params,
-        batch,
-        model_state,
-        jax_utils.replicate(rng))
+      metrics = jax.pmap(self.eval_model_fn,
+                         axis_name='batch',
+                         in_axes=(0, 0, 0, None))(
+                      params,
+                      batch,
+                      model_state,
+                      rng)
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
       eval_step += 1
