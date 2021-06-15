@@ -25,7 +25,8 @@ def cosine_decay(lr, step, total_steps):
 
 def create_learning_rate_fn(hyperparameters: spec.Hyperparamters, num_examples):
   steps_per_epoch = num_examples // get_batch_size('imagenet')
-  base_learning_rate = hyperparameters.learning_rate * get_batch_size('imagenet') / 256.
+  base_learning_rate = (hyperparameters.learning_rate *
+                        get_batch_size('imagenet') / 256.)
 
   def step_fn(step):
     epoch = step / steps_per_epoch
@@ -71,7 +72,8 @@ def init_optimizer_state(
   axis_name='batch',
   in_axes=(None, 0, 0, 0, None, None, 0, None),
   static_broadcasted_argnums=(0,))
-def pmapped_train_step(workload, model_state, optimizer_state, current_params, step, hyperparameters, batch, rng):
+def pmapped_train_step(workload, model_state, optimizer_state, current_params,
+                       step, hyperparameters, batch, rng):
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
@@ -124,7 +126,9 @@ def update_params(
     'image': augmented_and_preprocessed_input_batch,
     'label': label_batch
   }
-  new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(workload, model_state, optimizer_state, current_params, global_step, hyperparameters, batch, rng)
+  new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(
+    workload, model_state, optimizer_state, current_params, global_step,
+    hyperparameters, batch, rng)
 
   workload.epoch_metrics.append(metrics)
 
