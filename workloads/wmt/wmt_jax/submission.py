@@ -54,7 +54,7 @@ def init_optimizer_state(workload: spec.Workload,
 
 def update_params(
     workload: spec.Workload,
-    current_params: spec.ParameterContainer,
+    current_param_container: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
@@ -67,7 +67,7 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del workload
-  del current_params
+  del current_param_container
   del current_params_types
   del eval_results
   del global_step
@@ -90,7 +90,7 @@ def update_params(
 def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
-                   current_params: spec.ParameterContainer,
+                   current_param_container: spec.ParameterContainer,
                    hyperparameters: spec.Hyperparamters, global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
@@ -103,7 +103,7 @@ def data_selection(workload: spec.Workload,
   Return a tuple of input label batches.
   """
   del optimizer_state
-  del current_params
+  del current_param_container
   del global_step
   del rng
   del hyperparameters
