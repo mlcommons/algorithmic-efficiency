@@ -8,6 +8,7 @@ from . import input_pipeline
 from . import models
 from . import train
 from flax import linen as nn
+from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -31,7 +32,7 @@ class WMTWorkload(spec.Workload):
     self.p_pred_step = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result["bleu"] > 20
+    return eval_result["bleu"] > 25
 
   def build_input_queue(self, data_rng: jax.random.PRNGKey, split: str,
                         data_dir: str, batch_size: int):
@@ -76,7 +77,7 @@ class WMTWorkload(spec.Workload):
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._encoder.detokenize(valid_toks).numpy().decode("utf-8")
 
-  # Return whether or not a key in spec.ParameterTree is the output layer
+  # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
@@ -151,7 +152,7 @@ class WMTWorkload(spec.Workload):
     return initial_params, None
 
   def model_fn(
-      self, params: spec.ParameterTree,
+      self, params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -174,13 +175,27 @@ class WMTWorkload(spec.Workload):
       logits_batch: spec.Tensor) -> spec.Tensor:
 
     weights = jnp.where(label_batch > 0, 1.0, 0.0)
-    metrics = train.compute_metrics(logits_batch, label_batch, weights)
+    vocab_size = logits_batch.shape[-1]
+    confidence = 1.0 - config.config.label_smoothing
+    low_confidence = (1.0 - confidence) / (vocab_size - 1)
+    normalizing_constant = -(
+        confidence * jnp.log(confidence) +
+        (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
+    soft_targets = common_utils.onehot(
+        label_batch, vocab_size, on_value=confidence, off_value=low_confidence)
 
-    return metrics
+    loss = -jnp.sum(soft_targets * nn.log_softmax(logits_batch), axis=-1)
+    loss = loss - normalizing_constant
 
-  def eval_model(self, params: spec.ParameterTree,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState):
+    loss = loss * weights
+
+    return loss
+
+  def eval_model(self, params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+                 data_dir: str):
     """Run a full evaluation of the model."""
+    del data_dir
 
     eval_results = train.evaluate(
         p_eval_step=self.p_eval_step,

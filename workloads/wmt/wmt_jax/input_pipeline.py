@@ -1,7 +1,7 @@
 """Input pipeline for a WMT dataset."""
 
 import os
-from typing import Any, Dict, Optional, List, Union, Tuple
+from typing import Any, Dict, List, Optional, Union
 
 from . import tokenizer
 from clu import deterministic_data
@@ -298,7 +298,7 @@ def preprocess_wmt_data(dataset,
   return dataset
 
 
-def get_wmt_datasets(config: Tuple[Any],
+def get_wmt_datasets(config: Any,
                      batch_size: int,
                      reverse_translation: bool = True,
                      vocab_path: Optional[str] = None):

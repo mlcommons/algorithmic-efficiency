@@ -64,7 +64,6 @@ Steps = int
 
 # BN EMAs.
 ModelAuxiliaryState = Any
-<<<<<<< HEAD
 ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 
 
