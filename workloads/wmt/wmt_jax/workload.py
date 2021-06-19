@@ -1,8 +1,8 @@
 """WMT workload implemented in Jax."""
 import functools
+import types
 from typing import Tuple
 
-from . import config
 from . import decode
 from . import input_pipeline
 from . import models
@@ -15,8 +15,40 @@ import numpy as np
 import spec
 import tensorflow as tf
 
+CONFIG = types.SimpleNamespace(
+    vocab_path="./wmt_256/sentencepiece_model",
+    vocab_size=32000,
+    max_corpus_chars=10**7,
+    dataset_name="wmt17_translate/de-en",
+    eval_split="test",
+    reverse_translation=True,
+    beam_size=4,
+    num_eval_steps=20,
+    num_predict_steps=-1,
+    learning_rate=0.0625,
+    warmup_steps=1000,
+    label_smoothing=0.1,
+    weight_decay=0.0,
+    max_target_length=256,
+    max_eval_target_length=256,
+    max_predict_length=256,
+    share_embeddings=True,
+    logits_via_embedding=True,
+    num_layers=6,
+    qkv_dim=1024,
+    emb_dim=1024,
+    mlp_dim=4096,
+    num_heads=16,
+    dropout_rate=0.1,
+    attention_dropout_rate=0.1,
+    use_bfloat16=True,
+    workdir="./wmt_256",
+    per_device_batch_size=16,
+    eval_dataset_name="wmt14_translate/de-en")
+
 
 class WMTWorkload(spec.Workload):
+  """A WMT workload."""
 
   def __init__(self):
     self._eval_ds = None
@@ -30,18 +62,19 @@ class WMTWorkload(spec.Workload):
     self.p_eval_step = None
     self.p_init_cache = None
     self.p_pred_step = None
+    self.config = CONFIG
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result["bleu"] > 25
 
   def build_input_queue(self, data_rng: jax.random.PRNGKey, split: str,
                         data_dir: str, batch_size: int):
-    tf.io.gfile.makedirs(config.config.workdir)
+    tf.io.gfile.makedirs(self.config.workdir)
     self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
         batch_size=jax.local_device_count() * batch_size,
-        config=config.config,
-        reverse_translation=config.config.reverse_translation,
-        vocab_path=config.config.vocab_path)
+        config=self.config,
+        reverse_translation=self.config.reverse_translation,
+        vocab_path=self.config.vocab_path)
     self._vocab_size = int(self._encoder.vocab_size())
     return iter(self._train_ds)
 
@@ -101,18 +134,18 @@ class WMTWorkload(spec.Workload):
     self.train_config = models.TransformerConfig(
         vocab_size=self._vocab_size,
         output_vocab_size=self._vocab_size,
-        share_embeddings=config.config.share_embeddings,
-        logits_via_embedding=config.config.logits_via_embedding,
-        dtype=jnp.bfloat16 if config.config.use_bfloat16 else jnp.float32,
-        emb_dim=config.config.emb_dim,
-        num_heads=config.config.num_heads,
-        num_layers=config.config.num_layers,
-        qkv_dim=config.config.qkv_dim,
-        mlp_dim=config.config.mlp_dim,
-        max_len=max(config.config.max_target_length,
-                    config.config.max_eval_target_length),
-        dropout_rate=config.config.dropout_rate,
-        attention_dropout_rate=config.config.attention_dropout_rate,
+        share_embeddings=self.config.share_embeddings,
+        logits_via_embedding=self.config.logits_via_embedding,
+        dtype=jnp.bfloat16 if self.config.use_bfloat16 else jnp.float32,
+        emb_dim=self.config.emb_dim,
+        num_heads=self.config.num_heads,
+        num_layers=self.config.num_layers,
+        qkv_dim=self.config.qkv_dim,
+        mlp_dim=self.config.mlp_dim,
+        max_len=max(self.config.max_target_length,
+                    self.config.max_eval_target_length),
+        dropout_rate=self.config.dropout_rate,
+        attention_dropout_rate=self.config.attention_dropout_rate,
         deterministic=False,
         decode=False,
         kernel_init=nn.initializers.xavier_uniform(),
@@ -126,22 +159,22 @@ class WMTWorkload(spec.Workload):
     self.p_init_cache = jax.pmap(
         functools.partial(
             train.initialize_cache,
-            max_decode_len=config.config.max_predict_length,
+            max_decode_len=self.config.max_predict_length,
             config=self.predict_config),
         axis_name="batch")
     self.p_pred_step = jax.pmap(
         functools.partial(
             train.predict_step,
             config=self.predict_config,
-            beam_size=config.config.beam_size),
+            beam_size=self.config.beam_size),
         axis_name="batch",
         static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
 
     rng, init_rng = jax.random.split(rng)
-    input_shape = (config.config.per_device_batch_size,
-                   config.config.max_target_length)
-    target_shape = (config.config.per_device_batch_size,
-                    config.config.max_target_length)
+    input_shape = (self.config.per_device_batch_size,
+                   self.config.max_target_length)
+    target_shape = (self.config.per_device_batch_size,
+                    self.config.max_target_length)
 
     initial_variables = jax.jit(models.Transformer(self.eval_config).init)(
         init_rng, jnp.ones(input_shape, jnp.float32),
@@ -176,7 +209,7 @@ class WMTWorkload(spec.Workload):
 
     weights = jnp.where(label_batch > 0, 1.0, 0.0)
     vocab_size = logits_batch.shape[-1]
-    confidence = 1.0 - config.config.label_smoothing
+    confidence = 1.0 - self.config.label_smoothing
     low_confidence = (1.0 - confidence) / (vocab_size - 1)
     normalizing_constant = -(
         confidence * jnp.log(confidence) +
@@ -201,7 +234,7 @@ class WMTWorkload(spec.Workload):
         p_eval_step=self.p_eval_step,
         target=params,
         eval_ds=self._eval_ds,
-        num_eval_steps=config.config.num_eval_steps)
+        num_eval_steps=self.config.num_eval_steps)
 
     _, bleu_score = train.translate_and_calculate_bleu(
         p_pred_step=self.p_pred_step,
@@ -209,7 +242,7 @@ class WMTWorkload(spec.Workload):
         target=params,
         predict_ds=self._predict_ds,
         decode_tokens=self._decode_tokens,
-        max_predict_length=config.config.max_predict_length)
+        max_predict_length=self.config.max_predict_length)
 
     eval_results["bleu"] = bleu_score
 

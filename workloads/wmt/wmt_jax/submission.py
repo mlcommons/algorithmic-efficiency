@@ -2,8 +2,8 @@
 import functools
 from typing import Iterator, List, Tuple
 
-from . import config
 from . import train
+from . import workload as w
 from flax import jax_utils
 from flax import optim
 from flax.training import common_utils
@@ -13,7 +13,7 @@ import spec
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {"wmt_jax": config.config.per_device_batch_size}
+  batch_sizes = {"wmt_jax": w.CONFIG.per_device_batch_size}
   return batch_sizes[workload_name]
 
 
@@ -37,7 +37,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   learning_rate_fn = train.create_learning_rate_scheduler(
       base_learning_rate=hyperparameters.learning_rate,
-      warmup_steps=config.config.warmup_steps)
+      warmup_steps=workload.config.warmup_steps)
 
   # compile multidevice versions of train/eval/predict step and cache init fn.
   p_train_step = jax.pmap(
@@ -45,7 +45,7 @@ def init_optimizer_state(workload: spec.Workload,
           train.train_step,
           config=workload.train_config,
           learning_rate_fn=learning_rate_fn,
-          label_smoothing=config.config.label_smoothing),
+          label_smoothing=workload.config.label_smoothing),
       axis_name="batch",
       donate_argnums=(0,))  # pytype: disable=wrong-arg-types
 
