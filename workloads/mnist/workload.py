@@ -1,5 +1,13 @@
+from absl import logging
+import random_utils as prng
+try:
+  import jax.random as prng
+except (ImportError, ModuleNotFoundError):
+  logging.warning(
+      'Could not import jax.random for MNIST workload, falling back to numpy '
+      'random_utils.')
+
 import spec
-import jax
 
 class Mnist(spec.Workload):
 
@@ -37,12 +45,11 @@ class Mnist(spec.Workload):
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""
-    data_rng, model_rng = jax.random.split(rng, 2)
+    data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 2000
     num_batches = 10000 // eval_batch_size
-    if self._eval_ds is None:
-      self._eval_ds = self.build_input_queue(
-          data_rng, 'test', data_dir, batch_size=eval_batch_size)
+    self._eval_ds = self.build_input_queue(
+        data_rng, 'test', data_dir, batch_size=eval_batch_size)
 
     total_metrics = {
         'accuracy': 0.,

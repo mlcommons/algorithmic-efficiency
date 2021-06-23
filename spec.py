@@ -5,7 +5,6 @@ import time
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 
 import abc
-import jax
 
 
 class LossType(enum.Enum):
@@ -192,16 +191,12 @@ class Workload(metaclass=abc.ABCMeta):
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
+  @abc.abstractmethod
   def output_activation_fn(
       self,
       logits_batch: Tensor,
       loss_type: LossType) -> Tensor:
-    if loss_type == LossType.SOFTMAX_CROSS_ENTROPY:
-      return jax.nn.softmax(logits_batch, axis=-1)
-    if loss_type == LossType.SIGMOID_CROSS_ENTROPY:
-      return jax.nn.sigmoid(logits_batch)
-    if loss_type == LossType.MEAN_SQUARED_ERROR:
-      return logits_batch
+    """Return the final activations of the model."""
 
   # LossFn = Callable[Tuple[Tensor, Tensor], Tensor]
   # Does NOT apply regularization, which is left to the submitter to do in
