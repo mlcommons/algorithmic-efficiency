@@ -23,29 +23,49 @@ def cosine_decay(lr, step, total_steps):
   return mult * lr
 
 
-def create_learning_rate_fn(hyperparameters: spec.Hyperparamters, num_examples):
-  steps_per_epoch = num_examples // get_batch_size('imagenet')
-  base_learning_rate = (hyperparameters.learning_rate *
-                        get_batch_size('imagenet') / 256.)
-
+def create_learning_rate_schedule(hparams, max_training_steps):
+  """Polynomial learning rate schedule for LARS optimizer.
+  This function is copied from
+  https://github.com/google/init2winit/blob/master/init2winit/schedules.py
+  Args:
+    hparams: Relevant hparams are base_lr, warmup_steps.
+    max_training_steps: Used to calculate the number of decay steps.
+  Returns:
+    lr_fn: A function mapping global_step to lr.
+  """
+  hparams = {
+    'base_lr': 7.05,
+    'warmup_power': 2.0,
+    'warmup_steps': 706.5,
+    'end_lr': 0.000006,
+    'decay_end': 2512,
+    'power': 2.0,
+    'start_lr': 0.0,
+  }
+  decay_steps = max_training_steps - hparams['warmup_steps'] + 1
   def step_fn(step):
-    epoch = step / steps_per_epoch
-    lr = cosine_decay(base_learning_rate,
-                      epoch - hyperparameters.warmup_epochs,
-                      hyperparameters.num_epochs - hyperparameters.warmup_epochs)
-    warmup = jnp.minimum(1., epoch / hyperparameters.warmup_epochs)
-    return lr * warmup
+    step = jax.lax.cond(
+      (lambda step, decay_end :
+        decay_end > 0 and step >= decay_end)(step, hparams['decay_end']),
+      lambda _: hparams['decay_end'],
+      lambda _: step,
+      operand=None)
+    r = (step / hparams['warmup_steps']) ** hparams['warmup_power']
+    warmup_lr = (
+        hparams['base_lr'] * r + (1 - r) * hparams['start_lr'])
+    decay_step = jnp.minimum(step - hparams['warmup_steps'], decay_steps)
+    poly_lr = (
+        hparams['end_lr'] + (hparams['base_lr'] - hparams['end_lr']) *
+        (1 - decay_step / decay_steps) ** hparams['power'])
+    return jnp.where(step <= hparams['warmup_steps'], warmup_lr, poly_lr)
   return step_fn
 
 
-def optimizer(hyperparameters):
-  opt_init_fn, opt_update_fn = optax.chain(
-      optax.scale_by_adam(
-          b1=1.0 - hyperparameters.one_minus_beta_1,
-          b2=0.999,
-          eps=hyperparameters.epsilon),
-      optax.scale(-hyperparameters.learning_rate)
-  )
+def optimizer(hyperparameters: spec.Hyperparamters, learning_rate_fn):
+  opt_init_fn, opt_update_fn = optax.sgd(
+      nesterov=True,
+      learning_rate=learning_rate_fn
+    )
   return opt_init_fn, opt_update_fn
 
 
@@ -55,12 +75,10 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  workload.learning_rate_fn = create_learning_rate_fn(
-      hyperparameters,
-      workload.num_train_examples)
+  workload.learning_rate_fn = create_learning_rate_schedule(hyperparameters, workload.steps_per_epoch)
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
-  opt_init_fn, _ = optimizer(hyperparameters)
+  opt_init_fn, _ = optimizer(hyperparameters, workload.learning_rate_fn)
   optimizer_state = opt_init_fn(params_zeros_like)
   return jax_utils.replicate(optimizer_state)
 
@@ -94,16 +112,14 @@ def pmapped_train_step(workload, model_state, optimizer_state, current_params,
     loss = loss + weight_penalty
     return loss, (new_model_state, logits)
 
-  lr = workload.learning_rate_fn(step)
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   aux, grad = grad_fn(current_params)
-  _, opt_update_fn = optimizer(hyperparameters)
+  _, opt_update_fn = optimizer(hyperparameters, workload.learning_rate_fn)
   new_model_state, logits = aux[1]
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_params)
   updated_params = optax.apply_updates(current_params, updates)
   metrics = workload.compute_metrics(logits, batch['label'])
-  metrics['learning_rate'] = lr
 
   return new_model_state, new_optimizer_state, updated_params, metrics
 
