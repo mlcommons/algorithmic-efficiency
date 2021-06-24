@@ -20,7 +20,9 @@ def init_optimizer_state(
   del workload
 
   optimizer_state = {
-    'optimizer': torch.optim.Adam(model_params.parameters(),
-                                  lr=hyperparameters.learning_rate)
+    'optimizer': torch.optim.SGD(model_params.parameters(),
+                                  lr=hyperparameters.learning_rate,
+                                  momentum=hyperparameters.momentum,
+                                  weight_decay=hyperparameters.weight_decay)
   }
   return optimizer_state
