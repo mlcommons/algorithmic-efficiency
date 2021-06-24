@@ -1,5 +1,5 @@
 import spec
-import jax
+import random_utils as prng
 
 class Resnet(spec.Workload):
 
@@ -51,12 +51,12 @@ class Resnet(spec.Workload):
 
   def eval_model(
       self,
-      params: spec.ParameterTree,
-      model_state: spec.ModelAuxillaryState,
+      params: spec.ParameterContainer,
+      model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""
-    data_rng, model_rng = jax.random.split(rng, 2)
+    data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 128
     if self._eval_ds is None:
       self._eval_ds = self.build_input_queue(

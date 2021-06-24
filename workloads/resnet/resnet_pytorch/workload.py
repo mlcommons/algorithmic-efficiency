@@ -119,12 +119,12 @@ class ResnetWorkload(Resnet):
 
   def model_fn(
       self,
-      params: spec.ParameterTree,
+      params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: spec.Tensor,
-      model_state: spec.ModelAuxillaryState,
+      model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -143,6 +143,19 @@ class ResnetWorkload(Resnet):
       logits_batch = model(augmented_and_preprocessed_input_batch)
 
     return logits_batch, None
+
+  def output_activation_fn(
+      self,
+      logits_batch: spec.Tensor,
+      loss_type: spec.LossType) -> spec.Tensor:
+
+    activation_fn = {
+      spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
+      spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
+      spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
+    }
+
+    return activation_fn[loss_type](logits_batch)
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
