@@ -66,8 +66,8 @@ flags.DEFINE_boolean(
     False,
     'Whether to use the Jax or Numpy RNG library. For PyTorch users, this flag '
     'should be set to false (the default) so that Jax is not required for the '
-    'run; in addition to adding another dependency, Jax can be aggressive and '
-    'reserve all GPU memory, causing OOMs).')
+    'run; in addition to adding another dependency, Jax can default to '
+    'reserving all GPU memory, causing OOMs).')
 
 FLAGS = flags.FLAGS
 
