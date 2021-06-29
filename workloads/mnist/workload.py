@@ -1,11 +1,5 @@
 from absl import logging
 import random_utils as prng
-try:
-  import jax.random as prng
-except (ImportError, ModuleNotFoundError):
-  logging.warning(
-      'Could not import jax.random for MNIST workload, falling back to numpy '
-      'random_utils.')
 
 import spec
 

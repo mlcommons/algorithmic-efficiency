@@ -23,12 +23,6 @@ import time
 
 import halton
 import random_utils as prng
-try:
-  import jax.random as prng
-except (ImportError, ModuleNotFoundError):
-  logging.warning(
-      'Could not import jax.random for the submission runner, falling back to '
-      'numpy random_utils.')
 import spec
 
 
@@ -66,8 +60,11 @@ flags.DEFINE_integer(
 flags.DEFINE_string(
     'data_dir',
     '~/',
-    'Dataset location'
-)
+    'Dataset location')
+flags.DEFINE_boolean(
+    'use_jax_rng',
+    False,
+    'Whether to use the Jax or Numpy RNG library.')
 
 FLAGS = flags.FLAGS
 
