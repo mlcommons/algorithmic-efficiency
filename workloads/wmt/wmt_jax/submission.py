@@ -1,4 +1,4 @@
-"""Training algorithm track submission functions for MNIST."""
+"""Training algorithm track submission functions for WMT."""
 import functools
 from typing import Iterator, List, Tuple
 
