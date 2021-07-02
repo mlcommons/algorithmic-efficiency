@@ -9,33 +9,37 @@ python3 submission_runner.py \
     --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
     --num_tuning_trials=3
 """
-from typing import Optional, Tuple
-
-from absl import app
-from absl import flags
-from absl import logging
 import importlib
 import inspect
 import json
 import os
 import struct
 import time
+from typing import Optional, Tuple
 
-import jax
+from absl import app
+from absl import flags
+from absl import logging
 import halton
+import jax
 import spec
+import tensorflow as tf
 
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 WORKLOADS = {
-  'mnist_jax': {
-    'workload_path': 'workloads/mnist/mnist_jax/workload.py',
-    'workload_class_name': 'MnistWorkload'
-  },
-  'mnist_pytorch': {
-    'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
-    'workload_class_name': 'MnistWorkload'
-  }
+    'mnist_jax': {
+        'workload_path': 'workloads/mnist/mnist_jax/workload.py',
+        'workload_class_name': 'MnistWorkload'
+    },
+    'mnist_pytorch': {
+        'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
+        'workload_class_name': 'MnistWorkload'
+    },
+    'wmt_jax': {
+        'workload_path': 'workloads/wmt/wmt_jax/workload.py',
+        'workload_class_name': 'WMTWorkload'
+    }
 }
 
 flags.DEFINE_string(
@@ -133,9 +137,12 @@ def train_once(
   data_rng, opt_init_rng, model_init_rng, rng = jax.random.split(rng, 4)
 
   # Workload setup.
+  logging.info('Initializing dataset')
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
+  logging.info('Initializing model')
   model_params, model_state = workload.init_model_fn(model_init_rng)
+  logging.info('Initializing optimizer')
   optimizer_state = init_optimizer_state(
       workload,
       model_params,
@@ -153,12 +160,13 @@ def train_once(
   training_complete = False
   global_start_time = time.time()
 
+  logging.info('Starting training loop')
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = jax.random.fold_in(rng, global_step)
     data_select_rng, preprocess_rng, update_rng, eval_rng = jax.random.split(
         step_rng, 4)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch = data_selection(
+    selected_data = data_selection(
         workload,
         input_queue,
         optimizer_state,
@@ -166,10 +174,8 @@ def train_once(
         hyperparameters,
         global_step,
         data_select_rng)
-    (augmented_train_input_batch,
-     augmented_train_label_batch) = workload.preprocess_for_train(
-        selected_train_input_batch,
-        selected_train_label_batch,
+    augmented_train_batch = workload.preprocess_for_train(
+        selected_data,
         train_mean=workload.train_mean,
         train_stddev=workload.train_stddev,
         rng=preprocess_rng)
@@ -180,8 +186,7 @@ def train_once(
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
-          augmented_and_preprocessed_input_batch=augmented_train_input_batch,
-          label_batch=augmented_train_label_batch,
+          augmented_and_preprocessed_input_batch=augmented_train_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,
@@ -194,6 +199,10 @@ def train_once(
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
+    logging.log_first_n(logging.INFO,
+                        'Finished training step %d, accumulated time %f', 5,
+                        global_step, accumulated_submission_time)
+
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
@@ -289,6 +298,10 @@ def score_submission_on_workload(
 
 
 def main(_):
+  # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+  # it unavailable to JAX.
+  tf.config.experimental.set_visible_devices([], 'GPU')
+
   for workload_name, workload in WORKLOADS.items():
     _import_workload(
       workload_path=workload['workload_path'],
@@ -308,3 +321,4 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
+

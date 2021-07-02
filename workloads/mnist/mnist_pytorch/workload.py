@@ -157,3 +157,4 @@ class MnistWorkload(Mnist):
     accuracy = (predicted == labels).cpu().numpy().mean()
     loss = self.loss_fn(labels, logits).cpu().numpy().mean()
     return {'accuracy': accuracy, 'loss': loss}
+
