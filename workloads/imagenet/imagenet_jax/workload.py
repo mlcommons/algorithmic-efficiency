@@ -1,4 +1,10 @@
-"""ImageNet workload implemented in Jax."""
+"""ImageNet workload implemented in Jax.
+
+python3 submission_runner.py \
+    --workload=imagenet_jax \
+    --submission_path=workloads/imagenet/imagenet_jax/submission.py \
+    --num_tuning_trials=1
+"""
 
 from typing import Tuple
 import time
@@ -29,12 +35,12 @@ class ImagenetWorkload(spec.Workload):
     self._eval_ds = None
     self._param_shapes = None
     self.epoch_metrics = []
-    # self.model_name = 'ResNet50'
-    # self.dataset = 'imagenet2012:5.*.*'
-    # self.num_classes = 1000
-    self.model_name = '_ResNet1'
-    self.dataset = 'imagenette'
-    self.num_classes = 10
+    self.model_name = 'ResNet50'
+    self.dataset = 'imagenet2012:5.*.*'
+    self.num_classes = 1000
+    # self.model_name = '_ResNet1'
+    # self.dataset = 'imagenette'
+    # self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result > 0.69
@@ -56,15 +62,15 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 60
+    return 111600 # 31 hours
 
   @property
   def max_allowed_eval_time_sec(self):
-    return 20
+    return 150 # 2.5 mins
 
   @property
   def eval_period_time_sec(self):
-    return 30
+    return 6000 # 100 mins
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
@@ -83,6 +89,7 @@ class ImagenetWorkload(spec.Workload):
     stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
     ds_builder = tfds.builder(self.dataset)
+    ds_builder.download_and_prepare()
     ds = input_pipeline.create_input_iter(
       ds_builder,
       batch_size,

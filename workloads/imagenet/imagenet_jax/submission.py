@@ -14,7 +14,7 @@ import spec
 
 def get_batch_size(workload_name):
   del workload_name
-  return 128
+  return 256
 
 
 def cosine_decay(lr, step, total_steps):
@@ -34,11 +34,11 @@ def create_learning_rate_schedule(hparams, max_training_steps):
     lr_fn: A function mapping global_step to lr.
   """
   hparams = {
-    'base_lr': 7.05,
+    'base_lr': 7.05/64,
     'warmup_power': 2.0,
-    'warmup_steps': 706.5,
+    'warmup_steps': 706.5*100,
     'end_lr': 0.000006,
-    'decay_end': 2512,
+    'decay_end': 2512*100,
     'power': 2.0,
     'start_lr': 0.0,
   }
