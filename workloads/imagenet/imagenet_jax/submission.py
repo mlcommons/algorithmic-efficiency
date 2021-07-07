@@ -152,7 +152,7 @@ def update_params(
 
   workload.epoch_metrics.append(metrics)
 
-  if global_step % workload.steps_per_epoch == 0:
+  if (global_step + 1) % workload.steps_per_epoch == 0:
     # sync batch statistics across replicas once per epoch
     new_model_state = workload.sync_batch_stats(new_model_state)
 
