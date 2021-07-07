@@ -16,7 +16,7 @@ import spec
 
 def get_batch_size(workload_name):
   del workload_name
-  return 256
+  return 128
 
 
 def cosine_decay(lr, step, total_steps):
@@ -25,42 +25,22 @@ def cosine_decay(lr, step, total_steps):
   return mult * lr
 
 
-def create_learning_rate_schedule(hparams, max_training_steps):
-  """Polynomial learning rate schedule for LARS optimizer.
-  This function is copied from
-  https://github.com/google/init2winit/blob/master/init2winit/schedules.py
-  Args:
-    hparams: Relevant hparams are base_lr, warmup_steps.
-    max_training_steps: Used to calculate the number of decay steps.
-  Returns:
-    lr_fn: A function mapping global_step to lr.
-  """
-  hparams = {
-    'base_lr': 7.05/64,
-    'warmup_power': 2.0,
-    'warmup_steps': 706.5*100,
-    'end_lr': 0.000006,
-    'decay_end': 2512*100,
-    'power': 2.0,
-    'start_lr': 0.0,
-  }
-  decay_steps = max_training_steps - hparams['warmup_steps'] + 1
-  def step_fn(step):
-    step = jax.lax.cond(
-      (lambda step, decay_end :
-        decay_end > 0 and step >= decay_end)(step, hparams['decay_end']),
-      lambda _: hparams['decay_end'],
-      lambda _: step,
-      operand=None)
-    r = (step / hparams['warmup_steps']) ** hparams['warmup_power']
-    warmup_lr = (
-        hparams['base_lr'] * r + (1 - r) * hparams['start_lr'])
-    decay_step = jnp.minimum(step - hparams['warmup_steps'], decay_steps)
-    poly_lr = (
-        hparams['end_lr'] + (hparams['base_lr'] - hparams['end_lr']) *
-        (1 - decay_step / decay_steps) ** hparams['power'])
-    return jnp.where(step <= hparams['warmup_steps'], warmup_lr, poly_lr)
-  return step_fn
+def create_learning_rate_fn(
+    hparams: spec.Hyperparamters,
+    steps_per_epoch: int):
+  """Create learning rate schedule."""
+  base_learning_rate = hparams.learning_rate * get_batch_size('imagenet') / 256.
+  warmup_fn = optax.linear_schedule(
+      init_value=0., end_value=base_learning_rate,
+      transition_steps=hparams.warmup_epochs * steps_per_epoch)
+  cosine_epochs = max(hparams.num_epochs - hparams.warmup_epochs, 1)
+  cosine_fn = optax.cosine_decay_schedule(
+      init_value=base_learning_rate,
+      decay_steps=cosine_epochs * steps_per_epoch)
+  schedule_fn = optax.join_schedules(
+      schedules=[warmup_fn, cosine_fn],
+      boundaries=[hparams.warmup_epochs * steps_per_epoch])
+  return schedule_fn
 
 
 def optimizer(hyperparameters: spec.Hyperparamters, learning_rate_fn):
@@ -78,7 +58,7 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  workload.learning_rate_fn = create_learning_rate_schedule(hyperparameters, workload.steps_per_epoch)
+  workload.learning_rate_fn = create_learning_rate_fn(hyperparameters, workload.steps_per_epoch)
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters, workload.learning_rate_fn)

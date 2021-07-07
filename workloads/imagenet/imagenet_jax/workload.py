@@ -34,12 +34,12 @@ class ImagenetWorkload(spec.Workload):
     self._eval_ds = None
     self._param_shapes = None
     self.epoch_metrics = []
-    # self.model_name = 'ResNet50'
-    # self.dataset = 'imagenet2012:5.*.*'
-    # self.num_classes = 1000
-    self.model_name = '_ResNet1'
-    self.dataset = 'imagenette'
-    self.num_classes = 10
+    self.model_name = 'ResNet50'
+    self.dataset = 'imagenet2012:5.*.*'
+    self.num_classes = 1000
+    # self.model_name = '_ResNet1'
+    # self.dataset = 'imagenette'
+    # self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result > 0.69
@@ -65,7 +65,7 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def max_allowed_eval_time_sec(self):
-    return 150 # 2.5 mins
+    return 180 # 3 mins
 
   @property
   def eval_period_time_sec(self):
