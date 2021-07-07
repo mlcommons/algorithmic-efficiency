@@ -8,9 +8,8 @@ python3 submission_runner.py \
 
 from typing import Tuple
 import time
-import functools
 from absl import logging
-from jax.interpreters.batching import batch
+import optax
 
 import tensorflow as tf
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make it
@@ -35,12 +34,12 @@ class ImagenetWorkload(spec.Workload):
     self._eval_ds = None
     self._param_shapes = None
     self.epoch_metrics = []
-    self.model_name = 'ResNet50'
-    self.dataset = 'imagenet2012:5.*.*'
-    self.num_classes = 1000
-    # self.model_name = '_ResNet1'
-    # self.dataset = 'imagenette'
-    # self.num_classes = 10
+    # self.model_name = 'ResNet50'
+    # self.dataset = 'imagenet2012:5.*.*'
+    # self.num_classes = 1000
+    self.model_name = '_ResNet1'
+    self.dataset = 'imagenette'
+    self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result > 0.69
