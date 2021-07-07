@@ -66,6 +66,7 @@ def create_learning_rate_schedule(hparams, max_training_steps):
 def optimizer(hyperparameters: spec.Hyperparamters, learning_rate_fn):
   opt_init_fn, opt_update_fn = optax.sgd(
       nesterov=True,
+      momentum=hyperparameters.momentum,
       learning_rate=learning_rate_fn
     )
   return opt_init_fn, opt_update_fn
