@@ -7,6 +7,8 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import jax_utils
+from jax import lax
+
 
 import spec
 
@@ -114,6 +116,7 @@ def pmapped_train_step(workload, model_state, optimizer_state, current_params,
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   aux, grad = grad_fn(current_params)
+  grad = lax.pmean(grad, axis_name='batch')
   _, opt_update_fn = optimizer(hyperparameters, workload.learning_rate_fn)
   new_model_state, logits = aux[1]
   updates, new_optimizer_state = opt_update_fn(
