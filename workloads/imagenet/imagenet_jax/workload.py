@@ -216,9 +216,12 @@ class ImagenetWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-    one_hot_targets = common_utils.onehot(label_batch,
-                                          num_classes=self.num_classes)
-    return -jnp.sum(one_hot_targets * logits_batch) / label_batch.size
+    """Cross Entropy Loss"""
+    one_hot_labels = common_utils.onehot(label_batch,
+                                         num_classes=self.num_classes)
+    xentropy = optax.softmax_cross_entropy(logits=logits_batch,
+                                           labels=one_hot_labels)
+    return jnp.mean(xentropy)
 
   def compute_metrics(self, logits, labels):
     loss = self.loss_fn(labels, logits)
