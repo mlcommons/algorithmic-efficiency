@@ -1,4 +1,6 @@
-import jax
+from absl import logging
+import random_utils as prng
+
 import spec
 
 class Mnist(spec.Workload):
@@ -37,7 +39,7 @@ class Mnist(spec.Workload):
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""
-    data_rng, model_rng = jax.random.split(rng, 2)
+    data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 2000
     num_batches = 10000 // eval_batch_size
     self._eval_ds = self.build_input_queue(

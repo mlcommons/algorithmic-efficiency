@@ -45,7 +45,7 @@ class MnistWorkload(Mnist):
       split: str,
       data_dir: str,
       batch_size):
-    ds = tfds.load('mnist', split=split, try_gcs=True)
+    ds = tfds.load('mnist', split=split)
     ds = ds.cache()
     ds = ds.map(lambda x: (self._normalize(x['image']), x['label']))
     if split == 'train':
@@ -104,6 +104,19 @@ class MnistWorkload(Mnist):
     self._param_shapes = jax.tree_map(
         lambda x: spec.ShapeTuple(x.shape), initial_params)
     return initial_params, None
+
+  # Keep this separate from the loss function in order to support optimizers
+  # that use the logits.
+  def output_activation_fn(
+      self,
+      logits_batch: spec.Tensor,
+      loss_type: spec.LossType) -> spec.Tensor:
+    if loss_type == spec.LossType.SOFTMAX_CROSS_ENTROPY:
+      return jax.nn.softmax(logits_batch, axis=-1)
+    if loss_type == spec.LossType.SIGMOID_CROSS_ENTROPY:
+      return jax.nn.sigmoid(logits_batch)
+    if loss_type == spec.LossType.MEAN_SQUARED_ERROR:
+      return logits_batch
 
   def model_fn(
       self,
