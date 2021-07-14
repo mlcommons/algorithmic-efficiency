@@ -7,7 +7,6 @@ python3 submission_runner.py \
 """
 
 from typing import Tuple
-from absl import logging
 import optax
 
 import tensorflow as tf
@@ -42,7 +41,7 @@ class ImagenetWorkload(spec.Workload):
     # self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result > 0.69
+    return eval_result['accuracy'] > 0.76
 
   @property
   def loss_type(self):
@@ -240,8 +239,6 @@ class ImagenetWorkload(spec.Workload):
 
     epoch_metrics = common_utils.get_metrics(self.epoch_metrics)
     summary = jax.tree_map(lambda x: x.mean(), epoch_metrics)
-    logging.info('train loss: %.4f, accuracy: %.2f',
-                  summary['loss'], summary['accuracy'] * 100)
     self.epoch_metrics = []
     eval_metrics = []
 
@@ -267,8 +264,6 @@ class ImagenetWorkload(spec.Workload):
 
     eval_metrics = common_utils.get_metrics(eval_metrics)
     summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-    logging.info('eval loss: %.4f, accuracy: %.2f',
-                  summary['loss'], summary['accuracy'] * 100)
-    return float(total_accuracy / num_batches)
+    return summary
 
 
