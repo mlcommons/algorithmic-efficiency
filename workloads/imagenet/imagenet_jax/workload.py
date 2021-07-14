@@ -37,6 +37,7 @@ class ImagenetWorkload(spec.Workload):
     self.model_name = 'ResNet50'
     self.dataset = 'imagenet2012:5.*.*'
     self.num_classes = 1000
+    # For faster development testing, uncomment the lines below
     # self.model_name = '_ResNet1'
     # self.dataset = 'imagenette'
     # self.num_classes = 10
