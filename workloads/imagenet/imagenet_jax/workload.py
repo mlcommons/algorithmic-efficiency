@@ -77,7 +77,6 @@ class ImagenetWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-
   def _build_dataset(self,
       data_rng: jax.random.PRNGKey,
       split: str,
