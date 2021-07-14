@@ -7,7 +7,6 @@ python3 submission_runner.py \
 """
 
 from typing import Tuple
-import time
 from absl import logging
 import optax
 
@@ -63,10 +62,6 @@ class ImagenetWorkload(spec.Workload):
   @property
   def max_allowed_runtime_sec(self):
     return 111600 # 31 hours
-
-  @property
-  def max_allowed_eval_time_sec(self):
-    return 180 # 3 mins
 
   @property
   def eval_period_time_sec(self):
@@ -240,7 +235,7 @@ class ImagenetWorkload(spec.Workload):
       data_dir: str):
     """Run a full evaluation of the model."""
 
-    # sync batch statistics across replicas once per epoch
+    # sync batch statistics across replicas
     model_state = self.sync_batch_stats(model_state)
 
     epoch_metrics = common_utils.get_metrics(self.epoch_metrics)
@@ -258,10 +253,8 @@ class ImagenetWorkload(spec.Workload):
         data_rng, split='test', batch_size=eval_batch_size, data_dir=data_dir)
     eval_iter = iter(self._eval_ds)
     total_accuracy = 0.
-    eval_step = 1
-    start_time = time.time()
-    accumulated_eval_time = 0
-    for batch in eval_iter:
+    for idx in range(num_batches):
+      batch = next(eval_iter)
       metrics = jax.pmap(self.eval_model_fn,
                          axis_name='batch',
                          in_axes=(0, 0, 0, None))(
@@ -271,15 +264,6 @@ class ImagenetWorkload(spec.Workload):
                       rng)
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
-      eval_step += 1
-      # Check if eval time is over limit
-      current_time = time.time()
-      accumulated_eval_time += current_time - start_time
-      is_time_remaining = (
-        accumulated_eval_time < self.max_allowed_eval_time_sec)
-      if not is_time_remaining:
-        num_batches = eval_step
-        break
 
     eval_metrics = common_utils.get_metrics(eval_metrics)
     summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
