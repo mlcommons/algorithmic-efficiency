@@ -147,10 +147,7 @@ class ImagenetWorkload(spec.Workload):
 
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
-    @jax.jit
-    def init(*args):
-      return model.init(*args)
-    variables = init({'params': key}, jnp.ones(input_shape, model.dtype))
+    variables = jax.jit(model.init)({'params': key}, jnp.ones(input_shape, model.dtype))
     model_state, params = variables.pop('params')
     return params, model_state
 
