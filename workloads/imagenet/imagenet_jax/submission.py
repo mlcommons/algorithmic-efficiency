@@ -42,7 +42,9 @@ def create_learning_rate_fn(
   return schedule_fn
 
 
-def optimizer(hyperparameters: spec.Hyperparamters, learning_rate_fn):
+def optimizer(hyperparameters: spec.Hyperparamters, num_train_examples: int):
+  steps_per_epoch = num_train_examples // get_batch_size('imagenet')
+  learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
   opt_init_fn, opt_update_fn = optax.sgd(
       nesterov=True,
       momentum=hyperparameters.momentum,
@@ -57,13 +59,12 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
-  workload.learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
-  opt_init_fn, _ = optimizer(hyperparameters, workload.learning_rate_fn)
+  opt_init_fn, opt_update_fn = optimizer(
+      hyperparameters, workload.num_train_examples)
   optimizer_state = opt_init_fn(params_zeros_like)
-  return jax_utils.replicate(optimizer_state)
+  return jax_utils.replicate(optimizer_state), opt_update_fn
 
 
 # We need to jax.pmap here instead of inside update_params because the latter
@@ -71,10 +72,10 @@ def init_optimizer_state(
 @functools.partial(
   jax.pmap,
   axis_name='batch',
-  in_axes=(None, 0, 0, 0, None, None, 0, None),
-  static_broadcasted_argnums=(0,))
-def pmapped_train_step(workload, model_state, optimizer_state, current_params,
-                       step, hyperparameters, batch, rng):
+  in_axes=(None, None, 0, 0, 0, None, 0, None),
+  static_broadcasted_argnums=(0, 1))
+def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
+                       current_params, hyperparameters, batch, rng):
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
@@ -97,7 +98,6 @@ def pmapped_train_step(workload, model_state, optimizer_state, current_params,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   aux, grad = grad_fn(current_params)
   grad = lax.pmean(grad, axis_name='batch')
-  _, opt_update_fn = optimizer(hyperparameters, workload.learning_rate_fn)
   new_model_state, logits = aux[1]
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_params)
@@ -125,8 +125,9 @@ def update_params(
     'image': augmented_and_preprocessed_input_batch,
     'label': label_batch
   }
-  new_model_state, new_optimizer, new_params, metrics = pmapped_train_step(
-    workload, model_state, optimizer_state, current_params, global_step,
+  optimizer_state, opt_update_fn = optimizer_state
+  new_model_state, new_optimizer_state, new_params, metrics = pmapped_train_step(
+    workload, opt_update_fn, model_state, optimizer_state, current_params,
     hyperparameters, batch, rng)
 
   steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
@@ -134,7 +135,7 @@ def update_params(
     # sync batch statistics across replicas once per epoch
     new_model_state = workload.sync_batch_stats(new_model_state)
 
-  return new_optimizer, new_params, new_model_state
+  return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
 def data_selection(
