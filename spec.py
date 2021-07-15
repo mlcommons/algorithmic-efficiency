@@ -52,7 +52,7 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterTree = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+ParameterContainer = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
@@ -64,17 +64,17 @@ Steps = int
 
 # BN EMAs.
 ModelAuxillaryState = Any
-ModelInitState = Tuple[ParameterTree, ModelAuxillaryState]
+ModelInitState = Tuple[ParameterContainer, ModelAuxillaryState]
 
 
 UpdateReturn = Tuple[
-    OptimizerState, ParameterTree, ModelAuxillaryState]
+    OptimizerState, ParameterContainer, ModelAuxillaryState]
 InitOptimizerFn = Callable[
     [ParameterShapeTree, Hyperparamters, RandomState],
     OptimizerState]
 UpdateParamsFn = Callable[
     [
-        ParameterTree,
+        ParameterContainer,
         ParameterTypeTree,
         ModelAuxillaryState,
         Hyperparamters,
@@ -91,7 +91,7 @@ DataSelectionFn = Callable[
     [
         Iterator[Tuple[Tensor, Tensor]],
         OptimizerState,
-        ParameterTree,
+        ParameterContainer,
         LossType,
         Hyperparamters,
         int,
@@ -148,7 +148,7 @@ class Workload(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def is_output_params(self, param_key: ParameterKey) -> bool:
-    """Whether or not a key in ParameterTree is the output layer parameters."""
+    """Whether or not a key in ParameterContainer is the output layer parameters."""
 
   @abc.abstractmethod
   def preprocess_for_train(
@@ -169,19 +169,19 @@ class Workload(metaclass=abc.ABCMeta):
     """return preprocessed_input_batch"""
 
   # InitModelFn = Callable[
-  #     Tuple[ParameterShapeTree, RandomState], ParameterTree]
+  #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
   @abc.abstractmethod
   def init_model_fn(
-      self, rng: RandomState) -> Tuple[ParameterTree, ModelAuxillaryState]:
+      self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxillaryState]:
     """return initial_params, initial_model_state"""
 
   # ModelFn = Callable[
-  #     Tuple[ParameterTree, Tensor, ForwardPassMode, RandomState, bool],
+  #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
   #     Tensor]
   @abc.abstractmethod
   def model_fn(
       self,
-      params: ParameterTree,
+      params: ParameterContainer,
       augmented_and_preprocessed_input_batch: Tensor,
       model_state: ModelAuxillaryState,
       mode: ForwardPassMode,
@@ -216,7 +216,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def eval_model(
       self,
-      params: ParameterTree,
+      params: ParameterContainer,
       model_state: ModelAuxillaryState,
       rng: RandomState):
     """Run a full evaluation of the model."""
@@ -232,7 +232,7 @@ class TrainingCompleteError(Exception):
 
 def init_optimizer_state(
     workload: Workload,
-    model_params: ParameterTree,
+    model_params: ParameterContainer,
     model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
@@ -241,7 +241,7 @@ def init_optimizer_state(
 
 
 _UpdateReturn = Tuple[
-    OptimizerState, ParameterTree, ModelAuxillaryState]
+    OptimizerState, ParameterContainer, ModelAuxillaryState]
 # Each call to this function is considered a "step".
 # Can raise a TrainingCompleteError if it believe it has achieved the goal and
 # wants to end the run and receive a final free eval. It will not be restarted,
@@ -250,7 +250,7 @@ _UpdateReturn = Tuple[
 # wait until the next free eval and not use this functionality.
 def update_params(
     workload: Workload,
-    current_params: ParameterTree,
+    current_params: ParameterContainer,
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxillaryState,
     hyperparameters: Hyperparamters,
@@ -272,7 +272,7 @@ def data_selection(
     workload: Workload,
     input_queue: Iterator[Tuple[Tensor, Tensor]],
     optimizer_state: OptimizerState,
-    current_params: ParameterTree,
+    current_params: ParameterContainer,
     hyperparameters: Hyperparamters,
     global_step: int,
     rng: RandomState) -> Tuple[Tensor, Tensor]:

@@ -32,7 +32,7 @@ class Mnist(spec.Workload):
 
   def eval_model(
       self,
-      params: spec.ParameterTree,
+      params: spec.ParameterContainer,
       model_state: spec.ModelAuxillaryState,
       rng: spec.RandomState,
       data_dir: str):

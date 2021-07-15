@@ -86,7 +86,7 @@ class ImagenetWorkload(spec.Workload):
     if 'imagenette' == self.dataset:
       return 30 # 30 seconds
 
-  # Return whether or not a key in spec.ParameterTree is the output layer
+  # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
@@ -157,7 +157,7 @@ class ImagenetWorkload(spec.Workload):
     model_state, params = variables.pop('params')
     return params, model_state
 
-  _InitState = Tuple[spec.ParameterTree, spec.ModelAuxillaryState]
+  _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxillaryState]
   def init_model_fn(
       self,
       rng: spec.RandomState) -> _InitState:
@@ -190,7 +190,7 @@ class ImagenetWorkload(spec.Workload):
 
   def model_fn(
       self,
-      params: spec.ParameterTree,
+      params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxillaryState,
       mode: spec.ForwardPassMode,
@@ -238,7 +238,7 @@ class ImagenetWorkload(spec.Workload):
 
   def eval_model(
       self,
-      params: spec.ParameterTree,
+      params: spec.ParameterContainer,
       model_state: spec.ModelAuxillaryState,
       rng: spec.RandomState,
       data_dir: str):

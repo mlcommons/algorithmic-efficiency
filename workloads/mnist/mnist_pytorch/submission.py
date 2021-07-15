@@ -14,7 +14,7 @@ def get_batch_size(workload_name):
 
 def init_optimizer_state(
     workload: spec.Workload,
-    model_params: spec.ParameterTree,
+    model_params: spec.ParameterContainer,
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
@@ -31,7 +31,7 @@ def init_optimizer_state(
 
 def update_params(
     workload: spec.Workload,
-    current_params: spec.ParameterTree,
+    current_params: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
@@ -78,7 +78,7 @@ def data_selection(
     workload: spec.Workload,
     input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
     optimizer_state: spec.OptimizerState,
-    current_params: spec.ParameterTree,
+    current_params: spec.ParameterContainer,
     hyperparameters: spec.Hyperparamters,
     global_step: int,
     rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
