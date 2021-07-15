@@ -101,7 +101,6 @@ class ImagenetWorkload(spec.Workload):
       self.train_stddev,
       train=True,
       cache=False)
-    self.batch_size = batch_size
     return ds
 
   def build_input_queue(
@@ -245,7 +244,7 @@ class ImagenetWorkload(spec.Workload):
 
     eval_metrics = []
     data_rng, model_rng = jax.random.split(rng, 2)
-    eval_batch_size = self.batch_size
+    eval_batch_size = 200
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
       self._eval_ds = self._build_dataset(
