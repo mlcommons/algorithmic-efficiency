@@ -243,15 +243,10 @@ class ImagenetWorkload(spec.Workload):
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""
-
     # sync batch statistics across replicas
     model_state = self.sync_batch_stats(model_state)
 
-    epoch_metrics = common_utils.get_metrics(self.epoch_metrics)
-    summary = jax.tree_map(lambda x: x.mean(), epoch_metrics)
-    self.epoch_metrics = []
     eval_metrics = []
-
     data_rng, model_rng = jax.random.split(rng, 2)
     eval_batch_size = self.batch_size
     num_batches = self.num_eval_examples // eval_batch_size

@@ -130,8 +130,6 @@ def update_params(
     workload, model_state, optimizer_state, current_params, global_step,
     hyperparameters, batch, rng)
 
-  workload.epoch_metrics.append(metrics)
-
   steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
   if (global_step + 1) % steps_per_epoch == 0:
     # sync batch statistics across replicas once per epoch
