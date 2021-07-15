@@ -17,8 +17,8 @@ import tensorflow_datasets as tfds
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax import lax
-from flax.training import common_utils
 from flax import jax_utils
 
 import spec
@@ -267,7 +267,8 @@ class ImagenetWorkload(spec.Workload):
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
 
-    eval_metrics = common_utils.get_metrics(eval_metrics)
+    eval_metrics = jax.device_get(jax.tree_map(lambda x: x[0], eval_metrics))
+    eval_metrics = jax.tree_multimap(lambda *x: np.stack(x), *eval_metrics)
     summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
     return summary
 
