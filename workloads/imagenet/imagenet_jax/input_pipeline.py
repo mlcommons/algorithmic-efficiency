@@ -246,6 +246,9 @@ def create_input_iter(dataset_builder,
       dataset_builder, batch_size, train=train, mean_rgb=mean_rgb,
       stddev_rgb=stddev_rgb, cache=cache)
   it = map(shard_numpy_ds, ds)
+
+  # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%
   it = jax_utils.prefetch_to_device(it, 2)
+
   return it
 
