@@ -220,7 +220,7 @@ class ImagenetWorkload(spec.Workload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
-    one_hot_labels = common_utils.onehot(label_batch,
+    one_hot_labels = jax.nn.one_hot(label_batch,
                                          num_classes=self.num_classes)
     xentropy = optax.softmax_cross_entropy(logits=logits_batch,
                                            labels=one_hot_labels)
