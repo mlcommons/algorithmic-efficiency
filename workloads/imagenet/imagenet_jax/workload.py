@@ -116,9 +116,9 @@ class ImagenetWorkload(spec.Workload):
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics and
     # we average them.
-    avg = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
+    avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
     new_model_state = model_state.copy({
-      'batch_stats': avg(model_state['batch_stats'])})
+      'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
   @property
