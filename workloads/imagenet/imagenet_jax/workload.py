@@ -55,6 +55,9 @@ class ImagenetWorkload(spec.Workload):
   def train_stddev(self):
     return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
+  def model_params_types(self):
+    pass
+
   @property
   def num_train_examples(self):
     if 'imagenet2012' in self.dataset:
@@ -69,16 +72,19 @@ class ImagenetWorkload(spec.Workload):
     if 'imagenette' == self.dataset:
       return 3925
 
-  def model_params_types(self):
-    pass
-
   @property
   def max_allowed_runtime_sec(self):
-    return 111600 # 31 hours
+    if 'imagenet2012' in self.dataset:
+      return 111600 # 31 hours
+    if 'imagenette' == self.dataset:
+      return 3600 # 60 minutes
 
   @property
   def eval_period_time_sec(self):
-    return 6000 # 100 mins
+    if 'imagenet2012' in self.dataset:
+      return 6000 # 100 mins
+    if 'imagenette' == self.dataset:
+      return 30 # 30 seconds
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
