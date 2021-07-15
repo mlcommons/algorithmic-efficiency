@@ -35,7 +35,11 @@ WORKLOADS = {
   'mnist_pytorch': {
     'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
     'workload_class_name': 'MnistWorkload'
-  }
+  },
+  'imagenet_jax': {
+    'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
+    'workload_class_name': 'ImagenetWorkload'
+  },
 }
 
 flags.DEFINE_string(
