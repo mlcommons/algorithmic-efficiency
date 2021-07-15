@@ -145,11 +145,6 @@ class ImagenetWorkload(spec.Workload):
       train_stddev: spec.Tensor) -> spec.Tensor:
     return (raw_input_batch, raw_label_batch)
 
-  def create_model(self, *, model_cls, **kwargs):
-    return model_cls(num_classes=self.num_classes,
-                     dtype=jnp.float32,
-                     **kwargs)
-
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
     @jax.jit
@@ -164,7 +159,8 @@ class ImagenetWorkload(spec.Workload):
       self,
       rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, self.model_name)
-    model = self.create_model(model_cls=model_cls)
+    model = model_cls(num_classes=self.num_classes,
+                      dtype=jnp.float32)
     self._model = model
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(
