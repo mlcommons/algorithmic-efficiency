@@ -257,9 +257,9 @@ class ImagenetWorkload(spec.Workload):
     total_accuracy = 0.
     for idx in range(num_batches):
       batch = next(eval_iter)
-      metrics = self.eval_model_fn(params, batch, model_state, rng)
-      eval_metrics.append(metrics)
-      total_accuracy += jnp.mean(metrics['accuracy'])
+      synced_metrics = self.eval_model_fn(params, batch, model_state, rng)
+      eval_metrics.append(synced_metrics)
+      total_accuracy += jnp.mean(synced_metrics['accuracy'])
 
     eval_metrics = jax.device_get(jax.tree_map(lambda x: x[0], eval_metrics))
     eval_metrics = jax.tree_multimap(lambda *x: np.stack(x), *eval_metrics)
