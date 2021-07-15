@@ -55,6 +55,20 @@ class ImagenetWorkload(spec.Workload):
   def train_stddev(self):
     return 1.0
 
+  @property
+  def num_train_examples(self):
+    if 'imagenet2012' in self.dataset:
+      return 1271167
+    if 'imagenette' == self.dataset:
+      return 9469
+
+  @property
+  def num_eval_examples(self):
+    if 'imagenet2012' in self.dataset:
+      return 100000
+    if 'imagenette' == self.dataset:
+      return 3925
+
   def model_params_types(self):
     pass
 
@@ -90,10 +104,6 @@ class ImagenetWorkload(spec.Workload):
       stddev_rgb,
       train=True,
       cache=False)
-
-    self.num_train_examples = ds_builder.info.splits['train'].num_examples
-    self.num_eval_examples = ds_builder.info.splits['validation'].num_examples
-    self.steps_per_epoch = self.num_train_examples // batch_size
     self.batch_size = batch_size
     return ds
 

@@ -58,7 +58,8 @@ def init_optimizer_state(
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  workload.learning_rate_fn = create_learning_rate_fn(hyperparameters, workload.steps_per_epoch)
+  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
+  workload.learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters, workload.learning_rate_fn)
@@ -131,7 +132,8 @@ def update_params(
 
   workload.epoch_metrics.append(metrics)
 
-  if (global_step + 1) % workload.steps_per_epoch == 0:
+  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
+  if (global_step + 1) % steps_per_epoch == 0:
     # sync batch statistics across replicas once per epoch
     new_model_state = workload.sync_batch_stats(new_model_state)
 
