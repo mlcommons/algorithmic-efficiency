@@ -102,9 +102,8 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_params)
   updated_params = optax.apply_updates(current_params, updates)
-  metrics = workload.compute_metrics(logits, batch['label'])
 
-  return new_model_state, new_optimizer_state, updated_params, metrics
+  return new_model_state, new_optimizer_state, updated_params
 
 
 def update_params(
@@ -126,7 +125,7 @@ def update_params(
     'label': label_batch
   }
   optimizer_state, opt_update_fn = optimizer_state
-  new_model_state, new_optimizer_state, new_params, metrics = pmapped_train_step(
+  new_model_state, new_optimizer_state, new_params = pmapped_train_step(
     workload, opt_update_fn, model_state, optimizer_state, current_params,
     hyperparameters, batch, rng)
 
