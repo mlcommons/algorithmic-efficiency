@@ -49,11 +49,11 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def train_mean(self):
-    return 0.0
+    return [0.485 * 255, 0.456 * 255, 0.406 * 255]
 
   @property
   def train_stddev(self):
-    return 1.0
+    return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
   @property
   def num_train_examples(self):
@@ -92,16 +92,13 @@ class ImagenetWorkload(spec.Workload):
       batch_size):
     if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    mean_rgb = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-    stddev_rgb = [0.229 * 255, 0.224 * 255, 0.225 * 255]
-
     ds_builder = tfds.builder(self.dataset)
     ds_builder.download_and_prepare()
     ds = input_pipeline.create_input_iter(
       ds_builder,
       batch_size,
-      mean_rgb,
-      stddev_rgb,
+      self.train_mean,
+      self.train_stddev,
       train=True,
       cache=False)
     self.batch_size = batch_size
