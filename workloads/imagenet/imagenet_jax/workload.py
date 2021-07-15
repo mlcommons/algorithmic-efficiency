@@ -5,7 +5,7 @@ python3 submission_runner.py \
     --submission_path=workloads/imagenet/imagenet_jax/submission.py \
     --num_tuning_trials=1
 """
-
+import functools
 from typing import Tuple
 import optax
 
@@ -167,6 +167,11 @@ class ImagenetWorkload(spec.Workload):
     params = jax_utils.replicate(params)
     return params, model_state
 
+  @functools.partial(
+  jax.pmap,
+  axis_name='batch',
+  in_axes=(None, 0, 0, 0, None),
+  static_broadcasted_argnums=(0,))
   def eval_model_fn(self, params, batch, state, rng):
     logits, _ = self.model_fn(
       params,
@@ -246,13 +251,7 @@ class ImagenetWorkload(spec.Workload):
     total_accuracy = 0.
     for idx in range(num_batches):
       batch = next(eval_iter)
-      metrics = jax.pmap(self.eval_model_fn,
-                         axis_name='batch',
-                         in_axes=(0, 0, 0, None))(
-                      params,
-                      batch,
-                      model_state,
-                      rng)
+      metrics = self.eval_model_fn(params, batch, model_state, rng)
       eval_metrics.append(metrics)
       total_accuracy += jnp.mean(metrics['accuracy'])
 

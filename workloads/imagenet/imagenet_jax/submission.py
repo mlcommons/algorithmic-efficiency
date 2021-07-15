@@ -9,7 +9,6 @@ import optax
 from flax import jax_utils
 from jax import lax
 
-
 import spec
 
 
