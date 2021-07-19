@@ -112,7 +112,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxillaryState,
     hyperparameters: spec.Hyperparamters,
-    augmented_and_preprocessed_input_batch: spec.Tensor,
+    input_batch: spec.Tensor,
     label_batch: spec.Tensor,
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -121,7 +121,7 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   batch = {
-    'image': augmented_and_preprocessed_input_batch,
+    'image': input_batch,
     'label': label_batch
   }
   optimizer_state, opt_update_fn = optimizer_state

@@ -134,23 +134,6 @@ class ImagenetWorkload(spec.Workload):
                        'should be called before workload.param_shapes!')
     return self._param_shapes
 
-  def preprocess_for_train(
-      self,
-      selected_raw_input_batch: spec.Tensor,
-      selected_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor,
-      rng: spec.RandomState) -> spec.Tensor:
-    return (selected_raw_input_batch, selected_label_batch)
-
-  def preprocess_for_eval(
-      self,
-      raw_input_batch: spec.Tensor,
-      raw_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor) -> spec.Tensor:
-    return (raw_input_batch, raw_label_batch)
-
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': key}, jnp.ones(input_shape, model.dtype))
@@ -201,14 +184,14 @@ class ImagenetWorkload(spec.Workload):
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
         variables,
-        jax.numpy.squeeze(augmented_and_preprocessed_input_batch['image']),
+        jax.numpy.squeeze(input_batch['image']),
         train=train,
         mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
         variables,
-        jax.numpy.squeeze(augmented_and_preprocessed_input_batch['image']),
+        jax.numpy.squeeze(input_batch['image']),
         train=train,
         mutable=False)
       return logits, None
