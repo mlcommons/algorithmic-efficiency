@@ -174,7 +174,7 @@ class ImagenetWorkload(spec.Workload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      input_batch: spec.Tensor,
       model_state: spec.ModelAuxillaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
