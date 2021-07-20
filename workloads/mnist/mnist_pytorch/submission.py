@@ -52,8 +52,6 @@ def update_params(
 
   current_model = current_param_container
   current_param_container.train()
-
-  input_batch = input_batch
   optimizer_state['optimizer'].zero_grad()
 
   output, new_model_state = workload.model_fn(
