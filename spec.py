@@ -5,7 +5,6 @@ import time
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 
 import abc
-import jax
 
 
 class LossType(enum.Enum):
@@ -63,12 +62,12 @@ Timing = int
 Steps = int
 
 # BN EMAs.
-ModelAuxillaryState = Any
-ModelInitState = Tuple[ParameterContainer, ModelAuxillaryState]
+ModelAuxiliaryState = Any
+ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 
 
 UpdateReturn = Tuple[
-    OptimizerState, ParameterContainer, ModelAuxillaryState]
+    OptimizerState, ParameterContainer, ModelAuxiliaryState]
 InitOptimizerFn = Callable[
     [ParameterShapeTree, Hyperparamters, RandomState],
     OptimizerState]
@@ -76,7 +75,7 @@ UpdateParamsFn = Callable[
     [
         ParameterContainer,
         ParameterTypeTree,
-        ModelAuxillaryState,
+        ModelAuxiliaryState,
         Hyperparamters,
         Tensor,
         Tensor,
@@ -154,7 +153,7 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
   @abc.abstractmethod
   def init_model_fn(
-      self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxillaryState]:
+      self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxiliaryState]:
     """return initial_params, initial_model_state"""
 
   # ModelFn = Callable[
@@ -165,25 +164,21 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       params: ParameterContainer,
       input_batch: Tensor,
-      model_state: ModelAuxillaryState,
+      model_state: ModelAuxiliaryState,
       mode: ForwardPassMode,
       rng: RandomState,
-      update_batch_norm: bool) -> Tuple[Tensor, ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
     # Possible side effect of updating BN.
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
+  @abc.abstractmethod
   def output_activation_fn(
       self,
       logits_batch: Tensor,
       loss_type: LossType) -> Tensor:
-    if loss_type == LossType.SOFTMAX_CROSS_ENTROPY:
-      return jax.nn.softmax(logits_batch, axis=-1)
-    if loss_type == LossType.SIGMOID_CROSS_ENTROPY:
-      return jax.nn.sigmoid(logits_batch)
-    if loss_type == LossType.MEAN_SQUARED_ERROR:
-      return logits_batch
+    """Return the final activations of the model."""
 
   # LossFn = Callable[Tuple[Tensor, Tensor], Tensor]
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -199,7 +194,7 @@ class Workload(metaclass=abc.ABCMeta):
   def eval_model(
       self,
       params: ParameterContainer,
-      model_state: ModelAuxillaryState,
+      model_state: ModelAuxiliaryState,
       rng: RandomState):
     """Run a full evaluation of the model."""
 
@@ -215,7 +210,7 @@ class TrainingCompleteError(Exception):
 def init_optimizer_state(
     workload: Workload,
     model_params: ParameterContainer,
-    model_state: ModelAuxillaryState,
+    model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
     rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
@@ -223,7 +218,7 @@ def init_optimizer_state(
 
 
 _UpdateReturn = Tuple[
-    OptimizerState, ParameterContainer, ModelAuxillaryState]
+    OptimizerState, ParameterContainer, ModelAuxiliaryState]
 # Each call to this function is considered a "step".
 # Can raise a TrainingCompleteError if it believe it has achieved the goal and
 # wants to end the run and receive a final free eval. It will not be restarted,
@@ -232,9 +227,9 @@ _UpdateReturn = Tuple[
 # wait until the next free eval and not use this functionality.
 def update_params(
     workload: Workload,
-    current_params: ParameterContainer,
+    current_param_container: ParameterContainer,
     current_params_types: ParameterTypeTree,
-    model_state: ModelAuxillaryState,
+    model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
     input_batch: Tensor,
     label_batch: Tensor,  # Dense (not one-hot) labels.
@@ -254,7 +249,7 @@ def data_selection(
     workload: Workload,
     input_queue: Iterator[Tuple[Tensor, Tensor]],
     optimizer_state: OptimizerState,
-    current_params: ParameterContainer,
+    current_param_container: ParameterContainer,
     hyperparameters: Hyperparamters,
     global_step: int,
     rng: RandomState) -> Tuple[Tensor, Tensor]:

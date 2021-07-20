@@ -8,6 +8,7 @@ from setuptools import setup
 
 
 jax_core_deps = [
+    'jax',
     'flax',
     'optax',
     'tensorflow-cpu',
@@ -26,7 +27,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'absl-py',
-        'jax',  # We use Jax for RNG key manipulation.
+        'numpy',
     ],
     extras_require={
         'jax-cpu': jax_core_deps + ['jaxlib'],

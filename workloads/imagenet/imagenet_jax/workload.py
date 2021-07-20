@@ -22,6 +22,7 @@ from jax import lax
 from flax import jax_utils
 
 import spec
+import random_utils as prng
 from . import input_pipeline
 from . import models
 
@@ -32,13 +33,13 @@ class ImagenetWorkload(spec.Workload):
     self._eval_ds = None
     self._param_shapes = None
     self.epoch_metrics = []
-    self.model_name = 'ResNet50'
-    self.dataset = 'imagenet2012:5.*.*'
-    self.num_classes = 1000
+    # self.model_name = 'ResNet50'
+    # self.dataset = 'imagenet2012:5.*.*'
+    # self.num_classes = 1000
     # For faster development testing, uncomment the lines below
-    # self.model_name = '_ResNet1'
-    # self.dataset = 'imagenette'
-    # self.num_classes = 10
+    self.model_name = '_ResNet1'
+    self.dataset = 'imagenette'
+    self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['accuracy'] > 0.76
@@ -92,7 +93,7 @@ class ImagenetWorkload(spec.Workload):
     pass
 
   def _build_dataset(self,
-      data_rng: jax.random.PRNGKey,
+      data_rng: spec.RandomState,
       split: str,
       data_dir: str,
       batch_size):
@@ -111,7 +112,7 @@ class ImagenetWorkload(spec.Workload):
 
   def build_input_queue(
       self,
-      data_rng: jax.random.PRNGKey,
+      data_rng: spec.RandomState,
       split: str,
       data_dir: str,
       batch_size: int):
@@ -140,7 +141,7 @@ class ImagenetWorkload(spec.Workload):
     model_state, params = variables.pop('params')
     return params, model_state
 
-  _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxillaryState]
+  _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
   def init_model_fn(
       self,
       rng: spec.RandomState) -> _InitState:
@@ -155,6 +156,15 @@ class ImagenetWorkload(spec.Workload):
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+
+    # Keep this separate from the loss function in order to support optimizers
+  # that use the logits.
+  def output_activation_fn(
+      self,
+      logits_batch: spec.Tensor,
+      loss_type: spec.LossType) -> spec.Tensor:
+    """Return the final activations of the model."""
+    pass
 
   @functools.partial(
   jax.pmap,
@@ -175,10 +185,10 @@ class ImagenetWorkload(spec.Workload):
       self,
       params: spec.ParameterContainer,
       input_batch: spec.Tensor,
-      model_state: spec.ModelAuxillaryState,
+      model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     train = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm:
@@ -222,7 +232,7 @@ class ImagenetWorkload(spec.Workload):
   def eval_model(
       self,
       params: spec.ParameterContainer,
-      model_state: spec.ModelAuxillaryState,
+      model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState,
       data_dir: str):
     """Run a full evaluation of the model."""
@@ -230,7 +240,7 @@ class ImagenetWorkload(spec.Workload):
     model_state = self.sync_batch_stats(model_state)
 
     eval_metrics = []
-    data_rng, model_rng = jax.random.split(rng, 2)
+    data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 200
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:

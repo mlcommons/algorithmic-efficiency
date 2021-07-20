@@ -56,7 +56,7 @@ def optimizer(hyperparameters: spec.Hyperparamters, num_train_examples: int):
 def init_optimizer_state(
     workload: spec.Workload,
     model_params: spec.ParameterContainer,
-    model_state: spec.ModelAuxillaryState,
+    model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
   params_zeros_like = jax.tree_map(
@@ -75,7 +75,7 @@ def init_optimizer_state(
   in_axes=(None, None, 0, 0, 0, None, 0, None),
   static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
-                       current_params, hyperparameters, batch, rng):
+                       current_param_container, hyperparameters, batch, rng):
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
@@ -96,21 +96,21 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
     return loss, (new_model_state, logits)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  aux, grad = grad_fn(current_params)
+  aux, grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
   new_model_state, logits = aux[1]
   updates, new_optimizer_state = opt_update_fn(
-      grad, optimizer_state, current_params)
-  updated_params = optax.apply_updates(current_params, updates)
+      grad, optimizer_state, current_param_container)
+  updated_params = optax.apply_updates(current_param_container, updates)
 
   return new_model_state, new_optimizer_state, updated_params
 
 
 def update_params(
     workload: spec.Workload,
-    current_params: spec.ParameterContainer,
+    current_param_container: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxillaryState,
+    model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
@@ -126,8 +126,8 @@ def update_params(
   }
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
-    workload, opt_update_fn, model_state, optimizer_state, current_params,
-    hyperparameters, batch, rng)
+    workload, opt_update_fn, model_state, optimizer_state,
+    current_param_container, hyperparameters, batch, rng)
 
   steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
   if (global_step + 1) % steps_per_epoch == 0:
@@ -141,7 +141,7 @@ def data_selection(
     workload: spec.Workload,
     input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
     optimizer_state: spec.OptimizerState,
-    current_params: spec.ParameterContainer,
+    current_param_container: spec.ParameterContainer,
     hyperparameters: spec.Hyperparamters,
     global_step: int,
     rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:

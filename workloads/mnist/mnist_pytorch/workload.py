@@ -119,10 +119,10 @@ class MnistWorkload(Mnist):
       self,
       params: spec.ParameterContainer,
       input_batch: spec.Tensor,
-      model_state: spec.ModelAuxillaryState,
+      model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxillaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -141,6 +141,15 @@ class MnistWorkload(Mnist):
       logits_batch = model(input_batch)
 
     return logits_batch, None
+
+  # TODO(znado): Implement.
+  # Keep this separate from the loss function in order to support optimizers
+  # that use the logits.
+  def output_activation_fn(
+      self,
+      logits_batch: spec.Tensor,
+      loss_type: spec.LossType) -> spec.Tensor:
+    raise NotImplementedError
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.

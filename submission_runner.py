@@ -21,8 +21,8 @@ import os
 import struct
 import time
 
-import jax
 import halton
+import random_utils as prng
 import spec
 
 
@@ -64,8 +64,14 @@ flags.DEFINE_integer(
 flags.DEFINE_string(
     'data_dir',
     '~/',
-    'Dataset location'
-)
+    'Dataset location')
+flags.DEFINE_boolean(
+    'use_jax_rng',
+    False,
+    'Whether to use the Jax or Numpy RNG library. For PyTorch users, this flag '
+    'should be set to false (the default) so that Jax is not required for the '
+    'run; in addition to adding another dependency, Jax can default to '
+    'reserving all GPU memory, causing OOMs).')
 
 FLAGS = flags.FLAGS
 
@@ -132,9 +138,9 @@ def train_once(
     init_optimizer_state: spec.InitOptimizerFn,
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
-    hyperparameters: spec.Hyperparamters,
+    hyperparameters: Optional[spec.Hyperparamters],
     rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
-  data_rng, opt_init_rng, model_init_rng, rng = jax.random.split(rng, 4)
+  data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
   input_queue = workload.build_input_queue(
@@ -158,8 +164,8 @@ def train_once(
   global_start_time = time.time()
 
   while (is_time_remaining and not goal_reached and not training_complete):
-    step_rng = jax.random.fold_in(rng, global_step)
-    data_select_rng, update_rng, eval_rng = jax.random.split(
+    step_rng = prng.fold_in(rng, global_step)
+    data_select_rng, update_rng, eval_rng = prng.split(
         step_rng, 3)
     start_time = time.time()
     selected_train_input_batch, selected_train_label_batch = data_selection(
@@ -173,7 +179,7 @@ def train_once(
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
-          current_params=model_params,
+          current_param_container=model_params,
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
@@ -240,8 +246,15 @@ def score_submission_on_workload(
     all_metrics = []
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
-      rng_seed = struct.unpack('q', os.urandom(8))[0]
-      rng = jax.random.PRNGKey(rng_seed)
+      rng_seed = struct.unpack('I', os.urandom(4))[0]
+      rng = prng.PRNGKey(rng_seed)
+      # Because we initialize the PRNGKey with only a single 32 bit int, in the
+      # Jax implementation this means that rng[0] is all zeros, which means this
+      # could lead to unintentionally reusing the same seed of only rng[0] were
+      # ever used. By splitting the rng into 2, we mix the lower and upper 32
+      # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
+      # number.
+      rng, _ = prng.split(rng, 2)
       logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
       timing, metrics = train_once(
           workload,
@@ -262,6 +275,8 @@ def score_submission_on_workload(
       logging.info('Timing: %s', all_timings[ti])
       logging.info('=' * 20)
   else:
+    rng_seed = struct.unpack('q', os.urandom(8))[0]
+    rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(
@@ -270,7 +285,7 @@ def score_submission_on_workload(
         init_optimizer_state,
         update_params,
         data_selection,
-        hyperparameters,
+        None,
         rng)
   # TODO(znado): record and return other information (number of steps).
   return score
@@ -279,9 +294,9 @@ def score_submission_on_workload(
 def main(_):
   for workload_name, workload in WORKLOADS.items():
     _import_workload(
-      workload_path=workload['workload_path'],
-      workload_registry_name=workload_name,
-      workload_class_name=workload['workload_class_name']
+        workload_path=workload['workload_path'],
+        workload_registry_name=workload_name,
+        workload_class_name=workload['workload_class_name']
     )
 
   score = score_submission_on_workload(
