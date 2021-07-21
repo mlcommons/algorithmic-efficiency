@@ -35,7 +35,11 @@ WORKLOADS = {
   'mnist_pytorch': {
     'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
     'workload_class_name': 'MnistWorkload'
-  }
+  },
+  'imagenet_jax': {
+    'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
+    'workload_class_name': 'ImagenetWorkload'
+  },
 }
 
 flags.DEFINE_string(
@@ -161,8 +165,8 @@ def train_once(
 
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
-    data_select_rng, preprocess_rng, update_rng, eval_rng = prng.split(
-        step_rng, 4)
+    data_select_rng, update_rng, eval_rng = prng.split(
+        step_rng, 3)
     start_time = time.time()
     selected_train_input_batch, selected_train_label_batch = data_selection(
         workload,
@@ -172,13 +176,6 @@ def train_once(
         hyperparameters,
         global_step,
         data_select_rng)
-    (augmented_train_input_batch,
-     augmented_train_label_batch) = workload.preprocess_for_train(
-        selected_train_input_batch,
-        selected_train_label_batch,
-        train_mean=workload.train_mean,
-        train_stddev=workload.train_stddev,
-        rng=preprocess_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -186,8 +183,8 @@ def train_once(
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
-          augmented_and_preprocessed_input_batch=augmented_train_input_batch,
-          label_batch=augmented_train_label_batch,
+          input_batch=selected_train_input_batch,
+          label_batch=selected_train_label_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,
