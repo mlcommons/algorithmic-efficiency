@@ -4,6 +4,7 @@ Example command:
 
 python3 submission_runner.py \
     --workload=mnist_jax \
+    --framework=jax \
     --submission_path=workloads/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
     --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
@@ -65,13 +66,12 @@ flags.DEFINE_string(
     'data_dir',
     '~/',
     'Dataset location')
-flags.DEFINE_boolean(
-    'use_jax_rng',
-    False,
-    'Whether to use the Jax or Numpy RNG library. For PyTorch users, this flag '
-    'should be set to false (the default) so that Jax is not required for the '
-    'run; in addition to adding another dependency, Jax can default to '
-    'reserving all GPU memory, causing OOMs).')
+flags.DEFINE_enum(
+    'framework',
+    None,
+    enum_values=['jax', 'pytorch'],
+    help='Whether to use Jax or Pytorch for the submission. Controls among '
+    'other things if the Jax or Numpy RNG library is used for RNG.')
 
 FLAGS = flags.FLAGS
 
@@ -292,6 +292,12 @@ def score_submission_on_workload(
 
 
 def main(_):
+  if FLAGS.framework == 'jax':
+    import tensorflow as tf
+    # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+    # it unavailable to JAX.
+    tf.config.experimental.set_visible_devices([], 'GPU')
+
   for workload_name, workload in WORKLOADS.items():
     _import_workload(
         workload_path=workload['workload_path'],
