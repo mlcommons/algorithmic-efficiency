@@ -17,6 +17,14 @@ class Mnist(spec.Workload):
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
+  def num_train_examples(self):
+    return 60000
+
+  @property
+  def num_eval_examples(self):
+    return 10000
+
+  @property
   def train_mean(self):
     return 0.1307
 
@@ -45,7 +53,7 @@ class Mnist(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 2000
-    num_batches = 10000 // eval_batch_size
+    num_batches = self.num_eval_examples // eval_batch_size
     self._eval_ds = self.build_input_queue(
         data_rng, 'test', data_dir, batch_size=eval_batch_size)
 

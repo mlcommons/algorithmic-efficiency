@@ -134,6 +134,14 @@ class Workload(metaclass=abc.ABCMeta):
     """The type of loss function."""
 
   @abc.abstractproperty
+  def num_train_examples(self):
+    """The size of the training set."""
+
+  @abc.abstractproperty
+  def num_eval_examples(self):
+    """The size of the evaluation set."""
+
+  @abc.abstractproperty
   def train_mean(self):
     """The mean of the training data."""
 
