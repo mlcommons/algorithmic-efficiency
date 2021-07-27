@@ -126,6 +126,10 @@ class Workload(metaclass=abc.ABCMeta):
     """The types of the parameters in the workload model."""
 
   @abc.abstractproperty
+  def target_value(self):
+    """The target value to reach."""
+
+  @abc.abstractproperty
   def loss_type(self):
     """The type of loss function."""
 
