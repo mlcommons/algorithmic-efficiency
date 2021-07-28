@@ -6,7 +6,11 @@ import spec
 class Mnist(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['accuracy'] > 0.9
+    return eval_result['accuracy'] > self.target_value
+
+  @property
+  def target_value(self):
+    return 0.9
 
   @property
   def loss_type(self):

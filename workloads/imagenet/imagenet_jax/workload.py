@@ -42,7 +42,11 @@ class ImagenetWorkload(spec.Workload):
     self.num_classes = 10
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['accuracy'] > 0.76
+    return eval_result['accuracy'] > self.target_value
+
+  @property
+  def target_value(self):
+    return 0.76
 
   @property
   def loss_type(self):
