@@ -3,7 +3,7 @@
 **Version:** 0.0.1 *(Updated 28 July 2021)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
-> We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a training algorithm track and a model track in order to help disentangle optimizer improvements and model architecture improvements. This two track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
+> We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a training algorithm track and a model track in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
 
 - [Introduction](#introduction)
 - [Training Algorithm Track](#training-algorithm-track)
@@ -30,21 +30,21 @@ We need a more scientifically sound methodology for evaluating training speedups
 MLPerf's mission is to build fair and useful benchmarks for measuring training and inference performance of ML hardware, software, and services. Improvements in training speed can come from better hardware, better software stacks, and better algorithms.
 To date, the Closed Division of the MLPerf Training benchmark has been extremely successful in driving systems innovation by requiring mathematical equivalence to a reference implementation, while still allowing submissions on different hardware. Although the Open Division allows new models and training algorithms, it has several issues that make it inappropriate as a benchmark for progress in training algorithms. By allowing arbitrary hardware, it is impossible to isolate improvements due to algorithms or due to extra computation. Unrestricted hardware makes the competition only accessible to the most well-funded organizations, even if many academic labs and others have interesting algorithms to measure. Finally, even if we could isolate improvements due to particular algorithmic changes and make the benchmark more broadly accessible, there is still no incentive to avoid hyper-specific changes that only help the particular benchmark workload.
 
-In order to drive innovation in machine learning algorithms that reduce the time needed to create useful models, we propose a new set of benchmarks to evaluate the training time for different algorithms (models, optimizers, preprocessing, etc.) on a *fixed hardware configuration* (future iterations can adopt new hardware configurations as needed). Our proposal includes two tracks: (1) a model track and (2) a training algorithm track. The goal of the model track is to find models that can be trained to achieve the target solution quality (out-of-sample error) in the least amount of time on each benchmark dataset. Similarly, the goal of the training algorithm track is to find training algorithms (optimizers, etc.) that train benchmark models to reach the goal out-of-sample error rate as fast as possible. However, to incentivize practically useful algorithms, in the training algorithm track we require that a single training algorithm simultaneously performs well across all benchmark models and datasets. Although submissions in the model track will be inherently dataset-specific, we sharply constrain what parts of the training program can be modified in the model track and require submitted models to be easily trainable using standard optimizers. Thus the two-track structure discourages overly-specific solutions that aren't generally useful to practitioners and will hopefully produce evidence on the relative returns of speeding up training by finding new models or by developing new training algorithms.
+In order to drive innovation in machine learning algorithms that reduce the time needed to create useful models, we propose a new set of benchmarks to evaluate the training time for different algorithms (models, optimizers, preprocessing, etc.) on a *fixed hardware configuration* (future iterations can adopt new hardware configurations as needed). Our proposal includes two tracks: (1) a model track and (2) a training algorithm track. The goal of the model track is to find models that can be trained to achieve the target solution quality (out-of-sample error) in the least amount of time on each benchmark dataset. Similarly, the goal of the training algorithm track is to find training algorithms (optimizers, etc.) that train benchmark models to reach the goal out-of-sample error rate as fast as possible. However, to incentivize practically useful algorithms, in the training algorithm track we require that a single training algorithm simultaneously performs well across all benchmark models and datasets. Although submissions in the model track will be inherently dataset-specific, we sharply constrain what parts of the training program can be modified in the model track and require submitted models to be easily trainable using standard optimizers. Thus the two-track structure discourages overly specific solutions that aren't generally useful to practitioners and will hopefully produce evidence on the relative returns of speeding up training by finding new models or by developing new training algorithms.
 
 ## Training Algorithm Track
 
 The goal of the training algorithm track is to reach the same results faster ("time to result") by using better optimizers, data ordering/weighting schemes, and weight update strategies while producing techniques that work well on a wide variety of models and datasets. We hope to encourage generally useful training algorithms that are not specific to only a small number of particular workloads.
 
-In general, submissions to the training algorithm track will replace specific pieces of a reference implementation in order to produce a training program that reaches the same results faster on as many workloads as possible. The training program has a fixed, high-level structure and competitors are allowed to replace a particular set of functions in the program (the **submission functions**), but must leave all other pieces (**fixed functions** and high level structure) of the reference implementation unchanged. The submitted code must perform well on multiple datasets and models simultaneously (a model and dataset pair constitute a [workload](#workloads) for the purposes of this track).
+In general, submissions to the training algorithm track will replace specific pieces of a reference implementation in order to produce a training program that reaches the same results faster on as many workloads as possible. The training program has a fixed, high-level structure and competitors are allowed to replace a particular set of functions in the program (the [**submission functions**](#submission-functions)), but must leave all other pieces ([**fixed functions**](#fixed-functions) and high-level structure) of the reference implementation unchanged. The submitted code must perform well on multiple datasets and models simultaneously (a model and dataset pair constitute a [workload](#workloads) for the purposes of this track).
 
 Submissions to the training algorithm track can be entered under two separate rulesets, named external tuning and self-tuning, with it being possible to submit to both rulesets. The main difference is that the external tuning ruleset allows moderate, automatic tuning of the optimizer's hyperparameters on each workload, using the submitted workload-agnostic search space. This allows the training algorithm to adapt to a particular task while ensuring that it is not too difficult to tune automatically. Under the self-tuning ruleset, there is no external tuning and submissions need to adapt to a particular task autonomously within a single optimization run. Unless otherwise specified, the rules in this section apply to both rulesets (see, for example, the [Tuning](#tuning) Section for the most substantial difference between the rulesets).
 
-The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific workload (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful. In order to further discourage submissions that overfit to the particular public benchmark workloads, submissions must also perform well on one or more hidden workloads released after the submission deadline.
+The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific workload (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful. In order to further discourage submissions that overfit to the particular public benchmark workloads, submissions must also perform well on one or more held-out workloads released after the submission deadline.
 
 ### Submissions
 
-A valid submission is a piece of code with the same high level structure as a reference implementation that can train all benchmark workloads on the competition hardware (defined under "Scoring" but ultimately in the Call for Submissions).The validation set performance will be checked regularly during training (see the "Evaluation during training" Section) and training halts when a workload-specific target error has been reached. For each workload, the training time to reach this (validation set) target error will be used as an input to the scoring process for the submission. Additionally, the test set performance will be probed using the final model parameters to confirm that it also reaches a slightly more generous target performance on this unseen data. Submissions using external tuning will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. Submissions under either tuning ruleset may always self-tune while on the clock.
+A valid submission is a piece of code with the same high-level structure as a reference implementation that can train all benchmark workloads on the competition hardware (defined under "Scoring" but ultimately in the Call for Submissions). The validation set performance will be checked regularly during training (see the "Evaluation during training" Section) and training halts when a workload-specific target error has been reached. For each workload, the training time to reach this (validation set) target error will be used as an input to the scoring process for the submission. Additionally, the test set performance will be probed using the final model parameters to confirm that it also reaches a slightly more generous target performance on this unseen data. Submissions using external tuning will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. Submissions under either tuning ruleset may always self-tune while on the clock.
 
 #### Specification
 
@@ -106,7 +106,7 @@ model_fn(
 loss_fn(label_batch, logits_output_batch) -> 1d array of losses per example  # differentiable
 ```
 
-- Unlike in the model track, we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross entropy**}.
+- Unlike in the model track, we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**}.
   - The optimizer must work with all values of the enum, which will be provided via a property on the workload object that is provided to all submissions functions.
 - The loss function does **not** include regularization. Instead, regularization can be added by the submissions in the `update_variables` function.
 
@@ -122,7 +122,7 @@ get_batch_size(workload_name: str) -> int
 
 - Submitters define a specific batch size for each workload.
 - For example, in advance, they can determine the largest batch size without running out of memory for each workload.
-- For the hidden workloads, the `workload_name` of the closest public workload will be used in this function.
+- For the held-out workloads, the `workload_name` of the closest public workload will be used in this function.
 
 ###### Optimizer state initializer
 
@@ -161,7 +161,7 @@ update_params(
 - `current_param_container` is the same kind of nested structure as used by `model_fn` which constitutes a nested collection of float32 arrays, each endowed with information about what kind of parameter that array represents stored in a parallel structure of `current_params_types`.
   - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}
 - `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics
-- Loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_fn` enum/name. Probably only cross entropy and MSE. Maybe in V1 it is just cross entropy?
+- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_fn` enum/name. Probably only cross-entropy and MSE. Maybe in V1 it is just cross-entropy?
 - The `loss_fn` produces a loss per example, so the submission code is responsible for summing or averaging
 - Allowed to update state for the optimizer
 - Need to pass the fixed `model_fn` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state)
@@ -205,7 +205,7 @@ data_selection(
 
 In general, with noisy, non-deterministic training, evaluation frequency can affect training time measurements as more "bites of the apple" potentially allows the training code to exploit instability. We also want to discourage submissions from complicated and unrealistic logic that attempts to guess when training is close to complete and increases the evaluation rate, while not producing a well-sampled training curve at the start of training. Simply allowing submissions complete freedom over evaluation frequency encourages competitors to work to minimize the number of evaluations, which distracts from the primary goal of finding better training algorithms.
 
-Submissions are eligible for an untimed eval every `eval_period` seconds, run as soon as the current call of `update_params` completes. Any additional evaluations performed by the submission code count against the run time for scoring. The harness that runs the submission code will attempt to eval every `eval_period` seconds by checking between each submission step (call of `update_params`) whether it has been at least `eval_period` seconds since that last eval and, if so, pausing the clock and running an eval. This means that if calls to `update_params` typically take a lot more than `eval_period` seconds, such submissions will not receive as many untimed evals as a submission that had an `update_params` function that took less time. However, for appropriate settings of eval_period, we expect this to be quite rare. Submissions are always free to restructure their `update_params` code to split work into two subsequent steps to regain the potential benefits of these untimed model evaluations.
+Submissions are eligible for an untimed eval every `eval_period` seconds, run as soon as the current call of `update_params` completes. Any additional evaluations performed by the submission code count against the runtime for scoring. The harness that runs the submission code will attempt to eval every `eval_period` seconds by checking between each submission step (call of `update_params`) whether it has been at least `eval_period` seconds since that last eval and, if so, pausing the clock and running an eval. This means that if calls to `update_params` typically take a lot more than `eval_period` seconds, such submissions will not receive as many untimed evals as a submission that had an `update_params` function that took less time. However, for appropriate settings of eval_period, we expect this to be quite rare. Submissions are always free to restructure their `update_params` code to split work into two subsequent steps to regain the potential benefits of these untimed model evaluations.
 
 #### Valid submissions
 
@@ -242,7 +242,7 @@ Automatic methods for determining or dynamically setting hyperparameters are all
 <summary>Examples:</summary>
 
 - Submissions are allowed to use automatic procedures for setting hyperparameters, e.g. automated learning rate range tests.
-- Inner-loop tuning methods for setting hyperparameter, e.g. line searches, are allowed.
+- Inner-loop tuning methods for setting hyperparameters, e.g. line searches, are allowed.
 - Changing the batch size dynamically during training.
 
 </details>
@@ -265,17 +265,17 @@ Submissions are not allowed to detect the particular workload (irrespective of w
 <details>
 <summary>Examples:</summary>
 
-- Switching the update rule based on the workload, e.g. using Adam for RNNs and SGD with momentum on CNNs is not allowed. Although submissions can specialize for certain layer types in generic ways, they should not uniquely identify a model or dataset. In other words, if there are two workloads A and B that both have conv layers and fully connected layers the submission shouldn't detect whether it is dealing with A or B specifically and choose Adam for one and SGD with momentum for the other. However, if the updates for all parameters of conv layers always used SGD with momentum and the updates for all other layers always used Adam and a workload with both types of layers had mixed updates, that would be fine.
+- Switching the update rule based on the workload, e.g. using Adam for RNNs and SGD with momentum on CNNs is not allowed. Although submissions can specialize for certain layer types in generic ways, they should not uniquely identify a model or dataset. In other words, if there are two workloads A and B that both have convolutional layers and fully connected layers the submission shouldn't detect whether it is dealing with A or B specifically and choose Adam for one and SGD with momentum for the other. However, if the updates for all parameters of convolutional layers always used SGD with momentum and the updates for all other layers always used Adam and a workload with both types of layers had mixed updates, that would be fine.
 - Submissions are not allowed to look up learning rate schedules that are only utilized for specific subsets of the workloads. It is allowed to use one general learning rate schedule or dynamically adapt the learning rate based on general information such as curvature.
 
 </details>
 
-It is not allowed to compute any kind of pairwise metrics between the public workloads and the hidden workloads
+It is not allowed to compute any kind of pairwise metrics between the public workloads and the held-out workloads
 
 <details>
 <summary>Examples:</summary>
 
-- On a hidden workload, submissions are not allowed to find the nearest neighbor among the public workloads to set any hyperparameter.
+- On a held-out workload, submissions are not allowed to find the nearest neighbor among the public workloads to set any hyperparameter.
 
 </details>
 
@@ -296,35 +296,35 @@ For each workload, we will run *S\*O* (e.g. *S=5*, *O=20*) hyperparameter settin
 
 #### Self-Tuning ruleset
 
-Submissions are not allowed to have user-defined hyperparameters. This ruleset allows both submissions that use the same hyperparameters for all workloads, including the holdout ones (e.g. Adam with default parameters), as well as submissions that perform inner-loop tuning during their training run (e.g. SGD with line-searches).
+Submissions are not allowed to have user-defined hyperparameters. This ruleset allows both submissions that use the same hyperparameters for all workloads, including the held-out ones (e.g. Adam with default parameters), as well as submissions that perform inner-loop tuning during their training run (e.g. SGD with line-searches).
 
 - Submissions will run on one instance of the competition hardware (likely a single machine).
 - As always, submissions are allowed to perform inner-loop tuning (e.g. for their learning rate) but the tuning efforts will be part of their score.
-- A submission will run *S* times and its score will be the median time to reach the target evaluation metric value on the held out data.
+- A submission will run *S* times and its score will be the median time to reach the target evaluation metric value on the held-out data.
 
 ### Workloads
 
-For the purposes of the training algorithm track, we consider the combination of `dataset`, `model`, and `loss_fn` a workload. E.g., ResNet50 on ImageNet using cross-entropy loss would constitute a workload. The evaluation metric, in this example misclassification error, is directly implied by the dataset/task. In addition to the public workload set, submissions must also perform well on a set of hidden holdout workloads. These holdout workloads will be specified after the submission deadline, but their generating process is publicly available with the call for submission (see Section "Holdout workloads").
+For the purposes of the training algorithm track, we consider the combination of a `dataset`, `model`, and `loss_fn` a workload. E.g., ResNet50 on ImageNet using cross-entropy loss would constitute a workload. The evaluation metric, in this example misclassification error, is directly implied by the dataset/task. In addition to the public workload set, submissions must also perform well on a set of held-out workloads. These held-out workloads will be specified after the submission deadline, but their generating process is publicly available with the call for submission (see [Held-out workloads](#held-out-workloads) Section).
 
-The submissions will be scored according to their performance on all workloads, including the public as well as the holdout workloads.
+The submissions will be scored according to their performance on all workloads, including the public as well as the held-out workloads.
 
 #### Public workloads
 
-The public workloads will contain tasks such as image classification, object detection, machine translation, language modeling, speech recognition, or other typical machine learning tasks. There will be roughly 5 datasets with one or two models each. The full list of workloads as well as the exact specification of each workload will be made public with the call for submissions. The entire set of public workloads should have a combined runtime of roughly one week on the competition hardware. Furthermore, a less-computationally-expensive subset of the public workloads might be identified as "qualification workloads." Submissions that achieve good performance on this set would potentially qualify for computational resources during scoring, provided by sponsors of the benchmark.
+The public workloads will contain tasks such as image classification, object detection, machine translation, language modeling, speech recognition, or other typical machine learning tasks. There will be roughly 5 datasets with one or two models each. The full list of workloads as well as the exact specification of each workload will be made public with the call for submissions. The entire set of public workloads should have a combined runtime of roughly one week on the competition hardware. Furthermore, a less computationally expensive subset of the public workloads might be identified as "qualification workloads." Submissions that achieve good performance on this set would potentially qualify for computational resources during scoring, provided by sponsors of the benchmark.
 
 The current list of workloads under consideration to be part of the public workloads can be found in the [workload brainstorming sheet](https://docs.google.com/spreadsheets/d/1bzVRuxTxaAaP4V9VHCovCytw5Rtk5vHZkxKL-Gvz3v4).
 
 #### Held-out workloads
 
-The holdout workloads function similarly to a holdout test set discouraging submissions that overfit to the public and known workloads. Each holdout workload will introduce minor modifications to the data pre-processing and/or model of a public workload. These workloads will be created by a third party after the submission deadline. The instructions for creating them will be defined by this working group and made public with the call for submission, to allow the members of this working group to submit as well as ensuring that they do not possess any additional information compared to other submitters.
+The held-out workloads function similarly to a holdout test set discouraging submissions that overfit to the public and known workloads. Each held-out workload will introduce minor modifications to the data pre-processing and/or model of a public workload. These workloads will be created by a third party after the submission deadline. The instructions for creating them will be defined by this working group and made public with the call for submission, to allow the members of this working group to submit as well as ensuring that they do not possess any additional information compared to other submitters.
 
-For each workload in the public workloads, a distribution of possible modifications will be defined. After the submission deadline, a third party will draw a sample from this distribution to generate a holdout workload. Changes could, for example, include changing the number of layers or units (drawn from an interval), swapping the activation function (drawn from a set of applicable functions), or using different data augmentations (drawn from a list of possible pre-processing steps). The sample space should be wide enough to discourage submitters from simply trying them all out, but at the same time should be restricted enough to produce realistic workloads with acceptable achievable performances. If a holdout workload exhibits a significant performance decrease compared to its closest public workload, it might be rejected and instead re-sampled.
+For each workload in the public workloads, a distribution of possible modifications will be defined. After the submission deadline, a third party will draw a sample from this distribution to generate a held-out workload. Changes could, for example, include changing the number of layers or units (drawn from an interval), swapping the activation function (drawn from a set of applicable functions), or using different data augmentations (drawn from a list of possible pre-processing steps). The sample space should be wide enough to discourage submitters from simply trying them all out, but at the same time should be restricted enough to produce realistic workloads with acceptable achievable performances. If a held-out workload exhibits a significant performance decrease compared to its closest public workload, it might be rejected and instead re-sampled.
 
-The target performance on each holdout workload will be defined by using the performance of the baselines algorithms, analogously to the public workloads.
+The target performance on each held-out workload will be defined by using the performance of the baselines algorithms, analogously to the public workloads.
 
 ### Scoring
 
-Submissions will be scored based on their required training time to reach the target performance of each workload. This includes compilation times for computation graphs and ops that could happen just-in-time during training; all our benchmarks should be fast enough to compile so as not to dramatically impact overall performance. The overall ranking is then determined by summarizing the performances across all workloads, both public and holdout, using [performance profiles](http://www.argmin.net/2018/03/26/performance-profiles/), as explained below.
+Submissions will be scored based on their required training time to reach the target performance of each workload. This includes compilation times for computation graphs and ops that could happen just-in-time during training; all our benchmarks should be fast enough to compile so as not to dramatically impact overall performance. The overall ranking is then determined by summarizing the performances across all workloads, both public and held-out, using [performance profiles](http://www.argmin.net/2018/03/26/performance-profiles/), as explained below.
 
 #### Competition hardware
 
@@ -332,7 +332,7 @@ All scored runs have to be performed on the competition hardware to allow for a 
 
 #### Defining target performance
 
-A target performance for the validation dataset will be defined for each workload separately by taking the best performance achievable by a standard baseline algorithm (e.g. Adam, Momentum, SGD, etc.). This baseline algorithm will follow the general process of the external tuning ruleset, with a slightly larger tuning budget to guarantee competitive performance. Both tuning rulesets will then use the same target performances. The runtime of the baseline algorithm on each workload will be chosen to match published results and is constrained by the overall time budget of a single week for all public workloads.
+A target performance for the validation dataset will be defined for each workload separately by taking the best performance achievable by a standard baseline algorithm (e.g. Adam, SGD with momentum, etc.). This baseline algorithm will follow the general process of the external tuning ruleset, with a slightly larger tuning budget to guarantee competitive performance. Both tuning rulesets will then use the same target performances. The runtime of the baseline algorithm on each workload will be chosen to match published results and is constrained by the overall time budget of a single week for all public workloads.
 
 #### Summary score using performance profiles
 
@@ -347,7 +347,7 @@ We will score submissions using the following algorithm described in [Benchmarki
 </p>
 
 - ρ_s(τ) = (1 / n_p) * [number of problems where r(p, s) <= τ]
-  - Need to be careful about weighting tasks to not favor any data modality. We might need to weight the problems somehow to handle different numbers of models on a given dataset
+  - Need to be careful about weighting tasks to not favor any data modality. We might need to weigh the problems somehow to handle different numbers of models on a given dataset
 
 **The area between a submitted performance profile rho_s(tau) and the performance profile of the reference implementation will be used as a score to compare submissions, where the area is computed by integrating \log\tau from [0, \inf) OR \tau from [1, \inf), whether or not to log scale is a decision to be made after further investigation.**
 
