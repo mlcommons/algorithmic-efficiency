@@ -244,6 +244,17 @@ Automatic methods for determining or dynamically setting hyperparameters are all
 - Changing the batch size dynamically during training.
 
 </details>
+<br>
+
+Submissions can also be based on learned training algorithms.
+
+<details>
+<summary>Examples:</summary>
+
+- Submission are allowed to learn the update rule of the training method.
+- In the [Self-tuning Ruleset](#self-tuning-ruleset), submissions could try out a learned list of hyperparameters.
+
+</details>
 
 ##### Disallowed submissions
 
@@ -259,12 +270,13 @@ Submissions are not allowed to circumvent the tuning rules by looking up the res
 </details>
 <br>
 
-Submissions are not allowed to detect the particular workload (irrespective of which information they use to this end) in order to use settings that are specified for individual workloads. This would result in highly specific behavior that isn't generally useful. In general, all else being equal, if some submission was written that was extremely effective on a small set of the workloads (and far worse on the rest) and another submission with the opposite performance pattern, we would prefer both submissions to be submitted and tested on all workloads.
+Submissions are not allowed to detect the particular workload (irrespective of which information they use to this end) in order to use settings that are specified for individual workloads. This would result in highly specific behavior that isn't generally useful. This also extends to learned approaches that ultimately detect specific workloads. In general, all else being equal, if some submission was written that was extremely effective on a small set of the workloads (and far worse on the rest) and another submission with the opposite performance pattern, we would prefer both submissions to be submitted and tested on **all** workloads.
 
 <details>
 <summary>Examples:</summary>
 
-- Switching the update rule based on the workload, e.g. using Adam for RNNs and SGD with momentum on CNNs is not allowed. Although submissions can specialize for certain layer types in generic ways, they should not uniquely identify a model or dataset. In other words, if there are two workloads A and B that both have convolutional layers and fully connected layers the submission shouldn't detect whether it is dealing with A or B specifically and choose Adam for one and SGD with momentum for the other. However, if the updates for all parameters of convolutional layers always used SGD with momentum and the updates for all other layers always used Adam and a workload with both types of layers had mixed updates, that would be fine.
+- A hard-coded switching of the update rule based on the workload is not allowed, e.g. using Adam for RNNs and SGD with momentum on CNNs. Although submissions can specialize for certain layer types in generic ways, they should not uniquely identify a model or dataset. In other words, if there are two workloads A and B that both have convolutional layers and fully connected layers the submission shouldn't detect whether it is dealing with A or B specifically and choose Adam for one and SGD with momentum for the other. However, if the updates for all parameters of convolutional layers always used SGD with momentum and the updates for all other layers always used Adam and a workload with both types of layers had mixed updates, that would be fine.
+It is also allowed to make the update rule part of the (external) hyperparameter tuning or determine the optimal update rule during the run, i.e. while "on-the-clock".
 - Submissions are not allowed to look up learning rate schedules that are only utilized for specific subsets of the workloads. It is allowed to use one general learning rate schedule or dynamically adapt the learning rate based on general information such as curvature.
 
 </details>
@@ -346,7 +358,7 @@ We will score submissions using the following algorithm described in [Benchmarki
   <img width="200" img src="https://render.githubusercontent.com/render/math?math=r_{p,s}=\frac{t_{p,s}}{\min\{t_{p,s}:s \in \mathcal{S}\}}">
 </p>
 
-- <img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau) = (\frac{1}{n_p}) * [\text{number of problems where}\, r(p,s)\leq \tau]">
+- <img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau) = (\frac{1}{n_p}) \cdot [\text{number of problems where}\, r(p,s)\leq \tau]">
   
   - Need to be careful about weighting tasks to not favor any data modality. We might need to weigh the problems somehow to handle different numbers of models on a given dataset
 
