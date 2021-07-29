@@ -90,6 +90,7 @@ model_fn(
     model_state: ModelAuxiliaryState,
     mode: ForwardPassMode,  # mode \in {train, eval}
     rng: RandomState,
+    hyperparameters: Hyperparameters,
     update_batch_norm: bool
 ) -> (logits_output_batch, new_model_state): Tuple[Tensor, ModelAuxiliaryState]
 ```
@@ -98,6 +99,7 @@ model_fn(
 - It is possible that `model_parameters` will be endowed with additional information about the kind of each parameter, e.g. "weights" or "bias" or "batch norm", although `model_fn` does not really need that information we might use the same nested structure elsewhere
 - `logits_output_batch` is before the output activation
 - `new_model_state` is for batch norm or similar side effects and will only be updated if `update_batch_norm` is set
+- `hyperparameters` will contain only dropout rates, which will be used in the models that support it. These can be tuned or will default to documented model-specific values. Note that adding additional dropout would be considered changing the model, which is not allowed, but the tuning of dropout in existing dropout layers can be considered a regularizer, so we allow it. There should be at most two dropout rates in a model (if there are more than two we will reuse the same values).
 
 ###### Loss function
 
@@ -191,11 +193,11 @@ data_selection(
 - Want to allow for submitters to construct their own data batches from the dataset
 - Submissions are allowed to arbitrarily modify the input examples, as long as the modifications are sufficiently generic to be applicable to any workload
 - This is only called on the training inputs. **No submitted code will be called at eval in the training track.**
-- Examples of nice to support setups:
+- This allows for any of the following methods:
   - Data echoing
   - Curriculum learning
   - Bootstrapping
-  - Biased sampling (based on loss values, so need to store the fwd pass in opt state, potentially fwd pass of cheaper proxy model)
+  - Biased sampling (based on loss values, so need to store the forward pass in the `optimizer_state`, potentially forward pass of a cheaper proxy model)
   - Submissions need batching control
 
 #### Evaluation during training
