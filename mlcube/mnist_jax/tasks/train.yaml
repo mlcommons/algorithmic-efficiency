@@ -1,0 +1,12 @@
+# Schema
+schema_version: 1.0.0
+schema_type: mlcube_task
+
+# Task Inputs
+inputs:
+        - name: submission_config
+          type: file
+# Task Outputs
+outputs:
+        - name: log_dir
+          type: directory

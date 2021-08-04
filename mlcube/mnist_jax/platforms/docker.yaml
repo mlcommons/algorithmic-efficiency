@@ -1,0 +1,8 @@
+schema_type: mlcube_platform
+schema_version: 0.1.0
+
+platform:
+  name: "docker"
+  version: ">=18.01"
+container:
+  image: "mlc_algorithms/mlcube_mnist_jax:0.0.1"
