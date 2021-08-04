@@ -1,7 +1,6 @@
 """WMT workload implemented in Jax."""
 import collections
 import functools
-import types
 from typing import Tuple
 
 from . import bleu
@@ -17,31 +16,8 @@ import numpy as np
 import spec
 import tensorflow as tf
 
-CONFIG = types.SimpleNamespace(
-    vocab_path="./wmt_256/sentencepiece_model",
-    vocab_size=32000,
-    max_corpus_chars=10**7,
-    dataset_name="wmt17_translate/de-en",
-    eval_split="test",
-    reverse_translation=True,
-    beam_size=4,
-    num_eval_steps=20,
-    num_predict_steps=-1,
-    max_target_length=256,
-    max_eval_target_length=256,
-    max_predict_length=256,
-    share_embeddings=True,
-    logits_via_embedding=True,
-    num_layers=6,
-    qkv_dim=1024,
-    emb_dim=1024,
-    mlp_dim=4096,
-    num_heads=16,
-    dropout_rate=0.1,
-    attention_dropout_rate=0.1,
-    use_bfloat16=False,
-    workdir="./wmt_256",
-    eval_dataset_name="wmt14_translate/de-en")
+VOCAB_PATH = "./wmt_256/sentencepiece_model"
+WORKDIR = "./wmt_256"
 
 
 class WMTWorkload(spec.Workload):
@@ -52,72 +28,14 @@ class WMTWorkload(spec.Workload):
     self._train_ds = None
     self._predict_ds = None
     self._encoder = None
-    self._vocab_size = None
-    self.train_config = None
-    self.eval_config = None
-    self.predict_config = None
-    self.p_eval_step = None
-    self.p_init_cache = None
-    self.p_pred_step = None
-    self.config = CONFIG
-
-  def create_learning_rate_scheduler(
-      self,
-      factors="constant * linear_warmup * rsqrt_decay",
-      base_learning_rate=0.5,
-      warmup_steps=1000,
-      decay_factor=0.5,
-      steps_per_decay=20000,
-      steps_per_cycle=100000):
-    """Creates learning rate schedule.
-
-    Interprets factors in the factors string which can consist of:
-    * constant: interpreted as the constant value,
-    * linear_warmup: interpreted as linear warmup until warmup_steps,
-    * rsqrt_decay: divide by square root of max(step, warmup_steps)
-    * rsqrt_normalized_decay: divide by square root of max(step/warmup_steps, 1)
-    * decay_every: Every k steps decay the learning rate by decay_factor.
-    * cosine_decay: Cyclic cosine decay, uses steps_per_cycle parameter.
-
-    Args:
-      factors: string, factors separated by "*" that defines the schedule.
-      base_learning_rate: float, the starting constant for the lr schedule.
-      warmup_steps: int, how many steps to warm up for in the warmup schedule.
-      decay_factor: float, the amount to decay the learning rate by.
-      steps_per_decay: int, how often to decay the learning rate.
-      steps_per_cycle: int, steps per cycle when using cosine decay.
-
-    Returns:
-      a function learning_rate(step): float -> {"learning_rate": float}, the
-      step-dependent lr.
-    """
-    factors = [n.strip() for n in factors.split("*")]
-
-    def step_fn(step):
-      """Step to learning rate function."""
-      ret = 1.0
-      for name in factors:
-        if name == "constant":
-          ret *= base_learning_rate
-        elif name == "linear_warmup":
-          ret *= jnp.minimum(1.0, step / warmup_steps)
-        elif name == "rsqrt_decay":
-          ret /= jnp.sqrt(jnp.maximum(step, warmup_steps))
-        elif name == "rsqrt_normalized_decay":
-          ret *= jnp.sqrt(warmup_steps)
-          ret /= jnp.sqrt(jnp.maximum(step, warmup_steps))
-        elif name == "decay_every":
-          ret *= (decay_factor**(step // steps_per_decay))
-        elif name == "cosine_decay":
-          progress = jnp.maximum(0.0,
-                                 (step - warmup_steps) / float(steps_per_cycle))
-          ret *= jnp.maximum(0.0,
-                             0.5 * (1.0 + jnp.cos(jnp.pi * (progress % 1.0))))
-        else:
-          raise ValueError("Unknown factor %s." % name)
-      return jnp.asarray(ret, dtype=jnp.float32)
-
-    return step_fn
+    self._vocab_size = 32000
+    self._per_device_batch_size = None
+    self._train_config = None
+    self._eval_config = None
+    self._predict_config = None
+    self._p_eval_step = None
+    self._p_init_cache = None
+    self._p_pred_step = None
 
   def compute_weighted_cross_entropy(self,
                                      logits,
@@ -193,60 +111,8 @@ class WMTWorkload(spec.Workload):
     metrics = jax.lax.psum(metrics, axis_name="batch")
     return metrics
 
-  # Primary training / eval / decode step functions.
+  # Primary eval / decode step functions.
   # -----------------------------------------------------------------------------
-
-  def train_step(self,
-                 optimizer,
-                 batch,
-                 config,
-                 learning_rate_fn,
-                 label_smoothing=0.0,
-                 dropout_rng=None):
-    """Perform a single training step."""
-    # X_position and X_segmentation are needed only when using "packed examples"
-    # where multiple sequences are packed into the same example with this
-    # metadata.
-    # if such features are not present they are ignored and the example is
-    # treated like a normal, unpacked sequence example.
-    train_keys = [
-        "inputs", "targets", "inputs_position", "targets_position",
-        "inputs_segmentation", "targets_segmentation"
-    ]
-    (inputs, targets, inputs_positions, targets_positions, inputs_segmentation,
-     targets_segmentation) = [batch.get(k, None) for k in train_keys]
-
-    weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
-
-    dropout_rng = jax.random.fold_in(dropout_rng, optimizer.state.step)
-
-    def loss_fn(params):
-      """loss function used for training."""
-      logits = models.Transformer(config).apply(
-          {"params": params},
-          inputs,
-          targets,
-          inputs_positions=inputs_positions,
-          targets_positions=targets_positions,
-          inputs_segmentation=inputs_segmentation,
-          targets_segmentation=targets_segmentation,
-          rngs={"dropout": dropout_rng})
-
-      loss, weight_sum = self.compute_weighted_cross_entropy(
-          logits, targets, weights, label_smoothing)
-      mean_loss = loss.sum() / weight_sum
-      return mean_loss, logits
-
-    step = optimizer.state.step
-    lr = learning_rate_fn(step)
-    grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-    (_, logits), grad = grad_fn(optimizer.target)
-    grad = jax.lax.pmean(grad, "batch")
-    new_optimizer = optimizer.apply_gradient(grad, learning_rate=lr)
-    metrics = self.compute_metrics(logits, targets, weights)
-    metrics["learning_rate"] = lr
-
-    return new_optimizer, metrics
 
   def eval_step(self, params, batch, config):
     """Calculate evaluation metrics on a batch."""
@@ -405,6 +271,7 @@ class WMTWorkload(spec.Workload):
     bleu_matches = bleu.bleu_partial(references, predictions)
     all_bleu_matches = self.per_host_sum_pmap(bleu_matches)
     bleu_score = bleu.complete_bleu(*all_bleu_matches)
+
     # Save translation samples for tensorboard.
     exemplars = ""
     for n in np.random.choice(np.arange(len(predictions)), 8):
@@ -412,17 +279,17 @@ class WMTWorkload(spec.Workload):
     return exemplars, bleu_score
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result["bleu"] > 25
+    return eval_result["bleu"] > self.target_value
 
   def build_input_queue(self, data_rng: jax.random.PRNGKey, split: str,
                         data_dir: str, batch_size: int):
-    tf.io.gfile.makedirs(self.config.workdir)
-    self.config.per_device_batch_size = batch_size
+    tf.io.gfile.makedirs(WORKDIR)
+    self._per_device_batch_size = batch_size
     self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
+        vocab_size=self._vocab_size,
         batch_size=jax.local_device_count() * batch_size,
-        config=self.config,
-        reverse_translation=self.config.reverse_translation,
-        vocab_path=self.config.vocab_path)
+        reverse_translation=True,
+        vocab_path=VOCAB_PATH)
     self._vocab_size = int(self._encoder.vocab_size())
     return iter(self._train_ds)
 
@@ -432,8 +299,20 @@ class WMTWorkload(spec.Workload):
     return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), init_params)
 
   @property
+  def target_value(self):
+    return 25
+
+  @property
   def loss_type(self):
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
+
+  @property
+  def num_train_examples(self):
+    return 5906184
+
+  @property
+  def num_eval_examples(self):
+    return 3004
 
   @property
   def train_mean(self):
@@ -480,52 +359,37 @@ class WMTWorkload(spec.Workload):
     return raw_input_batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    self.train_config = models.TransformerConfig(
+    self._train_config = models.TransformerConfig(
+        vocab_size=self._vocab_size, output_vocab_size=self._vocab_size)
+    self._eval_config = models.TransformerConfig(
         vocab_size=self._vocab_size,
         output_vocab_size=self._vocab_size,
-        share_embeddings=self.config.share_embeddings,
-        logits_via_embedding=self.config.logits_via_embedding,
-        dtype=jnp.bfloat16 if self.config.use_bfloat16 else jnp.float32,
-        emb_dim=self.config.emb_dim,
-        num_heads=self.config.num_heads,
-        num_layers=self.config.num_layers,
-        qkv_dim=self.config.qkv_dim,
-        mlp_dim=self.config.mlp_dim,
-        max_len=max(self.config.max_target_length,
-                    self.config.max_eval_target_length),
-        dropout_rate=self.config.dropout_rate,
-        attention_dropout_rate=self.config.attention_dropout_rate,
-        deterministic=False,
-        decode=False,
-        kernel_init=nn.initializers.xavier_uniform(),
-        bias_init=nn.initializers.normal(stddev=1e-6))
-    self.eval_config = self.train_config.replace(deterministic=True)
-    self.predict_config = self.train_config.replace(
-        deterministic=True, decode=True)
-    self.p_eval_step = jax.pmap(
-        functools.partial(self.eval_step, config=self.eval_config),
+        deterministic=True)
+    self._predict_config = models.TransformerConfig(
+        vocab_size=self._vocab_size,
+        output_vocab_size=self._vocab_size,
+        deterministic=True,
+        decode=True)
+    self._p_eval_step = jax.pmap(
+        functools.partial(self.eval_step, config=self._eval_config),
         axis_name="batch")
-    self.p_init_cache = jax.pmap(
+    self._p_init_cache = jax.pmap(
         functools.partial(
             self.initialize_cache,
-            max_decode_len=self.config.max_predict_length,
-            config=self.predict_config),
+            max_decode_len=256,
+            config=self._predict_config),
         axis_name="batch")
-    self.p_pred_step = jax.pmap(
+    self._p_pred_step = jax.pmap(
         functools.partial(
-            self.predict_step,
-            config=self.predict_config,
-            beam_size=self.config.beam_size),
+            self.predict_step, config=self._predict_config, beam_size=4),
         axis_name="batch",
         static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
 
     rng, init_rng = jax.random.split(rng)
-    input_shape = (self.config.per_device_batch_size,
-                   self.config.max_target_length)
-    target_shape = (self.config.per_device_batch_size,
-                    self.config.max_target_length)
+    input_shape = (self._per_device_batch_size, 256)
+    target_shape = (self._per_device_batch_size, 256)
 
-    initial_variables = jax.jit(models.Transformer(self.eval_config).init)(
+    initial_variables = jax.jit(models.Transformer(self._eval_config).init)(
         init_rng, jnp.ones(input_shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))
 
@@ -543,7 +407,7 @@ class WMTWorkload(spec.Workload):
     del rng
     del update_batch_norm
 
-    model_config = self.train_config if mode == spec.ForwardPassMode.TRAIN else self.eval_config
+    model_config = self._train_config if mode == spec.ForwardPassMode.TRAIN else self._eval_config
     inputs, targets = augmented_and_preprocessed_input_batch[
         "inputs"], augmented_and_preprocessed_input_batch["targets"]
     logits_batch = models.Transformer(model_config).apply({"params": params},
@@ -574,18 +438,18 @@ class WMTWorkload(spec.Workload):
     del data_dir
 
     eval_results = self.evaluate(
-        p_eval_step=self.p_eval_step,
+        p_eval_step=self._p_eval_step,
         target=params,
         eval_ds=self._eval_ds,
-        num_eval_steps=self.config.num_eval_steps)
+        num_eval_steps=20)
 
     _, bleu_score = self.translate_and_calculate_bleu(
-        p_pred_step=self.p_pred_step,
-        p_init_cache=self.p_init_cache,
+        p_pred_step=self._p_pred_step,
+        p_init_cache=self._p_init_cache,
         target=params,
         predict_ds=self._predict_ds,
         decode_tokens=self._decode_tokens,
-        max_predict_length=self.config.max_predict_length)
+        max_predict_length=256)
 
     eval_results["bleu"] = bleu_score
 

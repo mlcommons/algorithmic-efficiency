@@ -1,10 +1,9 @@
 """Input pipeline for a WMT dataset."""
 
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from . import tokenizer
-from clu import deterministic_data
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -43,10 +42,7 @@ def get_raw_dataset(dataset_builder: tfds.core.DatasetBuilder,
     Dataset with source and target language features mapped to 'inputs' and
     'targets'.
   """
-  num_examples = dataset_builder.info.splits[split].num_examples
-  per_host_split = deterministic_data.get_read_instruction_for_host(
-      split, num_examples, drop_remainder=False)
-  ds = dataset_builder.as_dataset(split=per_host_split, shuffle_files=False)
+  ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
   ds = ds.map(
       NormalizeFeatureNamesOp(
           dataset_builder.info, reverse_translation=reverse_translation),
@@ -249,7 +245,7 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset, keys: List[str],
 # -----------------------------------------------------------------------------
 # Main dataset prep routines.
 # -----------------------------------------------------------------------------
-def preprocess_wmt_data(dataset,
+def preprocess_wmt_data(dataset: tf.data.Dataset,
                         shuffle: bool,
                         num_epochs: Optional[int] = 1,
                         pack_examples: bool = True,
@@ -298,7 +294,7 @@ def preprocess_wmt_data(dataset,
   return dataset
 
 
-def get_wmt_datasets(config: Any,
+def get_wmt_datasets(vocab_size: int,
                      batch_size: int,
                      reverse_translation: bool = True,
                      vocab_path: Optional[str] = None):
@@ -306,25 +302,20 @@ def get_wmt_datasets(config: Any,
   if vocab_path is None:
     vocab_path = os.path.expanduser('~/wmt_sentencepiece_model')
 
-  train_ds_builder = tfds.builder(config.dataset_name)
+  train_ds_builder = tfds.builder('wmt17_translate/de-en')
   train_data = get_raw_dataset(
       train_ds_builder, 'train', reverse_translation=reverse_translation)
 
-  if config.eval_dataset_name:
-    eval_ds_builder = tfds.builder(config.eval_dataset_name)
-  else:
-    eval_ds_builder = train_ds_builder
+  eval_ds_builder = tfds.builder('wmt14_translate/de-en')
   eval_data = get_raw_dataset(
-      eval_ds_builder,
-      config.eval_split,
-      reverse_translation=reverse_translation)
+      eval_ds_builder, 'test', reverse_translation=reverse_translation)
 
   # Tokenize data.
   sp_tokenizer = tokenizer.load_or_train_tokenizer(
       train_data,
       vocab_path=vocab_path,
-      vocab_size=config.vocab_size,
-      max_corpus_chars=config.max_corpus_chars)
+      vocab_size=vocab_size,
+      max_corpus_chars=10**7)
   train_data = train_data.map(
       tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
   eval_data = eval_data.map(
@@ -336,21 +327,22 @@ def get_wmt_datasets(config: Any,
       num_epochs=None,
       pack_examples=True,
       batch_size=batch_size,
-      max_length=config.max_target_length)
+      max_length=256)
 
   eval_ds = preprocess_wmt_data(
       eval_data,
       shuffle=False,
       pack_examples=False,
       batch_size=batch_size,
-      max_length=config.max_eval_target_length)
+      max_length=256,
+      drop_remainder=False)
 
   predict_ds = preprocess_wmt_data(
       eval_data,
       shuffle=False,
       pack_examples=False,
       batch_size=batch_size,
-      max_length=config.max_predict_length,
+      max_length=256,
       drop_remainder=False)
 
   return train_ds, eval_ds, predict_ds, sp_tokenizer

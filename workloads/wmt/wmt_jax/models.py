@@ -1,11 +1,5 @@
 """Transformer-based machine translation model."""
 
-# pylint: disable=attribute-defined-outside-init,g-bare-generic
-# See issue #620.
-# pytype: disable=wrong-arg-count
-# pytype: disable=wrong-keyword-args
-# pytype: disable=attribute-error
-
 from typing import Callable, Any, Optional
 
 from flax import linen as nn
@@ -18,17 +12,17 @@ import numpy as np
 @struct.dataclass
 class TransformerConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
-  vocab_size: int
-  output_vocab_size: int
-  share_embeddings: bool = False
-  logits_via_embedding: bool = False
+  vocab_size: int = 32000
+  output_vocab_size: int = 32000
+  share_embeddings: bool = True
+  logits_via_embedding: bool = True
   dtype: Any = jnp.float32
-  emb_dim: int = 512
-  num_heads: int = 8
+  emb_dim: int = 1024
+  num_heads: int = 16
   num_layers: int = 6
-  qkv_dim: int = 512
-  mlp_dim: int = 2048
-  max_len: int = 2048
+  qkv_dim: int = 1024
+  mlp_dim: int = 4096
+  max_len: int = 256
   dropout_rate: float = 0.1
   attention_dropout_rate: float = 0.1
   deterministic: bool = False
@@ -508,7 +502,6 @@ class Transformer(nn.Module):
 
     # Make padding attention masks.
     if cfg.decode:
-      # for fast autoregressive decoding only a special encoder-decoder mask is used
       decoder_mask = None
       encoder_decoder_mask = nn.make_attention_mask(
           jnp.ones_like(targets) > 0, inputs > 0, dtype=cfg.dtype)

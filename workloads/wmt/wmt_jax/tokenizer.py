@@ -1,12 +1,12 @@
-"""Provides op for tokenizing a dataset forked from https://github.com/google/flax/tree/main/examples/wmt."""
+"""Provides op for tokenizing a dataset modified from https://github.com/google/flax/tree/main/examples/wmt."""
 
+import dataclasses
 import os
 import tempfile
 import time
 from typing import Any, Dict, Iterable, Tuple
 
 from absl import logging
-import dataclasses
 import jax
 from sentencepiece import SentencePieceTrainer
 import tensorflow as tf

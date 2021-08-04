@@ -1,6 +1,8 @@
 {
     "learning_rate": {"feasible_points": [0.0625]},
     "one_minus_beta_1": {"feasible_points": [0.1]},
+    "dropout_rate": {"feasible_points": [0.1]},
+    "attention_dropout_rate": {"feasible_points": [0.1]},
     "epsilon": {"feasible_points": [1e-9]}
 }
 

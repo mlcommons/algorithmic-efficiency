@@ -1,7 +1,5 @@
 r"""Run a submission on a single workload.
-
 Example command:
-
 python3 submission_runner.py \
     --workload=mnist_jax \
     --framework=jax \
@@ -10,20 +8,20 @@ python3 submission_runner.py \
     --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
     --num_tuning_trials=3
 """
+from typing import Optional, Tuple
+
+from absl import app
+from absl import flags
+from absl import logging
 import importlib
 import inspect
 import json
 import os
 import struct
 import time
-from typing import Optional, Tuple
 
 import halton
 import random_utils as prng
-from absl import app
-from absl import flags
-from absl import logging
-import jax
 import spec
 
 
@@ -42,13 +40,14 @@ WORKLOADS = {
     'workload_class_name': 'ImagenetWorkload'
   },
   'wmt_jax': {
-    'workload_path': 'workloads/wmt/workload.py',
+    'workload_path': 'workloads/wmt/wmt_jax/workload.py',
     'workload_class_name': 'WMTWorkload'
   }
 }
 
 flags.DEFINE_string(
-    'submission_path', 'workloads/mnist_jax/submission.py',
+    'submission_path',
+    'workloads/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string('workload', 'mnist_jax',
@@ -93,13 +92,11 @@ def _import_workload(
     workload_registry_name,
     workload_class_name):
   """Import and add the workload to the registry.
-
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
   a submitter only wants to write Jax code, the try/except below will catch
   the import errors caused if they do not have the PyTorch dependencies
   installed on their system.
-
   Args:
     workload_path: the path to the `workload.py` file to load.
     workload_registry_name: the name to register the workload class under.
@@ -204,9 +201,6 @@ def train_once(
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
-    logging.log_first_n(logging.INFO,
-                        'Finished training step %d, accumulated time %f.', 5,
-                        global_step, accumulated_submission_time)
 
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or

@@ -1,6 +1,7 @@
-r"""Parallel BLEU score calculation forked from https://github.com/google/flax/tree/main/examples/wmt.
+r"""Parallel BLEU score calculation modified from https://github.com/google/flax/tree/main/examples/wmt.
 
-This version of BLEU calculation is derived from the MLPerf transformer reference.
+This version of BLEU calculation is derived from the MLPerf transformer
+reference.
 Tries to match SacreBLEU metric reasonably well, but is not identical.
 
 Refs:
@@ -99,9 +100,7 @@ def _get_ngrams(segment, max_order):
   return ngram_counts
 
 
-def compute_bleu_matches(reference_corpus,
-                 translation_corpus,
-                 max_order=4):
+def compute_bleu_matches(reference_corpus, translation_corpus, max_order=4):
   """Computes BLEU match stats of translations against one or more references.
 
   Args:
@@ -116,12 +115,9 @@ def compute_bleu_matches(reference_corpus,
   """
   reference_length = 0
   translation_length = 0
-  bp = 1.0
-  geo_mean = 0
 
   matches_by_order = [0] * max_order
   possible_matches_by_order = [0] * max_order
-  precisions = []
 
   for (references, translations) in zip(reference_corpus, translation_corpus):
     reference_length += len(references)
@@ -138,10 +134,8 @@ def compute_bleu_matches(reference_corpus,
       possible_matches_by_order[len(ngram) -
                                 1] += translation_ngram_counts[ngram]
 
-  return (np.array(matches_by_order),
-          np.array(possible_matches_by_order),
-          np.array(reference_length),
-          np.array(translation_length))
+  return (np.array(matches_by_order), np.array(possible_matches_by_order),
+          np.array(reference_length), np.array(translation_length))
 
 
 def bleu_partial(ref_lines, hyp_lines, case_sensitive=False):
