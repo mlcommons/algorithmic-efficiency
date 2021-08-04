@@ -1,5 +1,7 @@
 r"""Run a submission on a single workload.
+
 Example command:
+
 python3 submission_runner.py \
     --workload=mnist_jax \
     --framework=jax \
@@ -92,6 +94,7 @@ def _import_workload(
     workload_registry_name,
     workload_class_name):
   """Import and add the workload to the registry.
+
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
   a submitter only wants to write Jax code, the try/except below will catch
@@ -201,7 +204,6 @@ def train_once(
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
-
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
