@@ -5,4 +5,4 @@ platform:
   name: "docker"
   version: ">=18.01"
 container:
-  image: "mlc_algorithms/mlcube_mnist_jax:0.0.1"
+  image: "mlc_algorithms/mlcube:0.0.1"

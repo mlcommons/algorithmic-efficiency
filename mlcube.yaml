@@ -1,10 +1,10 @@
 schema_version: 1.0.0
 schema_type: mlcube_root
 
-name: mnist_jax
+name: algorithmic_efficiency
 author: MLCommons Algorithm Efficiency Working Group
 version: 0.1.0
 mlcube_spec_version: 0.1.0
 
 tasks:
-  - 'tasks/train.yaml'
+  - 'tasks/mnist_jax.yaml'
