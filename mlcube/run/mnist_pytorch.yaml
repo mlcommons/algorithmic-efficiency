@@ -4,7 +4,7 @@ schema_version: 1.0.0
 task_name: train
 
 input_binding:
-        flagfile: $WORKSPACE/mnist_jax.cfg
+        flagfile: $WORKSPACE/mnist_pytorch.cfg
 
 output_binding:
-        log_dir: $WORKSPACE/mnist_jax_logs
+        log_dir: $WORKSPACE/mnist_pytorch_logs

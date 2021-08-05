@@ -7,4 +7,4 @@ version: 0.1.0
 mlcube_spec_version: 0.1.0
 
 tasks:
-  - 'mlcube/tasks/mnist_jax.yaml'
+  - 'mlcube/tasks/train.yaml'
