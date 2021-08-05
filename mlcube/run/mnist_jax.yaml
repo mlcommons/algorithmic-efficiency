@@ -1,7 +1,7 @@
 schema_type: mlcube_invoke
 schema_version: 1.0.0
 
-task_name: train
+task_name: mnist_jax
 
 input_binding:
         flagfile: $WORKSPACE/mnist_jax.cfg

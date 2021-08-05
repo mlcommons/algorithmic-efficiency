@@ -23,12 +23,17 @@ python submission_runner.py --flagfile=
 ### Container
 #### Build container
 ```
-cd mlc_algo_efficiency_mnist_jax
-mlcube_docker configure --mlcube=. --platform=platforms/docker.yaml
+cd algorithmic-efficiency
+mlcube_docker configure --mlcube=. --platform=mlcube/platforms/docker.yaml
 ```
 #### Test container
 ```
 docker run -it mlc_algorithms/mlcube_mnist_jax:0.0.1 bash
+```
+#### Run Task
+```
+cd algorithmic-efficiency/mlcube
+mlcube_docker run --mlcube=. --platform=platforms/docker.yaml --task=run/mnist_jax.yaml
 ```
 
 ### submission_runner.py FLAGS

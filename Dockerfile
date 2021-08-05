@@ -67,7 +67,8 @@ RUN apt-get update && apt-get install -y \
 # RUN git clone https://github.com/mlcommons/algorithmic-efficiency.git
 # WORKDIR "algorithmic-efficiency"
 
-COPY ../../../ /algorithmic-efficiency
+COPY . /algorithmic-efficiency/
+WORKDIR algorithmic-efficiency
 
 # Install pip dependencies
 ENV PIP_NO_CACHE_DIR=true

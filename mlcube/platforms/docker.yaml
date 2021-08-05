@@ -5,4 +5,4 @@ platform:
   name: "docker"
   version: ">=18.01"
 container:
-  image: "mlc_algorithms/mlcube:0.0.1"
+  image: "mlcommons/algorithmic_efficiency:0.0.1"
