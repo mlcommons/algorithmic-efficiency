@@ -4,7 +4,7 @@ schema_version: 1.0.0
 task_name: train
 
 input_binding:
-        submission_config: $WORKSPACE/submission.cfg
+        flagfile: $WORKSPACE/submission.cfg
 
 output_binding:
         log_dir: $WORKSPACE/train_logs

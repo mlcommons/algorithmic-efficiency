@@ -57,15 +57,17 @@ RUN apt-get update && apt-get install -y \
     libcudnn${CUDNN_MAJOR}=*cuda${CUDA_MAJOR}.${CUDA_MINOR} \
     libcudnn${CUDNN_MAJOR}-dev=*cuda${CUDA_MAJOR}.${CUDA_MINOR}
 
-# Install git
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    build-essential \
-    git \
-    ssh
+# # Install git
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     ca-certificates \
+#     build-essential \
+#     git \
+#     ssh
 
-RUN git clone https://github.com/mlcommons/algorithmic-efficiency.git
-WORKDIR "algorithmic-efficiency"
+# RUN git clone https://github.com/mlcommons/algorithmic-efficiency.git
+# WORKDIR "algorithmic-efficiency"
+
+COPY ../../../ /algorithmic-efficiency
 
 # Install pip dependencies
 ENV PIP_NO_CACHE_DIR=true
@@ -82,6 +84,6 @@ RUN pip install -f https://download.pytorch.org/whl/torch_stable.html torch==1.8
 RUN pip install -f https://download.pytorch.org/whl/torch_stable.html torchvision==0.9.1+cu${PYTORCH_CUDA_PYPI}
 RUN pip install -f https://download.pytorch.org/whl/torch_stable.html torchaudio===0.8.1
 
-ENTRYPOINT ["python3", "submission_runner.py", "--framework=jax", "--workload=mnist_jax", "--submission_path=workloads/mnist/mnist_jax/submission.py"]
+ENTRYPOINT ["python3", "submission_runner.py"]
 
 

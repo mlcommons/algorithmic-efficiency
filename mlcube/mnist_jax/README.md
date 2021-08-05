@@ -26,12 +26,10 @@ python submission_runner.py --flagfile=
 cd mlc_algo_efficiency_mnist_jax
 mlcube_docker configure --mlcube=. --platform=platforms/docker.yaml
 ```
-
 #### Test container
 ```
 docker run -it mlc_algorithms/mlcube_mnist_jax:0.0.1 bash
 ```
-
 
 ### submission_runner.py FLAGS
 ```

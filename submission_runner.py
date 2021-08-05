@@ -19,6 +19,7 @@ import importlib
 import inspect
 import json
 import os
+import sys
 import struct
 import time
 
@@ -74,6 +75,15 @@ flags.DEFINE_enum(
     'other things if the Jax or Numpy RNG library is used for RNG.')
 
 FLAGS = flags.FLAGS
+# Let flags parse argv. This fixes UnparsedFlagAccessError on --log_dir access.
+FLAGS(sys.argv)
+
+# Print log to file if specified
+if FLAGS.log_dir:
+  if not os.path.exists(FLAGS.log_dir):
+    os.makedirs(FLAGS.log_dir)
+  logging.get_absl_handler().use_absl_log_file('absl_logging', FLAGS.log_dir)
+  FLAGS.alsologtostderr = True # Print log to screen
 
 
 def _convert_filepath_to_module(path: str):
@@ -106,7 +116,6 @@ def _import_workload(
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
   workload_path = _convert_filepath_to_module(workload_path)
-
   try:
     # Import the workload module.
     workload_module = importlib.import_module(workload_path)
@@ -316,4 +325,8 @@ def main(_):
 
 
 if __name__ == '__main__':
-  app.run(main)
+  try:
+    app.run(main)
+  except Exception as err:
+    logging.exception(err)
+

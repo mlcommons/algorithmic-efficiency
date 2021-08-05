@@ -4,7 +4,7 @@ schema_type: mlcube_task
 
 # Task Inputs
 inputs:
-        - name: submission_config
+        - name: flagfile
           type: file
 # Task Outputs
 outputs:
