@@ -45,7 +45,7 @@ class MnistWorkload(Mnist):
       split: str,
       data_dir: str,
       batch_size):
-    ds = tfds.load('mnist', split=split)
+    ds = tfds.load('mnist', split=split, data_dir=data_dir)
     ds = ds.cache()
     ds = ds.map(lambda x: (self._normalize(x['image']), x['label']))
     if split == 'train':

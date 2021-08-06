@@ -10,3 +10,5 @@ inputs:
 outputs:
         - name: log_dir
           type: directory
+        - name: data_dir
+          type: directory

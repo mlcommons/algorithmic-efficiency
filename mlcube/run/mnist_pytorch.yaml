@@ -8,3 +8,4 @@ input_binding:
 
 output_binding:
         log_dir: $WORKSPACE/mnist_pytorch_logs
+        data_dir: $WORKSPACE/mnist_pytorch_dataset
