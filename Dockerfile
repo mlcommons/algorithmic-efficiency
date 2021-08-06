@@ -57,23 +57,6 @@ RUN apt-get update && apt-get install -y \
     libcudnn${CUDNN_MAJOR}=*cuda${CUDA_MAJOR}.${CUDA_MINOR} \
     libcudnn${CUDNN_MAJOR}-dev=*cuda${CUDA_MAJOR}.${CUDA_MINOR}
 
-# # Install git
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     ca-certificates \
-#     build-essential \
-#     git \
-#     ssh
-
-# RUN git clone https://github.com/mlcommons/algorithmic-efficiency.git
-# WORKDIR "algorithmic-efficiency"
-
-COPY . /algorithmic-efficiency/
-WORKDIR algorithmic-efficiency
-
-# Install pip dependencies
-ENV PIP_NO_CACHE_DIR=true
-RUN pip3 install -e .
-
 # NOTE: JAX don't yet have a "cuda112" version of jaxlib 0.1.69.
 ARG JAX_CUDA_PYPI=111
 RUN pip3 install -e .[jax-gpu] -f 'https://storage.googleapis.com/jax-releases/jax_releases.html'
@@ -84,6 +67,13 @@ ARG PYTORCH_CUDA_PYPI=111
 RUN pip install -f https://download.pytorch.org/whl/torch_stable.html torch==1.8.1+cu${PYTORCH_CUDA_PYPI}
 RUN pip install -f https://download.pytorch.org/whl/torch_stable.html torchvision==0.9.1+cu${PYTORCH_CUDA_PYPI}
 RUN pip install -f https://download.pytorch.org/whl/torch_stable.html torchaudio===0.8.1
+
+COPY . /algorithmic-efficiency/
+WORKDIR algorithmic-efficiency
+
+# Install pip dependencies
+ENV PIP_NO_CACHE_DIR=true
+RUN pip3 install -e .
 
 ENTRYPOINT ["python3", "submission_runner.py"]
 
