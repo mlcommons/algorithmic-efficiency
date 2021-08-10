@@ -1,5 +1,6 @@
 """LibriSpeech workload implemented in Pytorch."""
 
+import os
 from typing import Tuple
 
 import ctcdecode
@@ -60,9 +61,9 @@ class LibriSpeechWorkload(spec.Workload):
   def build_input_queue(self, data_rng, split: str, data_dir: str,
                         batch_size: int):
     train_set = input_pipeline.LibriSpeechDataset(
-        "data/features_train-clean-100.csv")
+        os.path.join(data_dir, "features_train-clean-100.csv"))
     valid_set = input_pipeline.LibriSpeechDataset(
-        "data/features_test-clean.csv")
+        os.path.join(data_dir, "features_test-clean.csv"))
 
     train_collate_fn = train_set.pad_collate
 

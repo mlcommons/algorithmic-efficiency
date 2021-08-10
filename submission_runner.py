@@ -41,10 +41,6 @@ WORKLOADS = {
     'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
     'workload_class_name': 'ImagenetWorkload'
   },
-  'wmt_jax': {
-    'workload_path': 'workloads/wmt/wmt_jax/workload.py',
-    'workload_class_name': 'WMTWorkload'
-  },
   'librispeech_pytorch': {
     'workload_path': 'workloads/librispeech/librispeech_pytorch/workload.py',
     'workload_class_name': 'LibriSpeechWorkload'
