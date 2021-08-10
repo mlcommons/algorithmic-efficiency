@@ -139,7 +139,7 @@ class LibriSpeechWorkload(spec.Workload):
     model = models.CNNLSTM()
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
-    model.to(device)
+    model.to(self._device)
     return model, None
 
   def model_fn(
@@ -153,7 +153,7 @@ class LibriSpeechWorkload(spec.Workload):
     del update_batch_norm
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
-    _, features, trns, input_lengths = augmented_and_preprocessed_input_batch
+    features, trns, input_lengths = augmented_and_preprocessed_input_batch
     log_y, output_lengths = params(features, input_lengths, trns)
 
     return (log_y, output_lengths), None
@@ -164,10 +164,9 @@ class LibriSpeechWorkload(spec.Workload):
       logits_batch: spec.Tensor) -> spec.Tensor:
 
     log_y, output_lengths = logits_batch
-    trns = label_batch.long().to(self._device)
-    target_lengths = torch.IntTensor([len(y[y != 0]) for y in trns])
+    target_lengths = torch.IntTensor([len(y[y != 0]) for y in label_batch])
 
-    loss = self._loss(log_y, trns, output_lengths, target_lengths) / (
+    loss = self._loss(log_y, label_batch, output_lengths, target_lengths) / (
         target_lengths.float().to(self._device))
 
     return loss

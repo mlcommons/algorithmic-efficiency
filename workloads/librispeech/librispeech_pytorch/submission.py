@@ -42,7 +42,6 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
-  del workload
   del current_params_types
   del eval_results
   del global_step
@@ -52,7 +51,6 @@ def update_params(
   del label_batch
   del rng
 
-  current_param_container.train()
   _, features, trns, input_lengths = input_batch
   features = features.float().to(device)
   features = features.transpose(1, 2).unsqueeze(1)
@@ -60,12 +58,14 @@ def update_params(
   input_lengths = input_lengths.long().to(device)
 
   optimizer_state.zero_grad()
-  log_y, output_lengths = current_param_container(features, input_lengths, trns)
 
-  target_lengths = torch.IntTensor([len(y[y != 0]) for y in trns])
-  train_ctc_loss = torch.mean(
-      ctc_loss(log_y, trns, output_lengths, target_lengths) /
-      (target_lengths.float().to(device)))
+  (log_y,
+   output_lengths), _ = workload.model_fn(current_param_container,
+                                          (features, trns, input_lengths), None,
+                                          spec.ForwardPassMode.TRAIN, rng,
+                                          False)
+
+  train_ctc_loss = torch.mean(workload.loss_fn(trns, (log_y, output_lengths)))
 
   train_ctc_loss.backward()
   optimizer_state.step()
