@@ -49,7 +49,6 @@ def update_params(
   del loss_type
   del hyperparameters
   del label_batch
-  del rng
 
   _, features, trns, input_lengths = input_batch
   features = features.float().to(device)
