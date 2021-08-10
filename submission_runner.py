@@ -41,6 +41,14 @@ WORKLOADS = {
     'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
     'workload_class_name': 'ImagenetWorkload'
   },
+  'wmt_jax': {
+    'workload_path': 'workloads/wmt/wmt_jax/workload.py',
+    'workload_class_name': 'WMTWorkload'
+  },
+  'librispeech_pytorch': {
+    'workload_path': 'workloads/librispeech/librispeech_pytorch/workload.py',
+    'workload_class_name': 'LibriSpeechWorkload'
+  }
 }
 
 flags.DEFINE_string(
@@ -143,9 +151,12 @@ def train_once(
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
+  logging.info('Initializing dataset.')
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
+  logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
+  logging.info('Initializing optimizer.')
   optimizer_state = init_optimizer_state(
       workload,
       model_params,
@@ -163,6 +174,7 @@ def train_once(
   training_complete = False
   global_start_time = time.time()
 
+  logging.info('Starting training loop.')
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(
@@ -317,3 +329,4 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
+

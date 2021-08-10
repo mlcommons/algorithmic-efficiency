@@ -11,6 +11,7 @@ class LossType(enum.Enum):
   SOFTMAX_CROSS_ENTROPY = 0
   SIGMOID_CROSS_ENTROPY = 1
   MEAN_SQUARED_ERROR = 2
+  CTC_LOSS = 3
 
 
 class ForwardPassMode(enum.Enum):
@@ -113,7 +114,6 @@ class Workload(metaclass=abc.ABCMeta):
       data_dir: str,
       batch_size: int):
     """Build the input queue for the workload data.
-
     This is the only function that is NOT allowed to be called by submitters.
     """
 
@@ -266,9 +266,7 @@ def data_selection(
     global_step: int,
     rng: RandomState) -> Tuple[Tensor, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
-
   Each element of the queue is a single training example and label.
-
   We left out `current_params_types` because we do not believe that it would
   # be necessary for this function.
   """
@@ -279,3 +277,4 @@ def data_selection(
 def get_batch_size(workload_name):
   """Return a batch size to use for a given workload."""
   pass
+
