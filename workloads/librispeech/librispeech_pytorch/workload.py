@@ -3,10 +3,10 @@
 import os
 from typing import Tuple
 
+from . import input_pipeline
+from . import models
 import ctcdecode
-import input_pipeline
 import Levenshtein
-import models
 import spec
 import torch
 
