@@ -139,6 +139,7 @@ class LibriSpeechWorkload(spec.Workload):
     model = models.CNNLSTM()
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
+    model.to(device)
     return model, None
 
   def model_fn(
