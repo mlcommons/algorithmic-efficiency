@@ -16,7 +16,8 @@ class LibriSpeechWorkload(spec.Workload):
   def __init__(self):
     self._train_loader = None
     self._valid_loader = None
-    self._device = torch.device("cuda")
+    self._device = torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu")
     self._loss = torch.nn.CTCLoss(blank=0, reduction="none")
     self._label_dict = {
         "_": 0,
@@ -134,7 +135,10 @@ class LibriSpeechWorkload(spec.Workload):
     return raw_input_batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    return models.CNNLSTM().to(self._device), None
+    model = models.CNNLSTM()
+    if torch.cuda.device_count() > 1:
+      model = torch.nn.DataParallel(model)
+    return model, None
 
   def model_fn(
       self, params: spec.ParameterContainer,

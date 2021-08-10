@@ -4,7 +4,7 @@ from typing import Iterator, List, Tuple
 import spec
 import torch
 
-device = torch.device("cuda")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
 
 
