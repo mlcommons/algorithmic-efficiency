@@ -81,7 +81,7 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 35
+    return 0.35
 
   @property
   def loss_type(self):

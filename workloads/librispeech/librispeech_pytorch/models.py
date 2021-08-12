@@ -101,6 +101,7 @@ class BatchRNN(nn.Module):
     self.rnn.flatten_parameters()
 
   def forward(self, x, output_lengths):
+    self.flatten_parameters()
     if self.batch_norm is not None:
       x = self.batch_norm(x)
     x = nn.utils.rnn.pack_padded_sequence(x, output_lengths)
