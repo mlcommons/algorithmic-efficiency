@@ -156,7 +156,7 @@ class LibriSpeechWorkload(spec.Workload):
     features, trns, input_lengths = augmented_and_preprocessed_input_batch
     log_y, output_lengths = params(features, input_lengths, trns)
 
-    return (log_y, output_lengths), None
+    return (log_y.transpose(0, 1), output_lengths), None
 
   def loss_fn(
       self,
@@ -194,7 +194,7 @@ class LibriSpeechWorkload(spec.Workload):
         log_y, _ = params(features, input_lengths, trns)
 
         out, _, _, seq_lens = self._decoder.decode(
-            torch.exp(log_y).transpose(0, 1).detach().cpu(), input_lengths)
+            torch.exp(log_y).detach().cpu(), input_lengths)
         for hyp, trn, length in zip(out, trns, seq_lens):  # iterate batch
           best_hyp = hyp[0, :length[0]]
           hh = "".join([self._rev_label_dict[i.item()] for i in best_hyp])

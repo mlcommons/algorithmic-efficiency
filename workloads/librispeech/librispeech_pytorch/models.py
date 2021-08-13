@@ -94,7 +94,8 @@ class BatchRNN(nn.Module):
         input_size=input_size,
         hidden_size=hidden_size,
         bidirectional=bidirectional,
-        bias=True)
+        bias=True,
+        batch_first=True)
     self.num_directions = 2 if bidirectional else 1
 
   def flatten_parameters(self):
@@ -104,9 +105,14 @@ class BatchRNN(nn.Module):
     self.flatten_parameters()
     if self.batch_norm is not None:
       x = self.batch_norm(x)
-    x = nn.utils.rnn.pack_padded_sequence(x, output_lengths)
+    x = x.transpose(0, 1)
+    total_length = x.size(1)
+    x = nn.utils.rnn.pack_padded_sequence(
+        x, output_lengths.cpu(), batch_first=True)
     x, _ = self.rnn(x)
-    x, _ = nn.utils.rnn.pad_packed_sequence(x)
+    x, _ = nn.utils.rnn.pad_packed_sequence(
+        x, batch_first=True, total_length=total_length)
+    x = x.transpose(0, 1)
     if self.bidirectional:
       x = x.view(x.size(0), x.size(1), 2,
                  -1).sum(2).view(x.size(0), x.size(1),
@@ -217,7 +223,7 @@ class CNNLSTM(nn.Module):
     return seq_len.int()
 
   def forward(self, x, lengths, trns):
-    lengths = lengths.cpu().int()
+    lengths = lengths.int()
     output_lengths = self.get_seq_lens(lengths)
     # print('output_lengths', output_lengths, x.size())
     x, _ = self.conv(x, output_lengths)
@@ -234,7 +240,7 @@ class CNNLSTM(nn.Module):
       x = self.lookahead(x)
 
     x = self.fc(x)
-    log_probs = x.log_softmax(dim=-1)
+    log_probs = x.log_softmax(dim=-1).transpose(0, 1)
 
     return log_probs, output_lengths
 
