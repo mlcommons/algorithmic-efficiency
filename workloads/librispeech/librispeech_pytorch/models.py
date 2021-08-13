@@ -257,7 +257,8 @@ class CNNLSTM(nn.Module):
 
       log_y, output_lengths = self(features, input_lengths, trns)
       target_lengths = torch.IntTensor([len(y[y != 0]) for y in trns])
-      batch_loss = loss_fn(log_y, trns, output_lengths, target_lengths)
+      batch_loss = loss_fn(
+          log_y.transpose(0, 1), trns, output_lengths, target_lengths)
 
       total_loss += torch.sum(batch_loss).data
       total_count += features.size(0)
