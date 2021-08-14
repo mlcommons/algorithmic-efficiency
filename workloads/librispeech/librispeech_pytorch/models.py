@@ -70,7 +70,6 @@ class InferenceBatchSoftmax(nn.Module):
 
   def forward(self, input_):
     if not self.training:
-      # print('InferenceBatchSoftmax input', input_.size())
       return F.softmax(input_, dim=-1)
     else:
       return input_
@@ -178,7 +177,6 @@ class CNNLSTM(nn.Module):
     rnn_input_size *= 32
 
     rnns = []
-    # print('rnn_input_size', rnn_input_size)
     rnn = BatchRNN(
         input_size=rnn_input_size,
         hidden_size=self.hidden_size,
@@ -228,7 +226,6 @@ class CNNLSTM(nn.Module):
   def forward(self, x, lengths, trns):
     lengths = lengths.int()
     output_lengths = self.get_seq_lens(lengths)
-    # print('output_lengths', output_lengths, x.size())
     x, _ = self.conv(x, output_lengths)
 
     sizes = x.size()

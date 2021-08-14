@@ -19,7 +19,6 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
 
     feature = np.load(sample["features"])
     index = sample["id"]
-    # assert len(trn_ids)>0
     return index, feature, trn_ids
 
   def __len__(self):
@@ -37,7 +36,6 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
 
     for i, elem in enumerate(batch):
       index, f, trn = elem
-      # trn = np.array(trn)
       input_length = np.array(f.shape[0])
       input_dim = f.shape[1]
       feature = np.zeros((max_input_len, input_dim), dtype=np.float)

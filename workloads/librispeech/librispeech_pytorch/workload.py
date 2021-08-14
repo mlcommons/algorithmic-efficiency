@@ -1,5 +1,6 @@
 """LibriSpeech workload implemented in Pytorch."""
 
+import itertools
 import os
 from typing import Tuple
 
@@ -60,6 +61,7 @@ class LibriSpeechWorkload(spec.Workload):
 
   def build_input_queue(self, data_rng, split: str, data_dir: str,
                         batch_size: int):
+    torch.manual_seed(data_rng[0])
     train_set = input_pipeline.LibriSpeechDataset(
         os.path.join(data_dir, "features_train-clean-100.csv"))
     valid_set = input_pipeline.LibriSpeechDataset(
@@ -68,12 +70,19 @@ class LibriSpeechWorkload(spec.Workload):
     train_collate_fn = train_set.pad_collate
 
     self._train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=batch_size, collate_fn=train_collate_fn)
+        train_set,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+        collate_fn=train_collate_fn)
 
     self._valid_loader = torch.utils.data.DataLoader(
-        valid_set, batch_size=batch_size, collate_fn=train_collate_fn)
+        valid_set,
+        batch_size=batch_size,
+        pin_memory=True,
+        collate_fn=train_collate_fn)
 
-    return iter(self._train_loader)
+    return iter(itertools.cycle(self._train_loader))
 
   @property
   def param_shapes(self):
@@ -81,7 +90,7 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.35
+    return 0.15
 
   @property
   def loss_type(self):
@@ -108,7 +117,7 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 40000
+    return 80000
 
   @property
   def eval_period_time_sec(self):

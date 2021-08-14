@@ -85,7 +85,7 @@ def data_selection(workload: spec.Workload,
   Each element of the queue is a single training example and label.
 
   We left out `current_params_types` because we do not believe that it would
-  # be necessary for this function.
+  be necessary for this function.
 
   Return a tuple of input label batches.
   """
