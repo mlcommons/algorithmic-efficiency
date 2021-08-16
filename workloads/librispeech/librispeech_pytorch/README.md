@@ -24,3 +24,7 @@ python prepare_data.py data_dir/LibriSpeech
 The raw dataset is under `data_dir` and the preprocessed dataset is under
 `work_dir`.
 
+## 3. Reference
+
+https://github.com/lsari/librispeech_100
+
