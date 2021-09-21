@@ -76,3 +76,4 @@ class Mnist(spec.Workload):
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
     return {k: float(v / num_batches) for k, v in total_metrics.items()}
+

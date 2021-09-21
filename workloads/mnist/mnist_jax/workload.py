@@ -148,3 +148,4 @@ class MnistWorkload(Mnist):
     accuracy = jnp.mean(jnp.argmax(logits, axis=-1) == labels)
     loss = jnp.mean(self.loss_fn(labels, logits))
     return {'accuracy': accuracy, 'loss': loss}
+

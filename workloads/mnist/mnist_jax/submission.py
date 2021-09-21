@@ -155,3 +155,4 @@ def data_selection(
   del global_step
   del rng
   return next(input_queue)
+
