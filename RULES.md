@@ -1,6 +1,6 @@
 # MLCommons™ Algorithmic Efficiency Benchmark Rules
 
-**Version:** 0.0.1 *(Updated 28 July 2021)*
+**Version:** 0.0.2 *(Updated 21 September 2021)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -325,8 +325,6 @@ The submissions will be [scored](#scoring) according to their performance on all
 #### Public workloads
 
 The public workloads will contain tasks such as image classification, object detection, machine translation, language modeling, speech recognition, or other typical machine learning tasks. There will be roughly 5 datasets with one or two models each. The full list of workloads as well as the exact specification of each workload will be made public with the call for submissions. The entire set of public workloads should have a combined runtime of roughly one week on the [competition hardware](#competition-hardware). Furthermore, a less computationally expensive subset of the public workloads might be identified as "qualification workloads." Submissions that achieve good performance on this set would potentially qualify for computational resources during scoring, provided by sponsors of the benchmark.
-
-The current list of workloads under consideration to be part of the public workloads can be found in the [workload brainstorming sheet](https://docs.google.com/spreadsheets/d/1bzVRuxTxaAaP4V9VHCovCytw5Rtk5vHZkxKL-Gvz3v4).
 
 #### Held-out workloads
 
