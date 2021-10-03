@@ -20,13 +20,15 @@ USER ubuntu
 WORKDIR /home/ubuntu/algorithmic-efficiency
 
 # setup path
-ENV PATH="/home/ubuntu/.local/bin:${PATH}" 
+ENV PATH="/home/ubuntu/.local/bin:${PATH}"
 
-# add requirements
-COPY ./requirements.txt /tmp/requirements.txt
+# copy files
+COPY . /home/ubuntu/algorithmic-efficiency
 
-# install requirements
-RUN pip3 install -r /tmp/requirements.txt
+# install python packages
+RUN cd /home/ubuntu/algorithmic-efficiency && \
+    pip3 install .[jax-gpu] -f 'https://storage.googleapis.com/jax-releases/jax_releases.html' && \
+    pip3 install .[pytorch] -f 'https://download.pytorch.org/whl/torch_stable.html'
 
 # bash
 CMD ["/bin/bash"]
