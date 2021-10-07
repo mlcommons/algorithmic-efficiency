@@ -112,7 +112,10 @@ class MnistWorkload(Mnist):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = _Model().to(DEVICE)
+    model = _Model()
+    if torch.cuda.device_count() > 1:
+      model = torch.nn.DataParallel(model)
+    model.to(DEVICE)
     return model, None
 
   def model_fn(
