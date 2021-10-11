@@ -8,11 +8,11 @@ from setuptools import setup
 
 
 jax_core_deps = [
-    'jax',
-    'flax',
-    'optax',
-    'tensorflow-cpu',
-    'tensorflow_datasets',
+    'jax==0.2.17',
+    'flax==0.3.5',
+    'optax==0.0.9',
+    'tensorflow_datasets==4.4.0',
+    'tensorflow-cpu==2.5.0',
 ]
 
 
@@ -24,19 +24,20 @@ setup(
     author_email='algorithms@mlcommons.org',
     url='https://github.com/mlcommons/algorithmic-efficiency',
     license='Apache 2.0',
+    python_requires=">=3.7",
     packages=find_packages(),
     install_requires=[
-        'absl-py',
-        'numpy',
+        'absl-py==0.14.0',
+        'numpy>=1.19.2',
     ],
     extras_require={
-        'jax-cpu': jax_core_deps + ['jaxlib'],
+        'jax-cpu': jax_core_deps + ['jaxlib==0.1.71'],
         # Note for GPU support the installer must be run with
         # `-f 'https://storage.googleapis.com/jax-releases/jax_releases.html'`.
-        'jax-gpu': jax_core_deps + ['jaxlib==0.1.65+cuda110'],
+        'jax-gpu': jax_core_deps + ['jaxlib==0.1.71+cuda111'],
         'pytorch': [
-            'torch',
-            'torchvision',
+            'torch==1.9.1+cu111',
+            'torchvision==0.10.1+cu111',
         ],
     },
     classifiers=[
