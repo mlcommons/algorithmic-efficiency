@@ -101,8 +101,8 @@ def extract_spect_mvn(audio_path):
   # spect = torch.FloatTensor(spect)
   # if self.normalize:
   print(spect.shape)
-  mean = np.mean(spect, 1, keepdims=True)
-  std = np.std(spect, 1, keepdims=True)
+  mean = np.mean(spect)
+  std = np.std(spect)
   spect -= mean
   spect /= std
   return spect.T, duration
