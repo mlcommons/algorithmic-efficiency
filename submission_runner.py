@@ -41,6 +41,10 @@ WORKLOADS = {
     'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
     'workload_class_name': 'ImagenetWorkload'
   },
+  'ogb_jax': {
+    'workload_path': 'workloads/ogb/ogb_jax/workload.py',
+    'workload_class_name': 'OGBWorkload'
+  },
   'wmt_jax': {
     'workload_path': 'workloads/wmt/wmt_jax/workload.py',
     'workload_class_name': 'WMTWorkload'
@@ -325,4 +329,3 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
-
