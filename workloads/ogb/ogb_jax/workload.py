@@ -5,12 +5,13 @@ import sklearn.metrics
 
 import jax
 import jax.numpy as jnp
+import jraph
 from flax import linen as nn
 
 import spec
-import input_pipeline
-import models
 from workloads.ogb.workload import OGB
+from workloads.ogb.ogb_jax import input_pipeline
+from workloads.ogb.ogb_jax import models
 
 
 class OGBWorkload(OGB):
@@ -20,7 +21,7 @@ class OGBWorkload(OGB):
     self._param_shapes = None
     self._init_graphs = None
     self._mask = None
-    self._model = models.GraphNet(
+    self._model = models.GraphConvNet(
         latent_size=256,
         num_mlp_layers=2,
         message_passing_steps=5,
@@ -28,7 +29,6 @@ class OGBWorkload(OGB):
         dropout_rate=0.1,
         skip_connections=True,
         layer_norm=True,
-        use_edge_model=True,
         deterministic=True)
 
   def _normalize(self, image):
@@ -94,7 +94,7 @@ class OGBWorkload(OGB):
     del train_stddev
     return raw_input_batch, raw_label_batch
 
-  def _replace_globals(self, graphs: jraph.Graphssklearn) -> jraph.Graphssklearn:
+  def _replace_globals(self, graphs: jraph.GraphsTuple) -> jraph.GraphsTuple:
     """Replaces the globals attribute with a constant feature for each graph."""
     return graphs._replace(globals=jnp.ones([graphs.n_node.shape[0], 1]))
 
