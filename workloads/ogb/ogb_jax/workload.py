@@ -95,7 +95,7 @@ class OGBWorkload(OGB):
     return raw_input_batch, raw_label_batch
 
   def _replace_globals(self, graphs: jraph.Graphssklearn) -> jraph.Graphssklearn:
-  """Replaces the globals attribute with a constant feature for each graph."""
+    """Replaces the globals attribute with a constant feature for each graph."""
     return graphs._replace(globals=jnp.ones([graphs.n_node.shape[0], 1]))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
