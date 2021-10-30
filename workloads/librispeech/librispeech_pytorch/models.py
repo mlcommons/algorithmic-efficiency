@@ -81,7 +81,7 @@ class BatchRNN(nn.Module):
                input_size,
                hidden_size,
                rnn_type=nn.LSTM,
-               bidirectional=False,
+               bidirectional=True,
                batch_norm=True):
     super(BatchRNN, self).__init__()
     self.input_size = input_size
@@ -160,7 +160,7 @@ class CNNLSTM(nn.Module):
     self.rnn_type = "lstm"
     self.context = 20
 
-    self.bidirectional = False
+    self.bidirectional = True
 
     self.conv = MaskConv(
         nn.Sequential(

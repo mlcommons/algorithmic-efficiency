@@ -1,4 +1,4 @@
 {
-    "learning_rate": {"feasible_points": [0.0001]}
+    "learning_rate": {"feasible_points": [0.0001, 0.0002, 0.00005]}
 }
 
