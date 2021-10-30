@@ -3,8 +3,8 @@
 Speech recognition accepts raw audio samples and produces a corresponding text
 transcription. We train a CNN LSTM model on LibriSpeech clean 100 hour dataset
 and evaliate it on Librispeech test clean dataset. We get Character Error Rate
-(CER) 0.0988 after 64283 steps or 72299 seconds on a 8 V-100 GPU machine (1.12
-step/second).
+(CER) 0.0988 after 64283 steps or 97699.67 seconds on a 8 V-100 GPU machine
+(0.66 step/second).
 
 ## 2. Download and preprocess dataset
 
