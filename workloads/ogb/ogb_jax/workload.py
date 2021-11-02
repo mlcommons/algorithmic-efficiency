@@ -54,7 +54,7 @@ class OGBWorkload(OGB):
       split: str,
       data_dir: str,
       batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
+    return self._build_dataset(data_rng, split, data_dir, batch_size).as_numpy_iterator()
 
   @property
   def param_shapes(self):
@@ -120,6 +120,10 @@ class OGBWorkload(OGB):
       loss_type: spec.LossType) -> spec.Tensor:
     pass
 
+  @property
+  def loss_type(self):
+    return spec.LossType.SOFTMAX_CROSS_ENTROPY
+
   def _get_valid_mask(labels: jnp.ndarray,
                       graphs: jraph.GraphsTuple) -> jnp.ndarray:
     """Gets the binary mask indicating only valid labels and graphs."""
@@ -151,13 +155,12 @@ class OGBWorkload(OGB):
     graphs = self._replace_globals(input_batch)
 
     # Get predicted logits
-    variables = {'params': params, **model_state}
+    variables = {'params': params}#, **model_state} DO NOT SUBMIT
     train = mode == spec.ForwardPassMode.TRAIN
     pred_graphs = self._model.apply(
         variables,
         graphs,
-        train=train,
-        rngs=rng)
+        rngs={'dropout': rng})
     logits = pred_graphs.globals
 
     # Get the mask for valid labels and graphs.
