@@ -77,17 +77,16 @@ def update_params(
   del current_params_types
   del loss_type
   del eval_results
-  print('\n'*10, current_param_container)
 
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, input_batch, label_batch, rng)
 
-  steps_per_epoch = workload.num_train_examples // get_batch_size('ogb_jax')
-  if (global_step + 1) % steps_per_epoch == 0:
-    # sync batch statistics across replicas once per epoch
-    new_model_state = workload.sync_batch_stats(new_model_state)
+  #steps_per_epoch = workload.num_train_examples // get_batch_size('ogb_jax')
+  #if (global_step + 1) % steps_per_epoch == 0:
+  #  # sync batch statistics across replicas once per epoch
+  #  new_model_state = workload.sync_batch_stats(new_model_state)
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

@@ -9,7 +9,7 @@ class OGB(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.24
+    return 0.255
 
   @property
   def loss_type(self):
@@ -33,11 +33,11 @@ class OGB(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    raise NotImplementedError
+    return 12000  # 3h20m
 
   @property
   def eval_period_time_sec(self):
-    raise NotImplementedError
+    return 360  # 60 minutes (too long) 
 
   def eval_model(
       self,
@@ -61,7 +61,7 @@ class OGB(spec.Workload):
         'loss': 0.,
     }
     # Loop over graphs.
-    for graphs in self._eval_ds.as_numpy_iterator():
+    for graphs in self._eval_ds:
       logits, _ = self.model_fn(
           params,
           graphs,
