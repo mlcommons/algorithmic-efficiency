@@ -1,6 +1,7 @@
 """OGB workload implemented in Jax."""
 
 from typing import Tuple
+import numpy as np
 import sklearn.metrics
 
 import jax
