@@ -53,6 +53,8 @@ class OGB(spec.Workload):
       self._eval_ds = self.build_input_queue(
           data_rng, 'test', data_dir, batch_size=eval_batch_size)
 
+    self._model.deterministic = True
+
     total_metrics = {
         'accuracy': 0.,
         'average_precision': 0.,

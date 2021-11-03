@@ -1,6 +1,7 @@
 from typing import Iterator, List, Tuple
 
 import functools
+import numpy as np
 import jax
 import jax.numpy as jnp
 import optax
@@ -9,8 +10,8 @@ import spec
 
 
 def get_batch_size(workload_name):
-  del workload_name
-  return 256
+  batch_sizes = {'ogb_jax': 256}
+  return batch_sizes[workload_name]
 
 
 def optimizer(hyperparameters: spec.Hyperparamters) -> optax.GradientTransformation:
@@ -53,11 +54,10 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)
-  optimizer_state, opt_update_fn = optimizer_state
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
-  return new_model_state, (new_optimizer_state, opt_update_fn), updated_params
+  return new_model_state, new_optimizer_state, updated_params
 
 def update_params(
     workload: spec.Workload,
@@ -77,7 +77,6 @@ def update_params(
   del current_params_types
   del loss_type
   del eval_results
-  del global_step
   print('\n'*10, current_param_container)
 
   optimizer_state, opt_update_fn = optimizer_state
@@ -85,12 +84,12 @@ def update_params(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, input_batch, label_batch, rng)
 
-  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
+  steps_per_epoch = workload.num_train_examples // get_batch_size('ogb_jax')
   if (global_step + 1) % steps_per_epoch == 0:
     # sync batch statistics across replicas once per epoch
     new_model_state = workload.sync_batch_stats(new_model_state)
 
-  return new_model_state, new_optimizer_state, new_params
+  return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 def data_selection(
     workload: spec.Workload,
@@ -104,6 +103,6 @@ def data_selection(
   Each element of the queue is a single training example and label.
   Return a tuple of input label batches.
   """
-  graphs = next(input_queue)
+  graphs = jax.tree_map(np.asarray, next(input_queue))
   labels = graphs.globals
   return graphs, labels

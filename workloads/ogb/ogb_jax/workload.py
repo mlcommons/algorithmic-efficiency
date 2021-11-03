@@ -34,16 +34,17 @@ class OGBWorkload(OGB):
   def _normalize(self, image):
     pass
 
-  def _build_dataset(self,
+  def _build_dataset(
+      self,
       data_rng: jax.random.PRNGKey,
       split: str,
       data_dir: str,
-      batch_size):
+      batch_size: int):
     datasets = input_pipeline.get_datasets(
-      batch_size,
-      add_virtual_node=False,
-      add_undirected_edges=True,
-      add_self_loops=True)
+        batch_size,
+        add_virtual_node=False,
+        add_undirected_edges=True,
+        add_self_loops=True)
     if self._init_graphs is None:
       self._init_graphs = next(datasets['train'].as_numpy_iterator())
     return datasets[split]
@@ -107,6 +108,7 @@ class OGBWorkload(OGB):
     rng, init_rng = jax.random.split(rng)
     init_graphs = self._replace_globals(self._init_graphs)
     params = jax.jit(self._model.init)(init_rng, init_graphs)
+    self._model.deterministic = False
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
@@ -124,8 +126,10 @@ class OGBWorkload(OGB):
   def loss_type(self):
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
-  def _get_valid_mask(labels: jnp.ndarray,
-                      graphs: jraph.GraphsTuple) -> jnp.ndarray:
+  def _get_valid_mask(
+        self, 
+        labels: jnp.ndarray,
+        graphs: jraph.GraphsTuple) -> jnp.ndarray:
     """Gets the binary mask indicating only valid labels and graphs."""
     # We have to ignore all NaN values - which indicate labels for which
     # the current graphs have no label.
@@ -158,7 +162,7 @@ class OGBWorkload(OGB):
     variables = {'params': params}#, **model_state} DO NOT SUBMIT
     train = mode == spec.ForwardPassMode.TRAIN
     pred_graphs = self._model.apply(
-        variables,
+        variables['params'],
         graphs,
         rngs={'dropout': rng})
     logits = pred_graphs.globals
@@ -202,7 +206,7 @@ class OGBWorkload(OGB):
       )
     loss = self._binary_cross_entropy_with_mask(
         logits=logits_batch, labels=label_batch, mask=self._mask)
-    mean_loss = jnp.sum(jnp.where(mask, loss, 0)) / jnp.sum(mask)
+    mean_loss = jnp.sum(jnp.where(self._mask, loss, 0)) / jnp.sum(self._mask)
     return mean_loss
 
   def _compute_mean_average_precision(self, labels, logits):
