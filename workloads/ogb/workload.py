@@ -50,8 +50,8 @@ class OGB(spec.Workload):
     eval_batch_size = 256
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
-      self._eval_ds = self.build_input_queue(
-          data_rng, 'test', data_dir, batch_size=eval_batch_size)
+      self._eval_ds = self._build_dataset(
+          data_rng, 'validation', data_dir, batch_size=eval_batch_size)
 
     self._model.deterministic = True
 
@@ -61,7 +61,7 @@ class OGB(spec.Workload):
         'loss': 0.,
     }
     # Loop over graphs.
-    for graphs in self._eval_ds:
+    for graphs in self._eval_ds.as_numpy_iterator():
       logits, _ = self.model_fn(
           params,
           graphs,

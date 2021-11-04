@@ -78,6 +78,7 @@ def update_params(
   del loss_type
   del eval_results
 
+  workload._model.deterministic = False
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
