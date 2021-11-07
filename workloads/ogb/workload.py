@@ -37,36 +37,4 @@ class OGB(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 360  # 60 minutes (too long) 
-
-  def eval_model(
-      self,
-      params: spec.ParameterContainer,
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState,
-      data_dir: str):
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    eval_batch_size = 256
-    if self._eval_ds is None:
-      self._eval_ds = self._build_dataset(
-          data_rng, 'validation', data_dir, batch_size=eval_batch_size)
-
-    self._model.deterministic = True
-
-    total_metrics = None
-    # Loop over graphs.
-    for graphs in self._eval_ds.as_numpy_iterator():
-      logits, _ = self.model_fn(
-          params,
-          graphs,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      labels = graphs.globals
-      batch_metrics = self._eval_metric(labels, logits)
-      total_metrics = (batch_metrics if total_metrics is None 
-                       else total_metrics.merge(batch_metrics))
-    return {k: float(v) for k, v in total_metrics.compute().items()}
-
+    return 360  # 60 minutes (too long)
