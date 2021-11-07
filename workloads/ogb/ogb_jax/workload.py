@@ -13,6 +13,7 @@ import spec
 from workloads.ogb.workload import OGB
 from workloads.ogb.ogb_jax import input_pipeline
 from workloads.ogb.ogb_jax import models
+from workloads.ogb.ogb_jax import metrics
 
 
 class OGBWorkload(OGB):
@@ -207,41 +208,9 @@ class OGBWorkload(OGB):
       )
     loss = self._binary_cross_entropy_with_mask(
         logits=logits_batch, labels=label_batch, mask=self._mask)
-    mean_loss = jnp.sum(jnp.where(self._mask, loss, 0)) / jnp.sum(self._mask)
-    return mean_loss
-
-  def _compute_mean_average_precision(self, labels, logits):
-    """Computes the mean average precision (mAP) over different tasks."""
-    # Matches the official OGB evaluation scheme for mean average precision.
-    assert logits.shape == labels.shape == self._mask.shape
-    assert len(logits.shape) == 2
-
-    probs = jax.nn.sigmoid(logits)
-    num_tasks = labels.shape[1]
-    average_precisions = np.full(num_tasks, np.nan)
-
-    for task in range(num_tasks):
-      # AP is only defined when there is at least one negative data
-      # and at least one positive data.
-      if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:, task] == 1) > 0:
-        is_labeled = self._mask[:, task]
-        average_precisions[task] = sklearn.metrics.average_precision_score(
-            labels[is_labeled, task], probs[is_labeled, task])
-
-    # When all APs are NaNs, return NaN. This avoids raising a RuntimeWarning.
-    if np.isnan(average_precisions).all():
-      return np.nan
-    return np.nanmean(average_precisions)
+    return loss
 
   def _eval_metric(self, labels, logits):
-    """Return the accuracy, average precision, and loss as a dict."""
-    preds = (logits > 0)
-    accuracy = np.nanmean((preds == labels).astype(jnp.float32))
-    average_precision = self._compute_mean_average_precision(labels, logits)
     loss = self.loss_fn(labels, logits)
-    metrics = {
-        'accuracy': accuracy,
-        'average_precision': average_precision,
-        'loss': loss,
-    }
-    return metrics
+    return metrics.EvalMetrics.single_from_model_output(
+        loss=loss, logits=logits, labels=labels, mask=self._mask)

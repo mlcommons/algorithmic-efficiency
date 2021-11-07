@@ -5,11 +5,11 @@ import spec
 class OGB(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['average_precision'] > self.target_value
+    return eval_result['mean_average_precision'] > self.target_value
 
   @property
   def target_value(self):
-    return 0.255
+    return 0.25
 
   @property
   def loss_type(self):
@@ -48,18 +48,13 @@ class OGB(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 256
-    num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
       self._eval_ds = self._build_dataset(
           data_rng, 'validation', data_dir, batch_size=eval_batch_size)
 
     self._model.deterministic = True
 
-    total_metrics = {
-        'accuracy': 0.,
-        'average_precision': 0.,
-        'loss': 0.,
-    }
+    total_metrics = None
     # Loop over graphs.
     for graphs in self._eval_ds.as_numpy_iterator():
       logits, _ = self.model_fn(
@@ -71,7 +66,7 @@ class OGB(spec.Workload):
           update_batch_norm=False)
       labels = graphs.globals
       batch_metrics = self._eval_metric(labels, logits)
-      total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
-      }
-    return {k: float(v / num_batches) for k, v in total_metrics.items()}
+      total_metrics = (batch_metrics if total_metrics is None 
+                       else total_metrics.merge(batch_metrics))
+    return {k: float(v) for k, v in total_metrics.compute().items()}
+

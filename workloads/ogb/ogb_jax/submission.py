@@ -50,7 +50,8 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
         rng,
         update_batch_norm=True)
     loss = workload.loss_fn(label_batch, logits_batch)
-    return loss, new_model_state
+    mean_loss = jnp.sum(jnp.where(workload._mask, loss, 0)) / jnp.sum(workload._mask)
+    return mean_loss, new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)
