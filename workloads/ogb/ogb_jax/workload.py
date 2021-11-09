@@ -6,6 +6,7 @@ import sklearn.metrics
 
 import jax
 import jax.numpy as jnp
+import random_utils as prng
 import jraph
 from flax import linen as nn
 
