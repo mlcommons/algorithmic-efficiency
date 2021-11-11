@@ -90,7 +90,7 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.1
+    return 0.05
 
   @property
   def loss_type(self):
@@ -162,14 +162,14 @@ class LibriSpeechWorkload(spec.Workload):
     del update_batch_norm
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
-    features, trns, input_lengths = augmented_and_preprocessed_input_batch
-    log_y, output_lengths = params(features, input_lengths, trns)
+    features, transcripts, input_lengths = augmented_and_preprocessed_input_batch
+    log_y, output_lengths = params(features, input_lengths, transcripts)
 
     return (log_y.transpose(0, 1), output_lengths), None
 
   def loss_fn(
       self,
-      label_batch: spec.Tensor,  # trns
+      label_batch: spec.Tensor,  # transcripts
       logits_batch: spec.Tensor) -> spec.Tensor:
 
     log_y, output_lengths = logits_batch
@@ -194,17 +194,18 @@ class LibriSpeechWorkload(spec.Workload):
     total_error = 0.0
     total_length = 0.0
     with torch.no_grad():
-      for (_, features, trns, input_lengths) in self._valid_loader:
+      for (_, features, transcripts, input_lengths) in self._valid_loader:
         features = features.float().to(self._device)
         features = features.transpose(1, 2).unsqueeze(1)
-        trns = trns.long().to(self._device)
+        transcripts = transcripts.long().to(self._device)
         input_lengths = input_lengths.int()
 
-        log_y, _ = params(features, input_lengths, trns)
+        log_y, _ = params(features, input_lengths, transcripts)
 
         out, _, _, seq_lens = self._decoder.decode(
             torch.exp(log_y).detach().cpu(), input_lengths)
-        for hyp, trn, length in zip(out, trns, seq_lens):  # iterate batch
+        for hyp, trn, length in zip(out, transcripts,
+                                    seq_lens):  # iterate batch
           best_hyp = hyp[0, :length[0]]
           hh = "".join([self._rev_label_dict[i.item()] for i in best_hyp])
           t = trn.detach().cpu().tolist()

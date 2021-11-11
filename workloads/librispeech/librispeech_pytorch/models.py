@@ -68,11 +68,11 @@ class MaskConv(nn.Module):
 
 class InferenceBatchSoftmax(nn.Module):
 
-  def forward(self, input_):
+  def forward(self, x):
     if not self.training:
-      return F.softmax(input_, dim=-1)
+      return F.softmax(x, dim=-1)
     else:
-      return input_
+      return x
 
 
 class BatchRNN(nn.Module):
@@ -81,21 +81,19 @@ class BatchRNN(nn.Module):
                input_size,
                hidden_size,
                rnn_type=nn.LSTM,
-               bidirectional=True,
                batch_norm=True):
     super(BatchRNN, self).__init__()
     self.input_size = input_size
     self.hidden_size = hidden_size
-    self.bidirectional = bidirectional
     self.batch_norm = SequenceWise(
         nn.BatchNorm1d(input_size)) if batch_norm else None
     self.rnn = rnn_type(
         input_size=input_size,
         hidden_size=hidden_size,
-        bidirectional=bidirectional,
+        bidirectional=True,
         bias=True,
         batch_first=True)
-    self.num_directions = 2 if bidirectional else 1
+    self.num_directions = 2
 
   def flatten_parameters(self):
     self.rnn.flatten_parameters()
@@ -112,10 +110,9 @@ class BatchRNN(nn.Module):
     x, _ = nn.utils.rnn.pad_packed_sequence(
         x, batch_first=True, total_length=total_length)
     x = x.transpose(0, 1)
-    if self.bidirectional:
-      x = x.view(x.size(0), x.size(1), 2,
-                 -1).sum(2).view(x.size(0), x.size(1),
-                                 -1)  # (TxNxH*2) -> (TxNxH) by sum
+    x = x.view(x.size(0), x.size(1), 2,
+               -1).sum(2).view(x.size(0), x.size(1),
+                               -1)  # (TxNxH*2) -> (TxNxH) by sum
     return x
 
 
@@ -160,16 +157,16 @@ class CNNLSTM(nn.Module):
     self.rnn_type = "lstm"
     self.context = 20
 
-    self.bidirectional = True
-
     self.conv = MaskConv(
         nn.Sequential(
             nn.Conv2d(
                 1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(20, 5)),
-            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True),
+            nn.BatchNorm2d(32),
+            nn.Hardtanh(0, 20, inplace=True),
             nn.Conv2d(
                 32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True)))
+            nn.BatchNorm2d(32),
+            nn.Hardtanh(0, 20, inplace=True)))
 
     rnn_input_size = 161
     rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
@@ -181,20 +178,16 @@ class CNNLSTM(nn.Module):
         input_size=rnn_input_size,
         hidden_size=self.hidden_size,
         rnn_type=supported_rnns[self.rnn_type],
-        bidirectional=self.bidirectional,
         batch_norm=False)
     rnns.append(("0", rnn))
     for x in range(self.hidden_layers - 1):
       rnn = BatchRNN(
           input_size=self.hidden_size,
           hidden_size=self.hidden_size,
-          rnn_type=supported_rnns[self.rnn_type],
-          bidirectional=self.bidirectional)
+          rnn_type=supported_rnns[self.rnn_type])
       rnns.append(("%d" % (x + 1), rnn))
     self.rnns = nn.Sequential(collections.OrderedDict(rnns))
-    self.lookahead = nn.Sequential(
-        Lookahead(self.hidden_size, context=self.context),
-        nn.Hardtanh(0, 20, inplace=True)) if not self.bidirectional else None
+    self.lookahead = None
 
     fully_connected = nn.Sequential(
         nn.BatchNorm1d(self.hidden_size),
@@ -223,7 +216,7 @@ class CNNLSTM(nn.Module):
             rounding_mode="trunc") + 1
     return seq_len.int()
 
-  def forward(self, x, lengths, trns):
+  def forward(self, x, lengths, transcripts):
     lengths = lengths.int()
     output_lengths = self.get_seq_lens(lengths)
     x, _ = self.conv(x, output_lengths)
@@ -236,9 +229,6 @@ class CNNLSTM(nn.Module):
     for rnn in self.rnns:
       x = rnn(x, output_lengths)
 
-    if not self.bidirectional:  # no need for lookahead layer in bidirectional
-      x = self.lookahead(x)
-
     x = self.fc(x)
     log_probs = x.log_softmax(dim=-1).transpose(0, 1)
 
@@ -249,16 +239,16 @@ class CNNLSTM(nn.Module):
 
     total_loss = 0.0
     total_count = 0.0
-    for (_, features, trns, input_lengths) in dataset:
+    for (_, features, transcripts, input_lengths) in dataset:
       features = features.float().to(device)
       features = features.transpose(1, 2).unsqueeze(1)
-      trns = trns.long().to(device)
+      transcripts = transcripts.long().to(device)
       input_lengths = input_lengths.long().to(device)
 
-      log_y, output_lengths = self(features, input_lengths, trns)
-      target_lengths = torch.IntTensor([len(y[y != 0]) for y in trns])
+      log_y, output_lengths = self(features, input_lengths, transcripts)
+      target_lengths = torch.IntTensor([len(y[y != 0]) for y in transcripts])
       batch_loss = loss_fn(
-          log_y.transpose(0, 1), trns, output_lengths, target_lengths)
+          log_y.transpose(0, 1), transcripts, output_lengths, target_lengths)
 
       total_loss += torch.sum(batch_loss).data
       total_count += features.size(0)

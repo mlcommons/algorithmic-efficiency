@@ -50,21 +50,20 @@ def update_params(
   del hyperparameters
   del label_batch
 
-  _, features, trns, input_lengths = input_batch
+  _, features, transcripts, input_lengths = input_batch
   features = features.float().to(device)
   features = features.transpose(1, 2).unsqueeze(1)
-  trns = trns.long().to(device)
+  transcripts = transcripts.long().to(device)
   input_lengths = input_lengths.long().to(device)
 
   optimizer_state.zero_grad()
 
-  (log_y,
-   output_lengths), _ = workload.model_fn(current_param_container,
-                                          (features, trns, input_lengths), None,
-                                          spec.ForwardPassMode.TRAIN, rng,
-                                          False)
+  (log_y, output_lengths), _ = workload.model_fn(
+      current_param_container, (features, transcripts, input_lengths), None,
+      spec.ForwardPassMode.TRAIN, rng, False)
 
-  train_ctc_loss = torch.mean(workload.loss_fn(trns, (log_y, output_lengths)))
+  train_ctc_loss = torch.mean(
+      workload.loss_fn(transcripts, (log_y, output_lengths)))
 
   train_ctc_loss.backward()
   optimizer_state.step()

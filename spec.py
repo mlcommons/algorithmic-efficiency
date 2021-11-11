@@ -114,6 +114,7 @@ class Workload(metaclass=abc.ABCMeta):
       data_dir: str,
       batch_size: int):
     """Build the input queue for the workload data.
+
     This is the only function that is NOT allowed to be called by submitters.
     """
 
@@ -266,7 +267,9 @@ def data_selection(
     global_step: int,
     rng: RandomState) -> Tuple[Tensor, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
+
   Each element of the queue is a single training example and label.
+
   We left out `current_params_types` because we do not believe that it would
   # be necessary for this function.
   """
