@@ -1,6 +1,7 @@
 """OGB workload implemented in Jax."""
 
 from typing import Tuple
+import functools
 import numpy as np
 import sklearn.metrics
 
@@ -9,6 +10,7 @@ import jax.numpy as jnp
 import random_utils as prng
 import jraph
 from flax import linen as nn
+from flax import jax_utils
 
 import spec
 from workloads.ogb.workload import OGB
@@ -115,7 +117,7 @@ class OGBWorkload(OGB):
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
-    return params, None
+    return jax_utils.replicate(params), None
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
@@ -211,10 +213,38 @@ class OGBWorkload(OGB):
         logits=logits_batch, labels=label_batch, mask=self._mask)
     return loss
 
+  def _shard_graphs(self, graphs):
+    graph_list = jraph.unbatch(graphs)
+    n_devices = jax.local_device_count()
+    local_batch_size = len(graph_list) // n_devices
+    graphs = [
+        jax.tree_map(
+            np.asarray, 
+            jraph.batch(graph_list[i*local_batch_size:(i+1)*local_batch_size]))
+        for i in range(n_devices)]
+    graphs = jax.tree_multimap(lambda *x: jnp.stack(x, axis=0), *graphs)
+    return graphs
+
   def _eval_metric(self, labels, logits):
     loss = self.loss_fn(labels, logits)
     return metrics.EvalMetrics.single_from_model_output(
         loss=loss, logits=logits, labels=labels, mask=self._mask)
+
+  #@functools.partial(
+  #    jax.pmap,
+  #    axis_name='batch',
+  #    in_axes=(None, 0, 0, 0, None),
+  #    static_broadcasted_argnums=(0,))
+  def _eval_batch(self, params, graphs, model_state, rng):
+    labels = graphs.globals
+    logits, _ = self.model_fn(
+        params,
+        graphs,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
+    return self._eval_metric(labels, logits)
 
   def eval_model(
       self,
@@ -230,19 +260,14 @@ class OGBWorkload(OGB):
           data_rng, 'validation', data_dir, batch_size=eval_batch_size)
 
     self._model.deterministic = True
+    params = jax_utils.unreplicate(params)
+    model_state = jax_utils.unreplicate(model_state)
 
     total_metrics = None
-    # Loop over graphs.
+    # Loop over graph batches in eval dataset
     for graphs in self._eval_ds.as_numpy_iterator():
-      logits, _ = self.model_fn(
-          params,
-          graphs,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      labels = graphs.globals
-      batch_metrics = self._eval_metric(labels, logits)
+      # graphs = self._shard_graphs(graphs)
+      batch_metrics = self._eval_batch(params, graphs, model_state, model_rng)
       total_metrics = (batch_metrics if total_metrics is None
                        else total_metrics.merge(batch_metrics))
     return {k: float(v) for k, v in total_metrics.compute().items()}

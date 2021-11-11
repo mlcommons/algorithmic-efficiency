@@ -4,6 +4,9 @@ import functools
 import numpy as np
 import jax
 import jax.numpy as jnp
+from jax import lax
+from flax import jax_utils
+import jraph
 import optax
 
 import spec
@@ -31,14 +34,16 @@ def init_optimizer_state(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
   opt_init_fn, opt_update_fn = optimizer(hyperparameters)
   init_optimizer_state = opt_init_fn(params_zeros_like)
-  return init_optimizer_state, opt_update_fn
+  return jax_utils.replicate(init_optimizer_state), opt_update_fn
 
 
 # We need to jax.pmap here instead of inside update_params because the latter
 # would recompile the function every step.
 @functools.partial(
-    jax.jit,
-    static_argnums=(0, 1))
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
+    static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
                        current_param_container, hyperparameters, input_batch, label_batch, rng):
   def loss_fn(params):
@@ -55,10 +60,12 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)
+  grad = lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
   return new_model_state, new_optimizer_state, updated_params
+
 
 def update_params(
     workload: spec.Workload,
@@ -90,7 +97,12 @@ def update_params(
   #  # sync batch statistics across replicas once per epoch
   #  new_model_state = workload.sync_batch_stats(new_model_state)
 
+  #return (
+  #    (jax_utils.unreplicate(new_optimizer_state), opt_update_fn), 
+  #    jax_utils.unreplicate(new_params), 
+  #    jax_utils.replicate(new_model_state))
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
+
 
 def data_selection(
     workload: spec.Workload,
@@ -104,6 +116,12 @@ def data_selection(
   Each element of the queue is a single training example and label.
   Return a tuple of input label batches.
   """
-  graphs = jax.tree_map(np.asarray, next(input_queue))
-  labels = graphs.globals
+  graphs = []
+  labels = []
+  for _ in range(jax.local_device_count()):
+    graph = jax.tree_map(np.asarray, next(input_queue))
+    graphs.append(graph)
+    labels.append(graph.globals)
+  graphs = jax.tree_multimap(lambda *x: jnp.stack(x, axis=0), *graphs)
+  labels = jnp.stack(labels)
   return graphs, labels
