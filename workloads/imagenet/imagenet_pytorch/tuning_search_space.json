@@ -1,0 +1,5 @@
+{
+    "learning_rate": {"feasible_points": [0.001]},
+    "momentum": {"feasible_points": [0.875]},
+    "weight_decay": {"feasible_points": [3.05e-5]}
+}

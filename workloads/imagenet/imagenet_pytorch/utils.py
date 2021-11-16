@@ -1,11 +1,8 @@
-import torch
-
+# from NVIDIA DL Examples:
+# github.com/NVIDIA/DeepLearningExamples/PyTorch/Classification/ConvNets/image_classification/dataloaders.py
 
 import torch
 import numpy as np
-
-# from NVIDIA DL Examples:
-# github.com/NVIDIA/DeepLearningExamples/PyTorch/Classification/ConvNets/image_classification/dataloaders.py
 
 
 def fast_collate(batch):
