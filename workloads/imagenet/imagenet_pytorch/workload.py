@@ -90,7 +90,7 @@ class ImagenetWorkload(spec.Workload):
     data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 128
     if self._eval_ds is None:
-      self._eval_ds = self.build_input_queue(
+      self._eval_ds = self._build_dataset(
           data_rng, 'test', data_dir, batch_size=eval_batch_size)
 
     total_metrics = {
