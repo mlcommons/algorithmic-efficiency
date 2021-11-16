@@ -126,30 +126,28 @@ class ImagenetWorkload(spec.Workload):
     is_train = (split == "train")
 
     transform_config = {
-      "train": transforms.Compose([
-        transforms.RandomResizedCrop(
-          self.center_crop_size,
-          scale=self.scale_ratio_range,
-          ratio=self.aspect_ratio_range),
-        transforms.RandomHorizontalFlip(),
-        ]),
-      "test": transforms.Compose([
-        transforms.Resize(self.resize_size),
-        transforms.CenterCrop(self.center_crop_size),
-        ])
+        "train": transforms.Compose([
+            transforms.RandomResizedCrop(
+                self.center_crop_size,
+                scale=self.scale_ratio_range,
+                ratio=self.aspect_ratio_range),
+            transforms.RandomHorizontalFlip()]),
+        "test": transforms.Compose([
+            transforms.Resize(self.resize_size),
+            transforms.CenterCrop(self.center_crop_size)])
     }
 
     folder = {'train': 'train', 'test': 'val'}
 
     dataset = ImageFolder(
-      os.path.join(data_dir, folder[split]),
-      transform=transform_config[split])
+        os.path.join(data_dir, folder[split]),
+        transform=transform_config[split])
 
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=is_train,
-        num_workers=os.cpu_count(),
+        num_workers=5,
         pin_memory=True,
         drop_last=is_train,
         collate_fn=fast_collate
@@ -190,6 +188,8 @@ class ImagenetWorkload(spec.Workload):
       train_mean: spec.Tensor,
       train_stddev: spec.Tensor,
       rng: spec.RandomState) -> spec.Tensor:
+    del train_mean
+    del train_stddev
     del rng
     return self.preprocess_for_eval(
         selected_raw_input_batch, selected_label_batch, None, None)
@@ -206,7 +206,10 @@ class ImagenetWorkload(spec.Workload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = resnet50().to(DEVICE)
+    model = resnet50()
+    if torch.cuda.device_count() > 1:
+      model = torch.nn.DataParallel(model)
+    model.to(DEVICE)
     return model, None
 
   def model_fn(

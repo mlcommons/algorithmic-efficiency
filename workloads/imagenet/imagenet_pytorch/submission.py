@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for MNIST."""
 import torch
-import spec
 
+import spec
 from workloads.mnist.mnist_pytorch.submission import update_params, data_selection
 
 
