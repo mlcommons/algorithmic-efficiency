@@ -18,20 +18,20 @@ DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
 
 class _Model(nn.Module):
 
-    def __init__(self):
-      super(_Model, self).__init__()
-      input_size = 28 * 28
-      num_hidden = 128
-      num_classes = 10
-      self.net = nn.Sequential(OrderedDict([
-          ('layer1',     torch.nn.Linear(input_size, num_hidden, bias=True)),
-          ('layer1_sig', torch.nn.Sigmoid()),
-          ('layer2',     torch.nn.Linear(num_hidden, num_classes, bias=True)),
-          ('output',     torch.nn.LogSoftmax(dim=1))
-      ]))
+  def __init__(self):
+    super(_Model, self).__init__()
+    input_size = 28 * 28
+    num_hidden = 128
+    num_classes = 10
+    self.net = nn.Sequential(OrderedDict([
+        ('layer1',     torch.nn.Linear(input_size, num_hidden, bias=True)),
+        ('layer1_sig', torch.nn.Sigmoid()),
+        ('layer2',     torch.nn.Linear(num_hidden, num_classes, bias=True)),
+        ('output',     torch.nn.LogSoftmax(dim=1))
+    ]))
 
-    def forward(self, x: spec.Tensor):
-      return self.net(x)
+  def forward(self, x: spec.Tensor):
+    return self.net(x)
 
 
 class MnistWorkload(Mnist):
@@ -112,13 +112,16 @@ class MnistWorkload(Mnist):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = _Model().to(DEVICE)
+    model = _Model()
+    if torch.cuda.device_count() > 1:
+      model = torch.nn.DataParallel(model)
+    model.to(DEVICE)
     return model, None
 
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -130,7 +133,7 @@ class MnistWorkload(Mnist):
     model = params
 
     if mode == spec.ForwardPassMode.EVAL:
-        model.eval()
+      model.eval()
 
     contexts = {
       spec.ForwardPassMode.EVAL: torch.no_grad,
@@ -138,7 +141,7 @@ class MnistWorkload(Mnist):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch)
+      logits_batch = model(input_batch)
 
     return logits_batch, None
 
@@ -166,3 +169,4 @@ class MnistWorkload(Mnist):
     accuracy = (predicted == labels).cpu().numpy().mean()
     loss = self.loss_fn(labels, logits).cpu().numpy().mean()
     return {'accuracy': accuracy, 'loss': loss}
+

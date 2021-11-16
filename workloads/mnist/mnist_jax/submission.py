@@ -88,7 +88,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    augmented_and_preprocessed_input_batch: spec.Tensor,
+    input_batch: spec.Tensor,
     label_batch: spec.Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
@@ -103,9 +103,9 @@ def update_params(
   del global_step
 
   num_devices = jax.local_device_count()
-  input_shape = augmented_and_preprocessed_input_batch.shape
+  input_shape = input_batch.shape
   reshaped_input_batch = jnp.reshape(
-      augmented_and_preprocessed_input_batch,
+      input_batch,
       (num_devices, input_shape[0] // num_devices, *input_shape[1:]))
   reshaped_label_batch = jnp.reshape(
       label_batch,
@@ -155,3 +155,4 @@ def data_selection(
   del global_step
   del rng
   return next(input_queue)
+

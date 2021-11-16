@@ -34,7 +34,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    augmented_and_preprocessed_input_batch: spec.Tensor,
+    input_batch: spec.Tensor,
     label_batch: spec.Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
@@ -46,16 +46,16 @@ def update_params(
   del current_params_types
   del eval_results
   del global_step
+  input_batch, label_batch = (
+    workload.preprocess_for_train(input_batch, label_batch, None, None, None))
 
   current_model = current_param_container
   current_param_container.train()
-
-  input_batch = augmented_and_preprocessed_input_batch
   optimizer_state['optimizer'].zero_grad()
 
   output, new_model_state = workload.model_fn(
       params=current_model,
-      augmented_and_preprocessed_input_batch=input_batch,
+      input_batch=input_batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
@@ -95,3 +95,4 @@ def data_selection(
   del global_step
   del rng
   return next(input_queue)
+

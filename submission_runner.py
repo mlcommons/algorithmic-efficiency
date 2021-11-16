@@ -4,6 +4,7 @@ Example command:
 
 python3 submission_runner.py \
     --workload=mnist_jax \
+    --framework=jax \
     --submission_path=workloads/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
     --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
@@ -23,12 +24,6 @@ import time
 
 import halton
 import random_utils as prng
-try:
-  import jax.random as prng
-except (ImportError, ModuleNotFoundError):
-  logging.warning(
-      'Could not import jax.random for the submission runner, falling back to '
-      'numpy random_utils.')
 import spec
 
 
@@ -42,9 +37,17 @@ WORKLOADS = {
     'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
     'workload_class_name': 'MnistWorkload'
   },
-  'resnet_pytorch': {
-    'workload_path': 'workloads/resnet/resnet_pytorch/workload.py',
-    'workload_class_name': 'ResnetWorkload'
+  'imagenet_jax': {
+    'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
+    'workload_class_name': 'ImagenetWorkload'
+  },
+  'imagenet_pytorch': {
+    'workload_path': 'workloads/imagenet/imagenet_pytorch/workload.py',
+    'workload_class_name': 'ImagenetWorkload'
+  },
+  'wmt_jax': {
+    'workload_path': 'workloads/wmt/wmt_jax/workload.py',
+    'workload_class_name': 'WMTWorkload'
   }
 }
 
@@ -70,8 +73,13 @@ flags.DEFINE_integer(
 flags.DEFINE_string(
     'data_dir',
     '~/',
-    'Dataset location'
-)
+    'Dataset location')
+flags.DEFINE_enum(
+    'framework',
+    None,
+    enum_values=['jax', 'pytorch'],
+    help='Whether to use Jax or Pytorch for the submission. Controls among '
+    'other things if the Jax or Numpy RNG library is used for RNG.')
 
 FLAGS = flags.FLAGS
 
@@ -86,9 +94,9 @@ def _convert_filepath_to_module(path: str):
 
 
 def _import_workload(
-    workload_path,
-    workload_registry_name,
-    workload_class_name):
+    workload_path: str,
+    workload_registry_name: str,
+    workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -107,26 +115,21 @@ def _import_workload(
   # Remove the trailing '.py' and convert the filepath to a Python module.
   workload_path = _convert_filepath_to_module(workload_path)
 
-  try:
-    # Import the workload module.
-    workload_module = importlib.import_module(workload_path)
-    # Get everything defined in the workload module (including our class).
-    workload_module_members = inspect.getmembers(workload_module)
-    workload_class = None
-    for name, value in workload_module_members:
-      if name == workload_class_name:
-        workload_class = value
-        break
-    if workload_class is None:
-      raise ValueError(
-          f'Could not find member {workload_class_name} in {workload_path}. '
-          'Make sure the Workload class is spelled correctly and defined in '
-          'the top scope of the module.')
-    WORKLOADS[workload_registry_name] = workload_class()
-  except ModuleNotFoundError as err:
-    logging.warning(
-      f'Could not import workload module {workload_path}, '
-      f'continuing:\n\n{err}\n')
+  # Import the workload module.
+  workload_module = importlib.import_module(workload_path)
+  # Get everything defined in the workload module (including our class).
+  workload_module_members = inspect.getmembers(workload_module)
+  workload_class = None
+  for name, value in workload_module_members:
+    if name == workload_class_name:
+      workload_class = value
+      break
+  if workload_class is None:
+    raise ValueError(
+        f'Could not find member {workload_class_name} in {workload_path}. '
+        'Make sure the Workload class is spelled correctly and defined in '
+        'the top scope of the module.')
+  return workload_class()
 
 
 # Example reference implementation showing how to use the above functions
@@ -143,9 +146,12 @@ def train_once(
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
+  logging.info('Initializing dataset.')
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
+  logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
+  logging.info('Initializing optimizer.')
   optimizer_state = init_optimizer_state(
       workload,
       model_params,
@@ -163,10 +169,11 @@ def train_once(
   training_complete = False
   global_start_time = time.time()
 
+  logging.info('Starting training loop.')
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
-    data_select_rng, preprocess_rng, update_rng, eval_rng = prng.split(
-        step_rng, 4)
+    data_select_rng, update_rng, eval_rng = prng.split(
+        step_rng, 3)
     start_time = time.time()
     selected_train_input_batch, selected_train_label_batch = data_selection(
         workload,
@@ -176,22 +183,15 @@ def train_once(
         hyperparameters,
         global_step,
         data_select_rng)
-    (augmented_train_input_batch,
-     augmented_train_label_batch) = workload.preprocess_for_train(
-        selected_train_input_batch,
-        selected_train_label_batch,
-        train_mean=workload.train_mean,
-        train_stddev=workload.train_stddev,
-        rng=preprocess_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
           current_param_container=model_params,
-          current_params_types=workload.model_params_types,
+          current_params_types=workload.model_params_types(),
           model_state=model_state,
           hyperparameters=hyperparameters,
-          augmented_and_preprocessed_input_batch=augmented_train_input_batch,
-          label_batch=augmented_train_label_batch,
+          input_batch=selected_train_input_batch,
+          label_batch=selected_train_label_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,
@@ -220,6 +220,7 @@ def train_once(
 
 
 def score_submission_on_workload(
+    workload: spec.Workload,
     workload_name: str,
     submission_path: str,
     data_dir: str,
@@ -235,8 +236,6 @@ def score_submission_on_workload(
   data_selection = submission_module.data_selection
   get_batch_size = submission_module.get_batch_size
   batch_size = get_batch_size(workload_name)
-
-  workload = WORKLOADS[workload_name]
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -299,14 +298,20 @@ def score_submission_on_workload(
 
 
 def main(_):
-  for workload_name, workload in WORKLOADS.items():
-    _import_workload(
-        workload_path=workload['workload_path'],
-        workload_registry_name=workload_name,
-        workload_class_name=workload['workload_class_name']
-    )
+  if FLAGS.framework == 'jax':
+    import tensorflow as tf
+    # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+    # it unavailable to JAX.
+    tf.config.experimental.set_visible_devices([], 'GPU')
+
+  workload_metadata = WORKLOADS[FLAGS.workload]
+  workload = _import_workload(
+      workload_path=workload_metadata['workload_path'],
+      workload_registry_name=FLAGS.workload,
+      workload_class_name=workload_metadata['workload_class_name'])
 
   score = score_submission_on_workload(
+      workload,
       FLAGS.workload,
       FLAGS.submission_path,
       FLAGS.data_dir,

@@ -126,8 +126,20 @@ class Workload(metaclass=abc.ABCMeta):
     """The types of the parameters in the workload model."""
 
   @abc.abstractproperty
+  def target_value(self):
+    """The target value to reach."""
+
+  @abc.abstractproperty
   def loss_type(self):
     """The type of loss function."""
+
+  @abc.abstractproperty
+  def num_train_examples(self):
+    """The size of the training set."""
+
+  @abc.abstractproperty
+  def num_eval_examples(self):
+    """The size of the evaluation set."""
 
   @abc.abstractproperty
   def train_mean(self):
@@ -149,24 +161,6 @@ class Workload(metaclass=abc.ABCMeta):
   def is_output_params(self, param_key: ParameterKey) -> bool:
     """Whether or not a key in ParameterContainer is the output layer parameters."""
 
-  @abc.abstractmethod
-  def preprocess_for_train(
-      self,
-      selected_raw_input_batch: Tensor,
-      selected_label_batch: Tensor,  # Dense (not one-hot) labels.
-      train_mean: Tensor,
-      train_stddev: Tensor,
-      rng: RandomState) -> Tensor:
-    """return augmented_and_preprocessed_input_batch"""
-
-  @abc.abstractmethod
-  def preprocess_for_eval(
-      self,
-      raw_input_batch: Tensor,
-      train_mean: Tensor,
-      train_stddev: Tensor) -> Tensor:
-    """return preprocessed_input_batch"""
-
   # InitModelFn = Callable[
   #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
   @abc.abstractmethod
@@ -181,7 +175,7 @@ class Workload(metaclass=abc.ABCMeta):
   def model_fn(
       self,
       params: ParameterContainer,
-      augmented_and_preprocessed_input_batch: Tensor,
+      input_batch: Tensor,
       model_state: ModelAuxiliaryState,
       mode: ForwardPassMode,
       rng: RandomState,
@@ -249,7 +243,7 @@ def update_params(
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
-    augmented_and_preprocessed_input_batch: Tensor,
+    input_batch: Tensor,
     label_batch: Tensor,  # Dense (not one-hot) labels.
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
@@ -285,3 +279,4 @@ def data_selection(
 def get_batch_size(workload_name):
   """Return a batch size to use for a given workload."""
   pass
+
