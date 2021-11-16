@@ -1,6 +1,5 @@
 """Resnet workload implemented in PyTorch."""
 import contextlib
-import itertools
 import os
 from collections import OrderedDict
 from typing import Tuple
@@ -14,7 +13,7 @@ from torchvision.datasets.folder import ImageFolder
 import spec
 import random_utils as prng
 from workloads.imagenet.imagenet_pytorch.resnet import resnet50
-from workloads.imagenet.imagenet_pytorch.utils import fast_collate
+from workloads.imagenet.imagenet_pytorch.utils import fast_collate, cycle
 
 
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
@@ -154,7 +153,7 @@ class ImagenetWorkload(spec.Workload):
     )
 
     if is_train:
-      dataloader = itertools.cycle(dataloader)
+      dataloader = cycle(dataloader)
 
     return dataloader
 
