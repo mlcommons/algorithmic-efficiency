@@ -76,10 +76,6 @@ class ImagenetWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 6000  # 100 mins
 
-  def _eval_metric(self, logits, labels):
-    """Return the mean accuracy and loss as a dict."""
-    raise NotImplementedError
-
   def eval_model(
       self,
       params: spec.ParameterContainer,
