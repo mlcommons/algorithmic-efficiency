@@ -1,10 +1,9 @@
-# from NVIDIA DL Examples:
-# github.com/NVIDIA/DeepLearningExamples/PyTorch/Classification/ConvNets/image_classification/dataloaders.py
-
 import torch
 import numpy as np
 
 
+# from NVIDIA DL Examples:
+# github.com/NVIDIA/DeepLearningExamples/PyTorch/Classification/ConvNets/image_classification/dataloaders.py
 def fast_collate(batch):
   imgs = [img[0] for img in batch]
   targets = torch.tensor([target[1] for target in batch], dtype=torch.int64)
@@ -23,6 +22,7 @@ def fast_collate(batch):
   return tensor, targets
 
 
+# from https://github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
 def cycle(iterable):
   iterator = iter(iterable)
   while True:
