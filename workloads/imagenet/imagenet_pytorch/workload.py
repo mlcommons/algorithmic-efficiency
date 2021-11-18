@@ -109,7 +109,8 @@ class ImagenetWorkload(spec.Workload):
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
       num_batches += 1
-
+    # Note (runame): the returned result is not exact because the last batch
+    # has a smaller batch size
     return {k: float(v / num_batches) for k, v in total_metrics.items()}
 
   def _build_dataset(self,
@@ -120,16 +121,23 @@ class ImagenetWorkload(spec.Workload):
 
     is_train = (split == "train")
 
+    normalize = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=self.train_mean, std=self.train_stddev)
+    ])
     transform_config = {
         "train": transforms.Compose([
             transforms.RandomResizedCrop(
                 self.center_crop_size,
                 scale=self.scale_ratio_range,
                 ratio=self.aspect_ratio_range),
-            transforms.RandomHorizontalFlip()]),
+            transforms.RandomHorizontalFlip(),
+            normalize]),
         "test": transforms.Compose([
             transforms.Resize(self.resize_size),
-            transforms.CenterCrop(self.center_crop_size)])
+            transforms.CenterCrop(self.center_crop_size),
+            normalize])
     }
 
     folder = {'train': 'train', 'test': 'val'}
@@ -144,8 +152,11 @@ class ImagenetWorkload(spec.Workload):
         shuffle=is_train,
         num_workers=5,
         pin_memory=True,
+        # Note (runame): not sure why we do this?
         drop_last=is_train,
-        collate_fn=fast_collate
+        # Note (runame): if we want to use fast_collate,
+        # we need to change some things
+        #collate_fn=fast_collate
     )
 
     if is_train:
@@ -254,11 +265,11 @@ class ImagenetWorkload(spec.Workload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
-    return F.nll_loss(logits_batch, label_batch)
+    return F.cross_entropy(logits_batch, label_batch)
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
-    _, predicted = torch.max(logits.data, 1)
+    predicted = torch.argmax(logits, 1)
     accuracy = (predicted == labels).cpu().numpy().mean()
-    loss = self.loss_fn(labels, logits).cpu().numpy().mean()
+    loss = self.loss_fn(labels, logits).item()
     return {'accuracy': accuracy, 'loss': loss}
