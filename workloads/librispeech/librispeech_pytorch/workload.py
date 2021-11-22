@@ -73,12 +73,14 @@ class LibriSpeechWorkload(spec.Workload):
         train_set,
         batch_size=batch_size,
         shuffle=True,
+        num_workers=2,
         pin_memory=True,
         collate_fn=train_collate_fn)
 
     self._valid_loader = torch.utils.data.DataLoader(
         valid_set,
         batch_size=batch_size,
+        num_workers=2,
         pin_memory=True,
         collate_fn=train_collate_fn)
 
