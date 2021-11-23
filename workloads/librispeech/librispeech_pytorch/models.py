@@ -5,9 +5,6 @@ import math
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
-supported_rnns = {"lstm": nn.LSTM, "rnn": nn.RNN, "gru": nn.GRU}
 
 
 class SequenceWise(nn.Module):
@@ -66,34 +63,18 @@ class MaskConv(nn.Module):
     return x, lengths
 
 
-class InferenceBatchSoftmax(nn.Module):
-
-  def forward(self, x):
-    if not self.training:
-      return F.softmax(x, dim=-1)
-    else:
-      return x
-
-
 class BatchRNN(nn.Module):
 
-  def __init__(self,
-               input_size,
-               hidden_size,
-               rnn_type=nn.LSTM,
-               batch_norm=True):
+  def __init__(self, input_size, hidden_size, batch_norm=True):
     super(BatchRNN, self).__init__()
-    self.input_size = input_size
-    self.hidden_size = hidden_size
     self.batch_norm = SequenceWise(
         nn.BatchNorm1d(input_size)) if batch_norm else None
-    self.rnn = rnn_type(
+    self.rnn = nn.LSTM(
         input_size=input_size,
         hidden_size=hidden_size,
         bidirectional=True,
         bias=True,
         batch_first=True)
-    self.num_directions = 2
 
   def flatten_parameters(self):
     self.rnn.flatten_parameters()
@@ -116,36 +97,6 @@ class BatchRNN(nn.Module):
     return x
 
 
-class Lookahead(nn.Module):
-  """Ref: Wang et al 2016 - Lookahead Convolution Layer for Unidirectional Recurrent Neural Networks.
-
-  input shape - sequence, batch, feature - TxNxH
-  output shape - same as input
-  """
-
-  def __init__(self, n_features, context):
-    super(Lookahead, self).__init__()
-    assert context > 0
-    self.context = context
-    self.n_features = n_features
-    self.pad = (0, self.context - 1)
-    self.conv = nn.Conv1d(
-        self.n_features,
-        self.n_features,
-        kernel_size=self.context,
-        stride=1,
-        groups=self.n_features,
-        padding=0,
-        bias=None)
-
-  def forward(self, x):
-    x = x.transpose(0, 1).transpose(1, 2)
-    x = F.pad(x, pad=self.pad, value=0)
-    x = self.conv(x)
-    x = x.transpose(1, 2).transpose(0, 1).contiguous()
-    return x
-
-
 class CNNLSTM(nn.Module):
 
   def __init__(self):
@@ -154,8 +105,6 @@ class CNNLSTM(nn.Module):
     self.num_classes = 29
     self.hidden_size = 768
     self.hidden_layers = 5
-    self.rnn_type = "lstm"
-    self.context = 20
 
     self.conv = MaskConv(
         nn.Sequential(
@@ -177,25 +126,17 @@ class CNNLSTM(nn.Module):
     rnn = BatchRNN(
         input_size=rnn_input_size,
         hidden_size=self.hidden_size,
-        rnn_type=supported_rnns[self.rnn_type],
         batch_norm=False)
     rnns.append(("0", rnn))
     for x in range(self.hidden_layers - 1):
-      rnn = BatchRNN(
-          input_size=self.hidden_size,
-          hidden_size=self.hidden_size,
-          rnn_type=supported_rnns[self.rnn_type])
+      rnn = BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
       rnns.append(("%d" % (x + 1), rnn))
     self.rnns = nn.Sequential(collections.OrderedDict(rnns))
-    self.lookahead = None
 
     fully_connected = nn.Sequential(
         nn.BatchNorm1d(self.hidden_size),
         nn.Linear(self.hidden_size, self.num_classes, bias=False))
     self.fc = nn.Sequential(SequenceWise(fully_connected),)
-
-    self.inference_softmax = InferenceBatchSoftmax()
-    self.pad_token = 0
 
   def get_seq_lens(self, input_length):
     """Get a 1D tensor or variable containing the size sequences that will be output by the network.
