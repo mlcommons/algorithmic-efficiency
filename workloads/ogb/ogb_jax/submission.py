@@ -1,4 +1,4 @@
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 import functools
 import numpy as np
@@ -42,10 +42,13 @@ def init_optimizer_state(
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
+    in_axes=(None, None, 0, 0, 0, None, 0, 0, 0, None),
     static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
-                       current_param_container, hyperparameters, input_batch, label_batch, rng):
+                       current_param_container, hyperparameters, input_batch,
+                       label_batch, mask_batch, rng):
+  del hyperparameters
+
   def loss_fn(params):
     logits_batch, new_model_state  = workload.model_fn(
         params,
@@ -54,8 +57,8 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = workload.loss_fn(label_batch, logits_batch)
-    mean_loss = jnp.sum(jnp.where(workload._mask, loss, 0)) / jnp.sum(workload._mask)
+    loss = workload.loss_fn(label_batch, logits_batch, mask_batch)
+    mean_loss = jnp.sum(jnp.where(mask_batch, loss, 0)) / jnp.sum(mask_batch)
     return mean_loss, new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
@@ -75,6 +78,7 @@ def update_params(
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
+    mask_batch: Optional[spec.Tensor],
     loss_type: spec.LossType,
     # This will define the output activation via `output_activation_fn`.
     optimizer_state: spec.OptimizerState,
@@ -85,22 +89,18 @@ def update_params(
   del current_params_types
   del loss_type
   del eval_results
+  del global_step
 
-  workload._model.deterministic = False
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, input_batch, label_batch, rng)
+      current_param_container, hyperparameters, input_batch, label_batch,
+      mask_batch, rng)
 
   #steps_per_epoch = workload.num_train_examples // get_batch_size('ogb_jax')
   #if (global_step + 1) % steps_per_epoch == 0:
   #  # sync batch statistics across replicas once per epoch
   #  new_model_state = workload.sync_batch_stats(new_model_state)
-
-  #return (
-  #    (jax_utils.unreplicate(new_optimizer_state), opt_update_fn), 
-  #    jax_utils.unreplicate(new_params), 
-  #    jax_utils.replicate(new_model_state))
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
@@ -111,17 +111,6 @@ def data_selection(
     current_param_container: spec.ParameterContainer,
     hyperparameters: spec.Hyperparamters,
     global_step: int,
-    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
-  """Select data from the infinitely repeating, pre-shuffled input queue.
-  Each element of the queue is a single training example and label.
-  Return a tuple of input label batches.
-  """
-  graphs = []
-  labels = []
-  for _ in range(jax.local_device_count()):
-    graph = jax.tree_map(np.asarray, next(input_queue))
-    graphs.append(graph)
-    labels.append(graph.globals)
-  graphs = jax.tree_multimap(lambda *x: jnp.stack(x, axis=0), *graphs)
-  labels = jnp.stack(labels)
-  return graphs, labels
+    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
+  """Select data from the infinitely repeating, pre-shuffled input queue."""
+  return next(input_queue)

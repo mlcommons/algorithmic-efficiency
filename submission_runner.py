@@ -175,7 +175,7 @@ def train_once(
     data_select_rng, update_rng, eval_rng = prng.split(
         step_rng, 3)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch = data_selection(
+    selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
         workload,
         input_queue,
         optimizer_state,
@@ -192,6 +192,7 @@ def train_once(
           hyperparameters=hyperparameters,
           input_batch=selected_train_input_batch,
           label_batch=selected_train_label_batch,
+          mask_batch=selected_train_mask_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,

@@ -51,7 +51,6 @@ class MeanAveragePrecision(
 
 @flax.struct.dataclass
 class EvalMetrics(metrics.Collection):
-
   accuracy: metrics.Average.from_fun(predictions_match_labels)
   loss: metrics.Average.from_output('loss')
   mean_average_precision: MeanAveragePrecision

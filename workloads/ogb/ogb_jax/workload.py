@@ -1,6 +1,6 @@
 """OGB workload implemented in Jax."""
 
-from typing import Tuple
+from typing import Optional, Tuple
 import functools
 import numpy as np
 import sklearn.metrics
@@ -22,10 +22,9 @@ from workloads.ogb.ogb_jax import metrics
 class OGBWorkload(OGB):
 
   def __init__(self):
-    self._eval_ds = None
+    self._eval_iterator = None
     self._param_shapes = None
     self._init_graphs = None
-    self._mask = None
     self._model = models.GraphConvNet(
         latent_size=256,
         num_mlp_layers=2,
@@ -33,26 +32,24 @@ class OGBWorkload(OGB):
         output_globals_size=128,
         dropout_rate=0.1,
         skip_connections=True,
-        layer_norm=True,
-        deterministic=True)
+        layer_norm=True)
 
-  def _normalize(self, image):
-    pass
-
-  def _build_dataset(
+  def _build_iterator(
       self,
       data_rng: jax.random.PRNGKey,
       split: str,
       data_dir: str,
       batch_size: int):
-    datasets = input_pipeline.get_datasets(
+    dataset_iters = input_pipeline.get_dataset_iters(
         batch_size,
         add_virtual_node=False,
         add_undirected_edges=True,
         add_self_loops=True)
     if self._init_graphs is None:
-      self._init_graphs = next(datasets['train'].as_numpy_iterator())
-    return datasets[split]
+      init_graphs = next(dataset_iters['train'])[0]
+      # Unreplicate the iterator that has the leading dim for pmapping.
+      self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
+    return dataset_iters[split]
 
   def build_input_queue(
       self,
@@ -60,7 +57,7 @@ class OGBWorkload(OGB):
       split: str,
       data_dir: str,
       batch_size: int):
-    return self._build_dataset(data_rng, split, data_dir, batch_size).as_numpy_iterator()
+    return self._build_iterator(data_rng, split, data_dir, batch_size)
 
   @property
   def param_shapes(self):
@@ -100,20 +97,16 @@ class OGBWorkload(OGB):
     del train_stddev
     return raw_input_batch, raw_label_batch
 
-  def _replace_globals(self, graphs: jraph.GraphsTuple) -> jraph.GraphsTuple:
-    """Replaces the globals attribute with a constant feature for each graph."""
-    return graphs._replace(globals=jnp.ones([graphs.n_node.shape[0], 1]))
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     if self._init_graphs is None:
       raise ValueError(
           'This should not happen, workload.build_input_queue() should be '
           'called before workload.init_model_fn()!'
       )
-    rng, init_rng = jax.random.split(rng)
-    init_graphs = self._replace_globals(self._init_graphs)
-    params = jax.jit(self._model.init)(init_rng, init_graphs)
-    self._model.deterministic = False
+    rng, params_rng, dropout_rng = jax.random.split(rng, 3)
+    params = jax.jit(functools.partial(self._model.init, train=False))(
+        {'params': params_rng, 'dropout': dropout_rng}, self._init_graphs)
+    params = params['params']
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
@@ -131,24 +124,6 @@ class OGBWorkload(OGB):
   def loss_type(self):
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
-  def _get_valid_mask(
-        self,
-        labels: jnp.ndarray,
-        graphs: jraph.GraphsTuple) -> jnp.ndarray:
-    """Gets the binary mask indicating only valid labels and graphs."""
-    # We have to ignore all NaN values - which indicate labels for which
-    # the current graphs have no label.
-    labels_mask = ~jnp.isnan(labels)
-
-    # Since we have extra 'dummy' graphs in our batch due to padding, we want
-    # to mask out any loss associated with the dummy graphs.
-    # Since we padded with `pad_with_graphs` we can recover the mask by using
-    # get_graph_padding_mask.
-    graph_mask = jraph.get_graph_padding_mask(graphs)
-
-    # Combine the mask over labels with the mask over graphs.
-    return labels_mask & graph_mask[:, None]
-
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -158,29 +133,20 @@ class OGBWorkload(OGB):
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
-    # Extract labels.
-    labels = input_batch.globals
-    # Replace the global feature for graph classification.
-    graphs = self._replace_globals(input_batch)
-
-    # Get predicted logits
-    variables = {'params': params}#, **model_state} DO NOT SUBMIT
+    assert model_state is None
     train = mode == spec.ForwardPassMode.TRAIN
     pred_graphs = self._model.apply(
-        variables['params'],
-        graphs,
-        rngs={'dropout': rng})
+        {'params': params},
+        input_batch,
+        rngs={'dropout': rng},
+        train=train)
     logits = pred_graphs.globals
-
-    # Get the mask for valid labels and graphs.
-    self._mask = self._get_valid_mask(labels, graphs)
-
     return logits, None
 
   def _binary_cross_entropy_with_mask(
       self,
-      logits: jnp.ndarray,
       labels: jnp.ndarray,
+      logits: jnp.ndarray,
       mask: jnp.ndarray) -> jnp.ndarray:
     """Binary cross entropy loss for logits, with masked elements."""
     assert logits.shape == labels.shape == mask.shape
@@ -203,40 +169,47 @@ class OGBWorkload(OGB):
   def loss_fn(
       self,
       label_batch: spec.Tensor,
-      logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-    if self._mask is None:
-      raise ValueError(
-          'This should not happen, workload.model_fn() should be '
-          'called before workload.loss_fn()!'
-      )
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor]) -> spec.Tensor:  # differentiable
     loss = self._binary_cross_entropy_with_mask(
-        logits=logits_batch, labels=label_batch, mask=self._mask)
-    return loss
+        labels=label_batch, logits=logits_batch, mask=mask_batch)
+    mean_loss = jnp.sum(jnp.where(mask_batch, loss, 0)) / jnp.sum(mask_batch)
+    return mean_loss
 
-  def _shard_graphs(self, graphs):
-    graph_list = jraph.unbatch(graphs)
-    n_devices = jax.local_device_count()
-    local_batch_size = len(graph_list) // n_devices
-    graphs = [
-        jax.tree_map(
-            np.asarray, 
-            jraph.batch(graph_list[i*local_batch_size:(i+1)*local_batch_size]))
-        for i in range(n_devices)]
-    graphs = jax.tree_multimap(lambda *x: jnp.stack(x, axis=0), *graphs)
-    return graphs
+  def _compute_mean_average_precision(self, labels, logits, masks):
+    """Computes the mean average precision (mAP) over different tasks."""
+    # Matches the official OGB evaluation scheme for mean average precision.
+    assert logits.shape == labels.shape == masks.shape
+    assert len(logits.shape) == 2
 
-  def _eval_metric(self, labels, logits):
-    loss = self.loss_fn(labels, logits)
+    probs = jax.nn.sigmoid(logits)
+    num_tasks = labels.shape[1]
+    average_precisions = np.full(num_tasks, np.nan)
+
+    for task in range(num_tasks):
+      # AP is only defined when there is at least one negative data
+      # and at least one positive data.
+      if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:, task] == 1) > 0:
+        is_labeled = masks[:, task]
+        average_precisions[task] = sklearn.metrics.average_precision_score(
+            labels[is_labeled, task], probs[is_labeled, task])
+
+    # When all APs are NaNs, return NaN. This avoids raising a RuntimeWarning.
+    if np.isnan(average_precisions).all():
+      return np.nan
+    return np.nanmean(average_precisions)
+
+  def _eval_metric(self, labels, logits, masks):
+    loss = self.loss_fn(labels, logits, masks)
     return metrics.EvalMetrics.single_from_model_output(
-        loss=loss, logits=logits, labels=labels, mask=self._mask)
+        loss=loss, logits=logits, labels=labels, mask=masks)
 
-  #@functools.partial(
-  #    jax.pmap,
-  #    axis_name='batch',
-  #    in_axes=(None, 0, 0, 0, None),
-  #    static_broadcasted_argnums=(0,))
-  def _eval_batch(self, params, graphs, model_state, rng):
-    labels = graphs.globals
+  @functools.partial(
+      jax.pmap,
+      axis_name='batch',
+      in_axes=(None, 0, 0, 0, 0, 0, None),
+      static_broadcasted_argnums=(0,))
+  def _eval_batch(self, params, graphs, labels, masks, model_state, rng):
     logits, _ = self.model_fn(
         params,
         graphs,
@@ -244,7 +217,7 @@ class OGBWorkload(OGB):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._eval_metric(labels, logits)
+    return self._eval_metric(labels, logits, masks)
 
   def eval_model(
       self,
@@ -255,19 +228,15 @@ class OGBWorkload(OGB):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 256
-    if self._eval_ds is None:
-      self._eval_ds = self._build_dataset(
+    if self._eval_iterator is None:
+      self._eval_iterator = self._build_iterator(
           data_rng, 'validation', data_dir, batch_size=eval_batch_size)
-
-    self._model.deterministic = True
-    params = jax_utils.unreplicate(params)
-    model_state = jax_utils.unreplicate(model_state)
 
     total_metrics = None
     # Loop over graph batches in eval dataset
-    for graphs in self._eval_ds.as_numpy_iterator():
-      # graphs = self._shard_graphs(graphs)
-      batch_metrics = self._eval_batch(params, graphs, model_state, model_rng)
+    for graphs, labels, masks in self._eval_iterator:
+      batch_metrics = self._eval_batch(
+          params, graphs, labels, masks, model_state, model_rng)
       total_metrics = (batch_metrics if total_metrics is None
                        else total_metrics.merge(batch_metrics))
-    return {k: float(v) for k, v in total_metrics.compute().items()}
+    return {k: float(v) for k, v in total_metrics.reduce().compute().items()}

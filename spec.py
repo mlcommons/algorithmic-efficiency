@@ -2,7 +2,7 @@
 
 import enum
 import time
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import abc
 
@@ -199,7 +199,8 @@ class Workload(metaclass=abc.ABCMeta):
   def loss_fn(
       self,
       label_batch: Tensor,  # Dense (not one-hot) labels.
-      logits_batch: Tensor) -> Tensor:  # differentiable
+      logits_batch: Tensor,
+      mask_batch: Optional[Tensor]) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod

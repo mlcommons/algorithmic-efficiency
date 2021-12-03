@@ -49,10 +49,9 @@ class GraphNet(nn.Module):
   skip_connections: bool = True
   use_edge_model: bool = True
   layer_norm: bool = True
-  deterministic: bool = True
 
   @nn.compact
-  def __call__(self, graphs: jraph.GraphsTuple) -> jraph.GraphsTuple:
+  def __call__(self, graphs: jraph.GraphsTuple, train: bool) -> jraph.GraphsTuple:
     # We will first linearly project the original features as 'embeddings'.
     embedder = jraph.GraphMapFeatures(
         embed_node_fn=nn.Dense(self.latent_size),
@@ -67,18 +66,18 @@ class GraphNet(nn.Module):
         update_edge_fn = jraph.concatenated_args(
             MLP(mlp_feature_sizes,
                 dropout_rate=self.dropout_rate,
-                deterministic=self.deterministic))
+                deterministic=not train))
       else:
         update_edge_fn = None
 
       update_node_fn = jraph.concatenated_args(
           MLP(mlp_feature_sizes,
               dropout_rate=self.dropout_rate,
-              deterministic=self.deterministic))
+              deterministic=not train))
       update_global_fn = jraph.concatenated_args(
           MLP(mlp_feature_sizes,
               dropout_rate=self.dropout_rate,
-              deterministic=self.deterministic))
+              deterministic=not train))
 
       graph_net = jraph.GraphNetwork(
           update_node_fn=update_node_fn,
@@ -117,7 +116,6 @@ class GraphConvNet(nn.Module):
   dropout_rate: float = 0
   skip_connections: bool = True
   layer_norm: bool = True
-  deterministic: bool = True
   pooling_fn: Callable[[jnp.ndarray, jnp.ndarray, jnp.ndarray],
                        jnp.ndarray] = jraph.segment_mean
 
@@ -140,7 +138,7 @@ class GraphConvNet(nn.Module):
     return graphs._replace(globals=pooled)
 
   @nn.compact
-  def __call__(self, graphs: jraph.GraphsTuple) -> jraph.GraphsTuple:
+  def __call__(self, graphs: jraph.GraphsTuple, train: bool) -> jraph.GraphsTuple:
     # We will first linearly project the original node features as 'embeddings'.
     embedder = jraph.GraphMapFeatures(
         embed_node_fn=nn.Dense(self.latent_size))
@@ -152,7 +150,7 @@ class GraphConvNet(nn.Module):
       update_node_fn = jraph.concatenated_args(
           MLP(mlp_feature_sizes,
               dropout_rate=self.dropout_rate,
-              deterministic=self.deterministic))
+              deterministic=not train))
       graph_conv = jraph.GraphConvolution(
           update_node_fn=update_node_fn, add_self_edges=True)
 

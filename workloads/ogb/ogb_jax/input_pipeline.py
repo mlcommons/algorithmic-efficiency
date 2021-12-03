@@ -5,6 +5,7 @@
 
 import functools
 from typing import Dict, NamedTuple
+import jax
 import jraph
 import numpy as np
 import tensorflow as tf
@@ -32,10 +33,50 @@ def get_raw_datasets() -> Dict[str, tf.data.Dataset]:
   return datasets
 
 
-def get_datasets(batch_size: int,
-                 add_virtual_node: bool = True,
-                 add_undirected_edges: bool = True,
-                 add_self_loops: bool = True) -> Dict[str, tf.data.Dataset]:
+def _get_valid_mask(graphs: jraph.GraphsTuple):
+  """Gets the binary mask indicating only valid labels and graphs."""
+  labels = graphs.globals
+  # We have to ignore all NaN values - which indicate labels for which
+  # the current graphs have no label.
+  labels_masks = ~np.isnan(labels)
+
+  # Since we have extra 'dummy' graphs in our batch due to padding, we want
+  # to mask out any loss associated with the dummy graphs.
+  # Since we padded with `pad_with_graphs` we can recover the mask by using
+  # get_graph_padding_mask.
+  graph_masks = jraph.get_graph_padding_mask(graphs)
+
+  # Combine the mask over labels with the mask over graphs.
+  masks = labels_masks & graph_masks[:, None]
+  graphs = graphs._replace(globals=[])
+  return graphs, labels, masks
+
+
+def _batch_for_pmap(iterator):
+  graphs = []
+  labels = []
+  masks = []
+  count = 0
+  for graph_batch, label_batch, mask_batch in iterator:
+    count += 1
+    graphs.append(graph_batch)
+    labels.append(label_batch)
+    masks.append(mask_batch)
+    if count == jax.local_device_count():
+      graphs = jax.tree_multimap(lambda *x: np.stack(x, axis=0), *graphs)
+      labels = np.stack(labels)
+      masks = np.stack(masks)
+      yield graphs, labels, masks
+      graphs = []
+      labels = []
+      masks = []
+      count = 0
+
+
+def get_dataset_iters(batch_size: int,
+                      add_virtual_node: bool = True,
+                      add_undirected_edges: bool = True,
+                      add_self_loops: bool = True) -> Dict[str, tf.data.Dataset]:
   """Returns datasets of batched GraphsTuples, organized by split."""
   if batch_size <= 1:
     raise ValueError('Batch size must be > 1 to account for padding graphs.')
@@ -53,7 +94,6 @@ def get_datasets(batch_size: int,
 
   # Process each split separately.
   for split_name in datasets:
-
     # Convert to GraphsTuple.
     datasets[split_name] = datasets[split_name].map(
         convert_to_graphs_tuple_fn,
@@ -77,23 +117,25 @@ def get_datasets(batch_size: int,
     if split_name == 'train':
       dataset_split = dataset_split.shuffle(100, reshuffle_each_iteration=True)
       dataset_split = dataset_split.repeat()
+    # We cache the validation and test sets, since these are small.
+    else:
+      dataset_split = dataset_split.cache()
 
-    # Batch and pad each split.
-    batching_fn = functools.partial(
-        jraph.dynamically_batch,
+    # Batch and pad each split. Note that this also converts the graphs to
+    # numpy.
+    batched_iter = jraph.dynamically_batch(
         graphs_tuple_iterator=iter(dataset_split),
         n_node=budget.n_node,
         n_edge=budget.n_edge,
         n_graph=budget.n_graph)
-    dataset_split = tf.data.Dataset.from_generator(
-        batching_fn,
-        output_signature=padded_graphs_spec)
 
-    # We cache the validation and test sets, since these are small.
-    if split_name in ['validation', 'test']:
-      dataset_split = dataset_split.cache()
+    # An iterator of Tuple[graph, labels, mask].
+    masked_iter = map(_get_valid_mask, batched_iter)
 
-    datasets[split_name] = dataset_split
+    # An iterator the same as above, but where each element has an extra leading
+    # dim of size jax.local_device_count().
+    pmapped_iterator = _batch_for_pmap(masked_iter)
+    datasets[split_name] = pmapped_iterator
   return datasets
 
 
