@@ -153,37 +153,37 @@ def convert_to_graphs_tuple(graph: Dict[str, tf.Tensor],
   senders = graph['edge_index'][:, 0]
   receivers = graph['edge_index'][:, 1]
 
-  # Add a virtual node connected to all other nodes.
-  # The feature vectors for the virtual node
-  # and the new edges are set to all zeros.
-  if add_virtual_node:
-    nodes = tf.concat(
-        [nodes, tf.zeros_like(nodes[0, None])], axis=0)
-    senders = tf.concat(
-        [senders, tf.range(num_nodes)], axis=0)
-    receivers = tf.concat(
-        [receivers, tf.fill((num_nodes,), num_nodes + 1)], axis=0)
-    edges = tf.concat(
-        [edges, tf.zeros((num_nodes, edge_feature_dim))], axis=0)
-    num_edges += num_nodes
-    num_nodes += 1
+  # # Add a virtual node connected to all other nodes.
+  # # The feature vectors for the virtual node
+  # # and the new edges are set to all zeros.
+  # if add_virtual_node:
+  #   nodes = tf.concat(
+  #       [nodes, tf.zeros_like(nodes[0, None])], axis=0)
+  #   senders = tf.concat(
+  #       [senders, tf.range(num_nodes)], axis=0)
+  #   receivers = tf.concat(
+  #       [receivers, tf.fill((num_nodes,), num_nodes + 1)], axis=0)
+  #   edges = tf.concat(
+  #       [edges, tf.zeros((num_nodes, edge_feature_dim))], axis=0)
+  #   num_edges += num_nodes
+  #   num_nodes += 1
 
-  # Make edges undirected, by adding edges with senders and receivers flipped.
-  # The feature vector for the flipped edge is the same as the original edge.
-  if add_undirected_edges:
-    new_senders = tf.concat([senders, receivers], axis=0)
-    new_receivers = tf.concat([receivers, senders], axis=0)
-    edges = tf.concat([edges, edges], axis=0)
-    senders, receivers = new_senders, new_receivers
-    num_edges *= 2
+  # # Make edges undirected, by adding edges with senders and receivers flipped.
+  # # The feature vector for the flipped edge is the same as the original edge.
+  # if add_undirected_edges:
+  #   new_senders = tf.concat([senders, receivers], axis=0)
+  #   new_receivers = tf.concat([receivers, senders], axis=0)
+  #   edges = tf.concat([edges, edges], axis=0)
+  #   senders, receivers = new_senders, new_receivers
+  #   num_edges *= 2
 
-  # Add self-loops for each node.
-  # The feature vectors for the self-loops are set to all zeros.
-  if add_self_loops:
-    senders = tf.concat([senders, tf.range(num_nodes)], axis=0)
-    receivers = tf.concat([receivers, tf.range(num_nodes)], axis=0)
-    edges = tf.concat([edges, tf.zeros((num_nodes, edge_feature_dim))], axis=0)
-    num_edges += num_nodes
+  # # Add self-loops for each node.
+  # # The feature vectors for the self-loops are set to all zeros.
+  # if add_self_loops:
+  #   senders = tf.concat([senders, tf.range(num_nodes)], axis=0)
+  #   receivers = tf.concat([receivers, tf.range(num_nodes)], axis=0)
+  #   edges = tf.concat([edges, tf.zeros((num_nodes, edge_feature_dim))], axis=0)
+  #   num_edges += num_nodes
 
   return jraph.GraphsTuple(
       n_node=tf.expand_dims(num_nodes, 0),
