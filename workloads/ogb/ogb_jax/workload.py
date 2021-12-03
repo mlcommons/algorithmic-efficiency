@@ -239,4 +239,6 @@ class OGBWorkload(OGB):
           params, graphs, labels, masks, model_state, model_rng)
       total_metrics = (batch_metrics if total_metrics is None
                        else total_metrics.merge(batch_metrics))
+    if total_metrics is None:
+      return {}
     return {k: float(v) for k, v in total_metrics.reduce().compute().items()}
