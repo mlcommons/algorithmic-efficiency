@@ -12,6 +12,7 @@ from torchvision.datasets.folder import ImageFolder
 
 import spec
 import random_utils as prng
+from workloads.imagenet.workload import ImagenetWorkload
 from workloads.imagenet.imagenet_pytorch.resnet import resnet50
 from workloads.imagenet.imagenet_pytorch.utils import fast_collate, cycle
 
@@ -19,29 +20,11 @@ from workloads.imagenet.imagenet_pytorch.utils import fast_collate, cycle
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
 
 
-class ImagenetWorkload(spec.Workload):
+class ImagenetWorkload(ImagenetWorkload):
 
   def __init__(self):
-    self._eval_ds = None
-
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['accuracy'] > self.target_value
-
-  @property
-  def target_value(self):
-    return 0.76
-
-  @property
-  def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
-
-  @property
-  def train_mean(self):
-    return (0.485, 0.456, 0.406)
-
-  @property
-  def train_stddev(self):
-    return (0.229, 0.224, 0.225)
+    super().__init__()
+    self.dataset = 'imagenet2012'
 
   """ data augmentation settings """
   @property
@@ -62,19 +45,18 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def num_train_examples(self):
-    return 1271167
+    return 1281167
 
   @property
   def num_eval_examples(self):
-    return 100000
+    return 50000
 
   @property
-  def max_allowed_runtime_sec(self):
-    return 111600  # 31 hours
-
-  @property
-  def eval_period_time_sec(self):
-    return 6000  # 100 mins
+  def param_shapes(self):
+    """
+    TODO: return shape tuples from model as a tree
+    """
+    raise NotImplementedError
 
   def eval_model(
       self,
@@ -124,7 +106,8 @@ class ImagenetWorkload(spec.Workload):
     normalize = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=self.train_mean, std=self.train_stddev)
+            mean=[i/255 for i in self.train_mean], 
+            std=[i/255 for i in self.train_stddev])
     ])
     transform_config = {
         "train": transforms.Compose([
@@ -163,29 +146,6 @@ class ImagenetWorkload(spec.Workload):
       dataloader = cycle(dataloader)
 
     return dataloader
-
-  def build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
-
-  @property
-  def param_shapes(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
-
-  def model_params_types(self):
-    pass
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
 
   def preprocess_for_train(
       self,
