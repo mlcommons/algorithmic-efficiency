@@ -21,16 +21,16 @@ def init_optimizer_state(
   del rng
   del model_state
 
+  base_lr = hyperparameters.learning_rate * get_batch_size('imagenet_pytorch') / 256.
   optimizer_state = {
       'optimizer': torch.optim.SGD(model_params.parameters(),
-                                   lr=hyperparameters.learning_rate,
+                                   lr=base_lr,
                                    momentum=hyperparameters.momentum,
                                    weight_decay=hyperparameters.weight_decay)
   }
 
-  base_lr_factor = get_batch_size('imagenet_pytorch') / 256.
   scheduler1 = LinearLR(
-      optimizer_state['optimizer'], start_factor=0., end_factor=base_lr_factor,
+      optimizer_state['optimizer'], start_factor=1e-5, end_factor=1.,
       total_iters=hyperparameters.warmup_epochs)
   cosine_epochs = max(
       hyperparameters.num_epochs - hyperparameters.warmup_epochs, 1)
