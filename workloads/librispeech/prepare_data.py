@@ -111,7 +111,7 @@ def extract_spect_mvn(audio_path):
 if __name__ == '__main__':
   data_dir = sys.argv[1]
 
-  trans_dir = os.getcwd() + 'data'
+  trans_dir = os.getcwd() + '/data'
   save_dir = os.getcwd() + '/data/stft/'
   os.makedirs(trans_dir, exist_ok=True)
   os.makedirs(save_dir, exist_ok=True)
