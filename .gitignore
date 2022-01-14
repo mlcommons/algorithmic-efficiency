@@ -4,4 +4,5 @@ __pycache__
 .vscode/
 env/
 venv/
-workdir/
+work_dir/
+data_dir/
