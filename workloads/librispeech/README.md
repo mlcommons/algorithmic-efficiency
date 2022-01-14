@@ -8,17 +8,24 @@ and evaluate it on Librispeech test clean dataset. We get Character Error Rate
 
 ## 2. Download and preprocess dataset
 
-```
+```bash
 mkdir data_dir
+# Make script executable
+chmod +x download_data.sh
 cd data_dir
 
-download_data.sh
+# Download and unzip LibriSpeech dataset
+../download_data.sh
+
+# [Optional] Delete the tar.gz files to save disk space
+# rm *.tar.gz
 
 cd ..
 mkdir work_dir
 cd work_dir
 
-python prepare_data.py data_dir/LibriSpeech
+# Run preprocessing script
+python ../prepare_data.py ../data_dir/LibriSpeech/
 ```
 
 The raw dataset is under `data_dir` and the preprocessed dataset is under
