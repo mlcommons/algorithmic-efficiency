@@ -31,6 +31,15 @@ python ../prepare_data.py ../data_dir/LibriSpeech/
 The raw dataset is under `data_dir` and the preprocessed dataset is under
 `work_dir`.
 
+
+## Running workload
+Run from root of repository:
+
+### PyTorch
+```bash
+python3 submission_runner.py --framework=pytorch --workload=librispeech_pytorch --submission_path=workloads/librispeech/librispeech_pytorch/submission.py --data_dir workloads/librispeech/work_dir/data/
+```
+
 ## 3. Reference
 
 https://github.com/lsari/librispeech_100
