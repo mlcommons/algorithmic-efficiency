@@ -1,4 +1,4 @@
-"""Training algorithm track submission functions for MNIST."""
+"""Training algorithm track submission functions for ImageNet."""
 from typing import List, Tuple
 import torch
 from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingLR
