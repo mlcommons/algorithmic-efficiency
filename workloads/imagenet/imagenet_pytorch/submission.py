@@ -18,8 +18,9 @@ def init_optimizer_state(
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
-  del rng
+  del workload
   del model_state
+  del rng
 
   base_lr = hyperparameters.learning_rate * get_batch_size('imagenet_pytorch') / 256.
   optimizer_state = {
@@ -60,6 +61,8 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
+  del hyperparameters
+  del loss_type
   del eval_results
   input_batch, label_batch = (
     workload.preprocess_for_train(input_batch, label_batch, None, None, None))

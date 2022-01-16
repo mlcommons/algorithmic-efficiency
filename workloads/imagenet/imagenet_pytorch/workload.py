@@ -1,20 +1,18 @@
-"""Resnet workload implemented in PyTorch."""
+"""ImageNet workload implemented in PyTorch."""
 import contextlib
 import os
-from collections import OrderedDict
 from typing import Tuple
 
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-from torchvision.datasets import ImageNet
 from torchvision.datasets.folder import ImageFolder
 
 import spec
 import random_utils as prng
 from workloads.imagenet.workload import ImagenetWorkload
-from workloads.imagenet.imagenet_pytorch.resnet import resnet50
-from workloads.imagenet.imagenet_pytorch.utils import fast_collate, cycle
+from workloads.imagenet.imagenet_pytorch.models import resnet50
+from workloads.imagenet.imagenet_pytorch.utils import cycle
 
 
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
@@ -136,10 +134,7 @@ class ImagenetWorkload(ImagenetWorkload):
         num_workers=5,
         pin_memory=True,
         # Note (runame): not sure why we do this?
-        drop_last=is_train,
-        # Note (runame): if we want to use fast_collate,
-        # we need to change some things
-        #collate_fn=fast_collate
+        drop_last=is_train
     )
 
     if is_train:
