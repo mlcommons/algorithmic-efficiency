@@ -20,6 +20,14 @@ def check_characters(string, labels):
   return True
 
 
+def insert_underscore_between_pairs(a_string):
+  if len(a_string) <= 1:
+    return a_string
+  if a_string[0] == a_string[1]:
+    return a_string[0] + '_' + insert_underscore_between_pairs(a_string[1:])
+  return a_string[0] + insert_underscore_between_pairs(a_string[1:])
+
+
 def analyze_transcripts(train_data_dir, ignore_space=False):
   char_labels = set()
   for i, speaker_folder in enumerate(os.listdir(train_data_dir)):
@@ -44,7 +52,7 @@ def analyze_transcripts(train_data_dir, ignore_space=False):
   return output_label_dict
 
 
-def get_txt(data_dir, labels_dict, ignore_space=False):
+def get_txt(data_dir, labels_dict, ignore_space=False, add_additional_blank=False):
   file_trans = []
   for i, speaker_folder in enumerate(os.listdir(data_dir)):
     if i % 20 == 0:
@@ -59,6 +67,9 @@ def get_txt(data_dir, labels_dict, ignore_space=False):
           audio_path = f'{data_dir}/{speaker_folder}/{chapter_folder}/{utt}.flac'
           assert os.path.isfile(audio_path)
           if check_characters(trans, labels_dict) and len(trans) > 10:
+            # insert a underscore between pair of identical characters
+            if add_additional_blank:
+              trans = insert_underscore_between_pairs(trans)
             if ignore_space:
               trans = trans.replace(' ', '')
             trans_ids = [labels_dict[c] for c in trans]
@@ -110,8 +121,14 @@ def extract_spect_mvn(audio_path):
 
 if __name__ == '__main__':
   data_dir = sys.argv[1]
+  pytorch_or_jax = sys.argv[2]
 
-  trans_dir = os.getcwd() + 'data'
+  if pytorch_or_jax == 'pytorch':
+    add_additional_blank = False
+  else:
+    add_additional_blank = True
+
+  trans_dir = os.getcwd() + '/data'
   save_dir = os.getcwd() + '/data/stft/'
   os.makedirs(trans_dir, exist_ok=True)
   os.makedirs(save_dir, exist_ok=True)
@@ -123,7 +140,7 @@ if __name__ == '__main__':
   ]
   for subset in subset_list:
     print(subset)
-    df = get_txt('{}/{}'.format(data_dir, subset), output_label_dict)
+    df = get_txt('{}/{}'.format(data_dir, subset), output_label_dict,add_additional_blank=add_additional_blank)
     df.to_csv('data/trans_{}.csv'.format(subset))
 
   for subset in subset_list:
