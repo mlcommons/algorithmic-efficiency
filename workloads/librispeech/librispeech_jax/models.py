@@ -12,12 +12,9 @@ from flax import linen as nn
 class Sequential(nn.Module):
   layers: Sequence[nn.Module]
 
-  def __call__(self, x, training=False):
+  def __call__(self, x):
     for layer in self.layers:
-      if isinstance(layer, nn.BatchNorm):
-        x = layer(x, use_running_average=training)
-      else:
-        x = layer(x)
+      x = layer(x)
     return x
 
 
@@ -33,12 +30,7 @@ class SequenceWise(nn.Module):
   def __call__(self, x, training=False):
     t, n = x.shape[0], x.shape[1]
     x = jnp.reshape(x, (t * n, -1))
-    if isinstance(self.module, nn.BatchNorm):
-      x = self.module(x, use_running_average=training)
-    elif isinstance(self.module, Sequential):
-      x = self.module(x, training=training)
-    else:
-      x = self.module(x)
+    x = self.module(x)
     x = jnp.reshape(x, (t, n, -1))
     return x
 
@@ -65,10 +57,7 @@ class MaskConv(nn.Module):
     """
     x = x.transpose(0, 2, 3, 1)
     for module in self.seq_module:
-      if isinstance(module, nn.BatchNorm):
-        x = module(x, use_running_average=training)
-      else:
-        x = module(x)
+      x = module(x)
       mask = jnp.zeros_like(x)
       for i, length in enumerate(lengths):
         length = length.item()
@@ -162,7 +151,7 @@ class BatchRNN(nn.Module):
 
   def setup(self):
     if self.use_batch_norm:
-      self.batch_norm = SequenceWise(nn.BatchNorm())
+      self.batch_norm = SequenceWise(nn.BatchNorm(use_running_average=True))
     else:
       self.batch_norm = None
     self.rnn = SimpleBiLSTM(self.hidden_size)
@@ -198,7 +187,7 @@ class CNNLSTM(nn.Module):
         strides=(2, 2),
         padding=((20, 20), (5, 5)),
       ),
-      nn.BatchNorm(),
+      nn.BatchNorm(use_running_average=True),
       functools.partial(hard_tanh, min_value=0, max_value=20),
       nn.Conv(
         features=32,
@@ -206,7 +195,7 @@ class CNNLSTM(nn.Module):
         strides=(2, 1),
         padding=((10, 10), (5, 5)),
       ),
-      nn.BatchNorm(),
+      nn.BatchNorm(use_running_average=True),
       functools.partial(hard_tanh, min_value=0, max_value=20),
     ]
     self.conv = MaskConv(sequential)
@@ -233,7 +222,7 @@ class CNNLSTM(nn.Module):
     self.rnns = rnns
 
     fully_connected = Sequential([
-      nn.BatchNorm(),
+      nn.BatchNorm(use_running_average=True),
       nn.Dense(self.num_classes, use_bias=False)
     ])
 
