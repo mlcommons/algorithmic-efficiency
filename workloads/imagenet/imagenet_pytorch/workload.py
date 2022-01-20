@@ -173,6 +173,14 @@ class ImagenetWorkload(ImagenetWorkload):
     model.to(DEVICE)
     return model, None
 
+  def _update_batch_norm(self, model, update_batch_norm):
+    for m in model.modules():
+      if isinstance(m, (torch.nn.BatchNorm1d, torch.nn.BatchNorm2d, torch.nn.BatchNorm3d)):
+        if not update_batch_norm:
+          m.eval()
+        m.requires_grad_(update_batch_norm)
+        m.track_running_stats = update_batch_norm
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -183,12 +191,17 @@ class ImagenetWorkload(ImagenetWorkload):
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del update_batch_norm
 
     model = params
 
     if mode == spec.ForwardPassMode.EVAL:
-        model.eval()
+      if update_batch_norm:
+        raise ValueError('Batch norm statistics cannot be updated during evaluation.') 
+      model.eval()
+
+    if mode == spec.ForwardPassMode.TRAIN:
+      model.train()
+      self._update_batch_norm(model, update_batch_norm)
 
     contexts = {
       spec.ForwardPassMode.EVAL: torch.no_grad,
