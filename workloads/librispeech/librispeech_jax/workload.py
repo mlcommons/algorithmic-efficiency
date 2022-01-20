@@ -202,13 +202,13 @@ class LibriSpeechWorkload(spec.Workload):
     train = mode == spec.ForwardPassMode.TRAIN
     features, input_lengths = augmented_and_preprocessed_input_batch
     if update_batch_norm:
-      log_y, output_lengths = self._model.apply(
+      (log_y, output_lengths), new_model_state = self._model.apply(
         variables, features, input_lengths, training=train, mutable=['batch_stats'])
-      return (log_y, output_lengths), model_state
+      return (log_y, output_lengths), new_model_state
     else:
       log_y, output_lengths = self._model.apply(
         variables, features, input_lengths, training=train)
-      return (log_y, output_lengths), model_state
+      return (log_y, output_lengths), None
   
   def loss_fn(
       self,
