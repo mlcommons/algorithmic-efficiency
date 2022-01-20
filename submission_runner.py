@@ -48,6 +48,10 @@ WORKLOADS = {
   'librispeech_pytorch': {
     'workload_path': 'workloads/librispeech/librispeech_pytorch/workload.py',
     'workload_class_name': 'LibriSpeechWorkload'
+  },
+  'librispeech_jax': {
+    'workload_path': 'workloads/librispeech/librispeech_jax/workload.py',
+    'workload_class_name': 'LibriSpeechWorkload'
   }
 }
 
