@@ -161,12 +161,13 @@ class MnistWorkload(Mnist):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
-    return F.nll_loss(logits_batch, label_batch)
+    return F.nll_loss(logits_batch, label_batch, reduction='sum')
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     _, predicted = torch.max(logits.data, 1)
-    accuracy = (predicted == labels).cpu().numpy().mean()
-    loss = self.loss_fn(labels, logits).cpu().numpy().mean()
-    return {'accuracy': accuracy, 'loss': loss}
+    accuracy = (predicted == labels).cpu().numpy().sum()  # not accuracy, but nr. of correct predictions
+    loss = self.loss_fn(labels, logits).item()
+    n_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
 

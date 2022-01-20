@@ -145,7 +145,8 @@ class MnistWorkload(Mnist):
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
-    accuracy = jnp.mean(jnp.argmax(logits, axis=-1) == labels)
-    loss = jnp.mean(self.loss_fn(labels, logits))
-    return {'accuracy': accuracy, 'loss': loss}
+    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == labels)  # not accuracy, but nr. of correct predictions
+    loss = jnp.sum(self.loss_fn(labels, logits))
+    n_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
 

@@ -73,7 +73,7 @@ class ImagenetWorkload(ImagenetWorkload):
         'accuracy': 0.,
         'loss': 0.,
     }
-    num_batches = 0
+    n_data = 0
     for (images, labels) in self._eval_ds:
       images, labels = self.preprocess_for_eval(images, labels, None, None)
       logits, _ = self.model_fn(
@@ -88,10 +88,8 @@ class ImagenetWorkload(ImagenetWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-      num_batches += 1
-    # Note (runame): the returned result is not exact because the last batch
-    # has a smaller batch size
-    return {k: float(v / num_batches) for k, v in total_metrics.items()}
+      n_data += batch_metrics['n_data']
+    return {k: float(v / n_data) for k, v in total_metrics.items()}
 
   def _build_dataset(self,
       data_rng: spec.RandomState,
@@ -233,11 +231,12 @@ class ImagenetWorkload(ImagenetWorkload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
-    return F.cross_entropy(logits_batch, label_batch)
+    return F.cross_entropy(logits_batch, label_batch, reduction='sum')
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     predicted = torch.argmax(logits, 1)
-    accuracy = (predicted == labels).cpu().numpy().mean()
+    accuracy = (predicted == labels).cpu().numpy().sum()  # not accuracy, but nr. of correct predictions
     loss = self.loss_fn(labels, logits).item()
-    return {'accuracy': accuracy, 'loss': loss}
+    n_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
