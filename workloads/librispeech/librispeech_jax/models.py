@@ -45,7 +45,7 @@ class MaskConv(nn.Module):
     """
   seq_module: Sequence[nn.Module]
 
-  def __call__(self, x, lengths, training=False):
+  def __call__(self, x, lengths):
     """Forward pass.
 
     Args:
@@ -60,7 +60,6 @@ class MaskConv(nn.Module):
       x = module(x)
       mask = jnp.zeros_like(x)
       for i, length in enumerate(lengths):
-        length = length.item()
         if mask[i].shape[2] - length > 0:
           mask = mask.at[i, :, :, length:].set(1)
       x = jnp.where(mask, x, 0)
@@ -246,7 +245,7 @@ class CNNLSTM(nn.Module):
   def __call__(self, inputs, lengths, training=False):
     output_lengths = self.get_seq_lens(lengths)
 
-    x, _ = self.conv(inputs, lengths, training=training)
+    x, _ = self.conv(inputs, lengths)
 
     sizes = x.shape
     x = x.reshape(sizes[0], sizes[1] * sizes[2],
