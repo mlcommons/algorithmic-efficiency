@@ -164,16 +164,31 @@ class LibriSpeechWorkload(spec.Workload):
     del train_stddev
     return raw_input_batch
   
+  def initialized(self, key, model):
+    init_val = [jnp.ones((1, 1, 161, 2453), jnp.float32), jnp.array([2087])]
+    variables = model.init(key, *init_val, training=True)
+    params = variables["params"]
+    model_state = variables["batch_stats"]
+    return params, model_state
+
   _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
   def init_model_fn(self, rng: spec.RandomState) -> _InitState:
-    init_val = [jnp.ones((1, 1, 161, 2453), jnp.float32), jnp.array([2087])]
-    params, model_state = self._model.init(rng, *init_val, train=True)['params']
+    params, model_state = self.initialized(rng, self._model)
     self._param_shapes = jax.tree_map(
       lambda x: spec.ShapeTuple(x.shape),
       params)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+  
+  # Keep this separate from the loss function in order to support optimizers
+  # that use the logits.
+  def output_activation_fn(
+      self,
+      logits_batch: spec.Tensor,
+      loss_type: spec.LossType) -> spec.Tensor:
+    """Return the final activations of the model."""
+    pass
 
   def model_fn(
       self,
@@ -210,4 +225,10 @@ class LibriSpeechWorkload(spec.Workload):
 
     return jnp.mean(loss)
 
-  
+  def eval_model(
+      self,
+      params: spec.ParameterContainer,
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState,
+      data_dir: str):
+    pass
