@@ -43,7 +43,7 @@ class MaskConv(nn.Module):
     """
   seq_module: Sequence[nn.Module]
 
-  def __call__(self, x, lengths, training=False):
+  def __call__(self, x, lengths):
     """Forward pass.
     Args:
       x: The input (before transposing it to channels-last) is of size BxCxDxT
@@ -53,10 +53,7 @@ class MaskConv(nn.Module):
     """
     x = x.transpose(0, 2, 3, 1)
     for module in self.seq_module:
-      if isinstance(module, nn.BatchNorm):
-        x = module(x, use_running_average=training)
-      else:
-        x = module(x)
+      x = module(x)
       mask = jnp.arange(x.shape[1]).reshape(1, -1, 1, 1) >= lengths.reshape(-1, 1, 1, 1)
       mask = mask.astype(jnp.float32)
       x *= mask
