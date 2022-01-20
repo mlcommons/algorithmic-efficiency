@@ -34,10 +34,8 @@ class SequenceWise(nn.Module):
     x = jnp.reshape(x, (t, n, -1))
     return x
 
-
 class MaskConv(nn.Module):
   """Adds padding to the output of the module based on the given lengths.
-
     This is to ensure that the results of the model do not change when batch
     sizes change during inference. Input needs to be in the shape of (BxCxDxT)
     Args:
@@ -45,27 +43,27 @@ class MaskConv(nn.Module):
     """
   seq_module: Sequence[nn.Module]
 
-  def __call__(self, x, lengths):
+  def __call__(self, x, lengths, training=False):
     """Forward pass.
-
     Args:
-      x: The input of size BxCxDxT
+      x: The input (before transposing it to channels-last) is of size BxCxDxT
       lengths: The actual length of each sequence in the batch
-
     Returns:
       Masked output from the module
     """
     x = x.transpose(0, 2, 3, 1)
     for module in self.seq_module:
-      x = module(x)
-      mask = jnp.zeros_like(x)
-      for i, length in enumerate(lengths):
-        if mask[i].shape[2] - length > 0:
-          mask = mask.at[i, :, :, length:].set(1)
-      x = jnp.where(mask, x, 0)
+      if isinstance(module, nn.BatchNorm):
+        x = module(x, use_running_average=training)
+      else:
+        x = module(x)
+      mask = jnp.arange(x.shape[1]).reshape(1, -1, 1, 1) >= lengths.reshape(-1, 1, 1, 1)
+      mask = mask.astype(jnp.float32)
+      x *= mask
     x = x.transpose(0, 3, 1, 2)
     return x, lengths
-
+  
+  
 @jax.vmap
 def flip_sequences(inputs, lengths):
   """Flips a sequence of inputs along the time dimension.
