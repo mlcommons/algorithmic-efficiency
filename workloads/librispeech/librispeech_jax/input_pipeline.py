@@ -30,28 +30,26 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     max_input_len = 2453
     max_target_len = 405
 
-    for elem in batch:
-      index, feature, trn = elem
-      max_input_len = max_input_len if max_input_len > feature.shape[
-          0] else feature.shape[0]
-      max_target_len = max_target_len if max_target_len > len(trn) else len(trn)
-
     for i, elem in enumerate(batch):
       index, f, trn = elem
       input_length = np.array(f.shape[0])
       input_dim = f.shape[1]
       feature = np.zeros((max_input_len, input_dim), dtype=np.float)
       feature[:f.shape[0], :f.shape[1]] = f
+      target_len = len(trn)
+      target_padding = np.zeros(max_target_len)
+      target_padding[target_len:] = 1 
       trn = np.pad(
           trn, (0, max_target_len - len(trn)), "constant", constant_values=0)
 
-      batch[i] = (int(index), feature, trn, input_length)
+      batch[i] = (int(index), feature, trn, input_length, target_padding)
 
     batch.sort(key=lambda x: x[3], reverse=True)
 
     index = np.array([x[0] for x in batch], dtype=jnp.int32)
     feature = np.array([x[1] for x in batch], dtype=jnp.float32)
-    trn = np.array([x[2] for x in batch], dtype=jnp.float32)
+    trn = np.array([x[2] for x in batch], dtype=jnp.int32)
     input_length = np.array([x[3] for x in batch], dtype=jnp.int32)
+    target_padding = np.array([x[4] for x in batch], dtype=jnp.int32)
 
-    return index, feature, trn, input_length
+    return index, feature, trn, input_length, target_padding

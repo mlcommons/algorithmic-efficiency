@@ -1,12 +1,16 @@
 import functools
+import math
 from typing import Iterator, List, Tuple
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 import spec
 from flax import jax_utils
+from flax import linen as nn
 from jax import lax
+from workloads.librispeech.librispeech_jax.models import get_seq_lens
 
 
 def get_batch_size(workload_name):
@@ -79,7 +83,7 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
-  _, features, transcripts, input_lengths = input_batch
+  _, features, transcripts, input_lengths,  transcripts_padding = input_batch
   features = jnp.expand_dims(features.transpose(0, 2, 1), axis=1)
   num_devices = jax.local_device_count()
   reshaped_features = jnp.reshape(
@@ -92,9 +96,35 @@ def update_params(
       transcripts,
       (num_devices, transcripts.shape[0] // num_devices,
        *transcripts.shape[1:]))
+  reshaped_transcripts_padding = jnp.reshape(
+      transcripts_padding,
+      (num_devices, transcripts_padding.shape[0] // num_devices,
+       *transcripts_padding.shape[1:]))
+  sequential = [
+      nn.Conv(
+        features=32,
+        kernel_size=(41, 11),
+        strides=(2, 2),
+        padding=((20, 20), (5, 5)),
+      ),
+      nn.Conv(
+        features=32,
+        kernel_size=(21, 11),
+        strides=(2, 1),
+        padding=((10, 10), (5, 5)),
+      )
+    ]
+  output_lengths = get_seq_lens(input_lengths, sequential)
+  output_padding = np.zeros((features.shape[0],math.ceil(features.shape[-1]/2)))
+  for i,x in enumerate(output_lengths):
+    output_padding[i,x:] = 1
+  reshaped_output_padding = jnp.reshape(
+    output_padding,
+      (num_devices, output_padding.shape[0] // num_devices, *output_padding.shape[1:])
+  )
   batch = {
     'input': (reshaped_features, reshaped_input_lengths),
-    'label': reshaped_transcripts,
+    'label': (reshaped_transcripts, reshaped_transcripts_padding, reshaped_output_padding)
   }
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(

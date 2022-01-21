@@ -166,6 +166,22 @@ def hard_tanh(x, min_value=-1., max_value=1.):
   return jnp.where(x > max_value, max_value, jnp.where(x < min_value, min_value, x))
 
 
+def get_seq_lens(input_length, conv_seq_module):
+    """Get a 1D tensor or variable containing the size sequences that will be output by the network.
+
+    Args:
+      input_length: 1D Tensor
+
+    Returns:
+      1D Tensor scaled by model
+    """
+    seq_len = input_length
+    for m in conv_seq_module:
+      if isinstance(m, nn.Conv):
+        seq_len = (seq_len + 2 * m.padding[1][1] - m.kernel_dilation * (m.kernel_size[1] - 1) - 1) // m.strides[1] + 1
+    return seq_len
+
+
 class CNNLSTM(nn.Module):
 
   num_classes = 29
@@ -222,23 +238,8 @@ class CNNLSTM(nn.Module):
 
     self.fc = SequenceWise(fully_connected)
 
-  def get_seq_lens(self, input_length):
-    """Get a 1D tensor or variable containing the size sequences that will be output by the network.
-
-    Args:
-      input_length: 1D Tensor
-
-    Returns:
-      1D Tensor scaled by model
-    """
-    seq_len = input_length
-    for m in self.conv.seq_module:
-      if isinstance(m, nn.Conv):
-        seq_len = (seq_len + 2 * m.padding[1][1] - m.kernel_dilation * (m.kernel_size[1] - 1) - 1) // m.strides[1] + 1
-    return seq_len
-  
   def __call__(self, inputs, lengths, training=False):
-    output_lengths = self.get_seq_lens(lengths)
+    output_lengths = get_seq_lens(lengths, self.conv.seq_module)
 
     x, _ = self.conv(inputs, lengths)
 

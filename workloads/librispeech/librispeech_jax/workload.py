@@ -59,6 +59,7 @@ class LibriSpeechWorkload(spec.Workload):
     self._loss = ctc_loss.ctc_loss
   
   def has_reached_goal(self, eval_result: float) -> bool:
+    return False
     return eval_result < self.target_value
   
   def build_input_queue(self, data_rng, split: str, data_dir: str,
@@ -214,13 +215,8 @@ class LibriSpeechWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor: 
-
-    log_y, output_lengths = logits_batch
-    max_length = log_y.shape[1]
-    logprobspaddings = np.array([[0]*x + [1]*(max_length-x) for x in output_lengths])
-    labels_lengths = [len(y[y != 0]) for y in label_batch]
-    max_length = logits_batch.shape[1]
-    labelspaddings = np.array([[0]*x + [1]*(max_length-x) for x in labels_lengths])
+    log_y, _ = logits_batch
+    label_batch, labelspaddings, logprobspaddings = label_batch
     loss, _ = self._loss(log_y, logprobspaddings, label_batch, labelspaddings)
 
     return jnp.mean(loss)
