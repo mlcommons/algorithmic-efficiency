@@ -1,3 +1,4 @@
+import functools
 import itertools
 import os
 from typing import Tuple
@@ -11,6 +12,7 @@ import spec
 import torch
 from flax import jax_utils
 from flax import linen as nn
+from jax import lax
 
 from . import ctc_loss, input_pipeline, models
 
@@ -59,7 +61,6 @@ class LibriSpeechWorkload(spec.Workload):
     self._loss = ctc_loss.ctc_loss
   
   def has_reached_goal(self, eval_result: float) -> bool:
-    return False
     return eval_result < self.target_value
   
   def build_input_queue(self, data_rng, split: str, data_dir: str,
@@ -221,10 +222,65 @@ class LibriSpeechWorkload(spec.Workload):
 
     return jnp.mean(loss)
 
+
+  @functools.partial(
+  jax.pmap,
+  axis_name='batch',
+  in_axes=(None, 0, 0, 0, None),
+  static_broadcasted_argnums=(0,))
+  def eval_model_fn(self, params, batch, state, rng):
+    logits, _ = self.model_fn(
+      params,
+      batch["input"],
+      state,
+      spec.ForwardPassMode.EVAL,
+      rng,
+      update_batch_norm=False)
+    return logits
+
+
   def eval_model(
       self,
       params: spec.ParameterContainer,
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState,
       data_dir: str):
-    pass
+    """Run a full evaluation of the model."""
+    # sync batch statistics across replicas
+    model_state = self.sync_batch_stats(model_state)
+
+    total_error = 0.0
+    total_length = 0.0
+
+    eval_batch_size = 32
+    num_devices = jax.local_device_count()
+    for (_, features, transcripts, input_lengths, transcripts_padding) in self._valid_loader:
+      features = jnp.expand_dims(features.transpose(0, 2, 1), axis=1)
+      reshaped_features = jnp.reshape(
+      features,
+      (num_devices, features.shape[0] // num_devices, *features.shape[1:]))
+      reshaped_input_lengths = jnp.reshape(
+          input_lengths,
+          (num_devices, input_lengths.shape[0] // num_devices, *input_lengths.shape[1:]))
+      batch = {
+        'input': (reshaped_features, reshaped_input_lengths)
+      }
+      log_y, _ = self.eval_model_fn(params, batch, model_state, rng)
+      log_y = jnp.reshape(log_y, (-1, *log_y.shape[2:]))
+      log_y = torch.tensor(np.asarray(log_y),device='cpu')
+      input_lengths = torch.tensor(np.asarray(input_lengths),device='cpu')
+      out, _, _, seq_lens = self._decoder.decode(
+            torch.exp(log_y), input_lengths)
+      for hyp, trn, length in zip(out, transcripts,
+                                  seq_lens):  # iterate batch
+        best_hyp = hyp[0, :length[0]]
+        hh = "".join([self._rev_label_dict[i.item()] for i in best_hyp])
+        t = np.asarray(trn).tolist()
+        t = [ll for ll in t if ll != 0]
+        tlength = len(t)
+        tt = "".join([self._rev_label_dict[i] for i in t])
+        error = Levenshtein.distance(tt, hh)
+        total_error += error
+        total_length += tlength
+      
+      return total_error / total_length
