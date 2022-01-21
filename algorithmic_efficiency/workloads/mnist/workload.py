@@ -1,7 +1,7 @@
 from absl import logging
 import random_utils as prng
-
 import spec
+
 
 class Mnist(spec.Workload):
 

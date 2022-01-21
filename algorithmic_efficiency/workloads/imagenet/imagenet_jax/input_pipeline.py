@@ -4,12 +4,10 @@
 """ImageNet input pipeline.
 """
 
-import jax
 from flax import jax_utils
-
+import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
 
 IMAGE_SIZE = 224
 CROP_PADDING = 32

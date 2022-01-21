@@ -10,22 +10,20 @@ python3 submission_runner.py \
     --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
     --num_tuning_trials=3
 """
-from typing import Optional, Tuple
-
-from absl import app
-from absl import flags
-from absl import logging
 import importlib
 import inspect
 import json
 import os
 import struct
 import time
+from typing import Optional, Tuple
 
+from absl import app
+from absl import flags
+from absl import logging
 import halton
 import random_utils as prng
 import spec
-
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
@@ -302,6 +300,7 @@ def score_submission_on_workload(
 def main(_):
   if FLAGS.framework == 'jax':
     import tensorflow as tf
+
     # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
     # it unavailable to JAX.
     tf.config.experimental.set_visible_devices([], 'GPU')

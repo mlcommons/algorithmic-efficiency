@@ -1,10 +1,9 @@
 """MLPerf™ Algorithmic Efficiency API."""
 
+import abc
 import enum
 import time
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
-
-import abc
 
 
 class LossType(enum.Enum):

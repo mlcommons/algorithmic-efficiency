@@ -3,9 +3,10 @@
 import os
 from typing import Dict, List, Optional, Union
 
-from . import tokenizer
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
+from . import tokenizer
 
 AUTOTUNE = tf.data.AUTOTUNE
 Features = Dict[str, tf.Tensor]

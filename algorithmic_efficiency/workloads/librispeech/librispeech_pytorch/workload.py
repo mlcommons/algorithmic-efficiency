@@ -4,12 +4,13 @@ import itertools
 import os
 from typing import Tuple
 
-from . import input_pipeline
-from . import models
 import ctcdecode
 import Levenshtein
 import spec
 import torch
+
+from . import input_pipeline
+from . import models
 
 
 class LibriSpeechWorkload(spec.Workload):

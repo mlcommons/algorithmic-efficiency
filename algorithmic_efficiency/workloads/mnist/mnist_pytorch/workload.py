@@ -1,11 +1,9 @@
 """MNIST workload implemented in PyTorch."""
 
+from collections import OrderedDict
 import contextlib
 import itertools
 from typing import Tuple
-from collections import OrderedDict
-
-from workloads.mnist.workload import Mnist
 
 import spec
 import torch
@@ -13,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import MNIST
+from workloads.mnist.workload import Mnist
 
 DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
 

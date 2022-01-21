@@ -1,6 +1,6 @@
 """Transformer-based machine translation model."""
 
-from typing import Callable, Any, Optional
+from typing import Any, Callable, Optional
 
 from flax import linen as nn
 from flax import struct

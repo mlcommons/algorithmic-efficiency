@@ -3,10 +3,6 @@ import collections
 import functools
 from typing import Tuple
 
-from . import bleu
-from . import decode
-from . import input_pipeline
-from . import models
 from absl import logging
 from flax import linen as nn
 from flax.training import common_utils
@@ -15,6 +11,11 @@ import jax.numpy as jnp
 import numpy as np
 import spec
 import tensorflow as tf
+
+from . import bleu
+from . import decode
+from . import input_pipeline
+from . import models
 
 VOCAB_PATH = "./wmt_256/sentencepiece_model"
 WORKDIR = "./wmt_256"

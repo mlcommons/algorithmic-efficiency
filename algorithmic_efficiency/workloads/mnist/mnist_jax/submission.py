@@ -1,12 +1,12 @@
 """Training algorithm track submission functions for MNIST."""
+import functools
 from typing import Iterator, List, Tuple, Union
 
-import functools
+from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import optax
 import spec
-from flax import jax_utils
 
 from . import workload
 

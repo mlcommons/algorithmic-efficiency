@@ -10,10 +10,9 @@ import collections
 import functools
 import itertools
 import math
-
 from typing import Any, Callable, Dict, List, Sequence, Text, Tuple, Union
-from numpy import random
 
+from numpy import random
 
 _SweepSequence = List[Dict[Text, Any]]
 _GeneratorFn = Callable[[float], Tuple[Text, float]]

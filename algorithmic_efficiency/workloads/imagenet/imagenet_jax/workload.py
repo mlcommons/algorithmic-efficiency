@@ -7,25 +7,24 @@ python3 submission_runner.py \
 """
 import functools
 from typing import Tuple
-import optax
 
+import optax
 import tensorflow as tf
+
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make it
 # unavailable to JAX.
 tf.config.experimental.set_visible_devices([], 'GPU')
-import tensorflow_datasets as tfds
-
+from flax import jax_utils
 import jax
+from jax import lax
 import jax.numpy as jnp
 import numpy as np
-from jax import lax
-from flax import jax_utils
-
-import spec
 import random_utils as prng
+import spec
+import tensorflow_datasets as tfds
+
 from . import input_pipeline
 from . import models
-
 
 
 class ImagenetWorkload(spec.Workload):

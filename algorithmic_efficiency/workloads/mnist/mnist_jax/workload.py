@@ -3,15 +3,14 @@
 import struct
 import time
 from typing import Tuple
-from workloads.mnist.workload import Mnist
 
 from flax import linen as nn
-
 import jax
 import jax.numpy as jnp
 import spec
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from workloads.mnist.workload import Mnist
 
 
 class _Model(nn.Module):

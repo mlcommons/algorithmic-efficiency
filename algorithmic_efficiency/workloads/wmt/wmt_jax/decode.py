@@ -1,6 +1,7 @@
 """Fast decoding routines for inference from a trained model forked from https://github.com/google/flax/tree/main/examples/wmt."""
 
 import typing
+
 import flax
 import jax
 from jax import lax

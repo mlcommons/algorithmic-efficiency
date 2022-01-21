@@ -2,7 +2,6 @@
 import functools
 from typing import Iterator, List, Tuple
 
-from . import models
 from flax import jax_utils
 from flax import linen as nn
 from flax import optim
@@ -11,6 +10,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import spec
+
+from . import models
 
 
 def get_batch_size(workload_name):

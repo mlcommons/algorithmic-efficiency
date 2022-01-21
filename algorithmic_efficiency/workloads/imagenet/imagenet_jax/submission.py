@@ -3,14 +3,12 @@
 import functools
 from typing import Iterator, List, Tuple
 
+from flax import jax_utils
 import jax
+from jax import lax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
-from jax import lax
-
 import spec
-
 
 
 def get_batch_size(workload_name):
