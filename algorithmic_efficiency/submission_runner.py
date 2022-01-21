@@ -28,32 +28,34 @@ import spec
 
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
+BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
+
 WORKLOADS = {
   'mnist_jax': {
-    'workload_path': 'workloads/mnist/mnist_jax/workload.py',
+    'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_jax/workload.py',
     'workload_class_name': 'MnistWorkload'
   },
   'mnist_pytorch': {
-    'workload_path': 'workloads/mnist/mnist_pytorch/workload.py',
+    'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_pytorch/workload.py',
     'workload_class_name': 'MnistWorkload'
   },
   'imagenet_jax': {
-    'workload_path': 'workloads/imagenet/imagenet_jax/workload.py',
+    'workload_path': BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
     'workload_class_name': 'ImagenetWorkload'
   },
   'wmt_jax': {
-    'workload_path': 'workloads/wmt/wmt_jax/workload.py',
+    'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
     'workload_class_name': 'WMTWorkload'
   },
   'librispeech_pytorch': {
-    'workload_path': 'workloads/librispeech/librispeech_pytorch/workload.py',
+    'workload_path': BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
     'workload_class_name': 'LibriSpeechWorkload'
   }
 }
 
 flags.DEFINE_string(
     'submission_path',
-    'workloads/mnist_jax/submission.py',
+    'algorithmic_efficiency/workloads/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string('workload', 'mnist_jax',
@@ -64,7 +66,7 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'workloads/mnist/mnist_jax/tuning_search_space.json',
+    'algorithmic_efficiency/workloads/mnist/mnist_jax/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer(
     'num_tuning_trials',
@@ -309,6 +311,8 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_registry_name=FLAGS.workload,
       workload_class_name=workload_metadata['workload_class_name'])
+
+  print(FLAGS.tuning_search_space)
 
   score = score_submission_on_workload(
       workload,
