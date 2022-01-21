@@ -64,8 +64,10 @@ class WMTWorkload(spec.Workload):
     normalizing_constant = -(
         confidence * jnp.log(confidence) +
         (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
-    soft_targets = common_utils.onehot(
-        targets, vocab_size, on_value=confidence, off_value=low_confidence)
+    soft_targets = common_utils.onehot(targets,
+                                       vocab_size,
+                                       on_value=confidence,
+                                       off_value=low_confidence)
 
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
     loss = loss - normalizing_constant
@@ -175,14 +177,13 @@ class WMTWorkload(spec.Workload):
 
     # Using the above-defined single-step decoder function, run a
     # beam search over possible sequences given input encoding.
-    beam_seqs, _ = decode.beam_search(
-        inputs,
-        cache,
-        tokens_ids_to_logits,
-        beam_size=beam_size,
-        alpha=0.6,
-        eos_id=eos_id,
-        max_decode_len=max_decode_len)
+    beam_seqs, _ = decode.beam_search(inputs,
+                                      cache,
+                                      tokens_ids_to_logits,
+                                      beam_size=beam_size,
+                                      alpha=0.6,
+                                      eos_id=eos_id,
+                                      max_decode_len=max_decode_len)
 
     # Beam search returns [n_batch, n_beam, n_length + 1] with beam dimension
     # sorted in increasing order of log-probability.
@@ -371,18 +372,16 @@ class WMTWorkload(spec.Workload):
         output_vocab_size=self._vocab_size,
         deterministic=True,
         decode=True)
-    self._p_eval_step = jax.pmap(
-        functools.partial(self.eval_step, config=self._eval_config),
-        axis_name="batch")
-    self._p_init_cache = jax.pmap(
-        functools.partial(
-            self.initialize_cache,
-            max_decode_len=256,
-            config=self._predict_config),
-        axis_name="batch")
+    self._p_eval_step = jax.pmap(functools.partial(self.eval_step,
+                                                   config=self._eval_config),
+                                 axis_name="batch")
+    self._p_init_cache = jax.pmap(functools.partial(
+        self.initialize_cache, max_decode_len=256, config=self._predict_config),
+                                  axis_name="batch")
     self._p_pred_step = jax.pmap(
-        functools.partial(
-            self.predict_step, config=self._predict_config, beam_size=4),
+        functools.partial(self.predict_step,
+                          config=self._predict_config,
+                          beam_size=4),
         axis_name="batch",
         static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
 
@@ -438,11 +437,10 @@ class WMTWorkload(spec.Workload):
     """Run a full evaluation of the model."""
     del data_dir
 
-    eval_results = self.evaluate(
-        p_eval_step=self._p_eval_step,
-        target=params,
-        eval_ds=self._eval_ds,
-        num_eval_steps=20)
+    eval_results = self.evaluate(p_eval_step=self._p_eval_step,
+                                 target=params,
+                                 eval_ds=self._eval_ds,
+                                 num_eval_steps=20)
 
     _, bleu_score = self.translate_and_calculate_bleu(
         p_pred_step=self._p_pred_step,
@@ -455,4 +453,3 @@ class WMTWorkload(spec.Workload):
     eval_results["bleu"] = bleu_score
 
     return eval_results
-

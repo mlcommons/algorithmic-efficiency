@@ -196,4 +196,3 @@ def bleu_local(ref_lines, hyp_lines, case_sensitive=False):
   """Compute BLEU for two lists of reference and hypothesis translations."""
   stats = bleu_partial(ref_lines, hyp_lines, case_sensitive=case_sensitive)
   return complete_bleu(*stats) * 100
-

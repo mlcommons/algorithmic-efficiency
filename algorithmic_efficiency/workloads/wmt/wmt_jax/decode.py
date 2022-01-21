@@ -77,11 +77,13 @@ def gather_beams(nested, beam_indices, batch_size, new_beam_size):
   batch_indices = jnp.reshape(
       jnp.arange(batch_size * new_beam_size) // new_beam_size,
       (batch_size, new_beam_size))
+
   def gather_fn(x):
     if x.ndim == 0:  # ignore scalars (e.g. cache index)
       return x
     else:
       return x[batch_indices, beam_indices]
+
   return jax.tree_map(gather_fn, nested)
 
 
@@ -128,14 +130,11 @@ class BeamState:
 def beam_init(batch_size, beam_size, max_decode_len, cache):
   """Initializes the beam search state data structure."""
   cur_index0 = jnp.array(0)
-  live_logprobs0 = jnp.tile(
-      jnp.array([0.0] + [NEG_INF] * (beam_size - 1)),
-      [batch_size, 1])
+  live_logprobs0 = jnp.tile(jnp.array([0.0] + [NEG_INF] * (beam_size - 1)),
+                            [batch_size, 1])
   finished_scores0 = jnp.ones((batch_size, beam_size)) * NEG_INF
-  live_seqs0 = jnp.zeros(
-      (batch_size, beam_size, max_decode_len), jnp.int32)
-  finished_seqs0 = jnp.zeros(
-      (batch_size, beam_size, max_decode_len), jnp.int32)
+  live_seqs0 = jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32)
+  finished_seqs0 = jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32)
   finished_flags0 = jnp.zeros((batch_size, beam_size), jnp.bool_)
   # add beam dimension to attention cache pytree elements
   beam_cache0 = jax.tree_map(lambda x: add_beam_dim(x, beam_size), cache)
@@ -183,9 +182,7 @@ def beam_search(inputs,
   end_marker = jnp.array(eos_id)
 
   # initialize beam search state
-  beam_search_init_state = beam_init(batch_size,
-                                     beam_size,
-                                     max_decode_len,
+  beam_search_init_state = beam_init(batch_size, beam_size, max_decode_len,
                                      cache)
 
   def beam_search_loop_cond_fn(state):
@@ -198,11 +195,12 @@ def beam_search(inputs,
     min_brevity_penalty = brevity_penalty(alpha, max_decode_len)
     best_live_scores = state.live_logprobs[:, -1:] / min_brevity_penalty
     # Get the worst scores from finished sequences.
-    worst_finished_scores = jnp.min(
-        state.finished_scores, axis=1, keepdims=True)
+    worst_finished_scores = jnp.min(state.finished_scores,
+                                    axis=1,
+                                    keepdims=True)
     # Mask out scores from slots without any actual finished sequences.
-    worst_finished_scores = jnp.where(
-        state.finished_flags, worst_finished_scores, NEG_INF)
+    worst_finished_scores = jnp.where(state.finished_flags,
+                                      worst_finished_scores, NEG_INF)
     # If no best possible live score is better than current worst finished
     # scores, the search cannot improve the finished set further.
     search_terminated = jnp.all(worst_finished_scores > best_live_scores)
@@ -217,10 +215,9 @@ def beam_search(inputs,
     # autoregressive decoder model.  Flatten the beam dimension into batch
     # dimension for feeding into the model.
     # --> [batch * beam, 1]
-    flat_ids = flatten_beam_dim(lax.dynamic_slice(
-        state.live_seqs,
-        (0, 0, state.cur_index),
-        (batch_size, beam_size, 1)))
+    flat_ids = flatten_beam_dim(
+        lax.dynamic_slice(state.live_seqs, (0, 0, state.cur_index),
+                          (batch_size, beam_size, 1)))
     # Flatten beam dimension into batch to be compatible with model.
     # {[batch, beam, ...], ...} --> {[batch * beam, ...], ...}
     flat_cache = jax.tree_map(flatten_beam_dim, state.cache)
@@ -262,9 +259,8 @@ def beam_search(inputs,
     topk_beam_indices = topk_indices // vocab_size
     # Gather 2*k top beams.
     # --> [batch, 2*beams, length]
-    topk_seq = gather_beams(state.live_seqs,
-                            topk_beam_indices,
-                            batch_size, beams_to_keep)
+    topk_seq = gather_beams(state.live_seqs, topk_beam_indices, batch_size,
+                            beams_to_keep)
 
     # Append the most probable 2*K token IDs to the top 2*K sequences
     # Recover token id by modulo division and expand Id array for broadcasting.
@@ -272,8 +268,8 @@ def beam_search(inputs,
     topk_ids = jnp.expand_dims(topk_indices % vocab_size, axis=2)
     # Update sequences for the 2*K top-k new sequences.
     # --> [batch, 2*beams, length]
-    topk_seq = lax.dynamic_update_slice(
-        topk_seq, topk_ids, (0, 0, state.cur_index + 1))
+    topk_seq = lax.dynamic_update_slice(topk_seq, topk_ids,
+                                        (0, 0, state.cur_index + 1))
 
     # Update LIVE (in-progress) sequences:
     # Did any of these sequences reach an end marker?
@@ -289,17 +285,18 @@ def beam_search(inputs,
     new_topk_indices = jnp.flip(new_topk_indices, axis=1)
     # Gather the top k beams (from top 2*k beams).
     # --> [batch, beams, length], [batch, beams]
-    top_alive_seq, top_alive_log_probs = gather_beams(
-        [topk_seq, new_log_probs], new_topk_indices, batch_size, beam_size)
+    top_alive_seq, top_alive_log_probs = gather_beams([topk_seq, new_log_probs],
+                                                      new_topk_indices,
+                                                      batch_size, beam_size)
 
     # Determine the top k beam indices from the original set of all beams.
     # --> [batch, beams]
-    top_alive_indices = gather_beams(
-        topk_beam_indices, new_topk_indices, batch_size, beam_size)
+    top_alive_indices = gather_beams(topk_beam_indices, new_topk_indices,
+                                     batch_size, beam_size)
     # With these, gather the top k beam-associated caches.
     # --> {[batch, beams, ...], ...}
-    top_alive_cache = gather_beams(
-        new_cache, top_alive_indices, batch_size, beam_size)
+    top_alive_cache = gather_beams(new_cache, top_alive_indices, batch_size,
+                                   beam_size)
 
     # Update FINISHED (reached end of sentence) sequences:
     # Calculate new seq scores from log probabilities.
@@ -312,7 +309,8 @@ def beam_search(inputs,
     # new finished sequence scores to existing finished scores and select the
     # best from the new set of beams.
     finished_seqs = jnp.concatenate(  # --> [batch, 3*beams, length]
-        [state.finished_seqs, topk_seq], axis=1)
+        [state.finished_seqs, topk_seq],
+        axis=1)
     finished_scores = jnp.concatenate(  # --> [batch, 3*beams]
         [state.finished_scores, new_scores], axis=1)
     finished_flags = jnp.concatenate(  # --> [batch, 3*beams]
@@ -332,8 +330,7 @@ def beam_search(inputs,
 
   # Run while loop and get final beam search state.
   final_state = lax.while_loop(beam_search_loop_cond_fn,
-                               beam_search_loop_body_fn,
-                               beam_search_init_state)
+                               beam_search_loop_body_fn, beam_search_init_state)
 
   # Account for the edge-case where there are no finished sequences for a
   # particular batch item. If so, return live sequences for that batch item.
@@ -341,12 +338,10 @@ def beam_search(inputs,
   none_finished = jnp.any(final_state.finished_flags, axis=1)
   # --> [batch, beams, length]
   finished_seqs = jnp.where(none_finished[:, None, None],
-                            final_state.finished_seqs,
-                            final_state.live_seqs)
+                            final_state.finished_seqs, final_state.live_seqs)
   # --> [batch, beams]
-  finished_scores = jnp.where(none_finished[:, None],
-                              final_state.finished_scores,
+  finished_scores = jnp.where(none_finished[:,
+                                            None], final_state.finished_scores,
                               final_state.live_logprobs)
 
   return finished_seqs, finished_scores
-

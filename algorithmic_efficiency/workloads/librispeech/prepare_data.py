@@ -65,8 +65,8 @@ def get_txt(data_dir, labels_dict, ignore_space=False):
             file_trans.append(
                 [audio_path, trans, trans_ids, f'speaker-{speaker_folder}'])
 
-  df = pd.DataFrame(
-      file_trans, columns=['file', 'trans', 'trans_ids', 'speaker'])
+  df = pd.DataFrame(file_trans,
+                    columns=['file', 'trans', 'trans_ids', 'speaker'])
   return df
 
 
@@ -89,12 +89,11 @@ def extract_spect_mvn(audio_path):
   win_length = n_fft
   hop_length = int(sample_rate * WINDOW_STRIDE)
   # STFT
-  D = librosa.stft(
-      y,
-      n_fft=n_fft,
-      hop_length=hop_length,
-      win_length=win_length,
-      window=WINDOW)
+  D = librosa.stft(y,
+                   n_fft=n_fft,
+                   hop_length=hop_length,
+                   win_length=win_length,
+                   window=WINDOW)
   spect, _ = librosa.magphase(D)
   # S = log(S+1)
   spect = np.log1p(spect)
@@ -143,4 +142,3 @@ if __name__ == '__main__':
 
     features_df = pd.DataFrame(dataset)
     features_df.to_csv('data/features_{}.csv'.format(subset))
-

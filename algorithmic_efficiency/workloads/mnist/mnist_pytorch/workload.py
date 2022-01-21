@@ -13,7 +13,8 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 from workloads.mnist.workload import Mnist
 
-DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 
 class _Model(nn.Module):
 
@@ -22,12 +23,13 @@ class _Model(nn.Module):
     input_size = 28 * 28
     num_hidden = 128
     num_classes = 10
-    self.net = nn.Sequential(OrderedDict([
-        ('layer1',     torch.nn.Linear(input_size, num_hidden, bias=True)),
-        ('layer1_sig', torch.nn.Sigmoid()),
-        ('layer2',     torch.nn.Linear(num_hidden, num_classes, bias=True)),
-        ('output',     torch.nn.LogSoftmax(dim=1))
-    ]))
+    self.net = nn.Sequential(
+        OrderedDict([
+            ('layer1', torch.nn.Linear(input_size, num_hidden, bias=True)),
+            ('layer1_sig', torch.nn.Sigmoid()),
+            ('layer2', torch.nn.Linear(num_hidden, num_classes, bias=True)),
+            ('output', torch.nn.LogSoftmax(dim=1))
+        ]))
 
   def forward(self, x: spec.Tensor):
     return self.net(x)
@@ -38,11 +40,8 @@ class MnistWorkload(Mnist):
   def __init__(self):
     self._eval_ds = None
 
-  def _build_dataset(self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      batch_size: int):
+  def _build_dataset(self, data_rng: spec.RandomState, split: str,
+                     data_dir: str, batch_size: int):
 
     assert split in ['train', 'test']
     is_train = split == 'train'
@@ -50,25 +49,23 @@ class MnistWorkload(Mnist):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = MNIST(data_dir, train=is_train, download=True, transform=transform)
+    dataset = MNIST(data_dir,
+                    train=is_train,
+                    download=True,
+                    transform=transform)
     # TODO: set seeds properly
-    dataloader = torch.utils.data.DataLoader(
-      dataset,
-      batch_size=batch_size,
-      shuffle=is_train,
-      pin_memory=True)
+    dataloader = torch.utils.data.DataLoader(dataset,
+                                             batch_size=batch_size,
+                                             shuffle=is_train,
+                                             pin_memory=True)
 
     if is_train:
       dataloader = itertools.cycle(dataloader)
 
     return dataloader
 
-  def build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      batch_size: int):
+  def build_input_queue(self, data_rng: spec.RandomState, split: str,
+                        data_dir: str, batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   @property
@@ -86,23 +83,17 @@ class MnistWorkload(Mnist):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(
-      self,
-      selected_raw_input_batch: spec.Tensor,
-      selected_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor,
-      rng: spec.RandomState) -> spec.Tensor:
+  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+                           selected_label_batch: spec.Tensor,
+                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
+                           rng: spec.RandomState) -> spec.Tensor:
     del rng
-    return self.preprocess_for_eval(
-        selected_raw_input_batch, selected_label_batch, None, None)
+    return self.preprocess_for_eval(selected_raw_input_batch,
+                                    selected_label_batch, None, None)
 
-  def preprocess_for_eval(
-      self,
-      raw_input_batch: spec.Tensor,
-      raw_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor) -> spec.Tensor:
+  def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
+                          raw_label_batch: spec.Tensor, train_mean: spec.Tensor,
+                          train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
     N = raw_input_batch.size()[0]
@@ -118,11 +109,8 @@ class MnistWorkload(Mnist):
     return model, None
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
+      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
@@ -135,8 +123,8 @@ class MnistWorkload(Mnist):
       model.eval()
 
     contexts = {
-      spec.ForwardPassMode.EVAL: torch.no_grad,
-      spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.EVAL: torch.no_grad,
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
 
     with contexts[mode]():
@@ -147,18 +135,14 @@ class MnistWorkload(Mnist):
   # TODO(znado): Implement.
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
-  def output_activation_fn(
-      self,
-      logits_batch: spec.Tensor,
-      loss_type: spec.LossType) -> spec.Tensor:
+  def output_activation_fn(self, logits_batch: spec.Tensor,
+                           loss_type: spec.LossType) -> spec.Tensor:
     raise NotImplementedError
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self, label_batch: spec.Tensor,
+              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
     return F.nll_loss(logits_batch, label_batch)
 
@@ -168,4 +152,3 @@ class MnistWorkload(Mnist):
     accuracy = (predicted == labels).cpu().numpy().mean()
     loss = self.loss_fn(labels, logits).cpu().numpy().mean()
     return {'accuracy': accuracy, 'loss': loss}
-

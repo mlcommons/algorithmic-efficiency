@@ -1,6 +1,5 @@
 # Forked from Flax example which can be found here:
 # https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
-
 """ImageNet input pipeline.
 """
 
@@ -79,20 +78,17 @@ def _at_least_x_are_equal(a, b, x):
 def _decode_and_random_crop(image_bytes, image_size):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
-  image = distorted_bounding_box_crop(
-      image_bytes,
-      bbox,
-      min_object_covered=0.1,
-      aspect_ratio_range=(3. / 4, 4. / 3.),
-      area_range=(0.08, 1.0),
-      max_attempts=10)
+  image = distorted_bounding_box_crop(image_bytes,
+                                      bbox,
+                                      min_object_covered=0.1,
+                                      aspect_ratio_range=(3. / 4, 4. / 3.),
+                                      area_range=(0.08, 1.0),
+                                      max_attempts=10)
   original_shape = tf.io.extract_jpeg_shape(image_bytes)
   bad = _at_least_x_are_equal(original_shape, tf.shape(image), 3)
 
-  image = tf.cond(
-      bad,
-      lambda: _decode_and_center_crop(image_bytes, image_size),
-      lambda: _resize(image, image_size))
+  image = tf.cond(bad, lambda: _decode_and_center_crop(image_bytes, image_size),
+                  lambda: _resize(image, image_size))
 
   return image
 
@@ -105,13 +101,14 @@ def _decode_and_center_crop(image_bytes, image_size):
 
   padded_center_crop_size = tf.cast(
       ((image_size / (image_size + CROP_PADDING)) *
-       tf.cast(tf.minimum(image_height, image_width), tf.float32)),
-      tf.int32)
+       tf.cast(tf.minimum(image_height, image_width), tf.float32)), tf.int32)
 
   offset_height = ((image_height - padded_center_crop_size) + 1) // 2
   offset_width = ((image_width - padded_center_crop_size) + 1) // 2
-  crop_window = tf.stack([offset_height, offset_width,
-                          padded_center_crop_size, padded_center_crop_size])
+  crop_window = tf.stack([
+      offset_height, offset_width, padded_center_crop_size,
+      padded_center_crop_size
+  ])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
   image = _resize(image, image_size)
 
@@ -124,7 +121,10 @@ def normalize_image(image, mean_rgb, stddev_rgb):
   return image
 
 
-def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
+def preprocess_for_train(image_bytes,
+                         mean_rgb,
+                         stddev_rgb,
+                         dtype=tf.float32,
                          image_size=IMAGE_SIZE):
   """Preprocesses the given image for training.
 
@@ -144,7 +144,10 @@ def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
   return image
 
 
-def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
+def preprocess_for_eval(image_bytes,
+                        mean_rgb,
+                        stddev_rgb,
+                        dtype=tf.float32,
                         image_size=IMAGE_SIZE):
   """Preprocesses the given image for evaluation.
 
@@ -163,9 +166,14 @@ def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
   return image
 
 
-def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
-      image_size=IMAGE_SIZE, mean_rgb=MEAN_RGB, stddev_rgb=STDDEV_RGB,
-      cache=False):
+def create_split(dataset_builder,
+                 batch_size,
+                 train,
+                 dtype=tf.float32,
+                 image_size=IMAGE_SIZE,
+                 mean_rgb=MEAN_RGB,
+                 stddev_rgb=STDDEV_RGB,
+                 cache=False):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
 
   Args:
@@ -188,13 +196,14 @@ def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
       image = preprocess_for_train(example['image'], mean_rgb, stddev_rgb,
                                    dtype, image_size)
     else:
-      image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb,
-                                   dtype, image_size)
+      image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb, dtype,
+                                  image_size)
     return {'image': image, 'label': example['label']}
 
-  ds = dataset_builder.as_dataset(split=split, decoders={
-      'image': tfds.decode.SkipDecoding(),
-  })
+  ds = dataset_builder.as_dataset(split=split,
+                                  decoders={
+                                      'image': tfds.decode.SkipDecoding(),
+                                  })
   options = tf.data.Options()
   options.experimental_threading.private_threadpool_size = 48
   ds = ds.with_options(options)
@@ -216,6 +225,7 @@ def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
 
   return ds
 
+
 def shard_numpy_ds(xs):
   """Prepare tf data for JAX
 
@@ -223,6 +233,7 @@ def shard_numpy_ds(xs):
   sharded across devices.
   """
   local_device_count = jax.local_device_count()
+
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     x = x._numpy()  # pylint: disable=protected-access
@@ -234,19 +245,17 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def create_input_iter(dataset_builder,
-    batch_size,
-    mean_rgb,
-    stddev_rgb,
-    train,
-    cache):
-  ds = create_split(
-      dataset_builder, batch_size, train=train, mean_rgb=mean_rgb,
-      stddev_rgb=stddev_rgb, cache=cache)
+def create_input_iter(dataset_builder, batch_size, mean_rgb, stddev_rgb, train,
+                      cache):
+  ds = create_split(dataset_builder,
+                    batch_size,
+                    train=train,
+                    mean_rgb=mean_rgb,
+                    stddev_rgb=stddev_rgb,
+                    cache=cache)
   it = map(shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%
   it = jax_utils.prefetch_to_device(it, 2)
 
   return it
-

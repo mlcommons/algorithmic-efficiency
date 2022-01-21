@@ -96,4 +96,3 @@ def data_selection(workload: spec.Workload,
   del workload
 
   return next(input_queue), None
-

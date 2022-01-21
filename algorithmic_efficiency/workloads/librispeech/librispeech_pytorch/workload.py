@@ -220,4 +220,3 @@ class LibriSpeechWorkload(spec.Workload):
           total_length += tlength
 
     return total_error / total_length
-

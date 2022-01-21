@@ -44,10 +44,9 @@ def get_raw_dataset(dataset_builder: tfds.core.DatasetBuilder,
     'targets'.
   """
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
-  ds = ds.map(
-      NormalizeFeatureNamesOp(
-          dataset_builder.info, reverse_translation=reverse_translation),
-      num_parallel_calls=AUTOTUNE)
+  ds = ds.map(NormalizeFeatureNamesOp(dataset_builder.info,
+                                      reverse_translation=reverse_translation),
+              num_parallel_calls=AUTOTUNE)
   return ds
 
 
@@ -111,14 +110,13 @@ def pack_dataset(dataset: tf.data.Dataset,
       key2length[k + suffix] = key2length[k]
 
   # trim to length
-  dataset = dataset.map(
-      lambda x: {k: x[k][:key2length[k]] for k in keys},
-      num_parallel_calls=AUTOTUNE)
+  dataset = dataset.map(lambda x: {k: x[k][:key2length[k]] for k in keys},
+                        num_parallel_calls=AUTOTUNE)
   # Setting batch_size=length ensures that the concatenated sequences (if they
   # have length >=1) are sufficient to fill at least one packed example.
   batch_size = max(key2length.values())
-  dataset = dataset.padded_batch(
-      batch_size, padded_shapes={k: [-1] for k in keys})
+  dataset = dataset.padded_batch(batch_size,
+                                 padded_shapes={k: [-1] for k in keys})
   dataset = _pack_with_tf_ops(dataset, keys, key2length)
 
   # Set the Tensor shapes correctly since they get lost in the process.
@@ -173,10 +171,14 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset, keys: List[str],
     dynamic_batch_size = tf.shape(x[keys[0]])[0]
     outputs = {}
     for k in keys:
-      outputs[k] = tf.TensorArray(
-          tf.int32, size=0, dynamic_size=True, element_shape=[key2length[k]])
-      outputs[k + '_position'] = tf.TensorArray(
-          tf.int32, size=0, dynamic_size=True, element_shape=[key2length[k]])
+      outputs[k] = tf.TensorArray(tf.int32,
+                                  size=0,
+                                  dynamic_size=True,
+                                  element_shape=[key2length[k]])
+      outputs[k + '_position'] = tf.TensorArray(tf.int32,
+                                                size=0,
+                                                dynamic_size=True,
+                                                element_shape=[key2length[k]])
 
     def body_fn(i, partial, outputs):
       """Body function for while_loop.
@@ -234,9 +236,8 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset, keys: List[str],
     packed = {k: outputs[k].stack() for k in keys_etc}
     for k in keys:
       packed[k + '_segmentation'] = (
-          tf.cumsum(
-              tf.cast(tf.equal(packed[k + '_position'], 0), tf.int32), axis=1) *
-          tf.cast(tf.not_equal(packed[k], 0), tf.int32))
+          tf.cumsum(tf.cast(tf.equal(packed[k + '_position'], 0), tf.int32),
+                    axis=1) * tf.cast(tf.not_equal(packed[k], 0), tf.int32))
     return packed
 
   dataset = dataset.map(map_fn, num_parallel_calls=AUTOTUNE)
@@ -277,17 +278,16 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
     dataset = pack_dataset(dataset, max_length)
     dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)
   else:  # simple (static-shape) padded batching
-    dataset = dataset.padded_batch(
-        batch_size,
-        padded_shapes={
-            'inputs': max_length,
-            'targets': max_length
-        },
-        padding_values={
-            'inputs': 0,
-            'targets': 0
-        },
-        drop_remainder=drop_remainder)
+    dataset = dataset.padded_batch(batch_size,
+                                   padded_shapes={
+                                       'inputs': max_length,
+                                       'targets': max_length
+                                   },
+                                   padding_values={
+                                       'inputs': 0,
+                                       'targets': 0
+                                   },
+                                   drop_remainder=drop_remainder)
 
   if prefetch_size:
     dataset = dataset.prefetch(prefetch_size)
@@ -304,47 +304,44 @@ def get_wmt_datasets(vocab_size: int,
     vocab_path = os.path.expanduser('~/wmt_sentencepiece_model')
 
   train_ds_builder = tfds.builder('wmt17_translate/de-en')
-  train_data = get_raw_dataset(
-      train_ds_builder, 'train', reverse_translation=reverse_translation)
+  train_data = get_raw_dataset(train_ds_builder,
+                               'train',
+                               reverse_translation=reverse_translation)
 
   eval_ds_builder = tfds.builder('wmt14_translate/de-en')
-  eval_data = get_raw_dataset(
-      eval_ds_builder, 'test', reverse_translation=reverse_translation)
+  eval_data = get_raw_dataset(eval_ds_builder,
+                              'test',
+                              reverse_translation=reverse_translation)
 
   # Tokenize data.
-  sp_tokenizer = tokenizer.load_or_train_tokenizer(
-      train_data,
-      vocab_path=vocab_path,
-      vocab_size=vocab_size,
-      max_corpus_chars=10**7)
-  train_data = train_data.map(
-      tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
-  eval_data = eval_data.map(
-      tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
+  sp_tokenizer = tokenizer.load_or_train_tokenizer(train_data,
+                                                   vocab_path=vocab_path,
+                                                   vocab_size=vocab_size,
+                                                   max_corpus_chars=10**7)
+  train_data = train_data.map(tokenizer.TokenizeOp(sp_tokenizer),
+                              num_parallel_calls=AUTOTUNE)
+  eval_data = eval_data.map(tokenizer.TokenizeOp(sp_tokenizer),
+                            num_parallel_calls=AUTOTUNE)
 
-  train_ds = preprocess_wmt_data(
-      train_data,
-      shuffle=True,
-      num_epochs=None,
-      pack_examples=True,
-      batch_size=batch_size,
-      max_length=256)
+  train_ds = preprocess_wmt_data(train_data,
+                                 shuffle=True,
+                                 num_epochs=None,
+                                 pack_examples=True,
+                                 batch_size=batch_size,
+                                 max_length=256)
 
-  eval_ds = preprocess_wmt_data(
-      eval_data,
-      shuffle=False,
-      pack_examples=False,
-      batch_size=batch_size,
-      max_length=256,
-      drop_remainder=False)
+  eval_ds = preprocess_wmt_data(eval_data,
+                                shuffle=False,
+                                pack_examples=False,
+                                batch_size=batch_size,
+                                max_length=256,
+                                drop_remainder=False)
 
-  predict_ds = preprocess_wmt_data(
-      eval_data,
-      shuffle=False,
-      pack_examples=False,
-      batch_size=batch_size,
-      max_length=256,
-      drop_remainder=False)
+  predict_ds = preprocess_wmt_data(eval_data,
+                                   shuffle=False,
+                                   pack_examples=False,
+                                   batch_size=batch_size,
+                                   max_length=256,
+                                   drop_remainder=False)
 
   return train_ds, eval_ds, predict_ds, sp_tokenizer
-
