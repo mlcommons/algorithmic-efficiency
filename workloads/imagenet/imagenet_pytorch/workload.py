@@ -231,12 +231,12 @@ class ImagenetWorkload(ImagenetWorkload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
-    return F.cross_entropy(logits_batch, label_batch, reduction='sum')
+    return F.cross_entropy(logits_batch, label_batch, reduction='none')
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     predicted = torch.argmax(logits, 1)
-    accuracy = (predicted == labels).cpu().numpy().sum()  # not accuracy, but nr. of correct predictions
-    loss = self.loss_fn(labels, logits).item()
+    accuracy = (predicted == labels).sum().item()  # not accuracy, but nr. of correct predictions
+    loss = self.loss_fn(labels, logits).sum().item()
     n_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}

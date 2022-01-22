@@ -172,10 +172,10 @@ class ImagenetWorkload(ImagenetWorkload):
                                          num_classes=self.num_classes)
     xentropy = optax.softmax_cross_entropy(logits=logits_batch,
                                            labels=one_hot_labels)
-    return jnp.mean(xentropy)
+    return xentropy
 
   def compute_metrics(self, logits, labels):
-    loss = self.loss_fn(labels, logits)
+    loss = jnp.mean(self.loss_fn(labels, logits))
     accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
     metrics = {
       'loss': loss,
