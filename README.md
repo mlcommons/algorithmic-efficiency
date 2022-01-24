@@ -65,6 +65,14 @@
    pip3 install -e .[pytorch] -f 'https://download.pytorch.org/whl/torch_stable.html'
    ```
 
+   **Development**
+
+   To use the development tools such as `pytest` or `pylint` use the `dev` option:
+
+   ```bash
+   pip3 install -e .[dev]
+   ```
+
 ### Docker
 
 Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only the [NVIDIA® GPU driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver) is required on the host machine (the NVIDIA® CUDA® Toolkit does not need to be installed).
@@ -105,13 +113,13 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 ### JAX
 
 ```bash
-python3 submission_runner.py --framework=jax --workload=mnist_jax --submission_path=workloads/mnist/mnist_jax/submission.py
+python3 algorithmic_efficiency/submission_runner.py --framework=jax --workload=mnist_jax --submission_path=sample_submissions/mnist/mnist_jax/submission.py --tuning_search_space=sample_submissions/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
 
 ```bash
-python3 submission_runner.py --framework=pytorch --workload=mnist_pytorch --submission_path=workloads/mnist/mnist_pytorch/submission.py
+python3 algorithmic_efficiency/submission_runner.py --framework=pytorch --workload=mnist_pytorch --submission_path=sample_submissions/mnist/mnist_pytorch/submission.py --tuning_search_space=sample_submissions/mnist/tuning_search_space.json
 ```
 
 ## Rules
