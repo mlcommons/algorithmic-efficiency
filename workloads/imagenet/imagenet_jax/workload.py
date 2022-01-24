@@ -69,6 +69,10 @@ class ImagenetWorkload(ImagenetWorkload):
       batch_size,
       self.train_mean,
       self.train_stddev,
+      self.center_crop_size,
+      self.resize_size,
+      self.aspect_ratio_range,
+      self.scale_ratio_range,
       train=True,
       cache=False)
     return ds

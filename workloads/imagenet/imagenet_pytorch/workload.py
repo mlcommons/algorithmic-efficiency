@@ -23,23 +23,6 @@ class ImagenetWorkload(ImagenetWorkload):
   def __init__(self):
     super().__init__()
 
-  """ data augmentation settings """
-  @property
-  def scale_ratio_range(self):
-    return (0.08, 1.0)
-
-  @property
-  def aspect_ratio_range(self):
-    return (0.75, 4.0 / 3.0)
-
-  @property
-  def center_crop_size(self):
-    return 224
-
-  @property
-  def resize_size(self):
-    return 256
-
   @property
   def num_train_examples(self):
     return 1281167
@@ -130,7 +113,6 @@ class ImagenetWorkload(ImagenetWorkload):
         shuffle=is_train,
         num_workers=5,
         pin_memory=True,
-        # Note (runame): not sure why we do this?
         drop_last=is_train
     )
 

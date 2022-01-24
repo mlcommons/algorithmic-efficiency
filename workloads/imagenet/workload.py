@@ -25,6 +25,23 @@ class ImagenetWorkload(spec.Workload):
   def train_stddev(self):
     return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
+  """ data augmentation settings """
+  @property
+  def scale_ratio_range(self):
+    return (0.08, 1.0)
+
+  @property
+  def aspect_ratio_range(self):
+    return (0.75, 4.0 / 3.0)
+
+  @property
+  def center_crop_size(self):
+    return 224
+
+  @property
+  def resize_size(self):
+    return 256
+
   @property
   def max_allowed_runtime_sec(self):
     if 'imagenet2012' in self.dataset:

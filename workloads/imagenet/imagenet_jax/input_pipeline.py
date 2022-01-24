@@ -12,7 +12,7 @@ import tensorflow_datasets as tfds
 
 
 IMAGE_SIZE = 224
-CROP_PADDING = 32
+RESIZE_SIZE = 256
 MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
 STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
@@ -78,35 +78,37 @@ def _at_least_x_are_equal(a, b, x):
   return tf.greater_equal(tf.reduce_sum(match), x)
 
 
-def _decode_and_random_crop(image_bytes, image_size):
+def _decode_and_random_crop(
+    image_bytes, image_size, aspect_ratio_range,
+    area_range, resize_size=RESIZE_SIZE):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image = distorted_bounding_box_crop(
       image_bytes,
       bbox,
       min_object_covered=0.1,
-      aspect_ratio_range=(3. / 4, 4. / 3.),
-      area_range=(0.08, 1.0),
+      aspect_ratio_range=aspect_ratio_range,
+      area_range=area_range,
       max_attempts=10)
   original_shape = tf.io.extract_jpeg_shape(image_bytes)
   bad = _at_least_x_are_equal(original_shape, tf.shape(image), 3)
 
   image = tf.cond(
       bad,
-      lambda: _decode_and_center_crop(image_bytes, image_size),
+      lambda: _decode_and_center_crop(image_bytes, image_size, resize_size),
       lambda: _resize(image, image_size))
 
   return image
 
 
-def _decode_and_center_crop(image_bytes, image_size):
+def _decode_and_center_crop(image_bytes, image_size, resize_size):
   """Crops to center of image with padding then scales image_size."""
   shape = tf.io.extract_jpeg_shape(image_bytes)
   image_height = shape[0]
   image_width = shape[1]
 
   padded_center_crop_size = tf.cast(
-      ((image_size / (image_size + CROP_PADDING)) *
+      ((image_size / resize_size) *
        tf.cast(tf.minimum(image_height, image_width), tf.float32)),
       tf.int32)
 
@@ -126,8 +128,8 @@ def normalize_image(image, mean_rgb, stddev_rgb):
   return image
 
 
-def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
-                         image_size=IMAGE_SIZE):
+def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, aspect_ratio_range, area_range,
+                         dtype=tf.float32, image_size=IMAGE_SIZE, resize_size=RESIZE_SIZE):
   """Preprocesses the given image for training.
 
   Args:
@@ -138,7 +140,8 @@ def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_random_crop(image_bytes, image_size)
+  image = _decode_and_random_crop(
+      image_bytes, image_size, aspect_ratio_range, area_range, resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
   image = normalize_image(image, mean_rgb, stddev_rgb)
@@ -147,7 +150,7 @@ def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
 
 
 def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
-                        image_size=IMAGE_SIZE):
+                        image_size=IMAGE_SIZE, resize_size=RESIZE_SIZE):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -158,7 +161,7 @@ def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_center_crop(image_bytes, image_size)
+  image = _decode_and_center_crop(image_bytes, image_size, resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
@@ -166,8 +169,9 @@ def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype=tf.float32,
 
 
 def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
-      image_size=IMAGE_SIZE, mean_rgb=MEAN_RGB, stddev_rgb=STDDEV_RGB,
-      cache=False):
+      image_size=IMAGE_SIZE, resize_size=RESIZE_SIZE, mean_rgb=MEAN_RGB,
+      stddev_rgb=STDDEV_RGB, cache=False, aspect_ratio_range=(0.75, 4.0/3.0),
+      area_range=(0.08, 1.0)):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
 
   Args:
@@ -188,10 +192,11 @@ def create_split(dataset_builder, batch_size, train, dtype=tf.float32,
   def decode_example(example):
     if train:
       image = preprocess_for_train(example['image'], mean_rgb, stddev_rgb,
-                                   dtype, image_size)
+                                   aspect_ratio_range, area_range,
+                                   dtype, image_size, resize_size)
     else:
       image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb,
-                                   dtype, image_size)
+                                  dtype, image_size, resize_size)
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(split=split, decoders={
@@ -236,15 +241,21 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def create_input_iter(dataset_builder,
+def create_input_iter(
+    dataset_builder,
     batch_size,
     mean_rgb,
     stddev_rgb,
+    image_size,
+    resize_size,
+    aspect_ratio_range,
+    area_range,
     train,
     cache):
   ds = create_split(
-      dataset_builder, batch_size, train=train, mean_rgb=mean_rgb,
-      stddev_rgb=stddev_rgb, cache=cache)
+      dataset_builder, batch_size, train=train, image_size=image_size,
+      resize_size=resize_size, mean_rgb=mean_rgb, stddev_rgb=stddev_rgb,
+      cache=cache, aspect_ratio_range=aspect_ratio_range, area_range=area_range)
   it = map(shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%
