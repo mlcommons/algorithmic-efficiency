@@ -18,6 +18,8 @@ jobs:
     - name: Run pylint
       run: |
         pylint algorithmic_efficiency
+        pylint sample_submissions
+        pylint tests
 
   isort:
     runs-on: ubuntu-latest
