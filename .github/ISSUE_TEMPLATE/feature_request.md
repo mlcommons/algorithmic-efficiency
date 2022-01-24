@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for this project
 title: ''
-labels: "\U0002728 Feature Request"
+labels: ":sparkles: Feature Request"
 assignees: 
 
 ---

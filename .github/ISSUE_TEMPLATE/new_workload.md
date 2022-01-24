@@ -2,7 +2,7 @@
 name: New workload
 about: Suggest a new workload for the benchmark
 title: 'Workload Title: Framework'
-labels: "\U0002699 Workload"
+labels: ":gear: Workload"
 assignees: 
 
 ---
