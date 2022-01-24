@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Union
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from . import tokenizer
+from algorithmic_efficiency.workloads.wmt.wmt_jax import tokenizer
 
 AUTOTUNE = tf.data.AUTOTUNE
 Features = Dict[str, tf.Tensor]

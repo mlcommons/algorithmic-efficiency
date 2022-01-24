@@ -20,11 +20,12 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import random_utils as prng
-import spec
 import tensorflow_datasets as tfds
 
-from . import input_pipeline
-from . import models
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
+    input_pipeline
+from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
 
 
 class ImagenetWorkload(spec.Workload):

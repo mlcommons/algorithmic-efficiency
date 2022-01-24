@@ -5,13 +5,14 @@ import contextlib
 import itertools
 from typing import Tuple
 
-import spec
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import MNIST
-from workloads.mnist.workload import Mnist
+
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.mnist.workload import Mnist
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 

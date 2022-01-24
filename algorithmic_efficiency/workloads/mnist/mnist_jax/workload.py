@@ -7,10 +7,11 @@ from typing import Tuple
 from flax import linen as nn
 import jax
 import jax.numpy as jnp
-import spec
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from workloads.mnist.workload import Mnist
+
+from algorithmic_efficiency import spec
 
 
 class _Model(nn.Module):

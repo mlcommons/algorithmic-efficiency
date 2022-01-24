@@ -1,6 +1,7 @@
 from absl import logging
 import random_utils as prng
-import spec
+
+from algorithmic_efficiency import spec
 
 
 class Mnist(spec.Workload):

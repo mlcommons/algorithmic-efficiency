@@ -8,7 +8,7 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
-import spec
+from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):

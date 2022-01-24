@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for LibriSpeech."""
 from typing import Iterator, List, Tuple
 
-import spec
+from algorithmic_efficiency import spec
 import torch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

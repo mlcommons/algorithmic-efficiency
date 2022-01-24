@@ -9,13 +9,13 @@ from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
-import spec
 import tensorflow as tf
 
-from . import bleu
-from . import decode
-from . import input_pipeline
-from . import models
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.wmt.wmt_jax import bleu
+from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
+from algorithmic_efficiency.workloads.wmt.wmt_jax import input_pipeline
+from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
 VOCAB_PATH = "./wmt_256/sentencepiece_model"
 WORKDIR = "./wmt_256"

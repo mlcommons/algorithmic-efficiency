@@ -23,7 +23,8 @@ from absl import flags
 from absl import logging
 import halton
 import random_utils as prng
-import spec
+
+from algorithmic_efficiency import spec
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
@@ -285,8 +286,6 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_registry_name=FLAGS.workload,
       workload_class_name=workload_metadata['workload_class_name'])
-
-  print(FLAGS.tuning_search_space)
 
   score = score_submission_on_workload(workload, FLAGS.workload,
                                        FLAGS.submission_path, FLAGS.data_dir,

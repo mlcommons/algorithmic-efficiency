@@ -1,10 +1,10 @@
 """Training algorithm track submission functions for MNIST."""
-from typing import Iterator, List, Tuple, Union
 
-import spec
+from typing import Iterator, List, Tuple
+
 import torch
 
-from . import workload
+from algorithmic_efficiency import spec
 
 DEVICE = 'cuda'
 

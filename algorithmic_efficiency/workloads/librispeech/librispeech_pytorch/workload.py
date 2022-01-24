@@ -6,11 +6,13 @@ from typing import Tuple
 
 import ctcdecode
 import Levenshtein
-import spec
 import torch
 
-from . import input_pipeline
-from . import models
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
+    input_pipeline
+from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
+    models
 
 
 class LibriSpeechWorkload(spec.Workload):

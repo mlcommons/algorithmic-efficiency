@@ -1,14 +1,14 @@
 """Training algorithm track submission functions for MNIST."""
+
 import functools
-from typing import Iterator, List, Tuple, Union
+from typing import Iterator, List, Tuple
 
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import optax
-import spec
 
-from . import workload
+from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):

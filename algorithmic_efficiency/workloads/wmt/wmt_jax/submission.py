@@ -1,4 +1,5 @@
 """Training algorithm track submission functions for WMT."""
+
 import functools
 from typing import Iterator, List, Tuple
 
@@ -9,9 +10,9 @@ from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
-import spec
 
-from . import models
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
 
 def get_batch_size(workload_name):
