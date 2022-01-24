@@ -22,7 +22,6 @@ class ImagenetWorkload(ImagenetWorkload):
 
   def __init__(self):
     super().__init__()
-    self.dataset = 'imagenet2012'
 
   """ data augmentation settings """
   @property
