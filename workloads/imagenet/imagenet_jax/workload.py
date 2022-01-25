@@ -33,27 +33,14 @@ class ImagenetWorkload(ImagenetWorkload):
     super().__init__()
     self._param_shapes = None
     self.epoch_metrics = []
-    # self.model_name = 'ResNet50'
-    # self.dataset = 'imagenet2012:5.*.*'
-    # self.num_classes = 1000
-    # For faster development testing, uncomment the lines below
-    self.model_name = '_ResNet1'
-    self.dataset = 'imagenette'
-    self.num_classes = 10
 
   @property
   def num_train_examples(self):
-    if 'imagenet2012' in self.dataset:
-      return 1271167
-    if 'imagenette' == self.dataset:
-      return 9469
+    return 1271167
 
   @property
   def num_eval_examples(self):
-    if 'imagenet2012' in self.dataset:
-      return 100000
-    if 'imagenette' == self.dataset:
-      return 3925
+    return 100000
 
   def _build_dataset(self,
       data_rng: spec.RandomState,
@@ -62,7 +49,7 @@ class ImagenetWorkload(ImagenetWorkload):
       batch_size):
     if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    ds_builder = tfds.builder(self.dataset)
+    ds_builder = tfds.builder('imagenet2012:5.*.*')
     ds_builder.download_and_prepare()
     ds = input_pipeline.create_input_iter(
       ds_builder,
@@ -104,9 +91,8 @@ class ImagenetWorkload(ImagenetWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState) -> _InitState:
-    model_cls = getattr(models, self.model_name)
-    model = model_cls(num_classes=self.num_classes,
-                      dtype=jnp.float32)
+    model_cls = getattr(models, 'ResNet50')
+    model = model_cls(num_classes=1000, dtype=jnp.float32)
     self._model = model
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(
@@ -172,8 +158,7 @@ class ImagenetWorkload(ImagenetWorkload):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
-    one_hot_labels = jax.nn.one_hot(label_batch,
-                                         num_classes=self.num_classes)
+    one_hot_labels = jax.nn.one_hot(label_batch, num_classes=1000)
     xentropy = optax.softmax_cross_entropy(logits=logits_batch,
                                            labels=one_hot_labels)
     return xentropy
