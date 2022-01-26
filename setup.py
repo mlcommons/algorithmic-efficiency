@@ -30,7 +30,7 @@ setup(
         'absl-py==0.14.0',
         'numpy>=1.19.2',
         'pandas>=1.3.1',
-        'ctcdecode>=1.0.3',
+        'ctcdecode>=1.0.2',
         'levenshtein>=0.12.0',
         'librosa>=0.8.1',
         'six>=1.15.0',
