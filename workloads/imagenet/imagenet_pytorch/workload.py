@@ -12,10 +12,19 @@ import spec
 import random_utils as prng
 from workloads.imagenet.workload import ImagenetWorkload
 from workloads.imagenet.imagenet_pytorch.models import resnet50
-from workloads.imagenet.imagenet_pytorch.utils import cycle
 
 
-DEVICE='cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+
+# from https://github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
+def cycle(iterable):
+  iterator = iter(iterable)
+  while True:
+    try:
+      yield next(iterator)
+    except StopIteration:
+      iterator = iter(iterable)
 
 
 class ImagenetWorkload(ImagenetWorkload):

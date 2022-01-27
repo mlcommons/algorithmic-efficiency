@@ -71,7 +71,7 @@ def update_params(
   current_param_container.train()
   optimizer_state['optimizer'].zero_grad()
 
-  output, new_model_state = workload.model_fn(
+  logits_batch, new_model_state = workload.model_fn(
       params=current_model,
       input_batch=input_batch,
       model_state=model_state,
@@ -81,7 +81,7 @@ def update_params(
 
   loss = workload.loss_fn(
       label_batch=label_batch,
-      logits_batch=output).mean()
+      logits_batch=logits_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()
