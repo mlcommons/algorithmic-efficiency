@@ -33,14 +33,6 @@ class ImagenetWorkload(ImagenetWorkload):
     super().__init__()
 
   @property
-  def num_train_examples(self):
-    return 1281167
-
-  @property
-  def num_eval_examples(self):
-    return 50000
-
-  @property
   def param_shapes(self):
     """
     TODO: return shape tuples from model as a tree

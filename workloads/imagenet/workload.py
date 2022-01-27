@@ -18,6 +18,14 @@ class ImagenetWorkload(spec.Workload):
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
+  def num_train_examples(self):
+    return 1281167
+
+  @property
+  def num_eval_examples(self):
+    return 50000
+
+  @property
   def train_mean(self):
     return [0.485 * 255, 0.456 * 255, 0.406 * 255]
 

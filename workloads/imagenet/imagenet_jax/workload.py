@@ -34,14 +34,6 @@ class ImagenetWorkload(ImagenetWorkload):
     self._param_shapes = None
     self.epoch_metrics = []
 
-  @property
-  def num_train_examples(self):
-    return 1271167
-
-  @property
-  def num_eval_examples(self):
-    return 100000
-
   def _build_dataset(self,
       data_rng: spec.RandomState,
       split: str,
