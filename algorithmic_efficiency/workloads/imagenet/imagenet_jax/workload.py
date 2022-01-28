@@ -21,8 +21,8 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import random_utils as prng
-
 from workloads.imagenet.workload import ImagenetWorkload
+
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models

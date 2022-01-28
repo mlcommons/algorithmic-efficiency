@@ -3,6 +3,7 @@ import contextlib
 import os
 from typing import Tuple
 
+import random_utils as prng
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,10 +11,9 @@ from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import spec
-import random_utils as prng
-from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet50
+from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 

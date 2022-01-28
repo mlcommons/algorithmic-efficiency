@@ -2,10 +2,11 @@
 Adapted from torchvision:
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
+from typing import Any, Callable, List, Optional, Type, Union
+
 import torch
 from torch import Tensor
 import torch.nn as nn
-from typing import Type, Any, Callable, Union, List, Optional
 
 __all__ = ['ResNet', 'resnet50']
 

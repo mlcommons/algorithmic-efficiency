@@ -1,7 +1,10 @@
 """Training algorithm track submission functions for ImageNet."""
 from typing import List, Tuple
+
 import torch
-from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
 from baselines.mnist.mnist_pytorch.submission import data_selection
