@@ -42,16 +42,16 @@ class ImagenetWorkload(ImagenetWorkload):
     ds_builder = tfds.builder('imagenet2012:5.*.*')
     ds_builder.download_and_prepare()
     ds = input_pipeline.create_input_iter(
-      ds_builder,
-      batch_size,
-      self.train_mean,
-      self.train_stddev,
-      self.center_crop_size,
-      self.resize_size,
-      self.aspect_ratio_range,
-      self.scale_ratio_range,
-      train=True,
-      cache=False)
+        ds_builder,
+        batch_size,
+        self.train_mean,
+        self.train_stddev,
+        self.center_crop_size,
+        self.resize_size,
+        self.aspect_ratio_range,
+        self.scale_ratio_range,
+        train=True,
+        cache=False)
     return ds
 
   def sync_batch_stats(self, model_state):
@@ -80,10 +80,8 @@ class ImagenetWorkload(ImagenetWorkload):
     return params, model_state
 
   _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
-  
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> _InitState:
+
+  def init_model_fn(self, rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=1000, dtype=jnp.float32)
     self._model = model
@@ -146,8 +144,7 @@ class ImagenetWorkload(ImagenetWorkload):
     """Cross Entropy Loss"""
     one_hot_labels = jax.nn.one_hot(label_batch, num_classes=1000)
     xentropy = optax.softmax_cross_entropy(
-        logits=logits_batch,
-        labels=one_hot_labels)
+        logits=logits_batch, labels=one_hot_labels)
     return xentropy
 
   def compute_metrics(self, logits, labels):
@@ -186,4 +183,3 @@ class ImagenetWorkload(ImagenetWorkload):
     eval_metrics = jax.tree_multimap(lambda *x: np.stack(x), *eval_metrics)
     summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
     return summary
-

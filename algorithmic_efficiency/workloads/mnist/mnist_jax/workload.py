@@ -1,7 +1,5 @@
 """MNIST workload implemented in Jax."""
 
-import struct
-import time
 from typing import Tuple
 
 from flax import linen as nn
@@ -126,8 +124,8 @@ class MnistWorkload(Mnist):
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
-    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == labels)  # not accuracy, but nr. of correct predictions
+    # not accuracy, but nr. of correct predictions
+    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == labels)
     loss = jnp.sum(self.loss_fn(labels, logits))
     n_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
-

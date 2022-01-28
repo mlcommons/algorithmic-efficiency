@@ -34,6 +34,7 @@ class ImagenetWorkload(spec.Workload):
     return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
   """ data augmentation settings """
+
   @property
   def scale_ratio_range(self):
     return (0.08, 1.0)
@@ -66,11 +67,6 @@ class ImagenetWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
 
-  def build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      batch_size: int):
+  def build_input_queue(self, data_rng: spec.RandomState, split: str,
+                        data_dir: str, batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
-

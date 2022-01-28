@@ -12,26 +12,30 @@ def get_batch_size(workload_name):
   return batch_sizes[workload_name]
 
 
-def init_optimizer_state(
-    workload: spec.Workload,
-    model_params: spec.ParameterContainer,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparamters,
-    rng: spec.RandomState) -> spec.OptimizerState:
+def init_optimizer_state(workload: spec.Workload,
+                         model_params: spec.ParameterContainer,
+                         model_state: spec.ModelAuxiliaryState,
+                         hyperparameters: spec.Hyperparamters,
+                         rng: spec.RandomState) -> spec.OptimizerState:
   del workload
   del model_state
   del rng
 
-  base_lr = hyperparameters.learning_rate * get_batch_size('imagenet_pytorch') / 256.
+  base_lr = hyperparameters.learning_rate * get_batch_size(
+      'imagenet_pytorch') / 256.
   optimizer_state = {
-      'optimizer': torch.optim.SGD(model_params.parameters(),
-                                   lr=base_lr,
-                                   momentum=hyperparameters.momentum,
-                                   weight_decay=hyperparameters.l2)
+      'optimizer':
+          torch.optim.SGD(
+              model_params.parameters(),
+              lr=base_lr,
+              momentum=hyperparameters.momentum,
+              weight_decay=hyperparameters.l2)
   }
 
   scheduler1 = LinearLR(
-      optimizer_state['optimizer'], start_factor=1e-5, end_factor=1.,
+      optimizer_state['optimizer'],
+      start_factor=1e-5,
+      end_factor=1.,
       total_iters=hyperparameters.warmup_epochs)
   cosine_epochs = max(
       hyperparameters.num_epochs - hyperparameters.warmup_epochs, 1)
@@ -39,7 +43,8 @@ def init_optimizer_state(
       optimizer_state['optimizer'], T_max=cosine_epochs)
 
   optimizer_state['scheduler'] = SequentialLR(
-      optimizer_state['optimizer'], schedulers=[scheduler1, scheduler2], 
+      optimizer_state['optimizer'],
+      schedulers=[scheduler1, scheduler2],
       milestones=[hyperparameters.warmup_epochs])
 
   return optimizer_state
@@ -65,7 +70,7 @@ def update_params(
   del loss_type
   del eval_results
   input_batch, label_batch = (
-    workload.preprocess_for_train(input_batch, label_batch, None, None, None))
+      workload.preprocess_for_train(input_batch, label_batch, None, None, None))
 
   current_model = current_param_container
   current_param_container.train()
@@ -80,13 +85,13 @@ def update_params(
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      label_batch=label_batch,
-      logits_batch=logits_batch).mean()
+      label_batch=label_batch, logits_batch=logits_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()
 
-  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet_pytorch')
+  steps_per_epoch = workload.num_train_examples // get_batch_size(
+      'imagenet_pytorch')
   if (global_step + 1) % steps_per_epoch == 0:
     optimizer_state['scheduler'].step()
 

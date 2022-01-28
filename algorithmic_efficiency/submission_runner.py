@@ -39,15 +39,15 @@ WORKLOADS = {
         'workload_class_name': 'MnistWorkload'
     },
     'imagenet_jax': {
-        'workload_path': 
+        'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
         'workload_class_name':
             'ImagenetWorkload'
     },
     'imagenet_pytorch': {
-        'workload_path': 
+        'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name': 
+        'workload_class_name':
             'ImagenetWorkload'
     },
     'wmt_jax': {

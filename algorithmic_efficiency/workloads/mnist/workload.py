@@ -1,4 +1,3 @@
-from absl import logging
 import random_utils as prng
 
 from algorithmic_efficiency import spec
@@ -75,4 +74,3 @@ class Mnist(spec.Workload):
       }
       n_data += batch_metrics['n_data']
     return {k: float(v / n_data) for k, v in total_metrics.items()}
-

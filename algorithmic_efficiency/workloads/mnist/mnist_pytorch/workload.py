@@ -20,7 +20,7 @@ DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 class _Model(nn.Module):
 
   def __init__(self):
-    super(_Model, self).__init__()
+    super().__init__()
     input_size = 28 * 28
     num_hidden = 128
     num_classes = 10
@@ -146,8 +146,8 @@ class MnistWorkload(Mnist):
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     _, predicted = torch.max(logits.data, 1)
-    accuracy = (predicted == labels).sum().item()  # not accuracy, but nr. of correct predictions
+    # not accuracy, but nr. of correct predictions
+    accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
     n_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
-

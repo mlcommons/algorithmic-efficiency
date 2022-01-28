@@ -4,6 +4,7 @@ import os
 from typing import Tuple
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
@@ -11,8 +12,8 @@ from torchvision.datasets.folder import ImageFolder
 from algorithmic_efficiency import spec
 import random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import resnet50
-
+from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
+    resnet50
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -29,9 +30,6 @@ def cycle(iterable):
 
 class ImagenetWorkload(ImagenetWorkload):
 
-  def __init__(self):
-    super().__init__()
-
   @property
   def param_shapes(self):
     """
@@ -39,12 +37,9 @@ class ImagenetWorkload(ImagenetWorkload):
     """
     raise NotImplementedError
 
-  def eval_model(
-      self,
-      params: spec.ParameterContainer,
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState,
-      data_dir: str):
+  def eval_model(self, params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+                 data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 128
@@ -74,32 +69,31 @@ class ImagenetWorkload(ImagenetWorkload):
       n_data += batch_metrics['n_data']
     return {k: float(v / n_data) for k, v in total_metrics.items()}
 
-  def _build_dataset(self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      batch_size: int):
+  def _build_dataset(self, data_rng: spec.RandomState, split: str,
+                     data_dir: str, batch_size: int):
 
     is_train = (split == "train")
 
     normalize = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=[i/255 for i in self.train_mean], 
-            std=[i/255 for i in self.train_stddev])
+            mean=[i / 255 for i in self.train_mean],
+            std=[i / 255 for i in self.train_stddev])
     ])
     transform_config = {
-        "train": transforms.Compose([
-            transforms.RandomResizedCrop(
-                self.center_crop_size,
-                scale=self.scale_ratio_range,
-                ratio=self.aspect_ratio_range),
-            transforms.RandomHorizontalFlip(),
-            normalize]),
-        "test": transforms.Compose([
-            transforms.Resize(self.resize_size),
-            transforms.CenterCrop(self.center_crop_size),
-            normalize])
+        "train":
+            transforms.Compose([
+                transforms.RandomResizedCrop(
+                    self.center_crop_size,
+                    scale=self.scale_ratio_range,
+                    ratio=self.aspect_ratio_range),
+                transforms.RandomHorizontalFlip(), normalize
+            ]),
+        "test":
+            transforms.Compose([
+                transforms.Resize(self.resize_size),
+                transforms.CenterCrop(self.center_crop_size), normalize
+            ])
     }
 
     folder = {'train': 'train', 'test': 'val'}
@@ -114,33 +108,26 @@ class ImagenetWorkload(ImagenetWorkload):
         shuffle=is_train,
         num_workers=5,
         pin_memory=True,
-        drop_last=is_train
-    )
+        drop_last=is_train)
 
     if is_train:
       dataloader = cycle(dataloader)
 
     return dataloader
 
-  def preprocess_for_train(
-      self,
-      selected_raw_input_batch: spec.Tensor,
-      selected_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor,
-      rng: spec.RandomState) -> spec.Tensor:
+  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+                           selected_label_batch: spec.Tensor,
+                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
+                           rng: spec.RandomState) -> spec.Tensor:
     del train_mean
     del train_stddev
     del rng
-    return self.preprocess_for_eval(
-        selected_raw_input_batch, selected_label_batch, None, None)
+    return self.preprocess_for_eval(selected_raw_input_batch,
+                                    selected_label_batch, None, None)
 
-  def preprocess_for_eval(
-      self,
-      raw_input_batch: spec.Tensor,
-      raw_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor) -> spec.Tensor:
+  def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
+                          raw_label_batch: spec.Tensor, train_mean: spec.Tensor,
+                          train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
     return (raw_input_batch.float().to(DEVICE), raw_label_batch.to(DEVICE))
@@ -155,18 +142,15 @@ class ImagenetWorkload(ImagenetWorkload):
 
   def _update_batch_norm(self, model, update_batch_norm):
     for m in model.modules():
-      if isinstance(m, (torch.nn.BatchNorm1d, torch.nn.BatchNorm2d, torch.nn.BatchNorm3d)):
+      if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)
         m.track_running_stats = update_batch_norm
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
+      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
@@ -176,7 +160,8 @@ class ImagenetWorkload(ImagenetWorkload):
 
     if mode == spec.ForwardPassMode.EVAL:
       if update_batch_norm:
-        raise ValueError('Batch norm statistics cannot be updated during evaluation.') 
+        raise ValueError(
+            'Batch norm statistics cannot be updated during evaluation.')
       model.eval()
 
     if mode == spec.ForwardPassMode.TRAIN:
@@ -184,8 +169,8 @@ class ImagenetWorkload(ImagenetWorkload):
       self._update_batch_norm(model, update_batch_norm)
 
     contexts = {
-      spec.ForwardPassMode.EVAL: torch.no_grad,
-      spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.EVAL: torch.no_grad,
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
 
     with contexts[mode]():
@@ -193,32 +178,29 @@ class ImagenetWorkload(ImagenetWorkload):
 
     return logits_batch, None
 
-  def output_activation_fn(
-      self,
-      logits_batch: spec.Tensor,
-      loss_type: spec.LossType) -> spec.Tensor:
+  def output_activation_fn(self, logits_batch: spec.Tensor,
+                           loss_type: spec.LossType) -> spec.Tensor:
 
     activation_fn = {
-      spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
-      spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
-      spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
+        spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
+        spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
+        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
     }
 
     return activation_fn[loss_type](logits_batch)
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self, label_batch: spec.Tensor,
+              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
     return F.cross_entropy(logits_batch, label_batch, reduction='none')
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     predicted = torch.argmax(logits, 1)
-    accuracy = (predicted == labels).sum().item()  # not accuracy, but nr. of correct predictions
+    # not accuracy, but nr. of correct predictions
+    accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
     n_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
