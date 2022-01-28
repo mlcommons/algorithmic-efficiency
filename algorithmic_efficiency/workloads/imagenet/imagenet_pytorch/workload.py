@@ -8,10 +8,10 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
-import spec
+from algorithmic_efficiency import spec
 import random_utils as prng
-from workloads.imagenet.workload import ImagenetWorkload
-from workloads.imagenet.imagenet_pytorch.models import resnet50
+from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import resnet50
 
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

@@ -1,4 +1,4 @@
-import spec
+from algorithmic_efficiency import spec
 
 
 class ImagenetWorkload(spec.Workload):

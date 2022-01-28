@@ -3,8 +3,8 @@ from typing import List, Tuple
 import torch
 from torch.optim.lr_scheduler import SequentialLR, LinearLR, CosineAnnealingLR
 
-import spec
-from workloads.mnist.mnist_pytorch.submission import data_selection
+from algorithmic_efficiency import spec
+from baselines.mnist.mnist_pytorch.submission import data_selection
 
 
 def get_batch_size(workload_name):
@@ -27,7 +27,7 @@ def init_optimizer_state(
       'optimizer': torch.optim.SGD(model_params.parameters(),
                                    lr=base_lr,
                                    momentum=hyperparameters.momentum,
-                                   weight_decay=hyperparameters.weight_decay)
+                                   weight_decay=hyperparameters.l2)
   }
 
   scheduler1 = LinearLR(

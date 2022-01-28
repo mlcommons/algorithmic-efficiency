@@ -1,7 +1,7 @@
 {
     "learning_rate": {"feasible_points": [0.1]},
-    "warmup_epochs": {"feasible_points": [5.0]},
-    "num_epochs": {"feasible_points": [100.0]},
+    "warmup_epochs": {"feasible_points": [5]},
+    "num_epochs": {"feasible_points": [100]},
     "l2": {"feasible_points": [1e-4]},
     "momentum": {"feasible_points": [0.9]}
 }
