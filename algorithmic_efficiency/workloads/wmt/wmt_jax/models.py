@@ -36,10 +36,8 @@ def shift_right(x, axis=1):
   """Shift the input to the right by padding on axis 1."""
   pad_widths = [(0, 0)] * len(x.shape)
   pad_widths[axis] = (1, 0)
-  padded = jnp.pad(x,
-                   pad_widths,
-                   mode='constant',
-                   constant_values=x.dtype.type(0))
+  padded = jnp.pad(
+      x, pad_widths, mode='constant', constant_values=x.dtype.type(0))
   return padded[:, :-1]
 
 
@@ -143,20 +141,24 @@ class MlpBlock(nn.Module):
   def __call__(self, inputs):
     """Applies Transformer MlpBlock module."""
     cfg = self.config
-    actual_out_dim = (inputs.shape[-1]
-                      if self.out_dim is None else self.out_dim)
-    x = nn.Dense(cfg.mlp_dim,
-                 dtype=cfg.dtype,
-                 kernel_init=cfg.kernel_init,
-                 bias_init=cfg.bias_init)(inputs)
+    actual_out_dim = (
+        inputs.shape[-1] if self.out_dim is None else self.out_dim)
+    x = nn.Dense(
+        cfg.mlp_dim,
+        dtype=cfg.dtype,
+        kernel_init=cfg.kernel_init,
+        bias_init=cfg.bias_init)(
+            inputs)
     x = nn.relu(x)
     x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
-    output = nn.Dense(actual_out_dim,
-                      dtype=cfg.dtype,
-                      kernel_init=cfg.kernel_init,
-                      bias_init=cfg.bias_init)(x)
-    output = nn.Dropout(rate=cfg.dropout_rate)(output,
-                                               deterministic=cfg.deterministic)
+    output = nn.Dense(
+        actual_out_dim,
+        dtype=cfg.dtype,
+        kernel_init=cfg.kernel_init,
+        bias_init=cfg.bias_init)(
+            x)
+    output = nn.Dropout(rate=cfg.dropout_rate)(
+        output, deterministic=cfg.deterministic)
     return output
 
 
@@ -184,15 +186,16 @@ class Encoder1DBlock(nn.Module):
     # Attention block.
     assert inputs.ndim == 3
     x = nn.LayerNorm(dtype=cfg.dtype)(inputs)
-    x = nn.SelfAttention(num_heads=cfg.num_heads,
-                         dtype=cfg.dtype,
-                         qkv_features=cfg.qkv_dim,
-                         kernel_init=cfg.kernel_init,
-                         bias_init=cfg.bias_init,
-                         use_bias=False,
-                         broadcast_dropout=False,
-                         dropout_rate=cfg.attention_dropout_rate,
-                         deterministic=cfg.deterministic)(x, encoder_mask)
+    x = nn.SelfAttention(
+        num_heads=cfg.num_heads,
+        dtype=cfg.dtype,
+        qkv_features=cfg.qkv_dim,
+        kernel_init=cfg.kernel_init,
+        bias_init=cfg.bias_init,
+        use_bias=False,
+        broadcast_dropout=False,
+        dropout_rate=cfg.attention_dropout_rate,
+        deterministic=cfg.deterministic)(x, encoder_mask)
 
     x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + inputs
@@ -234,31 +237,32 @@ class EncoderDecoder1DBlock(nn.Module):
     # Decoder block.
     assert targets.ndim == 3
     x = nn.LayerNorm(dtype=cfg.dtype)(targets)
-    x = nn.SelfAttention(num_heads=cfg.num_heads,
-                         dtype=cfg.dtype,
-                         qkv_features=cfg.qkv_dim,
-                         kernel_init=cfg.kernel_init,
-                         bias_init=cfg.bias_init,
-                         use_bias=False,
-                         broadcast_dropout=False,
-                         dropout_rate=cfg.attention_dropout_rate,
-                         deterministic=cfg.deterministic,
-                         decode=cfg.decode)(x, decoder_mask)
+    x = nn.SelfAttention(
+        num_heads=cfg.num_heads,
+        dtype=cfg.dtype,
+        qkv_features=cfg.qkv_dim,
+        kernel_init=cfg.kernel_init,
+        bias_init=cfg.bias_init,
+        use_bias=False,
+        broadcast_dropout=False,
+        dropout_rate=cfg.attention_dropout_rate,
+        deterministic=cfg.deterministic,
+        decode=cfg.decode)(x, decoder_mask)
     x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + targets
 
     # Encoder-Decoder block.
     y = nn.LayerNorm(dtype=cfg.dtype)(x)
-    y = nn.MultiHeadDotProductAttention(num_heads=cfg.num_heads,
-                                        dtype=cfg.dtype,
-                                        qkv_features=cfg.qkv_dim,
-                                        kernel_init=cfg.kernel_init,
-                                        bias_init=cfg.bias_init,
-                                        use_bias=False,
-                                        broadcast_dropout=False,
-                                        dropout_rate=cfg.attention_dropout_rate,
-                                        deterministic=cfg.deterministic)(
-                                            y, encoded, encoder_decoder_mask)
+    y = nn.MultiHeadDotProductAttention(
+        num_heads=cfg.num_heads,
+        dtype=cfg.dtype,
+        qkv_features=cfg.qkv_dim,
+        kernel_init=cfg.kernel_init,
+        bias_init=cfg.bias_init,
+        use_bias=False,
+        broadcast_dropout=False,
+        dropout_rate=cfg.attention_dropout_rate,
+        deterministic=cfg.deterministic)(y, encoded, encoder_decoder_mask)
 
     y = nn.Dropout(rate=cfg.dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
@@ -297,23 +301,25 @@ class Encoder(nn.Module):
 
     # Input Embedding
     if self.shared_embedding is None:
-      input_embed = nn.Embed(num_embeddings=cfg.vocab_size,
-                             features=cfg.emb_dim,
-                             embedding_init=nn.initializers.normal(stddev=1.0))
+      input_embed = nn.Embed(
+          num_embeddings=cfg.vocab_size,
+          features=cfg.emb_dim,
+          embedding_init=nn.initializers.normal(stddev=1.0))
     else:
       input_embed = self.shared_embedding
     x = inputs.astype('int32')
     x = input_embed(x)
-    x = AddPositionEmbs(config=cfg, decode=False, name='posembed_input')(
-        x, inputs_positions=inputs_positions)
+    x = AddPositionEmbs(
+        config=cfg, decode=False, name='posembed_input')(
+            x, inputs_positions=inputs_positions)
     x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
 
     x = x.astype(cfg.dtype)
 
     # Input Encoder
     for lyr in range(cfg.num_layers):
-      x = Encoder1DBlock(config=cfg, name=f'encoderblock_{lyr}')(x,
-                                                                 encoder_mask)
+      x = Encoder1DBlock(
+          config=cfg, name=f'encoderblock_{lyr}')(x, encoder_mask)
 
     encoded = nn.LayerNorm(dtype=cfg.dtype, name='encoder_norm')(x)
 
@@ -356,9 +362,10 @@ class Decoder(nn.Module):
 
     # Target Embedding
     if self.shared_embedding is None:
-      output_embed = nn.Embed(num_embeddings=cfg.output_vocab_size,
-                              features=cfg.emb_dim,
-                              embedding_init=nn.initializers.normal(stddev=1.0))
+      output_embed = nn.Embed(
+          num_embeddings=cfg.output_vocab_size,
+          features=cfg.emb_dim,
+          embedding_init=nn.initializers.normal(stddev=1.0))
     else:
       output_embed = self.shared_embedding
 
@@ -366,19 +373,21 @@ class Decoder(nn.Module):
     if not cfg.decode:
       y = shift_right(y)
     y = output_embed(y)
-    y = AddPositionEmbs(config=cfg, decode=cfg.decode, name='posembed_output')(
-        y, inputs_positions=targets_positions)
+    y = AddPositionEmbs(
+        config=cfg, decode=cfg.decode, name='posembed_output')(
+            y, inputs_positions=targets_positions)
     y = nn.Dropout(rate=cfg.dropout_rate)(y, deterministic=cfg.deterministic)
 
     y = y.astype(cfg.dtype)
 
     # Target-Input Decoder
     for lyr in range(cfg.num_layers):
-      y = EncoderDecoder1DBlock(config=cfg, name=f'encoderdecoderblock_{lyr}')(
-          y,
-          encoded,
-          decoder_mask=decoder_mask,
-          encoder_decoder_mask=encoder_decoder_mask)
+      y = EncoderDecoder1DBlock(
+          config=cfg, name=f'encoderdecoderblock_{lyr}')(
+              y,
+              encoded,
+              decoder_mask=decoder_mask,
+              encoder_decoder_mask=encoder_decoder_mask)
     y = nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_norm')(y)
 
     # Decoded Logits
@@ -388,11 +397,13 @@ class Decoder(nn.Module):
       # Correctly normalize pre-softmax logits for this shared case.
       logits = logits / jnp.sqrt(y.shape[-1])
     else:
-      logits = nn.Dense(cfg.output_vocab_size,
-                        dtype=cfg.dtype,
-                        kernel_init=cfg.kernel_init,
-                        bias_init=cfg.bias_init,
-                        name='logitdense')(y)
+      logits = nn.Dense(
+          cfg.output_vocab_size,
+          dtype=cfg.dtype,
+          kernel_init=cfg.kernel_init,
+          bias_init=cfg.bias_init,
+          name='logitdense')(
+              y)
     return logits
 
 
@@ -434,20 +445,19 @@ class Transformer(nn.Module):
     """
     cfg = self.config
     # Make padding attention mask.
-    encoder_mask = nn.make_attention_mask(inputs > 0,
-                                          inputs > 0,
-                                          dtype=cfg.dtype)
+    encoder_mask = nn.make_attention_mask(
+        inputs > 0, inputs > 0, dtype=cfg.dtype)
     # Add segmentation block-diagonal attention mask if using segmented data.
     if inputs_segmentation is not None:
       encoder_mask = nn.combine_masks(
           encoder_mask,
-          nn.make_attention_mask(inputs_segmentation,
-                                 inputs_segmentation,
-                                 jnp.equal,
-                                 dtype=cfg.dtype))
-    return self.encoder(inputs,
-                        inputs_positions=inputs_positions,
-                        encoder_mask=encoder_mask)
+          nn.make_attention_mask(
+              inputs_segmentation,
+              inputs_segmentation,
+              jnp.equal,
+              dtype=cfg.dtype))
+    return self.encoder(
+        inputs, inputs_positions=inputs_positions, encoder_mask=encoder_mask)
 
   def decode(
       self,
@@ -475,36 +485,37 @@ class Transformer(nn.Module):
     # Make padding attention masks.
     if cfg.decode:
       decoder_mask = None
-      encoder_decoder_mask = nn.make_attention_mask(jnp.ones_like(targets) > 0,
-                                                    inputs > 0,
-                                                    dtype=cfg.dtype)
+      encoder_decoder_mask = nn.make_attention_mask(
+          jnp.ones_like(targets) > 0, inputs > 0, dtype=cfg.dtype)
     else:
       decoder_mask = nn.combine_masks(
           nn.make_attention_mask(targets > 0, targets > 0, dtype=cfg.dtype),
           nn.make_causal_mask(targets, dtype=cfg.dtype))
-      encoder_decoder_mask = nn.make_attention_mask(targets > 0,
-                                                    inputs > 0,
-                                                    dtype=cfg.dtype)
+      encoder_decoder_mask = nn.make_attention_mask(
+          targets > 0, inputs > 0, dtype=cfg.dtype)
 
     # Add segmentation block-diagonal attention masks if using segmented data.
     if inputs_segmentation is not None:
       decoder_mask = nn.combine_masks(
           decoder_mask,
-          nn.make_attention_mask(targets_segmentation,
-                                 targets_segmentation,
-                                 jnp.equal,
-                                 dtype=cfg.dtype))
+          nn.make_attention_mask(
+              targets_segmentation,
+              targets_segmentation,
+              jnp.equal,
+              dtype=cfg.dtype))
       encoder_decoder_mask = nn.combine_masks(
           encoder_decoder_mask,
-          nn.make_attention_mask(targets_segmentation,
-                                 inputs_segmentation,
-                                 jnp.equal,
-                                 dtype=cfg.dtype))
-    logits = self.decoder(encoded,
-                          targets,
-                          targets_positions=targets_positions,
-                          decoder_mask=decoder_mask,
-                          encoder_decoder_mask=encoder_decoder_mask)
+          nn.make_attention_mask(
+              targets_segmentation,
+              inputs_segmentation,
+              jnp.equal,
+              dtype=cfg.dtype))
+    logits = self.decoder(
+        encoded,
+        targets,
+        targets_positions=targets_positions,
+        decoder_mask=decoder_mask,
+        encoder_decoder_mask=encoder_decoder_mask)
     return logits.astype(self.config.dtype)
 
   def __call__(self,
@@ -527,9 +538,10 @@ class Transformer(nn.Module):
     Returns:
       logits array from full transformer.
     """
-    encoded = self.encode(inputs,
-                          inputs_positions=inputs_positions,
-                          inputs_segmentation=inputs_segmentation)
+    encoded = self.encode(
+        inputs,
+        inputs_positions=inputs_positions,
+        inputs_segmentation=inputs_segmentation)
 
     return self.decode(
         encoded,

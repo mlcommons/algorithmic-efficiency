@@ -26,14 +26,14 @@ def cosine_decay(lr, step, total_steps):
 def create_learning_rate_fn(hparams: spec.Hyperparamters, steps_per_epoch: int):
   """Create learning rate schedule."""
   base_learning_rate = hparams.learning_rate * get_batch_size('imagenet') / 256.
-  warmup_fn = optax.linear_schedule(init_value=0.,
-                                    end_value=base_learning_rate,
-                                    transition_steps=hparams.warmup_epochs *
-                                    steps_per_epoch)
+  warmup_fn = optax.linear_schedule(
+      init_value=0.,
+      end_value=base_learning_rate,
+      transition_steps=hparams.warmup_epochs * steps_per_epoch)
   cosine_epochs = max(hparams.num_epochs - hparams.warmup_epochs, 1)
-  cosine_fn = optax.cosine_decay_schedule(init_value=base_learning_rate,
-                                          decay_steps=cosine_epochs *
-                                          steps_per_epoch)
+  cosine_fn = optax.cosine_decay_schedule(
+      init_value=base_learning_rate,
+      decay_steps=cosine_epochs * steps_per_epoch)
   schedule_fn = optax.join_schedules(
       schedules=[warmup_fn, cosine_fn],
       boundaries=[hparams.warmup_epochs * steps_per_epoch])
@@ -43,9 +43,10 @@ def create_learning_rate_fn(hparams: spec.Hyperparamters, steps_per_epoch: int):
 def optimizer(hyperparameters: spec.Hyperparamters, num_train_examples: int):
   steps_per_epoch = num_train_examples // get_batch_size('imagenet')
   learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
-  opt_init_fn, opt_update_fn = optax.sgd(nesterov=True,
-                                         momentum=hyperparameters.momentum,
-                                         learning_rate=learning_rate_fn)
+  opt_init_fn, opt_update_fn = optax.sgd(
+      nesterov=True,
+      momentum=hyperparameters.momentum,
+      learning_rate=learning_rate_fn)
   return opt_init_fn, opt_update_fn
 
 
@@ -64,22 +65,24 @@ def init_optimizer_state(workload: spec.Workload,
 
 # We need to jax.pmap here instead of inside update_params because the latter
 # would recompile the function every step.
-@functools.partial(jax.pmap,
-                   axis_name='batch',
-                   in_axes=(None, None, 0, 0, 0, None, 0, None),
-                   static_broadcasted_argnums=(0, 1))
+@functools.partial(
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, None, 0, 0, 0, None, 0, None),
+    static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
                        current_param_container, hyperparameters, batch, rng):
 
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
-    logits, new_model_state = workload.model_fn(params,
-                                                batch,
-                                                model_state,
-                                                spec.ForwardPassMode.TRAIN,
-                                                rng,
-                                                update_batch_norm=True)
+    logits, new_model_state = workload.model_fn(
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.TRAIN,
+        rng,
+        update_batch_norm=True)
     loss = workload.loss_fn(batch['label'], logits)
     weight_penalty_params = jax.tree_leaves(variables['params'])
     weight_l2 = sum(

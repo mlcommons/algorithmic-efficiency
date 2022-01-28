@@ -50,15 +50,11 @@ class MnistWorkload(Mnist):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = MNIST(data_dir,
-                    train=is_train,
-                    download=True,
-                    transform=transform)
+    dataset = MNIST(
+        data_dir, train=is_train, download=True, transform=transform)
     # TODO: set seeds properly
-    dataloader = torch.utils.data.DataLoader(dataset,
-                                             batch_size=batch_size,
-                                             shuffle=is_train,
-                                             pin_memory=True)
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=batch_size, shuffle=is_train, pin_memory=True)
 
     if is_train:
       dataloader = itertools.cycle(dataloader)

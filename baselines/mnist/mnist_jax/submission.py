@@ -18,9 +18,10 @@ def get_batch_size(workload_name):
 
 def optimizer(hyperparameters):
   opt_init_fn, opt_update_fn = optax.chain(
-      optax.scale_by_adam(b1=1.0 - hyperparameters.one_minus_beta_1,
-                          b2=0.999,
-                          eps=hyperparameters.epsilon),
+      optax.scale_by_adam(
+          b1=1.0 - hyperparameters.one_minus_beta_1,
+          b2=0.999,
+          eps=hyperparameters.epsilon),
       optax.scale(-hyperparameters.learning_rate))
   return opt_init_fn, opt_update_fn
 
@@ -41,10 +42,11 @@ def init_optimizer_state(workload: spec.Workload,
 
 # We need to jax.pmap here instead of inside update_params because the latter
 # the latter would recompile the function every step.
-@functools.partial(jax.pmap,
-                   axis_name='batch',
-                   in_axes=(None, 0, 0, None, 0, 0, 0, None, 0),
-                   static_broadcasted_argnums=(0,))
+@functools.partial(
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, 0, 0, None, 0, 0, 0, None, 0),
+    static_broadcasted_argnums=(0,))
 def pmapped_update_params(workload: spec.Workload,
                           current_param_container: spec.ParameterContainer,
                           model_state: spec.ModelAuxiliaryState,

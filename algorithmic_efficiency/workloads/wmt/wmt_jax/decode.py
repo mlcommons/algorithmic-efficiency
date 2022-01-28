@@ -130,21 +130,22 @@ class BeamState:
 def beam_init(batch_size, beam_size, max_decode_len, cache):
   """Initializes the beam search state data structure."""
   cur_index0 = jnp.array(0)
-  live_logprobs0 = jnp.tile(jnp.array([0.0] + [NEG_INF] * (beam_size - 1)),
-                            [batch_size, 1])
+  live_logprobs0 = jnp.tile(
+      jnp.array([0.0] + [NEG_INF] * (beam_size - 1)), [batch_size, 1])
   finished_scores0 = jnp.ones((batch_size, beam_size)) * NEG_INF
   live_seqs0 = jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32)
   finished_seqs0 = jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32)
   finished_flags0 = jnp.zeros((batch_size, beam_size), jnp.bool_)
   # add beam dimension to attention cache pytree elements
   beam_cache0 = jax.tree_map(lambda x: add_beam_dim(x, beam_size), cache)
-  return BeamState(cur_index=cur_index0,
-                   live_logprobs=live_logprobs0,
-                   finished_scores=finished_scores0,
-                   live_seqs=live_seqs0,
-                   finished_seqs=finished_seqs0,
-                   finished_flags=finished_flags0,
-                   cache=beam_cache0)
+  return BeamState(
+      cur_index=cur_index0,
+      live_logprobs=live_logprobs0,
+      finished_scores=finished_scores0,
+      live_seqs=live_seqs0,
+      finished_seqs=finished_seqs0,
+      finished_flags=finished_flags0,
+      cache=beam_cache0)
 
 
 # Beam search routine:
@@ -195,9 +196,8 @@ def beam_search(inputs,
     min_brevity_penalty = brevity_penalty(alpha, max_decode_len)
     best_live_scores = state.live_logprobs[:, -1:] / min_brevity_penalty
     # Get the worst scores from finished sequences.
-    worst_finished_scores = jnp.min(state.finished_scores,
-                                    axis=1,
-                                    keepdims=True)
+    worst_finished_scores = jnp.min(
+        state.finished_scores, axis=1, keepdims=True)
     # Mask out scores from slots without any actual finished sequences.
     worst_finished_scores = jnp.where(state.finished_flags,
                                       worst_finished_scores, NEG_INF)
@@ -238,8 +238,8 @@ def beam_search(inputs,
     candidate_log_probs = jax.nn.log_softmax(logits)
     # Add new logprobs to existing prefix logprobs.
     # --> [batch, beam, vocab]
-    log_probs = (candidate_log_probs +
-                 jnp.expand_dims(state.live_logprobs, axis=2))
+    log_probs = (
+        candidate_log_probs + jnp.expand_dims(state.live_logprobs, axis=2))
 
     # We'll need the vocab size, gather it from the log probability dimension.
     vocab_size = log_probs.shape[2]
@@ -320,13 +320,14 @@ def beam_search(inputs,
         gather_topk_beams([finished_seqs, finished_scores, finished_flags],
                           finished_scores, batch_size, beam_size))
 
-    return BeamState(cur_index=state.cur_index + 1,
-                     live_logprobs=top_alive_log_probs,
-                     finished_scores=top_finished_scores,
-                     live_seqs=top_alive_seq,
-                     finished_seqs=top_finished_seq,
-                     finished_flags=top_finished_flags,
-                     cache=top_alive_cache)
+    return BeamState(
+        cur_index=state.cur_index + 1,
+        live_logprobs=top_alive_log_probs,
+        finished_scores=top_finished_scores,
+        live_seqs=top_alive_seq,
+        finished_seqs=top_finished_seq,
+        finished_flags=top_finished_flags,
+        cache=top_alive_cache)
 
   # Run while loop and get final beam search state.
   final_state = lax.while_loop(beam_search_loop_cond_fn,

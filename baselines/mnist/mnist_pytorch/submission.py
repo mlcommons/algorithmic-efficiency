@@ -25,8 +25,8 @@ def init_optimizer_state(workload: spec.Workload,
 
   optimizer_state = {
       'optimizer':
-          torch.optim.Adam(model_params.parameters(),
-                           lr=hyperparameters.learning_rate)
+          torch.optim.Adam(
+              model_params.parameters(), lr=hyperparameters.learning_rate)
   }
   return optimizer_state
 
@@ -49,19 +49,20 @@ def update_params(
   del current_params_types
   del eval_results
   del global_step
-  input_batch, label_batch = (workload.preprocess_for_train(
-      input_batch, label_batch, None, None, None))
+  input_batch, label_batch = (
+      workload.preprocess_for_train(input_batch, label_batch, None, None, None))
 
   current_model = current_param_container
   current_param_container.train()
   optimizer_state['optimizer'].zero_grad()
 
-  output, new_model_state = workload.model_fn(params=current_model,
-                                              input_batch=input_batch,
-                                              model_state=model_state,
-                                              mode=spec.ForwardPassMode.TRAIN,
-                                              rng=rng,
-                                              update_batch_norm=True)
+  output, new_model_state = workload.model_fn(
+      params=current_model,
+      input_batch=input_batch,
+      model_state=model_state,
+      mode=spec.ForwardPassMode.TRAIN,
+      rng=rng,
+      update_batch_norm=True)
 
   loss = workload.loss_fn(label_batch=label_batch, logits_batch=output)
 

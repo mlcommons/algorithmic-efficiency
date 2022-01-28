@@ -69,11 +69,12 @@ class BatchRNN(nn.Module):
     super(BatchRNN, self).__init__()
     self.batch_norm = SequenceWise(
         nn.BatchNorm1d(input_size)) if batch_norm else None
-    self.rnn = nn.LSTM(input_size=input_size,
-                       hidden_size=hidden_size,
-                       bidirectional=True,
-                       bias=True,
-                       batch_first=True)
+    self.rnn = nn.LSTM(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        bidirectional=True,
+        bias=True,
+        batch_first=True)
 
   def flatten_parameters(self):
     self.rnn.flatten_parameters()
@@ -84,13 +85,11 @@ class BatchRNN(nn.Module):
       x = self.batch_norm(x)
     x = x.transpose(0, 1)
     total_length = x.size(1)
-    x = nn.utils.rnn.pack_padded_sequence(x,
-                                          output_lengths.cpu(),
-                                          batch_first=True)
+    x = nn.utils.rnn.pack_padded_sequence(
+        x, output_lengths.cpu(), batch_first=True)
     x, _ = self.rnn(x)
-    x, _ = nn.utils.rnn.pad_packed_sequence(x,
-                                            batch_first=True,
-                                            total_length=total_length)
+    x, _ = nn.utils.rnn.pad_packed_sequence(
+        x, batch_first=True, total_length=total_length)
     x = x.transpose(0, 1)
     x = x.view(x.size(0), x.size(1), 2,
                -1).sum(2).view(x.size(0), x.size(1),
@@ -109,18 +108,12 @@ class CNNLSTM(nn.Module):
 
     self.conv = MaskConv(
         nn.Sequential(
-            nn.Conv2d(1,
-                      32,
-                      kernel_size=(41, 11),
-                      stride=(2, 2),
-                      padding=(20, 5)), nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True),
-            nn.Conv2d(32,
-                      32,
-                      kernel_size=(21, 11),
-                      stride=(2, 1),
-                      padding=(10, 5)), nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True)))
+            nn.Conv2d(
+                1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(20, 5)),
+            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True),
+            nn.Conv2d(
+                32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
+            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True)))
 
     rnn_input_size = 161
     rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
@@ -128,9 +121,10 @@ class CNNLSTM(nn.Module):
     rnn_input_size *= 32
 
     rnns = []
-    rnn = BatchRNN(input_size=rnn_input_size,
-                   hidden_size=self.hidden_size,
-                   batch_norm=False)
+    rnn = BatchRNN(
+        input_size=rnn_input_size,
+        hidden_size=self.hidden_size,
+        batch_norm=False)
     rnns.append(("0", rnn))
     for x in range(self.hidden_layers - 1):
       rnn = BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
@@ -154,10 +148,11 @@ class CNNLSTM(nn.Module):
     seq_len = input_length
     for m in self.conv.modules():
       if isinstance(m, nn.modules.conv.Conv2d):
-        seq_len = torch.div(seq_len + 2 * m.padding[1] - m.dilation[1] *
-                            (m.kernel_size[1] - 1) - 1,
-                            m.stride[1],
-                            rounding_mode="trunc") + 1
+        seq_len = torch.div(
+            seq_len + 2 * m.padding[1] - m.dilation[1] *
+            (m.kernel_size[1] - 1) - 1,
+            m.stride[1],
+            rounding_mode="trunc") + 1
     return seq_len.int()
 
   def forward(self, x, lengths, transcripts):
@@ -191,8 +186,8 @@ class CNNLSTM(nn.Module):
 
       log_y, output_lengths = self(features, input_lengths, transcripts)
       target_lengths = torch.IntTensor([len(y[y != 0]) for y in transcripts])
-      batch_loss = loss_fn(log_y.transpose(0, 1), transcripts, output_lengths,
-                           target_lengths)
+      batch_loss = loss_fn(
+          log_y.transpose(0, 1), transcripts, output_lengths, target_lengths)
 
       total_loss += torch.sum(batch_loss).data
       total_count += features.size(0)

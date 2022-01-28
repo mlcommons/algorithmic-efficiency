@@ -103,12 +103,13 @@ class ImagenetWorkload(spec.Workload):
       raise ValueError('Batch size must be divisible by the number of devices')
     ds_builder = tfds.builder(self.dataset)
     ds_builder.download_and_prepare()
-    ds = input_pipeline.create_input_iter(ds_builder,
-                                          batch_size,
-                                          self.train_mean,
-                                          self.train_stddev,
-                                          train=True,
-                                          cache=False)
+    ds = input_pipeline.create_input_iter(
+        ds_builder,
+        batch_size,
+        self.train_mean,
+        self.train_stddev,
+        train=True,
+        cache=False)
     return ds
 
   def build_input_queue(self, data_rng: spec.RandomState, split: str,
@@ -161,17 +162,19 @@ class ImagenetWorkload(spec.Workload):
     """Return the final activations of the model."""
     pass
 
-  @functools.partial(jax.pmap,
-                     axis_name='batch',
-                     in_axes=(None, 0, 0, 0, None),
-                     static_broadcasted_argnums=(0,))
+  @functools.partial(
+      jax.pmap,
+      axis_name='batch',
+      in_axes=(None, 0, 0, 0, None),
+      static_broadcasted_argnums=(0,))
   def eval_model_fn(self, params, batch, state, rng):
-    logits, _ = self.model_fn(params,
-                              batch,
-                              state,
-                              spec.ForwardPassMode.EVAL,
-                              rng,
-                              update_batch_norm=False)
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
     return self.compute_metrics(logits, batch['label'])
 
   def model_fn(
@@ -182,17 +185,18 @@ class ImagenetWorkload(spec.Workload):
     variables = {'params': params, **model_state}
     train = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm:
-      logits, new_model_state = self._model.apply(variables,
-                                                  jax.numpy.squeeze(
-                                                      input_batch['image']),
-                                                  train=train,
-                                                  mutable=['batch_stats'])
+      logits, new_model_state = self._model.apply(
+          variables,
+          jax.numpy.squeeze(input_batch['image']),
+          train=train,
+          mutable=['batch_stats'])
       return logits, new_model_state
     else:
-      logits = self._model.apply(variables,
-                                 jax.numpy.squeeze(input_batch['image']),
-                                 train=train,
-                                 mutable=False)
+      logits = self._model.apply(
+          variables,
+          jax.numpy.squeeze(input_batch['image']),
+          train=train,
+          mutable=False)
       return logits, None
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -201,8 +205,8 @@ class ImagenetWorkload(spec.Workload):
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
     one_hot_labels = jax.nn.one_hot(label_batch, num_classes=self.num_classes)
-    xentropy = optax.softmax_cross_entropy(logits=logits_batch,
-                                           labels=one_hot_labels)
+    xentropy = optax.softmax_cross_entropy(
+        logits=logits_batch, labels=one_hot_labels)
     return jnp.mean(xentropy)
 
   def compute_metrics(self, logits, labels):
@@ -227,10 +231,8 @@ class ImagenetWorkload(spec.Workload):
     eval_batch_size = 200
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
-      self._eval_ds = self._build_dataset(data_rng,
-                                          split='test',
-                                          batch_size=eval_batch_size,
-                                          data_dir=data_dir)
+      self._eval_ds = self._build_dataset(
+          data_rng, split='test', batch_size=eval_batch_size, data_dir=data_dir)
     eval_iter = iter(self._eval_ds)
     total_accuracy = 0.
     for idx in range(num_batches):

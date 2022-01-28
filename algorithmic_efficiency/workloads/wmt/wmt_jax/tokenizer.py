@@ -32,8 +32,8 @@ def _dump_chars_to_textfile(
   """
   char_count = 0
   ds_iter = dataset.as_numpy_iterator()
-  with tempfile.NamedTemporaryFile(delete=False,
-                                   prefix='/tmp/ds_chars') as outfp:
+  with tempfile.NamedTemporaryFile(
+      delete=False, prefix='/tmp/ds_chars') as outfp:
     while char_count < maxchars:
       example = next(ds_iter)
       for k in data_keys:
@@ -71,11 +71,10 @@ def _train_sentencepiece(dataset: tf.data.Dataset,
     abs_model_path = model_path
   else:
     abs_model_path = os.path.abspath(os.path.expanduser(model_path))
-  fname, _ = _dump_chars_to_textfile(dataset,
-                                     maxchars=maxchars,
-                                     data_keys=data_keys)
-  with tempfile.NamedTemporaryFile(delete=False,
-                                   prefix='/tmp/sp_tmp') as model_fp:
+  fname, _ = _dump_chars_to_textfile(
+      dataset, maxchars=maxchars, data_keys=data_keys)
+  with tempfile.NamedTemporaryFile(
+      delete=False, prefix='/tmp/sp_tmp') as model_fp:
     pass  # we just want a prefix'd tmp-filename
   argstr = ' '.join([
       f'--input={fname}', f'--vocab_size={vocab_size}',
@@ -104,10 +103,8 @@ def _load_sentencepiece_tokenizer(model_path: str,
   """Load a tf-text SentencePiece tokenizer from given model filepath."""
   with tf.io.gfile.GFile(model_path, 'rb') as model_fp:
     sp_model = model_fp.read()
-  sp_tokenizer = tftxt.SentencepieceTokenizer(model=sp_model,
-                                              add_bos=add_bos,
-                                              add_eos=add_eos,
-                                              reverse=reverse)
+  sp_tokenizer = tftxt.SentencepieceTokenizer(
+      model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse)
   return sp_tokenizer
 
 
@@ -122,11 +119,12 @@ def load_or_train_tokenizer(dataset: tf.data.Dataset,
     return _load_sentencepiece_tokenizer(vocab_path)
   except tf.errors.NotFoundError:
     logging.info('SentencePiece vocab not found, building one from data.')
-    vocab_path = _train_sentencepiece(dataset,
-                                      vocab_size=vocab_size,
-                                      maxchars=max_corpus_chars,
-                                      model_path=vocab_path,
-                                      data_keys=data_keys)
+    vocab_path = _train_sentencepiece(
+        dataset,
+        vocab_size=vocab_size,
+        maxchars=max_corpus_chars,
+        model_path=vocab_path,
+        data_keys=data_keys)
     return _load_sentencepiece_tokenizer(vocab_path)
 
 

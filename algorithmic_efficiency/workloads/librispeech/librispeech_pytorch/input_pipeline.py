@@ -41,9 +41,8 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
       input_dim = f.shape[1]
       feature = np.zeros((max_input_len, input_dim), dtype=np.float)
       feature[:f.shape[0], :f.shape[1]] = f
-      trn = np.pad(trn, (0, max_target_len - len(trn)),
-                   "constant",
-                   constant_values=0)
+      trn = np.pad(
+          trn, (0, max_target_len - len(trn)), "constant", constant_values=0)
 
       batch[i] = (int(index), feature, trn, input_length)
 

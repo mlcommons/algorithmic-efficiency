@@ -78,12 +78,13 @@ def _at_least_x_are_equal(a, b, x):
 def _decode_and_random_crop(image_bytes, image_size):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
-  image = distorted_bounding_box_crop(image_bytes,
-                                      bbox,
-                                      min_object_covered=0.1,
-                                      aspect_ratio_range=(3. / 4, 4. / 3.),
-                                      area_range=(0.08, 1.0),
-                                      max_attempts=10)
+  image = distorted_bounding_box_crop(
+      image_bytes,
+      bbox,
+      min_object_covered=0.1,
+      aspect_ratio_range=(3. / 4, 4. / 3.),
+      area_range=(0.08, 1.0),
+      max_attempts=10)
   original_shape = tf.io.extract_jpeg_shape(image_bytes)
   bad = _at_least_x_are_equal(original_shape, tf.shape(image), 3)
 
@@ -200,10 +201,10 @@ def create_split(dataset_builder,
                                   image_size)
     return {'image': image, 'label': example['label']}
 
-  ds = dataset_builder.as_dataset(split=split,
-                                  decoders={
-                                      'image': tfds.decode.SkipDecoding(),
-                                  })
+  ds = dataset_builder.as_dataset(
+      split=split, decoders={
+          'image': tfds.decode.SkipDecoding(),
+      })
   options = tf.data.Options()
   options.experimental_threading.private_threadpool_size = 48
   ds = ds.with_options(options)
@@ -247,12 +248,13 @@ def shard_numpy_ds(xs):
 
 def create_input_iter(dataset_builder, batch_size, mean_rgb, stddev_rgb, train,
                       cache):
-  ds = create_split(dataset_builder,
-                    batch_size,
-                    train=train,
-                    mean_rgb=mean_rgb,
-                    stddev_rgb=stddev_rgb,
-                    cache=cache)
+  ds = create_split(
+      dataset_builder,
+      batch_size,
+      train=train,
+      mean_rgb=mean_rgb,
+      stddev_rgb=stddev_rgb,
+      cache=cache)
   it = map(shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%

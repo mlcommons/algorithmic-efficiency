@@ -66,10 +66,11 @@ flags.DEFINE_string(
     'mnist_jax',
     help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
 )
-flags.DEFINE_enum('tuning_ruleset',
-                  'external',
-                  enum_values=['external', 'self'],
-                  help='Which tuning ruleset to use.')
+flags.DEFINE_enum(
+    'tuning_ruleset',
+    'external',
+    enum_values=['external', 'self'],
+    help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
     'algorithmic_efficiency/workloads/mnist/mnist_jax/tuning_search_space.json',
@@ -145,10 +146,8 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
 
   # Workload setup.
   logging.info('Initializing dataset.')
-  input_queue = workload.build_input_queue(data_rng,
-                                           'train',
-                                           data_dir=data_dir,
-                                           batch_size=batch_size)
+  input_queue = workload.build_input_queue(
+      data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
   logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
@@ -192,8 +191,8 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     global_step += 1
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
-    is_time_remaining = (accumulated_submission_time <
-                         workload.max_allowed_runtime_sec)
+    is_time_remaining = (
+        accumulated_submission_time < workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
@@ -234,8 +233,8 @@ def score_submission_on_workload(workload: spec.Workload,
           'Must provide a tuning search space JSON file when using external '
           'tuning.')
     with open(tuning_search_space, 'r') as search_space_file:
-      tuning_search_space = halton.generate_search(json.load(search_space_file),
-                                                   num_tuning_trials)
+      tuning_search_space = halton.generate_search(
+          json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
     for hi, hyperparameters in enumerate(tuning_search_space):

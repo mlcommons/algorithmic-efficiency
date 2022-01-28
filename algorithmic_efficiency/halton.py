@@ -153,10 +153,11 @@ def generate_sequence(num_samples: int,
         raise ValueError(
             'If passing in `shuffled_seed_sequence` it must have element `{d}` '
             'be a sequence of length `primes[{d}]`={expected}, received '
-            '{actual} (len {length})'.format(d=d,
-                                             expected=primes[d],
-                                             actual=shuffled_seed_sequence[d],
-                                             length=shuffled_seed_sequence[d]))
+            '{actual} (len {length})'.format(
+                d=d,
+                expected=primes[d],
+                actual=shuffled_seed_sequence[d],
+                length=shuffled_seed_sequence[d]))
 
   if primes is None:
     primes = []
@@ -203,8 +204,8 @@ def _generate_double_point(name: Text, min_val: float, max_val: float,
   if scaling == 'log':
     # To transform from [0, 1] to [min_val, max_val] on a log scale we do:
     # min_val * exp(x * log(max_val / min_val)).
-    rescaled_value = (min_val *
-                      math.exp(halton_point * math.log(max_val / min_val)))
+    rescaled_value = (
+        min_val * math.exp(halton_point * math.log(max_val / min_val)))
   else:
     rescaled_value = halton_point * (max_val - min_val) + min_val
   return name, rescaled_value
@@ -288,8 +289,8 @@ def zipit(generator_fns_or_sweeps: Sequence[Union[_GeneratorFn,
     A list of dictionaries, one for each trial, with a key for each unique
     hyperparameter name from generator_fns_or_sweeps.
   """
-  halton_sequence = generate_sequence(num_samples=length,
-                                      num_dims=len(generator_fns_or_sweeps))
+  halton_sequence = generate_sequence(
+      num_samples=length, num_dims=len(generator_fns_or_sweeps))
   # A List[Dict] of hyperparameter names to sweep values.
   hyperparameter_sweep = []
   for trial_index in range(length):

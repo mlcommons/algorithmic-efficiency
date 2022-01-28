@@ -119,10 +119,8 @@ def train_step(optimizer,
     normalizing_constant = -(
         confidence * jnp.log(confidence) +
         (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
-    soft_targets = common_utils.onehot(targets,
-                                       vocab_size,
-                                       on_value=confidence,
-                                       off_value=low_confidence)
+    soft_targets = common_utils.onehot(
+        targets, vocab_size, on_value=confidence, off_value=low_confidence)
 
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
     loss = loss - normalizing_constant
@@ -152,10 +150,11 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
   del workload
 
-  optimizer_def = optim.Adam(learning_rate=hyperparameters.learning_rate,
-                             beta1=1.0 - hyperparameters.one_minus_beta_1,
-                             beta2=0.98,
-                             eps=hyperparameters.epsilon)
+  optimizer_def = optim.Adam(
+      learning_rate=hyperparameters.learning_rate,
+      beta1=1.0 - hyperparameters.one_minus_beta_1,
+      beta2=0.98,
+      eps=hyperparameters.epsilon)
   optimizer = optimizer_def.create(model_params)
 
   # Replicate optimizer.
@@ -165,14 +164,15 @@ def init_optimizer_state(workload: spec.Workload,
       base_learning_rate=hyperparameters.learning_rate, warmup_steps=1000)
 
   # compile multidevice versions of train.
-  p_train_step = jax.pmap(functools.partial(
-      train_step,
-      config=models.TransformerConfig(
-          dropout_rate=hyperparameters.dropout_rate,
-          attention_dropout_rate=hyperparameters.attention_dropout_rate),
-      learning_rate_fn=learning_rate_fn),
-                          axis_name="batch",
-                          donate_argnums=(0,))
+  p_train_step = jax.pmap(
+      functools.partial(
+          train_step,
+          config=models.TransformerConfig(
+              dropout_rate=hyperparameters.dropout_rate,
+              attention_dropout_rate=hyperparameters.attention_dropout_rate),
+          learning_rate_fn=learning_rate_fn),
+      axis_name="batch",
+      donate_argnums=(0,))
 
   return optimizer, p_train_step
 
