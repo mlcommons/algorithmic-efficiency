@@ -52,17 +52,11 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    if 'imagenet2012' in self.dataset:
-      return 111600 # 31 hours
-    if 'imagenette' == self.dataset:
-      return 3600 # 60 minutes
+    return 111600  # 31 hours
 
   @property
   def eval_period_time_sec(self):
-    if 'imagenet2012' in self.dataset:
-      return 6000 # 100 mins
-    if 'imagenette' == self.dataset:
-      return 30 # 30 seconds
+    return 6000  # 100 mins
 
   def model_params_types(self):
     pass
