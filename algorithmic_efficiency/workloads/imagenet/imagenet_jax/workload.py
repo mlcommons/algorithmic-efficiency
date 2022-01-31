@@ -10,6 +10,7 @@ from typing import Tuple
 
 import optax
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make it
 # unavailable to JAX.
@@ -20,101 +21,38 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import random_utils as prng
-import tensorflow_datasets as tfds
+from workloads.imagenet.workload import ImagenetWorkload
 
-from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
 
 
-class ImagenetWorkload(spec.Workload):
+class ImagenetWorkload(ImagenetWorkload):
 
   def __init__(self):
-    self._eval_ds = None
+    super().__init__()
     self._param_shapes = None
     self.epoch_metrics = []
-    # self.model_name = 'ResNet50'
-    # self.dataset = 'imagenet2012:5.*.*'
-    # self.num_classes = 1000
-    # For faster development testing, uncomment the lines below
-    self.model_name = '_ResNet1'
-    self.dataset = 'imagenette'
-    self.num_classes = 10
-
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['accuracy'] > self.target_value
-
-  @property
-  def target_value(self):
-    return 0.76
-
-  @property
-  def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
-
-  @property
-  def train_mean(self):
-    return [0.485 * 255, 0.456 * 255, 0.406 * 255]
-
-  @property
-  def train_stddev(self):
-    return [0.229 * 255, 0.224 * 255, 0.225 * 255]
-
-  def model_params_types(self):
-    pass
-
-  @property
-  def num_train_examples(self):
-    if 'imagenet2012' in self.dataset:
-      return 1271167
-    if 'imagenette' == self.dataset:
-      return 9469
-
-  @property
-  def num_eval_examples(self):
-    if 'imagenet2012' in self.dataset:
-      return 100000
-    if 'imagenette' == self.dataset:
-      return 3925
-
-  @property
-  def max_allowed_runtime_sec(self):
-    if 'imagenet2012' in self.dataset:
-      return 111600  # 31 hours
-    if 'imagenette' == self.dataset:
-      return 3600  # 60 minutes
-
-  @property
-  def eval_period_time_sec(self):
-    if 'imagenet2012' in self.dataset:
-      return 6000  # 100 mins
-    if 'imagenette' == self.dataset:
-      return 30  # 30 seconds
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   def _build_dataset(self, data_rng: spec.RandomState, split: str,
                      data_dir: str, batch_size):
     if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    ds_builder = tfds.builder(self.dataset)
+    ds_builder = tfds.builder('imagenet2012:5.*.*')
     ds_builder.download_and_prepare()
     ds = input_pipeline.create_input_iter(
         ds_builder,
         batch_size,
         self.train_mean,
         self.train_stddev,
+        self.center_crop_size,
+        self.resize_size,
+        self.aspect_ratio_range,
+        self.scale_ratio_range,
         train=True,
         cache=False)
     return ds
-
-  def build_input_queue(self, data_rng: spec.RandomState, split: str,
-                        data_dir: str, batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   def sync_batch_stats(self, model_state):
     """Sync the batch statistics across replicas."""
@@ -144,8 +82,8 @@ class ImagenetWorkload(spec.Workload):
   _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
 
   def init_model_fn(self, rng: spec.RandomState) -> _InitState:
-    model_cls = getattr(models, self.model_name)
-    model = model_cls(num_classes=self.num_classes, dtype=jnp.float32)
+    model_cls = getattr(models, 'ResNet50')
+    model = model_cls(num_classes=1000, dtype=jnp.float32)
     self._model = model
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
@@ -204,13 +142,13 @@ class ImagenetWorkload(spec.Workload):
   def loss_fn(self, label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
-    one_hot_labels = jax.nn.one_hot(label_batch, num_classes=self.num_classes)
+    one_hot_labels = jax.nn.one_hot(label_batch, num_classes=1000)
     xentropy = optax.softmax_cross_entropy(
         logits=logits_batch, labels=one_hot_labels)
-    return jnp.mean(xentropy)
+    return xentropy
 
   def compute_metrics(self, logits, labels):
-    loss = self.loss_fn(labels, logits)
+    loss = jnp.mean(self.loss_fn(labels, logits))
     accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
     metrics = {
         'loss': loss,

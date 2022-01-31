@@ -44,6 +44,12 @@ WORKLOADS = {
         'workload_class_name':
             'ImagenetWorkload'
     },
+    'imagenet_pytorch': {
+        'workload_path':
+            BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
+        'workload_class_name':
+            'ImagenetWorkload'
+    },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
         'workload_class_name': 'WMTWorkload'

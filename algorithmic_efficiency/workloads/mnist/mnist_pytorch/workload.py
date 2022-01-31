@@ -14,13 +14,13 @@ from torchvision.datasets import MNIST
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import Mnist
 
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class _Model(nn.Module):
 
   def __init__(self):
-    super(_Model, self).__init__()
+    super().__init__()
     input_size = 28 * 28
     num_hidden = 128
     num_classes = 10
@@ -141,11 +141,13 @@ class MnistWorkload(Mnist):
   def loss_fn(self, label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
 
-    return F.nll_loss(logits_batch, label_batch)
+    return F.nll_loss(logits_batch, label_batch, reduction='none')
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     _, predicted = torch.max(logits.data, 1)
-    accuracy = (predicted == labels).cpu().numpy().mean()
-    loss = self.loss_fn(labels, logits).cpu().numpy().mean()
-    return {'accuracy': accuracy, 'loss': loss}
+    # not accuracy, but nr. of correct predictions
+    accuracy = (predicted == labels).sum().item()
+    loss = self.loss_fn(labels, logits).sum().item()
+    n_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}

@@ -1,4 +1,3 @@
-from absl import logging
 import random_utils as prng
 
 from algorithmic_efficiency import spec
@@ -51,7 +50,6 @@ class Mnist(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 2000
-    num_batches = self.num_eval_examples // eval_batch_size
     self._eval_ds = self.build_input_queue(
         data_rng, 'test', data_dir, batch_size=eval_batch_size)
 
@@ -59,6 +57,7 @@ class Mnist(spec.Workload):
         'accuracy': 0.,
         'loss': 0.,
     }
+    n_data = 0
     for (images, labels) in self._eval_ds:
       images, labels = self.preprocess_for_eval(images, labels, None, None)
       logits, _ = self.model_fn(
@@ -73,4 +72,5 @@ class Mnist(spec.Workload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    return {k: float(v / num_batches) for k, v in total_metrics.items()}
+      n_data += batch_metrics['n_data']
+    return {k: float(v / n_data) for k, v in total_metrics.items()}
