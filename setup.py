@@ -8,7 +8,6 @@ from setuptools import setup
 
 
 jax_core_deps = [
-    'jax==0.2.17',
     'flax==0.3.5',
     'optax==0.0.9',
     'tensorflow_datasets==4.4.0',
@@ -36,10 +35,10 @@ setup(
         'scikit-learn==1.0.1',
     ],
     extras_require={
-        'jax-cpu': jax_core_deps + ['jaxlib==0.1.71'],
+        'jax-cpu': jax_core_deps + ['jax==0.2.28', 'jaxlib==0.1.76'],
         # Note for GPU support the installer must be run with
         # `-f 'https://storage.googleapis.com/jax-releases/jax_releases.html'`.
-        'jax-gpu': jax_core_deps + ['jaxlib==0.1.71+cuda111'],
+        'jax-gpu': jax_core_deps + ['jax[cuda]==0.2.28', 'jaxlib==0.1.76+cuda111.cudnn82'],
         'pytorch': [
             'torch==1.9.1+cu111',
             'torchvision==0.10.1+cu111',
