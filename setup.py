@@ -38,7 +38,7 @@ setup(
         'jax-cpu': jax_core_deps + ['jax==0.2.28', 'jaxlib==0.1.76'],
         # Note for GPU support the installer must be run with
         # `-f 'https://storage.googleapis.com/jax-releases/jax_releases.html'`.
-        'jax-gpu': jax_core_deps + ['jax[cuda]==0.2.28', 'jaxlib==0.1.76+cuda111.cudnn82'],
+        'jax-gpu': jax_core_deps + ['jax[cuda]==0.2.28', 'jaxlib==0.1.76+cuda11.cudnn82'],
         'pytorch': [
             'torch==1.9.1+cu111',
             'torchvision==0.10.1+cu111',
