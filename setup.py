@@ -30,6 +30,9 @@ setup(
         'absl-py==0.14.0',
         'numpy>=1.19.2',
         'pandas>=1.3.1',
+        'ctcdecode>=1.0.3',
+        'levenshtein>=0.12.0',
+        'librosa>=0.8.1',
         'six>=1.15.0',
     ],
     extras_require={
@@ -41,11 +44,6 @@ setup(
             'torch==1.9.1+cu111',
             'torchvision==0.10.1+cu111',
         ],
-        'librispeech': [
-            'librosa>=0.8.1',
-            'levenshtein>=0.12.0',
-            # 'ctcdecode>=1.0.3', #  No matching distribution found for ctcdecode>=1.0.3. Error installing ctcdecode==1.0.2. Solution: install from git instructions https://github.com/parlance/ctcdecode
-        ]
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
