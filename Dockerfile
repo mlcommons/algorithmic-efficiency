@@ -31,6 +31,13 @@ RUN pip3 install --user .
 RUN pip3 install --user .[jax-gpu] -f 'https://storage.googleapis.com/jax-releases/jax_releases.html'
 RUN pip3 install --user .[pytorch] -f 'https://download.pytorch.org/whl/torch_stable.html'
 RUN pip3 install --user .[jax_core_deps]
+RUN pip3 install --user .[librispeech]
+
+# install librispeech dependencies
+WORKDIR ~
+RUN git clone --recursive https://github.com/parlance/ctcdecode.git
+RUN cd ctcdecode && pip3 install --user .
+WORKDIR /home/ubuntu/algorithmic-efficiency
 
 # bash
 CMD ["/bin/bash"]
