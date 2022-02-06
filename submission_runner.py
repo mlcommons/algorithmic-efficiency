@@ -147,7 +147,12 @@ def train_once(
     data_selection: spec.DataSelectionFn,
     hyperparameters: Optional[spec.Hyperparamters],
     rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
-  data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
+  # Temporary fix
+  from jax import random
+  key = random.PRNGKey(0)
+  data_rng = key
+  opt_init_rng = key
+  model_init_rng = key
 
   # Workload setup.
   logging.info('Initializing dataset.')
