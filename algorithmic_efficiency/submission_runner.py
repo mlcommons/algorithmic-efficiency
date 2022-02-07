@@ -49,8 +49,8 @@ WORKLOADS = {
         'workload_class_name': 'ImagenetWorkload'
     },
     'ogb_jax': {
-      'workload_path': 'workloads/ogb/ogb_jax/workload.py',
-      'workload_class_name': 'OGBWorkload'
+        'workload_path': BASE_WORKLOADS_DIR + 'ogb/ogb_jax/workload.py',
+        'workload_class_name': 'OGBWorkload'
     },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
