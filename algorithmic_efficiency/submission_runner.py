@@ -15,6 +15,8 @@ import inspect
 import jax
 import json
 import os
+# Enable flax xprof trace labelling.
+os.environ['FLAX_PROFILE'] = 'true'
 import struct
 import time
 from typing import Optional, Tuple
@@ -208,19 +210,11 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
         training_complete = True
       global_step += 1
       current_time = time.time()
-      accumulated_submission_time += current_time - start_time
-      is_time_remaining = (
-          accumulated_submission_time < workload.max_allowed_runtime_sec)
-      # Check if submission is eligible for an untimed eval.
-      if (current_time - last_eval_time >= workload.eval_period_time_sec or
-          training_complete):
-        latest_eval_result = workload.eval_model(model_params, model_state,
-                                                eval_rng, data_dir)
-        logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
-                    f'\t{latest_eval_result}')
-        last_eval_time = current_time
-        eval_results.append((global_step, latest_eval_result))
-        goal_reached = workload.has_reached_goal(latest_eval_result)
+      latest_eval_result = workload.eval_model(model_params, model_state,
+                                              eval_rng, data_dir)
+      logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
+                  f'\t{latest_eval_result}')
+      eval_results.append((global_step, latest_eval_result))
   jax.profiler.stop_trace()
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics
