@@ -1,11 +1,8 @@
-"""MLCommons Algorithmic Efficiency.
+"""Setup file for algorithmic_efficiency, use setup.cfg for configuration."""
 
-For a Jax GPU install:
-pip install -e .[jax-gpu] -f https://storage.googleapis.com/jax-releases/jax_releases.html'
-"""
-from setuptools import find_packages
 from setuptools import setup
 
+<<<<<<< HEAD
 
 jax_core_deps = [
     'flax==0.3.5',
@@ -53,3 +50,7 @@ setup(
     ],
     keywords='mlcommons algorithmic efficiency',
 )
+=======
+if __name__ == "__main__":
+  setup()
+>>>>>>> main
