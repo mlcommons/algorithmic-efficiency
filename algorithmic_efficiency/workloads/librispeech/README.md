@@ -37,7 +37,7 @@ Run from root of repository:
 
 ### PyTorch
 ```bash
-python3 submission_runner.py --framework=pytorch --workload=librispeech_pytorch --submission_path=workloads/librispeech/librispeech_pytorch/submission.py --data_dir workloads/librispeech/work_dir/data/
+python algorithmic_efficiency/submission_runner.py --framework=pytorch --workload=librispeech_pytorch --submission_path=baselines/librispeech/librispeech_pytorch/submission.py --tuning_search_space=baselines/librispeech/tuning_search_space.json --data_dir algorithmic_efficiency/workloads/librispeech/work_dir/data/
 ```
 
 ## 3. Reference
