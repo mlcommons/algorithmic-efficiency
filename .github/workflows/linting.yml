@@ -1,0 +1,54 @@
+name: Linting
+
+on: [push, pull_request]
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install pylint
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint
+    - name: Run pylint
+      run: |
+        pylint algorithmic_efficiency
+        pylint baselines
+        pylint tests
+
+  isort:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install isort
+      run: |
+        python -m pip install --upgrade pip
+        pip install isort
+    - name: Run isort
+      run: |
+        isort . --check
+
+  yapf:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install yapf
+      run: |
+        python -m pip install --upgrade pip
+        pip install yapf
+    - name: Run yapf
+      run: |
+        yapf . --diff --recursive
