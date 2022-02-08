@@ -12,7 +12,7 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {'mnist_jax': 1024}
+  batch_sizes = {'mnist': 1024}
   return batch_sizes[workload_name]
 
 

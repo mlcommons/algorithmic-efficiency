@@ -10,7 +10,7 @@ ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {"librispeech_pytorch": 8}
+  batch_sizes = {"librispeech": 8}
   return batch_sizes[workload_name]
 
 

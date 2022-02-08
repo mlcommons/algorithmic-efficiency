@@ -127,13 +127,13 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 ### JAX
 
 ```bash
-python3 algorithmic_efficiency/submission_runner.py --framework=jax --workload=mnist_jax --submission_path=baselines/mnist/mnist_jax/submission.py --tuning_search_space=baselines/mnist/tuning_search_space.json
+python3 algorithmic_efficiency/submission_runner.py --framework=jax --workload=mnist--submission_path=baselines/mnist/mnist_jax/submission.py --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
 
 ```bash
-python3 algorithmic_efficiency/submission_runner.py --framework=pytorch --workload=mnist_pytorch --submission_path=baselines/mnist/mnist_pytorch/submission.py --tuning_search_space=baselines/mnist/tuning_search_space.json
+python3 algorithmic_efficiency/submission_runner.py --framework=pytorch --workload=mnist --submission_path=baselines/mnist/mnist_pytorch/submission.py --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
 
 ## Rules

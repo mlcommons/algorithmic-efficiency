@@ -1,8 +1,8 @@
 """ImageNet workload implemented in Jax.
 
 python3 submission_runner.py \
-    --workload=imagenet_jax \
-    --submission_path=workloads/imagenet/imagenet_jax/submission.py \
+    --workload=imagenet \
+    --submission_path=baselines/imagenet/imagenet_jax/submission.py \
     --num_tuning_trials=1
 """
 import functools

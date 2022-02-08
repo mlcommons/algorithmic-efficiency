@@ -11,7 +11,7 @@ from baselines.mnist.mnist_pytorch.submission import data_selection
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {'imagenet_pytorch': 128}
+  batch_sizes = {'imagenet': 128}
   return batch_sizes[workload_name]
 
 
@@ -24,8 +24,7 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  base_lr = hyperparameters.learning_rate * get_batch_size(
-      'imagenet_pytorch') / 256.
+  base_lr = hyperparameters.learning_rate * get_batch_size('imagenet') / 256.
   optimizer_state = {
       'optimizer':
           torch.optim.SGD(
@@ -93,8 +92,7 @@ def update_params(
   loss.backward()
   optimizer_state['optimizer'].step()
 
-  steps_per_epoch = workload.num_train_examples // get_batch_size(
-      'imagenet_pytorch')
+  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
   if (global_step + 1) % steps_per_epoch == 0:
     optimizer_state['scheduler'].step()
 

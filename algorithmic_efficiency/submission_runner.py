@@ -3,11 +3,11 @@ r"""Run a submission on a single workload.
 Example command:
 
 python3 submission_runner.py \
-    --workload=mnist_jax \
+    --workload=mnist \
     --framework=jax \
-    --submission_path=workloads/mnist/mnist_jax/submission.py \
+    --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
+    --tuning_search_space=baselines/mnist/mnist_jax/tuning_search_space.json \
     --num_tuning_trials=3
 """
 import importlib
@@ -29,47 +29,33 @@ import algorithmic_efficiency.random_utils as prng
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
+# workload_path will be appended by '_pytorch' or '_jax' automatically
 WORKLOADS = {
-    'mnist_jax': {
-        'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_jax/workload.py',
+    'mnist': {
+        'workload_path': 'mnist/mnist',
         'workload_class_name': 'MnistWorkload'
     },
-    'mnist_pytorch': {
-        'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_pytorch/workload.py',
-        'workload_class_name': 'MnistWorkload'
+    'imagenet': {
+        'workload_path': 'imagenet/imagenet',
+        'workload_class_name': 'ImagenetWorkload'
     },
-    'imagenet_jax': {
-        'workload_path':
-            BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
-        'workload_class_name':
-            'ImagenetWorkload'
-    },
-    'imagenet_pytorch': {
-        'workload_path':
-            BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name':
-            'ImagenetWorkload'
-    },
-    'wmt_jax': {
-        'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
+    'wmt': {
+        'workload_path': 'wmt/wmt',
         'workload_class_name': 'WMTWorkload'
     },
-    'librispeech_pytorch': {
-        'workload_path':
-            BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
-        'workload_class_name':
-            'LibriSpeechWorkload'
+    'librispeech': {
+        'workload_path': 'librispeech/librispeech',
+        'workload_class_name': 'LibriSpeechWorkload'
     }
 }
 
 flags.DEFINE_string(
-    'submission_path',
-    'algorithmic_efficiency/workloads/mnist_jax/submission.py',
+    'submission_path', 'baselines/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
     'workload',
-    'mnist_jax',
+    'mnist',
     help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
 )
 flags.DEFINE_enum(
@@ -78,8 +64,7 @@ flags.DEFINE_enum(
     enum_values=['external', 'self'],
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
-    'tuning_search_space',
-    'algorithmic_efficiency/workloads/mnist/mnist_jax/tuning_search_space.json',
+    'tuning_search_space', 'baselines/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials', 20,
                      'The number of external hyperparameter trials to run.')
@@ -287,6 +272,10 @@ def main(_):
     tf.config.experimental.set_visible_devices([], 'GPU')
 
   workload_metadata = WORKLOADS[FLAGS.workload]
+  # extend path according to framework
+  workload_metadata['workload_path'] = os.path.join(
+      BASE_WORKLOADS_DIR,
+      workload_metadata['workload_path'] + '_' + FLAGS.framework, 'workload.py')
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_registry_name=FLAGS.workload,
