@@ -72,7 +72,7 @@ def create_learning_rate_scheduler(
         ret *= jnp.maximum(0.0,
                            0.5 * (1.0 + jnp.cos(jnp.pi * (progress % 1.0))))
       else:
-        raise ValueError("Unknown factor %s." % name)
+        raise ValueError(f"Unknown factor {name}.")
     return jnp.asarray(ret, dtype=jnp.float32)
 
   return step_fn
