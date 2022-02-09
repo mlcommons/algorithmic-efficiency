@@ -3,14 +3,14 @@
 from typing import Optional, Tuple
 import functools
 import numpy as np
-import sklearn.metrics
-
-import jax
-import jax.numpy as jnp
-import random_utils as prng
-import jraph
 from flax import linen as nn
 from flax import jax_utils
+import itertools
+import jax
+import jax.numpy as jnp
+import jraph
+import random_utils as prng
+import sklearn.metrics
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogb.workload import OGB
@@ -231,9 +231,13 @@ class OGBWorkload(OGB):
     if self._eval_iterator is None:
       self._eval_iterator = self._build_iterator(
           data_rng, 'validation', data_dir, batch_size=eval_batch_size)
+      # Note that this effectively stores the entire val dataset in memory.
+      self._eval_iterator = itertools.cycle(self._eval_iterator)
 
     total_metrics = None
-    # Loop over graph batches in eval dataset
+    # Loop over graph batches in eval dataset.
+    num_val_examples = 43793  # Both val and test have the same number.
+    num_val_steps = num_val_examples // eval_batch_size
     for graphs, labels, masks in self._eval_iterator:
       batch_metrics = self._eval_batch(
           params, graphs, labels, masks, model_state, model_rng)
