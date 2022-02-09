@@ -12,11 +12,11 @@ import jraph
 from flax import linen as nn
 from flax import jax_utils
 
-import spec
-from workloads.ogb.workload import OGB
-from workloads.ogb.ogb_jax import input_pipeline
-from workloads.ogb.ogb_jax import models
-from workloads.ogb.ogb_jax import metrics
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.ogb.workload import OGB
+from algorithmic_efficiency.workloads.ogb.ogb_jax import input_pipeline
+from algorithmic_efficiency.workloads.ogb.ogb_jax import models
+from algorithmic_efficiency.workloads.ogb.ogb_jax import metrics
 
 
 class OGBWorkload(OGB):

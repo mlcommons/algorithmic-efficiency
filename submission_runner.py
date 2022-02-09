@@ -27,7 +27,7 @@ from absl import logging
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import spec
-import algorithmic_efficiency.random_utils as prng
+from algorithmic_efficiency import random_utils as prng
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"

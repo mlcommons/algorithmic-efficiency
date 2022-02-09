@@ -1,4 +1,4 @@
-import spec
+from algorithmic_efficiency import spec
 
 
 class OGB(spec.Workload):

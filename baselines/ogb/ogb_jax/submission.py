@@ -9,7 +9,7 @@ from flax import jax_utils
 import jraph
 import optax
 
-import spec
+from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
