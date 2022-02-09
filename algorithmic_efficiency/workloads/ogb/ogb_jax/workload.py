@@ -9,9 +9,9 @@ import itertools
 import jax
 import jax.numpy as jnp
 import jraph
-import random_utils as prng
 import sklearn.metrics
 
+from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogb.workload import OGB
 from algorithmic_efficiency.workloads.ogb.ogb_jax import input_pipeline
@@ -235,10 +235,12 @@ class OGBWorkload(OGB):
       self._eval_iterator = itertools.cycle(self._eval_iterator)
 
     total_metrics = None
+    # Both val and test have the same (prime) number of examples.
+    num_val_examples = 43793
+    num_val_steps = num_val_examples // eval_batch_size + 1
     # Loop over graph batches in eval dataset.
-    num_val_examples = 43793  # Both val and test have the same number.
-    num_val_steps = num_val_examples // eval_batch_size
-    for graphs, labels, masks in self._eval_iterator:
+    for _ in range(num_val_steps):
+      graphs, labels, masks = next(self._eval_iterator)
       batch_metrics = self._eval_batch(
           params, graphs, labels, masks, model_state, model_rng)
       total_metrics = (batch_metrics if total_metrics is None
