@@ -89,10 +89,12 @@ class Workload(metaclass=abc.ABCMeta):
     This is the only function that is NOT allowed to be called by submitters.
     """
 
+  @property
   @abc.abstractmethod
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
 
+  @property
   @abc.abstractmethod
   def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
