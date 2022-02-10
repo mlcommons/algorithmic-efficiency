@@ -1,10 +1,13 @@
-"""DeepSpeech Models modified from https://github.com/lsari/librispeech_100/blob/main/models.py."""
+"""DeepSpeech Models.
+
+Modified from https://github.com/lsari/librispeech_100/blob/main/models.py.
+"""
 
 import collections
 import math
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class SequenceWise(nn.Module):
@@ -16,7 +19,7 @@ class SequenceWise(nn.Module):
     Args:
       module: Module to apply input to.
     """
-    super(SequenceWise, self).__init__()
+    super().__init__()
     self.module = module
 
   def forward(self, x):
@@ -37,7 +40,7 @@ class MaskConv(nn.Module):
     Args:
       seq_module: The sequential module containing the conv stack.
     """
-    super(MaskConv, self).__init__()
+    super().__init__()
     self.seq_module = seq_module
 
   def forward(self, x, lengths):
@@ -66,7 +69,7 @@ class MaskConv(nn.Module):
 class BatchRNN(nn.Module):
 
   def __init__(self, input_size, hidden_size, batch_norm=True):
-    super(BatchRNN, self).__init__()
+    super().__init__()
     self.batch_norm = SequenceWise(
         nn.BatchNorm1d(input_size)) if batch_norm else None
     self.rnn = nn.LSTM(
@@ -100,7 +103,7 @@ class BatchRNN(nn.Module):
 class CNNLSTM(nn.Module):
 
   def __init__(self):
-    super(CNNLSTM, self).__init__()
+    super().__init__()
 
     self.num_classes = 29
     self.hidden_size = 768
@@ -128,7 +131,7 @@ class CNNLSTM(nn.Module):
     rnns.append(("0", rnn))
     for x in range(self.hidden_layers - 1):
       rnn = BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
-      rnns.append(("%d" % (x + 1), rnn))
+      rnns.append((f"{x+1}", rnn))
     self.rnns = nn.Sequential(collections.OrderedDict(rnns))
 
     fully_connected = nn.Sequential(
@@ -137,7 +140,8 @@ class CNNLSTM(nn.Module):
     self.fc = nn.Sequential(SequenceWise(fully_connected),)
 
   def get_seq_lens(self, input_length):
-    """Get a 1D tensor or variable containing the size sequences that will be output by the network.
+    """Get a 1D tensor or variable containing the size sequences that will be
+    output by the network.
 
     Args:
       input_length: 1D Tensor

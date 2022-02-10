@@ -1,4 +1,7 @@
-"""Data pipeline for LibriSpeech dataset modified from https://github.com/lsari/librispeech_100/blob/main/dataset.py."""
+"""Data pipeline for LibriSpeech dataset.
+
+Modified from https://github.com/lsari/librispeech_100/blob/main/dataset.py.
+"""
 
 import json
 

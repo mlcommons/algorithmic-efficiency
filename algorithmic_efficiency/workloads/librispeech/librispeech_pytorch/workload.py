@@ -91,7 +91,10 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def param_shapes(self):
-    pass
+    """
+    TODO: return shape tuples from model as a tree
+    """
+    raise NotImplementedError
 
   @property
   def target_value(self):
@@ -117,8 +120,12 @@ class LibriSpeechWorkload(spec.Workload):
   def train_stddev(self):
     return 1.0
 
+  @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return shape tuples from model as a tree
+    """
+    raise NotImplementedError
 
   @property
   def max_allowed_runtime_sec(self):
@@ -157,8 +164,7 @@ class LibriSpeechWorkload(spec.Workload):
     return model, None
 
   def model_fn(
-      self, params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
@@ -167,7 +173,7 @@ class LibriSpeechWorkload(spec.Workload):
     del update_batch_norm
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
-    features, transcripts, input_lengths = augmented_and_preprocessed_input_batch
+    features, transcripts, input_lengths = input_batch
     log_y, output_lengths = params(features, input_lengths, transcripts)
 
     return (log_y.transpose(0, 1), output_lengths), None
