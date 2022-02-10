@@ -37,6 +37,7 @@
 
    ```bash
    git clone https://github.com/mlcommons/algorithmic-efficiency.git
+   cd algorithmic-efficiency
    ```
 
 3. Install the `algorithmic_efficiency` package:
