@@ -6,7 +6,7 @@ import itertools
 from typing import Tuple
 
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import MNIST
@@ -72,8 +72,12 @@ class MnistWorkload(Mnist):
     """
     raise NotImplementedError
 
+  @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return type tuples from model as a tree
+    """
+    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
@@ -93,8 +97,8 @@ class MnistWorkload(Mnist):
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    N = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(N, -1)
+    raw_input_batch_size = raw_input_batch.size()[0]
+    raw_input_batch = raw_input_batch.view(raw_input_batch_size, -1)
     return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
