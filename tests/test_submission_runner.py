@@ -1,4 +1,4 @@
-"""Sample test for a function from the submission_runner"""
+"""Sample test for a function from the submission_runner."""
 
 import os
 
