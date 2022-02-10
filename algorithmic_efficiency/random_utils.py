@@ -39,7 +39,7 @@ def _split(seed, num=2):
   return rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32, size=[num, 2])
 
 
-def _PRNGKey(seed: int):
+def _prng_key(seed: int):
   return split(seed, num=2)[0]
 
 
@@ -67,8 +67,8 @@ def split(seed, num=2):
   return _split(seed, num)
 
 
-def PRNGKey(seed):
+def prng_key(seed):
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.PRNGKey(seed)
-  return _PRNGKey(seed)
+  return _prng_key(seed)

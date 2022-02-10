@@ -189,8 +189,8 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
         training_complete):
       latest_eval_result = workload.eval_model(model_params, model_state,
                                                eval_rng, data_dir)
-      logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
-                   f'\t{latest_eval_result}')
+      logging.info('%.2fs \t%d \t%s', current_time - global_start_time,
+                   global_step, latest_eval_result)
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
@@ -223,7 +223,7 @@ def score_submission_on_workload(workload: spec.Workload,
       raise ValueError(
           'Must provide a tuning search space JSON file when using external '
           'tuning.')
-    with open(tuning_search_space, 'r') as search_space_file:
+    with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
       tuning_search_space = halton.generate_search(
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
@@ -231,7 +231,7 @@ def score_submission_on_workload(workload: spec.Workload,
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
-      rng = prng.PRNGKey(rng_seed)
+      rng = prng.prng_key(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
       # Jax implementation this means that rng[0] is all zeros, which means this
       # could lead to unintentionally reusing the same seed of only rng[0] were
@@ -239,7 +239,7 @@ def score_submission_on_workload(workload: spec.Workload,
       # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
       # number.
       rng, _ = prng.split(rng, 2)
-      logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
+      logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       timing, metrics = train_once(workload, batch_size, data_dir,
                                    init_optimizer_state, update_params,
                                    data_selection, hyperparameters, rng)
@@ -254,7 +254,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
-    rng = prng.PRNGKey(rng_seed)
+    rng = prng.prng_key(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(workload, batch_size, init_optimizer_state,
@@ -265,7 +265,7 @@ def score_submission_on_workload(workload: spec.Workload,
 
 def main(_):
   if FLAGS.framework == 'jax':
-    import tensorflow as tf
+    import tensorflow as tf  # pylint: disable=import-outside-toplevel
 
     # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
     # it unavailable to JAX.
