@@ -1,4 +1,7 @@
-"""Fast decoding routines for inference from a trained model forked from https://github.com/google/flax/tree/main/examples/wmt."""
+"""Fast decoding routines for inference from a trained model.
+
+Forked from https://github.com/google/flax/tree/main/examples/wmt.
+"""
 
 import typing
 

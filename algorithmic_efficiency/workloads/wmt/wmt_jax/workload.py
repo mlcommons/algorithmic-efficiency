@@ -56,8 +56,9 @@ class WMTWorkload(spec.Workload):
       Tuple of loss for every example and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError("Incorrect shapes. Got shape %s logits and %s targets" %
-                       (str(logits.shape), str(targets.shape)))
+      raise ValueError(
+          f"Incorrect shapes. Got shape {str(logits.shape)} logits "
+          f"and {str(targets.shape)} targets")
     vocab_size = logits.shape[-1]
     confidence = 1.0 - label_smoothing
     low_confidence = (1.0 - confidence) / (vocab_size - 1)
@@ -89,8 +90,8 @@ class WMTWorkload(spec.Workload):
       Tuple of scalar loss and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError("Incorrect shapes. Got shape %s logits and %s targets" %
-                       (str(logits.shape), str(targets.shape)))
+      raise ValueError(f"Incorrect shapes. Got shape {str(logits.shape)} logits"
+                       f" and {str(targets.shape)} targets")
     loss = jnp.equal(jnp.argmax(logits, axis=-1), targets)
     normalizing_factor = np.prod(logits.shape[:-1])
     if weights is not None:
@@ -113,7 +114,7 @@ class WMTWorkload(spec.Workload):
     return metrics
 
   # Primary eval / decode step functions.
-  # -----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
 
   def eval_step(self, params, batch, config):
     """Calculate evaluation metrics on a batch."""
@@ -190,7 +191,7 @@ class WMTWorkload(spec.Workload):
     return beam_seqs[:, -1, 1:]
 
   # Utils for prediction and BLEU calculation
-  # -----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
 
   def pad_examples(self, x, desired_batch_size):
     """Expand batch to desired size by repeating last slice."""
@@ -286,7 +287,8 @@ class WMTWorkload(spec.Workload):
                         data_dir: str, batch_size: int):
     tf.io.gfile.makedirs(WORKDIR)
     self._per_device_batch_size = batch_size
-    self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
+    self._train_ds, self._eval_ds, self._predict_ds, self._encoder \
+      = input_pipeline.get_wmt_datasets(
         vocab_size=self._vocab_size,
         batch_size=jax.local_device_count() * batch_size,
         reverse_translation=True,
@@ -323,8 +325,12 @@ class WMTWorkload(spec.Workload):
   def train_stddev(self):
     return 1.0
 
+  @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return type tuples from model as a tree
+    """
+    raise NotImplementedError
 
   @property
   def max_allowed_runtime_sec(self):
@@ -399,8 +405,7 @@ class WMTWorkload(spec.Workload):
     return initial_params, None
 
   def model_fn(
-      self, params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
@@ -408,9 +413,11 @@ class WMTWorkload(spec.Workload):
     del rng
     del update_batch_norm
 
-    model_config = self._train_config if mode == spec.ForwardPassMode.TRAIN else self._eval_config
-    inputs, targets = augmented_and_preprocessed_input_batch[
-        "inputs"], augmented_and_preprocessed_input_batch["targets"]
+    if mode == spec.ForwardPassMode.TRAIN:
+      model_config = self._train_config
+    else:
+      model_config = self._eval_config
+    inputs, targets = input_batch["inputs"], input_batch["targets"]
     logits_batch = models.Transformer(model_config).apply({"params": params},
                                                           inputs, targets)
 

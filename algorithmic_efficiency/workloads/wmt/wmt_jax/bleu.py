@@ -1,4 +1,6 @@
-r"""Parallel BLEU score calculation modified from https://github.com/google/flax/tree/main/examples/wmt.
+r"""Parallel BLEU score calculation.
+
+Modified from https://github.com/google/flax/tree/main/examples/wmt.
 
 This version of BLEU calculation is derived from the MLPerf transformer
 reference.

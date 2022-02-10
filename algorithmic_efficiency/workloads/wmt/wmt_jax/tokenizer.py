@@ -1,4 +1,7 @@
-"""Provides op for tokenizing a dataset modified from https://github.com/google/flax/tree/main/examples/wmt."""
+"""Provides op for tokenizing a dataset.
+
+Modified from https://github.com/google/flax/tree/main/examples/wmt.
+"""
 
 import dataclasses
 import os
