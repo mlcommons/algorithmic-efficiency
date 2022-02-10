@@ -1,19 +1,20 @@
 """ImageNet workload implemented in PyTorch."""
+
 import contextlib
 import os
 from typing import Tuple
 
-import random_utils as prng
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import spec
+import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet50
-from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet.workload import Imagenet
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -28,7 +29,7 @@ def cycle(iterable):
       iterator = iter(iterable)
 
 
-class ImagenetWorkload(ImagenetWorkload):
+class ImagenetWorkload(Imagenet):
 
   @property
   def param_shapes(self):

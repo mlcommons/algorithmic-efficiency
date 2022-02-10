@@ -8,27 +8,23 @@ python3 submission_runner.py \
 import functools
 from typing import Tuple
 
-import optax
-import tensorflow as tf
-import tensorflow_datasets as tfds
-
-# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make it
-# unavailable to JAX.
-tf.config.experimental.set_visible_devices([], 'GPU')
 from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
-import random_utils as prng
-from workloads.imagenet.workload import ImagenetWorkload
+import optax
+import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import spec
+import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
+from algorithmic_efficiency.workloads.imagenet.workload import Imagenet
 
 
-class ImagenetWorkload(ImagenetWorkload):
+class ImagenetWorkload(Imagenet):
 
   def __init__(self):
     super().__init__()
@@ -79,9 +75,7 @@ class ImagenetWorkload(ImagenetWorkload):
     model_state, params = variables.pop('params')
     return params, model_state
 
-  _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
-
-  def init_model_fn(self, rng: spec.RandomState) -> _InitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=1000, dtype=jnp.float32)
     self._model = model
@@ -165,7 +159,7 @@ class ImagenetWorkload(ImagenetWorkload):
     model_state = self.sync_batch_stats(model_state)
 
     eval_metrics = []
-    data_rng, model_rng = prng.split(rng, 2)
+    data_rng, _ = prng.split(rng, 2)
     eval_batch_size = 200
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
@@ -173,7 +167,7 @@ class ImagenetWorkload(ImagenetWorkload):
           data_rng, split='test', batch_size=eval_batch_size, data_dir=data_dir)
     eval_iter = iter(self._eval_ds)
     total_accuracy = 0.
-    for idx in range(num_batches):
+    for _ in range(num_batches):
       batch = next(eval_iter)
       synced_metrics = self.eval_model_fn(params, batch, model_state, rng)
       eval_metrics.append(synced_metrics)

@@ -1,6 +1,7 @@
-# Forked from Flax example which can be found here:
-# https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 """ImageNet input pipeline.
+
+Forked from Flax example which can be found here:
+https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 """
 
 from flax import jax_utils
@@ -8,18 +9,9 @@ import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-IMAGE_SIZE = 224
-RESIZE_SIZE = 256
-MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-
-def distorted_bounding_box_crop(image_bytes,
-                                bbox,
-                                min_object_covered=0.1,
-                                aspect_ratio_range=(0.75, 1.33),
-                                area_range=(0.05, 1.0),
-                                max_attempts=100):
+def distorted_bounding_box_crop(image_bytes, bbox, min_object_covered,
+                                aspect_ratio_range, area_range, max_attempts):
   """Generates cropped_image using one of the bboxes randomly distorted.
 
   See `tf.image.sample_distorted_bounding_box` for more documentation.
@@ -75,11 +67,8 @@ def _at_least_x_are_equal(a, b, x):
   return tf.greater_equal(tf.reduce_sum(match), x)
 
 
-def _decode_and_random_crop(image_bytes,
-                            image_size,
-                            aspect_ratio_range,
-                            area_range,
-                            resize_size=RESIZE_SIZE):
+def _decode_and_random_crop(image_bytes, image_size, aspect_ratio_range,
+                            area_range, resize_size):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image = distorted_bounding_box_crop(
@@ -128,14 +117,8 @@ def normalize_image(image, mean_rgb, stddev_rgb):
   return image
 
 
-def preprocess_for_train(image_bytes,
-                         mean_rgb,
-                         stddev_rgb,
-                         aspect_ratio_range,
-                         area_range,
-                         dtype=tf.float32,
-                         image_size=IMAGE_SIZE,
-                         resize_size=RESIZE_SIZE):
+def preprocess_for_train(image_bytes, mean_rgb, stddev_rgb, aspect_ratio_range,
+                         area_range, dtype, image_size, resize_size):
   """Preprocesses the given image for training.
 
   Args:
@@ -155,12 +138,8 @@ def preprocess_for_train(image_bytes,
   return image
 
 
-def preprocess_for_eval(image_bytes,
-                        mean_rgb,
-                        stddev_rgb,
-                        dtype=tf.float32,
-                        image_size=IMAGE_SIZE,
-                        resize_size=RESIZE_SIZE):
+def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype, image_size,
+                        resize_size):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -178,17 +157,9 @@ def preprocess_for_eval(image_bytes,
   return image
 
 
-def create_split(dataset_builder,
-                 batch_size,
-                 train,
-                 dtype=tf.float32,
-                 image_size=IMAGE_SIZE,
-                 resize_size=RESIZE_SIZE,
-                 mean_rgb=MEAN_RGB,
-                 stddev_rgb=STDDEV_RGB,
-                 cache=False,
-                 aspect_ratio_range=(0.75, 4.0 / 3.0),
-                 area_range=(0.08, 1.0)):
+def create_split(dataset_builder, batch_size, train, dtype, image_size,
+                 resize_size, mean_rgb, stddev_rgb, cache, aspect_ratio_range,
+                 area_range):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets.
 
   Args:
@@ -268,6 +239,7 @@ def create_input_iter(dataset_builder, batch_size, mean_rgb, stddev_rgb,
       dataset_builder,
       batch_size,
       train=train,
+      dtype=tf.float32,
       image_size=image_size,
       resize_size=resize_size,
       mean_rgb=mean_rgb,
