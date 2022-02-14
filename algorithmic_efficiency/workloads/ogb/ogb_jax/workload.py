@@ -40,16 +40,19 @@ class OGBWorkload(OGB):
       split: str,
       data_dir: str,
       batch_size: int):
-    dataset_iters = input_pipeline.get_dataset_iters(
+    dataset_iter = input_pipeline.get_dataset_iter(
+        split,
+        data_rng,
+        data_dir,
         batch_size,
         add_virtual_node=False,
         add_undirected_edges=True,
         add_self_loops=True)
     if self._init_graphs is None:
-      init_graphs = next(dataset_iters['train'])[0]
+      init_graphs = next(dataset_iter)[0]
       # Unreplicate the iterator that has the leading dim for pmapping.
       self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
-    return dataset_iters[split]
+    return dataset_iter
 
   def build_input_queue(
       self,
