@@ -26,7 +26,7 @@ class GraphsTupleSize(NamedTuple):
   n_graph: int
 
 
-def get_raw_dataset(
+def _get_raw_dataset(
   split_name: str,
   data_dir: str,
   file_shuffle_seed: Any) -> Dict[str, tf.data.Dataset]:
@@ -35,6 +35,30 @@ def get_raw_dataset(
   ds_builder.download_and_prepare()
   config = tfds.ReadConfig(shuffle_seed=file_shuffle_seed)
   return ds_builder.as_dataset(split=split_name, read_config=config)
+
+
+def convert_to_graphs_tuple(graph: Dict[str, tf.Tensor],
+                            add_virtual_node: bool,
+                            add_undirected_edges: bool,
+                            add_self_loops: bool) -> jraph.GraphsTuple:
+  """Converts a dictionary of tf.Tensors to a GraphsTuple."""
+  num_nodes = tf.squeeze(graph['num_nodes'])
+  num_edges = tf.squeeze(graph['num_edges'])
+  nodes = graph['node_feat']
+  edges = graph['edge_feat']
+  labels = graph['labels']
+  senders = graph['edge_index'][:, 0]
+  receivers = graph['edge_index'][:, 1]
+
+  return jraph.GraphsTuple(
+      n_node=tf.expand_dims(num_nodes, 0),
+      n_edge=tf.expand_dims(num_edges, 0),
+      nodes=nodes,
+      edges=edges,
+      senders=senders,
+      receivers=receivers,
+      globals=tf.expand_dims(labels, axis=0),
+  )
 
 
 def _get_valid_mask(graphs: jraph.GraphsTuple):
@@ -94,7 +118,7 @@ def get_dataset_iter(split_name: str,
   dataset_shuffle_seed = dataset_shuffle_seed[0]
 
   # Obtain the original datasets.
-  dataset = get_raw_dataset(split_name, data_dir, file_shuffle_seed)
+  dataset = _get_raw_dataset(split_name, data_dir, file_shuffle_seed)
 
   # Construct the GraphsTuple converter function.
   convert_to_graphs_tuple_fn = functools.partial(
@@ -132,27 +156,3 @@ def get_dataset_iter(split_name: str,
   # dim of size jax.local_device_count().
   pmapped_iterator = _batch_for_pmap(batched_iter)
   return pmapped_iterator
-
-
-def convert_to_graphs_tuple(graph: Dict[str, tf.Tensor],
-                            add_virtual_node: bool,
-                            add_undirected_edges: bool,
-                            add_self_loops: bool) -> jraph.GraphsTuple:
-  """Converts a dictionary of tf.Tensors to a GraphsTuple."""
-  num_nodes = tf.squeeze(graph['num_nodes'])
-  num_edges = tf.squeeze(graph['num_edges'])
-  nodes = graph['node_feat']
-  edges = graph['edge_feat']
-  labels = graph['labels']
-  senders = graph['edge_index'][:, 0]
-  receivers = graph['edge_index'][:, 1]
-
-  return jraph.GraphsTuple(
-      n_node=tf.expand_dims(num_nodes, 0),
-      n_edge=tf.expand_dims(num_edges, 0),
-      nodes=nodes,
-      edges=edges,
-      senders=senders,
-      receivers=receivers,
-      globals=tf.expand_dims(labels, axis=0),
-  )

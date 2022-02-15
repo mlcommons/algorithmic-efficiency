@@ -1,5 +1,5 @@
 """OGB workload implemented in Jax."""
-
+from absl import logging
 from typing import Optional, Tuple
 import functools
 import numpy as np
@@ -230,7 +230,7 @@ class OGBWorkload(OGB):
       data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
-    eval_batch_size = 256
+    eval_batch_size = 1024
     if self._eval_iterator is None:
       self._eval_iterator = self._build_iterator(
           data_rng, 'validation', data_dir, batch_size=eval_batch_size)
@@ -240,9 +240,11 @@ class OGBWorkload(OGB):
     total_metrics = None
     # Both val and test have the same (prime) number of examples.
     num_val_examples = 43793
-    num_val_steps = num_val_examples // eval_batch_size + 1
+    num_val_steps = (
+      num_val_examples // (eval_batch_size * jax.local_device_count()) + 1)
     # Loop over graph batches in eval dataset.
-    for _ in range(num_val_steps):
+    for s in range(num_val_steps):
+      logging.info(f'eval step {s}')
       graphs, labels, masks = next(self._eval_iterator)
       batch_metrics = self._eval_batch(
           params, graphs, labels, masks, model_state, model_rng)
