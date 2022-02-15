@@ -61,8 +61,8 @@ def _batch_for_pmap(iterator):
   labels = []
   masks = []
   count = 0
-  for graph_batch, label_batch, mask_batch in iterator:
-    graph_batch = _get_valid_mask(graph_batch)
+  for graphs in iterator:
+    graph_batch, label_batch, mask_batch = _get_valid_mask(graphs)
     count += 1
     graphs.append(graph_batch)
     labels.append(label_batch)
