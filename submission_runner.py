@@ -182,7 +182,8 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     with jax.profiler.StepTraceAnnotation("train", step_num=global_step):
       step_rng = prng.fold_in(rng, global_step)
       data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
-      start_time = time.time()
+      # start_time = time.time()
+      logging.info(f'starting step {global_step}')
       selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
           workload,
           input_queue,
@@ -191,6 +192,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
           hyperparameters,
           global_step,
           data_select_rng)
+      logging.info(f'starting update {global_step}')
       try:
         optimizer_state, model_params, model_state = update_params(
             workload=workload,
@@ -208,13 +210,14 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
             rng=update_rng)
       except spec.TrainingCompleteError:
         training_complete = True
+      logging.info(f'finished step {global_step}')
       global_step += 1
-      current_time = time.time()
-      latest_eval_result = workload.eval_model(model_params, model_state,
-                                              eval_rng, data_dir)
-      logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
-                  f'\t{latest_eval_result}')
-      eval_results.append((global_step, latest_eval_result))
+      # current_time = time.time()
+      # latest_eval_result = workload.eval_model(model_params, model_state,
+      #                                         eval_rng, data_dir)
+      # logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
+      #             f'\t{latest_eval_result}')
+      # eval_results.append((global_step, latest_eval_result))
   jax.profiler.stop_trace()
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics

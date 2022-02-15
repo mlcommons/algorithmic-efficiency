@@ -62,6 +62,7 @@ def _batch_for_pmap(iterator):
   masks = []
   count = 0
   for graph_batch, label_batch, mask_batch in iterator:
+    graph_batch = _get_valid_mask(graph_batch)
     count += 1
     graphs.append(graph_batch)
     labels.append(label_batch)
@@ -115,12 +116,10 @@ def get_dataset_iter(split_name: str,
         seed=dataset_shuffle_seed,
         reshuffle_each_iteration=True)
     dataset = dataset.repeat()
-  # We cache the validation and test sets, since these are small.
-  else:
-    dataset = dataset.cache()
+  # We do not need to cache the validation and test sets because we do this
+  # later with itertools.cycle.
 
-  # Batch and pad each split. Note that this also converts the graphs to
-  # numpy.
+  # Batch and pad each split. Note that this also converts the graphs to numpy.
   max_n_nodes = AVG_NODES_PER_GRAPH * batch_size
   max_n_edges = AVG_EDGES_PER_GRAPH * batch_size
   batched_iter = jraph.dynamically_batch(
@@ -129,12 +128,9 @@ def get_dataset_iter(split_name: str,
       n_edge=max_n_edges,
       n_graph=batch_size)
 
-  # An iterator of Tuple[graph, labels, mask].
-  masked_iter = map(_get_valid_mask, batched_iter)
-
   # An iterator the same as above, but where each element has an extra leading
   # dim of size jax.local_device_count().
-  pmapped_iterator = _batch_for_pmap(masked_iter)
+  pmapped_iterator = _batch_for_pmap(batched_iter)
   return pmapped_iterator
 
 
