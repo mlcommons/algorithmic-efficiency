@@ -179,29 +179,6 @@ class OGBWorkload(OGB):
     mean_loss = jnp.sum(jnp.where(mask_batch, loss, 0)) / jnp.sum(mask_batch)
     return mean_loss
 
-  def _compute_mean_average_precision(self, labels, logits, masks):
-    """Computes the mean average precision (mAP) over different tasks."""
-    # Matches the official OGB evaluation scheme for mean average precision.
-    assert logits.shape == labels.shape == masks.shape
-    assert len(logits.shape) == 2
-
-    probs = jax.nn.sigmoid(logits)
-    num_tasks = labels.shape[1]
-    average_precisions = np.full(num_tasks, np.nan)
-
-    for task in range(num_tasks):
-      # AP is only defined when there is at least one negative data
-      # and at least one positive data.
-      if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:, task] == 1) > 0:
-        is_labeled = masks[:, task]
-        average_precisions[task] = sklearn.metrics.average_precision_score(
-            labels[is_labeled, task], probs[is_labeled, task])
-
-    # When all APs are NaNs, return NaN. This avoids raising a RuntimeWarning.
-    if np.isnan(average_precisions).all():
-      return np.nan
-    return np.nanmean(average_precisions)
-
   def _eval_metric(self, labels, logits, masks):
     loss = self.loss_fn(labels, logits, masks)
     return metrics.EvalMetrics.single_from_model_output(
@@ -230,18 +207,19 @@ class OGBWorkload(OGB):
       data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
-    eval_batch_size = 1024
+    eval_per_core_batch_size = 1024
     if self._eval_iterator is None:
       self._eval_iterator = self._build_iterator(
-          data_rng, 'validation', data_dir, batch_size=eval_batch_size)
+          data_rng, 'validation', data_dir, batch_size=eval_per_core_batch_size)
       # Note that this effectively stores the entire val dataset in memory.
       self._eval_iterator = itertools.cycle(self._eval_iterator)
 
     total_metrics = None
     # Both val and test have the same (prime) number of examples.
     num_val_examples = 43793
-    num_val_steps = (
-      num_val_examples // (eval_batch_size * jax.local_device_count()) + 1)
+    total_eval_batch_size = eval_per_core_batch_size * jax.local_device_count()
+    # num_val_steps = num_val_examples // total_eval_batch_size + 1 DO NOT SUBMIT
+    num_val_steps = 1
     # Loop over graph batches in eval dataset.
     for s in range(num_val_steps):
       logging.info(f'eval step {s}')

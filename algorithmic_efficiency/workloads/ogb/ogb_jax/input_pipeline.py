@@ -57,8 +57,7 @@ def convert_to_graphs_tuple(graph: Dict[str, tf.Tensor],
       edges=edges,
       senders=senders,
       receivers=receivers,
-      globals=tf.expand_dims(labels, axis=0),
-  )
+      globals=tf.expand_dims(labels, axis=0))
 
 
 def _get_valid_mask(graphs: jraph.GraphsTuple):
