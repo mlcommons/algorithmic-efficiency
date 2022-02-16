@@ -140,7 +140,7 @@ if __name__ == '__main__':
   ]
   for subset in subset_list:
     print(subset)
-    df = get_txt('{}/{}'.format(data_dir, subset), output_label_dict,add_additional_blank=add_additional_blank)
+    df = get_txt('{}/{}'.format(data_dir, subset), output_label_dict, add_additional_blank=add_additional_blank)
     df.to_csv('data/trans_{}.csv'.format(subset))
 
   for subset in subset_list:
