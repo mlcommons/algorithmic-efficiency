@@ -218,11 +218,10 @@ class OGBWorkload(OGB):
     # Both val and test have the same (prime) number of examples.
     num_val_examples = 43793
     total_eval_batch_size = eval_per_core_batch_size * jax.local_device_count()
-    # num_val_steps = num_val_examples // total_eval_batch_size + 1 DO NOT SUBMIT
-    num_val_steps = 1
+    num_val_steps = num_val_examples // total_eval_batch_size + 1
     # Loop over graph batches in eval dataset.
     for s in range(num_val_steps):
-      logging.info(f'eval step {s}')
+      # logging.info(f'eval step {s}')
       graphs, labels, masks = next(self._eval_iterator)
       batch_metrics = self._eval_batch(
           params, graphs, labels, masks, model_state, model_rng)

@@ -209,7 +209,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
           rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-    logging.info(f'finished step {global_step}')
+    # logging.info(f'finished step {global_step}')
     global_step += 1
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
