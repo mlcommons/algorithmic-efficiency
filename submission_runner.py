@@ -176,13 +176,13 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
   training_complete = False
   global_start_time = time.time()
 
-  jax.profiler.start_trace("/tmp/tensorboard")
+  # jax.profiler.start_trace("/tmp/tensorboard")
   logging.info('Starting training loop.')
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    logging.info(f'starting step {global_step}')
+    # logging.info(f'starting step {global_step}')
     selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
         workload,
         input_queue,
@@ -191,7 +191,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
         hyperparameters,
         global_step,
         data_select_rng)
-    logging.info(f'starting update {global_step}')
+    # logging.info(f'starting update {global_step}')
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -225,7 +225,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-  jax.profiler.stop_trace()
+  # jax.profiler.stop_trace()
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics
 
