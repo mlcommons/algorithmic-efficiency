@@ -8,7 +8,8 @@ class OGB(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.25
+    # From Flax example https://tensorboard.dev/experiment/AAJqfvgSRJaA1MBkc0jMWQ/#scalars.
+    return 0.24
 
   @property
   def loss_type(self):
@@ -36,4 +37,4 @@ class OGB(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 360  # 60 minutes (too long)
+    return 120
