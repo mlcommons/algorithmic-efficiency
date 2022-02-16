@@ -9,15 +9,6 @@ import jax.numpy as jnp
 from flax import linen as nn
 
 
-class Sequential(nn.Module):
-  layers: Sequence[nn.Module]
-
-  def __call__(self, x):
-    for layer in self.layers:
-      x = layer(x)
-    return x
-
-
 class SequenceWise(nn.Module):
   """Collapses input of dim T*N*H to (T*N)*H, and applies to a module.
 
@@ -58,7 +49,7 @@ class MaskConv(nn.Module):
       mask = mask.astype(jnp.float32)
       x *= mask
     x = x.transpose(0, 3, 1, 2)
-    return x, lengths
+    return x
   
   
 @jax.vmap
@@ -114,21 +105,18 @@ class SimpleBiLSTM(nn.Module):
   """A simple bi-directional LSTM."""
   hidden_size: int
 
-  def setup(self):
-    self.forward_lstm = SimpleLSTM()
-    self.backward_lstm = SimpleLSTM()
-
+  @nn.compact
   def __call__(self, embedded_inputs, lengths):
     batch_size = embedded_inputs.shape[0]
 
     # Forward LSTM.
     initial_state = SimpleLSTM.initialize_carry((batch_size,), self.hidden_size)
-    _, forward_outputs = self.forward_lstm(initial_state, embedded_inputs)
+    _, forward_outputs = SimpleLSTM()(initial_state, embedded_inputs)
 
     # Backward LSTM.
     reversed_inputs = flip_sequences(embedded_inputs, lengths)
     initial_state = SimpleLSTM.initialize_carry((batch_size,), self.hidden_size)
-    _, backward_outputs = self.backward_lstm(initial_state, reversed_inputs)
+    _, backward_outputs = SimpleLSTM()(initial_state, reversed_inputs)
     backward_outputs = flip_sequences(backward_outputs, lengths)
 
     # Concatenate the forward and backward representations.
@@ -162,7 +150,6 @@ class BatchRNN(nn.Module):
 
 
 def hard_tanh(x, min_value=-1., max_value=1.):
-
   return jnp.where(x > max_value, max_value, jnp.where(x < min_value, min_value, x))
 
 
@@ -189,7 +176,8 @@ class CNNLSTM(nn.Module):
   hidden_layers = 5
   context = 20
 
-  def setup(self):
+  @nn.compact
+  def __call__(self, inputs, lengths, training=False):
     sequential = [
       nn.Conv(
         features=32,
@@ -208,7 +196,16 @@ class CNNLSTM(nn.Module):
       nn.BatchNorm(use_running_average=True),
       functools.partial(hard_tanh, min_value=0, max_value=20),
     ]
-    self.conv = MaskConv(sequential)
+
+    conv = MaskConv(sequential)
+
+    output_lengths = get_seq_lens(lengths, conv.seq_module)
+
+    x = conv(inputs, lengths)
+
+    sizes = x.shape
+    x = x.reshape(sizes[0], sizes[1] * sizes[2], sizes[3]) 
+    x = x.transpose(0, 2, 1).transpose(1, 0, 2)
 
     rnn_input_size = 161
     rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
@@ -229,29 +226,14 @@ class CNNLSTM(nn.Module):
           )
       rnns.append(rnn)
 
-    self.rnns = rnns
-
-    fully_connected = Sequential([
-      nn.BatchNorm(use_running_average=True),
-      nn.Dense(self.num_classes, use_bias=False)
-    ])
-
-    self.fc = SequenceWise(fully_connected)
-
-  def __call__(self, inputs, lengths, training=False):
-    output_lengths = get_seq_lens(lengths, self.conv.seq_module)
-
-    x, _ = self.conv(inputs, lengths)
-
-    sizes = x.shape
-    x = x.reshape(sizes[0], sizes[1] * sizes[2],
-               sizes[3]) 
-    x = x.transpose(0, 2, 1).transpose(1, 0, 2)
-
-    for rnn in self.rnns:
+    for rnn in rnns:
       x = rnn(x, output_lengths, training=training)
-    
-    x = self.fc(x, training=training)
+
+    t, n = x.shape[0], x.shape[1]
+    x = jnp.reshape(x, (t * n, -1))
+    x = nn.BatchNorm(use_running_average=True)(x)
+    x = nn.Dense(self.num_classes, use_bias=False)(x)
+    x = jnp.reshape(x, (t, n, -1))
     log_probs = jax.nn.log_softmax(x, axis=-1).transpose(1, 0, 2)
 
     return log_probs, output_lengths
