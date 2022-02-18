@@ -46,9 +46,36 @@ def convert_to_graphs_tuple(graph: Dict[str, tf.Tensor],
   num_edges = tf.squeeze(graph['num_edges'])
   nodes = graph['node_feat']
   edges = graph['edge_feat']
+  edge_feature_dim = edges.shape[-1]
   labels = graph['labels']
   senders = graph['edge_index'][:, 0]
   receivers = graph['edge_index'][:, 1]
+
+  nodes = tf.concat(
+      [nodes, tf.zeros_like(nodes[0, None])], axis=0)
+  senders = tf.concat(
+      [senders, tf.range(num_nodes)], axis=0)
+  receivers = tf.concat(
+      [receivers, tf.fill((num_nodes,), num_nodes + 1)], axis=0)
+  edges = tf.concat(
+      [edges, tf.zeros(tf.stack([num_nodes, edge_feature_dim]))], axis=0)
+  num_edges += num_nodes
+  num_nodes += 1
+
+  # Make edges undirected, by adding edges with senders and receivers flipped.
+  # The feature vector for the flipped edge is the same as the original edge.
+  new_senders = tf.concat([senders, receivers], axis=0)
+  new_receivers = tf.concat([receivers, senders], axis=0)
+  edges = tf.concat([edges, edges], axis=0)
+  senders, receivers = new_senders, new_receivers
+  num_edges *= 2
+
+  # Add self-loops for each node.
+  # The feature vectors for the self-loops are set to all zeros.
+  senders = tf.concat([senders, tf.range(num_nodes)], axis=0)
+  receivers = tf.concat([receivers, tf.range(num_nodes)], axis=0)
+  edges = tf.concat([edges, tf.zeros((num_nodes, edge_feature_dim))], axis=0)
+  num_edges += num_nodes
 
   return jraph.GraphsTuple(
       n_node=tf.expand_dims(num_nodes, 0),
