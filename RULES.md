@@ -1,6 +1,6 @@
 # MLCommons™ Algorithmic Efficiency Benchmark Rules
 
-**Version:** 0.0.2 *(Updated 21 September 2021)*
+**Version:** 0.0.3 *(Last updated 22 February 2022)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -257,6 +257,16 @@ Submissions can also be based on learned training algorithms.
 - In the [Self-tuning Ruleset](#self-tuning-ruleset), submissions could try out a learned list of hyperparameters.
 
 </details>
+<br>
+
+Submissions can use additional software dependencies provided they have the intention of supporting new algorithmic and mathematical ideas. The procedure for adding dependencies is described in more detail in the [Software Dependencies](#software-dependencies) Section.
+
+<details>
+<summary>Examples:</summary>
+
+- [`BackPACK`](https://docs.backpack.pt/en/master/index.html) is a `pip` package that hooks into `PyTorch` to extract additional information from the backward pass. An allowed use of `BackPACK` would be to compute batch statistics (e.g. within-batch gradient variances, etc.) to calibrate or auto-tune training algorithms.
+
+</details>
 
 ##### Disallowed submissions
 
@@ -292,6 +302,25 @@ It is not allowed to compute any kind of pairwise metrics between the public wor
 - On a held-out workload, submissions are not allowed to find the nearest neighbor among the public workloads to set any hyperparameter.
 
 </details>
+<br>
+
+Valid submissions must rely on new algorithmic or mathematical ideas and should not use software engineering approaches to speed up primitive operations in `PyTorch`, `JAX`, their dependencies, the operating system, or the hardware.
+
+<details>
+<summary>Examples:</summary>
+
+- Submitters are not allowed to use faster GPU kernels than other submitters by writing their own, using `TVM`, or using a different version of `cuDNN`/`cuBLAS`.
+- Submitters are not allowed to skip or reduce system or framework overhead, such as modifying `JAX` to skip internal steps like pytree flattening/unflattening.
+- Submitters are not allowed to reorder the schedule of operations, such as using `CUDA` streams to parallelize GPU kernels.
+- Submitters are not allowed to introduce new compiler optimizations, such as modifying `XLA` to perform more or less kernel fusion.
+- Submitters are not allowed to have a load-balancing algorithm to vary the amount of work performed on the CPU, GPU, OS subsystems, or compute units such as Tensor cores.
+- In general, submissions can make clever, judicious, and efficient use of public APIs in `JAX` and/or `PyTorch` but should not be trying to optimize the internals of primitive operations and standard dependencies.
+
+</details>
+
+##### Software Dependencies
+
+We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) Section. In case of doubts, these additional dependencies will be judged by the spirit jury.
 
 ### Tuning
 
