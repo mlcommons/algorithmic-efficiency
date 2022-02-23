@@ -54,6 +54,10 @@ WORKLOADS = {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
         'workload_class_name': 'WMTWorkload'
     },
+    'wmt_pytorch': {
+        'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_pytorch/workload.py',
+        'workload_class_name': 'WMTWorkload'
+    },
     'librispeech_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
