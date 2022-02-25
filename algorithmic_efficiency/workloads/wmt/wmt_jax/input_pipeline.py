@@ -298,7 +298,8 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
 def get_wmt_datasets(vocab_size: int,
                      batch_size: int,
                      reverse_translation: bool = True,
-                     vocab_path: Optional[str] = None):
+                     vocab_path: Optional[str] = None,
+                     pack_examples: bool = True):
   """Load and return dataset of batched examples for use during training."""
   if vocab_path is None:
     vocab_path = os.path.expanduser('~/wmt_sentencepiece_model')
@@ -326,7 +327,7 @@ def get_wmt_datasets(vocab_size: int,
       train_data,
       shuffle=True,
       num_epochs=None,
-      pack_examples=True,
+      pack_examples=pack_examples,
       batch_size=batch_size,
       max_length=256)
 
