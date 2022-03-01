@@ -8,7 +8,8 @@ class OGB(spec.Workload):
 
   @property
   def target_value(self):
-    # From Flax example https://tensorboard.dev/experiment/AAJqfvgSRJaA1MBkc0jMWQ/#scalars.
+    # From Flax example
+    # https://tensorboard.dev/experiment/AAJqfvgSRJaA1MBkc0jMWQ/#scalars.
     return 0.24
 
   @property

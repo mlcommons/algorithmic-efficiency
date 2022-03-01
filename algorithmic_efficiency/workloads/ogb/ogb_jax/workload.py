@@ -1,15 +1,11 @@
 """OGB workload implemented in Jax."""
-from absl import logging
 from typing import Optional, Tuple
+
 import functools
-import numpy as np
-from flax import linen as nn
 from flax import jax_utils
 import itertools
 import jax
 import jax.numpy as jnp
-import jraph
-import sklearn.metrics
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
@@ -127,6 +123,7 @@ class OGBWorkload(OGB):
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
+    del update_batch_norm  # No BN in the GNN model.
     assert model_state is None
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply(
@@ -210,8 +207,7 @@ class OGBWorkload(OGB):
     total_eval_batch_size = eval_per_core_batch_size * jax.local_device_count()
     num_val_steps = num_val_examples // total_eval_batch_size + 1
     # Loop over graph batches in eval dataset.
-    for s in range(num_val_steps):
-      # logging.info(f'eval step {s}')
+    for _ in range(num_val_steps):
       graphs, labels, masks = next(self._eval_iterator)
       batch_metrics = self._eval_batch(
           params, graphs, labels, masks, model_state, model_rng)

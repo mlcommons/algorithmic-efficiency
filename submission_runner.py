@@ -12,11 +12,8 @@ python3 submission_runner.py \
 """
 import importlib
 import inspect
-import jax
 import json
 import os
-# Enable flax xprof trace labelling.
-os.environ['FLAX_PROFILE'] = 'true'
 import struct
 import time
 from typing import Optional, Tuple
@@ -35,34 +32,34 @@ BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 WORKLOADS = {
     'mnist_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_jax/workload.py',
-        'workload_class_name': 'MnistWorkload'
+        'workload_class_name': 'MnistWorkload',
     },
     'mnist_pytorch': {
         'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_pytorch/workload.py',
-        'workload_class_name': 'MnistWorkload'
+        'workload_class_name': 'MnistWorkload',
     },
     'imagenet_jax': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
-        'workload_class_name': 'ImagenetWorkload'
+        'workload_class_name': 'ImagenetWorkload',
     },
     'imagenet_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name': 'ImagenetWorkload'
+        'workload_class_name': 'ImagenetWorkload',
     },
     'ogb_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'ogb/ogb_jax/workload.py',
-        'workload_class_name': 'OGBWorkload'
+        'workload_class_name': 'OGBWorkload',
     },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
-        'workload_class_name': 'WMTWorkload'
+        'workload_class_name': 'WMTWorkload',
     },
     'librispeech_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
-        'workload_class_name': 'LibriSpeechWorkload'
+        'workload_class_name': 'LibriSpeechWorkload',
     }
 }
 
@@ -176,13 +173,11 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
   training_complete = False
   global_start_time = time.time()
 
-  # jax.profiler.start_trace("/tmp/tensorboard")
   logging.info('Starting training loop.')
   while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    # logging.info(f'starting step {global_step}')
     selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
         workload,
         input_queue,
@@ -191,7 +186,6 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
         hyperparameters,
         global_step,
         data_select_rng)
-    # logging.info(f'starting update {global_step}')
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -209,7 +203,6 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
           rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-    # logging.info(f'finished step {global_step}')
     global_step += 1
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
@@ -221,11 +214,10 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
       latest_eval_result = workload.eval_model(model_params, model_state,
                                                 eval_rng, data_dir)
       logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
-                    f'\t{latest_eval_result}')
+                   f'\t{latest_eval_result}')
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-  # jax.profiler.stop_trace()
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics
 
@@ -239,7 +231,7 @@ def score_submission_on_workload(
     tuning_search_space: Optional[str] = None,
     num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = _convert_filepath_to_module(FLAGS.submission_path)
+  submission_module_path = _convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state

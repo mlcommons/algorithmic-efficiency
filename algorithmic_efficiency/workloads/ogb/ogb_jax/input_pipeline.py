@@ -5,8 +5,7 @@
 
 """Exposes the ogbg-molpcba dataset in a convenient format."""
 
-import functools
-from typing import Any, Dict, NamedTuple
+from typing import NamedTuple
 import jax
 import jraph
 import numpy as np
@@ -16,13 +15,6 @@ import tensorflow_datasets as tfds
 
 AVG_NODES_PER_GRAPH = 26
 AVG_EDGES_PER_GRAPH = 56
-
-
-class GraphsTupleSize(NamedTuple):
-  """Helper class to represent padding and graph sizes."""
-  n_node: int
-  n_edge: int
-  n_graph: int
 
 
 def _load_dataset(split, should_shuffle, data_rng, data_dir):

@@ -1,12 +1,9 @@
 from typing import Iterator, List, Optional, Tuple
 
-import functools
-import numpy as np
 import jax
 import jax.numpy as jnp
 from jax import lax
 from flax import jax_utils
-import jraph
 import optax
 
 from algorithmic_efficiency import spec
@@ -17,36 +14,34 @@ def get_batch_size(workload_name):
   return batch_sizes[workload_name]
 
 
-def optimizer(hyperparameters: spec.Hyperparamters) -> optax.GradientTransformation:
-  """Creates an optimizer."""
-  opt_init_fn, opt_update_fn = optax.adam(
-      learning_rate=hyperparameters.learning_rate)
-  return opt_init_fn, opt_update_fn
-
-
 def init_optimizer_state(
     workload: spec.Workload,
     model_params: spec.ParameterContainer,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
     rng: spec.RandomState) -> spec.OptimizerState:
+  """Creates an Adam optimizer."""
+  del model_params
+  del model_state
+  del rng
   params_zeros_like = jax.tree_map(
       lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
-  opt_init_fn, opt_update_fn = optimizer(hyperparameters)
-  init_optimizer_state = opt_init_fn(params_zeros_like)
-  return jax_utils.replicate(init_optimizer_state), opt_update_fn
+  opt_init_fn, opt_update_fn = opt_init_fn, opt_update_fn = optax.adam(
+      learning_rate=hyperparameters.learning_rate)
+  optimizer_state = opt_init_fn(params_zeros_like)
+  return jax_utils.replicate(optimizer_state), opt_update_fn
 
 
-# We need to jax.pmap here instead of inside update_params because the latter
-# would recompile the function every step.
-@functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, 0, 0, None),
-    static_broadcasted_argnums=(0, 1))
-def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
-                       current_param_container, hyperparameters, input_batch,
-                       label_batch, mask_batch, rng):
+def train_step(workload,
+               opt_update_fn,
+               model_state,
+               optimizer_state,
+               current_param_container,
+               hyperparameters,
+               input_batch,
+               label_batch,
+               mask_batch,
+               rng):
   del hyperparameters
 
   def loss_fn(params):
@@ -70,7 +65,6 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
   return new_model_state, new_optimizer_state, updated_params
 
 
-@jax.profiler.annotate_function
 def update_params(
     workload: spec.Workload,
     current_param_container: spec.ParameterContainer,
@@ -93,15 +87,16 @@ def update_params(
   del global_step
 
   optimizer_state, opt_update_fn = optimizer_state
+  pmapped_train_step = jax.pmap(
+      train_step,
+      axis_name='batch',
+      in_axes=(None, None, 0, 0, 0, None, 0, 0, 0, None),
+      static_broadcasted_argnums=(0, 1))
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, input_batch, label_batch,
       mask_batch, rng)
 
-  #steps_per_epoch = workload.num_train_examples // get_batch_size('ogb_jax')
-  #if (global_step + 1) % steps_per_epoch == 0:
-  #  # sync batch statistics across replicas once per epoch
-  #  new_model_state = workload.sync_batch_stats(new_model_state)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
@@ -114,4 +109,10 @@ def data_selection(
     global_step: int,
     rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue."""
+  del workload
+  del optimizer_state
+  del current_param_container
+  del hyperparameters
+  del global_step
+  del rng
   return next(input_queue)
