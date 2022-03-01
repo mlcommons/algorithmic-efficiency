@@ -212,7 +212,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
       latest_eval_result = workload.eval_model(model_params, model_state,
-                                                eval_rng, data_dir)
+                                               eval_rng, data_dir)
       logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
                    f'\t{latest_eval_result}')
       last_eval_time = current_time

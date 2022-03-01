@@ -10,6 +10,7 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
+  # Return the per-device batch size.
   batch_sizes = {'ogb_jax': 256}
   return batch_sizes[workload_name]
 
