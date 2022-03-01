@@ -17,9 +17,11 @@ def predictions_match_labels(*, logits: jnp.ndarray, labels: jnp.ndarray,
   return (preds == labels).astype(jnp.float32)
 
 
+# Following the Flax OGB example:
+# https://github.com/google/flax/blob/main/examples/ogbg_molpcba/train.py
 @flax.struct.dataclass
 class MeanAveragePrecision(
-    metrics.CollectingMetric.from_outputs(('labels', 'logits', 'mask'))):
+    metrics.CollectingMetric.from_outputs(('logits', 'labels', 'mask'))):
   """Computes the mean average precision (mAP) over different tasks."""
 
   def compute(self):
@@ -28,8 +30,7 @@ class MeanAveragePrecision(
     logits = self.values['logits']
     mask = self.values['mask']
 
-    assert logits.shape == labels.shape == mask.shape
-    assert len(logits.shape) == 2
+    mask = mask.astype(np.bool)
 
     probs = jax.nn.sigmoid(logits)
     num_tasks = labels.shape[1]
@@ -38,7 +39,8 @@ class MeanAveragePrecision(
     for task in range(num_tasks):
       # AP is only defined when there is at least one negative data
       # and at least one positive data.
-      if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:, task] == 1) > 0:
+      if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:,
+                                                              task] == 1) > 0:
         is_labeled = mask[:, task]
         average_precisions[task] = average_precision_score(
             labels[is_labeled, task], probs[is_labeled, task])

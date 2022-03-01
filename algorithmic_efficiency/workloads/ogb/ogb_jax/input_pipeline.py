@@ -1,5 +1,7 @@
 # Forked from Flax example which can be found here:
 # https://github.com/google/flax/blob/main/examples/ogbg_molpcba/input_pipeline.py
+# and from the init2winit fork here
+# https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/ogbg_molpcba.py
 
 """Exposes the ogbg-molpcba dataset in a convenient format."""
 
@@ -9,9 +11,6 @@ import jax
 import jraph
 import numpy as np
 import tensorflow as tf
-# Hide any GPUs from TensorFlow. Otherwise TF might reserve memory and make
-# it unavailable to JAX.
-tf.config.experimental.set_visible_devices([], 'GPU')
 import tensorflow_datasets as tfds
 
 
@@ -26,159 +25,147 @@ class GraphsTupleSize(NamedTuple):
   n_graph: int
 
 
-def _get_raw_dataset(
-  split_name: str,
-  data_dir: str,
-  file_shuffle_seed: Any) -> Dict[str, tf.data.Dataset]:
-  """Returns datasets as tf.data.Dataset, organized by split."""
-  ds_builder = tfds.builder('ogbg_molpcba', data_dir=data_dir)
-  ds_builder.download_and_prepare()
-  config = tfds.ReadConfig(shuffle_seed=file_shuffle_seed)
-  return ds_builder.as_dataset(split=split_name, read_config=config)
+def _load_dataset(split, should_shuffle, data_rng, data_dir):
+  """Loads a dataset split from TFDS."""
+  if should_shuffle:
+    file_data_rng, dataset_data_rng = jax.random.split(data_rng)
+    file_data_rng = file_data_rng[0]
+    dataset_data_rng = dataset_data_rng[0]
+  else:
+    file_data_rng = None
+    dataset_data_rng = None
+
+  read_config = tfds.ReadConfig(add_tfds_id=True, shuffle_seed=file_data_rng)
+  dataset = tfds.load(
+      'ogbg_molpcba',
+      split=split,
+      shuffle_files=should_shuffle,
+      read_config=read_config,
+      data_dir=data_dir)
+
+  if should_shuffle:
+    dataset = dataset.shuffle(
+        seed=dataset_data_rng, buffer_size=2 ** 15)
+    dataset = dataset.repeat()
+
+  return dataset
 
 
-def convert_to_graphs_tuple(graph: Dict[str, tf.Tensor],
-                            add_virtual_node: bool,
-                            add_undirected_edges: bool,
-                            add_self_loops: bool) -> jraph.GraphsTuple:
-  """Converts a dictionary of tf.Tensors to a GraphsTuple."""
-  num_nodes = tf.squeeze(graph['num_nodes'])
-  num_edges = tf.squeeze(graph['num_edges'])
-  nodes = graph['node_feat']
-  edges = graph['edge_feat']
-  edge_feature_dim = edges.shape[-1]
-  labels = graph['labels']
-  senders = graph['edge_index'][:, 0]
-  receivers = graph['edge_index'][:, 1]
+def _to_jraph(example):
+  """Converts an example graph to jraph.GraphsTuple."""
+  example = jax.tree_map(lambda x: x._numpy(), example)  # pylint: disable=protected-access
+  edge_feat = example['edge_feat']
+  node_feat = example['node_feat']
+  edge_index = example['edge_index']
+  labels = example['labels']
+  num_nodes = example['num_nodes']
 
-  nodes = tf.concat(
-      [nodes, tf.zeros_like(nodes[0, None])], axis=0)
-  senders = tf.concat(
-      [senders, tf.range(num_nodes)], axis=0)
-  receivers = tf.concat(
-      [receivers, tf.fill((num_nodes,), num_nodes + 1)], axis=0)
-  edges = tf.concat(
-      [edges, tf.zeros(tf.stack([num_nodes, edge_feature_dim]))], axis=0)
-  num_edges += num_nodes
-  num_nodes += 1
-
-  # Make edges undirected, by adding edges with senders and receivers flipped.
-  # The feature vector for the flipped edge is the same as the original edge.
-  new_senders = tf.concat([senders, receivers], axis=0)
-  new_receivers = tf.concat([receivers, senders], axis=0)
-  edges = tf.concat([edges, edges], axis=0)
-  senders, receivers = new_senders, new_receivers
-  num_edges *= 2
-
-  # Add self-loops for each node.
-  # The feature vectors for the self-loops are set to all zeros.
-  senders = tf.concat([senders, tf.range(num_nodes)], axis=0)
-  receivers = tf.concat([receivers, tf.range(num_nodes)], axis=0)
-  edges = tf.concat([edges, tf.zeros((num_nodes, edge_feature_dim))], axis=0)
-  num_edges += num_nodes
+  senders = edge_index[:, 0]
+  receivers = edge_index[:, 1]
 
   return jraph.GraphsTuple(
-      n_node=tf.expand_dims(num_nodes, 0),
-      n_edge=tf.expand_dims(num_edges, 0),
-      nodes=nodes,
-      edges=edges,
-      senders=senders,
-      receivers=receivers,
-      globals=tf.expand_dims(labels, axis=0))
+      n_node=num_nodes,
+      n_edge=np.array([len(edge_index) * 2]),
+      nodes=node_feat,
+      edges=np.concatenate([edge_feat, edge_feat]),
+      # Make the edges bidirectional
+      senders=np.concatenate([senders, receivers]),
+      receivers=np.concatenate([receivers, senders]),
+      # Keep the labels with the graph for batching. They will be removed
+      # in the processed batch.
+      globals=np.expand_dims(labels, axis=0))
 
 
-def _get_valid_mask(graphs: jraph.GraphsTuple):
-  """Gets the binary mask indicating only valid labels and graphs."""
-  labels = graphs.globals
-  # We have to ignore all NaN values - which indicate labels for which
-  # the current graphs have no label.
-  labels_masks = ~np.isnan(labels)
+def _get_weights_by_nan_and_padding(labels, padding_mask):
+  """Handles NaNs and padding in labels.
 
-  # Since we have extra 'dummy' graphs in our batch due to padding, we want
-  # to mask out any loss associated with the dummy graphs.
-  # Since we padded with `pad_with_graphs` we can recover the mask by using
-  # get_graph_padding_mask.
-  graph_masks = jraph.get_graph_padding_mask(graphs)
+  Sets all the weights from examples coming from padding to 0. Changes all NaNs
+  in labels to 0s and sets the corresponding per-label weight to 0.
 
-  # Combine the mask over labels with the mask over graphs.
-  masks = labels_masks & graph_masks[:, None]
-  graphs = graphs._replace(globals=[])
-  return graphs, labels, masks
+  Args:
+    labels: Labels including labels from padded examples
+    padding_mask: Binary array of which examples are padding
+  Returns:
+    tuple of (processed labels, corresponding weights)
+  """
+  nan_mask = np.isnan(labels)
+  replaced_labels = np.copy(labels)
+  np.place(replaced_labels, nan_mask, 0)
 
-
-def _batch_for_pmap(iterator):
-  graphs = []
-  labels = []
-  masks = []
-  count = 0
-  for batch in iterator:
-    graph_batch, label_batch, mask_batch = _get_valid_mask(batch)
-    count += 1
-    graphs.append(graph_batch)
-    labels.append(label_batch)
-    masks.append(mask_batch)
-    if count == jax.local_device_count():
-      graphs = jax.tree_multimap(lambda *x: np.stack(x, axis=0), *graphs)
-      labels = np.stack(labels)
-      masks = np.stack(masks)
-      yield graphs, labels, masks
-      graphs = []
-      labels = []
-      masks = []
-      count = 0
+  weights = 1.0 - nan_mask
+  # Weights for all labels of a padded element will be 0
+  weights = weights * padding_mask[:, None]
+  return replaced_labels, weights
 
 
-def get_dataset_iter(split_name: str,
-                     data_rng: jax.random.PRNGKey,
-                     data_dir: str,
-                     batch_size: int,
-                     add_virtual_node: bool = True,
-                     add_undirected_edges: bool = True,
-                     add_self_loops: bool = True) -> Dict[str, tf.data.Dataset]:
-  """Returns datasets of batched GraphsTuples, organized by split."""
-  if batch_size <= 1:
-    raise ValueError('Batch size must be > 1 to account for padding graphs.')
+def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
+  """Turns a per-example iterator into a batched iterator.
 
-  file_shuffle_seed, dataset_shuffle_seed = jax.random.split(data_rng)
-  file_shuffle_seed = file_shuffle_seed[0]
-  dataset_shuffle_seed = dataset_shuffle_seed[0]
+  Constructs the batch from num_shards smaller batches, so that we can easily
+  shard the batch to multiple devices during training. We use
+  dynamic batching, so we specify some max number of graphs/nodes/edges, add
+  as many graphs as we can, and then pad to the max values.
 
-  # Obtain the original datasets.
-  dataset = _get_raw_dataset(split_name, data_dir, file_shuffle_seed)
+  Args:
+    dataset_iter: The TFDS dataset iterator.
+    batch_size: How many average-sized graphs go into the batch.
+    num_shards: How many devices we should be able to shard the batch into.
+  Yields:
+    Batch in the init2winit format. Each field is a list of num_shards separate
+    smaller batches.
+  """
+  if not num_shards:
+    num_shards = jax.device_count()
 
-  # Construct the GraphsTuple converter function.
-  convert_to_graphs_tuple_fn = functools.partial(
-      convert_to_graphs_tuple,
-      add_virtual_node=add_self_loops,
-      add_undirected_edges=add_undirected_edges,
-      add_self_loops=add_virtual_node,
-  )
+  # We will construct num_shards smaller batches and then put them together.
+  batch_size /= num_shards
 
-  dataset = dataset.map(
-      convert_to_graphs_tuple_fn,
-      num_parallel_calls=tf.data.AUTOTUNE,
-      deterministic=True)
-
-  # Repeat and shuffle the training split.
-  if split_name == 'train':
-    dataset = dataset.shuffle(
-        buffer_size=2**15,
-        seed=dataset_shuffle_seed,
-        reshuffle_each_iteration=True)
-    dataset = dataset.repeat()
-  # We do not need to cache the validation and test sets because we do this
-  # later with itertools.cycle.
-
-  # Batch and pad each split. Note that this also converts the graphs to numpy.
   max_n_nodes = AVG_NODES_PER_GRAPH * batch_size
   max_n_edges = AVG_EDGES_PER_GRAPH * batch_size
-  batched_iter = jraph.dynamically_batch(
-      graphs_tuple_iterator=iter(dataset),
-      n_node=max_n_nodes,
-      n_edge=max_n_edges,
-      n_graph=batch_size)
+  max_n_graphs = batch_size
 
-  # An iterator the same as above, but where each element has an extra leading
-  # dim of size jax.local_device_count().
-  pmapped_iterator = _batch_for_pmap(batched_iter)
-  return pmapped_iterator
+  jraph_iter = map(_to_jraph, dataset_iter)
+  batched_iter = jraph.dynamically_batch(jraph_iter, max_n_nodes + 1,
+                                         max_n_edges, max_n_graphs + 1)
+
+  count = 0
+  graphs_shards = []
+  labels_shards = []
+  weights_shards = []
+
+  for batched_graph in batched_iter:
+    count += 1
+
+    # Separate the labels from the graph
+    labels = batched_graph.globals
+    graph = batched_graph._replace(globals={})
+
+    replaced_labels, weights = _get_weights_by_nan_and_padding(
+        labels, jraph.get_graph_padding_mask(graph))
+
+    graphs_shards.append(graph)
+    labels_shards.append(replaced_labels)
+    weights_shards.append(weights)
+
+    if count == num_shards:
+      def f(x):
+        return jax.tree_map(lambda *vals: np.stack(vals, axis=0), x[0], *x[1:])
+
+      graphs_shards = f(graphs_shards)
+      labels_shards = f(labels_shards)
+      weights_shards = f(weights_shards)
+      yield (graphs_shards, labels_shards, weights_shards)
+
+      count = 0
+      graphs_shards = []
+      labels_shards = []
+      weights_shards = []
+
+
+def get_dataset_iter(split,  data_rng, data_dir, batch_size):
+  ds = _load_dataset(
+      split,
+      should_shuffle=(split == 'train'),
+      data_rng=data_rng,
+      data_dir=data_dir)
+  return _get_batch_iterator(iter(ds), batch_size)

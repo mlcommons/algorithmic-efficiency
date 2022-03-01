@@ -25,14 +25,7 @@ class OGBWorkload(OGB):
     self._eval_iterator = None
     self._param_shapes = None
     self._init_graphs = None
-    self._model = models.GraphConvNet(
-        latent_size=256,
-        num_mlp_layers=2,
-        message_passing_steps=5,
-        output_globals_size=128,
-        dropout_rate=0.1,
-        skip_connections=True,
-        layer_norm=True)
+    self._model = models.GNN()
 
   def _build_iterator(
       self,
@@ -44,12 +37,9 @@ class OGBWorkload(OGB):
         split,
         data_rng,
         data_dir,
-        batch_size,
-        add_virtual_node=False,
-        add_undirected_edges=True,
-        add_self_loops=True)
+        batch_size)
     if self._init_graphs is None:
-      init_graphs = next(dataset_iter)[0]
+      init_graphs, _, _ = next(dataset_iter)
       # Unreplicate the iterator that has the leading dim for pmapping.
       self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
     return dataset_iter
@@ -107,7 +97,8 @@ class OGBWorkload(OGB):
           'called before workload.init_model_fn()!'
       )
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
-    params = jax.jit(functools.partial(self._model.init, train=False))(
+    init_fn = jax.jit(functools.partial(self._model.init, train=False))
+    params = init_fn(
         {'params': params_rng, 'dropout': dropout_rng}, self._init_graphs)
     params = params['params']
     self._param_shapes = jax.tree_map(
@@ -138,12 +129,11 @@ class OGBWorkload(OGB):
     """Get predicted logits from the network for input graphs."""
     assert model_state is None
     train = mode == spec.ForwardPassMode.TRAIN
-    pred_graphs = self._model.apply(
+    logits = self._model.apply(
         {'params': params},
         input_batch,
         rngs={'dropout': rng},
         train=train)
-    logits = pred_graphs.globals
     return logits, None
 
   def _binary_cross_entropy_with_mask(

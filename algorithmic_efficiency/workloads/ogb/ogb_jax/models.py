@@ -1,176 +1,77 @@
-# Forked from Flax example which can be found here:
-# https://github.com/google/flax/blob/main/examples/ogbg_molpcba/models.py
-
-"""Definition of the GNN model."""
-
-from typing import Callable, Sequence
+# Forked from the init2winit implementation here
+# https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
+from typing import Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
 import jraph
 
 
-def add_graphs_tuples(graphs: jraph.GraphsTuple,
-                      other_graphs: jraph.GraphsTuple) -> jraph.GraphsTuple:
-  """Adds the nodes, edges and global features from other_graphs to graphs."""
-  return graphs._replace(
-      nodes=graphs.nodes + other_graphs.nodes,
-      edges=graphs.edges + other_graphs.edges,
-      globals=graphs.globals + other_graphs.globals)
+def _make_embed(latent_dim):
+
+  def make_fn(inputs):
+    return nn.Dense(features=latent_dim)(inputs)
+
+  return make_fn
 
 
-class MLP(nn.Module):
-  """A multi-layer perceptron."""
+def _make_mlp(hidden_dims, dropout):
+  """Creates a MLP with specified dimensions."""
 
-  feature_sizes: Sequence[int]
-  dropout_rate: float = 0
-  deterministic: bool = True
-  activation: Callable[[jnp.ndarray], jnp.ndarray] = nn.relu
-
-  @nn.compact
-  def __call__(self, inputs):
+  @jraph.concatenated_args
+  def make_fn(inputs):
     x = inputs
-    for size in self.feature_sizes:
-      x = nn.Dense(features=size)(x)
-      x = self.activation(x)
-      x = nn.Dropout(
-          rate=self.dropout_rate, deterministic=self.deterministic)(x)
+    for dim in hidden_dims:
+      x = nn.Dense(features=dim)(x)
+      x = nn.LayerNorm()(x)
+      x = nn.relu(x)
+      x = dropout(x)
     return x
 
-
-class GraphNet(nn.Module):
-  """A complete Graph Network model defined with Jraph."""
-
-  latent_size: int
-  num_mlp_layers: int
-  message_passing_steps: int
-  output_globals_size: int
-  dropout_rate: float = 0
-  skip_connections: bool = True
-  use_edge_model: bool = True
-  layer_norm: bool = True
-
-  @nn.compact
-  def __call__(self, graphs: jraph.GraphsTuple, train: bool) -> jraph.GraphsTuple:
-    # We will first linearly project the original features as 'embeddings'.
-    embedder = jraph.GraphMapFeatures(
-        embed_node_fn=nn.Dense(self.latent_size),
-        embed_edge_fn=nn.Dense(self.latent_size),
-        embed_global_fn=nn.Dense(self.latent_size))
-    processed_graphs = embedder(graphs)
-
-    # Now, we will apply a Graph Network once for each message-passing round.
-    mlp_feature_sizes = [self.latent_size] * self.num_mlp_layers
-    for _ in range(self.message_passing_steps):
-      if self.use_edge_model:
-        update_edge_fn = jraph.concatenated_args(
-            MLP(mlp_feature_sizes,
-                dropout_rate=self.dropout_rate,
-                deterministic=not train))
-      else:
-        update_edge_fn = None
-
-      update_node_fn = jraph.concatenated_args(
-          MLP(mlp_feature_sizes,
-              dropout_rate=self.dropout_rate,
-              deterministic=not train))
-      update_global_fn = jraph.concatenated_args(
-          MLP(mlp_feature_sizes,
-              dropout_rate=self.dropout_rate,
-              deterministic=not train))
-
-      graph_net = jraph.GraphNetwork(
-          update_node_fn=update_node_fn,
-          update_edge_fn=update_edge_fn,
-          update_global_fn=update_global_fn)
-
-      if self.skip_connections:
-        processed_graphs = add_graphs_tuples(
-            graph_net(processed_graphs), processed_graphs)
-      else:
-        processed_graphs = graph_net(processed_graphs)
-
-      if self.layer_norm:
-        processed_graphs = processed_graphs._replace(
-            nodes=nn.LayerNorm()(processed_graphs.nodes),
-            edges=nn.LayerNorm()(processed_graphs.edges),
-            globals=nn.LayerNorm()(processed_graphs.globals),
-        )
-
-    # Since our graph-level predictions will be at globals, we will
-    # decode to get the required output logits.
-    decoder = jraph.GraphMapFeatures(
-        embed_global_fn=nn.Dense(self.output_globals_size))
-    processed_graphs = decoder(processed_graphs)
-
-    return processed_graphs
+  return make_fn
 
 
-class GraphConvNet(nn.Module):
-  """A Graph Convolution Network + Pooling model defined with Jraph."""
-
-  latent_size: int
-  num_mlp_layers: int
-  message_passing_steps: int
-  output_globals_size: int
-  dropout_rate: float = 0
-  skip_connections: bool = True
-  layer_norm: bool = True
-  pooling_fn: Callable[[jnp.ndarray, jnp.ndarray, jnp.ndarray],
-                       jnp.ndarray] = jraph.segment_mean
-
-  def pool(self, graphs: jraph.GraphsTuple) -> jraph.GraphsTuple:
-    """Pooling operation, taken from Jraph."""
-
-    # Equivalent to jnp.sum(n_node), but JIT-able.
-    sum_n_node = graphs.nodes.shape[0]
-    # To aggregate nodes from each graph to global features,
-    # we first construct tensors that map the node to the corresponding graph.
-    # Example: if you have `n_node=[1,2]`, we construct the tensor [0, 1, 1].
-    n_graph = graphs.n_node.shape[0]
-    node_graph_indices = jnp.repeat(
-        jnp.arange(n_graph),
-        graphs.n_node,
-        axis=0,
-        total_repeat_length=sum_n_node)
-    # We use the aggregation function to pool the nodes per graph.
-    pooled = self.pooling_fn(graphs.nodes, node_graph_indices, n_graph)
-    return graphs._replace(globals=pooled)
+class GNN(nn.Module):
+  """Defines a graph network.
+  The model assumes the input data is a jraph.GraphsTuple without global
+  variables. The final prediction will be encoded in the globals.
+  """
+  num_outputs: int = 128
+  latent_dim: int = 256
+  hidden_dims: Tuple[int] = (256,)
+  dropout_rate: float = 0.1
+  num_message_passing_steps: int = 5
 
   @nn.compact
-  def __call__(self, graphs: jraph.GraphsTuple, train: bool) -> jraph.GraphsTuple:
-    # We will first linearly project the original node features as 'embeddings'.
+  def __call__(self, graph, train):
+    dropout = nn.Dropout(rate=self.dropout_rate, deterministic=not train)
+
+    graph = graph._replace(
+        globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))
+
     embedder = jraph.GraphMapFeatures(
-        embed_node_fn=nn.Dense(self.latent_size))
-    processed_graphs = embedder(graphs)
+        embed_node_fn=_make_embed(self.latent_dim),
+        embed_edge_fn=_make_embed(self.latent_dim))
+    graph = embedder(graph)
 
-    # Now, we will apply the GCN once for each message-passing round.
-    for _ in range(self.message_passing_steps):
-      mlp_feature_sizes = [self.latent_size] * self.num_mlp_layers
-      update_node_fn = jraph.concatenated_args(
-          MLP(mlp_feature_sizes,
-              dropout_rate=self.dropout_rate,
-              deterministic=not train))
-      graph_conv = jraph.GraphConvolution(
-          update_node_fn=update_node_fn, add_self_edges=True)
+    for _ in range(self.num_message_passing_steps):
+      net = jraph.GraphNetwork(
+          update_edge_fn=_make_mlp(
+              self.hidden_dims,
+              dropout=dropout),
+          update_node_fn=_make_mlp(
+              self.hidden_dims,
+              dropout=dropout),
+          update_global_fn=_make_mlp(
+              self.hidden_dims,
+              dropout=dropout))
 
-      if self.skip_connections:
-        processed_graphs = add_graphs_tuples(
-            graph_conv(processed_graphs), processed_graphs)
-      else:
-        processed_graphs = graph_conv(processed_graphs)
+      graph = net(graph)
 
-      if self.layer_norm:
-        processed_graphs = processed_graphs._replace(
-            nodes=nn.LayerNorm()(processed_graphs.nodes),
-        )
-
-    # We apply the pooling operation to get a 'global' embedding.
-    processed_graphs = self.pool(processed_graphs)
-
-    # Now, we decode this to get the required output logits.
+    # Map globals to represent the final result
     decoder = jraph.GraphMapFeatures(
-        embed_global_fn=nn.Dense(self.output_globals_size))
-    processed_graphs = decoder(processed_graphs)
+        embed_global_fn=nn.Dense(self.num_outputs))
+    graph = decoder(graph)
 
-    return processed_graphs
+    return graph.globals
+
