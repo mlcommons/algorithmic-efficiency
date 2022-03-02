@@ -109,7 +109,6 @@ def _convert_filepath_to_module(path: str):
 
 
 def _import_workload(workload_path: str,
-                     workload_registry_name: str,
                      workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
@@ -121,7 +120,6 @@ def _import_workload(workload_path: str,
 
   Args:
     workload_path: the path to the `workload.py` file to load.
-    workload_registry_name: the name to register the workload class under.
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
   """
@@ -302,7 +300,6 @@ def main(_):
   workload_metadata = WORKLOADS[FLAGS.workload]
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
-      workload_registry_name=FLAGS.workload,
       workload_class_name=workload_metadata['workload_class_name'])
 
   score = score_submission_on_workload(workload,

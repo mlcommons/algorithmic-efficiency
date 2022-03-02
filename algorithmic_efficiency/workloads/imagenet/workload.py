@@ -22,7 +22,11 @@ class ImagenetWorkload(spec.Workload):
     return 1281167
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    return 50000
+
+  @property
+  def num_validation_examples(self):
     return 50000
 
   @property
