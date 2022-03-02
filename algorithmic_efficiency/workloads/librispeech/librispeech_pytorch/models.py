@@ -110,10 +110,12 @@ class CNNLSTM(nn.Module):
         nn.Sequential(
             nn.Conv2d(
                 1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(20, 5)),
-            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True),
+            nn.BatchNorm2d(32),
+            nn.Hardtanh(0, 20, inplace=True),
             nn.Conv2d(
                 32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True)))
+            nn.BatchNorm2d(32),
+            nn.Hardtanh(0, 20, inplace=True)))
 
     rnn_input_size = 161
     rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)

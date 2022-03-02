@@ -39,8 +39,11 @@ class ShapeTuple:
     self.shape_tuple = shape_tuple
 
 
-Shape = Union[Tuple[int], Tuple[int, int], Tuple[int, int, int],
-              Tuple[int, int, int, int], ShapeTuple]
+Shape = Union[Tuple[int],
+              Tuple[int, int],
+              Tuple[int, int, int],
+              Tuple[int, int, int, int],
+              ShapeTuple]
 ParameterShapeTree = Dict[str, Dict[str, Shape]]
 
 # If necessary, these can be izipped together easily given they have the same
@@ -65,14 +68,29 @@ UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparamters, RandomState],
                            OptimizerState]
 UpdateParamsFn = Callable[[
-    ParameterContainer, ParameterTypeTree, ModelAuxiliaryState, Hyperparamters,
-    Tensor, Tensor, LossType, OptimizerState, List[Tuple[
-        int, float]], int, RandomState
-], UpdateReturn]
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparamters,
+    Tensor,
+    Tensor,
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                          UpdateReturn]
 DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]], OptimizerState, ParameterContainer,
-    LossType, Hyperparamters, int, RandomState
-], Tuple[Tensor, Tensor]]
+    Iterator[Tuple[Tensor, Tensor]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparamters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -82,7 +100,10 @@ class Workload(metaclass=abc.ABCMeta):
     """Return whether or not the workload goal has been reached."""
 
   @abc.abstractmethod
-  def build_input_queue(self, data_rng: RandomState, split: str, data_dir: str,
+  def build_input_queue(self,
+                        data_rng: RandomState,
+                        split: str,
+                        data_dir: str,
                         batch_size: int):
     """Build the input queue for the workload data.
 
@@ -144,8 +165,11 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
   #     Tensor]
   @abc.abstractmethod
-  def model_fn(self, params: ParameterContainer, input_batch: Tensor,
-               model_state: ModelAuxiliaryState, mode: ForwardPassMode,
+  def model_fn(self,
+               params: ParameterContainer,
+               input_batch: Tensor,
+               model_state: ModelAuxiliaryState,
+               mode: ForwardPassMode,
                rng: RandomState,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
@@ -170,8 +194,10 @@ class Workload(metaclass=abc.ABCMeta):
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
-  def eval_model(self, params: ParameterContainer,
-                 model_state: ModelAuxiliaryState, rng: RandomState):
+  def eval_model(self,
+                 params: ParameterContainer,
+                 model_state: ModelAuxiliaryState,
+                 rng: RandomState):
     """Run a full evaluation of the model."""
 
 
@@ -183,7 +209,8 @@ class TrainingCompleteError(Exception):
 # submitter.
 
 
-def init_optimizer_state(workload: Workload, model_params: ParameterContainer,
+def init_optimizer_state(workload: Workload,
+                         model_params: ParameterContainer,
                          model_state: ModelAuxiliaryState,
                          hyperparameters: Hyperparamters,
                          rng: RandomState) -> OptimizerState:
@@ -220,11 +247,12 @@ def update_params(
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
-def data_selection(workload: Workload, input_queue: Iterator[Tuple[Tensor,
-                                                                   Tensor]],
+def data_selection(workload: Workload,
+                   input_queue: Iterator[Tuple[Tensor, Tensor]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
-                   hyperparameters: Hyperparamters, global_step: int,
+                   hyperparameters: Hyperparamters,
+                   global_step: int,
                    rng: RandomState) -> Tuple[Tensor, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 

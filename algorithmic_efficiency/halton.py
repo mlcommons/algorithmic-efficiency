@@ -35,7 +35,9 @@ def _is_prime(n: int):
   return all(n % i != 0 for i in range(2, int(n**0.5) + 1)) and n != 2
 
 
-def _generate_dim(num_samples: int, base: int, per_dim_shift: bool,
+def _generate_dim(num_samples: int,
+                  base: int,
+                  per_dim_shift: bool,
                   shuffled_seed_sequence: List[int]):
   """Generate `num_samples` from a Van der Corput sequence with base `base`.
 
@@ -139,7 +141,8 @@ def generate_sequence(num_samples: int,
   if primes is not None and len(primes) != num_dims:
     raise ValueError(
         'If passing in a sequence of primes it must be the same length as '
-        'num_dims={}, received {} (len {})'.format(num_dims, primes,
+        'num_dims={}, received {} (len {})'.format(num_dims,
+                                                   primes,
                                                    len(primes)))
 
   if shuffled_seed_sequence is not None:
@@ -194,8 +197,11 @@ def generate_sequence(num_samples: int,
   return halton_sequence
 
 
-def _generate_double_point(name: Text, min_val: float, max_val: float,
-                           scaling: Text, halton_point: float) -> float:
+def _generate_double_point(name: Text,
+                           min_val: float,
+                           max_val: float,
+                           scaling: Text,
+                           halton_point: float) -> float:
   """Generate a float hyperparameter value from a Halton sequence point."""
   if scaling not in ['linear', 'log']:
     raise ValueError(
@@ -211,7 +217,8 @@ def _generate_double_point(name: Text, min_val: float, max_val: float,
   return name, rescaled_value
 
 
-def _generate_discrete_point(name: str, feasible_points: Sequence[Any],
+def _generate_discrete_point(name: str,
+                             feasible_points: Sequence[Any],
                              halton_point: float) -> Any:
   """Generate a discrete hyperparameter value from a Halton sequence point."""
   index = int(math.floor(halton_point * len(feasible_points)))
@@ -231,7 +238,10 @@ def interval(start: int, end: int) -> Tuple[int, int]:
 
 def loguniform(name: Text, range_endpoints: Tuple[int, int]) -> _GeneratorFn:
   min_val, max_val = range_endpoints
-  return functools.partial(_generate_double_point, name, min_val, max_val,
+  return functools.partial(_generate_double_point,
+                           name,
+                           min_val,
+                           max_val,
                            'log')
 
 
@@ -239,11 +249,15 @@ def uniform(
     name: Text, search_points: Union[_DiscretePoints,
                                      Tuple[int, int]]) -> _GeneratorFn:
   if isinstance(search_points, _DiscretePoints):
-    return functools.partial(_generate_discrete_point, name,
+    return functools.partial(_generate_discrete_point,
+                             name,
                              search_points.feasible_points)
 
   min_val, max_val = search_points
-  return functools.partial(_generate_double_point, name, min_val, max_val,
+  return functools.partial(_generate_double_point,
+                           name,
+                           min_val,
+                           max_val,
                            'linear')
 
 
@@ -310,8 +324,8 @@ def zipit(generator_fns_or_sweeps: Sequence[Union[_GeneratorFn,
   return hyperparameter_sweep
 
 
-def generate_search(search_space: Dict[str, Dict[str, Union[str, float,
-                                                            Sequence]]],
+def generate_search(search_space: Dict[str,
+                                       Dict[str, Union[str, float, Sequence]]],
                     num_trials: int) -> List[collections.namedtuple]:
   """Generate a random search with the given bounds and scaling.
 
