@@ -1,4 +1,7 @@
-"""Data preprocessing for LibriSpeech modified from https://github.com/lsari/librispeech_100."""
+"""Data preprocessing for LibriSpeech.
+
+Modified from https://github.com/lsari/librispeech_100.
+"""
 
 import json
 import os
@@ -26,7 +29,9 @@ def analyze_transcripts(train_data_dir, ignore_space=False):
     if i % 10 == 0:
       print(i)
     for chapter_folder in os.listdir(f'{train_data_dir}/{speaker_folder}'):
-      trans_file = f'{train_data_dir}/{speaker_folder}/{chapter_folder}/{speaker_folder}-{chapter_folder}.trans.txt'
+      trans_file = (
+          f'{train_data_dir}/{speaker_folder}/{chapter_folder}/'
+          f'{speaker_folder}-{chapter_folder}.trans.txt')
       with open(trans_file, 'r') as f:
         for line in f:
           _, trans = line.strip().split(' ', maxsplit=1)
@@ -52,11 +57,14 @@ def get_txt(data_dir, labels_dict, ignore_space=False):
     if not speaker_folder.isdigit():
       continue
     for chapter_folder in os.listdir(f'{data_dir}/{speaker_folder}'):
-      trans_file = f'{data_dir}/{speaker_folder}/{chapter_folder}/{speaker_folder}-{chapter_folder}.trans.txt'
+      trans_file = (
+          f'{data_dir}/{speaker_folder}/{chapter_folder}/'
+          f'{speaker_folder}-{chapter_folder}.trans.txt')
       with open(trans_file, 'r') as f:
         for l in f:
           utt, trans = l.strip().split(' ', maxsplit=1)
-          audio_path = f'{data_dir}/{speaker_folder}/{chapter_folder}/{utt}.flac'
+          audio_path = (
+              f'{data_dir}/{speaker_folder}/{chapter_folder}/{utt}.flac')
           assert os.path.isfile(audio_path)
           if check_characters(trans, labels_dict) and len(trans) > 10:
             if ignore_space:
@@ -89,13 +97,13 @@ def extract_spect_mvn(audio_path):
   win_length = n_fft
   hop_length = int(sample_rate * WINDOW_STRIDE)
   # STFT
-  D = librosa.stft(
+  d = librosa.stft(
       y,
       n_fft=n_fft,
       hop_length=hop_length,
       win_length=win_length,
       window=WINDOW)
-  spect, _ = librosa.magphase(D)
+  spect, _ = librosa.magphase(d)
   # S = log(S+1)
   spect = np.log1p(spect)
   # spect = torch.FloatTensor(spect)
@@ -108,9 +116,7 @@ def extract_spect_mvn(audio_path):
   return spect.T, duration
 
 
-if __name__ == '__main__':
-  data_dir = sys.argv[1]
-
+def main(data_dir):
   trans_dir = os.getcwd() + 'data'
   save_dir = os.getcwd() + '/data/stft/'
   os.makedirs(trans_dir, exist_ok=True)
@@ -129,12 +135,12 @@ if __name__ == '__main__':
   for subset in subset_list:
     df = pd.read_csv('data/trans_{}.csv'.format(subset))
     dataset = []
-    for i, row in df.iterrows():
-      S, duration = extract_spect_mvn(row['file'])
-      wave, extension = os.path.splitext(os.path.basename(row['file']))
+    for _, row in df.iterrows():
+      s, duration = extract_spect_mvn(row['file'])
+      wave, _ = os.path.splitext(os.path.basename(row['file']))
       feat_name = '{}_{:.3f}_{:.3f}.npy'.format(wave, 0, duration)
       save_path = os.path.join(save_dir, feat_name)
-      np.save(save_path, S)
+      np.save(save_path, s)
 
       row['features'] = save_path
       row['duration'] = duration
@@ -143,3 +149,7 @@ if __name__ == '__main__':
 
     features_df = pd.DataFrame(dataset)
     features_df.to_csv('data/features_{}.csv'.format(subset))
+
+
+if __name__ == '__main__':
+  main(data_dir=sys.argv[1])

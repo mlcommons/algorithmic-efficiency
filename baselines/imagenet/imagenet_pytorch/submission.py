@@ -7,7 +7,6 @@ from torch.optim.lr_scheduler import LinearLR
 from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
-from baselines.mnist.mnist_pytorch.submission import data_selection
 
 
 def get_batch_size(workload_name):

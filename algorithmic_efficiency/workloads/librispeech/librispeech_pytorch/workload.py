@@ -175,7 +175,8 @@ class LibriSpeechWorkload(spec.Workload):
     del update_batch_norm
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
-    features, transcripts, input_lengths = augmented_and_preprocessed_input_batch
+    (features, transcripts,
+     input_lengths) = augmented_and_preprocessed_input_batch
     log_y, output_lengths = params(features, input_lengths, transcripts)
 
     return (log_y.transpose(0, 1), output_lengths), None

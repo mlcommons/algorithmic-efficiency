@@ -21,10 +21,17 @@ from typing import Optional, Tuple
 from absl import app
 from absl import flags
 from absl import logging
+import tensorflow as tf
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
+
+
+# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+# it unavailable to JAX.
+tf.config.experimental.set_visible_devices([], 'GPU')
+
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
@@ -288,13 +295,6 @@ def score_submission_on_workload(workload: spec.Workload,
 
 
 def main(_):
-  if FLAGS.framework == 'jax':
-    import tensorflow as tf
-
-    # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-    # it unavailable to JAX.
-    tf.config.experimental.set_visible_devices([], 'GPU')
-
   workload_metadata = WORKLOADS[FLAGS.workload]
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],

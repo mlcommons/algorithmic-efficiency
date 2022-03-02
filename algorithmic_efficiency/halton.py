@@ -60,7 +60,7 @@ def _generate_dim(num_samples: int,
   if base < 0 or not _is_prime(base):
     raise ValueError(
         'Each Van der Corput sequence requires a prime `base`, received '
-        '{}.'.format(base))
+        f'{base}.')
 
   rng = random.RandomState(base)
   if shuffled_seed_sequence is None:
@@ -136,21 +136,19 @@ def generate_sequence(num_samples: int,
       `primes[d]` for any d in range(num_dims).
   """
   if skip < 0:
-    raise ValueError('Skip must be non-negative, received: {}.'.format(skip))
+    raise ValueError(f'Skip must be non-negative, received: {skip}.')
 
   if primes is not None and len(primes) != num_dims:
     raise ValueError(
         'If passing in a sequence of primes it must be the same length as '
-        'num_dims={}, received {} (len {})'.format(num_dims,
-                                                   primes,
-                                                   len(primes)))
+        f'num_dims={num_dims}, received {primes} (len {len(primes)}).')
 
   if shuffled_seed_sequence is not None:
     if len(shuffled_seed_sequence) != num_dims:
       raise ValueError(
           'If passing in `shuffled_seed_sequence` it must be the same length '
-          'as num_dims={}, received {} (len {})'.format(
-              num_dims, shuffled_seed_sequence, len(shuffled_seed_sequence)))
+          f'as num_dims={num_dims}, received {shuffled_seed_sequence} '
+          f'(len {len(shuffled_seed_sequence)}).')
     for d in range(num_dims):
       if len(shuffled_seed_sequence[d]) != primes[d]:
         raise ValueError(
@@ -206,7 +204,7 @@ def _generate_double_point(name: Text,
   if scaling not in ['linear', 'log']:
     raise ValueError(
         'Only log or linear scaling is supported for floating point '
-        'parameters. Received {}.'.format(scaling))
+        f'parameters. Received {scaling}.')
   if scaling == 'log':
     # To transform from [0, 1] to [min_val, max_val] on a log scale we do:
     # min_val * exp(x * log(max_val / min_val)).

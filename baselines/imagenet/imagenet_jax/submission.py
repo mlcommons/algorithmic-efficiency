@@ -100,7 +100,7 @@ def pmapped_train_step(workload,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   aux, grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
-  new_model_state, logits = aux[1]
+  new_model_state, _ = aux[1]
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)

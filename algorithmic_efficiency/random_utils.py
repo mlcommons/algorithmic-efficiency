@@ -39,7 +39,7 @@ def _split(seed, num=2):
   return rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32, size=[num, 2])
 
 
-def _PRNGKey(seed: int):
+def _PRNGKey(seed: int):  # pylint: disable=invalid-name
   return split(seed, num=2)[0]
 
 
@@ -67,7 +67,7 @@ def split(seed, num=2):
   return _split(seed, num)
 
 
-def PRNGKey(seed):
+def PRNGKey(seed):  # pylint: disable=invalid-name
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.PRNGKey(seed)

@@ -6,7 +6,7 @@ import itertools
 from typing import Tuple
 
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets import MNIST
@@ -71,13 +71,6 @@ class MnistWorkload(Mnist):
                         batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
-  @property
-  def param_shapes(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
-
   def model_params_types(self):
     pass
 
@@ -105,8 +98,8 @@ class MnistWorkload(Mnist):
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    N = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(N, -1)
+    n = raw_input_batch.size()[0]
+    raw_input_batch = raw_input_batch.view(n, -1)
     return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
@@ -120,7 +113,7 @@ class MnistWorkload(Mnist):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -140,7 +133,7 @@ class MnistWorkload(Mnist):
     }
 
     with contexts[mode]():
-      logits_batch = model(input_batch)
+      logits_batch = model(augmented_and_preprocessed_input_batch)
 
     return logits_batch, None
 

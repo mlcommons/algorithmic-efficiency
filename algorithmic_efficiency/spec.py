@@ -67,30 +67,32 @@ ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparamters, RandomState],
                            OptimizerState]
-UpdateParamsFn = Callable[[
-    ParameterContainer,
-    ParameterTypeTree,
-    ModelAuxiliaryState,
-    Hyperparamters,
-    Tensor,
-    Tensor,
-    LossType,
-    OptimizerState,
-    List[Tuple[int, float]],
-    int,
-    RandomState
-],
-                          UpdateReturn]
-DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]],
-    OptimizerState,
-    ParameterContainer,
-    LossType,
-    Hyperparamters,
-    int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
+UpdateParamsFn = Callable[
+    [
+        ParameterContainer,
+        ParameterTypeTree,
+        ModelAuxiliaryState,
+        Hyperparamters,
+        Tensor,
+        Tensor,
+        LossType,
+        OptimizerState,
+        List[Tuple[int, float]],
+        int,
+        RandomState
+    ],
+    UpdateReturn]
+DataSelectionFn = Callable[
+    [
+        Iterator[Tuple[Tensor, Tensor]],
+        OptimizerState,
+        ParameterContainer,
+        LossType,
+        Hyperparamters,
+        int,
+        RandomState
+    ],
+    Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -110,6 +112,7 @@ class Workload(metaclass=abc.ABCMeta):
     This is the only function that is NOT allowed to be called by submitters.
     """
 
+  @property
   @abc.abstractmethod
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
@@ -118,41 +121,49 @@ class Workload(metaclass=abc.ABCMeta):
   def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def target_value(self):
     """The target value to reach."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def loss_type(self):
     """The type of loss function."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def num_train_examples(self):
     """The size of the training set."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def num_eval_examples(self):
     """The size of the evaluation set."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def train_mean(self):
     """The mean of the training data."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def train_stddev(self):
     """The stddev of the training data."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def max_allowed_runtime_sec(self):
     """The max allowed runtime of the workload in seconds."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def eval_period_time_sec(self):
     """The eval period of the workload in seconds."""
 
   @abc.abstractmethod
   def is_output_params(self, param_key: ParameterKey) -> bool:
-    """Whether or not a key in ParameterContainer is the output layer parameters."""
+    """Whether or not a key in ParameterContainer is the output layer."""
 
   # InitModelFn = Callable[
   #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
@@ -167,7 +178,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def model_fn(self,
                params: ParameterContainer,
-               input_batch: Tensor,
+               augmented_and_preprocessed_input_batch: Tensor,
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
