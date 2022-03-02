@@ -76,10 +76,7 @@ class ResNet(nn.Module):
   act: Callable = nn.relu
 
   @nn.compact
-  def __call__(
-      self,
-      x,
-      update_batch_norm: bool = True):
+  def __call__(self, x, update_batch_norm: bool = True):
     conv = partial(nn.Conv, use_bias=False, dtype=self.dtype)
     norm = partial(
         nn.BatchNorm,
@@ -91,7 +88,8 @@ class ResNet(nn.Module):
     x = conv(
         self.num_filters, (7, 7), (2, 2),
         padding=[(3, 3), (3, 3)],
-        name='conv_init')(x)
+        name='conv_init')(
+            x)
     x = norm(name='bn_init')(x)
     x = nn.relu(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')

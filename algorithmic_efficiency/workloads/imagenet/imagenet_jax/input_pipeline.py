@@ -252,8 +252,7 @@ def create_split(dataset_builder,
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(
-      split=split,
-      decoders={
+      split=split, decoders={
           'image': tfds.decode.SkipDecoding(),
       })
   options = tf.data.Options()

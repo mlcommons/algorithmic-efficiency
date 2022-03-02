@@ -27,11 +27,9 @@ from algorithmic_efficiency import halton
 from algorithmic_efficiency import spec
 from algorithmic_efficiency import random_utils as prng
 
-
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.experimental.set_visible_devices([], 'GPU')
-
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
@@ -48,12 +46,14 @@ WORKLOADS = {
     'imagenet_jax': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
-        'workload_class_name': 'ImagenetJaxWorkload',
+        'workload_class_name':
+            'ImagenetJaxWorkload',
     },
     'imagenet_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name': 'ImagenetPytorchWorkload',
+        'workload_class_name':
+            'ImagenetPytorchWorkload',
     },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
@@ -62,7 +62,8 @@ WORKLOADS = {
     'librispeech_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
-        'workload_class_name': 'LibriSpeechWorkload',
+        'workload_class_name':
+            'LibriSpeechWorkload',
     }
 }
 
@@ -186,14 +187,13 @@ def train_once(workload: spec.Workload,
     start_time = time.time()
     (selected_train_input_batch,
      selected_train_label_batch,
-     selected_train_mask_batch) = data_selection(
-        workload,
-        input_queue,
-        optimizer_state,
-        model_params,
-        hyperparameters,
-        global_step,
-        data_select_rng)
+     selected_train_mask_batch) = data_selection(workload,
+                                                 input_queue,
+                                                 optimizer_state,
+                                                 model_params,
+                                                 hyperparameters,
+                                                 global_step,
+                                                 data_select_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -232,14 +232,13 @@ def train_once(workload: spec.Workload,
   return accumulated_submission_time, metrics
 
 
-def score_submission_on_workload(
-    workload: spec.Workload,
-    workload_name: str,
-    submission_path: str,
-    data_dir: str,
-    tuning_ruleset: str,
-    tuning_search_space: Optional[str] = None,
-    num_tuning_trials: Optional[int] = None):
+def score_submission_on_workload(workload: spec.Workload,
+                                 workload_name: str,
+                                 submission_path: str,
+                                 data_dir: str,
+                                 tuning_ruleset: str,
+                                 tuning_search_space: Optional[str] = None,
+                                 num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = _convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)

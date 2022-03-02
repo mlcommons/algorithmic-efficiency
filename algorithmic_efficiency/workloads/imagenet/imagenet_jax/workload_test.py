@@ -9,8 +9,7 @@ from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import Imag
 
 
 def _pytree_total_diff(pytree_a, pytree_b):
-  pytree_diff = jax.tree_map(
-      lambda a, b: jnp.sum(a - b), pytree_a, pytree_b)
+  pytree_diff = jax.tree_map(lambda a, b: jnp.sum(a - b), pytree_a, pytree_b)
   pytree_diff = jax.tree_leaves(pytree_diff)
   return jnp.sum(jnp.array(pytree_diff))
 

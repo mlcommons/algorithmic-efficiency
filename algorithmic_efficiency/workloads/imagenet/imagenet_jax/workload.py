@@ -20,7 +20,6 @@ from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
 from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
 
-
 _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]  # pylint: disable=invalid-name
 
 
@@ -209,10 +208,16 @@ class ImagenetJaxWorkload(ImagenetWorkload):
     """Run a full evaluation of the model."""
     # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)
-    train_metrics = self._eval_model_on_split(
-        'train', params, model_state, rng, data_dir)
-    validation_metrics = self._eval_model_on_split(
-        'validation', params, model_state, rng, data_dir)
+    train_metrics = self._eval_model_on_split('train',
+                                              params,
+                                              model_state,
+                                              rng,
+                                              data_dir)
+    validation_metrics = self._eval_model_on_split('validation',
+                                                   params,
+                                                   model_state,
+                                                   rng,
+                                                   data_dir)
     eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
