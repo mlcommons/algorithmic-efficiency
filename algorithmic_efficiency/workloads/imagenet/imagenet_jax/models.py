@@ -3,7 +3,7 @@
 """Flax implementation of ResNet V1."""
 
 from functools import partial
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Optional, Sequence, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
@@ -76,11 +76,14 @@ class ResNet(nn.Module):
   act: Callable = nn.relu
 
   @nn.compact
-  def __call__(self, x, train: bool = True):
+  def __call__(
+      self,
+      x,
+      update_batch_norm: bool = True):
     conv = partial(nn.Conv, use_bias=False, dtype=self.dtype)
     norm = partial(
         nn.BatchNorm,
-        use_running_average=not train,
+        use_running_average=not update_batch_norm,
         momentum=0.9,
         epsilon=1e-5,
         dtype=self.dtype)
@@ -88,8 +91,7 @@ class ResNet(nn.Module):
     x = conv(
         self.num_filters, (7, 7), (2, 2),
         padding=[(3, 3), (3, 3)],
-        name='conv_init')(
-            x)
+        name='conv_init')(x)
     x = norm(name='bn_init')(x)
     x = nn.relu(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')

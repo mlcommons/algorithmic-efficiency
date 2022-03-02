@@ -138,8 +138,13 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def num_eval_examples(self):
-    """The size of the evaluation set."""
+  def num_eval_train_examples(self):
+    """The number of training examples to evaluate metrics on."""
+
+  @property
+  @abc.abstractmethod
+  def num_validation_examples(self):
+    """The size of the validation set."""
 
   @property
   @abc.abstractmethod

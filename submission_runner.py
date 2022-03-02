@@ -184,7 +184,9 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
+    (selected_train_input_batch,
+     selected_train_label_batch,
+     selected_train_mask_batch) = data_selection(
         workload,
         input_queue,
         optimizer_state,

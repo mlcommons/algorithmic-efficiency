@@ -13,7 +13,6 @@ from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
-import numpy as np
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
@@ -129,19 +128,18 @@ class ImagenetJaxWorkload(ImagenetWorkload):
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
-    train = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          jax.numpy.squeeze(input_batch['image']),
-          train=train,
+          input_batch,
+          update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          jax.numpy.squeeze(input_batch['image']),
-          train=train,
+          input_batch,
+          update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None
 
@@ -172,7 +170,7 @@ class ImagenetJaxWorkload(ImagenetWorkload):
                            rng: spec.RandomState,
                            data_dir: str):
     eval_per_core_batch_size = 256
-    eval_total_batch_size = eval_per_core_batch_size * jax.num_devices()
+    eval_total_batch_size = eval_per_core_batch_size * jax.local_device_count()
     if split == 'train':
       num_examples = self.num_eval_train_examples
     else:
@@ -200,8 +198,6 @@ class ImagenetJaxWorkload(ImagenetWorkload):
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    # eval_metrics = jax.device_get(eval_metrics)
-    # eval_metrics = jax.tree_multimap(lambda *x: np.stack(x), *eval_metrics)
     eval_metrics = jax.tree_map(lambda x: x / num_examples, eval_metrics)
     return eval_metrics
 

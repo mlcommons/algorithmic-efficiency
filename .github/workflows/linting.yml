@@ -19,7 +19,7 @@ jobs:
       run: |
         pylint algorithmic_efficiency
         pylint baselines
-        pylint tests
+        pylint submission_runner_test.py
 
   isort:
     runs-on: ubuntu-latest
