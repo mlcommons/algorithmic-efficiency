@@ -24,9 +24,8 @@ from absl import logging
 import tensorflow as tf
 
 from algorithmic_efficiency import halton
-from algorithmic_efficiency import spec
 from algorithmic_efficiency import random_utils as prng
-
+from algorithmic_efficiency import spec
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.

@@ -10,7 +10,6 @@ import jraph
 import numpy as np
 import tensorflow_datasets as tfds
 
-
 AVG_NODES_PER_GRAPH = 26
 AVG_EDGES_PER_GRAPH = 56
 

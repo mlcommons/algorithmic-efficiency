@@ -1,18 +1,18 @@
 """OGB workload implemented in Jax."""
+import functools
+import itertools
 from typing import Optional, Tuple
 
-import functools
 from flax import jax_utils
-import itertools
 import jax
 import jax.numpy as jnp
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.ogb.workload import OGB
 from algorithmic_efficiency.workloads.ogb.ogb_jax import input_pipeline
-from algorithmic_efficiency.workloads.ogb.ogb_jax import models
 from algorithmic_efficiency.workloads.ogb.ogb_jax import metrics
+from algorithmic_efficiency.workloads.ogb.ogb_jax import models
+from algorithmic_efficiency.workloads.ogb.workload import OGB
 
 
 class OGBWorkload(OGB):

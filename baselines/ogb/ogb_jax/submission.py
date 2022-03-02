@@ -1,9 +1,9 @@
 from typing import Iterator, List, Optional, Tuple
 
-import jax
-import jax.numpy as jnp
-from jax import lax
 from flax import jax_utils
+import jax
+from jax import lax
+import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec

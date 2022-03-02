@@ -1,11 +1,11 @@
 # Forked from Flax example which can be found here:
 # https://github.com/google/flax/blob/main/examples/ogbg_molpcba/train.py
 
-import numpy as np
+from clu import metrics
+import flax
 import jax
 import jax.numpy as jnp
-import flax
-from clu import metrics
+import numpy as np
 from sklearn.metrics import average_precision_score
 
 
