@@ -3,7 +3,7 @@
 """Flax implementation of ResNet V1."""
 
 from functools import partial
-from typing import Any, Callable, Optional, Sequence, Tuple
+from typing import Any, Callable, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
@@ -68,7 +68,7 @@ class BottleneckResNetBlock(nn.Module):
 
 class ResNet(nn.Module):
   """ResNetV1."""
-  stage_sizes: Sequence[int]
+  stage_sizes: Tuple[int]
   block_cls: ModuleDef
   num_classes: int
   num_filters: int = 64
@@ -110,16 +110,16 @@ class ResNet(nn.Module):
     return x
 
 
-ResNet18 = partial(ResNet, stage_sizes=[2, 2, 2, 2], block_cls=ResNetBlock)
-ResNet34 = partial(ResNet, stage_sizes=[3, 4, 6, 3], block_cls=ResNetBlock)
+ResNet18 = partial(ResNet, stage_sizes=(2, 2, 2, 2), block_cls=ResNetBlock)
+ResNet34 = partial(ResNet, stage_sizes=(3, 4, 6, 3), block_cls=ResNetBlock)
 ResNet50 = partial(
-    ResNet, stage_sizes=[3, 4, 6, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 4, 6, 3), block_cls=BottleneckResNetBlock)
 ResNet101 = partial(
-    ResNet, stage_sizes=[3, 4, 23, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 4, 23, 3), block_cls=BottleneckResNetBlock)
 ResNet152 = partial(
-    ResNet, stage_sizes=[3, 8, 36, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 8, 36, 3), block_cls=BottleneckResNetBlock)
 ResNet200 = partial(
-    ResNet, stage_sizes=[3, 24, 36, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 24, 36, 3), block_cls=BottleneckResNetBlock)
 
 # Used for testing only.
-_ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)
+_ResNet1 = partial(ResNet, stage_sizes=(1,), block_cls=ResNetBlock)
