@@ -20,12 +20,12 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
-from workloads.imagenet.workload import ImagenetWorkload
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
+from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
 
 
 _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]  # pylint: disable=invalid-name
