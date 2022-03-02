@@ -115,7 +115,7 @@ class MnistWorkload(Mnist):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -125,7 +125,7 @@ class MnistWorkload(Mnist):
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply({'params': params},
-                                     input_batch,
+                                     augmented_and_preprocessed_input_batch,
                                      train=train)
     return logits_batch, None
 
