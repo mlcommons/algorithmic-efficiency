@@ -5,7 +5,8 @@ import jax
 import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import ImagenetJaxWorkload
+from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import \
+    ImagenetJaxWorkload
 
 
 def _pytree_total_diff(pytree_a, pytree_b):
