@@ -5,9 +5,9 @@ Example command:
 python3 submission_runner.py \
     --workload=mnist_jax \
     --framework=jax \
-    --submission_path=workloads/mnist/mnist_jax/submission.py \
+    --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
+    --tuning_search_space=baselines/mnist/tuning_search_space.json \
     --num_tuning_trials=3
 """
 import importlib
@@ -25,7 +25,7 @@ import tensorflow as tf
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import spec
-import algorithmic_efficiency.random_utils as prng
+from algorithmic_efficiency import random_utils as prng
 
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
@@ -39,31 +39,30 @@ BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 WORKLOADS = {
     'mnist_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_jax/workload.py',
-        'workload_class_name': 'MnistWorkload'
+        'workload_class_name': 'MnistWorkload',
     },
     'mnist_pytorch': {
         'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_pytorch/workload.py',
-        'workload_class_name': 'MnistWorkload'
+        'workload_class_name': 'MnistWorkload',
     },
     'imagenet_jax': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
-        'workload_class_name': 'ImagenetJaxWorkload',
+        'workload_class_name': 'ImagenetWorkload',
     },
     'imagenet_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name': 'ImagenetPytorchWorkload',
+        'workload_class_name': 'ImagenetWorkload',
     },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
-        'workload_class_name': 'WMTWorkload'
+        'workload_class_name': 'WMTWorkload',
     },
     'librispeech_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
-        'workload_class_name':
-            'LibriSpeechWorkload'
+        'workload_class_name': 'LibriSpeechWorkload',
     }
 }
 
@@ -89,8 +88,7 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      20,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
-flags.DEFINE_bool('debug', False, 'If true, disables trial timeouts.')
+flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
     None,
@@ -111,6 +109,7 @@ def _convert_filepath_to_module(path: str):
 
 
 def _import_workload(workload_path: str,
+                     workload_registry_name: str,
                      workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
@@ -122,6 +121,7 @@ def _import_workload(workload_path: str,
 
   Args:
     workload_path: the path to the `workload.py` file to load.
+    workload_registry_name: the name to register the workload class under.
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
   """
@@ -155,8 +155,7 @@ def train_once(workload: spec.Workload,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparamters],
-               rng: spec.RandomState,
-               is_debugging: bool) -> Tuple[spec.Timing, spec.Steps]:
+               rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -183,14 +182,18 @@ def train_once(workload: spec.Workload,
   global_start_time = time.time()
 
   logging.info('Starting training loop.')
-  while (is_debugging or
-         (is_time_remaining and not goal_reached and not training_complete)):
+  while (is_time_remaining and not goal_reached and not training_complete):
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch = data_selection(
-        workload, input_queue, optimizer_state, model_params, hyperparameters,
-        global_step, data_select_rng)
+    selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
+        workload,
+        input_queue,
+        optimizer_state,
+        model_params,
+        hyperparameters,
+        global_step,
+        data_select_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -200,6 +203,7 @@ def train_once(workload: spec.Workload,
           hyperparameters=hyperparameters,
           input_batch=selected_train_input_batch,
           label_batch=selected_train_label_batch,
+          mask_batch=selected_train_mask_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,
@@ -235,8 +239,7 @@ def score_submission_on_workload(
     data_dir: str,
     tuning_ruleset: str,
     tuning_search_space: Optional[str] = None,
-    num_tuning_trials: Optional[int] = None,
-    is_debugging: bool = False):
+    num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = _convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -274,8 +277,7 @@ def score_submission_on_workload(
       logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
       timing, metrics = train_once(workload, batch_size, data_dir,
                                    init_optimizer_state, update_params,
-                                   data_selection, hyperparameters, rng,
-                                   is_debugging)
+                                   data_selection, hyperparameters, rng)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -291,8 +293,7 @@ def score_submission_on_workload(
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(workload, batch_size, init_optimizer_state,
-                          update_params, data_selection, None, rng,
-                          is_debugging)
+                          update_params, data_selection, None, rng)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -310,8 +311,7 @@ def main(_):
                                        FLAGS.data_dir,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials,
-                                       FLAGS.debug)
+                                       FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
 
