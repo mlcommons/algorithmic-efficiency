@@ -20,15 +20,18 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
-import random_utils as prng
 from workloads.imagenet.workload import ImagenetWorkload
 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
 
 
-class ImagenetWorkload(ImagenetWorkload):
+_InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]  # pylint: disable=invalid-name
+
+
+class ImagenetJaxWorkload(ImagenetWorkload):
 
   def __init__(self):
     super().__init__()
@@ -42,7 +45,7 @@ class ImagenetWorkload(ImagenetWorkload):
                      batch_size):
     if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    ds_builder = tfds.builder('imagenet2012:5.*.*')
+    ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()
     ds = input_pipeline.create_input_iter(
         ds_builder,
@@ -53,7 +56,7 @@ class ImagenetWorkload(ImagenetWorkload):
         self.resize_size,
         self.aspect_ratio_range,
         self.scale_ratio_range,
-        train=True,
+        train=split == 'train',
         cache=False)
     return ds
 
@@ -80,8 +83,6 @@ class ImagenetWorkload(ImagenetWorkload):
                                     jnp.ones(input_shape, model.dtype))
     model_state, params = variables.pop('params')
     return params, model_state
-
-  _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
 
   def init_model_fn(self, rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, 'ResNet50')
@@ -173,15 +174,14 @@ class ImagenetWorkload(ImagenetWorkload):
     model_state = self.sync_batch_stats(model_state)
 
     eval_metrics = []
-    data_rng, model_rng = prng.split(rng, 2)
     eval_batch_size = 200
     num_batches = self.num_eval_examples // eval_batch_size
     if self._eval_ds is None:
       self._eval_ds = self._build_dataset(
-          data_rng, split='test', batch_size=eval_batch_size, data_dir=data_dir)
+          rng, split='test', batch_size=eval_batch_size, data_dir=data_dir)
     eval_iter = iter(self._eval_ds)
     total_accuracy = 0.
-    for idx in range(num_batches):
+    for _ in range(num_batches):
       batch = next(eval_iter)
       synced_metrics = self.eval_model_fn(params, batch, model_state, rng)
       eval_metrics.append(synced_metrics)

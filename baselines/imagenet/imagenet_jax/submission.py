@@ -63,8 +63,6 @@ def init_optimizer_state(workload: spec.Workload,
   return jax_utils.replicate(optimizer_state), opt_update_fn
 
 
-# We need to jax.pmap here instead of inside update_params because the latter
-# would recompile the function every step.
 @functools.partial(
     jax.pmap,
     axis_name='batch',

@@ -277,5 +277,5 @@ def data_selection(workload: Workload,
 
 
 def get_batch_size(workload_name):
-  """Return a batch size to use for a given workload."""
+  """Return a per-device batch size to use for a given workload."""
   pass
