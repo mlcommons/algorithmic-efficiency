@@ -51,7 +51,8 @@ def pmapped_update_params(workload: spec.Workload,
                           current_param_container: spec.ParameterContainer,
                           model_state: spec.ModelAuxiliaryState,
                           hyperparameters: spec.Hyperparamters,
-                          input_batch: spec.Tensor, label_batch: spec.Tensor,
+                          input_batch: spec.Tensor,
+                          label_batch: spec.Tensor,
                           optimizer_state: spec.OptimizerState,
                           rng: spec.RandomState,
                           local_device_index) -> spec.UpdateReturn:
@@ -104,9 +105,10 @@ def update_params(
   reshaped_input_batch = jnp.reshape(
       input_batch,
       (num_devices, input_shape[0] // num_devices, *input_shape[1:]))
-  reshaped_label_batch = jnp.reshape(label_batch,
-                                     (num_devices, label_batch.shape[0] //
-                                      num_devices, *label_batch.shape[1:]))
+  reshaped_label_batch = jnp.reshape(
+      label_batch,
+      (num_devices, label_batch.shape[0] // num_devices,
+       *label_batch.shape[1:]))
 
   # TODO(znado) we should be more efficient than replicating state each step.
   new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
@@ -125,7 +127,8 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters, global_step: int,
+                   hyperparameters: spec.Hyperparamters,
+                   global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 

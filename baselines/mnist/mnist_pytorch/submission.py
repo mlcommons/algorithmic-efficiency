@@ -78,7 +78,8 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters, global_step: int,
+                   hyperparameters: spec.Hyperparamters,
+                   global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 

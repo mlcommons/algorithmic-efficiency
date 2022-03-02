@@ -108,12 +108,15 @@ def _decode_and_center_crop(image_bytes, image_size, resize_size):
 
   padded_center_crop_size = tf.cast(
       ((image_size / resize_size) *
-       tf.cast(tf.minimum(image_height, image_width), tf.float32)), tf.int32)
+       tf.cast(tf.minimum(image_height, image_width), tf.float32)),
+      tf.int32)
 
   offset_height = ((image_height - padded_center_crop_size) + 1) // 2
   offset_width = ((image_width - padded_center_crop_size) + 1) // 2
   crop_window = tf.stack([
-      offset_height, offset_width, padded_center_crop_size,
+      offset_height,
+      offset_width,
+      padded_center_crop_size,
       padded_center_crop_size
   ])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
@@ -146,8 +149,11 @@ def preprocess_for_train(image_bytes,
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _decode_and_random_crop(image_bytes, image_size, aspect_ratio_range,
-                                  area_range, resize_size)
+  image = _decode_and_random_crop(image_bytes,
+                                  image_size,
+                                  aspect_ratio_range,
+                                  area_range,
+                                  resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.random_flip_left_right(image)
   image = normalize_image(image, mean_rgb, stddev_rgb)
@@ -208,12 +214,21 @@ def create_split(dataset_builder,
 
   def decode_example(example):
     if train:
-      image = preprocess_for_train(example['image'], mean_rgb, stddev_rgb,
-                                   aspect_ratio_range, area_range, dtype,
-                                   image_size, resize_size)
+      image = preprocess_for_train(example['image'],
+                                   mean_rgb,
+                                   stddev_rgb,
+                                   aspect_ratio_range,
+                                   area_range,
+                                   dtype,
+                                   image_size,
+                                   resize_size)
     else:
-      image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb, dtype,
-                                  image_size, resize_size)
+      image = preprocess_for_eval(example['image'],
+                                  mean_rgb,
+                                  stddev_rgb,
+                                  dtype,
+                                  image_size,
+                                  resize_size)
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(
@@ -261,9 +276,16 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def create_input_iter(dataset_builder, batch_size, mean_rgb, stddev_rgb,
-                      image_size, resize_size, aspect_ratio_range, area_range,
-                      train, cache):
+def create_input_iter(dataset_builder,
+                      batch_size,
+                      mean_rgb,
+                      stddev_rgb,
+                      image_size,
+                      resize_size,
+                      aspect_ratio_range,
+                      area_range,
+                      train,
+                      cache):
   ds = create_split(
       dataset_builder,
       batch_size,

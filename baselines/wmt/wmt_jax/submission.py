@@ -91,10 +91,18 @@ def train_step(optimizer,
   # if such features are not present they are ignored and the example is
   # treated like a normal, unpacked sequence example.
   train_keys = [
-      "inputs", "targets", "inputs_position", "targets_position",
-      "inputs_segmentation", "targets_segmentation"
+      "inputs",
+      "targets",
+      "inputs_position",
+      "targets_position",
+      "inputs_segmentation",
+      "targets_segmentation"
   ]
-  (inputs, targets, inputs_positions, targets_positions, inputs_segmentation,
+  (inputs,
+   targets,
+   inputs_positions,
+   targets_positions,
+   inputs_segmentation,
    targets_segmentation) = [batch.get(k, None) for k in train_keys]
 
   weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
@@ -215,7 +223,8 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters, global_step: int,
+                   hyperparameters: spec.Hyperparamters,
+                   global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 

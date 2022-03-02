@@ -62,7 +62,10 @@ class LibriSpeechWorkload(spec.Workload):
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result < self.target_value
 
-  def build_input_queue(self, data_rng, split: str, data_dir: str,
+  def build_input_queue(self,
+                        data_rng,
+                        split: str,
+                        data_dir: str,
                         batch_size: int):
     torch.manual_seed(data_rng[0])
     train_set = input_pipeline.LibriSpeechDataset(
@@ -133,16 +136,19 @@ class LibriSpeechWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+  def preprocess_for_train(self,
+                           selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
+                           train_mean: spec.Tensor,
+                           train_stddev: spec.Tensor,
                            rng: spec.RandomState) -> spec.Tensor:
     del train_mean
     del train_stddev
     del rng
     return selected_raw_input_batch, selected_label_batch
 
-  def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
+  def preprocess_for_eval(self,
+                          raw_input_batch: spec.Tensor,
                           train_mean: spec.Tensor,
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
@@ -157,9 +163,11 @@ class LibriSpeechWorkload(spec.Workload):
     return model, None
 
   def model_fn(
-      self, params: spec.ParameterContainer,
+      self,
+      params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
@@ -167,7 +175,8 @@ class LibriSpeechWorkload(spec.Workload):
     del update_batch_norm
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
-    features, transcripts, input_lengths = augmented_and_preprocessed_input_batch
+    (features, transcripts,
+     input_lengths) = augmented_and_preprocessed_input_batch
     log_y, output_lengths = params(features, input_lengths, transcripts)
 
     return (log_y.transpose(0, 1), output_lengths), None
@@ -185,13 +194,16 @@ class LibriSpeechWorkload(spec.Workload):
 
     return loss
 
-  def output_activation_fn(self, logits_batch: spec.Tensor,
+  def output_activation_fn(self,
+                           logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
     """Return the final activations of the model."""
     pass
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
 

@@ -21,10 +21,17 @@ from typing import Optional, Tuple
 from absl import app
 from absl import flags
 from absl import logging
+import tensorflow as tf
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import spec
 from algorithmic_efficiency import random_utils as prng
+
+
+# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+# it unavailable to JAX.
+tf.config.experimental.set_visible_devices([], 'GPU')
+
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
@@ -82,7 +89,8 @@ flags.DEFINE_string(
     'tuning_search_space',
     'algorithmic_efficiency/workloads/mnist/mnist_jax/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
-flags.DEFINE_integer('num_tuning_trials', 20,
+flags.DEFINE_integer('num_tuning_trials',
+                     20,
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
 flags.DEFINE_enum(
@@ -104,10 +112,9 @@ def _convert_filepath_to_module(path: str):
   return base.replace('/', '.')
 
 
-def _import_workload(
-    workload_path: str,
-    workload_registry_name: str,
-    workload_class_name: str) -> spec.Workload:
+def _import_workload(workload_path: str,
+                     workload_registry_name: str,
+                     workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -145,7 +152,9 @@ def _import_workload(
 
 # Example reference implementation showing how to use the above functions
 # together.
-def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
+def train_once(workload: spec.Workload,
+               batch_size: int,
+               data_dir: str,
                init_optimizer_state: spec.InitOptimizerFn,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
@@ -160,8 +169,11 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
   logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  optimizer_state = init_optimizer_state(workload, model_params, model_state,
-                                         hyperparameters, opt_init_rng)
+  optimizer_state = init_optimizer_state(workload,
+                                         model_params,
+                                         model_state,
+                                         hyperparameters,
+                                         opt_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -211,8 +223,10 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(model_params, model_state,
-                                               eval_rng, data_dir)
+      latest_eval_result = workload.eval_model(model_params,
+                                               model_state,
+                                               eval_rng,
+                                               data_dir)
       logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
                    f'\t{latest_eval_result}')
       last_eval_time = current_time
@@ -289,27 +303,19 @@ def score_submission_on_workload(
 
 
 def main(_):
-  if FLAGS.framework == 'jax':
-    import tensorflow as tf
-
-    # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-    # it unavailable to JAX.
-    tf.config.experimental.set_visible_devices([], 'GPU')
-
   workload_metadata = WORKLOADS[FLAGS.workload]
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_registry_name=FLAGS.workload,
       workload_class_name=workload_metadata['workload_class_name'])
 
-  score = score_submission_on_workload(
-      workload,
-      FLAGS.workload,
-      FLAGS.submission_path,
-      FLAGS.data_dir,
-      FLAGS.tuning_ruleset,
-      FLAGS.tuning_search_space,
-      FLAGS.num_tuning_trials)
+  score = score_submission_on_workload(workload,
+                                       FLAGS.workload,
+                                       FLAGS.submission_path,
+                                       FLAGS.data_dir,
+                                       FLAGS.tuning_ruleset,
+                                       FLAGS.tuning_search_space,
+                                       FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
 
