@@ -35,7 +35,7 @@ jobs:
         pip install isort
     - name: Run isort
       run: |
-        isort . --check
+        isort . --check --diff
 
   yapf:
     runs-on: ubuntu-latest
