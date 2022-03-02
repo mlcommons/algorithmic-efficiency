@@ -2,7 +2,6 @@
 # https://github.com/google/flax/blob/main/examples/ogbg_molpcba/input_pipeline.py
 # and from the init2winit fork here
 # https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/ogbg_molpcba.py
-
 """Exposes the ogbg-molpcba dataset in a convenient format."""
 
 import jax
@@ -33,8 +32,7 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
       data_dir=data_dir)
 
   if should_shuffle:
-    dataset = dataset.shuffle(
-        seed=dataset_data_rng, buffer_size=2 ** 15)
+    dataset = dataset.shuffle(seed=dataset_data_rng, buffer_size=2**15)
     dataset = dataset.repeat()
 
   return dataset
@@ -114,8 +112,10 @@ def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
   max_n_graphs = batch_size
 
   jraph_iter = map(_to_jraph, dataset_iter)
-  batched_iter = jraph.dynamically_batch(jraph_iter, max_n_nodes + 1,
-                                         max_n_edges, max_n_graphs + 1)
+  batched_iter = jraph.dynamically_batch(jraph_iter,
+                                         max_n_nodes + 1,
+                                         max_n_edges,
+                                         max_n_graphs + 1)
 
   count = 0
   graphs_shards = []
@@ -137,6 +137,7 @@ def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
     weights_shards.append(weights)
 
     if count == num_shards:
+
       def f(x):
         return jax.tree_map(lambda *vals: np.stack(vals, axis=0), x[0], *x[1:])
 
@@ -151,7 +152,7 @@ def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
       weights_shards = []
 
 
-def get_dataset_iter(split,  data_rng, data_dir, batch_size):
+def get_dataset_iter(split, data_rng, data_dir, batch_size):
   ds = _load_dataset(
       split,
       should_shuffle=(split == 'train'),

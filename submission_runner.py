@@ -31,7 +31,6 @@ from algorithmic_efficiency import spec
 # it unavailable to JAX.
 tf.config.experimental.set_visible_devices([], 'GPU')
 
-
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
@@ -47,12 +46,14 @@ WORKLOADS = {
     'imagenet_jax': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
-        'workload_class_name': 'ImagenetWorkload',
+        'workload_class_name':
+            'ImagenetWorkload',
     },
     'imagenet_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name': 'ImagenetWorkload',
+        'workload_class_name':
+            'ImagenetWorkload',
     },
     'ogb_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'ogb/ogb_jax/workload.py',
@@ -65,7 +66,8 @@ WORKLOADS = {
     'librispeech_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
-        'workload_class_name': 'LibriSpeechWorkload',
+        'workload_class_name':
+            'LibriSpeechWorkload',
     }
 }
 
@@ -235,14 +237,13 @@ def train_once(workload: spec.Workload,
   return accumulated_submission_time, metrics
 
 
-def score_submission_on_workload(
-    workload: spec.Workload,
-    workload_name: str,
-    submission_path: str,
-    data_dir: str,
-    tuning_ruleset: str,
-    tuning_search_space: Optional[str] = None,
-    num_tuning_trials: Optional[int] = None):
+def score_submission_on_workload(workload: spec.Workload,
+                                 workload_name: str,
+                                 submission_path: str,
+                                 data_dir: str,
+                                 tuning_ruleset: str,
+                                 tuning_search_space: Optional[str] = None,
+                                 num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = _convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)

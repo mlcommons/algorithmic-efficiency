@@ -9,7 +9,9 @@ import numpy as np
 from sklearn.metrics import average_precision_score
 
 
-def predictions_match_labels(*, logits: jnp.ndarray, labels: jnp.ndarray,
+def predictions_match_labels(*,
+                             logits: jnp.ndarray,
+                             labels: jnp.ndarray,
                              **kwargs) -> jnp.ndarray:
   """Returns a binary array indicating where predictions match the labels."""
   del kwargs  # Unused.
@@ -54,4 +56,3 @@ class EvalMetrics(metrics.Collection):
   accuracy: metrics.Average.from_fun(predictions_match_labels)
   loss: metrics.Average.from_output('loss')
   mean_average_precision: MeanAveragePrecision
-

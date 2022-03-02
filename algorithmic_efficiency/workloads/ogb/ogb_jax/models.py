@@ -56,22 +56,14 @@ class GNN(nn.Module):
 
     for _ in range(self.num_message_passing_steps):
       net = jraph.GraphNetwork(
-          update_edge_fn=_make_mlp(
-              self.hidden_dims,
-              dropout=dropout),
-          update_node_fn=_make_mlp(
-              self.hidden_dims,
-              dropout=dropout),
-          update_global_fn=_make_mlp(
-              self.hidden_dims,
-              dropout=dropout))
+          update_edge_fn=_make_mlp(self.hidden_dims, dropout=dropout),
+          update_node_fn=_make_mlp(self.hidden_dims, dropout=dropout),
+          update_global_fn=_make_mlp(self.hidden_dims, dropout=dropout))
 
       graph = net(graph)
 
     # Map globals to represent the final result
-    decoder = jraph.GraphMapFeatures(
-        embed_global_fn=nn.Dense(self.num_outputs))
+    decoder = jraph.GraphMapFeatures(embed_global_fn=nn.Dense(self.num_outputs))
     graph = decoder(graph)
 
     return graph.globals
-

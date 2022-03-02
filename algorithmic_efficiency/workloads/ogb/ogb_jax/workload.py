@@ -23,29 +23,26 @@ class OGBWorkload(OGB):
     self._init_graphs = None
     self._model = models.GNN()
 
-  def _build_iterator(
-      self,
-      data_rng: jax.random.PRNGKey,
-      split: str,
-      data_dir: str,
-      batch_size: int):
-    dataset_iter = input_pipeline.get_dataset_iter(
-        split,
-        data_rng,
-        data_dir,
-        batch_size)
+  def _build_iterator(self,
+                      data_rng: jax.random.PRNGKey,
+                      split: str,
+                      data_dir: str,
+                      batch_size: int):
+    dataset_iter = input_pipeline.get_dataset_iter(split,
+                                                   data_rng,
+                                                   data_dir,
+                                                   batch_size)
     if self._init_graphs is None:
       init_graphs, _, _ = next(dataset_iter)
       # Unreplicate the iterator that has the leading dim for pmapping.
       self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
     return dataset_iter
 
-  def build_input_queue(
-      self,
-      data_rng: jax.random.PRNGKey,
-      split: str,
-      data_dir: str,
-      batch_size: int):
+  def build_input_queue(self,
+                        data_rng: jax.random.PRNGKey,
+                        split: str,
+                        data_dir: str,
+                        batch_size: int):
     return self._build_iterator(data_rng, split, data_dir, batch_size)
 
   @property
@@ -64,24 +61,22 @@ class OGBWorkload(OGB):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(
-      self,
-      selected_raw_input_batch: spec.Tensor,
-      selected_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor,
-      rng: spec.RandomState) -> spec.Tensor:
+  def preprocess_for_train(self,
+                           selected_raw_input_batch: spec.Tensor,
+                           selected_label_batch: spec.Tensor,
+                           train_mean: spec.Tensor,
+                           train_stddev: spec.Tensor,
+                           rng: spec.RandomState) -> spec.Tensor:
     del train_mean
     del train_stddev
     del rng
     return selected_raw_input_batch, selected_label_batch
 
-  def preprocess_for_eval(
-      self,
-      raw_input_batch: spec.Tensor,
-      raw_label_batch: spec.Tensor,
-      train_mean: spec.Tensor,
-      train_stddev: spec.Tensor) -> spec.Tensor:
+  def preprocess_for_eval(self,
+                          raw_input_batch: spec.Tensor,
+                          raw_label_batch: spec.Tensor,
+                          train_mean: spec.Tensor,
+                          train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
     return raw_input_batch, raw_label_batch
@@ -90,24 +85,21 @@ class OGBWorkload(OGB):
     if self._init_graphs is None:
       raise ValueError(
           'This should not happen, workload.build_input_queue() should be '
-          'called before workload.init_model_fn()!'
-      )
+          'called before workload.init_model_fn()!')
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
-    params = init_fn(
-        {'params': params_rng, 'dropout': dropout_rng}, self._init_graphs)
+    params = init_fn({'params': params_rng, 'dropout': dropout_rng},
+                     self._init_graphs)
     params = params['params']
-    self._param_shapes = jax.tree_map(
-      lambda x: spec.ShapeTuple(x.shape),
-      params)
+    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
+                                      params)
     return jax_utils.replicate(params), None
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
-  def output_activation_fn(
-      self,
-      logits_batch: spec.Tensor,
-      loss_type: spec.LossType) -> spec.Tensor:
+  def output_activation_fn(self,
+                           logits_batch: spec.Tensor,
+                           loss_type: spec.LossType) -> spec.Tensor:
     pass
 
   @property
@@ -126,18 +118,16 @@ class OGBWorkload(OGB):
     del update_batch_norm  # No BN in the GNN model.
     assert model_state is None
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = self._model.apply(
-        {'params': params},
-        augmented_and_preprocessed_input_batch,
-        rngs={'dropout': rng},
-        train=train)
+    logits = self._model.apply({'params': params},
+                               augmented_and_preprocessed_input_batch,
+                               rngs={'dropout': rng},
+                               train=train)
     return logits, None
 
-  def _binary_cross_entropy_with_mask(
-      self,
-      labels: jnp.ndarray,
-      logits: jnp.ndarray,
-      mask: jnp.ndarray) -> jnp.ndarray:
+  def _binary_cross_entropy_with_mask(self,
+                                      labels: jnp.ndarray,
+                                      logits: jnp.ndarray,
+                                      mask: jnp.ndarray) -> jnp.ndarray:
     """Binary cross entropy loss for logits, with masked elements."""
     assert logits.shape == labels.shape == mask.shape
     assert len(logits.shape) == 2
@@ -151,8 +141,7 @@ class OGBWorkload(OGB):
     positive_logits = (logits >= 0)
     relu_logits = jnp.where(positive_logits, logits, 0)
     abs_logits = jnp.where(positive_logits, logits, -logits)
-    return relu_logits - (logits * labels) + (
-        jnp.log(1 + jnp.exp(-abs_logits)))
+    return relu_logits - (logits * labels) + (jnp.log(1 + jnp.exp(-abs_logits)))
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
@@ -186,12 +175,11 @@ class OGBWorkload(OGB):
         update_batch_norm=False)
     return self._eval_metric(labels, logits, masks)
 
-  def eval_model(
-      self,
-      params: spec.ParameterContainer,
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState,
-      data_dir: str):
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
+                 data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     eval_per_core_batch_size = 1024
@@ -209,10 +197,15 @@ class OGBWorkload(OGB):
     # Loop over graph batches in eval dataset.
     for _ in range(num_val_steps):
       graphs, labels, masks = next(self._eval_iterator)
-      batch_metrics = self._eval_batch(
-          params, graphs, labels, masks, model_state, model_rng)
-      total_metrics = (batch_metrics if total_metrics is None
-                       else total_metrics.merge(batch_metrics))
+      batch_metrics = self._eval_batch(params,
+                                       graphs,
+                                       labels,
+                                       masks,
+                                       model_state,
+                                       model_rng)
+      total_metrics = (
+          batch_metrics
+          if total_metrics is None else total_metrics.merge(batch_metrics))
     if total_metrics is None:
       return {}
     return {k: float(v) for k, v in total_metrics.reduce().compute().items()}

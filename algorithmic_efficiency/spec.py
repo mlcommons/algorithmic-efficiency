@@ -67,32 +67,30 @@ ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparamters, RandomState],
                            OptimizerState]
-UpdateParamsFn = Callable[
-    [
-        ParameterContainer,
-        ParameterTypeTree,
-        ModelAuxiliaryState,
-        Hyperparamters,
-        Tensor,
-        Tensor,
-        LossType,
-        OptimizerState,
-        List[Tuple[int, float]],
-        int,
-        RandomState
-    ],
-    UpdateReturn]
-DataSelectionFn = Callable[
-    [
-        Iterator[Tuple[Tensor, Tensor]],
-        OptimizerState,
-        ParameterContainer,
-        LossType,
-        Hyperparamters,
-        int,
-        RandomState
-    ],
-    Tuple[Tensor, Tensor]]
+UpdateParamsFn = Callable[[
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparamters,
+    Tensor,
+    Tensor,
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                          UpdateReturn]
+DataSelectionFn = Callable[[
+    Iterator[Tuple[Tensor, Tensor]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparamters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):

@@ -15,18 +15,17 @@ def get_batch_size(workload_name):
   return batch_sizes[workload_name]
 
 
-def init_optimizer_state(
-    workload: spec.Workload,
-    model_params: spec.ParameterContainer,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparamters,
-    rng: spec.RandomState) -> spec.OptimizerState:
+def init_optimizer_state(workload: spec.Workload,
+                         model_params: spec.ParameterContainer,
+                         model_state: spec.ModelAuxiliaryState,
+                         hyperparameters: spec.Hyperparamters,
+                         rng: spec.RandomState) -> spec.OptimizerState:
   """Creates an Adam optimizer."""
   del model_params
   del model_state
   del rng
-  params_zeros_like = jax.tree_map(
-      lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes)
+  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+                                   workload.param_shapes)
   opt_init_fn, opt_update_fn = opt_init_fn, opt_update_fn = optax.adam(
       learning_rate=hyperparameters.learning_rate)
   optimizer_state = opt_init_fn(params_zeros_like)

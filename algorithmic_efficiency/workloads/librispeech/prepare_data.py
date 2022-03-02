@@ -29,9 +29,8 @@ def analyze_transcripts(train_data_dir, ignore_space=False):
     if i % 10 == 0:
       print(i)
     for chapter_folder in os.listdir(f'{train_data_dir}/{speaker_folder}'):
-      trans_file = (
-          f'{train_data_dir}/{speaker_folder}/{chapter_folder}/'
-          f'{speaker_folder}-{chapter_folder}.trans.txt')
+      trans_file = (f'{train_data_dir}/{speaker_folder}/{chapter_folder}/'
+                    f'{speaker_folder}-{chapter_folder}.trans.txt')
       with open(trans_file, 'r') as f:
         for line in f:
           _, trans = line.strip().split(' ', maxsplit=1)
@@ -57,9 +56,8 @@ def get_txt(data_dir, labels_dict, ignore_space=False):
     if not speaker_folder.isdigit():
       continue
     for chapter_folder in os.listdir(f'{data_dir}/{speaker_folder}'):
-      trans_file = (
-          f'{data_dir}/{speaker_folder}/{chapter_folder}/'
-          f'{speaker_folder}-{chapter_folder}.trans.txt')
+      trans_file = (f'{data_dir}/{speaker_folder}/{chapter_folder}/'
+                    f'{speaker_folder}-{chapter_folder}.trans.txt')
       with open(trans_file, 'r') as f:
         for l in f:
           utt, trans = l.strip().split(' ', maxsplit=1)
