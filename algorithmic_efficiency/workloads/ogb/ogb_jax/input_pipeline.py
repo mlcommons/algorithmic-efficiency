@@ -5,11 +5,9 @@
 
 """Exposes the ogbg-molpcba dataset in a convenient format."""
 
-from typing import NamedTuple
 import jax
 import jraph
 import numpy as np
-import tensorflow as tf
 import tensorflow_datasets as tfds
 
 

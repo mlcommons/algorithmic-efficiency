@@ -117,7 +117,7 @@ class OGBWorkload(OGB):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -128,7 +128,7 @@ class OGBWorkload(OGB):
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply(
         {'params': params},
-        input_batch,
+        augmented_and_preprocessed_input_batch,
         rngs={'dropout': rng},
         train=train)
     return logits, None
