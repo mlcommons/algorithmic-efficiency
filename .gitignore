@@ -7,3 +7,6 @@ env/
 venv/
 workdir/
 makefile
+logs*/
+*.png
+*.csv

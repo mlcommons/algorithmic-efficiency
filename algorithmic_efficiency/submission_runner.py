@@ -16,13 +16,14 @@ import json
 import os
 import struct
 import time
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from absl import app
 from absl import flags
 from absl import logging
 
 from algorithmic_efficiency import halton
+from algorithmic_efficiency import logging_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
@@ -83,6 +84,13 @@ flags.DEFINE_string(
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials', 20,
                      'The number of external hyperparameter trials to run.')
+flags.DEFINE_multi_string(
+    'extra_metadata', None,
+    'Record extra metadata in the log_dir along side the CSVs metrics and JSON '
+    'metadata. This is useful when doing multiple experiments and needing a '
+    'way to tell them apart. You can specify this option multiple times. '
+    'Example usage: --record_extra_metadata="key=value". Choose a unique key '
+    'that is not likely to overlap with other CSV/JSON data attributes.')
 flags.DEFINE_string('data_dir', '~/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
@@ -147,7 +155,8 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparamters],
-               rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
+               rng: spec.RandomState, record: Callable,
+               run_idx: int) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -209,6 +218,9 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
+      record.eval(workload, hyperparameters, run_idx, global_step, batch_size,
+                  latest_eval_result, global_start_time,
+                  accumulated_submission_time, goal_reached)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics
 
@@ -230,6 +242,12 @@ def score_submission_on_workload(workload: spec.Workload,
   get_batch_size = submission_module.get_batch_size
   batch_size = get_batch_size(workload_name)
 
+  if FLAGS.log_dir:
+    # Save training progress to disk eg. loss, hparams, and other metadata
+    record = logging_utils.Recorder(workload, workload_name, FLAGS.log_dir)
+  else:
+    record = logging_utils.No_Op_Recorder()  # Do nothing if no log_dir is set
+
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
     # the search space and generate a list of randomly selected hyperparameter
@@ -243,7 +261,7 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for hi, hyperparameters in enumerate(tuning_search_space):
+    for run_idx, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
       rng = prng.PRNGKey(rng_seed)
@@ -254,10 +272,11 @@ def score_submission_on_workload(workload: spec.Workload,
       # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
       # number.
       rng, _ = prng.split(rng, 2)
-      logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
+      logging.info(f'--- Tuning run {run_idx + 1}/{num_tuning_trials} ---')
       timing, metrics = train_once(workload, batch_size, data_dir,
                                    init_optimizer_state, update_params,
-                                   data_selection, hyperparameters, rng)
+                                   data_selection, hyperparameters, rng, record,
+                                   run_idx + 1)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -273,8 +292,8 @@ def score_submission_on_workload(workload: spec.Workload,
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(workload, batch_size, init_optimizer_state,
-                          update_params, data_selection, None, rng)
-  # TODO(znado): record and return other information (number of steps).
+                          update_params, data_selection, None, rng, record, 1)
+  # TODO(znado): record score.
   return score
 
 
