@@ -246,7 +246,7 @@ def score_submission_on_workload(workload: spec.Workload,
     # Save training progress to disk eg. loss, hparams, and other metadata
     record = logging_utils.Recorder(workload, workload_name, FLAGS.log_dir)
   else:
-    record = logging_utils.No_Op_Recorder()  # Do nothing if no log_dir is set
+    record = logging_utils.NoOpRecorder()  # Do nothing if no log_dir is set
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in

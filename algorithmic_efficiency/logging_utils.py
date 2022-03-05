@@ -80,34 +80,34 @@ def _get_utilization() -> dict:
   gpus = GPUtil.getGPUs()
   if gpus:
     gpu_count = len(gpus)
-    metrics[f'gpu.count'] = gpu_count
+    metrics['gpu.count'] = gpu_count
     avg_gpu_load = 0
-    avg_gpu_memoryUtil = 0
-    avg_gpu_memoryTotal = 0
-    avg_gpu_memoryUsed = 0
-    avg_gpu_memoryFree = 0
+    avg_gpu_memory_util = 0
+    avg_gpu_memory_total = 0
+    avg_gpu_memory_used = 0
+    avg_gpu_memory_free = 0
     avg_gpu_temperature = 0
     for gpu in gpus:
-      id = gpu.id
-      metrics[f'gpu.{id}.compute.util'] = gpu.load
-      metrics[f'gpu.{id}.mem.util'] = gpu.memoryUtil
-      metrics[f'gpu.{id}.mem.total'] = gpu.memoryTotal
-      metrics[f'gpu.{id}.mem.used'] = gpu.memoryUsed
-      metrics[f'gpu.{id}.mem.free'] = gpu.memoryFree
-      metrics[f'gpu.{id}.temp.current'] = gpu.temperature
+      idx = gpu.id
+      metrics[f'gpu.{idx}.compute.util'] = gpu.load
+      metrics[f'gpu.{idx}.mem.util'] = gpu.memoryUtil
+      metrics[f'gpu.{idx}.mem.total'] = gpu.memoryTotal
+      metrics[f'gpu.{idx}.mem.used'] = gpu.memoryUsed
+      metrics[f'gpu.{idx}.mem.free'] = gpu.memoryFree
+      metrics[f'gpu.{idx}.temp.current'] = gpu.temperature
       # Note: GPU wattage was not available from gputil as of writing
       avg_gpu_load += gpu.load
-      avg_gpu_memoryUtil += gpu.memoryUtil
-      avg_gpu_memoryTotal += gpu.memoryTotal
-      avg_gpu_memoryUsed += gpu.memoryUsed
-      avg_gpu_memoryFree += gpu.memoryFree
+      avg_gpu_memory_util += gpu.memoryUtil
+      avg_gpu_memory_total += gpu.memoryTotal
+      avg_gpu_memory_used += gpu.memoryUsed
+      avg_gpu_memory_free += gpu.memoryFree
       avg_gpu_temperature += gpu.temperature
-    metrics[f'gpu.avg.compute.util'] = avg_gpu_load / gpu_count
-    metrics[f'gpu.avg.mem.util'] = avg_gpu_memoryUtil / gpu_count
-    metrics[f'gpu.avg.mem.total'] = avg_gpu_memoryTotal / gpu_count
-    metrics[f'gpu.avg.mem.used'] = avg_gpu_memoryUsed / gpu_count
-    metrics[f'gpu.avg.mem.free'] = avg_gpu_memoryFree / gpu_count
-    metrics[f'gpu.avg.temp.current'] = avg_gpu_temperature / gpu_count
+    metrics['gpu.avg.compute.util'] = avg_gpu_load / gpu_count
+    metrics['gpu.avg.mem.util'] = avg_gpu_memory_util / gpu_count
+    metrics['gpu.avg.mem.total'] = avg_gpu_memory_total / gpu_count
+    metrics['gpu.avg.mem.used'] = avg_gpu_memory_used / gpu_count
+    metrics['gpu.avg.mem.free'] = avg_gpu_memory_free / gpu_count
+    metrics['gpu.avg.temp.current'] = avg_gpu_temperature / gpu_count
 
   return metrics
 
@@ -152,11 +152,12 @@ def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
     for item in extra_metadata_string_list:
       key, value = item.split("=")
       metadata[key] = value
-  except Exception as e:
+  except:
     logging.error(
-        'Failed to parse extra_metadata CLI arguments. Please check your command.'
+        'Failed to parse extra_metadata CLI arguments. Please check your'
+        'command.'
     )
-    raise e
+    raise
   return metadata
 
 
@@ -177,7 +178,7 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
   for key in keys:
     try:
       attr = getattr(workload, key)
-    except Exception as e:
+    except:
       logging.warn(
           f'Unable to record workload.{key} information. Continuing without it.'
       )
@@ -186,14 +187,14 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
   return workload_properties
 
 
-class No_Op_Recorder(object):
+class NoOpRecorder(object):
   """ This dummy class returns None for all possible function calls.
 
   This class makes it easy to turn off all functionality by swapping in this
   class.
    """
 
-  def no_op(*args, **kw):
+  def no_op(self, *args, **kw):
     pass
 
   def __getattr__(self, _):
@@ -256,13 +257,13 @@ class Recorder:
       metadata['git_commit_hash'] = _get_git_commit_hash()
       # Note: do not store git repo url as it may be sensitive or contain a
       # secret.
-    except Exception as e:
+    except:
       logging.warn('Unable to record git information. Continuing without it.')
 
     try:
       metadata['cpu_model_name'] = _get_cpu_model_name()
       metadata['cpu_count'] = psutil.cpu_count()
-    except Exception as e:
+    except:
       logging.warn('Unable to record cpu information. Continuing without it.')
 
     gpus = GPUtil.getGPUs()
@@ -271,7 +272,7 @@ class Recorder:
         metadata['gpu_model_name'] = gpus[0].name
         metadata['gpu_count'] = len(gpus)
         metadata['gpu_driver'] = gpus[0].driver
-      except Exception as e:
+      except:
         logging.warn('Unable to record gpu information. Continuing without it.')
 
     # Record workload properties
@@ -297,7 +298,7 @@ class Recorder:
     try:
       os_package_list = _get_os_package_list()
       pip_package_list = _get_pip_package_list()
-    except Exception as e:
+    except:
       logging.warn(
           'Unable to record package information. Continuing without it.')
       return
