@@ -209,7 +209,7 @@ class Recorder:
   Three files are written to the given "log_dir" folder:
   1. "metadata.json" is created at the start of a workload and it includes the
      datetime, workload name, and system configuration.
-  2. "metrics.csv" is created for each hyperparameter tuning trail and a row is
+  2. "metrics.csv" is created for each hyperparameter tuning trial and a row is
      appended for every model evaluation. The information included is loss,
      accuracy, training step, time elapsed, hparams, workload properties,
      and hardware utilization.
@@ -317,7 +317,7 @@ class Recorder:
            goal_reached: bool) -> None:
     """"Write or append to "metrics.csv".
 
-    A "metrics.csv" is created for each hyperparameter tuning trail and a row is
+    A "metrics.csv" is created for each hyperparameter tuning trial and a row is
     appended for every model evaluation. The information included is loss,
     accuracy, training step, time elapsed, hparams, workload properties,
     and hardware utilization."""

@@ -26,7 +26,7 @@ $ mkdir -p $LOG_DIR
 
 ### 2. Run a Workload
 
-Run a workload with the `--log_dir` option to produce a `metrics.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trails with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
+Run a workload with the `--log_dir` option to produce a `metrics.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
 ```bash
 $ python3 algorithmic_efficiency/submission_runner.py \
     --framework=jax \
@@ -51,7 +51,7 @@ What are these output files?
 Three files are written to the `log_dir` folder:
   1. `metadata.json` is created at the start of a workload and it includes the
      datetime, workload name, and system configuration.
-  2. `metrics.csv` is created for each hyperparameter tuning trail and a row is
+  2. `metrics.csv` is created for each hyperparameter tuning trial and a row is
      appended for every model evaluation. The information included is loss,
      accuracy, training step, time elapsed, hparams, workload properties,
      and hardware utilization.
@@ -140,7 +140,7 @@ Note: to fit the data on screen we have transposed the CSV below and are display
 
 ### 5. (Optional) Combine CSVs if necessary
 
-By default, one `metrics.csv` is produced per training run, ie. a `metrics.csv` has data partaining to one hyperparameter tuning trail. In our example above we choose to run 2 tuning trails, but the default for an MNIST workload is 20 tuning trails. Combining all the `metrics.csv` files across hyperparameter tuning trials is left to users, but a convienence function called `concatenate_csvs()` is provided and demonstrated below. The data format of `metrics.csv` is designed to be safe to arbitrarily join CSVs without attribute name conflicts across hyperparameter tuning trials or even workloads. It is not done automatically for you because we do not want to create data duplication if there is no need.
+By default, one `metrics.csv` is produced per training run, ie. a `metrics.csv` has data partaining to one hyperparameter tuning trial. In our example above we choose to run 2 tuning trials, but the default for an MNIST workload is 20 tuning trials. Combining all the `metrics.csv` files across hyperparameter tuning trials is left to users, but a convienence function called `concatenate_csvs()` is provided and demonstrated below. The data format of `metrics.csv` is designed to be safe to arbitrarily join CSVs without attribute name conflicts across hyperparameter tuning trials or even workloads. It is not done automatically for you because we do not want to create data duplication if there is no need.
 
 You can join all files named `metrics.csv` in a given folder recursively with this bash command:
 
