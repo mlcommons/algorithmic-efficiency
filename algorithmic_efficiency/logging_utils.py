@@ -155,8 +155,7 @@ def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
   except:
     logging.error(
         'Failed to parse extra_metadata CLI arguments. Please check your'
-        'command.'
-    )
+        'command.')
     raise
   return metadata
 
