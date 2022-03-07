@@ -1,4 +1,4 @@
-# This script will run an MNIST training workload and save metrics as CSV and metadata as JSON.
+# This script will run an MNIST training workload and save measurements as CSV and metadata as JSON.
 #
 # Author: Daniel Snider <danielsnider12@gmail.com>
 #

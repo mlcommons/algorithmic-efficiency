@@ -10,7 +10,7 @@ import pandas as pd
 import seaborn as sns
 
 # Read Data
-input_file = './experiments/simple_example_mnist_loss/logs/all_metrics.csv'
+input_file = './experiments/simple_example_mnist_loss/logs/all_measurements.csv'
 df = pd.read_csv(input_file)
 
 # Plot

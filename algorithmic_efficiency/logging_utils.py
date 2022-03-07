@@ -19,68 +19,68 @@ FLAGS = flags.FLAGS
 
 
 def concatenate_csvs(path: str) -> None:
-  """Join all files named "metrics.csv" in a given folder recursively.
+  """Join all files named "measurements.csv" in a given folder recursively.
 
-  In this logging module, one "metrics.csv" is produced at the granularity of
-  each hyperparameter tuning run. This function is provided as a convienence to
-  users to join their CSV data. We leave it to users to do this because we do
+  In this logging module, one "measurements.csv" is produced at the granularity
+  of each hyperparameter tuning run. This function is provided as a convienence
+  to users to join their CSV data. We leave it to users to do this because we do
   not want to create data duplication if there is no user need."""
-  search_path = os.path.join(path, '**/metrics.csv')
+  search_path = os.path.join(path, '**/measurements.csv')
   input_csvs = list(glob.iglob(search_path, recursive=True))
   if input_csvs:
     df = pd.read_csv(input_csvs.pop())
     for file in input_csvs:
       df = df.append(pd.read_csv(file))
-    output_filepath = os.path.join(path, 'all_metrics.csv')
+    output_filepath = os.path.join(path, 'all_measurements.csv')
     df.to_csv(output_filepath, index=False)
 
 
 def _get_utilization() -> dict:
-  """Collect system-wide hardware performance metrics.
+  """Collect system-wide hardware performance measurements.
 
-  High-level utilization metrics for the GPU (if available), CPU, temperature,
-  memory, disk, and network.
+  High-level utilization measurements for the GPU (if available), CPU,
+  temperature, memory, disk, and network.
 
-  The performance metrics are all system-wide because we can't guarentee how
-  many processes Jax or PyTorch will start and not all metrics are available on
-  a per-process basis (eg. network).
+  The performance measurements are all system-wide because we can't guarentee
+  how many processes Jax or PyTorch will start and not all measurements are
+  available on a per-process basis (eg. network).
   """
-  metrics = {}
+  measurements = {}
 
   # CPU
-  metrics['cpu.util.avg_percent_since_last'] = psutil.cpu_percent(
+  measurements['cpu.util.avg_percent_since_last'] = psutil.cpu_percent(
       interval=None)  # non-blocking (cpu util percentage since last call)
-  metrics['cpu.freq.current'] = psutil.cpu_freq().current
+  measurements['cpu.freq.current'] = psutil.cpu_freq().current
 
   # Temp
   sensor_temps = psutil.sensors_temperatures()
   for key in sensor_temps.keys():
     # Take the first temp reading for each kind of device (CPU, GPU, Disk, etc.)
     value = sensor_temps[key][0].current
-    metrics[f'temp.{key}.current'] = value
+    measurements[f'temp.{key}.current'] = value
 
   # Memory
   memory_util = psutil.virtual_memory()
-  metrics['mem.total'] = memory_util.total
-  metrics['mem.available'] = memory_util.available
-  metrics['mem.used'] = memory_util.used
-  metrics['mem.percent_used'] = memory_util.percent
+  measurements['mem.total'] = memory_util.total
+  measurements['mem.available'] = memory_util.available
+  measurements['mem.used'] = memory_util.used
+  measurements['mem.percent_used'] = memory_util.percent
 
   # Disk
   disk_io_counters = psutil.disk_io_counters()
-  metrics['mem.read_bytes_since_boot'] = disk_io_counters.read_bytes
-  metrics['mem.write_bytes_since_boot'] = disk_io_counters.write_bytes
+  measurements['mem.read_bytes_since_boot'] = disk_io_counters.read_bytes
+  measurements['mem.write_bytes_since_boot'] = disk_io_counters.write_bytes
 
   # Network
   net_io_counters = psutil.net_io_counters()
-  metrics['net.bytes_sent_since_boot'] = net_io_counters.bytes_sent
-  metrics['net.bytes_recv_since_boot'] = net_io_counters.bytes_recv
+  measurements['net.bytes_sent_since_boot'] = net_io_counters.bytes_sent
+  measurements['net.bytes_recv_since_boot'] = net_io_counters.bytes_recv
 
   # GPU
   gpus = GPUtil.getGPUs()
   if gpus:
     gpu_count = len(gpus)
-    metrics['gpu.count'] = gpu_count
+    measurements['gpu.count'] = gpu_count
     avg_gpu_load = 0
     avg_gpu_memory_util = 0
     avg_gpu_memory_total = 0
@@ -89,12 +89,12 @@ def _get_utilization() -> dict:
     avg_gpu_temperature = 0
     for gpu in gpus:
       idx = gpu.id
-      metrics[f'gpu.{idx}.compute.util'] = gpu.load
-      metrics[f'gpu.{idx}.mem.util'] = gpu.memoryUtil
-      metrics[f'gpu.{idx}.mem.total'] = gpu.memoryTotal
-      metrics[f'gpu.{idx}.mem.used'] = gpu.memoryUsed
-      metrics[f'gpu.{idx}.mem.free'] = gpu.memoryFree
-      metrics[f'gpu.{idx}.temp.current'] = gpu.temperature
+      measurements[f'gpu.{idx}.compute.util'] = gpu.load
+      measurements[f'gpu.{idx}.mem.util'] = gpu.memoryUtil
+      measurements[f'gpu.{idx}.mem.total'] = gpu.memoryTotal
+      measurements[f'gpu.{idx}.mem.used'] = gpu.memoryUsed
+      measurements[f'gpu.{idx}.mem.free'] = gpu.memoryFree
+      measurements[f'gpu.{idx}.temp.current'] = gpu.temperature
       # Note: GPU wattage was not available from gputil as of writing
       avg_gpu_load += gpu.load
       avg_gpu_memory_util += gpu.memoryUtil
@@ -102,14 +102,14 @@ def _get_utilization() -> dict:
       avg_gpu_memory_used += gpu.memoryUsed
       avg_gpu_memory_free += gpu.memoryFree
       avg_gpu_temperature += gpu.temperature
-    metrics['gpu.avg.compute.util'] = avg_gpu_load / gpu_count
-    metrics['gpu.avg.mem.util'] = avg_gpu_memory_util / gpu_count
-    metrics['gpu.avg.mem.total'] = avg_gpu_memory_total / gpu_count
-    metrics['gpu.avg.mem.used'] = avg_gpu_memory_used / gpu_count
-    metrics['gpu.avg.mem.free'] = avg_gpu_memory_free / gpu_count
-    metrics['gpu.avg.temp.current'] = avg_gpu_temperature / gpu_count
+    measurements['gpu.avg.compute.util'] = avg_gpu_load / gpu_count
+    measurements['gpu.avg.mem.util'] = avg_gpu_memory_util / gpu_count
+    measurements['gpu.avg.mem.total'] = avg_gpu_memory_total / gpu_count
+    measurements['gpu.avg.mem.used'] = avg_gpu_memory_used / gpu_count
+    measurements['gpu.avg.mem.free'] = avg_gpu_memory_free / gpu_count
+    measurements['gpu.avg.temp.current'] = avg_gpu_temperature / gpu_count
 
-  return metrics
+  return measurements
 
 
 def _get_git_commit_hash() -> str:
@@ -209,16 +209,16 @@ class Recorder:
   Three files are written to the given "log_dir" folder:
   1. "metadata.json" is created at the start of a workload and it includes the
      datetime, workload name, and system configuration.
-  2. "metrics.csv" is created for each hyperparameter tuning trial and a row is
-     appended for every model evaluation. The information included is loss,
-     accuracy, training step, time elapsed, hparams, workload properties,
+  2. "measurements.csv" is created for each hyperparameter tuning trial and a
+     row is appended for every model evaluation. The information included is
+     loss, accuracy, training step, time elapsed, hparams, workload properties,
      and hardware utilization.
   3. "packages.txt" is created at the start of a workload and it includes a
      list of the currently installed OS and python packages.
 
-  Joining metric CSVs across workloads or across hyperparameter tuning trials is
+  Joining measurement CSVs across workloads or hyperparameter tuning trials is
   left to users, although a convienence function called "concatenate_csvs()" is
-  provided. The data format of "metrics.csv" is designed to be safe to
+  provided. The data format of "measurements.csv" is designed to be safe to
   arbitrarily join CSVs without attribute name conflicts across both workloads
   and across hyperparameter tuning trials.
   """
@@ -315,63 +315,63 @@ class Recorder:
            global_step: int, batch_size: int, latest_eval_result: dict,
            global_start_time: float, accumulated_submission_time: float,
            goal_reached: bool) -> None:
-    """"Write or append to "metrics.csv".
+    """"Write or append to "measurements.csv".
 
-    A "metrics.csv" is created for each hyperparameter tuning trial and a row is
-    appended for every model evaluation. The information included is loss,
-    accuracy, training step, time elapsed, hparams, workload properties,
+    A "measurements.csv" is created for each hyperparameter tuning trial and a
+    row is appended for every model evaluation. The information included is
+    loss, accuracy, training step, time elapsed, hparams, workload properties,
     and hardware utilization."""
-    metrics = {}
-    metrics['workload'] = self.workload_name
-    metrics['framework'] = FLAGS.framework
-    metrics['run_idx'] = run_idx
+    measurements = {}
+    measurements['workload'] = self.workload_name
+    measurements['framework'] = FLAGS.framework
+    measurements['run_idx'] = run_idx
 
-    # Record training metrics
-    metrics['accumulated_submission_time'] = accumulated_submission_time
-    metrics['global_step'] = global_step
+    # Record training measurements
+    measurements['accumulated_submission_time'] = accumulated_submission_time
+    measurements['global_step'] = global_step
     steps_per_epoch = workload.num_train_examples // batch_size
-    metrics['epoch'] = global_step / steps_per_epoch
+    measurements['epoch'] = global_step / steps_per_epoch
     for key, value in latest_eval_result.items():
-      metrics[key] = value
+      measurements[key] = value
 
     # Record hyperparameters
-    metrics['batch_size'] = batch_size
+    measurements['batch_size'] = batch_size
     if hyperparameters:
       hparams_dict = hyperparameters._asdict()
       # prefix every key with "hparam." to make more human-readable and to
-      # avoid overlap with other possible kys in the metrics dict.
+      # avoid overlap with other possible kys in the measurements dict.
       hparams_dict = {f'hparam.{k}': v for k, v in hparams_dict.items()}
-      metrics.update(hparams_dict)
+      measurements.update(hparams_dict)
 
     # Record workload properties
     workload_properties = _get_workload_properties(workload)
-    metrics.update(workload_properties)
+    measurements.update(workload_properties)
 
     # Record miscellaneous metadata
-    metrics['steps_per_epoch'] = steps_per_epoch
-    metrics['global_start_time'] = global_start_time
-    metrics['goal_reached'] = goal_reached
+    measurements['steps_per_epoch'] = steps_per_epoch
+    measurements['global_start_time'] = global_start_time
+    measurements['goal_reached'] = goal_reached
     if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
       extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
-      metrics.update(extra_metadata)
+      measurements.update(extra_metadata)
 
     # Record utilization
-    utilization_metrics = _get_utilization()
-    metrics.update(utilization_metrics)
+    utilization_measurements = _get_utilization()
+    measurements.update(utilization_measurements)
 
     # Save to CSV file
     run_output_path = os.path.join(self.workload_log_dir, 'run_' + str(run_idx))
     os.makedirs(run_output_path, exist_ok=True)
-    csv_path = os.path.join(run_output_path, 'metrics.csv')
-    logging.info(f'Recording metrics to: {csv_path}')
-    self._append_to_csv(metrics, csv_path)
+    csv_path = os.path.join(run_output_path, 'measurements.csv')
+    logging.info(f'Recording measurements to: {csv_path}')
+    self._append_to_csv(measurements, csv_path)
 
-  def _append_to_csv(self, metrics: dict, csv_path: str) -> None:
+  def _append_to_csv(self, measurements: dict, csv_path: str) -> None:
     # Open most recent data and save data to filesystem immediately to minimize
     # data loss.
     if os.path.isfile(csv_path):
       df = pd.read_csv(csv_path)
     else:
       df = pd.DataFrame()  # Initialize empty dataframe if no data is saved yet
-    df = df.append(metrics, ignore_index=True)
+    df = df.append(measurements, ignore_index=True)
     df.to_csv(csv_path, index=False)

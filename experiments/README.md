@@ -1,11 +1,11 @@
 # Experiments
 
-_This guide demonstrates the flow of generating metrics about training data and plotting it._
+_This guide demonstrates the flow of generating measurements about training data and plotting it._
 
 ### Anatomy of an Experiment
 
 - Choose a directory where you want to save measurements.
-- Run a workload with the `--log_dir` option to produce a `metrics.csv` file.
+- Run a workload with the `--log_dir` option to produce a `measurements.csv` file.
 - Write a simple plotting script to visualize the results.
 
 ## Example Experiment: Training Loss vs Training Step
@@ -26,7 +26,7 @@ $ mkdir -p $LOG_DIR
 
 ### 2. Run a Workload
 
-Run a workload with the `--log_dir` option to produce a `metrics.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
+Run a workload with the `--log_dir` option to produce a `measurements.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
 ```bash
 $ python3 algorithmic_efficiency/submission_runner.py \
     --framework=jax \
@@ -42,8 +42,8 @@ Take a look at the output files:
 ./logs/console_output.log
 ./logs/mnist_jax/metadata.json
 ./logs/mnist_jax/packages.txt
-./logs/mnist_jax/run_1/metrics.csv
-./logs/mnist_jax/run_2/metrics.csv
+./logs/mnist_jax/run_1/measurements.csv
+./logs/mnist_jax/run_2/measurements.csv
 ```
 
 What are these output files?
@@ -51,7 +51,7 @@ What are these output files?
 Three files are written to the `log_dir` folder:
   1. `metadata.json` is created at the start of a workload and it includes the
      datetime, workload name, and system configuration.
-  2. `metrics.csv` is created for each hyperparameter tuning trial and a row is
+  2. `measurements.csv` is created for each hyperparameter tuning trial and a row is
      appended for every model evaluation. The information included is loss,
      accuracy, training step, time elapsed, hparams, workload properties,
      and hardware utilization.
@@ -85,7 +85,7 @@ Three files are written to the `log_dir` folder:
 }
 ```
 
-### 4. Inspect the output of `metrics.csv`
+### 4. Inspect the output of `measurements.csv`
 
 Note: to fit the data on screen we have transposed the CSV below and are displaying just one row.
 
@@ -140,9 +140,9 @@ Note: to fit the data on screen we have transposed the CSV below and are display
 
 ### 5. (Optional) Combine CSVs if necessary
 
-By default, one `metrics.csv` is produced per training run, ie. a `metrics.csv` has data partaining to one hyperparameter tuning trial. In our example above we choose to run 2 tuning trials, but the default for an MNIST workload is 20 tuning trials. Combining all the `metrics.csv` files across hyperparameter tuning trials is left to users, but a convienence function called `concatenate_csvs()` is provided and demonstrated below. The data format of `metrics.csv` is designed to be safe to arbitrarily join CSVs without attribute name conflicts across hyperparameter tuning trials or even workloads. It is not done automatically for you because we do not want to create data duplication if there is no need.
+By default, one `measurements.csv` is produced per training run, ie. a `measurements.csv` has data partaining to one hyperparameter tuning trial. In our example above we choose to run 2 tuning trials, but the default for an MNIST workload is 20 tuning trials. Combining all the `measurements.csv` files across hyperparameter tuning trials is left to users, but a convienence function called `concatenate_csvs()` is provided and demonstrated below. The data format of `measurements.csv` is designed to be safe to arbitrarily join CSVs without attribute name conflicts across hyperparameter tuning trials or even workloads. It is not done automatically for you because we do not want to create data duplication if there is no need.
 
-You can join all files named `metrics.csv` in a given folder recursively with this bash command:
+You can join all files named `measurements.csv` in a given folder recursively with this bash command:
 
 ```bash
 $ python3 -c "from algorithmic_efficiency import logging_utils; logging_utils.concatenate_csvs('$LOG_DIR')"
@@ -150,12 +150,12 @@ $ python3 -c "from algorithmic_efficiency import logging_utils; logging_utils.co
 
 This will produce a file called:
 ```bash
-./logs/all_metrics.csv
+./logs/all_measurements.csv
 ```
 
 ### 6. (Optional) Label your experiments
 
-You can also specify arbitrary extra metadata to be saved alongside the output CSVs metrics and JSON metadata. This is useful when doing multiple experiments and needing a way to tell data apart. To do this use the option `--record_extra_metadata="key=value"`. You can specify this option multiple times. Choose a unique key that is not likely to overlap with other CSV/JSON data attributes.
+You can also specify arbitrary extra metadata to be saved alongside the output CSVs measurements and JSON metadata. This is useful when doing multiple experiments and needing a way to tell data apart. To do this use the option `--record_extra_metadata="key=value"`. You can specify this option multiple times. Choose a unique key that is not likely to overlap with other CSV/JSON data attributes.
 
 ### 7. Write a simple plotting script to visualize the results.
 
@@ -167,7 +167,7 @@ import pandas as pd
 import seaborn as sns
 
 # Read Data
-input_file = './experiments/simple_example_mnist_loss/logs/all_metrics.csv'
+input_file = './experiments/simple_example_mnist_loss/logs/all_measurements.csv'
 df = pd.read_csv(input_file)
 
 # Plot
