@@ -94,7 +94,7 @@ class WMTWorkload(spec.Workload):
     if logits.ndim != targets.ndim + 1:
       raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
                        (str(logits.shape), str(targets.shape)))
-    loss = torch.equal(torch.argmax(logits, dim=-1), targets)
+    loss = logits.argmax(dim=-1) == targets
     normalizing_factor = np.prod([*logits.shape[:-1]])
     if weights is not None:
       loss = loss * weights
@@ -128,8 +128,8 @@ class WMTWorkload(spec.Workload):
     params = params.module if isinstance(params,
                                          torch.nn.DataParallel) else params
     params.eval()
-    params.decode = True
-    src_key_padding_mask = (inputs == 0)
+    params.decode()
+    src_key_padding_mask = inputs == 0
     encoded_inputs = torch.tensor(np.asarray(decode.flat_batch_beam_expand(
         params.encoder(
             params.pos_encoder(params.shared_embedding(inputs)),
@@ -168,7 +168,7 @@ class WMTWorkload(spec.Workload):
         eos_id=eos_id,
         max_decode_len=max_decode_len)
 
-    params.decode = False
+    params.decode(False)
 
     # Beam search returns [n_batch, n_beam, n_length + 1] with beam dimension
     # sorted in increasing order of log-probability.
@@ -181,17 +181,21 @@ class WMTWorkload(spec.Workload):
   def pad_examples(self, x, desired_batch_size):
     """Expand batch to desired size by repeating last slice."""
     batch_pad = desired_batch_size - x.shape[0]
-    return np.concatenate([x, np.tile(x[-1], (batch_pad, 1))], axis=0)
+    return torch.cat([x, torch.tile(x[-1], (batch_pad, 1))], dim=0)
 
   def translate_and_calculate_bleu(self, params, predict_ds: tf.data.Dataset,
                                    decode_tokens, max_predict_length: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
+    n_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
     for pred_batch in predict_ds:
       inputs, targets = self.preprocess_for_eval(pred_batch, None, None)
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = inputs.shape[0]
+      if cur_pred_batch_size % n_devices:
+        padded_size = int(np.ceil(cur_pred_batch_size / n_devices) * n_devices)
+        inputs = self.pad_examples(inputs, padded_size)  # pylint: disable=cell-var-from-loop
       predicted = self.predict_step(
           inputs, params, decode.EOS_ID, max_predict_length)
 
@@ -200,7 +204,6 @@ class WMTWorkload(spec.Workload):
         sources.append(decode_tokens(inputs[i]))
         references.append(decode_tokens(targets[i]))
         predictions.append(decode_tokens(s))
-
     logging.info("Translation: %d predictions %d references %d sources.",
                  len(predictions), len(references), len(sources))
 
@@ -316,7 +319,7 @@ class WMTWorkload(spec.Workload):
         nlayers=6,
         dropout=0.1,
         layer_norm_eps=1e-6)
-    logging.info(sum(p.numel() for p in model.parameters() if (p.requires_grad and not isinstance(p, torch.nn.BatchNorm2d))))
+    logging.info(sum(p.numel() for p in model.parameters() if p.requires_grad))
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)
