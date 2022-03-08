@@ -32,6 +32,18 @@ def shift_right(x, axis=1):
   return padded[:, :-1]
 
 
+# from https://github.com/alexmt-scale/causal-transformer-decoder/blob/master/examples/training_example.py
+def generate_square_subsequent_mask(sz: int, device: str = 'cpu') -> torch.Tensor:
+    """ Generate the attention mask for causal decoding """
+    mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+    mask = (
+        mask.float()
+        .masked_fill(mask == 0, float('-inf'))
+        .masked_fill(mask == 1, float(0.0))
+    ).to(device=device)
+    return mask
+
+
 class Transformer(nn.Module):
 
   def __init__(self,
@@ -70,7 +82,7 @@ class Transformer(nn.Module):
     self.decoder = TransformerDecoder(decoder_layers, nlayers, decoder_norm)
 
     self._reset_parameters()
-    self.decode = False
+    self._decode = False
 
   def _reset_parameters(self):
     r"""Initiate parameters in the transformer model."""
@@ -79,6 +91,9 @@ class Transformer(nn.Module):
         xavier_uniform_(p)
       else:
         normal_(p, std=1e-6)
+
+  def decode(self, decode=True):
+      self._decode = decode
 
   def forward(self,
               src: Tensor,
@@ -101,21 +116,18 @@ class Transformer(nn.Module):
       raise RuntimeError("the batch number of src and tgt must be equal")
 
     src = src.to(torch.int)
-    src_key_padding_mask = (src == 0)
-    #if src_mask is None:
-    #  sz = src.shape[-1]
-    #  src_mask = torch.triu(torch.full((sz, sz), float('-inf'), device=src.device), diagonal=1)
+    src_key_padding_mask = src == 0
     src = self.shared_embedding(src)
     src = self.pos_encoder(src)
     memory = self.encoder(
         src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
 
     tgt = tgt.to(torch.int)
-    tgt_key_padding_mask = (tgt == 0)
-    #if tgt_mask is None:
-    #  sz = tgt.shape[-1]
-    #  tgt_mask = torch.triu(torch.full((sz, sz), float('-inf'), device=tgt.device), diagonal=1)
-    if not self.decode:
+    tgt_key_padding_mask = tgt == 0
+    if tgt_mask is None:
+      sz = tgt.shape[-1]
+      tgt_mask = generate_square_subsequent_mask(sz, device=tgt.device)  # torch.triu(torch.full((sz, sz), float(-inf), device=tgt.device), diagonal=1)
+    if not self._decode:
       tgt = shift_right(tgt)
     tgt = self.shared_embedding(tgt)
     tgt = self.pos_encoder(tgt)
@@ -123,6 +135,7 @@ class Transformer(nn.Module):
         tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
         tgt_key_padding_mask=tgt_key_padding_mask,
         memory_key_padding_mask=src_key_padding_mask)
+
     normalize = math.sqrt(output.shape[-1])
     output = torch.matmul(output, self.shared_embedding.weight.T) / normalize
     return output
@@ -374,4 +387,3 @@ def _get_activation_fn(activation):
     elif activation == "gelu":
         return F.gelu
     raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
-
