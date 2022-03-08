@@ -35,8 +35,11 @@ class ImagenetWorkload(ImagenetWorkload):
     self._param_shapes = None
     self.epoch_metrics = []
 
-  def _build_dataset(self, data_rng: spec.RandomState, split: str,
-                     data_dir: str, batch_size):
+  def _build_dataset(self,
+                     data_rng: spec.RandomState,
+                     split: str,
+                     data_dir: str,
+                     batch_size):
     if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     ds_builder = tfds.builder('imagenet2012:5.*.*')
@@ -73,9 +76,8 @@ class ImagenetWorkload(ImagenetWorkload):
 
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
-    variables = jax.jit(model.init)({
-        'params': key
-    }, jnp.ones(input_shape, model.dtype))
+    variables = jax.jit(model.init)({'params': key},
+                                    jnp.ones(input_shape, model.dtype))
     model_state, params = variables.pop('params')
     return params, model_state
 
@@ -95,7 +97,8 @@ class ImagenetWorkload(ImagenetWorkload):
     # Keep this separate from the loss function in order to support optimizers
 
   # that use the logits.
-  def output_activation_fn(self, logits_batch: spec.Tensor,
+  def output_activation_fn(self,
+                           logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
     """Return the final activations of the model."""
     pass
@@ -116,8 +119,11 @@ class ImagenetWorkload(ImagenetWorkload):
     return self.compute_metrics(logits, batch['label'])
 
   def model_fn(
-      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
+      self,
+      params: spec.ParameterContainer,
+      input_batch: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
@@ -157,8 +163,10 @@ class ImagenetWorkload(ImagenetWorkload):
     metrics = lax.pmean(metrics, axis_name='batch')
     return metrics
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
     # sync batch statistics across replicas

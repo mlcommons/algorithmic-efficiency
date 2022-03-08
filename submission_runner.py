@@ -21,10 +21,15 @@ from typing import Optional, Tuple
 from absl import app
 from absl import flags
 from absl import logging
+import tensorflow as tf
 
 from algorithmic_efficiency import halton
+from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-import algorithmic_efficiency.random_utils as prng
+
+# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+# it unavailable to JAX.
+tf.config.experimental.set_visible_devices([], 'GPU')
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
@@ -32,33 +37,37 @@ BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 WORKLOADS = {
     'mnist_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_jax/workload.py',
-        'workload_class_name': 'MnistWorkload'
+        'workload_class_name': 'MnistWorkload',
     },
     'mnist_pytorch': {
         'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_pytorch/workload.py',
-        'workload_class_name': 'MnistWorkload'
+        'workload_class_name': 'MnistWorkload',
     },
     'imagenet_jax': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
         'workload_class_name':
-            'ImagenetWorkload'
+            'ImagenetWorkload',
     },
     'imagenet_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
         'workload_class_name':
-            'ImagenetWorkload'
+            'ImagenetWorkload',
+    },
+    'ogb_jax': {
+        'workload_path': BASE_WORKLOADS_DIR + 'ogb/ogb_jax/workload.py',
+        'workload_class_name': 'OGBWorkload',
     },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
-        'workload_class_name': 'WMTWorkload'
+        'workload_class_name': 'WMTWorkload',
     },
     'librispeech_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
         'workload_class_name':
-            'LibriSpeechWorkload'
+            'LibriSpeechWorkload',
     }
 }
 
@@ -81,9 +90,10 @@ flags.DEFINE_string(
     'tuning_search_space',
     'algorithmic_efficiency/workloads/mnist/mnist_jax/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
-flags.DEFINE_integer('num_tuning_trials', 20,
+flags.DEFINE_integer('num_tuning_trials',
+                     20,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/', 'Dataset location')
+flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
     None,
@@ -103,7 +113,8 @@ def _convert_filepath_to_module(path: str):
   return base.replace('/', '.')
 
 
-def _import_workload(workload_path: str, workload_registry_name: str,
+def _import_workload(workload_path: str,
+                     workload_registry_name: str,
                      workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
@@ -142,7 +153,9 @@ def _import_workload(workload_path: str, workload_registry_name: str,
 
 # Example reference implementation showing how to use the above functions
 # together.
-def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
+def train_once(workload: spec.Workload,
+               batch_size: int,
+               data_dir: str,
                init_optimizer_state: spec.InitOptimizerFn,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
@@ -157,8 +170,11 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
   logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  optimizer_state = init_optimizer_state(workload, model_params, model_state,
-                                         hyperparameters, opt_init_rng)
+  optimizer_state = init_optimizer_state(workload,
+                                         model_params,
+                                         model_state,
+                                         hyperparameters,
+                                         opt_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -175,9 +191,14 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch = data_selection(
-        workload, input_queue, optimizer_state, model_params, hyperparameters,
-        global_step, data_select_rng)
+    selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
+        workload,
+        input_queue,
+        optimizer_state,
+        model_params,
+        hyperparameters,
+        global_step,
+        data_select_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -187,6 +208,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
           hyperparameters=hyperparameters,
           input_batch=selected_train_input_batch,
           label_batch=selected_train_label_batch,
+          mask_batch=selected_train_mask_batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,
@@ -202,8 +224,10 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(model_params, model_state,
-                                               eval_rng, data_dir)
+      latest_eval_result = workload.eval_model(model_params,
+                                               model_state,
+                                               eval_rng,
+                                               data_dir)
       logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
                    f'\t{latest_eval_result}')
       last_eval_time = current_time
@@ -221,7 +245,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = _convert_filepath_to_module(FLAGS.submission_path)
+  submission_module_path = _convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
@@ -279,21 +303,16 @@ def score_submission_on_workload(workload: spec.Workload,
 
 
 def main(_):
-  if FLAGS.framework == 'jax':
-    import tensorflow as tf
-
-    # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-    # it unavailable to JAX.
-    tf.config.experimental.set_visible_devices([], 'GPU')
-
   workload_metadata = WORKLOADS[FLAGS.workload]
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_registry_name=FLAGS.workload,
       workload_class_name=workload_metadata['workload_class_name'])
 
-  score = score_submission_on_workload(workload, FLAGS.workload,
-                                       FLAGS.submission_path, FLAGS.data_dir,
+  score = score_submission_on_workload(workload,
+                                       FLAGS.workload,
+                                       FLAGS.submission_path,
+                                       FLAGS.data_dir,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials)

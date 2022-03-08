@@ -2,7 +2,7 @@
 
 import abc
 import enum
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 
 class LossType(enum.Enum):
@@ -39,8 +39,11 @@ class ShapeTuple:
     self.shape_tuple = shape_tuple
 
 
-Shape = Union[Tuple[int], Tuple[int, int], Tuple[int, int, int],
-              Tuple[int, int, int, int], ShapeTuple]
+Shape = Union[Tuple[int],
+              Tuple[int, int],
+              Tuple[int, int, int],
+              Tuple[int, int, int, int],
+              ShapeTuple]
 ParameterShapeTree = Dict[str, Dict[str, Shape]]
 
 # If necessary, these can be izipped together easily given they have the same
@@ -65,14 +68,29 @@ UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparamters, RandomState],
                            OptimizerState]
 UpdateParamsFn = Callable[[
-    ParameterContainer, ParameterTypeTree, ModelAuxiliaryState, Hyperparamters,
-    Tensor, Tensor, LossType, OptimizerState, List[Tuple[
-        int, float]], int, RandomState
-], UpdateReturn]
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparamters,
+    Tensor,
+    Tensor,
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                          UpdateReturn]
 DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]], OptimizerState, ParameterContainer,
-    LossType, Hyperparamters, int, RandomState
-], Tuple[Tensor, Tensor]]
+    Iterator[Tuple[Tensor, Tensor]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparamters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -82,13 +100,17 @@ class Workload(metaclass=abc.ABCMeta):
     """Return whether or not the workload goal has been reached."""
 
   @abc.abstractmethod
-  def build_input_queue(self, data_rng: RandomState, split: str, data_dir: str,
+  def build_input_queue(self,
+                        data_rng: RandomState,
+                        split: str,
+                        data_dir: str,
                         batch_size: int):
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
     """
 
+  @property
   @abc.abstractmethod
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
@@ -97,41 +119,49 @@ class Workload(metaclass=abc.ABCMeta):
   def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def target_value(self):
     """The target value to reach."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def loss_type(self):
     """The type of loss function."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def num_train_examples(self):
     """The size of the training set."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def num_eval_examples(self):
     """The size of the evaluation set."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def train_mean(self):
     """The mean of the training data."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def train_stddev(self):
     """The stddev of the training data."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def max_allowed_runtime_sec(self):
     """The max allowed runtime of the workload in seconds."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def eval_period_time_sec(self):
     """The eval period of the workload in seconds."""
 
   @abc.abstractmethod
   def is_output_params(self, param_key: ParameterKey) -> bool:
-    """Whether or not a key in ParameterContainer is the output layer parameters."""
+    """Whether or not a key in ParameterContainer is the output layer."""
 
   # InitModelFn = Callable[
   #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
@@ -144,8 +174,11 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
   #     Tensor]
   @abc.abstractmethod
-  def model_fn(self, params: ParameterContainer, input_batch: Tensor,
-               model_state: ModelAuxiliaryState, mode: ForwardPassMode,
+  def model_fn(self,
+               params: ParameterContainer,
+               augmented_and_preprocessed_input_batch: Tensor,
+               model_state: ModelAuxiliaryState,
+               mode: ForwardPassMode,
                rng: RandomState,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
@@ -165,13 +198,15 @@ class Workload(metaclass=abc.ABCMeta):
   def loss_fn(
       self,
       label_batch: Tensor,  # Dense (not one-hot) labels.
-      logits_batch: Tensor
-  ) -> Tensor:  # differentiable
+      logits_batch: Tensor,
+      mask_batch: Optional[Tensor]) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
-  def eval_model(self, params: ParameterContainer,
-                 model_state: ModelAuxiliaryState, rng: RandomState):
+  def eval_model(self,
+                 params: ParameterContainer,
+                 model_state: ModelAuxiliaryState,
+                 rng: RandomState):
     """Run a full evaluation of the model."""
 
 
@@ -183,7 +218,8 @@ class TrainingCompleteError(Exception):
 # submitter.
 
 
-def init_optimizer_state(workload: Workload, model_params: ParameterContainer,
+def init_optimizer_state(workload: Workload,
+                         model_params: ParameterContainer,
                          model_state: ModelAuxiliaryState,
                          hyperparameters: Hyperparamters,
                          rng: RandomState) -> OptimizerState:
@@ -220,11 +256,12 @@ def update_params(
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
-def data_selection(workload: Workload, input_queue: Iterator[Tuple[Tensor,
-                                                                   Tensor]],
+def data_selection(workload: Workload,
+                   input_queue: Iterator[Tuple[Tensor, Tensor]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
-                   hyperparameters: Hyperparamters, global_step: int,
+                   hyperparameters: Hyperparamters,
+                   global_step: int,
                    rng: RandomState) -> Tuple[Tensor, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 

@@ -91,7 +91,8 @@ def ctc_loss(logprobs: np.ndarray,
   xs = (logprobs_emit, logprobs_phi, logprobspaddings.transpose((1, 0)))
   _, (logalpha_phi,
       logalpha_emit) = jax.lax.scan(loop_body,
-                                    (logalpha_phi_init, logalpha_emit_init), xs)
+                                    (logalpha_phi_init, logalpha_emit_init),
+                                    xs)
 
   # extract per_seq_loss
   per_seq_loss = -jnp.take_along_axis(

@@ -44,8 +44,10 @@ class Mnist(spec.Workload):
     """Return the mean accuracy and loss as a dict."""
     raise NotImplementedError
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)

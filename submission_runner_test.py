@@ -2,8 +2,7 @@
 
 import os
 
-from algorithmic_efficiency.submission_runner import \
-    _convert_filepath_to_module
+from submission_runner import _convert_filepath_to_module
 
 
 def test_convert_filepath_to_module():

@@ -37,8 +37,10 @@ class ImagenetWorkload(ImagenetWorkload):
     """
     raise NotImplementedError
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
@@ -69,8 +71,11 @@ class ImagenetWorkload(ImagenetWorkload):
       n_data += batch_metrics['n_data']
     return {k: float(v / n_data) for k, v in total_metrics.items()}
 
-  def _build_dataset(self, data_rng: spec.RandomState, split: str,
-                     data_dir: str, batch_size: int):
+  def _build_dataset(self,
+                     data_rng: spec.RandomState,
+                     split: str,
+                     data_dir: str,
+                     batch_size: int):
 
     is_train = (split == "train")
 
@@ -87,12 +92,14 @@ class ImagenetWorkload(ImagenetWorkload):
                     self.center_crop_size,
                     scale=self.scale_ratio_range,
                     ratio=self.aspect_ratio_range),
-                transforms.RandomHorizontalFlip(), normalize
+                transforms.RandomHorizontalFlip(),
+                normalize
             ]),
         "test":
             transforms.Compose([
                 transforms.Resize(self.resize_size),
-                transforms.CenterCrop(self.center_crop_size), normalize
+                transforms.CenterCrop(self.center_crop_size),
+                normalize
             ])
     }
 
@@ -115,18 +122,24 @@ class ImagenetWorkload(ImagenetWorkload):
 
     return dataloader
 
-  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+  def preprocess_for_train(self,
+                           selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
+                           train_mean: spec.Tensor,
+                           train_stddev: spec.Tensor,
                            rng: spec.RandomState) -> spec.Tensor:
     del train_mean
     del train_stddev
     del rng
     return self.preprocess_for_eval(selected_raw_input_batch,
-                                    selected_label_batch, None, None)
+                                    selected_label_batch,
+                                    None,
+                                    None)
 
-  def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor, train_mean: spec.Tensor,
+  def preprocess_for_eval(self,
+                          raw_input_batch: spec.Tensor,
+                          raw_label_batch: spec.Tensor,
+                          train_mean: spec.Tensor,
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
@@ -149,8 +162,11 @@ class ImagenetWorkload(ImagenetWorkload):
         m.track_running_stats = update_batch_norm
 
   def model_fn(
-      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
+      self,
+      params: spec.ParameterContainer,
+      input_batch: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
@@ -178,7 +194,8 @@ class ImagenetWorkload(ImagenetWorkload):
 
     return logits_batch, None
 
-  def output_activation_fn(self, logits_batch: spec.Tensor,
+  def output_activation_fn(self,
+                           logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
 
     activation_fn = {

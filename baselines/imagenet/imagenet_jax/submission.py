@@ -13,6 +13,7 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
+  # Return the global batch size.
   del workload_name
   return 128
 
@@ -70,8 +71,14 @@ def init_optimizer_state(workload: spec.Workload,
     axis_name='batch',
     in_axes=(None, None, 0, 0, 0, None, 0, None),
     static_broadcasted_argnums=(0, 1))
-def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
-                       current_param_container, hyperparameters, batch, rng):
+def pmapped_train_step(workload,
+                       opt_update_fn,
+                       model_state,
+                       optimizer_state,
+                       current_param_container,
+                       hyperparameters,
+                       batch,
+                       rng):
 
   def _loss_fn(params):
     """loss function used for training."""
@@ -94,7 +101,7 @@ def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   aux, grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
-  new_model_state, logits = aux[1]
+  new_model_state, _ = aux[1]
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
@@ -107,10 +114,12 @@ def update_params(workload: spec.Workload,
                   current_params_types: spec.ParameterTypeTree,
                   model_state: spec.ModelAuxiliaryState,
                   hyperparameters: spec.Hyperparamters,
-                  input_batch: spec.Tensor, label_batch: spec.Tensor,
+                  input_batch: spec.Tensor,
+                  label_batch: spec.Tensor,
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
-                  eval_results: List[Tuple[int, float]], global_step: int,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   batch = {'image': input_batch, 'label': label_batch}
@@ -131,7 +140,8 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters, global_step: int,
+                   hyperparameters: spec.Hyperparamters,
+                   global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 

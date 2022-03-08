@@ -128,7 +128,8 @@ def pack_dataset(dataset: tf.data.Dataset,
   return dataset.map(my_fn, num_parallel_calls=AUTOTUNE)
 
 
-def _pack_with_tf_ops(dataset: tf.data.Dataset, keys: List[str],
+def _pack_with_tf_ops(dataset: tf.data.Dataset,
+                      keys: List[str],
                       key2length: Dict[str, int]) -> tf.data.Dataset:
   """Helper-function for packing a dataset which has already been batched.
 
@@ -214,8 +215,7 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset, keys: List[str],
         new_seq_len = tf.size(new_seq)
         new_partial[k] = tf.concat([partial[k], new_seq], 0)
         new_partial[k + '_position'] = tf.concat(
-            [partial[k + '_position'],
-             tf.range(new_seq_len)], 0)
+            [partial[k + '_position'], tf.range(new_seq_len)], 0)
       partial = new_partial
       return i + 1, partial, outputs
 
@@ -279,14 +279,8 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
   else:  # simple (static-shape) padded batching
     dataset = dataset.padded_batch(
         batch_size,
-        padded_shapes={
-            'inputs': max_length,
-            'targets': max_length
-        },
-        padding_values={
-            'inputs': 0,
-            'targets': 0
-        },
+        padded_shapes={'inputs': max_length, 'targets': max_length},
+        padding_values={'inputs': 0, 'targets': 0},
         drop_remainder=drop_remainder)
 
   if prefetch_size:
