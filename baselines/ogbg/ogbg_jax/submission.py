@@ -10,8 +10,8 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
-  # Return the per-device batch size.
-  batch_sizes = {'ogb_jax': 256}
+  # Return the global batch size.
+  batch_sizes = {'ogb_jax': 2048}
   return batch_sizes[workload_name]
 
 
@@ -52,8 +52,9 @@ def train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = workload.loss_fn(label_batch, logits_batch, mask_batch)
-    mean_loss = jnp.sum(jnp.where(mask_batch, loss, 0)) / jnp.sum(mask_batch)
+    per_example_losses = workload.loss_fn(label_batch, logits_batch, mask_batch)
+    mean_loss = (jnp.sum(jnp.where(mask_batch, per_example_losses, 0)) /
+                 jnp.sum(mask_batch))
     return mean_loss, new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)

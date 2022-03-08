@@ -1,7 +1,7 @@
 from algorithmic_efficiency import spec
 
 
-class OGB(spec.Workload):
+class OGBG(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['mean_average_precision'] > self.target_value

@@ -85,7 +85,7 @@ def _get_weights_by_nan_and_padding(labels, padding_mask):
   return replaced_labels, weights
 
 
-def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
+def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
   """Turns a per-example iterator into a batched iterator.
 
   Constructs the batch from num_shards smaller batches, so that we can easily
@@ -95,7 +95,7 @@ def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
 
   Args:
     dataset_iter: The TFDS dataset iterator.
-    batch_size: How many average-sized graphs go into the batch.
+    global_batch_size: How many average-sized graphs go into the batch.
     num_shards: How many devices we should be able to shard the batch into.
   Yields:
     Batch in the init2winit format. Each field is a list of num_shards separate
@@ -105,11 +105,11 @@ def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
     num_shards = jax.device_count()
 
   # We will construct num_shards smaller batches and then put them together.
-  batch_size /= num_shards
+  global_batch_size /= num_shards
 
-  max_n_nodes = AVG_NODES_PER_GRAPH * batch_size
-  max_n_edges = AVG_EDGES_PER_GRAPH * batch_size
-  max_n_graphs = batch_size
+  max_n_nodes = AVG_NODES_PER_GRAPH * global_batch_size
+  max_n_edges = AVG_EDGES_PER_GRAPH * global_batch_size
+  max_n_graphs = global_batch_size
 
   jraph_iter = map(_to_jraph, dataset_iter)
   batched_iter = jraph.dynamically_batch(jraph_iter,
@@ -152,10 +152,10 @@ def _get_batch_iterator(dataset_iter, batch_size, num_shards=None):
       weights_shards = []
 
 
-def get_dataset_iter(split, data_rng, data_dir, batch_size):
+def get_dataset_iter(split, data_rng, data_dir, global_batch_size):
   ds = _load_dataset(
       split,
       should_shuffle=(split == 'train'),
       data_rng=data_rng,
       data_dir=data_dir)
-  return _get_batch_iterator(iter(ds), batch_size)
+  return _get_batch_iterator(iter(ds), global_batch_size)

@@ -9,13 +9,13 @@ import jax.numpy as jnp
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.ogb.ogb_jax import input_pipeline
-from algorithmic_efficiency.workloads.ogb.ogb_jax import metrics
-from algorithmic_efficiency.workloads.ogb.ogb_jax import models
-from algorithmic_efficiency.workloads.ogb.workload import OGB
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax import input_pipeline
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax import metrics
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax import models
+from algorithmic_efficiency.workloads.ogbg.workload import OGBG
 
 
-class OGBWorkload(OGB):
+class OGBGWorkload(OGBG):
 
   def __init__(self):
     self._eval_iterator = None
@@ -150,13 +150,13 @@ class OGBWorkload(OGB):
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor]) -> spec.Tensor:  # differentiable
-    loss = self._binary_cross_entropy_with_mask(
+    per_example_losses = self._binary_cross_entropy_with_mask(
         labels=label_batch, logits=logits_batch, mask=mask_batch)
-    mean_loss = jnp.sum(jnp.where(mask_batch, loss, 0)) / jnp.sum(mask_batch)
-    return mean_loss
+    return per_example_losses
 
   def _eval_metric(self, labels, logits, masks):
-    loss = self.loss_fn(labels, logits, masks)
+    per_example_losses = self.loss_fn(labels, logits, masks)
+    loss = jnp.sum(jnp.where(masks, per_example_losses, 0)) / jnp.sum(masks)
     return metrics.EvalMetrics.single_from_model_output(
         loss=loss, logits=logits, labels=labels, mask=masks)
 
@@ -182,17 +182,16 @@ class OGBWorkload(OGB):
                  data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
-    eval_per_core_batch_size = 1024
+    total_eval_batch_size = 8192
     if self._eval_iterator is None:
       self._eval_iterator = self._build_iterator(
-          data_rng, 'validation', data_dir, batch_size=eval_per_core_batch_size)
+          data_rng, 'validation', data_dir, batch_size=total_eval_batch_size)
       # Note that this effectively stores the entire val dataset in memory.
       self._eval_iterator = itertools.cycle(self._eval_iterator)
 
     total_metrics = None
     # Both val and test have the same (prime) number of examples.
     num_val_examples = 43793
-    total_eval_batch_size = eval_per_core_batch_size * jax.local_device_count()
     num_val_steps = num_val_examples // total_eval_batch_size + 1
     # Loop over graph batches in eval dataset.
     for _ in range(num_val_steps):
