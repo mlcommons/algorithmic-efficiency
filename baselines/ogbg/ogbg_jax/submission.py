@@ -53,8 +53,9 @@ def train_step(workload,
         rng,
         update_batch_norm=True)
     per_example_losses = workload.loss_fn(label_batch, logits_batch, mask_batch)
-    mean_loss = (jnp.sum(jnp.where(mask_batch, per_example_losses, 0)) /
-                 jnp.sum(mask_batch))
+    mean_loss = (
+        jnp.sum(jnp.where(mask_batch, per_example_losses, 0)) /
+        jnp.sum(mask_batch))
     return mean_loss, new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
