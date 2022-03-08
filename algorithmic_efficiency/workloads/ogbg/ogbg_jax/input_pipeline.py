@@ -105,11 +105,11 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
     num_shards = jax.device_count()
 
   # We will construct num_shards smaller batches and then put them together.
-  global_batch_size /= num_shards
+  per_device_batch_size = global_batch_size / num_shards
 
-  max_n_nodes = AVG_NODES_PER_GRAPH * global_batch_size
-  max_n_edges = AVG_EDGES_PER_GRAPH * global_batch_size
-  max_n_graphs = global_batch_size
+  max_n_nodes = AVG_NODES_PER_GRAPH * per_device_batch_size
+  max_n_edges = AVG_EDGES_PER_GRAPH * per_device_batch_size
+  max_n_graphs = per_device_batch_size
 
   jraph_iter = map(_to_jraph, dataset_iter)
   batched_iter = jraph.dynamically_batch(jraph_iter,
