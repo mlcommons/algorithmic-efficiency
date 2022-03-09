@@ -14,7 +14,8 @@ from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet50
-from algorithmic_efficiency.workloads.imagenet.workload import BaseImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet.workload import \
+    BaseImagenetWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 

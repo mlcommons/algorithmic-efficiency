@@ -6,12 +6,14 @@ from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
+import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
-from algorithmic_efficiency.workloads.imagenet.workload import BaseImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet.workload import \
+    BaseImagenetWorkload
 
 
 class ImagenetWorkload(BaseImagenetWorkload):
