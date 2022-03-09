@@ -120,6 +120,7 @@ class LibriSpeechWorkload(spec.Workload):
   def train_stddev(self):
     return 1.0
 
+  @property
   def model_params_types(self):
     pass
 

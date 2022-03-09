@@ -63,6 +63,7 @@ class ImagenetWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 6000  # 100 mins
 
+  @property
   def model_params_types(self):
     pass
 
