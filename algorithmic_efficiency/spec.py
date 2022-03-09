@@ -147,6 +147,11 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
+  def num_test_examples(self):
+    """The size of the test set."""
+
+  @property
+  @abc.abstractmethod
   def train_mean(self):
     """The mean of the training data."""
 

@@ -1,7 +1,7 @@
 """WMT workload implemented in Jax."""
 import collections
 import functools
-from typing import Tuple
+from typing import Tuple, Optional
 
 from absl import logging
 from flax import linen as nn
@@ -331,8 +331,16 @@ class WMTWorkload(spec.Workload):
     return 5906184
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    return 10000
+
+  @property
+  def num_validation_examples(self):
     return 3004
+
+  @property
+  def num_test_examples(self):
+    return None
 
   @property
   def train_mean(self):
@@ -441,7 +449,8 @@ class WMTWorkload(spec.Workload):
       model_config = self._train_config
     else:
       model_config = self._eval_config
-    inputs, targets = input_batch["inputs"], input_batch["targets"]
+    inputs = augmented_and_preprocessed_input_batch["inputs"]
+    targets = augmented_and_preprocessed_input_batch["targets"]
     logits_batch = models.Transformer(model_config).apply({"params": params},
                                                           inputs,
                                                           targets)

@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import \
-    ImagenetJaxWorkload
+    ImagenetWorkload
 
 
 def _pytree_total_diff(pytree_a, pytree_b):
@@ -22,7 +22,7 @@ class ModelsTest(absltest.TestCase):
     batch_size = 11
     rng = jax.random.PRNGKey(0)
     rng, model_init_rng, *data_rngs = jax.random.split(rng, 4)
-    workload = ImagenetJaxWorkload()
+    workload = ImagenetWorkload()
     model_params, batch_stats = workload.init_model_fn(model_init_rng)
     input_shape = (jax.local_device_count(), batch_size, 224, 224, 3)
     first_input_batch = jax.random.normal(data_rngs[0], shape=input_shape)

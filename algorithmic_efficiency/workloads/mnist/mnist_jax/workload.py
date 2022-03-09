@@ -9,7 +9,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.mnist.workload import Mnist
+from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
 
 class _Model(nn.Module):
@@ -28,7 +28,7 @@ class _Model(nn.Module):
     return x
 
 
-class MnistWorkload(Mnist):
+class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
     self._eval_ds = None

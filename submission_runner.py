@@ -51,7 +51,11 @@ WORKLOADS = {
     'librispeech': {
         'workload_path': 'librispeech/librispeech',
         'workload_class_name': 'LibriSpeechWorkload'
-    }
+    },
+    'ogbg': {
+        'workload_path': 'ogbg/ogbg',
+        'workload_class_name': 'OGBGWorkload'
+    },
 }
 
 flags.DEFINE_string(
@@ -183,7 +187,7 @@ def train_once(workload: spec.Workload,
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
           current_param_container=model_params,
-          current_params_types=workload.model_params_types(),
+          current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
           input_batch=selected_train_input_batch,
@@ -250,7 +254,7 @@ def score_submission_on_workload(workload: spec.Workload,
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
-      rng = prng.prng_key(rng_seed)
+      rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
       # Jax implementation this means that rng[0] is all zeros, which means this
       # could lead to unintentionally reusing the same seed of only rng[0] were
@@ -273,7 +277,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
-    rng = prng.prng_key(rng_seed)
+    rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(workload, batch_size, init_optimizer_state,

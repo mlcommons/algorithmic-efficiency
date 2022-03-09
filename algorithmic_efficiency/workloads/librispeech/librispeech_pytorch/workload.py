@@ -112,8 +112,16 @@ class LibriSpeechWorkload(spec.Workload):
     return 28539
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    return 1000
+
+  @property
+  def num_validation_examples(self):
     return 2620
+
+  @property
+  def num_test_examples(self):
+    return None
 
   @property
   def train_mean(self):

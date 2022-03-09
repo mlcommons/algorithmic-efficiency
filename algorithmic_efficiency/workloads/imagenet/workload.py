@@ -3,7 +3,7 @@
 from algorithmic_efficiency import spec
 
 
-class Imagenet(spec.Workload):
+class BaseImagenetWorkload(spec.Workload):
 
   def __init__(self):
     self._eval_ds = None
@@ -30,6 +30,10 @@ class Imagenet(spec.Workload):
   @property
   def num_validation_examples(self):
     return 50000
+
+  @property
+  def num_test_examples(self):
+    return None
 
   @property
   def train_mean(self):

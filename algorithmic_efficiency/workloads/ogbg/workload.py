@@ -21,7 +21,15 @@ class OGBG(spec.Workload):
     return 350343
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    return 10000
+
+  @property
+  def num_validation_examples(self):
+    return 43793
+
+  @property
+  def num_test_examples(self):
     return 43793
 
   @property

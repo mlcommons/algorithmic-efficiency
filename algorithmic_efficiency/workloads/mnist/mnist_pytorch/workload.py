@@ -12,7 +12,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.mnist.workload import Mnist
+from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -36,7 +36,7 @@ class _Model(nn.Module):
     return self.net(x)
 
 
-class MnistWorkload(Mnist):
+class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
     self._eval_ds = None

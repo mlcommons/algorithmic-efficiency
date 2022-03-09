@@ -10,6 +10,11 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
+IMAGE_SIZE = 224
+RESIZE_SIZE = 256
+MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
+STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+
 
 def _distorted_bounding_box_crop(image_bytes,
                                  rng,
@@ -43,7 +48,7 @@ def _distorted_bounding_box_crop(image_bytes,
     cropped image `Tensor`
   """
   shape = tf.io.extract_jpeg_shape(image_bytes)
-  sample_distorted_bounding_box = tf.image.stateless_sample_distorted_bounding_box(
+  sample_distorted_bounding_box = tf.image.stateless_sample_distorted_bounding_box(  # pylint: disable=line-too-long
       shape,
       seed=rng,
       bounding_boxes=bbox,
@@ -167,8 +172,12 @@ def preprocess_for_train(image_bytes,
   return image
 
 
-def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype, image_size,
-                        resize_size):
+def preprocess_for_eval(image_bytes,
+                        mean_rgb,
+                        stddev_rgb,
+                        dtype=tf.float32,
+                        image_size=IMAGE_SIZE,
+                        resize_size=RESIZE_SIZE):
   """Preprocesses the given image for evaluation.
 
   Args:
