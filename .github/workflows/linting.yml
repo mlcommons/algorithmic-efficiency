@@ -19,6 +19,7 @@ jobs:
       run: |
         pylint algorithmic_efficiency
         pylint baselines
+        pylint submission_runner.py
         pylint submission_runner_test.py
 
   isort:

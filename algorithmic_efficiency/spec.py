@@ -115,6 +115,7 @@ class Workload(metaclass=abc.ABCMeta):
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
 
+  @property
   @abc.abstractmethod
   def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
@@ -280,5 +281,5 @@ def data_selection(workload: Workload,
 
 
 def get_batch_size(workload_name):
-  """Return a per-device batch size to use for a given workload."""
+  """Return the global batch size to use for a given workload."""
   pass
