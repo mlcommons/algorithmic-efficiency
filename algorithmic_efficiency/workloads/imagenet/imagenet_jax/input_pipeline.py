@@ -9,7 +9,6 @@ import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-
 IMAGE_SIZE = 224
 RESIZE_SIZE = 256
 MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]

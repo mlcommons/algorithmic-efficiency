@@ -37,29 +37,25 @@ BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 # workload_path will be appended by '_pytorch' or '_jax' automatically
 WORKLOADS = {
     'mnist': {
-        'workload_path': 'mnist/mnist',
-        'workload_class_name': 'MnistWorkload'
+        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
     },
     'imagenet': {
         'workload_path': 'imagenet/imagenet',
         'workload_class_name': 'ImagenetWorkload'
     },
-    'wmt': {
-        'workload_path': 'wmt/wmt',
-        'workload_class_name': 'WMTWorkload'
-    },
+    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WMTWorkload'},
     'librispeech': {
         'workload_path': 'librispeech/librispeech',
         'workload_class_name': 'LibriSpeechWorkload'
     },
     'ogbg': {
-        'workload_path': 'ogbg/ogbg',
-        'workload_class_name': 'OGBGWorkload'
+        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OGBGWorkload'
     },
 }
 
 flags.DEFINE_string(
-    'submission_path', 'baselines/mnist/mnist_jax/submission.py',
+    'submission_path',
+    'baselines/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
@@ -73,7 +69,8 @@ flags.DEFINE_enum(
     enum_values=['external', 'self'],
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
-    'tuning_search_space', 'baselines/mnist/tuning_search_space.json',
+    'tuning_search_space',
+    'baselines/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
                      20,
@@ -212,8 +209,10 @@ def train_once(workload: spec.Workload,
                                                model_state,
                                                eval_rng,
                                                data_dir)
-      logging.info('%.2fs \t%d \t%s', current_time - global_start_time,
-                   global_step, latest_eval_result)
+      logging.info('%.2fs \t%d \t%s',
+                   current_time - global_start_time,
+                   global_step,
+                   latest_eval_result)
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
@@ -291,7 +290,8 @@ def main(_):
   # extend path according to framework
   workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
-      workload_metadata['workload_path'] + '_' + FLAGS.framework, 'workload.py')
+      workload_metadata['workload_path'] + '_' + FLAGS.framework,
+      'workload.py')
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
