@@ -226,17 +226,19 @@ class Recorder:
   def __init__(self, workload: spec.Workload, workload_name: str,
                log_dir: str) -> None:
     self.workload_name = workload_name
+    self.workload = workload
     self.log_dir = log_dir
+    self.status = 'INCOMPLETE'
     self.workload_log_dir = os.path.join(self.log_dir, self.workload_name)
     if os.path.isdir(self.workload_log_dir):
       logging.warn(
           'Warning: You may overwrite data because recording output path '
           f'already exists: {self.workload_log_dir}')
     # Record initial information about workload at startup
-    self._write_metadata_file(workload)
+    self._write_metadata_file()
     self._write_package_list_file()
 
-  def _write_metadata_file(self, workload: spec.Workload) -> None:
+  def _write_metadata_file(self) -> None:
     """Write "metadata.json" to disk.
 
     It is is created at the start of a workload and includes the datetime,
@@ -244,6 +246,7 @@ class Recorder:
     metadata = {}
     metadata['workload'] = self.workload_name
     metadata['log_dir'] = self.log_dir
+    metadata['status'] = self.status
     metadata['datetime'] = datetime.now().isoformat()
     metadata['python_version'] = platform.python_version()  # Ex. '3.8.10'
     metadata['python_compiler'] = platform.python_compiler()  # Ex. 'GCC 9.3.0'
@@ -275,7 +278,7 @@ class Recorder:
         logging.warn('Unable to record gpu information. Continuing without it.')
 
     # Record workload properties
-    workload_properties = _get_workload_properties(workload)
+    workload_properties = _get_workload_properties(self.workload)
     metadata.update(workload_properties)
 
     if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
@@ -310,11 +313,16 @@ class Recorder:
       f.write('\n\nOS Packages:\n')
       f.write(os_package_list)
 
+  def set_status(self, status):
+    self.status = status
+    self._write_metadata_file()
+
   def eval(self, workload: spec.Workload,
            hyperparameters: Optional[spec.Hyperparamters], run_idx: int,
            global_step: int, batch_size: int, latest_eval_result: dict,
            global_start_time: float, accumulated_submission_time: float,
-           goal_reached: bool) -> None:
+           goal_reached: bool, is_time_remaining: bool,
+           training_complete: bool) -> None:
     """"Write or append to "measurements.csv".
 
     A "measurements.csv" is created for each hyperparameter tuning trial and a
@@ -351,6 +359,13 @@ class Recorder:
     measurements['steps_per_epoch'] = steps_per_epoch
     measurements['global_start_time'] = global_start_time
     measurements['goal_reached'] = goal_reached
+    measurements['is_time_remaining'] = is_time_remaining
+    measurements['training_complete'] = training_complete
+    is_running = (
+        is_time_remaining and not goal_reached and not training_complete)
+    status = 'INCOMPLETE' if is_running else 'COMPLETE'
+    measurements['status'] = status
+
     if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
       extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
       measurements.update(extra_metadata)
