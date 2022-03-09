@@ -89,8 +89,9 @@ flags.DEFINE_multi_string(
     'Record extra metadata in the log_dir along side the CSVs metrics and JSON '
     'metadata. This is useful when doing multiple experiments and needing a '
     'way to tell them apart. You can specify this option multiple times. '
-    'Example usage: --record_extra_metadata="key=value". Choose a unique key '
-    'that is not likely to overlap with other CSV/JSON data attributes.')
+    'Example usage: --record_extra_metadata="key=value". When keys are being '
+    'recorded they will be prefixed with "extra." so to not overlap with other '
+    'CSV/JSON data attributes.')
 flags.DEFINE_string('data_dir', '~/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',

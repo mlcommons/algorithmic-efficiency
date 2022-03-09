@@ -145,13 +145,13 @@ def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
   """Parse the extra_metadata CLI argument from string into dict.
 
   For example this program was executed with --record_extra_metadata="key=value"
-  then {'key':'value'} is returned.
+  then {'extra.key':'value'} is returned.
   """
   metadata = {}
   try:
     for item in extra_metadata_string_list:
       key, value = item.split("=")
-      metadata[key] = value
+      metadata['extra.' + key] = value
   except:
     logging.error(
         'Failed to parse extra_metadata CLI arguments. Please check your'
