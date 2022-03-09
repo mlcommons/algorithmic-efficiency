@@ -72,4 +72,4 @@ def PRNGKey(seed):  # pylint: disable=invalid-name
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.PRNGKey(seed)
-  return _prng_key(seed)
+  return _PRNGKey(seed)

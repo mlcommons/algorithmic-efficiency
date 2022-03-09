@@ -6,6 +6,7 @@ from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
+import optax
 import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import spec
@@ -114,7 +115,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -123,14 +124,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          input_batch,
+          augmented_and_preprocessed_input_batch,
           update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          input_batch,
+          augmented_and_preprocessed_input_batch,
           update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None
