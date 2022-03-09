@@ -1,6 +1,7 @@
-import random_utils as prng
+"""MNIST workload parent class."""
 
 from algorithmic_efficiency import spec
+import algorithmic_efficiency.random_utils as prng
 
 
 class Mnist(spec.Workload):

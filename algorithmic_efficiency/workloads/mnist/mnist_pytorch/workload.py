@@ -73,7 +73,10 @@ class MnistWorkload(Mnist):
 
   @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return type tuples from model as a tree
+    """
+    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
@@ -99,8 +102,8 @@ class MnistWorkload(Mnist):
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    n = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(n, -1)
+    raw_input_batch_size = raw_input_batch.size()[0]
+    raw_input_batch = raw_input_batch.view(raw_input_batch_size, -1)
     return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:

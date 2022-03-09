@@ -1,4 +1,5 @@
 """Proxy functions in front of the Jax RNG API or a compatible Numpy RNG API."""
+
 from absl import flags
 from absl import logging
 import numpy as np
@@ -71,4 +72,4 @@ def PRNGKey(seed):  # pylint: disable=invalid-name
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.PRNGKey(seed)
-  return _PRNGKey(seed)
+  return _prng_key(seed)

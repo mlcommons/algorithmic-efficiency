@@ -11,7 +11,7 @@ DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'mnist_pytorch': 1024}
+  batch_sizes = {'mnist': 1024}
   return batch_sizes[workload_name]
 
 

@@ -1,6 +1,7 @@
-# Forked from Flax example which can be found here:
-# https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 """ImageNet input pipeline.
+
+Forked from Flax example which can be found here:
+https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 """
 
 from flax import jax_utils
@@ -8,10 +9,6 @@ import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-IMAGE_SIZE = 224
-RESIZE_SIZE = 256
-MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
 
 def _distorted_bounding_box_crop(image_bytes,
@@ -170,12 +167,8 @@ def preprocess_for_train(image_bytes,
   return image
 
 
-def preprocess_for_eval(image_bytes,
-                        mean_rgb,
-                        stddev_rgb,
-                        dtype=tf.float32,
-                        image_size=IMAGE_SIZE,
-                        resize_size=RESIZE_SIZE):
+def preprocess_for_eval(image_bytes, mean_rgb, stddev_rgb, dtype, image_size,
+                        resize_size):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -317,6 +310,7 @@ def create_input_iter(dataset_builder,
       rng,
       batch_size,
       train=train,
+      dtype=tf.float32,
       image_size=image_size,
       resize_size=resize_size,
       mean_rgb=mean_rgb,

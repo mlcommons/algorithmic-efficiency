@@ -97,7 +97,7 @@ class AddPositionEmbs(nn.Module):
     cfg = self.config
     # inputs.shape is (batch_size, seq_len, emb_dim)
     assert inputs.ndim == 3, ('Number of dimensions should be 3,'
-                              ' but it is: %d' % inputs.ndim)
+                              f' but it is: {inputs.ndim}')
     length = inputs.shape[1]
     pos_emb_shape = (1, cfg.max_len, inputs.shape[-1])
     if cfg.posemb_init is None:

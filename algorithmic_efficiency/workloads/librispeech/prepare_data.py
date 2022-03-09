@@ -25,13 +25,13 @@ def check_characters(string, labels):
 
 def analyze_transcripts(train_data_dir, ignore_space=False):
   char_labels = set()
-  for i, speaker_folder in enumerate(os.listdir(train_data_dir)):
-    if i % 10 == 0:
-      print(i)
+  for j, speaker_folder in enumerate(os.listdir(train_data_dir)):
+    if j % 10 == 0:
+      print(j)
     for chapter_folder in os.listdir(f'{train_data_dir}/{speaker_folder}'):
       trans_file = (f'{train_data_dir}/{speaker_folder}/{chapter_folder}/'
                     f'{speaker_folder}-{chapter_folder}.trans.txt')
-      with open(trans_file, 'r') as f:
+      with open(trans_file, 'r', encoding='UTF-8') as f:
         for line in f:
           _, trans = line.strip().split(' ', maxsplit=1)
           if ignore_space:
@@ -40,29 +40,29 @@ def analyze_transcripts(train_data_dir, ignore_space=False):
             char_labels = char_labels.union(set(trans))
 
   output_labels = ['_'] + sorted(list(char_labels))
-  output_label_dict = {c: i for i, c in enumerate(output_labels)}
+  output_label_dict_inner = {c: i for i, c in enumerate(output_labels)}
   os.makedirs('data', exist_ok=True)
-  with open('data/labels.json', 'w') as f:
-    json.dump(output_label_dict, f, indent=4)
+  with open('data/labels.json', 'w', encoding='UTF-8') as f:
+    json.dump(output_label_dict_inner, f, indent=4)
 
-  return output_label_dict
+  return output_label_dict_inner
 
 
-def get_txt(data_dir, labels_dict, ignore_space=False):
+def get_txt(data_folder, labels_dict, ignore_space=False):
   file_trans = []
-  for i, speaker_folder in enumerate(os.listdir(data_dir)):
-    if i % 20 == 0:
-      print(f'{i}th speaker')
+  for j, speaker_folder in enumerate(os.listdir(data_folder)):
+    if j % 20 == 0:
+      print(f'{j}th speaker')
     if not speaker_folder.isdigit():
       continue
-    for chapter_folder in os.listdir(f'{data_dir}/{speaker_folder}'):
-      trans_file = (f'{data_dir}/{speaker_folder}/{chapter_folder}/'
+    for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
+      trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
                     f'{speaker_folder}-{chapter_folder}.trans.txt')
-      with open(trans_file, 'r') as f:
+      with open(trans_file, 'r', encoding='UTF-8') as f:
         for l in f:
           utt, trans = l.strip().split(' ', maxsplit=1)
           audio_path = (
-              f'{data_dir}/{speaker_folder}/{chapter_folder}/{utt}.flac')
+              f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
           assert os.path.isfile(audio_path)
           if check_characters(trans, labels_dict) and len(trans) > 10:
             if ignore_space:
@@ -71,25 +71,24 @@ def get_txt(data_dir, labels_dict, ignore_space=False):
             file_trans.append(
                 [audio_path, trans, trans_ids, f'speaker-{speaker_folder}'])
 
-  df = pd.DataFrame(
+  return pd.DataFrame(
       file_trans, columns=['file', 'trans', 'trans_ids', 'speaker'])
-  return df
 
 
 def load_audio(audio_path):
   sound, sample_rate = librosa.load(audio_path, sr=16000)
-  duration = librosa.get_duration(filename=f'{audio_path}')
+  audio_duration = librosa.get_duration(filename=f'{audio_path}')
 
   if len(sound.shape) > 1:
     if sound.shape[1] == 1:
       sound = sound.squeeze()
     else:
       sound = sound.mean(axis=1)  # multiple channels, average
-  return sound, sample_rate, duration
+  return sound, sample_rate, audio_duration
 
 
 def extract_spect_mvn(audio_path):
-  y, sample_rate, duration = load_audio(audio_path)
+  y, sample_rate, audio_duration = load_audio(audio_path)
 
   n_fft = int(sample_rate * WINDOW_SIZE)
   win_length = n_fft
@@ -111,7 +110,7 @@ def extract_spect_mvn(audio_path):
   std = np.std(spect)
   spect -= mean
   spect /= std
-  return spect.T, duration
+  return spect.T, audio_duration
 
 
 def main(data_dir):
@@ -120,18 +119,18 @@ def main(data_dir):
   os.makedirs(trans_dir, exist_ok=True)
   os.makedirs(save_dir, exist_ok=True)
 
-  output_label_dict = analyze_transcripts('{}/train-clean-100'.format(data_dir))
+  output_label_dict = analyze_transcripts(f'{data_dir}/train-clean-100')
 
   subset_list = [
       'dev-clean', 'test-clean', 'dev-other', 'test-other', 'train-clean-100'
   ]
   for subset in subset_list:
     print(subset)
-    df = get_txt('{}/{}'.format(data_dir, subset), output_label_dict)
-    df.to_csv('data/trans_{}.csv'.format(subset))
+    df = get_txt(f'{data_dir}/{subset}', output_label_dict)
+    df.to_csv(f'data/trans_{subset}.csv')
 
   for subset in subset_list:
-    df = pd.read_csv('data/trans_{}.csv'.format(subset))
+    df = pd.read_csv(f'data/trans_{subset}.csv')
     dataset = []
     for _, row in df.iterrows():
       s, duration = extract_spect_mvn(row['file'])

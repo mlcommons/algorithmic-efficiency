@@ -1,12 +1,14 @@
-"""
+"""ResNet 50 Model.
+
 Adapted from torchvision:
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
+
 from typing import Any, Callable, List, Optional, Type, Union
 
 import torch
+from torch import nn
 from torch import Tensor
-import torch.nn as nn
 
 __all__ = ['ResNet', 'resnet50']
 
@@ -166,8 +168,8 @@ class ResNet(nn.Module):
       replace_stride_with_dilation = [False, False, False]
     if len(replace_stride_with_dilation) != 3:
       raise ValueError(
-          f"replace_stride_with_dilation should be None "
-          "or a 3-element tuple, got {replace_stride_with_dilation}")
+          "replace_stride_with_dilation should be None "
+          f"or a 3-element tuple, got {replace_stride_with_dilation}")
     self.groups = groups
     self.base_width = width_per_group
     self.conv1 = nn.Conv2d(

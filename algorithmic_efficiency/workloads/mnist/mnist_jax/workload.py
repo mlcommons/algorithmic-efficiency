@@ -69,7 +69,10 @@ class MnistWorkload(Mnist):
 
   @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return type tuples from model as a tree
+    """
+    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.

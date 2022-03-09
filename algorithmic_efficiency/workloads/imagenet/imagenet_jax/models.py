@@ -1,6 +1,8 @@
-# Forked from Flax example which can be found here:
-# https://github.com/google/flax/blob/main/examples/imagenet/models.py
-"""Flax implementation of ResNet V1."""
+"""Flax implementation of ResNet V1.
+
+Forked from Flax example which can be found here:
+https://github.com/google/flax/blob/main/examples/imagenet/models.py
+"""
 
 from functools import partial
 from typing import Any, Callable, Tuple

@@ -94,7 +94,10 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def param_shapes(self):
-    pass
+    """
+    TODO: return shape tuples from model as a tree
+    """
+    raise NotImplementedError
 
   @property
   def target_value(self):
@@ -122,7 +125,10 @@ class LibriSpeechWorkload(spec.Workload):
 
   @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return shape tuples from model as a tree
+    """
+    raise NotImplementedError
 
   @property
   def max_allowed_runtime_sec(self):

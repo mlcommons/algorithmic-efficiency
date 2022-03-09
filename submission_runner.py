@@ -3,7 +3,7 @@ r"""Run a submission on a single workload.
 Example command:
 
 python3 submission_runner.py \
-    --workload=mnist_jax \
+    --workload=mnist \
     --framework=jax \
     --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
@@ -34,47 +34,33 @@ tf.config.experimental.set_visible_devices([], 'GPU')
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
+# workload_path will be appended by '_pytorch' or '_jax' automatically
 WORKLOADS = {
-    'mnist_jax': {
-        'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_jax/workload.py',
-        'workload_class_name': 'MnistWorkload',
+    'mnist': {
+        'workload_path': 'mnist/mnist',
+        'workload_class_name': 'MnistWorkload'
     },
-    'mnist_pytorch': {
-        'workload_path': BASE_WORKLOADS_DIR + 'mnist/mnist_pytorch/workload.py',
-        'workload_class_name': 'MnistWorkload',
+    'imagenet': {
+        'workload_path': 'imagenet/imagenet',
+        'workload_class_name': 'ImagenetWorkload'
     },
-    'imagenet_jax': {
-        'workload_path':
-            BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
-        'workload_class_name':
-            'ImagenetJaxWorkload',
+    'wmt': {
+        'workload_path': 'wmt/wmt',
+        'workload_class_name': 'WMTWorkload'
     },
-    'imagenet_pytorch': {
-        'workload_path':
-            BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
-        'workload_class_name':
-            'ImagenetPytorchWorkload',
-    },
-    'wmt_jax': {
-        'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
-        'workload_class_name': 'WMTWorkload',
-    },
-    'librispeech_pytorch': {
-        'workload_path':
-            BASE_WORKLOADS_DIR + 'librispeech/librispeech_pytorch/workload.py',
-        'workload_class_name':
-            'LibriSpeechWorkload',
+    'librispeech': {
+        'workload_path': 'librispeech/librispeech',
+        'workload_class_name': 'LibriSpeechWorkload'
     }
 }
 
 flags.DEFINE_string(
-    'submission_path',
-    'algorithmic_efficiency/workloads/mnist_jax/submission.py',
+    'submission_path', 'baselines/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
     'workload',
-    'mnist_jax',
+    'mnist',
     help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
 )
 flags.DEFINE_enum(
@@ -83,8 +69,7 @@ flags.DEFINE_enum(
     enum_values=['external', 'self'],
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
-    'tuning_search_space',
-    'algorithmic_efficiency/workloads/mnist/mnist_jax/tuning_search_space.json',
+    'tuning_search_space', 'baselines/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
                      20,
@@ -223,8 +208,8 @@ def train_once(workload: spec.Workload,
                                                model_state,
                                                eval_rng,
                                                data_dir)
-      logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
-                   f'\t{latest_eval_result}')
+      logging.info('%.2fs \t%d \t%s', current_time - global_start_time,
+                   global_step, latest_eval_result)
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
@@ -257,7 +242,7 @@ def score_submission_on_workload(workload: spec.Workload,
       raise ValueError(
           'Must provide a tuning search space JSON file when using external '
           'tuning.')
-    with open(tuning_search_space, 'r') as search_space_file:
+    with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
       tuning_search_space = halton.generate_search(
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
@@ -265,7 +250,7 @@ def score_submission_on_workload(workload: spec.Workload,
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
-      rng = prng.PRNGKey(rng_seed)
+      rng = prng.prng_key(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
       # Jax implementation this means that rng[0] is all zeros, which means this
       # could lead to unintentionally reusing the same seed of only rng[0] were
@@ -273,7 +258,7 @@ def score_submission_on_workload(workload: spec.Workload,
       # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
       # number.
       rng, _ = prng.split(rng, 2)
-      logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
+      logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       timing, metrics = train_once(workload, batch_size, data_dir,
                                    init_optimizer_state, update_params,
                                    data_selection, hyperparameters, rng)
@@ -288,7 +273,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
-    rng = prng.PRNGKey(rng_seed)
+    rng = prng.prng_key(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(workload, batch_size, init_optimizer_state,
@@ -299,6 +284,10 @@ def score_submission_on_workload(workload: spec.Workload,
 
 def main(_):
   workload_metadata = WORKLOADS[FLAGS.workload]
+  # extend path according to framework
+  workload_metadata['workload_path'] = os.path.join(
+      BASE_WORKLOADS_DIR,
+      workload_metadata['workload_path'] + '_' + FLAGS.framework, 'workload.py')
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])

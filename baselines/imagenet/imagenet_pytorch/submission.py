@@ -1,5 +1,5 @@
 """Training algorithm track submission functions for ImageNet."""
-from typing import List, Tuple
+from typing import Iterator, List, Tuple
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -11,7 +11,7 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'imagenet_pytorch': 128}
+  batch_sizes = {'imagenet': 128}
   return batch_sizes[workload_name]
 
 
@@ -24,8 +24,7 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  base_lr = hyperparameters.learning_rate * get_batch_size(
-      'imagenet_pytorch') / 256.
+  base_lr = hyperparameters.learning_rate * get_batch_size('imagenet') / 256.
   optimizer_state = {
       'optimizer':
           torch.optim.SGD(
@@ -93,9 +92,32 @@ def update_params(
   loss.backward()
   optimizer_state['optimizer'].step()
 
-  steps_per_epoch = workload.num_train_examples // get_batch_size(
-      'imagenet_pytorch')
+  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
   if (global_step + 1) % steps_per_epoch == 0:
     optimizer_state['scheduler'].step()
 
   return (optimizer_state, current_param_container, new_model_state)
+
+
+# Not allowed to update the model parameters, hyperparameters, global step, or
+# optimzier state.
+def data_selection(workload: spec.Workload,
+                   input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
+                   optimizer_state: spec.OptimizerState,
+                   current_param_container: spec.ParameterContainer,
+                   hyperparameters: spec.Hyperparamters, global_step: int,
+                   rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
+  """Select data from the infinitely repeating, pre-shuffled input queue.
+
+  Each element of the queue is a single training example and label.
+
+  We left out `current_params_types` because we do not believe that it would
+  # be necessary for this function.
+
+  Return a tuple of input label batches.
+  """
+  del optimizer_state
+  del current_param_container
+  del global_step
+  del rng
+  return next(input_queue)

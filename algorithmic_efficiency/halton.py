@@ -58,9 +58,8 @@ def _generate_dim(num_samples: int,
     ValueError: if `base` is negative or not prime.
   """
   if base < 0 or not _is_prime(base):
-    raise ValueError(
-        'Each Van der Corput sequence requires a prime `base`, received '
-        f'{base}.')
+    raise ValueError('Each Van der Corput sequence requires a prime `base`, '
+                     f'received {base}.')
 
   rng = random.RandomState(base)
   if shuffled_seed_sequence is None:

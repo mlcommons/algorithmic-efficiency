@@ -17,7 +17,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {"wmt_jax": 16}
+  batch_sizes = {"wmt": 16}
   return batch_sizes[workload_name]
 
 
@@ -73,7 +73,7 @@ def create_learning_rate_scheduler(
         ret *= jnp.maximum(0.0,
                            0.5 * (1.0 + jnp.cos(jnp.pi * (progress % 1.0))))
       else:
-        raise ValueError("Unknown factor %s." % name)
+        raise ValueError(f"Unknown factor {name}.")
     return jnp.asarray(ret, dtype=jnp.float32)
 
   return step_fn
