@@ -443,8 +443,9 @@ class WMTWorkload(spec.Workload):
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
-      logits_batch: spec.Tensor) -> spec.Tensor:
-
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor]) -> spec.Tensor:
+    del mask_batch
     weights = jnp.where(label_batch > 0, 1.0, 0.0)
     loss, _ = self.compute_weighted_cross_entropy(logits_batch, label_batch,
                                                   weights)
