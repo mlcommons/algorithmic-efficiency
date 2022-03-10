@@ -53,7 +53,7 @@ ParameterKey = str
 ParameterContainer = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
-RandomState = Any  # Union[jax.random.prng_key, int, bytes, ...]
+RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
 OptimizerState = Any
 Hyperparamters = Any
