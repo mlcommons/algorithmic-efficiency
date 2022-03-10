@@ -107,25 +107,14 @@ def update_params(
   del loss_type
   del hyperparameters
   del label_batch
-
-  # # X_position and X_segmentation are needed only when using "packed examples"
-  # # where multiple sequences are packed into the same example with this
-  # # metadata.
-  # # if such features are not present they are ignored and the example is
-  # # treated like a normal, unpacked sequence example.
-  # train_keys = [
-  #     'inputs', 'targets', 'inputs_position', 'targets_position',
-  #     'inputs_segmentation', 'targets_segmentation'
-  # ]
-  # (inputs, targets, inputs_positions, targets_positions, inputs_segmentation,
-  # targets_segmentation) = [input_batch.get(k, None) for k in train_keys]
   
   inputs, targets = workload.preprocess_for_train(
       input_batch, None, None, None, None)
 
   current_model = current_param_container
   current_param_container.train()
-  optimizer_state['optimizer'].zero_grad()
+  optimizer = optimizer_state['optimizer']
+  optimizer.zero_grad()
 
   output, new_model_state = workload.model_fn(
       params=current_model,
@@ -135,10 +124,10 @@ def update_params(
       rng=rng,
       update_batch_norm=True)
 
-  loss = workload.loss_fn(targets, output)
+  weights = torch.where(targets > 0, 1.0, 0.0)
+  loss = (workload.loss_fn(targets, output) * weights).sum() / weights.sum()
   loss.backward()
 
-  optimizer = optimizer_state['optimizer']
   lr = optimizer_state['scheduler'](global_step).item()
   for g in optimizer.param_groups:
     g['lr'] = lr

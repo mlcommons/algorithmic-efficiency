@@ -119,12 +119,6 @@ class WMTWorkload(spec.Workload):
   @torch.no_grad()
   def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
     """Predict translation with fast decoding beam search on a batch."""
-    # Prepare transformer fast-decoder call for beam search: for beam search, we
-    # need to set up our decoder model to handle a batch size equal to
-    # batch_size * beam_size, where each batch item's data is expanded in-place
-    # rather than tiled.
-    # i.e. if we denote each batch element subtensor as el[n]:
-    # [el0, el1, el2] --> beamsize=2 --> [el0,el0,el1,el1,el2,el2]
     params = params.module if isinstance(params,
                                          torch.nn.DataParallel) else params
     params.eval()
@@ -340,10 +334,8 @@ class WMTWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor) -> spec.Tensor:
-    weights = torch.where(label_batch > 0, 1.0, 0.0)
-    loss, normalizing_factor = self.compute_weighted_cross_entropy(
-        logits_batch, label_batch, weights)
-    return loss.sum() / normalizing_factor
+    loss, _ = self.compute_weighted_cross_entropy(logits_batch, label_batch)
+    return loss
 
   def output_activation_fn(self, logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
