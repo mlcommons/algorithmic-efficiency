@@ -28,7 +28,7 @@ def cycle(iterable):
       iterator = iter(iterable)
 
 
-class ImagenetWorkload(ImagenetWorkload):
+class ImagenetPytorchWorkload(ImagenetWorkload):
 
   @property
   def param_shapes(self):
@@ -55,7 +55,8 @@ class ImagenetWorkload(ImagenetWorkload):
     }
     n_data = 0
     for (images, labels) in self._eval_ds:
-      images, labels = self.preprocess_for_eval(images, labels, None, None)
+      images = images.float().to(DEVICE)
+      labels = labels.float().to(DEVICE)
       logits, _ = self.model_fn(
           params,
           images,
@@ -63,7 +64,6 @@ class ImagenetWorkload(ImagenetWorkload):
           spec.ForwardPassMode.EVAL,
           model_rng,
           update_batch_norm=False)
-      # TODO(znado): add additional eval metrics?
       batch_metrics = self._eval_metric(logits, labels)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
@@ -121,29 +121,6 @@ class ImagenetWorkload(ImagenetWorkload):
       dataloader = cycle(dataloader)
 
     return dataloader
-
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    del rng
-    return self.preprocess_for_eval(selected_raw_input_batch,
-                                    selected_label_batch,
-                                    None,
-                                    None)
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    return (raw_input_batch.float().to(DEVICE), raw_label_batch.to(DEVICE))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])

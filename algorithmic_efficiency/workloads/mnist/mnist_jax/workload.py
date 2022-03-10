@@ -7,9 +7,9 @@ import jax
 import jax.numpy as jnp
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from workloads.mnist.workload import Mnist
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.mnist.workload import Mnist
 
 
 class _Model(nn.Module):
@@ -67,6 +67,7 @@ class MnistWorkload(Mnist):
           'before workload.param_shapes!')
     return self._param_shapes
 
+  @property
   def model_params_types(self):
     pass
 
@@ -115,7 +116,7 @@ class MnistWorkload(Mnist):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -125,7 +126,7 @@ class MnistWorkload(Mnist):
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply({'params': params},
-                                     input_batch,
+                                     augmented_and_preprocessed_input_batch,
                                      train=train)
     return logits_batch, None
 

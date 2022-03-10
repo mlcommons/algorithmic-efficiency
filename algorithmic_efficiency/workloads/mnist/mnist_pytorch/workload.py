@@ -71,6 +71,7 @@ class MnistWorkload(Mnist):
                         batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
+  @property
   def model_params_types(self):
     pass
 

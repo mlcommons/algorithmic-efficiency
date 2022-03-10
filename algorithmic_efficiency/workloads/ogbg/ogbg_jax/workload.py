@@ -53,6 +53,7 @@ class OGBGWorkload(OGBG):
           'before workload.param_shapes!')
     return self._param_shapes
 
+  @property
   def model_params_types(self):
     pass
 

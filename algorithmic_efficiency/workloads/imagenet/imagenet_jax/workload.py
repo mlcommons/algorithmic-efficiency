@@ -1,12 +1,6 @@
-"""ImageNet workload implemented in Jax.
-
-python3 submission_runner.py \
-    --workload=imagenet_jax \
-    --submission_path=workloads/imagenet/imagenet_jax/submission.py \
-    --num_tuning_trials=1
-"""
+"""ImageNet workload implemented in Jax."""
 import functools
-from typing import Tuple
+from typing import Optional, Tuple
 
 import optax
 import tensorflow as tf
@@ -19,33 +13,40 @@ from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
-import numpy as np
-import random_utils as prng
-from workloads.imagenet.workload import ImagenetWorkload
 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
+from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
+
+_InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]  # pylint: disable=invalid-name
 
 
-class ImagenetWorkload(ImagenetWorkload):
+class ImagenetJaxWorkload(ImagenetWorkload):
 
   def __init__(self):
     super().__init__()
     self._param_shapes = None
     self.epoch_metrics = []
+    self._eval_iters = {}
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
-                     batch_size):
+                     batch_size: int,
+                     cache: Optional[bool] = None,
+                     repeat_final_dataset: Optional[bool] = None,
+                     num_batches: Optional[int] = None):
     if batch_size % jax.device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    ds_builder = tfds.builder('imagenet2012:5.*.*')
+    ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()
+    train = split == 'train'
     ds = input_pipeline.create_input_iter(
         ds_builder,
+        data_rng,
         batch_size,
         self.train_mean,
         self.train_stddev,
@@ -53,8 +54,10 @@ class ImagenetWorkload(ImagenetWorkload):
         self.resize_size,
         self.aspect_ratio_range,
         self.scale_ratio_range,
-        train=True,
-        cache=False)
+        train=train,
+        cache=not train if cache is None else cache,
+        repeat_final_dataset=repeat_final_dataset,
+        num_batches=num_batches)
     return ds
 
   def sync_batch_stats(self, model_state):
@@ -81,8 +84,6 @@ class ImagenetWorkload(ImagenetWorkload):
     model_state, params = variables.pop('params')
     return params, model_state
 
-  _InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]
-
   def init_model_fn(self, rng: spec.RandomState) -> _InitState:
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=1000, dtype=jnp.float32)
@@ -94,8 +95,7 @@ class ImagenetWorkload(ImagenetWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
 
-    # Keep this separate from the loss function in order to support optimizers
-
+  # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,
@@ -127,19 +127,18 @@ class ImagenetWorkload(ImagenetWorkload):
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
-    train = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          jax.numpy.squeeze(input_batch['image']),
-          train=train,
+          input_batch,
+          update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          jax.numpy.squeeze(input_batch['image']),
-          train=train,
+          input_batch,
+          update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None
 
@@ -163,31 +162,63 @@ class ImagenetWorkload(ImagenetWorkload):
     metrics = lax.pmean(metrics, axis_name='batch')
     return metrics
 
+  def _eval_model_on_split(self,
+                           split: str,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    eval_per_core_batch_size = 256
+    eval_total_batch_size = eval_per_core_batch_size * jax.local_device_count()
+    if split == 'train':
+      num_examples = self.num_eval_train_examples
+    else:
+      num_examples = self.num_validation_examples
+    num_batches = num_examples // eval_total_batch_size
+    # We already repeat the dataset indefinitely in tf.data.
+    if self._eval_iters[split] is None:
+      eval_ds = self._build_dataset(
+          rng,
+          split=split,
+          batch_size=eval_per_core_batch_size,
+          data_dir=data_dir,
+          cache=True,
+          repeat_final_dataset=True,
+          num_batches=num_batches)
+      self._eval_iters[split] = iter(eval_ds)
+
+    eval_metrics = {}
+    for _ in range(num_batches + 1):
+      batch = next(self._eval_iters[split])
+      # We already average these metrics across devices inside compute_metrics.
+      synced_metrics = self.eval_model_fn(params, batch, model_state, rng)
+      for metric_name, metric_value in synced_metrics.items():
+        if metric_name not in eval_metrics:
+          eval_metrics[metric_name] = 0.0
+        eval_metrics[metric_name] += metric_value
+
+    eval_metrics = jax.tree_map(lambda x: x / num_examples, eval_metrics)
+    return eval_metrics
+
   def eval_model(self,
                  params: spec.ParameterContainer,
                  model_state: spec.ModelAuxiliaryState,
                  rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
-    # sync batch statistics across replicas
+    # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)
-
-    eval_metrics = []
-    data_rng, model_rng = prng.split(rng, 2)
-    eval_batch_size = 200
-    num_batches = self.num_eval_examples // eval_batch_size
-    if self._eval_ds is None:
-      self._eval_ds = self._build_dataset(
-          data_rng, split='test', batch_size=eval_batch_size, data_dir=data_dir)
-    eval_iter = iter(self._eval_ds)
-    total_accuracy = 0.
-    for idx in range(num_batches):
-      batch = next(eval_iter)
-      synced_metrics = self.eval_model_fn(params, batch, model_state, rng)
-      eval_metrics.append(synced_metrics)
-      total_accuracy += jnp.mean(synced_metrics['accuracy'])
-
-    eval_metrics = jax.device_get(jax.tree_map(lambda x: x[0], eval_metrics))
-    eval_metrics = jax.tree_multimap(lambda *x: np.stack(x), *eval_metrics)
-    summary = jax.tree_map(lambda x: x.mean(), eval_metrics)
-    return summary
+    train_metrics = self._eval_model_on_split('train',
+                                              params,
+                                              model_state,
+                                              rng,
+                                              data_dir)
+    validation_metrics = self._eval_model_on_split('validation',
+                                                   params,
+                                                   model_state,
+                                                   rng,
+                                                   data_dir)
+    eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
+    for k, v in validation_metrics.items():
+      eval_metrics['validation/' + k] = v
+    return eval_metrics

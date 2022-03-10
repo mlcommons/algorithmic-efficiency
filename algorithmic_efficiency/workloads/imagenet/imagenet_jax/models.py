@@ -3,7 +3,7 @@
 """Flax implementation of ResNet V1."""
 
 from functools import partial
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
@@ -68,7 +68,7 @@ class BottleneckResNetBlock(nn.Module):
 
 class ResNet(nn.Module):
   """ResNetV1."""
-  stage_sizes: Sequence[int]
+  stage_sizes: Tuple[int]
   block_cls: ModuleDef
   num_classes: int
   num_filters: int = 64
@@ -76,11 +76,11 @@ class ResNet(nn.Module):
   act: Callable = nn.relu
 
   @nn.compact
-  def __call__(self, x, train: bool = True):
+  def __call__(self, x, update_batch_norm: bool = True):
     conv = partial(nn.Conv, use_bias=False, dtype=self.dtype)
     norm = partial(
         nn.BatchNorm,
-        use_running_average=not train,
+        use_running_average=not update_batch_norm,
         momentum=0.9,
         epsilon=1e-5,
         dtype=self.dtype)
@@ -110,16 +110,16 @@ class ResNet(nn.Module):
     return x
 
 
-ResNet18 = partial(ResNet, stage_sizes=[2, 2, 2, 2], block_cls=ResNetBlock)
-ResNet34 = partial(ResNet, stage_sizes=[3, 4, 6, 3], block_cls=ResNetBlock)
+ResNet18 = partial(ResNet, stage_sizes=(2, 2, 2, 2), block_cls=ResNetBlock)
+ResNet34 = partial(ResNet, stage_sizes=(3, 4, 6, 3), block_cls=ResNetBlock)
 ResNet50 = partial(
-    ResNet, stage_sizes=[3, 4, 6, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 4, 6, 3), block_cls=BottleneckResNetBlock)
 ResNet101 = partial(
-    ResNet, stage_sizes=[3, 4, 23, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 4, 23, 3), block_cls=BottleneckResNetBlock)
 ResNet152 = partial(
-    ResNet, stage_sizes=[3, 8, 36, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 8, 36, 3), block_cls=BottleneckResNetBlock)
 ResNet200 = partial(
-    ResNet, stage_sizes=[3, 24, 36, 3], block_cls=BottleneckResNetBlock)
+    ResNet, stage_sizes=(3, 24, 36, 3), block_cls=BottleneckResNetBlock)
 
 # Used for testing only.
-_ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)
+_ResNet1 = partial(ResNet, stage_sizes=(1,), block_cls=ResNetBlock)

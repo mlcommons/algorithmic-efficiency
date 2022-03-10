@@ -115,6 +115,7 @@ class Workload(metaclass=abc.ABCMeta):
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
 
+  @property
   @abc.abstractmethod
   def model_params_types(self) -> ParameterType:
     """The types of the parameters in the workload model."""
@@ -136,8 +137,13 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def num_eval_examples(self):
-    """The size of the evaluation set."""
+  def num_eval_train_examples(self):
+    """The number of training examples to evaluate metrics on."""
+
+  @property
+  @abc.abstractmethod
+  def num_validation_examples(self):
+    """The size of the validation set."""
 
   @property
   @abc.abstractmethod
@@ -275,5 +281,5 @@ def data_selection(workload: Workload,
 
 
 def get_batch_size(workload_name):
-  """Return a batch size to use for a given workload."""
+  """Return the global batch size to use for a given workload."""
   pass

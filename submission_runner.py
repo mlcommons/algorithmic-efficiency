@@ -5,9 +5,9 @@ Example command:
 python3 submission_runner.py \
     --workload=mnist_jax \
     --framework=jax \
-    --submission_path=workloads/mnist/mnist_jax/submission.py \
+    --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=workloads/mnist/mnist_jax/tuning_search_space.json \
+    --tuning_search_space=baselines/mnist/tuning_search_space.json \
     --num_tuning_trials=3
 """
 import importlib
@@ -47,17 +47,13 @@ WORKLOADS = {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_jax/workload.py',
         'workload_class_name':
-            'ImagenetWorkload',
+            'ImagenetJaxWorkload',
     },
     'imagenet_pytorch': {
         'workload_path':
             BASE_WORKLOADS_DIR + 'imagenet/imagenet_pytorch/workload.py',
         'workload_class_name':
-            'ImagenetWorkload',
-    },
-    'ogb_jax': {
-        'workload_path': BASE_WORKLOADS_DIR + 'ogb/ogb_jax/workload.py',
-        'workload_class_name': 'OGBWorkload',
+            'ImagenetPytorchWorkload',
     },
     'wmt_jax': {
         'workload_path': BASE_WORKLOADS_DIR + 'wmt/wmt_jax/workload.py',
@@ -114,7 +110,6 @@ def _convert_filepath_to_module(path: str):
 
 
 def _import_workload(workload_path: str,
-                     workload_registry_name: str,
                      workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
@@ -126,7 +121,6 @@ def _import_workload(workload_path: str,
 
   Args:
     workload_path: the path to the `workload.py` file to load.
-    workload_registry_name: the name to register the workload class under.
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
   """
@@ -191,14 +185,15 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch, selected_train_mask_batch = data_selection(
-        workload,
-        input_queue,
-        optimizer_state,
-        model_params,
-        hyperparameters,
-        global_step,
-        data_select_rng)
+    (selected_train_input_batch,
+     selected_train_label_batch,
+     selected_train_mask_batch) = data_selection(workload,
+                                                 input_queue,
+                                                 optimizer_state,
+                                                 model_params,
+                                                 hyperparameters,
+                                                 global_step,
+                                                 data_select_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -306,7 +301,6 @@ def main(_):
   workload_metadata = WORKLOADS[FLAGS.workload]
   workload = _import_workload(
       workload_path=workload_metadata['workload_path'],
-      workload_registry_name=FLAGS.workload,
       workload_class_name=workload_metadata['workload_class_name'])
 
   score = score_submission_on_workload(workload,
