@@ -4,22 +4,14 @@ and https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html.
 '''
 
 import math
-from typing import Optional, Any, Union, Callable
+from typing import Optional, Union, Callable
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch import Tensor
-from torch.nn import TransformerDecoder
-from torch.nn import TransformerEncoder
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
-from torch.nn.modules.normalization import LayerNorm
-from torch.nn.modules.module import Module
-from torch.nn.modules.activation import MultiheadAttention
-from torch.nn.modules.container import ModuleList
-from torch.nn.modules.dropout import Dropout
-from torch.nn.modules.linear import Linear
 
 
 def shift_right(x, axis=1):
@@ -30,18 +22,6 @@ def shift_right(x, axis=1):
   padded = F.pad(
       x, pad_widths, mode='constant')
   return padded[:, :-1]
-
-
-# from https://github.com/alexmt-scale/causal-transformer-decoder/blob/master/examples/training_example.py
-def generate_square_subsequent_mask(sz: int, device: str = 'cpu') -> torch.Tensor:
-    """ Generate the attention mask for causal decoding """
-    mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
-    mask = (
-        mask.float()
-        .masked_fill(mask == 0, float('-inf'))
-        .masked_fill(mask == 1, float(0.0))
-    ).to(device=device)
-    return mask
 
 
 class Transformer(nn.Module):
@@ -67,8 +47,8 @@ class Transformer(nn.Module):
         layer_norm_eps=layer_norm_eps,
         batch_first=True,
         norm_first=True)
-    encoder_norm = LayerNorm(d_model, eps=layer_norm_eps)
-    self.encoder = TransformerEncoder(encoder_layers, nlayers, encoder_norm)
+    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+    self.encoder = nn.TransformerEncoder(encoder_layers, nlayers, encoder_norm)
 
     decoder_layers = TransformerDecoderLayer(
         d_model,
@@ -78,29 +58,66 @@ class Transformer(nn.Module):
         layer_norm_eps=layer_norm_eps,
         batch_first=True,
         norm_first=True)
-    decoder_norm = LayerNorm(d_model, eps=layer_norm_eps)
-    self.decoder = TransformerDecoder(decoder_layers, nlayers, decoder_norm)
+    decoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+    self.decoder = nn.TransformerDecoder(decoder_layers, nlayers, decoder_norm)
 
     self._reset_parameters()
-    self._decode = False
 
   def _reset_parameters(self):
-    r"""Initiate parameters in the transformer model."""
+    """Initiate parameters in the transformer model."""
     for p in self.parameters():
       if p.dim() > 1:
         xavier_uniform_(p)
       else:
         normal_(p, std=1e-6)
 
-  def decode(self, decode=True):
-      self._decode = decode
+  def encode(self,
+             src: Tensor,
+             src_mask: Optional[Tensor] = None) -> Tensor:
+    src = src.to(torch.int)
+    src_key_padding_mask = src == 0
+    src = self.shared_embedding(src)
+    src = self.pos_encoder(src)
+    memory = self.encoder(
+        src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
+    return memory
+
+  def decode(self, 
+             tgt: Tensor,
+             memory: Tensor,
+             src: Tensor,  # just for calculating the padding mask
+             tgt_mask: Optional[Tensor] = None,
+             memory_mask: Optional[Tensor] = None,
+             decode: bool = False) -> Tensor:
+    tgt = tgt.to(torch.int)
+    if not decode:
+      tgt_key_padding_mask = tgt == 0
+      tgt = shift_right(tgt)
+      if tgt_mask is None:
+        sz = tgt.shape[-1]
+        tgt_mask = torch.triu(
+            torch.full((sz, sz), float('-inf'), device=tgt.device), diagonal=1)
+    else:
+        tgt_key_padding_mask = None
+        tgt_mask = None
+    tgt = self.shared_embedding(tgt)
+    tgt = self.pos_encoder(tgt)
+    memory_key_padding_mask = src == 0
+    output = self.decoder(
+        tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
+        tgt_key_padding_mask=tgt_key_padding_mask,
+        memory_key_padding_mask=memory_key_padding_mask)
+    normalize = math.sqrt(output.shape[-1])
+    output = torch.matmul(output, self.shared_embedding.weight.T) / normalize
+    return output
 
   def forward(self,
               src: Tensor,
               tgt: Tensor,
               src_mask: Optional[Tensor] = None,
               tgt_mask: Optional[Tensor] = None,
-              memory_mask: Optional[Tensor] = None) -> Tensor:
+              memory_mask: Optional[Tensor] = None,
+              decode: bool = False) -> Tensor:
     """
     Args:
       src: Tensor, shape [batch_size, seq_len]
@@ -108,36 +125,21 @@ class Transformer(nn.Module):
       src_mask: Tensor, shape [seq_len, seq_len]
       tgt_mask: Tensor, shape [seq_len, seq_len]
       memory_mask: Tensor, shape [seq_len, seq_len]
+      decode: bool
 
     Returns:
       output Tensor of shape [batch_size, seq_len, ntoken]
     """
     if src.size(0) != tgt.size(0):
       raise RuntimeError("the batch number of src and tgt must be equal")
-
-    src = src.to(torch.int)
-    src_key_padding_mask = src == 0
-    src = self.shared_embedding(src)
-    src = self.pos_encoder(src)
-    memory = self.encoder(
-        src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
-
-    tgt = tgt.to(torch.int)
-    tgt_key_padding_mask = tgt == 0
-    if tgt_mask is None:
-      sz = tgt.shape[-1]
-      tgt_mask = generate_square_subsequent_mask(sz, device=tgt.device)  # torch.triu(torch.full((sz, sz), float(-inf), device=tgt.device), diagonal=1)
-    if not self._decode:
-      tgt = shift_right(tgt)
-    tgt = self.shared_embedding(tgt)
-    tgt = self.pos_encoder(tgt)
-    output = self.decoder(
-        tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
-        tgt_key_padding_mask=tgt_key_padding_mask,
-        memory_key_padding_mask=src_key_padding_mask)
-
-    normalize = math.sqrt(output.shape[-1])
-    output = torch.matmul(output, self.shared_embedding.weight.T) / normalize
+    memory = self.encode(src, src_mask=src_mask)
+    output = self.decode(
+        tgt,
+        memory,
+        src,  # just for calculating the padding mask
+        tgt_mask=tgt_mask,
+        memory_mask=memory_mask,
+        decode=decode)
     return output
 
 
@@ -165,8 +167,8 @@ class PositionalEncoding(nn.Module):
 
 
 # TransformerEncoderLayer and TransformerDecoderLayer are taken from https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/transformer.py
-# only difference is not using bias parameters for MultiheadAttentian modules
-class TransformerEncoderLayer(Module):
+# only difference is not using bias parameters for MultiheadAttention modules
+class TransformerEncoderLayer(nn.Module):
     r"""TransformerEncoderLayer is made up of self-attn and feedforward network.
     This standard encoder layer is based on the paper "Attention Is All You Need".
     Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
@@ -202,18 +204,18 @@ class TransformerEncoderLayer(Module):
                  device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(TransformerEncoderLayer, self).__init__()
-        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
                                             bias=False, **factory_kwargs)
         # Implementation of Feedforward model
-        self.linear1 = Linear(d_model, dim_feedforward, **factory_kwargs)
-        self.dropout = Dropout(dropout)
-        self.linear2 = Linear(dim_feedforward, d_model, **factory_kwargs)
+        self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
         self.norm_first = norm_first
-        self.norm1 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm2 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.dropout1 = Dropout(dropout)
-        self.dropout2 = Dropout(dropout)
+        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
 
         # Legacy string support for activation function.
         if isinstance(activation, str):
@@ -263,7 +265,7 @@ class TransformerEncoderLayer(Module):
         return self.dropout2(x)
 
 
-class TransformerDecoderLayer(Module):
+class TransformerDecoderLayer(nn.Module):
     r"""TransformerDecoderLayer is made up of self-attn, multi-head-attn and feedforward network.
     This standard decoder layer is based on the paper "Attention Is All You Need".
     Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
@@ -302,22 +304,22 @@ class TransformerDecoderLayer(Module):
                  device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(TransformerDecoderLayer, self).__init__()
-        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
+        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
                                             bias=False, **factory_kwargs)
-        self.multihead_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
+        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
                                                  bias=False, **factory_kwargs)
         # Implementation of Feedforward model
-        self.linear1 = Linear(d_model, dim_feedforward, **factory_kwargs)
-        self.dropout = Dropout(dropout)
-        self.linear2 = Linear(dim_feedforward, d_model, **factory_kwargs)
+        self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
         self.norm_first = norm_first
-        self.norm1 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm2 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm3 = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.dropout1 = Dropout(dropout)
-        self.dropout2 = Dropout(dropout)
-        self.dropout3 = Dropout(dropout)
+        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.dropout3 = nn.Dropout(dropout)
 
         # Legacy string support for activation function.
         if isinstance(activation, str):

@@ -128,30 +128,15 @@ class WMTWorkload(spec.Workload):
     params = params.module if isinstance(params,
                                          torch.nn.DataParallel) else params
     params.eval()
-    params.decode()
-    src_key_padding_mask = inputs == 0
-    encoded_inputs = torch.tensor(np.asarray(decode.flat_batch_beam_expand(
-        params.encoder(
-            params.pos_encoder(params.shared_embedding(inputs)),
-            src_key_padding_mask=src_key_padding_mask).cpu().numpy(),
-        beam_size)),
-        device=DEVICE)
+    encoded_inputs = torch.repeat_interleave(
+        params.encode(inputs), repeats=beam_size, dim=0)
+    raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
 
     def tokens_ids_to_logits(flat_ids, cache_dummy):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = params.pos_encoder(params.shared_embedding(
-          flat_ids.to(DEVICE)))
-      memory_key_padding_mask = torch.repeat_interleave(
-          src_key_padding_mask, repeats=beam_size, dim=0)
-      decoder_output = params.decoder(
-          flat_ids, encoded_inputs,
-          memory_key_padding_mask=memory_key_padding_mask)
-      normalize = np.sqrt(decoder_output.shape[-1])
-      flat_logits = torch.matmul(
-          decoder_output,
-          params.shared_embedding.weight.T) / normalize
-
+      flat_logits = params.decode(
+          flat_ids.to(DEVICE), encoded_inputs, raw_inputs, decode=True)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
       flat_logits = flat_logits.cpu().numpy().squeeze(axis=1)
@@ -167,8 +152,6 @@ class WMTWorkload(spec.Workload):
         alpha=0.6,
         eos_id=eos_id,
         max_decode_len=max_decode_len)
-
-    params.decode(False)
 
     # Beam search returns [n_batch, n_beam, n_length + 1] with beam dimension
     # sorted in increasing order of log-probability.
@@ -230,7 +213,7 @@ class WMTWorkload(spec.Workload):
     self._per_device_batch_size = batch_size
     self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
         vocab_size=self._vocab_size,
-        batch_size=n_devices * batch_size,
+        batch_size=n_devices*batch_size,
         reverse_translation=True,
         vocab_path=VOCAB_PATH,
         pack_examples=False)  # only needed for TPU training?
