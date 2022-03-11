@@ -42,8 +42,8 @@ Take a look at the output files:
 ./logs/console_output.log
 ./logs/mnist_jax/metadata.json
 ./logs/mnist_jax/packages.txt
-./logs/mnist_jax/run_1/measurements.csv
-./logs/mnist_jax/run_2/measurements.csv
+./logs/mnist_jax/trial_1/measurements.csv
+./logs/mnist_jax/trial_2/measurements.csv
 ```
 
 What are these output files?
@@ -92,7 +92,7 @@ Note: to fit the data on screen we have transposed the CSV below and are display
 | Column Name                      | Row Value         |
 |----------------------------------|-------------------|
 | framework                        | jax               |
-| run_idx                          | 1.00              |
+| trial_idx                          | 1.00              |
 | accumulated_submission_time      | 2.62              |
 | global_step                      | 1.00              |
 | epoch                            | 0.02              |

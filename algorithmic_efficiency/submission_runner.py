@@ -157,7 +157,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparamters],
                rng: spec.RandomState, record: Callable,
-               run_idx: int) -> Tuple[spec.Timing, spec.Steps]:
+               trial_idx: int) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -219,7 +219,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-      record.eval(workload, hyperparameters, run_idx, global_step, batch_size,
+      record.eval(workload, hyperparameters, trial_idx, global_step, batch_size,
                   latest_eval_result, global_start_time,
                   accumulated_submission_time, goal_reached, is_time_remaining,
                   training_complete)
@@ -265,7 +265,7 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for run_idx, hyperparameters in enumerate(tuning_search_space):
+    for trial_idx, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
       rng = prng.PRNGKey(rng_seed)
@@ -276,11 +276,11 @@ def score_submission_on_workload(workload: spec.Workload,
       # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
       # number.
       rng, _ = prng.split(rng, 2)
-      logging.info(f'--- Tuning run {run_idx + 1}/{num_tuning_trials} ---')
+      logging.info(f'--- Tuning run {trial_idx + 1}/{num_tuning_trials} ---')
       timing, metrics = train_once(workload, batch_size, data_dir,
                                    init_optimizer_state, update_params,
                                    data_selection, hyperparameters, rng, record,
-                                   run_idx + 1)
+                                   trial_idx + 1)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)

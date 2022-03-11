@@ -334,7 +334,7 @@ class Recorder:
     self._write_metadata_file()
 
   def eval(self, workload: spec.Workload,
-           hyperparameters: Optional[spec.Hyperparamters], run_idx: int,
+           hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
            global_step: int, batch_size: int, latest_eval_result: dict,
            global_start_time: float, accumulated_submission_time: float,
            goal_reached: bool, is_time_remaining: bool,
@@ -348,7 +348,7 @@ class Recorder:
     measurements = {}
     measurements['workload'] = self.workload_name
     measurements['framework'] = FLAGS.framework
-    measurements['run_idx'] = run_idx
+    measurements['trial_idx'] = trial_idx
 
     # Record training measurements
     measurements['accumulated_submission_time'] = accumulated_submission_time
@@ -391,9 +391,9 @@ class Recorder:
     measurements.update(utilization_measurements)
 
     # Save to CSV file
-    run_output_path = os.path.join(self.workload_log_dir, 'run_' + str(run_idx))
-    os.makedirs(run_output_path, exist_ok=True)
-    csv_path = os.path.join(run_output_path, 'measurements.csv')
+    trial_output_path = os.path.join(self.workload_log_dir, 'trial_' + str(trial_idx))
+    os.makedirs(trial_output_path, exist_ok=True)
+    csv_path = os.path.join(trial_output_path, 'measurements.csv')
     logging.info(f'Recording measurements to: {csv_path}')
     self._append_to_csv(measurements, csv_path)
 
