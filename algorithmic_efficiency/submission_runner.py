@@ -224,11 +224,12 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
       last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-      record.eval(workload, hyperparameters, trial_idx, global_step, batch_size,
+      record.save_eval(workload, hyperparameters, trial_idx, global_step, batch_size,
                   latest_eval_result, global_start_time,
                   accumulated_submission_time, goal_reached, is_time_remaining,
                   training_complete)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
+  record.trial_complete(workload, hyperparameters, trial_idx, global_step, batch_size, latest_eval_result, global_start_time, accumulated_submission_time, goal_reached, is_time_remaining, training_complete)
   return accumulated_submission_time, metrics
 
 
@@ -303,7 +304,7 @@ def score_submission_on_workload(workload: spec.Workload,
     score, _ = train_once(workload, batch_size, init_optimizer_state,
                           update_params, data_selection, None, rng, record, 1)
   # TODO(znado): record score.
-  record.set_status('COMPLETE')
+  record.workload_complete(score)
   return score
 
 

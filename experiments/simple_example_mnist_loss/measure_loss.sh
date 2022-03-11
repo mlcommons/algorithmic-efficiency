@@ -12,7 +12,7 @@
 set -e # exit on error
 
 # Quick data collection
-NUM_TRIALS='2'
+NUM_TRIALS='1'
 
 # Full data collection
 # NUM_TRIALS='20'
