@@ -9,8 +9,6 @@ import jax.numpy as jnp
 from flax import linen as nn
 
 
-
-
 class Sequential(nn.Module):
     layers: Sequence[nn.Module]
 
@@ -220,10 +218,11 @@ class CNNLSTM(nn.Module):
         rnn_input_size = int(math.floor(rnn_input_size + 2 * 10 - 21) / 2 + 1)
         rnn_input_size *= 32
 
-        self.rnns = [BatchRNN(input_size=rnn_input_size, hidden_size=self.hidden_size,
-                              use_batch_norm=False)]
-        self.rnns.extend([BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
-                          for _ in range(self.hidden_layers - 1)])
+        rnns = [BatchRNN(input_size=rnn_input_size, hidden_size=self.hidden_size,
+                         use_batch_norm=False)]
+        rnns.extend([BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
+                     for _ in range(self.hidden_layers - 1)])
+        self.rnns = rnns
 
         fully_connected = Sequential([nn.BatchNorm(use_running_average=True),
                                       nn.Dense(self.num_classes, use_bias=False)])
