@@ -1,6 +1,7 @@
 import functools
 import itertools
 import os
+import typing
 from typing import Tuple
 
 import Levenshtein
@@ -28,6 +29,7 @@ class LibriSpeechWorkload(spec.Workload):
     def __init__(self):
         self._train_loader = None
         self._valid_loader = None
+        self._valid_loader_len: typing.Optional[int] = None
         self._model = models.CNNLSTM()
         self._label_dict = {
             "_": 0,
@@ -86,12 +88,14 @@ class LibriSpeechWorkload(spec.Workload):
             pin_memory=False,
             collate_fn=train_collate_fn)
 
-        self._valid_loader = iter(itertools.cycle(torch.utils.data.DataLoader(
+        valid_loader = torch.utils.data.DataLoader(
             valid_set,
             batch_size=batch_size,
             num_workers=2,
             pin_memory=False,
-            collate_fn=train_collate_fn)))  # itertools.cycle is required for it to run on tpu
+            collate_fn=train_collate_fn)
+        self._valid_loader = iter(itertools.cycle(valid_loader))  # itertools.cycle is required for it to run on tpu
+        self._valid_loader_len = len(valid_loader)
 
         return iter(itertools.cycle(self._train_loader))
 
@@ -256,9 +260,11 @@ class LibriSpeechWorkload(spec.Workload):
         total_error = 0.0
         total_length = 0.0
 
-        eval_batch_size = 32
+        # eval_batch_size = 32  <- it's not used anywhere? is eval not batched?
         num_devices = jax.local_device_count()
-        for (_, features, transcripts, input_lengths, transcripts_padding) in self._valid_loader:
+        for step_idx, (_, features, transcripts, input_lengths, transcripts_padding) in enumerate(self._valid_loader):
+            if step_idx >= self._valid_loader_len:
+                break
             features = jnp.expand_dims(features.transpose(0, 2, 1), axis=1)
             reshaped_features = jnp.reshape(
                 features,
