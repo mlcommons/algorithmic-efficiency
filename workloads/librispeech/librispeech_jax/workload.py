@@ -11,6 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 import torch
 from flax import jax_utils
+import torch.utils.data
 from jax import lax
 
 import spec
@@ -84,6 +85,7 @@ class LibriSpeechWorkload(spec.Workload):
             train_set,
             batch_size=batch_size,
             shuffle=True,
+            drop_last=True,
             num_workers=2,
             pin_memory=False,
             collate_fn=train_collate_fn)
@@ -92,6 +94,7 @@ class LibriSpeechWorkload(spec.Workload):
             valid_set,
             batch_size=batch_size,
             num_workers=2,
+            drop_last=True,
             pin_memory=False,
             collate_fn=train_collate_fn)
         self._valid_loader = iter(itertools.cycle(valid_loader))  # itertools.cycle is required for it to run on tpu
@@ -260,7 +263,6 @@ class LibriSpeechWorkload(spec.Workload):
         total_error = 0.0
         total_length = 0.0
 
-        # eval_batch_size = 32  <- it's not used anywhere? is eval not batched?
         num_devices = jax.local_device_count()
         for step_idx, (_, features, transcripts, input_lengths, transcripts_padding) in enumerate(self._valid_loader):
             if step_idx >= self._valid_loader_len:
