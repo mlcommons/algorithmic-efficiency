@@ -206,7 +206,7 @@ class Recorder:
   This class should be instantiated once per workload. Logging files are written
   to seperate workload specific folders.
 
-  Three files are written to the given "log_dir" folder:
+  Three files are written to the given "logging_dir" folder:
   1. "metadata.json" is created at the start of a workload and it includes the
      datetime, workload name, and system configuration.
   2. "measurements.csv" is created for each hyperparameter tuning trial and a
@@ -224,16 +224,16 @@ class Recorder:
   """
 
   def __init__(self, workload: spec.Workload, workload_name: str,
-               log_dir: str, submission_path: str, tuning_ruleset: str, tuning_search_space_path: Optional[str] = None, num_tuning_trials: Optional[int] = None) -> None:
+               logging_dir: str, submission_path: str, tuning_ruleset: str, tuning_search_space_path: Optional[str] = None, num_tuning_trials: Optional[int] = None) -> None:
     self.workload_name = workload_name
     self.workload = workload
-    self.log_dir = log_dir
+    self.logging_dir = logging_dir
     self.submission_path = submission_path
     self.tuning_ruleset = tuning_ruleset
     self.tuning_search_space_path = tuning_search_space_path
     self.num_tuning_trials = num_tuning_trials
     self.status = 'INCOMPLETE'
-    self.workload_log_dir = os.path.join(self.log_dir, self.workload_name)
+    self.workload_log_dir = os.path.join(self.logging_dir, self.workload_name)
     if os.path.isdir(self.workload_log_dir):
       logging.warn(
           'Warning: You may overwrite data because recording output path '
@@ -253,7 +253,7 @@ class Recorder:
     metadata['workload'] = self.workload_name
     metadata['datetime'] = datetime.now().isoformat()
     metadata['status'] = self.status
-    metadata['log_dir'] = self.log_dir
+    metadata['logging_dir'] = self.logging_dir
     metadata['submission_path'] = self.submission_path
     metadata['tuning_ruleset'] = self.tuning_ruleset
     metadata['num_tuning_trials'] = self.num_tuning_trials

@@ -5,7 +5,7 @@ _This guide demonstrates the flow of generating measurements about training data
 ### Anatomy of an Experiment
 
 - Choose a directory where you want to save measurements.
-- Run a workload with the `--log_dir` option to produce a `measurements.csv` file.
+- Run a workload with the `--logGING_dir` option to produce a `measurements.csv` file.
 - Write a simple plotting script to visualize the results.
 
 ## Example Experiment: Training Loss vs Training Step
@@ -20,13 +20,13 @@ __TLDR:__ This guide is summarized into two scripts:
 
 Choose a directory where you want to save measurements:
 ```bash
-$ LOG_DIR=./experiments/simple_example_mnist_loss/logs
-$ mkdir -p $LOG_DIR
+$ LOGGING_DIR=./experiments/simple_example_mnist_loss/logs
+$ mkdir -p $LOGGING_DIR
 ```
 
 ### 2. Run a Workload
 
-Run a workload with the `--log_dir` option to produce a `measurements.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
+Run a workload with the `--logGING_dir` option to produce a `measurements.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
 ```bash
 $ python3 algorithmic_efficiency/submission_runner.py \
     --framework=jax \
@@ -34,7 +34,7 @@ $ python3 algorithmic_efficiency/submission_runner.py \
     --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_search_space=baselines/mnist/tuning_search_space.json \
     --num_tuning_trials=2 \
-    --log_dir=$LOG_DIR 2>&1 | tee -a $LOG_DIR/console_output.log
+    --logGING_dir=$LOGGING_DIR 2>&1 | tee -a $LOGGING_DIR/console_output.log
 ```
 
 Take a look at the output files:
@@ -48,7 +48,7 @@ Take a look at the output files:
 
 What are these output files?
 
-Three files are written to the `log_dir` folder:
+Three files are written to the `logGING_dir` folder:
   1. `metadata.json` is created at the start of a workload and it includes the
      datetime, workload name, and system configuration.
   2. `measurements.csv` is created for each hyperparameter tuning trial and a row is
@@ -63,7 +63,7 @@ Three files are written to the `log_dir` folder:
 ```
 {
     "workload": "mnist_jax",
-    "log_dir": "./experiments/simple_example_mnist_loss/logs",
+    "logGING_dir": "./experiments/simple_example_mnist_loss/logs",
     "datetime": "2022-03-04T20:59:51.602377",
     "python_version": "3.8.10",
     "python_compiler": "GCC 9.3.0",
@@ -145,7 +145,7 @@ By default, one `measurements.csv` is produced per training run, ie. a `measurem
 You can join all files named `measurements.csv` in a given folder recursively with this bash command:
 
 ```bash
-$ python3 -c "from algorithmic_efficiency import logging_utils; logging_utils.concatenate_csvs('$LOG_DIR')"
+$ python3 -c "from algorithmic_efficiency import logging_utils; logging_utils.concatenate_csvs('$LOGGING_DIR')"
 ````
 
 This will produce a file called:

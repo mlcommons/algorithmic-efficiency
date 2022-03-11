@@ -84,9 +84,14 @@ flags.DEFINE_string(
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials', 20,
                      'The number of external hyperparameter trials to run.')
+flags.DEFINE_string(
+    'logging_dir',
+    None,
+    'The path to save information about the training progress of a workload to '
+    'disk.')
 flags.DEFINE_multi_string(
     'extra_metadata', None,
-    'Record extra metadata in the log_dir along side the CSVs metrics and JSON '
+    'Record extra metadata in the "logging_dir" along side the CSVs metrics and JSON '
     'metadata. This is useful when doing multiple experiments and needing a '
     'way to tell them apart. You can specify this option multiple times. '
     'Example usage: --record_extra_metadata="key=value". When keys are being '
@@ -244,13 +249,13 @@ def score_submission_on_workload(workload: spec.Workload,
   get_batch_size = submission_module.get_batch_size
   batch_size = get_batch_size(workload_name)
 
-  if FLAGS.log_dir:
+  if FLAGS.logging_dir:
     # Save training progress to disk eg. loss, hparams, and other metadata
-    record = logging_utils.Recorder(workload, workload_name, FLAGS.log_dir,
+    record = logging_utils.Recorder(workload, workload_name, FLAGS.logging_dir,
         FLAGS.submission_path, tuning_ruleset, tuning_search_space,
         num_tuning_trials)
   else:
-    record = logging_utils.NoOpRecorder()  # Do nothing if no log_dir is set
+    record = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in

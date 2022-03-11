@@ -4,10 +4,10 @@
 #
 # Usage:
 ## Configure output location:
-## export LOG_DIR=./experiments/simple_example_mnist_loss/logs && mkdir -p $LOG_DIR/
+## export LOGGING_DIR=./experiments/simple_example_mnist_loss/logs && mkdir -p $LOGGING_DIR/
 ##
 ## Run this script:
-## bash ./experiments/simple_example_mnist_loss/measure_loss.sh 2>&1 | tee -a $LOG_DIR/console_output.log
+## bash ./experiments/simple_example_mnist_loss/measure_loss.sh 2>&1 | tee -a $LOGGING_DIR/console_output.log
 
 set -e # exit on error
 
@@ -25,12 +25,12 @@ python3 algorithmic_efficiency/submission_runner.py \
     --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_search_space=baselines/mnist/tuning_search_space.json \
     --num_tuning_trials=$NUM_TRIALS \
-    --log_dir=$LOG_DIR
+    --logging_dir=$LOGGING_DIR
 set +x
 
 # Combine all tuning trials into one CSV
-python3 -c "from algorithmic_efficiency import logging_utils; logging_utils.concatenate_csvs('$LOG_DIR')"
+python3 -c "from algorithmic_efficiency import logging_utils; logging_utils.concatenate_csvs('$LOGGING_DIR')"
 
 echo "[INFO $(date +"%d-%I:%M%p")] Generated files:"
-find $LOG_DIR
+find $LOGGING_DIR
 echo "[INFO $(date +"%d-%I:%M%p")] Finished."
