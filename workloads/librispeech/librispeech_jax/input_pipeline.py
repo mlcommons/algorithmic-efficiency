@@ -27,8 +27,9 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     return self.sample_size
 
   def pad_collate(self, batch):
-    max_input_len = 2453
-    max_target_len = 405
+    max_input_len = 4096  # It has to be >3300 due to the eval dataset and 4096 is the next power of 2 above it
+    max_target_len = 512  # It has to be above 405 and 512 is the next power of 2 above it
+    # You can probably reduce max_input_len to 3328 (3072 + 256) for optimal performance on GPU
 
     for i, elem in enumerate(batch):
       index, f, trn = elem
