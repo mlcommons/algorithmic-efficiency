@@ -246,7 +246,9 @@ def score_submission_on_workload(workload: spec.Workload,
 
   if FLAGS.log_dir:
     # Save training progress to disk eg. loss, hparams, and other metadata
-    record = logging_utils.Recorder(workload, workload_name, FLAGS.log_dir)
+    record = logging_utils.Recorder(workload, workload_name, FLAGS.log_dir,
+        FLAGS.submission_path, tuning_ruleset, tuning_search_space,
+        num_tuning_trials)
   else:
     record = logging_utils.NoOpRecorder()  # Do nothing if no log_dir is set
 

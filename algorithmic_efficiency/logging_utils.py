@@ -224,10 +224,14 @@ class Recorder:
   """
 
   def __init__(self, workload: spec.Workload, workload_name: str,
-               log_dir: str) -> None:
+               log_dir: str, submission_path: str, tuning_ruleset: str, tuning_search_space_path: Optional[str] = None, num_tuning_trials: Optional[int] = None) -> None:
     self.workload_name = workload_name
     self.workload = workload
     self.log_dir = log_dir
+    self.submission_path = submission_path
+    self.tuning_ruleset = tuning_ruleset
+    self.tuning_search_space_path = tuning_search_space_path
+    self.num_tuning_trials = num_tuning_trials
     self.status = 'INCOMPLETE'
     self.workload_log_dir = os.path.join(self.log_dir, self.workload_name)
     if os.path.isdir(self.workload_log_dir):
@@ -244,14 +248,34 @@ class Recorder:
     It is is created at the start of a workload and includes the datetime,
     workload name, and system configuration."""
     metadata = {}
+
+    # Workload Information
     metadata['workload'] = self.workload_name
-    metadata['log_dir'] = self.log_dir
-    metadata['status'] = self.status
     metadata['datetime'] = datetime.now().isoformat()
-    metadata['python_version'] = platform.python_version()  # Ex. '3.8.10'
-    metadata['python_compiler'] = platform.python_compiler()  # Ex. 'GCC 9.3.0'
+    metadata['status'] = self.status
+    metadata['log_dir'] = self.log_dir
+    metadata['submission_path'] = self.submission_path
+    metadata['tuning_ruleset'] = self.tuning_ruleset
+    metadata['num_tuning_trials'] = self.num_tuning_trials
+
+    if self.tuning_search_space_path:
+      metadata['tuning_search_space_path'] = self.tuning_search_space_path
+      with open(self.tuning_search_space_path, 'r') as search_space_file:
+        tuning_search_space = json.load(search_space_file)
+        metadata['tuning_search_space'] = tuning_search_space
+
+    workload_properties = _get_workload_properties(self.workload)
+    metadata.update(workload_properties)
+
+    if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
+      extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
+      metadata.update(extra_metadata)
+
+    # System Information
     metadata['os_platform'] = \
         platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
+    metadata['python_version'] = platform.python_version()  # Ex. '3.8.10'
+    metadata['python_compiler'] = platform.python_compiler()  # Ex. 'GCC 9.3.0'
     # Note: do not store hostname as that may be sensitive
 
     try:
@@ -276,14 +300,6 @@ class Recorder:
         metadata['gpu_driver'] = gpus[0].driver
       except:
         logging.warn('Unable to record gpu information. Continuing without it.')
-
-    # Record workload properties
-    workload_properties = _get_workload_properties(self.workload)
-    metadata.update(workload_properties)
-
-    if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
-      extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
-      metadata.update(extra_metadata)
 
     # Save metadata.json
     os.makedirs(self.workload_log_dir, exist_ok=True)
