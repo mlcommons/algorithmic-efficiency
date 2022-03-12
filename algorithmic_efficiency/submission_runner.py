@@ -94,10 +94,10 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'eval_frequency_override',
     None,
-    'Override default frequency of evaluation. This is not competition legal but can be used to monitor training progress at any granularity. The competition evaluates every "eval_period_time_sec" seconds, but instead you can choose an eval frequency in epochs or steps. These evals contribute to the accumulated_submission_time. Example usage:'
+    'You can override the default frequency of model evaluation, which in turn will change when information about the training progress is saved to disk. This is not competition legal but can be used to monitor training progress at any granularity for debugging purposes. By default the competition evaluates the model every "eval_period_time_sec" seconds, but instead you can choose an eval frequency in epochs or steps. These evals contribute to the accumulated_submission_time. Example usage:'
     'Evalate after every epoch: --eval_frequency_override="1 epoch"'
     'Evaluate after 100 mini-batches: --eval_frequency_override="100 step"'
-    'Note: Requires --logging_dir to set to take effect.')
+    'Note: Requires --logging_dir set to take effect.')
 flags.DEFINE_multi_string(
     'extra_metadata', None,
     'Record extra metadata in the "logging_dir" along side the CSVs metrics and JSON '
