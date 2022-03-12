@@ -166,7 +166,7 @@ class BatchRNN(nn.Module):
 
 
 def hard_tanh(x, min_value=-1., max_value=1.):
-    return jnp.where(x > max_value, max_value, jnp.where(x < min_value, min_value, x))
+    return jnp.clip(x, min_value, max_value)
 
 
 def get_seq_lens(input_length, conv_seq_module):
