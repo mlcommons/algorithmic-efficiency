@@ -234,6 +234,7 @@ class Recorder:
     self.tuning_search_space_path = tuning_search_space_path
     self.num_tuning_trials = num_tuning_trials
     self.status = 'INCOMPLETE'
+    self.last_epoch_evaluated = None
     self.workload_log_dir = os.path.join(self.logging_dir, self.workload_name)
     if os.path.isdir(self.workload_log_dir):
       logging.warn(
@@ -270,7 +271,7 @@ class Recorder:
     workload_properties = _get_workload_properties(self.workload)
     metadata.update(workload_properties)
 
-    if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
+    if FLAGS.extra_metadata:
       extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
       metadata.update(extra_metadata)
 
@@ -399,7 +400,7 @@ class Recorder:
     workload_properties = _get_workload_properties(workload)
     measurements.update(workload_properties)
 
-    if 'extra_metadata' in FLAGS and FLAGS.extra_metadata:
+    if FLAGS.extra_metadata:
       extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
       measurements.update(extra_metadata)
 
@@ -429,6 +430,31 @@ class Recorder:
     csv_path = os.path.join(trial_output_path, 'measurements.csv')
     logging.info(f'Recording measurements to: {csv_path}')
     self._append_to_csv(measurements, csv_path)
+
+  def check_eval_frequency_override(self, workload, global_step, batch_size):
+    if not FLAGS.eval_frequency_override:
+      return False
+
+    try:
+      freq, unit = FLAGS.eval_frequency_override.split(' ')
+      freq = int(freq)
+      assert(unit in ['epoch', 'step'])
+    except:
+        logging.error(
+          'Failed to parse eval_frequency_override CLI arguments. Please check your'
+          'command.')
+        raise
+
+    if unit == 'step':
+      if global_step % freq == 0:
+        return True
+
+    elif unit == 'epoch':
+      steps_per_epoch = workload.num_train_examples // batch_size
+      epoch = global_step // steps_per_epoch
+      if epoch != self.last_epoch_evaluated:
+        self.last_epoch_evaluated = epoch
+        return True
 
   def _append_to_csv(self, measurements: dict, csv_path: str) -> None:
     # Open most recent data and save data to filesystem immediately to minimize

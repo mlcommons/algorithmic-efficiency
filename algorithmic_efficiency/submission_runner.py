@@ -27,6 +27,8 @@ from algorithmic_efficiency import logging_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
+from IPython import embed
+
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
@@ -89,6 +91,13 @@ flags.DEFINE_string(
     None,
     'The path to save information about the training progress of a workload to '
     'disk.')
+flags.DEFINE_string(
+    'eval_frequency_override',
+    None,
+    'Override default frequency of evaluation. This is not competition legal but can be used to monitor training progress at any granularity. The competition evaluates every "eval_period_time_sec" seconds, but instead you can choose an eval frequency in epochs or steps. These evals contribute to the accumulated_submission_time. Example usage:'
+    'Evalate after every epoch: --eval_frequency_override="1 epoch"'
+    'Evaluate after 100 mini-batches: --eval_frequency_override="100 step"'
+    'Note: Requires --logging_dir to set to take effect.')
 flags.DEFINE_multi_string(
     'extra_metadata', None,
     'Record extra metadata in the "logging_dir" along side the CSVs metrics and JSON '
@@ -153,7 +162,6 @@ def _import_workload(workload_path: str, workload_registry_name: str,
         'the top scope of the module.')
   return workload_class()
 
-
 # Example reference implementation showing how to use the above functions
 # together.
 def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
@@ -209,25 +217,28 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
           rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-    global_step += 1
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
-    # Check if submission is eligible for an untimed eval.
-    if (current_time - last_eval_time >= workload.eval_period_time_sec or
-        training_complete):
+    is_eligible_for_untimed_eval = (not FLAGS.eval_frequency_override and
+        current_time - last_eval_time >= workload.eval_period_time_sec)
+    eval_requested = record.check_eval_frequency_override(workload, global_step, batch_size)
+    # Check if submission should be evaluated.
+    if (is_eligible_for_untimed_eval or eval_requested or training_complete):
       latest_eval_result = workload.eval_model(model_params, model_state,
                                                eval_rng, data_dir)
       logging.info(f'{current_time - global_start_time:.2f}s\t{global_step}'
                    f'\t{latest_eval_result}')
-      last_eval_time = current_time
+      if is_eligible_for_untimed_eval:
+        last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
       record.save_eval(workload, hyperparameters, trial_idx, global_step, batch_size,
                   latest_eval_result, global_start_time,
                   accumulated_submission_time, goal_reached, is_time_remaining,
                   training_complete)
+    global_step += 1
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   record.trial_complete(workload, hyperparameters, trial_idx, global_step, batch_size, latest_eval_result, global_start_time, accumulated_submission_time, goal_reached, is_time_remaining, training_complete)
   return accumulated_submission_time, metrics
