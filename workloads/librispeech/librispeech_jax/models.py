@@ -160,8 +160,8 @@ class BatchRNN(nn.Module):
         inputs = inputs.transpose(1, 0, 2)  # [Seq, Batch, Feature] -> [Batch, Seq, Feature]
         inputs = self.rnn(inputs, lengths)
         inputs = inputs.transpose(1, 0, 2)  # [Batch, Seq, Feature] -> [Seq, Batch, Feature]
-        # [Seq, Batch, Feature * 2] -> [Seq, Batch, Feature] by sum
-        inputs = inputs.reshape(inputs.shape[0], inputs.shape[1], -1).sum(2)
+        # [Seq, Batch, Feature * 2] --reshape--> [Seq, Batch, 2, Feature] --sum--> [Seq, Batch, Feature]
+        inputs = inputs.reshape(inputs.shape[0], inputs.shape[1], 2, -1).sum(2)
         return inputs
 
 
