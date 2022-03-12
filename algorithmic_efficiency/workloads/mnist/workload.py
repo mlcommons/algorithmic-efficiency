@@ -10,7 +10,7 @@ class Mnist(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.3
+    return 0.9
 
   @property
   def loss_type(self):

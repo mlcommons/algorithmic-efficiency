@@ -17,9 +17,8 @@ from algorithmic_efficiency import spec
 
 FLAGS = flags.FLAGS
 
-from IPython import embed
 
-def concatenate_csvs(path: str) -> None:
+def concatenate_csvs(path: str):
   """Join all files named "measurements.csv" in a given folder recursively.
 
   In this logging module, one "measurements.csv" is produced at the granularity
@@ -224,8 +223,14 @@ class Recorder:
   and across hyperparameter tuning trials.
   """
 
-  def __init__(self, workload: spec.Workload, workload_name: str,
-               logging_dir: str, submission_path: str, tuning_ruleset: str, tuning_search_space_path: Optional[str] = None, num_tuning_trials: Optional[int] = None) -> None:
+  def __init__(self,
+               workload: spec.Workload,
+               workload_name: str,
+               logging_dir: str,
+               submission_path: str,
+               tuning_ruleset: str,
+               tuning_search_space_path: Optional[str] = None,
+               num_tuning_trials: Optional[int] = None):
     self.workload_name = workload_name
     self.workload = workload
     self.logging_dir = logging_dir
@@ -244,7 +249,7 @@ class Recorder:
     self._write_workload_metadata_file()
     self._write_package_list_file()
 
-  def _write_workload_metadata_file(self, score: float = None) -> None:
+  def _write_workload_metadata_file(self, score: float = None):
     """Write "metadata.json" to disk.
 
     It is is created at the start of a workload and includes the datetime,
@@ -311,7 +316,7 @@ class Recorder:
     with open(metadata_filepath, 'w', encoding='utf-8') as f:
       json.dump(metadata, f, ensure_ascii=False, indent=4)
 
-  def _write_package_list_file(self) -> None:
+  def _write_package_list_file(self):
     """Write "packages.txt" to disk.
 
     It is created at the start of a workload and includes a list of the
@@ -333,13 +338,16 @@ class Recorder:
       f.write('\n\nOS Packages:\n')
       f.write(os_package_list)
 
-  def _write_trial_metadata_file(self, workload: spec.Workload,
+  def _write_trial_metadata_file(
+      self, workload: spec.Workload,
       hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
       global_step: int, batch_size: int, latest_eval_result: dict,
       global_start_time: float, accumulated_submission_time: float,
-      goal_reached: bool, is_time_remaining: bool,
-      training_complete: bool) -> None:
-    metadata = self._get_eval_measurements(workload, hyperparameters, trial_idx, global_step, batch_size, latest_eval_result, global_start_time, accumulated_submission_time, goal_reached, is_time_remaining, training_complete)
+      goal_reached: bool, is_time_remaining: bool, training_complete: bool):
+    metadata = self._get_eval_measurements(
+        workload, hyperparameters, trial_idx, global_step, batch_size,
+        latest_eval_result, global_start_time, accumulated_submission_time,
+        goal_reached, is_time_remaining, training_complete)
 
     is_running = (
         is_time_remaining and not goal_reached and not training_complete)
@@ -347,28 +355,36 @@ class Recorder:
     metadata['status'] = status
 
     # Save trial metadata.json
-    metadata_filepath = os.path.join(self.workload_log_dir, 'trial_' + str(trial_idx), 'metadata.json')
+    metadata_filepath = os.path.join(self.workload_log_dir,
+                                     'trial_' + str(trial_idx), 'metadata.json')
     with open(metadata_filepath, 'w', encoding='utf-8') as f:
       json.dump(metadata, f, ensure_ascii=False, indent=4)
 
   def trial_complete(self, workload: spec.Workload,
-    hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
-    global_step: int, batch_size: int, latest_eval_result: dict,
-    global_start_time: float, accumulated_submission_time: float,
-    goal_reached: bool, is_time_remaining: bool,
-    training_complete: bool) -> None:
-    self._write_trial_metadata_file(workload, hyperparameters, trial_idx, global_step, batch_size, latest_eval_result, global_start_time, accumulated_submission_time, goal_reached, is_time_remaining, training_complete)
+                     hyperparameters: Optional[spec.Hyperparamters],
+                     trial_idx: int, global_step: int, batch_size: int,
+                     latest_eval_result: dict, global_start_time: float,
+                     accumulated_submission_time: float, goal_reached: bool,
+                     is_time_remaining: bool, training_complete: bool):
+    self._write_trial_metadata_file(workload, hyperparameters, trial_idx,
+                                    global_step, batch_size, latest_eval_result,
+                                    global_start_time,
+                                    accumulated_submission_time, goal_reached,
+                                    is_time_remaining, training_complete)
 
-  def workload_complete(self, score):
+  def workload_complete(self, score: float):
+    """At the end of the workload write COMPLETE to the metadata file."""
     self.status = 'COMPLETE'
     self._write_workload_metadata_file(score)
 
   def _get_eval_measurements(self, workload: spec.Workload,
-    hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
-    global_step: int, batch_size: int, latest_eval_result: dict,
-    global_start_time: float, accumulated_submission_time: float,
-    goal_reached: bool, is_time_remaining: bool,
-    training_complete: bool) -> dict:
+                             hyperparameters: Optional[spec.Hyperparamters],
+                             trial_idx: int, global_step: int, batch_size: int,
+                             latest_eval_result: dict, global_start_time: float,
+                             accumulated_submission_time: float,
+                             goal_reached: bool, is_time_remaining: bool,
+                             training_complete: bool) -> dict:
+    """Collect all evaluation measurements and metadata in one dict."""
     measurements = {}
     measurements['workload'] = self.workload_name
     measurements['trial_idx'] = trial_idx
@@ -411,39 +427,46 @@ class Recorder:
     return measurements
 
   def save_eval(self, workload: spec.Workload,
-            hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
-            global_step: int, batch_size: int, latest_eval_result: dict,
-            global_start_time: float, accumulated_submission_time: float,
-            goal_reached: bool, is_time_remaining: bool,
-            training_complete: bool) -> None:
+                hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
+                global_step: int, batch_size: int, latest_eval_result: dict,
+                global_start_time: float, accumulated_submission_time: float,
+                goal_reached: bool, is_time_remaining: bool,
+                training_complete: bool):
     """"Write or append to "measurements.csv".
 
     A "measurements.csv" is created for each hyperparameter tuning trial and a
     row is appended for every model evaluation. The information included is
     loss, accuracy, training step, time elapsed, hparams, workload properties,
     and hardware utilization."""
-    measurements = self._get_eval_measurements(workload, hyperparameters, trial_idx, global_step, batch_size, latest_eval_result, global_start_time, accumulated_submission_time, goal_reached, is_time_remaining, training_complete)
+    measurements = self._get_eval_measurements(
+        workload, hyperparameters, trial_idx, global_step, batch_size,
+        latest_eval_result, global_start_time, accumulated_submission_time,
+        goal_reached, is_time_remaining, training_complete)
 
     # Save to CSV file
-    trial_output_path = os.path.join(self.workload_log_dir, 'trial_' + str(trial_idx))
+    trial_output_path = os.path.join(self.workload_log_dir,
+                                     'trial_' + str(trial_idx))
     os.makedirs(trial_output_path, exist_ok=True)
     csv_path = os.path.join(trial_output_path, 'measurements.csv')
     logging.info(f'Recording measurements to: {csv_path}')
     self._append_to_csv(measurements, csv_path)
 
-  def check_eval_frequency_override(self, workload, global_step, batch_size):
+  def check_eval_frequency_override(self, workload: spec.Workload,
+                                    global_step: int, batch_size: int):
+    """Parse the eval_frequency_override cli argument and return whether or not
+    the user wants to eval this step."""
     if not FLAGS.eval_frequency_override:
       return False
 
     try:
       freq, unit = FLAGS.eval_frequency_override.split(' ')
       freq = int(freq)
-      assert(unit in ['epoch', 'step'])
+      assert (unit in ['epoch', 'step'])
     except:
-        logging.error(
-          'Failed to parse eval_frequency_override CLI arguments. Please check your'
-          'command.')
-        raise
+      logging.error(
+          'Failed to parse eval_frequency_override CLI arguments. Please check '
+          'your command.')
+      raise
 
     if unit == 'step':
       if global_step % freq == 0:
@@ -456,12 +479,11 @@ class Recorder:
         self.last_epoch_evaluated = epoch
         return True
 
-  def _append_to_csv(self, measurements: dict, csv_path: str) -> None:
-    # Open most recent data and save data to filesystem immediately to minimize
-    # data loss.
+  def _append_to_csv(self, data: dict, csv_path: str):
+    """Open a CSV, append more data, and save back to disk."""
     if os.path.isfile(csv_path):
       df = pd.read_csv(csv_path)
     else:
       df = pd.DataFrame()  # Initialize empty dataframe if no data is saved yet
-    df = df.append(measurements, ignore_index=True)
+    df = df.append(data, ignore_index=True)
     df.to_csv(csv_path, index=False)

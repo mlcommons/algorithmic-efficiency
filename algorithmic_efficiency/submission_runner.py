@@ -27,8 +27,6 @@ from algorithmic_efficiency import logging_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
-from IPython import embed
-
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
@@ -87,25 +85,29 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials', 20,
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string(
-    'logging_dir',
-    None,
+    'logging_dir', None,
     'The path to save information about the training progress of a workload to '
     'disk.')
-flags.DEFINE_string(
-    'eval_frequency_override',
-    None,
-    'You can override the default frequency of model evaluation, which in turn will change when information about the training progress is saved to disk. This is not competition legal but can be used to monitor training progress at any granularity for debugging purposes. By default the competition evaluates the model every "eval_period_time_sec" seconds, but instead you can choose an eval frequency in epochs or steps. These evals contribute to the accumulated_submission_time. Example usage:'
-    'Evalate after every epoch: --eval_frequency_override="1 epoch"'
-    'Evaluate after 100 mini-batches: --eval_frequency_override="100 step"'
-    'Note: Requires --logging_dir set to take effect.')
 flags.DEFINE_multi_string(
     'extra_metadata', None,
-    'Record extra metadata in the "logging_dir" along side the CSVs metrics and JSON '
-    'metadata. This is useful when doing multiple experiments and needing a '
-    'way to tell them apart. You can specify this option multiple times. '
-    'Example usage: --record_extra_metadata="key=value". When keys are being '
-    'recorded they will be prefixed with "extra." so to not overlap with other '
-    'CSV/JSON data attributes.')
+    'Record extra metadata in the "logging_dir" along side the CSVs metrics '
+    'and JSON metadata. This is useful when doing multiple experiments and '
+    'needing a way to tell them apart. You can specify this option multiple '
+    'times. Example usage: --record_extra_metadata="key=value". Keys will be '
+    'prefixed with "extra." so to not overlap with other CSV/JSON data '
+    'attributes.')
+flags.DEFINE_string(
+    'eval_frequency_override', None,
+    'You can override the default frequency of model evaluation, which in turn '
+    'will change when information about the training progress is saved to '
+    'disk. This is not competition legal but can be used to monitor training '
+    'progress at any granularity for debugging purposes. By default the '
+    'competition evaluates the model every "eval_period_time_sec" seconds, but '
+    'instead you can choose an eval frequency in epochs or steps. These evals '
+    'contribute to the accumulated_submission_time. Example usage:'
+    'Evaluate after every epoch: --eval_frequency_override="1 epoch"'
+    'Evaluate after 100 mini-batches: --eval_frequency_override="100 step"'
+    'Note: Requires --logging_dir set to take effect.')
 flags.DEFINE_string('data_dir', '~/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
@@ -161,6 +163,7 @@ def _import_workload(workload_path: str, workload_registry_name: str,
         'Make sure the Workload class is spelled correctly and defined in '
         'the top scope of the module.')
   return workload_class()
+
 
 # Example reference implementation showing how to use the above functions
 # together.
@@ -221,9 +224,11 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
-    is_eligible_for_untimed_eval = (not FLAGS.eval_frequency_override and
+    is_eligible_for_untimed_eval = (
+        not FLAGS.eval_frequency_override and
         current_time - last_eval_time >= workload.eval_period_time_sec)
-    eval_requested = record.check_eval_frequency_override(workload, global_step, batch_size)
+    eval_requested = record.check_eval_frequency_override(
+        workload, global_step, batch_size)
     # Check if submission should be evaluated.
     if (is_eligible_for_untimed_eval or eval_requested or training_complete):
       latest_eval_result = workload.eval_model(model_params, model_state,
@@ -234,13 +239,16 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
         last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-      record.save_eval(workload, hyperparameters, trial_idx, global_step, batch_size,
-                  latest_eval_result, global_start_time,
-                  accumulated_submission_time, goal_reached, is_time_remaining,
-                  training_complete)
+      record.save_eval(workload, hyperparameters, trial_idx, global_step,
+                       batch_size, latest_eval_result, global_start_time,
+                       accumulated_submission_time, goal_reached,
+                       is_time_remaining, training_complete)
     global_step += 1
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  record.trial_complete(workload, hyperparameters, trial_idx, global_step, batch_size, latest_eval_result, global_start_time, accumulated_submission_time, goal_reached, is_time_remaining, training_complete)
+  record.trial_complete(workload, hyperparameters, trial_idx, global_step,
+                        batch_size, latest_eval_result, global_start_time,
+                        accumulated_submission_time, goal_reached,
+                        is_time_remaining, training_complete)
   return accumulated_submission_time, metrics
 
 
@@ -264,8 +272,8 @@ def score_submission_on_workload(workload: spec.Workload,
   if FLAGS.logging_dir:
     # Save training progress to disk eg. loss, hparams, and other metadata
     record = logging_utils.Recorder(workload, workload_name, FLAGS.logging_dir,
-        FLAGS.submission_path, tuning_ruleset, tuning_search_space,
-        num_tuning_trials)
+                                    FLAGS.submission_path, tuning_ruleset,
+                                    tuning_search_space, num_tuning_trials)
   else:
     record = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
 
