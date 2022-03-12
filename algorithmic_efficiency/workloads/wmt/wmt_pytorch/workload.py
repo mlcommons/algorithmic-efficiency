@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from algorithmic_efficiency.workloads.wmt.wmt_jax import bleu
 from algorithmic_efficiency.workloads.wmt.wmt_jax import input_pipeline
-from algorithmic_efficiency.workloads.wmt.wmt_pytorch import decode
+from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -129,8 +129,9 @@ class WMTWorkload(spec.Workload):
     def tokens_ids_to_logits(flat_ids, cache_dummy):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
+      flat_ids = torch.tensor(np.asarray(flat_ids), device=DEVICE)
       flat_logits = params.decode(
-          flat_ids.to(DEVICE), encoded_inputs, raw_inputs, decode=True)
+          flat_ids, encoded_inputs, raw_inputs, decode=True)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
       flat_logits = flat_logits.cpu().numpy().squeeze(axis=1)

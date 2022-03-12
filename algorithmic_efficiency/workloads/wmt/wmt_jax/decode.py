@@ -330,8 +330,15 @@ def beam_search(inputs,
         cache=top_alive_cache)
 
   # Run while loop and get final beam search state.
-  final_state = lax.while_loop(beam_search_loop_cond_fn,
-                               beam_search_loop_body_fn, beam_search_init_state)
+  try:
+    final_state = lax.while_loop(beam_search_loop_cond_fn,
+                                 beam_search_loop_body_fn,
+                                 beam_search_init_state)
+  except jax.errors.TracerArrayConversionError:
+    state  = beam_search_init_state
+    while beam_search_loop_cond_fn(state):
+      state = beam_search_loop_body_fn(state)
+    final_state = state
 
   # Account for the edge-case where there are no finished sequences for a
   # particular batch item. If so, return live sequences for that batch item.
