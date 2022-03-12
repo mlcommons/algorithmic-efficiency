@@ -135,9 +135,8 @@ class SimpleBiLSTM(nn.Module):
         _, backward_outputs = self.backward_lstm(initial_state, reversed_inputs)
         backward_outputs = flip_sequences(backward_outputs, lengths)
 
-        # Concatenate the forward and backward representations.
-        outputs = jnp.concatenate([forward_outputs, backward_outputs], -1)
-        return outputs
+        # Add the forward and backward representations.
+        return forward_outputs + backward_outputs
 
 
 class BatchRNN(nn.Module):
@@ -160,8 +159,6 @@ class BatchRNN(nn.Module):
         inputs = inputs.transpose(1, 0, 2)  # [Seq, Batch, Feature] -> [Batch, Seq, Feature]
         inputs = self.rnn(inputs, lengths)
         inputs = inputs.transpose(1, 0, 2)  # [Batch, Seq, Feature] -> [Seq, Batch, Feature]
-        # [Seq, Batch, Feature * 2] --reshape--> [Seq, Batch, 2, Feature] --sum--> [Seq, Batch, Feature]
-        inputs = inputs.reshape(inputs.shape[0], inputs.shape[1], 2, -1).sum(2)
         return inputs
 
 
