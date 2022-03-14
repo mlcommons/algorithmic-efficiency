@@ -194,6 +194,7 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
   eval_results = []
   global_step = 0
   training_complete = False
+  latest_eval_result = None
   global_start_time = time.time()
 
   logging.info('Starting training loop.')

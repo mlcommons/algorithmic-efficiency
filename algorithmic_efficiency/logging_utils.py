@@ -392,8 +392,9 @@ class Recorder:
     # Record training measurements
     measurements['datetime'] = datetime.now().isoformat()
     measurements['accumulated_submission_time'] = accumulated_submission_time
-    for key, value in latest_eval_result.items():
-      measurements[key] = value
+    if latest_eval_result:
+      for key, value in latest_eval_result.items():
+        measurements[key] = value
     measurements['global_step'] = global_step
     steps_per_epoch = workload.num_train_examples // batch_size
     measurements['epoch'] = global_step / steps_per_epoch
