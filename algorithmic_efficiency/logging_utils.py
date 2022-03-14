@@ -154,8 +154,8 @@ def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
       metadata['extra.' + key] = value
   except:
     logging.error(
-        'Failed to parse extra_metadata CLI arguments. Please check your'
-        'command.')
+        'Failed to parse extra_metadata CLI arguments. Please check your '
+        f'command. Problem with: {item}')
     raise
   return metadata
 
