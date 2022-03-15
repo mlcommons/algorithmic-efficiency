@@ -211,7 +211,7 @@ class WMTWorkload(spec.Workload):
         batch_size=n_devices*batch_size,
         reverse_translation=True,
         vocab_path=VOCAB_PATH,
-        pack_examples=False)  # only needed for TPU training?
+        pack_examples=True)  # only needed for TPU training?
     self._vocab_size = int(self._encoder.vocab_size())
     return iter(self._train_ds)
 
@@ -264,8 +264,10 @@ class WMTWorkload(spec.Workload):
 
   def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
+                           train_mean: spec.Tensor,
+                           train_stddev: spec.Tensor,
+                           rng: spec.RandomState,
+                           packed_examples: bool = False) -> spec.Tensor:
     del selected_label_batch
     del train_mean
     del train_stddev
@@ -278,6 +280,16 @@ class WMTWorkload(spec.Workload):
         selected_raw_input_batch['targets'].numpy(),
         device=DEVICE,
         dtype=torch.int64)
+    if packed_examples:
+      extras = ['inputs_position', 'targets_position',
+                'inputs_segmentation', 'targets_segmentation']
+      extra_inputs = list()
+      for extra in extras:
+        extra_inputs.append(torch.tensor(
+          selected_raw_input_batch[extra].numpy(),
+          device=DEVICE,
+          dtype=torch.int64))
+      return inputs, targets, *extra_inputs
     return inputs, targets
 
   def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
@@ -312,7 +324,6 @@ class WMTWorkload(spec.Workload):
     del rng
     del update_batch_norm
 
-    inputs, targets = input_batch
     model = params
 
     if mode == spec.ForwardPassMode.EVAL:
@@ -324,7 +335,7 @@ class WMTWorkload(spec.Workload):
     }
 
     with contexts[mode]():
-      logits_batch = model(inputs, targets)
+      logits_batch = model(*input_batch)
 
     return logits_batch, None
 

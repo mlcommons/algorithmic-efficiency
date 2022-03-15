@@ -73,11 +73,13 @@ class Transformer(nn.Module):
 
   def encode(self,
              src: Tensor,
+             inputs_positions: Tensor,
+             inputs_segmentation: Tensor,
              src_mask: Optional[Tensor] = None) -> Tensor:
     src = src.to(torch.int)
     src_key_padding_mask = src == 0
     src = self.shared_embedding(src)
-    src = self.pos_encoder(src)
+    src = self.pos_encoder(src, inputs_positions)
     memory = self.encoder(
         src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
     return memory
@@ -86,6 +88,9 @@ class Transformer(nn.Module):
              tgt: Tensor,
              memory: Tensor,
              src: Tensor,  # just for calculating the padding mask
+             targets_positions: Tensor,
+             inputs_segmentation: Tensor,
+             targets_segmentation: Tensor,
              tgt_mask: Optional[Tensor] = None,
              memory_mask: Optional[Tensor] = None,
              decode: bool = False) -> Tensor:
@@ -98,10 +103,10 @@ class Transformer(nn.Module):
         tgt_mask = torch.triu(
             torch.full((sz, sz), float('-inf'), device=tgt.device), diagonal=1)
     else:
-        tgt_key_padding_mask = None
-        tgt_mask = None
+      tgt_key_padding_mask = None
+      tgt_mask = None
     tgt = self.shared_embedding(tgt)
-    tgt = self.pos_encoder(tgt)
+    tgt = self.pos_encoder(tgt, targets_positions)
     memory_key_padding_mask = src == 0
     output = self.decoder(
         tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
@@ -114,6 +119,10 @@ class Transformer(nn.Module):
   def forward(self,
               src: Tensor,
               tgt: Tensor,
+              inputs_positions: Optional[Tensor] = None,
+              targets_positions: Optional[Tensor] = None,
+              inputs_segmentation: Optional[Tensor] = None,
+              targets_segmentation: Optional[Tensor] = None,
               src_mask: Optional[Tensor] = None,
               tgt_mask: Optional[Tensor] = None,
               memory_mask: Optional[Tensor] = None,
@@ -132,11 +141,18 @@ class Transformer(nn.Module):
     """
     if src.size(0) != tgt.size(0):
       raise RuntimeError("the batch number of src and tgt must be equal")
-    memory = self.encode(src, src_mask=src_mask)
+    memory = self.encode(
+        src,
+        inputs_positions=inputs_positions,
+        inputs_segmentation=inputs_segmentation,
+        src_mask=src_mask)
     output = self.decode(
         tgt,
         memory,
         src,  # just for calculating the padding mask
+        targets_positions=targets_positions,
+        inputs_segmentation=inputs_segmentation,
+        targets_segmentation=targets_segmentation,
         tgt_mask=tgt_mask,
         memory_mask=memory_mask,
         decode=decode)
@@ -157,12 +173,15 @@ class PositionalEncoding(nn.Module):
     pe[0, :, 1::2] = torch.cos(position * div_term)
     self.register_buffer('pe', pe)
 
-  def forward(self, x: Tensor) -> Tensor:
+  def forward(self, x: Tensor, inputs_positions: Tensor) -> Tensor:
     """
     Args:
       x: Tensor, shape [batch_size, seq_len, embedding_dim]
     """
-    x = x + self.pe[:, :x.size(1), :]
+    if inputs_positions is not None:
+      x = x + self.pe[0, inputs_positions, :]
+    else:
+      x = x + self.pe[:, :x.size(1), :]
     return self.dropout(x)
 
 

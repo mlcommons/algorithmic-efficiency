@@ -108,8 +108,8 @@ def update_params(
   del hyperparameters
   del label_batch
   
-  inputs, targets = workload.preprocess_for_train(
-      input_batch, None, None, None, None)
+  input_batch = workload.preprocess_for_train(
+      input_batch, None, None, None, None, packed_examples=True)
 
   current_model = current_param_container
   current_param_container.train()
@@ -118,12 +118,13 @@ def update_params(
 
   output, new_model_state = workload.model_fn(
       params=current_model,
-      input_batch=(inputs, targets),
+      input_batch=input_batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
       update_batch_norm=True)
 
+  targets = input_batch[1]
   weights = torch.where(targets > 0, 1.0, 0.0)
   loss = (workload.loss_fn(targets, output) * weights).sum() / weights.sum()
   loss.backward()
