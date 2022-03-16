@@ -73,8 +73,8 @@ class Transformer(nn.Module):
 
   def encode(self,
              src: Tensor,
-             inputs_positions: Tensor,
-             inputs_segmentation: Tensor,
+             inputs_positions: Optional[Tensor] = None,
+             inputs_segmentation: Optional[Tensor] = None,
              src_mask: Optional[Tensor] = None) -> Tensor:
     src = src.to(torch.int)
     src_key_padding_mask = src == 0
@@ -88,9 +88,9 @@ class Transformer(nn.Module):
              tgt: Tensor,
              memory: Tensor,
              src: Tensor,  # just for calculating the padding mask
-             targets_positions: Tensor,
-             inputs_segmentation: Tensor,
-             targets_segmentation: Tensor,
+             targets_positions: Optional[Tensor] = None,
+             inputs_segmentation: Optional[Tensor] = None,
+             targets_segmentation: Optional[Tensor] = None,
              tgt_mask: Optional[Tensor] = None,
              memory_mask: Optional[Tensor] = None,
              decode: bool = False) -> Tensor:
