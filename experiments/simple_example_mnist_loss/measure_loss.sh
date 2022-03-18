@@ -25,7 +25,7 @@ python3 algorithmic_efficiency/submission_runner.py \
     --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_search_space=baselines/mnist/tuning_search_space.json \
     --num_tuning_trials=$NUM_TRIALS \
-    --eval_frequency_override='1 step' \
+    --eval_frequency_override='10 step' \
     --logging_dir=$LOGGING_DIR
 set +x
 
