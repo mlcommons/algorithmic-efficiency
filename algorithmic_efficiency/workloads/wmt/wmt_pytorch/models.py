@@ -65,11 +65,11 @@ class Transformer(nn.Module):
 
   def _reset_parameters(self):
     """Initiate parameters in the transformer model."""
-    for p in self.parameters():
-      if p.dim() > 1:
-        xavier_uniform_(p)
-      else:
-        normal_(p, std=1e-6)
+    for module in self.modules():
+      if isinstance(module, nn.Linear):
+        xavier_uniform_(module.weight)
+        if module.bias is not None:
+          normal_(module.bias, std=1e-6)
 
   def encode(self,
              src: Tensor,
