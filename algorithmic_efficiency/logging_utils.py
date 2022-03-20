@@ -148,6 +148,8 @@ def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
   then {'extra.key':'value'} is returned.
   """
   metadata = {}
+  if not extra_metadata_string_list:
+    return metadata
   try:
     for item in extra_metadata_string_list:
       key, value = item.split("=")
@@ -155,7 +157,7 @@ def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
   except:
     logging.error(
         'Failed to parse extra_metadata CLI arguments. Please check your '
-        f'command. Problem with: {item}')
+        'command.')
     raise
   return metadata
 
