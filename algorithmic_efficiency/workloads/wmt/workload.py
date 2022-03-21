@@ -19,7 +19,7 @@ class WMT(spec.Workload):
     self._predict_ds = None
     self._encoder = None
     self._vocab_size = 32000
-    self._per_device_batch_size = None
+    self._batch_size = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['bleu'] > self.target_value
@@ -62,7 +62,7 @@ class WMT(spec.Workload):
     del split
     del data_dir
     tf.io.gfile.makedirs(WORKDIR)
-    self._per_device_batch_size = batch_size
+    self._batch_size = batch_size
     self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
         vocab_size=self._vocab_size,
         batch_size=batch_size,

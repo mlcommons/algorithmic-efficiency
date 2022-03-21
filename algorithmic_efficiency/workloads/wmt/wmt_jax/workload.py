@@ -284,8 +284,9 @@ class WMTWorkload(WMT):
         static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
 
     rng, init_rng = jax.random.split(rng)
-    input_shape = (self._per_device_batch_size, 256)
-    target_shape = (self._per_device_batch_size, 256)
+    per_device_batch_size = int(self._batch_size / jax.local_device_count())
+    input_shape = (per_device_batch_size, 256)
+    target_shape = (per_device_batch_size, 256)
 
     initial_variables = jax.jit(models.Transformer(self._eval_config).init)(
         init_rng, jnp.ones(input_shape, jnp.float32),
