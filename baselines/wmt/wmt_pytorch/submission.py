@@ -1,11 +1,11 @@
 from typing import Iterator, List, Tuple
-
-import spec
 import numpy as np
 import torch
 
+from algorithmic_efficiency import spec
+
 def get_batch_size(workload_name):
-  batch_sizes = {'wmt_pytorch': 16}
+  batch_sizes = {'wmt_pytorch': 128}
   return batch_sizes[workload_name]
 
 
