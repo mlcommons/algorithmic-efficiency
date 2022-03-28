@@ -1,9 +1,5 @@
-'''
-Transformer architecture based on https://pytorch.org/tutorials/beginner/transformer_tutorial.html
-and https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html.
-'''
 import math
-from typing import Optional, Union, Callable
+from typing import Any, Optional, Union, Callable
 
 import torch
 import torch.nn.functional as F
@@ -11,6 +7,105 @@ from torch import nn
 from torch import Tensor
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
+
+
+# Mask making utilities ported to PyTorch from
+# https://github.com/google/flax/blob/main/flax/linen/attention.py
+def make_attention_mask(query_input: Tensor,
+                        key_input: Tensor,
+                        pairwise_fn: Callable[..., Any] = torch.mul,
+                        dtype: torch.dtype = torch.float32) -> Tensor:
+  """Mask-making helper for attention weights.
+
+  Args:
+    query_input: a batched, flat input of query_length size
+    key_input: a batched, flat input of key_length size
+    pairwise_fn: broadcasting elementwise comparison function
+    extra_batch_dims: number of extra batch dims to add singleton
+      axes for, none by default
+    dtype: mask return dtype
+
+  Returns:
+    A `[batch..., len_q, len_kv]` shaped attention mask.
+  """
+  mask = pairwise_fn(query_input.unsqueeze(-1), key_input.unsqueeze(-2))
+  return mask.to(dtype)
+
+
+def make_causal_mask(x: Tensor,
+                     device: str = 'cuda:0',
+                     dtype: torch.dtype = torch.float32) -> Tensor:
+  """Make a causal mask for self-attention.
+
+  Args:
+    x: input array of shape `[batch..., len]`
+    dtype: mask return dtype
+
+  Returns:
+    A `[batch..., len, len]` shaped causal attention mask.
+  """
+  idxs = torch.broadcast_to(
+      torch.arange(x.shape[-1], dtype=torch.int32, device=device), x.shape)
+  return make_attention_mask(idxs, idxs, torch.greater_equal, dtype=dtype)
+
+
+def make_src_mask(src, inputs_segmentation, nhead):
+  '''Utility for creating source mask and adjust it for PyTorch Transformer API.'''
+  src_mask = make_attention_mask(src > 0, src > 0)
+  # Add segmentation block-diagonal attention mask if using segmented data.
+  if inputs_segmentation is not None:
+    src_mask = torch.logical_and(
+        src_mask,
+        make_attention_mask(
+            inputs_segmentation,
+            inputs_segmentation,
+            torch.eq))
+  # Flip values and ensure numerical stability.
+  src_mask = torch.logical_not(src_mask).unsqueeze(1).repeat(
+      1, nhead, 1, 1).view(-1, src_mask.shape[1], src_mask.shape[2])
+  new_src_mask = torch.zeros_like(src_mask, dtype=torch.float32)
+  new_src_mask.masked_fill_(src_mask, -1e10)
+  return new_src_mask
+
+
+def make_tgt_and_memory_mask(tgt, src, inputs_segmentation,
+                             targets_segmentation, decode, nhead):
+  '''Utility for creating target and memory mask and adjust them for PyTorch Transformer API.'''
+  if not decode:
+    tgt_mask = torch.logical_and(
+        make_attention_mask(tgt > 0, tgt > 0),
+        make_causal_mask(tgt, device=tgt.device))
+    memory_mask = make_attention_mask(tgt > 0, src > 0)
+  else:
+    tgt_mask = None
+    memory_mask = make_attention_mask(
+        torch.ones_like(tgt) > 0, src > 0)
+  # Add segmentation block-diagonal attention masks if using segmented data.
+  if inputs_segmentation is not None:
+    tgt_mask = torch.logical_and(
+        tgt_mask,
+        make_attention_mask(
+            targets_segmentation,
+            targets_segmentation,
+            torch.eq))
+    memory_mask = torch.logical_and(
+        memory_mask,
+        make_attention_mask(
+            targets_segmentation,
+            inputs_segmentation,
+            torch.eq))
+  # Flip values and ensure numerical stability.
+  memory_mask = torch.logical_not(memory_mask).unsqueeze(1).repeat(
+      1, nhead, 1, 1).view(-1, memory_mask.shape[1], memory_mask.shape[2])
+  new_memory_mask = torch.zeros_like(memory_mask, dtype=torch.float32)
+  new_memory_mask.masked_fill_(memory_mask, -1e10)
+  if tgt_mask is not None:
+    tgt_mask = torch.logical_not(tgt_mask).unsqueeze(1).repeat(
+        1, nhead, 1, 1).view(-1, tgt_mask.shape[1], tgt_mask.shape[2])
+    new_tgt_mask = torch.zeros_like(tgt_mask, dtype=torch.float32)
+    new_tgt_mask.masked_fill_(tgt_mask, -1e10)
+    tgt_mask = new_tgt_mask
+  return tgt_mask, new_memory_mask
 
 
 def shift_right(x, axis=1):
@@ -24,6 +119,9 @@ def shift_right(x, axis=1):
 
 
 class Transformer(nn.Module):
+  '''
+  Transformer architecture based on the model from the WMT Jax workload.
+  '''
 
   def __init__(self,
                ntoken: int,
@@ -35,6 +133,7 @@ class Transformer(nn.Module):
                layer_norm_eps: float = 1e-6):
     super().__init__()
     self.d_model = d_model
+    self.nhead = nhead
     self.pos_encoder = PositionalEncoding(d_model, dropout)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
 
@@ -73,14 +172,12 @@ class Transformer(nn.Module):
   def encode(self,
              src: Tensor,
              inputs_positions: Optional[Tensor] = None,
-             inputs_segmentation: Optional[Tensor] = None,
-             src_mask: Optional[Tensor] = None) -> Tensor:
+             inputs_segmentation: Optional[Tensor] = None) -> Tensor:
     src = src.to(torch.int)
-    src_key_padding_mask = src == 0
+    src_mask = make_src_mask(src, inputs_segmentation, self.nhead)
     src = self.shared_embedding(src)
     src = self.pos_encoder(src, inputs_positions)
-    memory = self.encoder(
-        src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
+    memory = self.encoder(src, mask=src_mask)
     return memory
 
   def decode(self, 
@@ -90,27 +187,17 @@ class Transformer(nn.Module):
              targets_positions: Optional[Tensor] = None,
              inputs_segmentation: Optional[Tensor] = None,
              targets_segmentation: Optional[Tensor] = None,
-             tgt_mask: Optional[Tensor] = None,
-             memory_mask: Optional[Tensor] = None,
              decode: bool = False) -> Tensor:
     tgt = tgt.to(torch.int)
+    tgt_mask, memory_mask = make_tgt_and_memory_mask(
+        tgt, src, inputs_segmentation, targets_segmentation,
+        decode, self.nhead)
     if not decode:
-      tgt_key_padding_mask = tgt == 0
       tgt = shift_right(tgt)
-      if tgt_mask is None:
-        sz = tgt.shape[-1]
-        tgt_mask = torch.triu(
-            torch.full((sz, sz), float('-inf'), device=tgt.device), diagonal=1)
-    else:
-      tgt_key_padding_mask = None
-      tgt_mask = None
     tgt = self.shared_embedding(tgt)
     tgt = self.pos_encoder(tgt, targets_positions)
-    memory_key_padding_mask = src == 0
     output = self.decoder(
-        tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
-        tgt_key_padding_mask=tgt_key_padding_mask,
-        memory_key_padding_mask=memory_key_padding_mask)
+        tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask)
     normalize = math.sqrt(output.shape[-1])
     output = torch.matmul(output, self.shared_embedding.weight.T) / normalize
     return output
@@ -122,17 +209,15 @@ class Transformer(nn.Module):
               targets_positions: Optional[Tensor] = None,
               inputs_segmentation: Optional[Tensor] = None,
               targets_segmentation: Optional[Tensor] = None,
-              src_mask: Optional[Tensor] = None,
-              tgt_mask: Optional[Tensor] = None,
-              memory_mask: Optional[Tensor] = None,
               decode: bool = False) -> Tensor:
     """
     Args:
       src: Tensor, shape [batch_size, seq_len]
       tgt: Tensor, shape [batch_size, seq_len]
-      src_mask: Tensor, shape [seq_len, seq_len]
-      tgt_mask: Tensor, shape [seq_len, seq_len]
-      memory_mask: Tensor, shape [seq_len, seq_len]
+      inputs_positions: Optional[Tensor], shape [batch_size, seq_len],
+      targets_positions: Optional[Tensor], shape [batch_size, seq_len],
+      inputs_segmentation: Optional[Tensor], shape [batch_size, seq_len],
+      targets_segmentation: Optional[Tensor], shape [batch_size, seq_len],
       decode: bool
 
     Returns:
@@ -143,8 +228,7 @@ class Transformer(nn.Module):
     memory = self.encode(
         src,
         inputs_positions=inputs_positions,
-        inputs_segmentation=inputs_segmentation,
-        src_mask=src_mask)
+        inputs_segmentation=inputs_segmentation)
     output = self.decode(
         tgt,
         memory,
@@ -152,8 +236,6 @@ class Transformer(nn.Module):
         targets_positions=targets_positions,
         inputs_segmentation=inputs_segmentation,
         targets_segmentation=targets_segmentation,
-        tgt_mask=tgt_mask,
-        memory_mask=memory_mask,
         decode=decode)
     return output
 
