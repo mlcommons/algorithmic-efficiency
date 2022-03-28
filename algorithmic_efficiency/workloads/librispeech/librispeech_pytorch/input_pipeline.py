@@ -33,14 +33,14 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     max_input_len = 0
     max_target_len = 0
 
-    # Get maximum lenght of entire batch
+    # Get maximum length of entire batch
     for elem in batch:
       index, feature, trn = elem
       max_input_len = max(max_input_len, feature.shape[0])
       max_target_len = max(max_target_len, len(trn))
-    
+
     # Pad to alignment value
-    max_input_len = max_input_len + (-max_input_len) % self.aligned_on  
+    max_input_len = max_input_len + (-max_input_len) % self.aligned_on
     max_target_len = max_target_len + (-max_target_len) % self.aligned_on
 
     # Pad samples to new maximum
