@@ -9,10 +9,10 @@ import jax.numpy as jnp
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax import input_pipeline
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax import metrics
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax import models
+from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
 
 class OgbgWorkload(BaseOgbgWorkload):

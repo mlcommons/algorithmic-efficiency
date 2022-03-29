@@ -16,7 +16,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install .[jax_cpu]
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     - name: Run pytest
       run: |
-
         pytest -vx tests/
