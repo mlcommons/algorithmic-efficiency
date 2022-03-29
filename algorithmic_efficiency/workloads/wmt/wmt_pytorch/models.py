@@ -61,8 +61,8 @@ def make_src_mask(src, inputs_segmentation, nhead):
             inputs_segmentation,
             torch.eq))
   # Flip values and ensure numerical stability.
-  src_mask = torch.logical_not(src_mask).unsqueeze(1).repeat(
-      1, nhead, 1, 1).view(-1, src_mask.shape[1], src_mask.shape[2])
+  src_mask = torch.repeat_interleave(
+      torch.logical_not(src_mask), repeats=nhead, dim=0)
   new_src_mask = torch.zeros_like(src_mask, dtype=torch.float32)
   new_src_mask.masked_fill_(src_mask, -1e10)
   return new_src_mask
@@ -95,13 +95,13 @@ def make_tgt_and_memory_mask(tgt, src, inputs_segmentation,
             inputs_segmentation,
             torch.eq))
   # Flip values and ensure numerical stability.
-  memory_mask = torch.logical_not(memory_mask).unsqueeze(1).repeat(
-      1, nhead, 1, 1).view(-1, memory_mask.shape[1], memory_mask.shape[2])
+  memory_mask = torch.repeat_interleave(
+      torch.logical_not(memory_mask), repeats=nhead, dim=0)
   new_memory_mask = torch.zeros_like(memory_mask, dtype=torch.float32)
   new_memory_mask.masked_fill_(memory_mask, -1e10)
   if tgt_mask is not None:
-    tgt_mask = torch.logical_not(tgt_mask).unsqueeze(1).repeat(
-        1, nhead, 1, 1).view(-1, tgt_mask.shape[1], tgt_mask.shape[2])
+    tgt_mask = torch.repeat_interleave(
+        torch.logical_not(tgt_mask), repeats=nhead, dim=0)
     new_tgt_mask = torch.zeros_like(tgt_mask, dtype=torch.float32)
     new_tgt_mask.masked_fill_(tgt_mask, -1e10)
     tgt_mask = new_tgt_mask
