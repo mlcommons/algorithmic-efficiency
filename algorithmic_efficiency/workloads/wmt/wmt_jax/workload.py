@@ -21,7 +21,7 @@ VOCAB_PATH = "./wmt_256/sentencepiece_model"
 WORKDIR = "./wmt_256"
 
 
-class WMTWorkload(spec.Workload):
+class WmtWorkload(spec.Workload):
   """A WMT workload."""
 
   def __init__(self):

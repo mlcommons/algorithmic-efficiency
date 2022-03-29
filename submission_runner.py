@@ -34,7 +34,7 @@ tf.config.experimental.set_visible_devices([], 'GPU')
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
-# workload_path will be appended by '_pytorch' or '_jax' automatically
+# workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = {
     'mnist': {
         'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
@@ -43,13 +43,13 @@ WORKLOADS = {
         'workload_path': 'imagenet/imagenet',
         'workload_class_name': 'ImagenetWorkload'
     },
-    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WMTWorkload'},
+    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
     'librispeech': {
         'workload_path': 'librispeech/librispeech',
         'workload_class_name': 'LibriSpeechWorkload'
     },
     'ogbg': {
-        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OGBGWorkload'
+        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
     },
 }
 

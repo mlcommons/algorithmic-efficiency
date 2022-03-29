@@ -30,7 +30,7 @@ def cycle(iterable):
       iterator = iter(iterable)
 
 
-class ImagenetPytorchWorkload(BaseImagenetWorkload):
+class ImagenetWorkload(BaseImagenetWorkload):
 
   @property
   def param_shapes(self):
