@@ -153,7 +153,15 @@ class WMTWorkload(WMT):
 
   @property
   def param_shapes(self):
-    raise NotImplementedError
+    """Return shape tuples from model as a tree."""
+    model, _ = self.init_model_fn([0])
+    param_shapes = dict()
+    for name, module in model.named_modules():
+      if len(list(module.parameters(recurse=False))) > 0:
+        param_shapes[name] = dict()
+        for param_name, param in module.named_parameters(recurse=False):
+          param_shapes[name][param_name] = spec.ShapeTuple(param.shape)
+    return param_shapes
 
   def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,

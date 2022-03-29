@@ -3,7 +3,6 @@ import contextlib
 import os
 from typing import Tuple
 
-import random_utils as prng
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,6 +10,7 @@ from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet50
 from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
@@ -32,10 +32,15 @@ class ImagenetWorkload(ImagenetWorkload):
 
   @property
   def param_shapes(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
+    """Return shape tuples from model as a tree."""
+    model, _ = self.init_model_fn([0])
+    param_shapes = dict()
+    for name, module in model.named_modules():
+      if len(list(module.parameters(recurse=False))) > 0:
+        param_shapes[name] = dict()
+        for param_name, param in module.named_parameters(recurse=False):
+          param_shapes[name][param_name] = spec.ShapeTuple(param.shape)
+    return param_shapes
 
   def eval_model(self, params: spec.ParameterContainer,
                  model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
