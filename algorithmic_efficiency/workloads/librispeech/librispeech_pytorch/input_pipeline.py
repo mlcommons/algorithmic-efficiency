@@ -12,8 +12,9 @@ import torch
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
 
-  def __init__(self, feat_csv):
+  def __init__(self, feat_csv, aligned_on: int = 1):
     self.df = pd.read_csv(feat_csv)
+    self.aligned_on = aligned_on
     self.sample_size = len(self.df)
     self.df["id"] = list(range(self.sample_size))
 
@@ -29,15 +30,20 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     return self.sample_size
 
   def pad_collate(self, batch):
-    max_input_len = float("-inf")
-    max_target_len = float("-inf")
+    max_input_len = 0
+    max_target_len = 0
 
+    # Get maximum length of entire batch
     for elem in batch:
       index, feature, trn = elem
-      max_input_len = max_input_len if max_input_len > feature.shape[
-          0] else feature.shape[0]
-      max_target_len = max_target_len if max_target_len > len(trn) else len(trn)
+      max_input_len = max(max_input_len, feature.shape[0])
+      max_target_len = max(max_target_len, len(trn))
 
+    # Pad to alignment value
+    max_input_len = max_input_len + (-max_input_len) % self.aligned_on
+    max_target_len = max_target_len + (-max_target_len) % self.aligned_on
+
+    # Pad samples to new maximum
     for i, elem in enumerate(batch):
       index, f, trn = elem
       input_length = np.array(f.shape[0])
