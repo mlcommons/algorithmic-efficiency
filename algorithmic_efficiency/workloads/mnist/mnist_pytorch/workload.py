@@ -76,7 +76,14 @@ class MnistWorkload(BaseMnistWorkload):
     """
     TODO: return type tuples from model as a tree
     """
-    raise NotImplementedError
+    return None
+
+  @property
+  def param_shapes(self):
+    """
+    TODO: return param shapes from model as a tree
+    """
+    return None
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
