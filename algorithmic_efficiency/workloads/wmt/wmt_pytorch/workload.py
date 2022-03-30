@@ -5,6 +5,7 @@ from absl import logging
 
 import numpy as np
 import tensorflow as tf
+import jax.dlpack
 import torch
 import torch.nn.functional as F
 
@@ -85,12 +86,14 @@ class WMTWorkload(WMT):
     def tokens_ids_to_logits(flat_ids, cache_dummy):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = torch.tensor(np.asarray(flat_ids), device=DEVICE)
+      flat_ids = torch.utils.dlpack.from_dlpack(
+          jax.dlpack.to_dlpack(flat_ids, take_ownership=True))
       flat_logits = params.decode(
           flat_ids, encoded_inputs, raw_inputs, decode=True)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = flat_logits.cpu().numpy().squeeze(axis=1)
+      flat_logits =  jax.dlpack.from_dlpack(
+          torch.utils.dlpack.to_dlpack(flat_logits)).squeeze(axis=1)
       return flat_logits, cache_dummy
 
     # Using the above-defined single-step decoder function, run a
