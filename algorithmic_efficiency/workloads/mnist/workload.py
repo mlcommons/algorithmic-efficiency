@@ -1,9 +1,10 @@
-import random_utils as prng
+"""MNIST workload parent class."""
 
 from algorithmic_efficiency import spec
+import algorithmic_efficiency.random_utils as prng
 
 
-class Mnist(spec.Workload):
+class BaseMnistWorkload(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['accuracy'] > self.target_value

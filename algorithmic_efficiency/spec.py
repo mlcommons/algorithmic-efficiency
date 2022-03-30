@@ -147,6 +147,11 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
+  def num_test_examples(self):
+    """The size of the test set."""
+
+  @property
+  @abc.abstractmethod
   def train_mean(self):
     """The mean of the training data."""
 
@@ -167,7 +172,7 @@ class Workload(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def is_output_params(self, param_key: ParameterKey) -> bool:
-    """Whether or not a key in ParameterContainer is the output layer."""
+    """Whether a key in ParameterContainer is the output layer parameters."""
 
   # InitModelFn = Callable[
   #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]

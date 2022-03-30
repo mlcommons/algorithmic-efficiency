@@ -1,6 +1,7 @@
-# Forked from Flax example which can be found here:
-# https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 """ImageNet input pipeline.
+
+Forked from Flax example which can be found here:
+https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 """
 
 from flax import jax_utils
@@ -46,7 +47,7 @@ def _distorted_bounding_box_crop(image_bytes,
     cropped image `Tensor`
   """
   shape = tf.io.extract_jpeg_shape(image_bytes)
-  sample_distorted_bounding_box = tf.image.stateless_sample_distorted_bounding_box(
+  sample_distorted_bounding_box = tf.image.stateless_sample_distorted_bounding_box(  # pylint: disable=line-too-long
       shape,
       seed=rng,
       bounding_boxes=bbox,
@@ -317,6 +318,7 @@ def create_input_iter(dataset_builder,
       rng,
       batch_size,
       train=train,
+      dtype=tf.float32,
       image_size=image_size,
       resize_size=resize_size,
       mean_rgb=mean_rgb,

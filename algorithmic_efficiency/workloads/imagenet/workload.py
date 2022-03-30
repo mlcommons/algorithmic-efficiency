@@ -1,7 +1,9 @@
+"""ImageNet workload parent class."""
+
 from algorithmic_efficiency import spec
 
 
-class ImagenetWorkload(spec.Workload):
+class BaseImagenetWorkload(spec.Workload):
 
   def __init__(self):
     self._eval_ds = None
@@ -30,6 +32,10 @@ class ImagenetWorkload(spec.Workload):
     return 50000
 
   @property
+  def num_test_examples(self):
+    return None
+
+  @property
   def train_mean(self):
     return [0.485 * 255, 0.456 * 255, 0.406 * 255]
 
@@ -37,7 +43,7 @@ class ImagenetWorkload(spec.Workload):
   def train_stddev(self):
     return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-  """ data augmentation settings """
+  # data augmentation settings
 
   @property
   def scale_ratio_range(self):
@@ -65,7 +71,10 @@ class ImagenetWorkload(spec.Workload):
 
   @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return shape tuples from model as a tree
+    """
+    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.

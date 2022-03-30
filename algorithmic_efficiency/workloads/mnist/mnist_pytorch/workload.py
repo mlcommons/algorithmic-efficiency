@@ -12,7 +12,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.mnist.workload import Mnist
+from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -36,7 +36,7 @@ class _Model(nn.Module):
     return self.net(x)
 
 
-class MnistWorkload(Mnist):
+class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
     self._eval_ds = None
@@ -73,7 +73,10 @@ class MnistWorkload(Mnist):
 
   @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return type tuples from model as a tree
+    """
+    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
@@ -99,8 +102,8 @@ class MnistWorkload(Mnist):
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
-    n = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(n, -1)
+    raw_input_batch_size = raw_input_batch.size()[0]
+    raw_input_batch = raw_input_batch.view(raw_input_batch_size, -1)
     return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:

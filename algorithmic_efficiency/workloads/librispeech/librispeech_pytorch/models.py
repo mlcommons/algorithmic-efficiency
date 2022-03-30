@@ -133,7 +133,7 @@ class CNNLSTM(nn.Module):
     rnns.append(("0", rnn))
     for x in range(self.hidden_layers - 1):
       rnn = BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
-      rnns.append(("%d" % (x + 1), rnn))
+      rnns.append((f"{x+1}", rnn))
     self.rnns = nn.Sequential(collections.OrderedDict(rnns))
 
     fully_connected = nn.Sequential(

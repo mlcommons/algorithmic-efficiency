@@ -2,28 +2,22 @@
 import functools
 from typing import Optional, Tuple
 
-import optax
-import tensorflow as tf
-import tensorflow_datasets as tfds
-
-# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make it
-# unavailable to JAX.
-tf.config.experimental.set_visible_devices([], 'GPU')
 from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
+import optax
+import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
-from algorithmic_efficiency.workloads.imagenet.workload import ImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet.workload import \
+    BaseImagenetWorkload
 
-_InitState = Tuple[spec.ParameterContainer, spec.ModelAuxiliaryState]  # pylint: disable=invalid-name
 
-
-class ImagenetJaxWorkload(ImagenetWorkload):
+class ImagenetWorkload(BaseImagenetWorkload):
 
   def __init__(self):
     super().__init__()
@@ -84,7 +78,7 @@ class ImagenetJaxWorkload(ImagenetWorkload):
     model_state, params = variables.pop('params')
     return params, model_state
 
-  def init_model_fn(self, rng: spec.RandomState) -> _InitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=1000, dtype=jnp.float32)
     self._model = model
@@ -121,7 +115,7 @@ class ImagenetJaxWorkload(ImagenetWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -130,14 +124,14 @@ class ImagenetJaxWorkload(ImagenetWorkload):
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          input_batch,
+          augmented_and_preprocessed_input_batch,
           update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          input_batch,
+          augmented_and_preprocessed_input_batch,
           update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None

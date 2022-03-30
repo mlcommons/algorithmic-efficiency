@@ -1,4 +1,5 @@
 """Proxy functions in front of the Jax RNG API or a compatible Numpy RNG API."""
+
 from absl import flags
 from absl import logging
 import numpy as np

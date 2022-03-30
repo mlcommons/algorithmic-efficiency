@@ -46,24 +46,36 @@
    pip3 install -e .
    ```
 
+   You can also install the requirements for individual workloads, e.g. via
+
+   ```bash
+   pip3 install -e '.[librispeech]'
+   ```
+
+   or all workloads at once via
+
+   ```bash
+   pip3 install -e '.[full]'
+   ```
+
    Depending on the framework you want to use (e.g. `JAX` or `PyTorch`) you need to install them as well. You could either do this manually or by adding the corresponding options:
 
    **JAX (GPU)**
 
    ```bash
-   pip3 install -e .[jax_gpu] -f 'https://storage.googleapis.com/jax-releases/jax_releases.html'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_releases.html'
    ```
 
    **JAX (CPU)**
 
    ```bash
-   pip3 install -e .[jax_cpu]
+   pip3 install -e '.[jax_cpu]'
    ```
 
    **PyTorch**
 
    ```bash
-   pip3 install -e .[pytorch] -f 'https://download.pytorch.org/whl/torch_stable.html'
+   pip3 install -e '.[pytorch]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    ```
 
    **Development**
@@ -71,8 +83,10 @@
    To use the development tools such as `pytest` or `pylint` use the `dev` option:
 
    ```bash
-   pip3 install -e .[dev]
+   pip3 install -e '.[dev]'
    ```
+
+   To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
 ### Docker
 
@@ -114,13 +128,21 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 ### JAX
 
 ```bash
-python3 algorithmic_efficiency/submission_runner.py --framework=jax --workload=mnist_jax --submission_path=baselines/mnist/mnist_jax/submission.py --tuning_search_space=baselines/mnist/tuning_search_space.json
+python3 algorithmic_efficiency/submission_runner.py \
+    --framework=jax \
+    --workload=mnist |\
+    --submission_path=baselines/mnist/mnist_jax/submission.py \
+    --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
 
 ```bash
-python3 algorithmic_efficiency/submission_runner.py --framework=pytorch --workload=mnist_pytorch --submission_path=baselines/mnist/mnist_pytorch/submission.py --tuning_search_space=baselines/mnist/tuning_search_space.json
+python3 algorithmic_efficiency/submission_runner.py \
+    --framework=pytorch \
+    --workload=mnist \
+    --submission_path=baselines/mnist/mnist_pytorch/submission.py \
+    --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
 
 ## Rules

@@ -11,7 +11,7 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'ogb_jax': 2048}
+  batch_sizes = {'ogbg': 2048}
   return batch_sizes[workload_name]
 
 

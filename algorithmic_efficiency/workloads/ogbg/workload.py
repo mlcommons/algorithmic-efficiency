@@ -1,7 +1,7 @@
 from algorithmic_efficiency import spec
 
 
-class OGBG(spec.Workload):
+class BaseOgbgWorkload(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['mean_average_precision'] > self.target_value
@@ -21,7 +21,15 @@ class OGBG(spec.Workload):
     return 350343
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    return 10000
+
+  @property
+  def num_validation_examples(self):
+    return 43793
+
+  @property
+  def num_test_examples(self):
     return 43793
 
   @property

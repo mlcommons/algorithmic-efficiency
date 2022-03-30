@@ -18,5 +18,4 @@ jobs:
         pip install .[jax_cpu]
     - name: Run pytest
       run: |
-
-        pytest -vx .
+        pytest -vx tests/
