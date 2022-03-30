@@ -22,8 +22,16 @@ class BaseMnistWorkload(spec.Workload):
     return 60000
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
     return 10000
+
+  @property
+  def num_validation_examples(self):
+    return 10000
+
+  @property
+  def num_test_examples(self):
+    return None
 
   @property
   def train_mean(self):
