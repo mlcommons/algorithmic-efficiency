@@ -133,6 +133,7 @@ class WMTWorkload(WMT):
       if cur_pred_batch_size % n_devices:
         padded_size = int(np.ceil(cur_pred_batch_size / n_devices) * n_devices)
         inputs = self.pad_examples(inputs, padded_size)  # pylint: disable=cell-var-from-loop
+        targets = self.pad_examples(targets, padded_size)
       predicted = self.predict_step(
           inputs, params, decode.EOS_ID, max_predict_length)
 
@@ -184,17 +185,16 @@ class WMTWorkload(WMT):
         selected_raw_input_batch['targets'].numpy(),
         device=DEVICE,
         dtype=torch.int64)
+    extra_inputs = list()
     if packed_examples:
       extras = ['inputs_position', 'targets_position',
                 'inputs_segmentation', 'targets_segmentation']
-      extra_inputs = list()
       for extra in extras:
         extra_inputs.append(torch.tensor(
-          selected_raw_input_batch[extra].numpy(),
-          device=DEVICE,
-          dtype=torch.int64))
-      return inputs, targets, *extra_inputs
-    return inputs, targets
+            selected_raw_input_batch[extra].numpy(),
+            device=DEVICE,
+            dtype=torch.int64))
+    return inputs, targets, *extra_inputs
 
   def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
                           train_mean: spec.Tensor,
