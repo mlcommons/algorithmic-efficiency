@@ -164,7 +164,7 @@ class WmtWorkload(BaseWmtWorkload):
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
     for pred_batch in predict_ds:
-      inputs, targets = self.preprocess_for_eval(pred_batch, None, None)
+      inputs, targets = self.preprocess_for_eval(pred_batch, None, None)  # pylint: disable=unbalanced-tuple-unpacking
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = inputs.shape[0]
       if cur_pred_batch_size % n_devices:
@@ -241,7 +241,7 @@ class WmtWorkload(BaseWmtWorkload):
                 selected_raw_input_batch[extra].numpy(),
                 device=DEVICE,
                 dtype=torch.int64))
-      in_pos, tgt_pos, in_seg, tgt_seg = extra_inputs
+      in_pos, tgt_pos, in_seg, tgt_seg = extra_inputs  # pylint: disable=unbalanced-tuple-unpacking
       return inputs, targets, in_pos, tgt_pos, in_seg, tgt_seg
     return inputs, targets
 
