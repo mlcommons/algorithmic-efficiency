@@ -17,7 +17,7 @@ jobs:
         pip install pytest
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
-        pip install .[full]
+        pip install .[wmt]
     - name: Run pytest
       run: |
         pytest -vx tests/
