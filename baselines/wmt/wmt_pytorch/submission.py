@@ -4,8 +4,9 @@ import torch
 
 from algorithmic_efficiency import spec
 
+
 def get_batch_size(workload_name):
-  batch_sizes = {'wmt_pytorch': 128}
+  batch_sizes = {'wmt': 128}
   return batch_sizes[workload_name]
 
 
@@ -53,10 +54,9 @@ def create_learning_rate_scheduler(
       elif name == "decay_every":
         ret *= (decay_factor**(step // steps_per_decay))
       elif name == "cosine_decay":
-        progress = np.maximum(
-            0.0, (step - warmup_steps) / float(steps_per_cycle))
-        ret *= np.maximum(
-            0.0, 0.5 * (1.0 + np.cos(np.pi * (progress % 1.0))))
+        progress = np.maximum(0.0,
+                              (step - warmup_steps) / float(steps_per_cycle))
+        ret *= np.maximum(0.0, 0.5 * (1.0 + np.cos(np.pi * (progress % 1.0))))
       else:
         raise ValueError("Unknown factor %s." % name)
     return ret
@@ -95,6 +95,7 @@ def update_params(
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
+    mask_batch: spec.Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -107,7 +108,8 @@ def update_params(
   del loss_type
   del hyperparameters
   del label_batch
-  
+  del mask_batch
+
   input_batch = workload.preprocess_for_train(
       input_batch, None, None, None, None, packed_examples=True)
 
@@ -118,7 +120,7 @@ def update_params(
 
   output, new_model_state = workload.model_fn(
       params=current_model,
-      input_batch=input_batch,
+      augmented_and_preprocessed_input_batch=input_batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
@@ -143,7 +145,8 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters, global_step: int,
+                   hyperparameters: spec.Hyperparamters,
+                   global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
@@ -160,4 +163,4 @@ def data_selection(workload: spec.Workload,
   del hyperparameters
   del global_step
   del rng
-  return next(input_queue), None
+  return next(input_queue), None, None

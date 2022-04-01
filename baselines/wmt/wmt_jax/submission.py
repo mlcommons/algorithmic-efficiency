@@ -193,6 +193,7 @@ def update_params(
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
+    mask_batch: spec.Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -209,6 +210,7 @@ def update_params(
   del loss_type
   del hyperparameters
   del label_batch
+  del mask_batch
 
   optimizer, p_train_step = optimizer_state
   dropout_rngs = jax.random.split(rng, jax.local_device_count())
@@ -242,4 +244,5 @@ def data_selection(workload: spec.Workload,
   del hyperparameters
   del workload
 
-  return common_utils.shard(jax.tree_map(np.asarray, next(input_queue))), None
+  return common_utils.shard(
+      jax.tree_map(np.asarray, next(input_queue))), None, None

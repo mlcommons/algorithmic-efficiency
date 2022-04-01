@@ -15,7 +15,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-
 WORKLOADS = ['mnist', 'imagenet', 'wmt']
 
 
@@ -36,7 +35,7 @@ def test_param_shapes(workload):
   for jax_shape, pytorch_shape in zip(jax_param_shapes, pytorch_param_shapes):
     num_jax_params += np.prod(jax_shape.shape_tuple)
     num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
-  assert num_jax_params == num_pytorch_params 
+  assert num_jax_params == num_pytorch_params
 
 
 def get_workload(workload):

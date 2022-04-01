@@ -64,19 +64,23 @@ class BaseWmtWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 800
 
-  def build_input_queue(self, data_rng: spec.RandomState, split: str,
-                        data_dir: str, batch_size: int):
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        batch_size: int):
     del data_rng
     del split
     del data_dir
     tf.io.gfile.makedirs(WORKDIR)
     self._batch_size = batch_size
-    self._train_ds, self._eval_ds, self._predict_ds, self._encoder = input_pipeline.get_wmt_datasets(
+    datasets = input_pipeline.get_wmt_datasets(
         vocab_size=self._vocab_size,
         batch_size=batch_size,
         reverse_translation=True,
         vocab_path=VOCAB_PATH,
-        pack_examples=True)  # only needed for TPU training?
+        pack_examples=True)
+    self._train_ds, self._eval_ds, self._predict_ds, self._encoder = datasets
     self._vocab_size = int(self._encoder.vocab_size())
     return iter(self._train_ds)
 
@@ -105,7 +109,7 @@ class BaseWmtWorkload(spec.Workload):
     """
     if logits.ndim != targets.ndim + 1:
       raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
-                        (str(logits.shape), str(targets.shape)))
+                       (str(logits.shape), str(targets.shape)))
     loss = logits.argmax(-1) == targets
     normalizing_factor = np.prod([*logits.shape[:-1]])
     if weights is not None:
@@ -125,6 +129,7 @@ class BaseWmtWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
+  @property
   def model_params_types(self):
     pass
 

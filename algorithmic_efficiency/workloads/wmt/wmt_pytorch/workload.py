@@ -9,7 +9,7 @@ import jax.dlpack
 import torch
 import torch.nn.functional as F
 
-from algorithmic_efficiency import spec 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
@@ -39,6 +39,7 @@ def delete_decoding_cache(model):
 
 
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
+
   def forward(self, logits, targets, label_smoothing=0.1):
     vocab_size = logits.shape[-1]
     confidence = 1.0 - label_smoothing
@@ -47,8 +48,7 @@ class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
         confidence * np.log(confidence) +
         (vocab_size - 1) * low_confidence * np.log(low_confidence + 1e-20))
     one_hot_targets = F.one_hot(targets, num_classes=vocab_size)
-    soft_targets = torch.where(
-        one_hot_targets == 1, confidence, low_confidence)
+    soft_targets = torch.where(one_hot_targets == 1, confidence, low_confidence)
     loss = super().forward(
         input=logits.transpose(-2, -1), target=soft_targets.transpose(-2, -1))
     return loss - normalizing_constant
@@ -92,7 +92,7 @@ class WmtWorkload(BaseWmtWorkload):
     return loss, normalizing_factor
 
   # Primary eval / decode step functions.
-  # -----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
   @torch.no_grad()
   def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
     """Predict translation with fast decoding beam search on a batch."""
@@ -116,15 +116,18 @@ class WmtWorkload(BaseWmtWorkload):
       # --> [batch * beam, 1, vocab]
       flat_ids = jax_to_pytorch(flat_ids)
       flat_logits = params.decode(
-          flat_ids, encoded_inputs, raw_inputs,
-          decode=True, max_len=max_decode_len)
+          flat_ids,
+          encoded_inputs,
+          raw_inputs,
+          decode=True,
+          max_len=max_decode_len)
       new_flat_cache = {
-          name: pytorch_to_jax(buffer)
-          for name, buffer in params.named_buffers() if name != 'pos_encoder.pe'
+          name: pytorch_to_jax(buffer) for name,
+          buffer in params.named_buffers() if name != 'pos_encoder.pe'
       }
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits =  pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
@@ -144,15 +147,18 @@ class WmtWorkload(BaseWmtWorkload):
     return beam_seqs[:, -1, 1:]
 
   # Utils for prediction and BLEU calculation
-  # -----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
 
   def pad_examples(self, x, desired_batch_size):
     """Expand batch to desired size by repeating last slice."""
     batch_pad = desired_batch_size - x.shape[0]
     return torch.cat([x, torch.tile(x[-1], (batch_pad, 1))], dim=0)
 
-  def translate_and_calculate_bleu(self, params, predict_ds: tf.data.Dataset,
-                                   decode_tokens, max_predict_length: int):
+  def translate_and_calculate_bleu(self,
+                                   params,
+                                   predict_ds: tf.data.Dataset,
+                                   decode_tokens,
+                                   max_predict_length: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
     n_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
     logging.info('Translating evaluation dataset.')
@@ -165,8 +171,10 @@ class WmtWorkload(BaseWmtWorkload):
         padded_size = int(np.ceil(cur_pred_batch_size / n_devices) * n_devices)
         inputs = self.pad_examples(inputs, padded_size)  # pylint: disable=cell-var-from-loop
         targets = self.pad_examples(targets, padded_size)
-      predicted = self.predict_step(
-          inputs, params, decode.EOS_ID, max_predict_length)
+      predicted = self.predict_step(inputs,
+                                    params,
+                                    decode.EOS_ID,
+                                    max_predict_length)
 
       # Iterate through non-padding examples of batch.
       for i, s in enumerate(predicted[:cur_pred_batch_size]):
@@ -174,7 +182,9 @@ class WmtWorkload(BaseWmtWorkload):
         references.append(decode_tokens(targets[i]))
         predictions.append(decode_tokens(s))
     logging.info("Translation: %d predictions %d references %d sources.",
-                 len(predictions), len(references), len(sources))
+                 len(predictions),
+                 len(references),
+                 len(sources))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)
@@ -190,15 +200,16 @@ class WmtWorkload(BaseWmtWorkload):
   def param_shapes(self):
     """Return shape tuples from model as a tree."""
     model, _ = self.init_model_fn([0])
-    param_shapes = dict()
+    param_shapes = {}
     for name, module in model.named_modules():
       if len(list(module.parameters(recurse=False))) > 0:
-        param_shapes[name] = dict()
+        param_shapes[name] = {}
         for param_name, param in module.named_parameters(recurse=False):
           param_shapes[name][param_name] = spec.ShapeTuple(param.shape)
     return param_shapes
 
-  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+  def preprocess_for_train(self,
+                           selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,
                            train_mean: spec.Tensor,
                            train_stddev: spec.Tensor,
@@ -216,18 +227,24 @@ class WmtWorkload(BaseWmtWorkload):
         selected_raw_input_batch['targets'].numpy(),
         device=DEVICE,
         dtype=torch.int64)
-    extra_inputs = list()
+    extra_inputs = []
     if packed_examples:
-      extras = ['inputs_position', 'targets_position',
-                'inputs_segmentation', 'targets_segmentation']
+      extras = [
+          'inputs_position',
+          'targets_position',
+          'inputs_segmentation',
+          'targets_segmentation'
+      ]
       for extra in extras:
-        extra_inputs.append(torch.tensor(
-            selected_raw_input_batch[extra].numpy(),
-            device=DEVICE,
-            dtype=torch.int64))
+        extra_inputs.append(
+            torch.tensor(
+                selected_raw_input_batch[extra].numpy(),
+                device=DEVICE,
+                dtype=torch.int64))
     return inputs, targets, *extra_inputs
 
-  def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
+  def preprocess_for_eval(self,
+                          raw_input_batch: spec.Tensor,
                           train_mean: spec.Tensor,
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
@@ -250,8 +267,11 @@ class WmtWorkload(BaseWmtWorkload):
     return model, None
 
   def model_fn(
-      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
@@ -269,7 +289,7 @@ class WmtWorkload(BaseWmtWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(*input_batch)
+      logits_batch = model(*augmented_and_preprocessed_input_batch)
 
     return logits_batch, None
 
@@ -293,8 +313,11 @@ class WmtWorkload(BaseWmtWorkload):
         update_batch_norm=False)
     return self.compute_metrics(logits, targets, weights)
 
-  def evaluate(self, params: spec.ParameterContainer, num_eval_steps: int,
-               model_state, rng):
+  def evaluate(self,
+               params: spec.ParameterContainer,
+               num_eval_steps: int,
+               model_state,
+               rng):
     """Evaluate the target and return a dictionary with the metrics."""
     logging.info('Gathering evaluation metrics.')
     eval_metrics = {
@@ -306,14 +329,14 @@ class WmtWorkload(BaseWmtWorkload):
     for _, eval_batch in zip(range(num_eval_steps), eval_iter):
       eval_batch = self.preprocess_for_eval(eval_batch, None, None)
       metrics = self.eval_step(params, eval_batch, model_state, rng)
-      eval_metrics = {
-          k: v + metrics[k] for k, v in eval_metrics.items()
-      }
+      eval_metrics = {k: v + metrics[k] for k, v in eval_metrics.items()}
     denominator = eval_metrics.pop('denominator')
     return {k: float(v / denominator) for k, v in eval_metrics.items()}
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
     del data_dir

@@ -346,8 +346,9 @@ def beam_search(inputs,
     final_state = lax.while_loop(beam_search_loop_cond_fn,
                                  beam_search_loop_body_fn,
                                  beam_search_init_state)
-  except (TypeError, jax.errors.TracerArrayConversionError):  # For the PyTorch workload.
-    state  = beam_search_init_state
+  except (TypeError,
+          jax.errors.TracerArrayConversionError):  # For the PyTorch workload.
+    state = beam_search_init_state
     while beam_search_loop_cond_fn(state):
       state = beam_search_loop_body_fn(state)
     final_state = state

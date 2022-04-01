@@ -18,7 +18,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-
 WORKLOADS = ['mnist', 'imagenet', 'wmt']
 
 
@@ -37,14 +36,16 @@ def get_models(workload):
   if workload == 'mnist':
     # Init Jax model.
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    jax_model =  JaxMLP().init(init_rngs, init_val, train=True)['params']
+    jax_model = JaxMLP().init(init_rngs, init_val, train=True)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchMLP()
   elif workload == 'imagenet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
-    jax_model = JaxResNet(num_classes=1000, dtype=jnp.float32).init(
-        init_rngs, jnp.ones(input_shape, jnp.float32))['params']
+    jax_model = JaxResNet(
+        num_classes=1000,
+        dtype=jnp.float32).init(init_rngs, jnp.ones(input_shape,
+                                                    jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchResNet()
   elif workload == 'wmt':
@@ -52,15 +53,12 @@ def get_models(workload):
     input_shape = (16, 256)
     target_shape = (16, 256)
     jax_model = JaxTransformer(TransformerConfig).init(
-        init_rngs, jnp.ones(input_shape, jnp.float32),
+        init_rngs,
+        jnp.ones(input_shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchTransformer(
-        ntoken=32000,
-        d_model=1024,
-        nhead=16,
-        d_hid=4096,
-        nlayers=6)
+        ntoken=32000, d_model=1024, nhead=16, d_hid=4096, nlayers=6)
   else:
     raise ValueError(f'Models for workload {workload} are not available.')
   return jax_model, pytorch_model

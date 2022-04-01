@@ -36,10 +36,10 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def param_shapes(self):
     """Return shape tuples from model as a tree."""
     model, _ = self.init_model_fn([0])
-    param_shapes = dict()
+    param_shapes = {}
     for name, module in model.named_modules():
       if len(list(module.parameters(recurse=False))) > 0:
-        param_shapes[name] = dict()
+        param_shapes[name] = {}
         for param_name, param in module.named_parameters(recurse=False):
           param_shapes[name][param_name] = spec.ShapeTuple(param.shape)
     return param_shapes

@@ -17,6 +17,7 @@ from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
+
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
@@ -255,7 +256,8 @@ class WmtWorkload(BaseWmtWorkload):
     init_params, _ = self.init_model_fn(jax.random.PRNGKey(0))
     return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), init_params)
 
-  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+  def preprocess_for_train(self,
+                           selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,
                            train_mean: spec.Tensor,
                            train_stddev: spec.Tensor,
@@ -350,8 +352,10 @@ class WmtWorkload(BaseWmtWorkload):
 
     return loss
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
     del data_dir
