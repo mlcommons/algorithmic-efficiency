@@ -227,7 +227,6 @@ class WmtWorkload(BaseWmtWorkload):
         selected_raw_input_batch['targets'].numpy(),
         device=DEVICE,
         dtype=torch.int64)
-    extra_inputs = []
     if packed_examples:
       extras = [
           'inputs_position',
@@ -235,13 +234,16 @@ class WmtWorkload(BaseWmtWorkload):
           'inputs_segmentation',
           'targets_segmentation'
       ]
+      extra_inputs = []
       for extra in extras:
         extra_inputs.append(
             torch.tensor(
                 selected_raw_input_batch[extra].numpy(),
                 device=DEVICE,
                 dtype=torch.int64))
-    return inputs, targets, *extra_inputs
+      in_pos, tgt_pos, in_seg, tgt_seg = extra_inputs
+      return inputs, targets, in_pos, tgt_pos, in_seg, tgt_seg
+    return inputs, targets
 
   def preprocess_for_eval(self,
                           raw_input_batch: spec.Tensor,
