@@ -22,8 +22,16 @@ class BaseMnistWorkload(spec.Workload):
     return 60000
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    pass
+
+  @property
+  def num_validation_examples(self):
     return 10000
+
+  @property
+  def num_test_examples(self):
+    pass
 
   @property
   def train_mean(self):
@@ -43,6 +51,10 @@ class BaseMnistWorkload(spec.Workload):
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
+    raise NotImplementedError
+
+  @property
+  def model_params_types(self) -> spec.ParameterType:
     raise NotImplementedError
 
   def eval_model(self,

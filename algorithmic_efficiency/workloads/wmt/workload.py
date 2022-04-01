@@ -10,7 +10,7 @@ VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
 
 
-class WMT(spec.Workload):
+class BaseWmtWorkload(spec.Workload):
   """A WMT workload."""
 
   def __init__(self):
@@ -37,8 +37,16 @@ class WMT(spec.Workload):
     return 5906184
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    pass
+
+  @property
+  def num_validation_examples(self):
     return 3004
+
+  @property
+  def num_test_examples(self):
+    pass
 
   @property
   def train_mean(self):

@@ -11,9 +11,9 @@ from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import \
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.workload import \
     ImagenetWorkload as PyTorchImagenetWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
-    WMTWorkload as JaxWMTWorkload
+    WmtWorkload as JaxWmtWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
-    WMTWorkload as PyTorchWMTWorkload
+    WmtWorkload as PyTorchWmtWorkload
 
 
 WORKLOADS = ['mnist', 'imagenet', 'wmt']
@@ -54,10 +54,10 @@ def get_workload(workload):
     pytorch_workload = PyTorchImagenetWorkload()
   elif workload == 'wmt':
     # Init Jax workload.
-    jax_workload = JaxWMTWorkload()
+    jax_workload = JaxWmtWorkload()
     jax_workload._batch_size = 128
     # Init PyTorch workload.
-    pytorch_workload = PyTorchWMTWorkload()
+    pytorch_workload = PyTorchWmtWorkload()
   else:
     raise ValueError(f'Workload {workload} is not available.')
   return jax_workload, pytorch_workload

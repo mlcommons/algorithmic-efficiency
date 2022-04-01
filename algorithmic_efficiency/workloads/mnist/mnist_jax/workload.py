@@ -67,13 +67,6 @@ class MnistWorkload(BaseMnistWorkload):
           'before workload.param_shapes!')
     return self._param_shapes
 
-  @property
-  def model_params_types(self):
-    """
-    TODO: return type tuples from model as a tree
-    """
-    raise NotImplementedError
-
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:

@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 
 from algorithmic_efficiency import spec 
-from algorithmic_efficiency.workloads.wmt.workload import WMT
+from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
@@ -54,7 +54,7 @@ class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
     return loss - normalizing_constant
 
 
-class WMTWorkload(WMT):
+class WmtWorkload(BaseWmtWorkload):
   """WMT PyTorch workload."""
 
   def compute_weighted_cross_entropy(self,

@@ -12,12 +12,12 @@ import numpy as np
 import tensorflow as tf
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt.workload import WMT
+from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
-class WMTWorkload(WMT):
+class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
   def __init__(self):
