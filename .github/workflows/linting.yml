@@ -19,6 +19,7 @@ jobs:
       run: |
         pylint algorithmic_efficiency
         pylint baselines
+        pylint submission_runner.py
         pylint tests
 
   isort:
@@ -35,7 +36,7 @@ jobs:
         pip install isort
     - name: Run isort
       run: |
-        isort . --check
+        isort . --check --diff
 
   yapf:
     runs-on: ubuntu-latest

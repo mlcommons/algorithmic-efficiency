@@ -7,9 +7,9 @@ import jax
 import jax.numpy as jnp
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from workloads.mnist.workload import Mnist
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
 
 class _Model(nn.Module):
@@ -28,7 +28,7 @@ class _Model(nn.Module):
     return x
 
 
-class MnistWorkload(Mnist):
+class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
     self._eval_ds = None
@@ -38,8 +38,11 @@ class MnistWorkload(Mnist):
   def _normalize(self, image):
     return (tf.cast(image, tf.float32) - self.train_mean) / self.train_stddev
 
-  def _build_dataset(self, data_rng: jax.random.PRNGKey, split: str,
-                     data_dir: str, batch_size):
+  def _build_dataset(self,
+                     data_rng: jax.random.PRNGKey,
+                     split: str,
+                     data_dir: str,
+                     batch_size):
     ds = tfds.load('mnist', split=split)
     ds = ds.cache()
     ds = ds.map(lambda x: (self._normalize(x['image']), x['label']))
@@ -49,8 +52,11 @@ class MnistWorkload(Mnist):
     ds = ds.batch(batch_size)
     return tfds.as_numpy(ds)
 
-  def build_input_queue(self, data_rng: jax.random.PRNGKey, split: str,
-                        data_dir: str, batch_size: int):
+  def build_input_queue(self,
+                        data_rng: jax.random.PRNGKey,
+                        split: str,
+                        data_dir: str,
+                        batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   @property
@@ -61,23 +67,31 @@ class MnistWorkload(Mnist):
           'before workload.param_shapes!')
     return self._param_shapes
 
+  @property
   def model_params_types(self):
-    pass
+    """
+    TODO: return type tuples from model as a tree
+    """
+    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self, selected_raw_input_batch: spec.Tensor,
+  def preprocess_for_train(self,
+                           selected_raw_input_batch: spec.Tensor,
                            selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor, train_stddev: spec.Tensor,
+                           train_mean: spec.Tensor,
+                           train_stddev: spec.Tensor,
                            rng: spec.RandomState) -> spec.Tensor:
     del rng
     return selected_raw_input_batch, selected_label_batch
 
-  def preprocess_for_eval(self, raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor, train_mean: spec.Tensor,
+  def preprocess_for_eval(self,
+                          raw_input_batch: spec.Tensor,
+                          raw_label_batch: spec.Tensor,
+                          train_mean: spec.Tensor,
                           train_stddev: spec.Tensor) -> spec.Tensor:
     del train_mean
     del train_stddev
@@ -92,7 +106,8 @@ class MnistWorkload(Mnist):
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
-  def output_activation_fn(self, logits_batch: spec.Tensor,
+  def output_activation_fn(self,
+                           logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
     if loss_type == spec.LossType.SOFTMAX_CROSS_ENTROPY:
       return jax.nn.softmax(logits_batch, axis=-1)
@@ -102,8 +117,11 @@ class MnistWorkload(Mnist):
       return logits_batch
 
   def model_fn(
-      self, params: spec.ParameterContainer, input_batch: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState, mode: spec.ForwardPassMode,
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
@@ -111,7 +129,7 @@ class MnistWorkload(Mnist):
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply({'params': params},
-                                     input_batch,
+                                     augmented_and_preprocessed_input_batch,
                                      train=train)
     return logits_batch, None
 

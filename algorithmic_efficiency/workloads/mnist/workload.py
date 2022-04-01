@@ -1,9 +1,10 @@
-import random_utils as prng
+"""MNIST workload parent class."""
 
 from algorithmic_efficiency import spec
+import algorithmic_efficiency.random_utils as prng
 
 
-class Mnist(spec.Workload):
+class BaseMnistWorkload(spec.Workload):
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['accuracy'] > self.target_value
@@ -44,8 +45,10 @@ class Mnist(spec.Workload):
     """Return the mean accuracy and loss as a dict."""
     raise NotImplementedError
 
-  def eval_model(self, params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState, rng: spec.RandomState,
+  def eval_model(self,
+                 params: spec.ParameterContainer,
+                 model_state: spec.ModelAuxiliaryState,
+                 rng: spec.RandomState,
                  data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
