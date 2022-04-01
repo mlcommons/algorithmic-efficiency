@@ -330,11 +330,11 @@ def beam_search(inputs,
         cache=top_alive_cache)
 
   # Run while loop and get final beam search state.
-  try:
+  try:  # For the Jax workload.
     final_state = lax.while_loop(beam_search_loop_cond_fn,
                                  beam_search_loop_body_fn,
                                  beam_search_init_state)
-  except jax.errors.TracerArrayConversionError:
+  except (TypeError, jax.errors.TracerArrayConversionError):  # For the PyTorch workload.
     state  = beam_search_init_state
     while beam_search_loop_cond_fn(state):
       state = beam_search_loop_body_fn(state)

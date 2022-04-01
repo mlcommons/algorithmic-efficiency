@@ -18,6 +18,26 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
+def jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
+  return torch.utils.dlpack.from_dlpack(
+      jax.dlpack.to_dlpack(x, take_ownership=take_ownership))
+
+
+def pytorch_to_jax(x: spec.Tensor):
+  x = x.contiguous()  # https://github.com/google/jax/issues/8082
+  return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
+
+
+def delete_decoding_cache(model):
+  for module in model.modules():
+    if len(list(module.buffers(recurse=False))) > 0:
+      names = [name for name, _ in module.named_buffers() if name != 'pe']
+      # Deletion has to be done in seperate for-loop to avoid
+      # mutating the OrderedDict during iteration.
+      for name in names:
+        del module._buffers[name]
+
+
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
   def forward(self, logits, targets, label_smoothing=0.1):
     vocab_size = logits.shape[-1]
@@ -76,25 +96,36 @@ class WMTWorkload(WMT):
   @torch.no_grad()
   def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
     """Predict translation with fast decoding beam search on a batch."""
+    # This means that decoding will always happen on a single GPU!
     params = params.module if isinstance(params,
                                          torch.nn.DataParallel) else params
+    # Delete cache for autoregressive decoding.
+    delete_decoding_cache(params)
     params.eval()
     encoded_inputs = torch.repeat_interleave(
         params.encode(inputs), repeats=beam_size, dim=0)
     raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
 
-    def tokens_ids_to_logits(flat_ids, cache_dummy):
+    def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
+      if flat_cache is not None:
+        for name, _ in params.named_buffers():
+          if name == 'pos_encoder.pe':
+            continue
+          params.name = jax_to_pytorch(flat_cache[name])
       # --> [batch * beam, 1, vocab]
-      flat_ids = torch.utils.dlpack.from_dlpack(
-          jax.dlpack.to_dlpack(flat_ids, take_ownership=True))
+      flat_ids = jax_to_pytorch(flat_ids)
       flat_logits = params.decode(
-          flat_ids, encoded_inputs, raw_inputs, decode=True)
+          flat_ids, encoded_inputs, raw_inputs,
+          decode=True, max_len=max_decode_len)
+      new_flat_cache = {
+          name: pytorch_to_jax(buffer)
+          for name, buffer in params.named_buffers() if name != 'pos_encoder.pe'
+      }
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits =  jax.dlpack.from_dlpack(
-          torch.utils.dlpack.to_dlpack(flat_logits)).squeeze(axis=1)
-      return flat_logits, cache_dummy
+      flat_logits =  pytorch_to_jax(flat_logits).squeeze(axis=1)
+      return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
     # beam search over possible sequences given input encoding.
