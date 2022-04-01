@@ -16,6 +16,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install .[jax_cpu]
+        pip install .[pytorch]
     - name: Run pytest
       run: |
         pytest -vx tests/
