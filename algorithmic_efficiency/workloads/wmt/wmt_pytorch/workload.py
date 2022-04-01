@@ -1,19 +1,19 @@
 """WMT workload implemented in PyTorch."""
 import contextlib
 from typing import Tuple
-from absl import logging
 
+from absl import logging
+import jax.dlpack
 import numpy as np
 import tensorflow as tf
-import jax.dlpack
 import torch
 import torch.nn.functional as F
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
+from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 

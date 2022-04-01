@@ -1,16 +1,18 @@
-import math
 import copy
+import math
+from typing import Any, Callable, Optional, Tuple, Union
 import warnings
-from typing import Any, Optional, Tuple, Union, Callable
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 from torch import Tensor
+from torch.nn.functional import _in_projection
+from torch.nn.functional import _scaled_dot_product_attention
+import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
-from torch.overrides import has_torch_function, handle_torch_function
-from torch.nn.functional import _in_projection, _scaled_dot_product_attention
+from torch.overrides import handle_torch_function
+from torch.overrides import has_torch_function
 
 
 # Mask making utilities ported to PyTorch from

@@ -1,15 +1,15 @@
-import pytest
 import jax
 import numpy as np
+import pytest
 
-from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
-    MnistWorkload as JaxMnistWorkload
-from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
-    MnistWorkload as PyTorchMnistWorkload
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import \
     ImagenetWorkload as JaxImagenetWorkload
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.workload import \
     ImagenetWorkload as PyTorchImagenetWorkload
+from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
+    MnistWorkload as JaxMnistWorkload
+from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
+    MnistWorkload as PyTorchMnistWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
     WmtWorkload as JaxWmtWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \

@@ -12,10 +12,10 @@ import numpy as np
 import tensorflow as tf
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
+from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 
 class WmtWorkload(BaseWmtWorkload):

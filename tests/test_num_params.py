@@ -1,20 +1,20 @@
-import pytest
 import jax
 import jax.numpy as jnp
 import jax.random as jax_rng
+import pytest
 
-from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
-    _Model as JaxMLP
-from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
-    _Model as PyTorchMLP
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax.models import \
     ResNet50 as JaxResNet
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
-from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
-    TransformerConfig
+from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
+    _Model as JaxMLP
+from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
+    _Model as PyTorchMLP
 from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
     Transformer as JaxTransformer
+from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
+    TransformerConfig
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
