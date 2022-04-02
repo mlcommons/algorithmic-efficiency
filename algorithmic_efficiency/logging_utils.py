@@ -214,11 +214,11 @@ class NoOpRecorder(object):
   class.
    """
 
-  def no_op(self, *args, **kw):
+  def _no_op(self, *args, **kw):
     pass
 
   def __getattr__(self, _):
-    return self.no_op
+    return self._no_op
 
 
 class Recorder:
@@ -258,20 +258,20 @@ class Recorder:
                tuning_ruleset: str,
                tuning_search_space_path: Optional[str] = None,
                num_tuning_trials: Optional[int] = None):
-    self.workload_name = workload_name
-    self.workload = workload
-    self.logging_dir = logging_dir
-    self.submission_path = submission_path
-    self.tuning_ruleset = tuning_ruleset
-    self.tuning_search_space_path = tuning_search_space_path
-    self.num_tuning_trials = num_tuning_trials
-    self.status = 'INCOMPLETE'
-    self.last_epoch_evaluated = None
-    self.workload_log_dir = os.path.join(self.logging_dir, self.workload_name)
-    if os.path.isdir(self.workload_log_dir):
+    self._workload_name = workload_name
+    self._workload = workload
+    self._logging_dir = logging_dir
+    self._submission_path = submission_path
+    self._tuning_ruleset = tuning_ruleset
+    self._tuning_search_space_path = tuning_search_space_path
+    self._num_tuning_trials = num_tuning_trials
+    self._status = 'INCOMPLETE'
+    self._last_epoch_evaluated = None
+    self._workload_log_dir = os.path.join(self._logging_dir, self._workload_name)
+    if os.path.isdir(self._workload_log_dir):
       logging.warn(
           'Warning: You may overwrite data because recording output path '
-          f'already exists: {self.workload_log_dir}')
+          f'already exists: {self._workload_log_dir}')
     # Record initial information about workload at startup
     self._write_workload_metadata_file()
     self._write_package_list_file()
@@ -284,23 +284,23 @@ class Recorder:
     metadata = {}
 
     # Workload Information
-    metadata['workload'] = self.workload_name
+    metadata['workload'] = self._workload_name
     metadata['datetime'] = datetime.now().isoformat()
-    metadata['status'] = self.status
+    metadata['status'] = self._status
     if score:
       metadata['score'] = score
-    metadata['logging_dir'] = self.logging_dir
-    metadata['submission_path'] = self.submission_path
-    metadata['tuning_ruleset'] = self.tuning_ruleset
-    metadata['num_tuning_trials'] = self.num_tuning_trials
+    metadata['logging_dir'] = self._logging_dir
+    metadata['submission_path'] = self._submission_path
+    metadata['tuning_ruleset'] = self._tuning_ruleset
+    metadata['num_tuning_trials'] = self._num_tuning_trials
 
-    if self.tuning_search_space_path:
-      metadata['tuning_search_space_path'] = self.tuning_search_space_path
-      with open(self.tuning_search_space_path, 'r') as search_space_file:
+    if self._tuning_search_space_path:
+      metadata['tuning_search_space_path'] = self._tuning_search_space_path
+      with open(self._tuning_search_space_path, 'r') as search_space_file:
         tuning_search_space = json.load(search_space_file)
         metadata['tuning_search_space'] = tuning_search_space
 
-    workload_properties = _get_workload_properties(self.workload)
+    workload_properties = _get_workload_properties(self._workload)
     metadata.update(workload_properties)
 
     if FLAGS.extra_metadata:
@@ -338,8 +338,8 @@ class Recorder:
         logging.warn('Unable to record gpu information. Continuing without it.')
 
     # Save workload metadata.json
-    os.makedirs(self.workload_log_dir, exist_ok=True)
-    metadata_filepath = os.path.join(self.workload_log_dir, 'metadata.json')
+    os.makedirs(self._workload_log_dir, exist_ok=True)
+    metadata_filepath = os.path.join(self._workload_log_dir, 'metadata.json')
     with open(metadata_filepath, 'w', encoding='utf-8') as f:
       json.dump(metadata, f, ensure_ascii=False, indent=4)
 
@@ -358,7 +358,7 @@ class Recorder:
       return
 
     # Save to disk
-    packages_filepath = os.path.join(self.workload_log_dir, 'packages.txt')
+    packages_filepath = os.path.join(self._workload_log_dir, 'packages.txt')
     with open(packages_filepath, 'w', encoding='utf-8') as f:
       f.write('Python Packages:\n')
       f.write(pip_package_list)
@@ -378,7 +378,7 @@ class Recorder:
     metadata['status'] = 'COMPLETE'
 
     # Save trial metadata.json
-    metadata_filepath = os.path.join(self.workload_log_dir,
+    metadata_filepath = os.path.join(self._workload_log_dir,
                                      'trial_' + str(trial_idx), 'metadata.json')
     with open(metadata_filepath, 'w', encoding='utf-8') as f:
       json.dump(metadata, f, ensure_ascii=False, indent=4)
@@ -397,7 +397,7 @@ class Recorder:
 
   def workload_complete(self, score: float):
     """At the end of the workload write COMPLETE to the metadata file."""
-    self.status = 'COMPLETE'
+    self._status = 'COMPLETE'
     self._write_workload_metadata_file(score)
 
   def _get_eval_measurements(self, workload: spec.Workload,
@@ -409,7 +409,7 @@ class Recorder:
                              training_complete: bool) -> dict:
     """Collect all evaluation measurements and metadata in one dict."""
     measurements = {}
-    measurements['workload'] = self.workload_name
+    measurements['workload'] = self._workload_name
     measurements['trial_idx'] = trial_idx
 
     # Record training measurements
@@ -468,7 +468,7 @@ class Recorder:
         goal_reached, is_time_remaining, training_complete)
 
     # Save to CSV file
-    trial_output_path = os.path.join(self.workload_log_dir,
+    trial_output_path = os.path.join(self._workload_log_dir,
                                      'trial_' + str(trial_idx))
     os.makedirs(trial_output_path, exist_ok=True)
     csv_path = os.path.join(trial_output_path, 'measurements.csv')
@@ -499,8 +499,8 @@ class Recorder:
     elif unit == 'epoch':
       steps_per_epoch = workload.num_train_examples // batch_size
       epoch = global_step // steps_per_epoch
-      if epoch != self.last_epoch_evaluated:
-        self.last_epoch_evaluated = epoch
+      if epoch != self._last_epoch_evaluated:
+        self._last_epoch_evaluated = epoch
         return True
 
   def _append_to_csv(self, data: dict, csv_path: str):
