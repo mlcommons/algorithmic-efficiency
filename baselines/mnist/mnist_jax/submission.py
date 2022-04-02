@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for MNIST."""
 
 import functools
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Tuple, Optional
 
 from flax import jax_utils
 import jax
@@ -89,6 +89,7 @@ def update_params(
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
+    mask_batch: Optional[spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,

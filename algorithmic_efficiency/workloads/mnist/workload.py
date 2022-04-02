@@ -22,8 +22,16 @@ class BaseMnistWorkload(spec.Workload):
     return 60000
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
     return 10000
+
+  @property
+  def num_validation_examples(self):
+    return 10000
+
+  @property
+  def num_test_examples(self):
+    return None
 
   @property
   def train_mean(self):
@@ -61,7 +69,7 @@ class BaseMnistWorkload(spec.Workload):
         'loss': 0.,
     }
     n_data = 0
-    for (images, labels) in self._eval_ds:
+    for (images, labels, _) in self._eval_ds:
       images, labels = self.preprocess_for_eval(images, labels, None, None)
       logits, _ = self.model_fn(
           params,

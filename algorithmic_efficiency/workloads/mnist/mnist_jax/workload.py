@@ -45,7 +45,7 @@ class MnistWorkload(BaseMnistWorkload):
                      batch_size):
     ds = tfds.load('mnist', split=split)
     ds = ds.cache()
-    ds = ds.map(lambda x: (self._normalize(x['image']), x['label']))
+    ds = ds.map(lambda x: (self._normalize(x['image']), x['label'], None))
     if split == 'train':
       ds = ds.shuffle(1024, seed=data_rng[0])
       ds = ds.repeat()
@@ -58,6 +58,7 @@ class MnistWorkload(BaseMnistWorkload):
                         data_dir: str,
                         batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
+
 
   @property
   def param_shapes(self):
@@ -72,7 +73,7 @@ class MnistWorkload(BaseMnistWorkload):
     """
     TODO: return type tuples from model as a tree
     """
-    raise NotImplementedError
+    pass
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
