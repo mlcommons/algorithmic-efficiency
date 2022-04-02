@@ -1,32 +1,26 @@
-# Experiments
+# Logging Example
 
-_This guide demonstrates the flow of generating measurements about training data and plotting it._
+_This guide demonstrates the flow of logging measurements about training data and plotting it._
 
-### Anatomy of an Experiment
+### Anatomy of Saving Measurements
 
 - Choose a directory where you want to save measurements.
-- Run a workload with the `--logging_dir` option to produce a `measurements.csv` file.
-- Write a simple plotting script to visualize the results.
-
-## Example Experiment: Training Loss vs Training Step
+- Run a workload with the `--logging_dir` option to produce a `measurements.csv` and `metadata.json` files.
+- (Optionally) Write a simple plotting script to visualize the results.
 
 __Goal:__ We are going to use the included mnist_jax workload to train an MLP model, record the loss curve, and plot it.
-
-__TLDR:__ This guide is summarized into two scripts:
-[measure_loss.sh](./simple_example_mnist_loss/measure_loss.sh) and [plot_loss.py](./simple_example_mnist_loss/plot_loss.py).
-
 
 ### 1. Create output location
 
 Choose a directory where you want to save measurements:
 ```bash
-$ LOGGING_DIR=./experiments/simple_example_mnist_loss/logs
+$ LOGGING_DIR=./logs
 $ mkdir -p $LOGGING_DIR
 ```
 
-### 2. Run a Workload
+### 2. Run a Workload with with the `--logging_dir` option
 
-Run a workload with the `--logging_dir` option to produce a `measurements.csv` file. Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for only 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
+Here we run the simplest workload, an MLP JAX model with the MNIST dataset, for 2 training trials with hyperparameters randomly picked from the acceptable range specified in `tuning_search_space.json`.
 ```bash
 $ python3 algorithmic_efficiency/submission_runner.py \
     --framework=jax \
@@ -48,11 +42,11 @@ The saved data is organized in a directory structure like this:
 
 What are these output files?
 
-Three files are written to the `logging_dir` folder:
+Four files are written to the `logging_dir` folder:
   1. `metadata.json` is created at the start of a workload and it includes the datetime, workload name, and system configuration.
   1. `packages.txt` is created at the start of a workload and it includes a list of the currently installed OS and python packages.
   1. `trial_[n]/measurements.csv` is created for each hyperparameter tuning trial and a row is appended for every model evaluation. The information included is loss, accuracy, training step, time elapsed, hparams, workload properties, and hardware utilization.
-  1. `trial_[n]/metadata.json` is created at the end of each hyperparameter tuning trial and includes the result of the trial. The last row of measurements.csv and this file are very similar but can differ in the number of steps in the case that the tuning trial ran out of time but completed a few steps before running out of time but after the last model evaluation.
+  1. `trial_[n]/metadata.json` is created at the end of each hyperparameter tuning trial and includes the result of the trial. The last row of measurements.csv and this file are very similar but can differ in the number of steps and runtime in one situation: when the tuning trial ran out of time but completed one or more steps after the last model evaluation.
 
 ### 3. Inspect the output of `metadata.json`
 
@@ -62,7 +56,7 @@ Three files are written to the `logging_dir` folder:
     "datetime": "2022-03-12T00:31:13.366143",
     "status": "COMPLETE",
     "score": 3.9674811363220215,
-    "logging_dir": "./experiments/simple_example_mnist_loss/logs",
+    "logging_dir": "./logs",
     "submission_path": "baselines/mnist/mnist_jax/submission.py",
     "tuning_ruleset": "external",
     "num_tuning_trials": 2,
@@ -113,7 +107,15 @@ Three files are written to the `logging_dir` folder:
 |mnist_jax|1        |2022-03-12T00:30:58.435387|2.829345464706421          |0.0900000035762786|2.465173721313477|0          |0.0  |58             |1647045052.9468262|False       |True             |False            |1024      |0.0001880581412603  |0.9261041856291228     |1e-08         |10                           |60                              |10000                     |60000                      |0.3                  |0.1307             |0.3081               |3.3                            |2.683687500000002|32.625              |135058636800|124791758848 |8878366720|7.6             |77709185505280           |3078489495552             |2949781                  |76184472                 |4        |0.0               |0.8207641346764679|11019.0        |9044.0        |1975.0        |34.0              |0.0               |0.818223069244033|11019.0        |9016.0        |2003.0        |35.0              |0.0               |0.818223069244033|11019.0        |9016.0        |2003.0        |36.0              |0.0               |0.818223069244033|11019.0        |9016.0        |2003.0        |38.0              |0.0                 |0.8188583356021417|11019.0          |9023.0          |1996.0          |35.75               |
 
 
-### 5. (Optional) Combine CSVs if necessary
+### 5. (Optional) Combine trial JSON files if you want the measurements at the end of each trial in 1 file
+
+You can join all files named `trial_[n]/metadata.json` in a given folder recursively with this bash command:
+
+```bash
+$ jq -s 'flatten' ./logs*/**/trial_**/*.json > all_metadata.json
+```
+
+### 6. (Optional) Combine trial CSV files if you want all measurements throughout all trials in 1 file
 
 By default, one `measurements.csv` is produced per training run, ie. a `measurements.csv` has data partaining to one hyperparameter tuning trial. In our example above we choose to run 2 tuning trials, but the default for an MNIST workload is 20 tuning trials. Combining all the `measurements.csv` files across hyperparameter tuning trials is left to users, but a convienence function called `concatenate_csvs()` is provided and demonstrated below. The data format of `measurements.csv` is designed to be safe to arbitrarily join CSVs without attribute name conflicts across hyperparameter tuning trials or even workloads. It is not done automatically for you because we do not want to create data duplication if there is no need.
 
@@ -128,11 +130,10 @@ This will produce a file called:
 ./logs/all_measurements.csv
 ```
 
-### 6. (Optional) Label your experiments
+### 7. (Optional) Add arbitrary key/values to your measurement data
+You can also specify arbitrary extra metadata to be saved alongside the output CSVs measurements and JSON metadata. This is useful when doing multiple needing a way to tell data apart. To do this use the option `--record_extra_metadata="key=value"`. You can specify this option multiple times. Choose a unique key that is not likely to overlap with other CSV/JSON data attributes.
 
-You can also specify arbitrary extra metadata to be saved alongside the output CSVs measurements and JSON metadata. This is useful when doing multiple experiments and needing a way to tell data apart. To do this use the option `--record_extra_metadata="key=value"`. You can specify this option multiple times. Choose a unique key that is not likely to overlap with other CSV/JSON data attributes.
-
-### 7. (Optional) Change the frequency of model evaluation
+### 8. (Optional) Change the frequency of model evaluation
 
 You can override the default frequency of model evaluation, which in turn will change when information about the training progress is saved to disk. This is not competition legal but can be used to monitor training progress at any granularity for debugging purposes. By default the competition evaluates the model every "eval_period_time_sec" seconds, but instead you can choose an eval frequency in epochs or steps. These evals contribute to the accumulated_submission_time.
 
@@ -142,7 +143,7 @@ Example usage:
 
 Note: This option requires `--logging_dir` to set to take effect.
 
-### 8. Write a simple plotting script to visualize the results.
+### 9. (Optional) Write a simple plotting script to visualize the results.
 
 For example this minimal plot script:
 
@@ -152,7 +153,7 @@ import pandas as pd
 import seaborn as sns
 
 # Read Data
-input_file = './experiments/simple_example_mnist_loss/logs/all_measurements.csv'
+input_file = './logs/all_measurements.csv'
 df = pd.read_csv(input_file)
 
 # Plot
@@ -170,4 +171,4 @@ fig.savefig('plot_loss.png', transparent=False, dpi=160, bbox_inches="tight")
 
 Will produce the following loss curve:
 
-<img src="simple_example_mnist_loss/plot_loss.png" height="350px">
+<img src="https://gist.githubusercontent.com/danielsnider/73519752010e430af55380f9bf2ee653/raw/fa22c7f012cb1423f5579fc4a0470fa7cecf49a0/plot_loss.png" height="350px">
