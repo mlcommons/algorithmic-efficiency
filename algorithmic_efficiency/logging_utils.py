@@ -1,3 +1,23 @@
+"""Save information about the training progress of a workload to disk.
+
+Use the `--logging_dir` CLI argument with submission_runner.py to enable this
+functionality.
+
+Four files are written to the `logging_dir` folder:
+  1. `metadata.json` is created at the start of a workload and it includes the
+    datetime, workload name, and system configuration.
+  2. `packages.txt` is created at the start of a workload and it includes a list
+    of the currently installed OS and python packages.
+  3. `trial_[n]/measurements.csv` is created for each hyperparameter tuning
+    trial and a row is appended for every model evaluation. The information
+    included is loss, accuracy, training step, time elapsed, hparams, workload
+    properties, and hardware utilization.
+  4. `trial_[n]/metadata.json` is created at the end of each hyperparameter
+    tuning trial and includes the result of the trial. The last row of
+    measurements.csv and this file are very similar but can differ in the number
+    of steps and runtime in one situation: when the tuning trial ran out of time
+    but completed one or more steps after the last model evaluation.
+"""
 from datetime import datetime
 import glob
 import json
@@ -208,15 +228,21 @@ class Recorder:
   This class should be instantiated once per workload. Logging files are written
   to seperate workload specific folders.
 
-  Three files are written to the given "logging_dir" folder:
-  1. "metadata.json" is created at the start of a workload and it includes the
-     datetime, workload name, and system configuration.
-  2. "measurements.csv" is created for each hyperparameter tuning trial and a
-     row is appended for every model evaluation. The information included is
-     loss, accuracy, training step, time elapsed, hparams, workload properties,
-     and hardware utilization.
-  3. "packages.txt" is created at the start of a workload and it includes a
-     list of the currently installed OS and python packages.
+  Four files are written to the `logging_dir` folder:
+    1. `metadata.json` is created at the start of a workload and it includes the
+      datetime, workload name, and system configuration.
+    2. `packages.txt` is created at the start of a workload and it includes a
+      list of the currently installed OS and python packages.
+    3. `trial_[n]/measurements.csv` is created for each hyperparameter tuning
+      trial and a row is appended for every model evaluation. The information
+      included is loss, accuracy, training step, time elapsed, hparams, workload
+      properties, and hardware utilization.
+    4. `trial_[n]/metadata.json` is created at the end of each hyperparameter
+      tuning trial and includes the result of the trial. The last row of
+      measurements.csv and this file are very similar but can differ in the
+      number of steps and runtime in one situation: when the tuning trial ran
+      out of time but completed one or more steps after the last model
+      evaluation.
 
   Joining measurement CSVs across workloads or hyperparameter tuning trials is
   left to users, although a convienence function called "concatenate_csvs()" is
