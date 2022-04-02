@@ -377,7 +377,7 @@ class Recorder:
       f.write('\n\nOS Packages:\n')
       f.write(os_package_list)
 
-  def _write_trial_metadata_file(
+  def trial_complete(
       self,
       workload: spec.Workload,
       hyperparameters: Optional[spec.Hyperparamters],
@@ -410,32 +410,6 @@ class Recorder:
                                      'metadata.json')
     with open(metadata_filepath, 'w', encoding='utf-8') as f:
       json.dump(metadata, f, ensure_ascii=False, indent=4)
-
-  def trial_complete(
-      self,
-      workload: spec.Workload,
-      hyperparameters: Optional[spec.Hyperparamters],
-      trial_idx: int,
-      global_step: int,
-      batch_size: int,
-      latest_eval_result: dict,
-      global_start_time: float,
-      accumulated_submission_time: float,
-      goal_reached: bool,
-      is_time_remaining: bool,
-      training_complete: bool,
-  ):
-    self._write_trial_metadata_file(workload,
-                                    hyperparameters,
-                                    trial_idx,
-                                    global_step,
-                                    batch_size,
-                                    latest_eval_result,
-                                    global_start_time,
-                                    accumulated_submission_time,
-                                    goal_reached,
-                                    is_time_remaining,
-                                    training_complete)
 
   def workload_complete(self, score: float):
     """At the end of the workload write COMPLETE to the metadata file."""
