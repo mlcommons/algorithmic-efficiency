@@ -371,12 +371,11 @@ class Recorder:
       hyperparameters: Optional[spec.Hyperparamters], trial_idx: int,
       global_step: int, batch_size: int, latest_eval_result: dict,
       global_start_time: float, accumulated_submission_time: float,
-      goal_reached: bool, is_time_remaining: bool, training_complete: bool,
-      early_stop: bool):
+      goal_reached: bool, is_time_remaining: bool, training_complete: bool):
     metadata = self._get_eval_measurements(
         workload, hyperparameters, trial_idx, global_step, batch_size,
         latest_eval_result, global_start_time, accumulated_submission_time,
-        goal_reached, is_time_remaining, training_complete, early_stop)
+        goal_reached, is_time_remaining, training_complete)
     metadata['status'] = 'COMPLETE'
 
     # Save trial metadata.json
@@ -390,14 +389,12 @@ class Recorder:
                      trial_idx: int, global_step: int, batch_size: int,
                      latest_eval_result: dict, global_start_time: float,
                      accumulated_submission_time: float, goal_reached: bool,
-                     is_time_remaining: bool, training_complete: bool,
-                     early_stop: bool):
+                     is_time_remaining: bool, training_complete: bool):
     self._write_trial_metadata_file(workload, hyperparameters, trial_idx,
                                     global_step, batch_size, latest_eval_result,
                                     global_start_time,
                                     accumulated_submission_time, goal_reached,
-                                    is_time_remaining, training_complete,
-                                    early_stop)
+                                    is_time_remaining, training_complete)
 
   def workload_complete(self, score: float):
     """At the end of the workload write COMPLETE to the metadata file."""
@@ -410,7 +407,7 @@ class Recorder:
                              latest_eval_result: dict, global_start_time: float,
                              accumulated_submission_time: float,
                              goal_reached: bool, is_time_remaining: bool,
-                             training_complete: bool, early_stop: bool) -> dict:
+                             training_complete: bool) -> dict:
     """Collect all evaluation measurements and metadata in one dict."""
     measurements = {}
     measurements['workload'] = self.workload_name
@@ -429,7 +426,6 @@ class Recorder:
     measurements['global_start_time'] = global_start_time
     measurements['goal_reached'] = goal_reached
     measurements['is_time_remaining'] = is_time_remaining
-    measurements['early_stop'] = early_stop
     measurements['training_complete'] = training_complete
 
     # Record hyperparameters
@@ -460,7 +456,7 @@ class Recorder:
                 global_step: int, batch_size: int, latest_eval_result: dict,
                 global_start_time: float, accumulated_submission_time: float,
                 goal_reached: bool, is_time_remaining: bool,
-                training_complete: bool, early_stop: bool):
+                training_complete: bool):
     """"Write or append to "measurements.csv".
 
     A "measurements.csv" is created for each hyperparameter tuning trial and a
@@ -470,7 +466,7 @@ class Recorder:
     measurements = self._get_eval_measurements(
         workload, hyperparameters, trial_idx, global_step, batch_size,
         latest_eval_result, global_start_time, accumulated_submission_time,
-        goal_reached, is_time_remaining, training_complete, early_stop)
+        goal_reached, is_time_remaining, training_complete)
 
     # Save to CSV file
     trial_output_path = os.path.join(self.workload_log_dir,

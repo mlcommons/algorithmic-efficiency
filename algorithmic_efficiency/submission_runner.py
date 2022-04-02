@@ -243,13 +243,13 @@ def train_once(workload: spec.Workload, batch_size: int, data_dir: str,
       record.save_eval(workload, hyperparameters, trial_idx, global_step,
                        batch_size, latest_eval_result, global_start_time,
                        accumulated_submission_time, goal_reached,
-                       is_time_remaining, training_complete, early_stop)
+                       is_time_remaining, training_complete)
     global_step += 1
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   record.trial_complete(workload, hyperparameters, trial_idx, global_step,
                         batch_size, latest_eval_result, global_start_time,
                         accumulated_submission_time, goal_reached,
-                        is_time_remaining, training_complete, early_stop)
+                        is_time_remaining, training_complete)
   return accumulated_submission_time, metrics
 
 
