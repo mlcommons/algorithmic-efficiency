@@ -166,7 +166,7 @@ def train_once(workload: spec.Workload,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparamters],
                rng: spec.RandomState,
-               record: Callable,
+               recorder: Callable,
                trial_idx: int) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
@@ -232,7 +232,7 @@ def train_once(workload: spec.Workload,
     is_eligible_for_untimed_eval = (
         not FLAGS.eval_frequency_override and
         current_time - last_eval_time >= workload.eval_period_time_sec)
-    eval_requested = record.check_eval_frequency_override(
+    eval_requested = recorder.check_eval_frequency_override(
         FLAGS.eval_frequency_override, workload, global_step, batch_size)
     # Check if submission should be evaluated.
     if (is_eligible_for_untimed_eval or eval_requested or training_complete):
@@ -248,13 +248,13 @@ def train_once(workload: spec.Workload,
         last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-      record.save_eval(workload, hyperparameters, trial_idx, global_step,
+      recorder.save_eval(workload, hyperparameters, trial_idx, global_step,
                        batch_size, latest_eval_result, global_start_time,
                        accumulated_submission_time, goal_reached,
                        is_time_remaining, training_complete)
     global_step += 1
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  record.trial_complete(workload, hyperparameters, trial_idx, global_step,
+  recorder.trial_complete(workload, hyperparameters, trial_idx, global_step,
                         batch_size, latest_eval_result, global_start_time,
                         accumulated_submission_time, goal_reached,
                         is_time_remaining, training_complete)
@@ -280,12 +280,12 @@ def score_submission_on_workload(workload: spec.Workload,
 
   if FLAGS.logging_dir:
     # Save training progress to disk eg. loss, hparams, and other metadata
-    record = logging_utils.Recorder(workload, workload_name, FLAGS.logging_dir,
+    recorder = logging_utils.Recorder(workload, workload_name, FLAGS.logging_dir,
                                     FLAGS.submission_path, tuning_ruleset,
                                     tuning_search_space, num_tuning_trials,
                                     extra_metadata=FLAGS.extra_metadata)
   else:
-    record = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
+    recorder = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -314,8 +314,8 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('--- Tuning run %d/%d ---', trial_idx + 1, num_tuning_trials)
       timing, metrics = train_once(workload, batch_size, data_dir,
                                    init_optimizer_state, update_params,
-                                   data_selection, hyperparameters, rng, record,
-                                   trial_idx + 1)
+                                   data_selection, hyperparameters, rng,
+                                   recorder, trial_idx + 1)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -331,9 +331,9 @@ def score_submission_on_workload(workload: spec.Workload,
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     score, _ = train_once(workload, batch_size, init_optimizer_state,
-                          update_params, data_selection, None, rng, record, 1)
+                          update_params, data_selection, None, rng, recorder, 1)
   # TODO(znado): record score.
-  record.workload_complete(score)
+  recorder.workload_complete(score)
   return score
 
 
