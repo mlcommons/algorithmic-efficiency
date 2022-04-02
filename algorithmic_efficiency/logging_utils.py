@@ -164,21 +164,20 @@ def _is_primitive_type(item: Any) -> bool:
 def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
   """Parse the extra_metadata CLI argument from string into dict.
 
-  For example this program was executed with --record_extra_metadata="key=value"
+  For example this program was executed with --extra_metadata="key=value"
   then {'extra.key':'value'} is returned.
   """
   metadata = {}
   if not extra_metadata_string_list:
     return metadata
-  try:
-    for item in extra_metadata_string_list:
+  for item in extra_metadata_string_list:
+    try:
       key, value = item.split("=")
       metadata['extra.' + key] = value
-  except:
-    logging.error(
-        'Failed to parse extra_metadata CLI arguments. Please check your '
-        'command.')
-    raise
+    except:
+      raise ValueError(
+          f'Failed to parse this extra_metadata CLI argument: {item}. ' +
+          'Please check your command.')
   return metadata
 
 
