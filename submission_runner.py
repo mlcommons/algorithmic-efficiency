@@ -85,7 +85,7 @@ flags.DEFINE_multi_string(
     'Record extra metadata in the "logging_dir" along side the CSVs metrics '
     'and JSON metadata. This is useful when doing multiple experiments and '
     'needing a way to tell them apart. You can specify this option multiple '
-    'times. Example usage: --record_extra_metadata="key=value". Keys will be '
+    'times. Example usage: --extra_metadata="key=value". Keys will be '
     'prefixed with "extra." so to not overlap with other CSV/JSON data '
     'attributes.')
 flags.DEFINE_string(
@@ -233,7 +233,7 @@ def train_once(workload: spec.Workload,
         not FLAGS.eval_frequency_override and
         current_time - last_eval_time >= workload.eval_period_time_sec)
     eval_requested = record.check_eval_frequency_override(
-        workload, global_step, batch_size)
+        FLAGS.eval_frequency_override, workload, global_step, batch_size)
     # Check if submission should be evaluated.
     if (is_eligible_for_untimed_eval or eval_requested or training_complete):
       latest_eval_result = workload.eval_model(model_params,
@@ -282,7 +282,8 @@ def score_submission_on_workload(workload: spec.Workload,
     # Save training progress to disk eg. loss, hparams, and other metadata
     record = logging_utils.Recorder(workload, workload_name, FLAGS.logging_dir,
                                     FLAGS.submission_path, tuning_ruleset,
-                                    tuning_search_space, num_tuning_trials)
+                                    tuning_search_space, num_tuning_trials,
+                                    extra_metadata=FLAGS.extra_metadata)
   else:
     record = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
 

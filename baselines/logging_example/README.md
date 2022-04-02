@@ -131,7 +131,7 @@ This will produce a file called:
 ```
 
 ### 7. (Optional) Add arbitrary key/values to your measurement data
-You can also specify arbitrary extra metadata to be saved alongside the output CSVs measurements and JSON metadata. This is useful when doing multiple needing a way to tell data apart. To do this use the option `--record_extra_metadata="key=value"`. You can specify this option multiple times. Choose a unique key that is not likely to overlap with other CSV/JSON data attributes.
+You can also specify arbitrary extra metadata to be saved alongside the output CSVs measurements and JSON metadata. This is useful when doing multiple needing a way to tell data apart. To do this use the option `--extra_metadata="key=value"`. You can specify this option multiple times. Choose a unique key that is not likely to overlap with other CSV/JSON data attributes.
 
 ### 8. (Optional) Change the frequency of model evaluation
 

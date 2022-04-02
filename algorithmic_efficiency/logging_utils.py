@@ -27,15 +27,12 @@ import re
 import subprocess
 from typing import Any, Optional
 
-from absl import flags
 from absl import logging
 import GPUtil
 import pandas as pd
 import psutil
 
 from algorithmic_efficiency import spec
-
-FLAGS = flags.FLAGS
 
 
 def concatenate_csvs(path: str):
@@ -161,16 +158,16 @@ def _is_primitive_type(item: Any) -> bool:
   return isinstance(item, primitive)
 
 
-def _get_extra_metadata_as_dict(extra_metadata_string_list: list) -> dict:
+def _get_extra_metadata_as_dict(extra_metadata: list) -> dict:
   """Parse the extra_metadata CLI argument from string into dict.
 
   For example this program was executed with --extra_metadata="key=value"
   then {'extra.key':'value'} is returned.
   """
   metadata = {}
-  if not extra_metadata_string_list:
+  if not extra_metadata:
     return metadata
-  for item in extra_metadata_string_list:
+  for item in extra_metadata:
     try:
       key, value = item.split("=")
       metadata['extra.' + key] = value
@@ -259,6 +256,7 @@ class Recorder:
       tuning_ruleset: str,
       tuning_search_space_path: Optional[str] = None,
       num_tuning_trials: Optional[int] = None,
+      extra_metadata: Optional[str] = None,
   ):
     self._workload_name = workload_name
     self._workload = workload
@@ -267,6 +265,7 @@ class Recorder:
     self._tuning_ruleset = tuning_ruleset
     self._tuning_search_space_path = tuning_search_space_path
     self._num_tuning_trials = num_tuning_trials
+    self._extra_metadata = extra_metadata
     self._last_epoch_evaluated = None
     self._workload_log_dir = os.path.join(self._logging_dir,
                                           self._workload_name)
@@ -278,7 +277,11 @@ class Recorder:
     self._write_workload_metadata_file(status='INCOMPLETE')
     self._write_package_list_file()
 
-  def _write_workload_metadata_file(self, score: float = None, status: str = None,):
+  def _write_workload_metadata_file(
+      self,
+      score: float = None,
+      status: str = None,
+  ):
     """Write "metadata.json" to disk.
 
     It is is created at the start of a workload and includes the datetime,
@@ -312,8 +315,8 @@ class Recorder:
     workload_properties = _get_workload_properties(self._workload)
     metadata.update(workload_properties)
 
-    if FLAGS.extra_metadata:
-      extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
+    if self._extra_metadata:
+      extra_metadata = _get_extra_metadata_as_dict(self._extra_metadata)
       metadata.update(extra_metadata)
 
     # System Information
@@ -388,15 +391,23 @@ class Recorder:
       is_time_remaining: bool,
       training_complete: bool,
   ):
-    metadata = self._get_eval_measurements(
-        workload, hyperparameters, trial_idx, global_step, batch_size,
-        latest_eval_result, global_start_time, accumulated_submission_time,
-        goal_reached, is_time_remaining, training_complete)
+    metadata = self._get_eval_measurements(workload,
+                                           hyperparameters,
+                                           trial_idx,
+                                           global_step,
+                                           batch_size,
+                                           latest_eval_result,
+                                           global_start_time,
+                                           accumulated_submission_time,
+                                           goal_reached,
+                                           is_time_remaining,
+                                           training_complete)
     metadata['status'] = 'COMPLETE'
 
     # Save trial metadata.json
     metadata_filepath = os.path.join(self._workload_log_dir,
-                                     'trial_' + str(trial_idx), 'metadata.json')
+                                     'trial_' + str(trial_idx),
+                                     'metadata.json')
     with open(metadata_filepath, 'w', encoding='utf-8') as f:
       json.dump(metadata, f, ensure_ascii=False, indent=4)
 
@@ -414,11 +425,17 @@ class Recorder:
       is_time_remaining: bool,
       training_complete: bool,
   ):
-    self._write_trial_metadata_file(workload, hyperparameters, trial_idx,
-                                    global_step, batch_size, latest_eval_result,
+    self._write_trial_metadata_file(workload,
+                                    hyperparameters,
+                                    trial_idx,
+                                    global_step,
+                                    batch_size,
+                                    latest_eval_result,
                                     global_start_time,
-                                    accumulated_submission_time, goal_reached,
-                                    is_time_remaining, training_complete)
+                                    accumulated_submission_time,
+                                    goal_reached,
+                                    is_time_remaining,
+                                    training_complete)
 
   def workload_complete(self, score: float):
     """At the end of the workload write COMPLETE to the metadata file."""
@@ -471,8 +488,8 @@ class Recorder:
     workload_properties = _get_workload_properties(workload)
     measurements.update(workload_properties)
 
-    if FLAGS.extra_metadata:
-      extra_metadata = _get_extra_metadata_as_dict(FLAGS.extra_metadata)
+    if self._extra_metadata:
+      extra_metadata = _get_extra_metadata_as_dict(self._extra_metadata)
       measurements.update(extra_metadata)
 
     # Record utilization
@@ -501,10 +518,17 @@ class Recorder:
     row is appended for every model evaluation. The information included is
     loss, accuracy, training step, time elapsed, hparams, workload properties,
     and hardware utilization."""
-    measurements = self._get_eval_measurements(
-        workload, hyperparameters, trial_idx, global_step, batch_size,
-        latest_eval_result, global_start_time, accumulated_submission_time,
-        goal_reached, is_time_remaining, training_complete)
+    measurements = self._get_eval_measurements(workload,
+                                               hyperparameters,
+                                               trial_idx,
+                                               global_step,
+                                               batch_size,
+                                               latest_eval_result,
+                                               global_start_time,
+                                               accumulated_submission_time,
+                                               goal_reached,
+                                               is_time_remaining,
+                                               training_complete)
 
     # Save to CSV file
     trial_output_path = os.path.join(self._workload_log_dir,
@@ -516,23 +540,24 @@ class Recorder:
 
   def check_eval_frequency_override(
       self,
+      eval_frequency_override: str,
       workload: spec.Workload,
       global_step: int,
       batch_size: int,
   ):
     """Parse the eval_frequency_override CLI argument and return whether or not
     the user wants to eval this step."""
-    if not FLAGS.eval_frequency_override:
+    if not eval_frequency_override:
       return False
 
     try:
-      freq, unit = FLAGS.eval_frequency_override.split(' ')
+      freq, unit = eval_frequency_override.split(' ')
       freq = int(freq)
       assert (unit in ['epoch', 'step'])
     except:
       raise ValueError(
           'Failed to parse eval_frequency_override CLI argument: ' +
-          f'{FLAGS.eval_frequency_override}. Please check your command.')
+          f'{eval_frequency_override}. Please check your command.')
 
     if unit == 'step':
       if global_step % freq == 0:
