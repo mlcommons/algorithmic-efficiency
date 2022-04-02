@@ -520,7 +520,7 @@ class Recorder:
       global_step: int,
       batch_size: int,
   ):
-    """Parse the eval_frequency_override cli argument and return whether or not
+    """Parse the eval_frequency_override CLI argument and return whether or not
     the user wants to eval this step."""
     if not FLAGS.eval_frequency_override:
       return False
@@ -530,10 +530,9 @@ class Recorder:
       freq = int(freq)
       assert (unit in ['epoch', 'step'])
     except:
-      logging.error(
-          'Failed to parse eval_frequency_override CLI arguments. Please check '
-          'your command.')
-      raise
+      raise ValueError(
+          'Failed to parse eval_frequency_override CLI argument: ' +
+          f'{FLAGS.eval_frequency_override}. Please check your command.')
 
     if unit == 'step':
       if global_step % freq == 0:
