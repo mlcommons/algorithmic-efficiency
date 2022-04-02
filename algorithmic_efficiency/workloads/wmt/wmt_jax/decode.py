@@ -1,4 +1,7 @@
-"""Fast decoding routines for inference from a trained model forked from https://github.com/google/flax/tree/main/examples/wmt."""
+"""Fast decoding routines for inference from a trained model.
+
+Forked from https://github.com/google/flax/tree/main/examples/wmt.
+"""
 
 import typing
 
@@ -183,7 +186,9 @@ def beam_search(inputs,
   end_marker = jnp.array(eos_id)
 
   # initialize beam search state
-  beam_search_init_state = beam_init(batch_size, beam_size, max_decode_len,
+  beam_search_init_state = beam_init(batch_size,
+                                     beam_size,
+                                     max_decode_len,
                                      cache)
 
   def beam_search_loop_cond_fn(state):
@@ -200,7 +205,8 @@ def beam_search(inputs,
         state.finished_scores, axis=1, keepdims=True)
     # Mask out scores from slots without any actual finished sequences.
     worst_finished_scores = jnp.where(state.finished_flags,
-                                      worst_finished_scores, NEG_INF)
+                                      worst_finished_scores,
+                                      NEG_INF)
     # If no best possible live score is better than current worst finished
     # scores, the search cannot improve the finished set further.
     search_terminated = jnp.all(worst_finished_scores > best_live_scores)
@@ -259,7 +265,9 @@ def beam_search(inputs,
     topk_beam_indices = topk_indices // vocab_size
     # Gather 2*k top beams.
     # --> [batch, 2*beams, length]
-    topk_seq = gather_beams(state.live_seqs, topk_beam_indices, batch_size,
+    topk_seq = gather_beams(state.live_seqs,
+                            topk_beam_indices,
+                            batch_size,
                             beams_to_keep)
 
     # Append the most probable 2*K token IDs to the top 2*K sequences
@@ -268,8 +276,8 @@ def beam_search(inputs,
     topk_ids = jnp.expand_dims(topk_indices % vocab_size, axis=2)
     # Update sequences for the 2*K top-k new sequences.
     # --> [batch, 2*beams, length]
-    topk_seq = lax.dynamic_update_slice(topk_seq, topk_ids,
-                                        (0, 0, state.cur_index + 1))
+    topk_seq = lax.dynamic_update_slice(topk_seq,
+                                        topk_ids, (0, 0, state.cur_index + 1))
 
     # Update LIVE (in-progress) sequences:
     # Did any of these sequences reach an end marker?
@@ -291,11 +299,15 @@ def beam_search(inputs,
 
     # Determine the top k beam indices from the original set of all beams.
     # --> [batch, beams]
-    top_alive_indices = gather_beams(topk_beam_indices, new_topk_indices,
-                                     batch_size, beam_size)
+    top_alive_indices = gather_beams(topk_beam_indices,
+                                     new_topk_indices,
+                                     batch_size,
+                                     beam_size)
     # With these, gather the top k beam-associated caches.
     # --> {[batch, beams, ...], ...}
-    top_alive_cache = gather_beams(new_cache, top_alive_indices, batch_size,
+    top_alive_cache = gather_beams(new_cache,
+                                   top_alive_indices,
+                                   batch_size,
                                    beam_size)
 
     # Update FINISHED (reached end of sentence) sequences:
@@ -331,7 +343,8 @@ def beam_search(inputs,
 
   # Run while loop and get final beam search state.
   final_state = lax.while_loop(beam_search_loop_cond_fn,
-                               beam_search_loop_body_fn, beam_search_init_state)
+                               beam_search_loop_body_fn,
+                               beam_search_init_state)
 
   # Account for the edge-case where there are no finished sequences for a
   # particular batch item. If so, return live sequences for that batch item.
@@ -339,10 +352,11 @@ def beam_search(inputs,
   none_finished = jnp.any(final_state.finished_flags, axis=1)
   # --> [batch, beams, length]
   finished_seqs = jnp.where(none_finished[:, None, None],
-                            final_state.finished_seqs, final_state.live_seqs)
+                            final_state.finished_seqs,
+                            final_state.live_seqs)
   # --> [batch, beams]
-  finished_scores = jnp.where(none_finished[:,
-                                            None], final_state.finished_scores,
+  finished_scores = jnp.where(none_finished[:, None],
+                              final_state.finished_scores,
                               final_state.live_logprobs)
 
   return finished_seqs, finished_scores

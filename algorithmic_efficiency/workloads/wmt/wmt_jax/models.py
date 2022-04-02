@@ -97,22 +97,25 @@ class AddPositionEmbs(nn.Module):
     cfg = self.config
     # inputs.shape is (batch_size, seq_len, emb_dim)
     assert inputs.ndim == 3, ('Number of dimensions should be 3,'
-                              ' but it is: %d' % inputs.ndim)
+                              f' but it is: {inputs.ndim}')
     length = inputs.shape[1]
     pos_emb_shape = (1, cfg.max_len, inputs.shape[-1])
     if cfg.posemb_init is None:
       # Use a fixed (non-learned) sinusoidal position embedding.
-      pos_embedding = sinusoidal_init(max_len=cfg.max_len)(None, pos_emb_shape,
+      pos_embedding = sinusoidal_init(max_len=cfg.max_len)(None,
+                                                           pos_emb_shape,
                                                            None)
     else:
-      pos_embedding = self.param('pos_embedding', cfg.posemb_init,
+      pos_embedding = self.param('pos_embedding',
+                                 cfg.posemb_init,
                                  pos_emb_shape)
     pe = pos_embedding[:, :length, :]
 
     # We use a cache position index for tracking decoding position.
     if self.decode:
       is_initialized = self.has_variable('cache', 'cache_index')
-      cache_index = self.variable('cache', 'cache_index',
+      cache_index = self.variable('cache',
+                                  'cache_index',
                                   lambda: jnp.array(0, dtype=jnp.uint32))
       if is_initialized:
         i = cache_index.value

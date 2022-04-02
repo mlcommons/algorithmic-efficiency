@@ -1,4 +1,6 @@
-r"""Parallel BLEU score calculation modified from https://github.com/google/flax/tree/main/examples/wmt.
+r"""Parallel BLEU score calculation.
+
+Modified from https://github.com/google/flax/tree/main/examples/wmt.
 
 This version of BLEU calculation is derived from the MLPerf transformer
 reference.
@@ -127,7 +129,8 @@ def compute_bleu_matches(reference_corpus, translation_corpus, max_order=4):
     translation_ngram_counts = _get_ngrams(translations, max_order)
 
     overlap = dict((ngram, min(count, translation_ngram_counts[ngram]))
-                   for ngram, count in ref_ngram_counts.items())
+                   for ngram,
+                   count in ref_ngram_counts.items())
 
     for ngram in overlap:
       matches_by_order[len(ngram) - 1] += overlap[ngram]
@@ -135,8 +138,10 @@ def compute_bleu_matches(reference_corpus, translation_corpus, max_order=4):
       possible_matches_by_order[len(ngram) -
                                 1] += translation_ngram_counts[ngram]
 
-  return (np.array(matches_by_order), np.array(possible_matches_by_order),
-          np.array(reference_length), np.array(translation_length))
+  return (np.array(matches_by_order),
+          np.array(possible_matches_by_order),
+          np.array(reference_length),
+          np.array(translation_length))
 
 
 def bleu_partial(ref_lines, hyp_lines, case_sensitive=False):

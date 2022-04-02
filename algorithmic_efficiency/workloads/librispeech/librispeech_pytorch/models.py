@@ -1,10 +1,13 @@
-"""DeepSpeech Models modified from https://github.com/lsari/librispeech_100/blob/main/models.py."""
+"""DeepSpeech Models.
+
+Modified from https://github.com/lsari/librispeech_100/blob/main/models.py.
+"""
 
 import collections
 import math
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class SequenceWise(nn.Module):
@@ -16,7 +19,7 @@ class SequenceWise(nn.Module):
     Args:
       module: Module to apply input to.
     """
-    super(SequenceWise, self).__init__()
+    super().__init__()
     self.module = module
 
   def forward(self, x):
@@ -37,7 +40,7 @@ class MaskConv(nn.Module):
     Args:
       seq_module: The sequential module containing the conv stack.
     """
-    super(MaskConv, self).__init__()
+    super().__init__()
     self.seq_module = seq_module
 
   def forward(self, x, lengths):
@@ -66,7 +69,7 @@ class MaskConv(nn.Module):
 class BatchRNN(nn.Module):
 
   def __init__(self, input_size, hidden_size, batch_norm=True):
-    super(BatchRNN, self).__init__()
+    super().__init__()
     self.batch_norm = SequenceWise(
         nn.BatchNorm1d(input_size)) if batch_norm else None
     self.rnn = nn.LSTM(
@@ -100,7 +103,7 @@ class BatchRNN(nn.Module):
 class CNNLSTM(nn.Module):
 
   def __init__(self):
-    super(CNNLSTM, self).__init__()
+    super().__init__()
 
     self.num_classes = 29
     self.hidden_size = 768
@@ -110,10 +113,12 @@ class CNNLSTM(nn.Module):
         nn.Sequential(
             nn.Conv2d(
                 1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(20, 5)),
-            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True),
+            nn.BatchNorm2d(32),
+            nn.Hardtanh(0, 20, inplace=True),
             nn.Conv2d(
                 32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-            nn.BatchNorm2d(32), nn.Hardtanh(0, 20, inplace=True)))
+            nn.BatchNorm2d(32),
+            nn.Hardtanh(0, 20, inplace=True)))
 
     rnn_input_size = 161
     rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
@@ -128,7 +133,7 @@ class CNNLSTM(nn.Module):
     rnns.append(("0", rnn))
     for x in range(self.hidden_layers - 1):
       rnn = BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
-      rnns.append(("%d" % (x + 1), rnn))
+      rnns.append((f"{x+1}", rnn))
     self.rnns = nn.Sequential(collections.OrderedDict(rnns))
 
     fully_connected = nn.Sequential(
@@ -137,7 +142,7 @@ class CNNLSTM(nn.Module):
     self.fc = nn.Sequential(SequenceWise(fully_connected),)
 
   def get_seq_lens(self, input_length):
-    """Get a 1D tensor or variable containing the size sequences that will be output by the network.
+    """Get a 1D tensor or variable containing the model output size sequences.
 
     Args:
       input_length: 1D Tensor

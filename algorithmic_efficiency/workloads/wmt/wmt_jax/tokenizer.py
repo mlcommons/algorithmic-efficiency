@@ -1,4 +1,7 @@
-"""Provides op for tokenizing a dataset modified from https://github.com/google/flax/tree/main/examples/wmt."""
+"""Provides op for tokenizing a dataset.
+
+Modified from https://github.com/google/flax/tree/main/examples/wmt.
+"""
 
 import dataclasses
 import os
@@ -77,9 +80,11 @@ def _train_sentencepiece(dataset: tf.data.Dataset,
       delete=False, prefix='/tmp/sp_tmp') as model_fp:
     pass  # we just want a prefix'd tmp-filename
   argstr = ' '.join([
-      f'--input={fname}', f'--vocab_size={vocab_size}',
+      f'--input={fname}',
+      f'--vocab_size={vocab_size}',
       f'--character_coverage={character_coverage}',
-      f'--model_prefix={model_fp.name}', f'--model_type={model_type}'
+      f'--model_prefix={model_fp.name}',
+      f'--model_type={model_type}'
   ])
   SentencePieceTrainer.Train(argstr)
   if jax.process_index() == 0:
