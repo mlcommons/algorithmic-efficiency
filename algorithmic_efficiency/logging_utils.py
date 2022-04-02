@@ -267,7 +267,6 @@ class Recorder:
     self._tuning_ruleset = tuning_ruleset
     self._tuning_search_space_path = tuning_search_space_path
     self._num_tuning_trials = num_tuning_trials
-    self._status = 'INCOMPLETE'
     self._last_epoch_evaluated = None
     self._workload_log_dir = os.path.join(self._logging_dir,
                                           self._workload_name)
@@ -276,20 +275,27 @@ class Recorder:
           'Warning: You may overwrite data because recording output path '
           f'already exists: {self._workload_log_dir}')
     # Record initial information about workload at startup
-    self._write_workload_metadata_file()
+    self._write_workload_metadata_file(status='INCOMPLETE')
     self._write_package_list_file()
 
-  def _write_workload_metadata_file(self, score: float = None):
+  def _write_workload_metadata_file(self, score: float = None, status: str = None,):
     """Write "metadata.json" to disk.
 
     It is is created at the start of a workload and includes the datetime,
-    workload name, and system configuration."""
+    workload name, and system configuration.
+
+    Args:
+      score: (optional) final score of the training run
+      status: (optional) status the training run ex. "INCOMPLETE" if training is
+        in progress
+    """
     metadata = {}
 
     # Workload Information
     metadata['workload'] = self._workload_name
     metadata['datetime'] = datetime.now().isoformat()
-    metadata['status'] = self._status
+    if status:
+      metadata['status'] = status
     if score:
       metadata['score'] = score
     metadata['logging_dir'] = self._logging_dir
@@ -416,8 +422,7 @@ class Recorder:
 
   def workload_complete(self, score: float):
     """At the end of the workload write COMPLETE to the metadata file."""
-    self._status = 'COMPLETE'
-    self._write_workload_metadata_file(score)
+    self._write_workload_metadata_file(score=score, status='COMPLETE')
 
   def _get_eval_measurements(
       self,
