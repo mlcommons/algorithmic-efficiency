@@ -1,12 +1,30 @@
-# Logging Example
+# Logging Measurements to Disk with `--logging_dir`
 
-_This guide demonstrates the flow of logging measurements about training data and plotting it._
+## Summary of Measurements Collected
+|                                               | `workload_`<br />`results.json` | `trial_`<br />`results.json`  | `eval_`<br />`results.csv` |
+|-----------------------------------------------|-----------------------|---------------------|------------------|
+| **Basic info** <br /> (ex. datetime)                     | ✔️                    | ✔️                  | ✔️               |
+| **Extra metadata** <br /> (optional user-defined)        | ✔️                    | ✔️                  | ✔️               |
+| **Workload info** <br /> (ex. target_value)              | ✔️                    | ✔️                  | ✔️               |
+| **Workload score**                                | ✔️                    |                     |                  |
+| **System software info** <br /> (ex. os_platform)        | ✔️                    |                     |                  |
+| **System hardware info** <br /> (ex. gpu_model_name)     | ✔️                    |                     |                  |
+| **Tuning search space** (if used)                 | ✔️                    |                     |                  |
+| **Trial hyperparameters**                         |                       | ✔️                  | ✔️               |
+| **Hardware   utilization** <br /> (ex. gpu.avg.mem.util) |                       | ✔️                  | ✔️               |
+| **Model eval metrics** <br /> (ex. loss)                 |                       | ✔️ (only<br /> last eval) | ✔️ (all evals)   |
+| **Stopping   conditions** <br /> (ex. is_time_remaining) |                       | ✔️                  | ✔️               |
+| **Step count**                                    |                       | ✔️*                  | ✔️              |
+| **Accumulated time**                              |                       | ✔️*                  | ✔️              |
 
-### Anatomy of Saving Measurements
+&ast; Caveat: When the tuning trial ran out of time before reaching the target value, one or more steps may have been completed since the last model evaluation. In this case the step count and accumulated time in `trial_results.json` will not exactly reflect when the model evaluation metrics were recorded.
 
+# Usage Tutorial
+
+Summary:
 - Choose a directory where you want to save measurements.
 - Run a workload with the `--logging_dir` option to produce a `measurements.csv` and `metadata.json` files.
-- (Optionally) Write a simple plotting script to visualize the results.
+- Configure optional features and plot the results.
 
 __Goal:__ We are going to use the included mnist_jax workload to train an MLP model, record the loss curve, and plot it.
 
