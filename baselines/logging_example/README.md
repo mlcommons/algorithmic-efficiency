@@ -9,7 +9,7 @@
 | **Workload score**                                | ✔️                    |                     |                  |
 | **System software info** <br /> (ex. os_platform)        | ✔️                    |                     |                  |
 | **System hardware info** <br /> (ex. gpu_model_name)     | ✔️                    |                     |                  |
-| **Tuning search space** (if used)                 | ✔️                    |                     |                  |
+| **Tuning search space** <br /> (if used)                 | ✔️                    |                     |                  |
 | **Trial hyperparameters**                         |                       | ✔️                  | ✔️               |
 | **Hardware   utilization** <br /> (ex. gpu.avg.mem.util) |                       | ✔️                  | ✔️               |
 | **Model eval metrics** <br /> (ex. loss)                 |                       | ✔️ (only<br /> last eval) | ✔️ (all evals)   |
