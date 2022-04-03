@@ -59,7 +59,6 @@ class MnistWorkload(BaseMnistWorkload):
                         batch_size: int):
     return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
-
   @property
   def param_shapes(self):
     if self._param_shapes is None:

@@ -77,11 +77,13 @@ flags.DEFINE_integer('num_tuning_trials',
                      20,
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string(
-    'logging_dir', None,
+    'logging_dir',
+    None,
     'The path to save information about the training progress of a workload to '
     'disk.')
 flags.DEFINE_multi_string(
-    'extra_metadata', None,
+    'extra_metadata',
+    None,
     'Record extra metadata in the "logging_dir" along side the CSVs metrics '
     'and JSON metadata. This is useful when doing multiple experiments and '
     'needing a way to tell them apart. You can specify this option multiple '
@@ -89,7 +91,8 @@ flags.DEFINE_multi_string(
     'prefixed with "extra." so to not overlap with other CSV/JSON data '
     'attributes.')
 flags.DEFINE_string(
-    'eval_frequency_override', None,
+    'eval_frequency_override',
+    None,
     'You can override the default frequency of model evaluation, which in turn '
     'will change when information about the training progress is saved to '
     'disk. This is not competition legal but can be used to monitor training '
@@ -248,16 +251,30 @@ def train_once(workload: spec.Workload,
         last_eval_time = current_time
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
-      recorder.save_eval(workload, hyperparameters, trial_idx, global_step,
-                       batch_size, latest_eval_result, global_start_time,
-                       accumulated_submission_time, goal_reached,
-                       is_time_remaining, training_complete)
+      recorder.save_eval(workload,
+                         hyperparameters,
+                         trial_idx,
+                         global_step,
+                         batch_size,
+                         latest_eval_result,
+                         global_start_time,
+                         accumulated_submission_time,
+                         goal_reached,
+                         is_time_remaining,
+                         training_complete)
     global_step += 1
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  recorder.trial_complete(workload, hyperparameters, trial_idx, global_step,
-                        batch_size, latest_eval_result, global_start_time,
-                        accumulated_submission_time, goal_reached,
-                        is_time_remaining, training_complete)
+  recorder.trial_complete(workload,
+                          hyperparameters,
+                          trial_idx,
+                          global_step,
+                          batch_size,
+                          latest_eval_result,
+                          global_start_time,
+                          accumulated_submission_time,
+                          goal_reached,
+                          is_time_remaining,
+                          training_complete)
   return accumulated_submission_time, metrics
 
 
@@ -280,15 +297,21 @@ def score_submission_on_workload(workload: spec.Workload,
 
   if FLAGS.logging_dir:
     # Save training progress to disk eg. loss, hparams, and other metadata
-    recorder = logging_utils.Recorder(workload, workload_name, FLAGS.logging_dir,
-                                    FLAGS.submission_path, tuning_ruleset,
-                                    tuning_search_space, num_tuning_trials,
-                                    extra_metadata=FLAGS.extra_metadata)
+    recorder = logging_utils.Recorder(
+        workload,
+        workload_name,
+        FLAGS.logging_dir,
+        FLAGS.submission_path,
+        tuning_ruleset,
+        tuning_search_space,
+        num_tuning_trials,
+        extra_metadata=FLAGS.extra_metadata)
   else:
-    recorder = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
+    recorder = logging_utils.NoOpRecorder(
+    )  # Do nothing if no logging_dir is set
     if FLAGS.extra_metadata:
       raise ValueError('You set --extra_metadata without setting --logging_dir.'
-        ' Please set --logging_dir and try again.')
+                       ' Please set --logging_dir and try again.')
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in

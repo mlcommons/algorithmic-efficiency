@@ -301,7 +301,8 @@ class Recorder:
     workload_data['os_platform'] = \
         platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
     workload_data['python_version'] = platform.python_version()  # Ex. '3.8.10'
-    workload_data['python_compiler'] = platform.python_compiler()  # Ex. 'GCC 9.3.0'
+    workload_data['python_compiler'] = platform.python_compiler(
+    )  # Ex. 'GCC 9.3.0'
     # Note: do not store hostname as that may be sensitive
 
     try:
@@ -329,7 +330,8 @@ class Recorder:
 
     # Save workload_results.json
     os.makedirs(self._workload_log_dir, exist_ok=True)
-    results_filepath = os.path.join(self._workload_log_dir, 'workload_results.json')
+    results_filepath = os.path.join(self._workload_log_dir,
+                                    'workload_results.json')
     with open(results_filepath, 'w', encoding='utf-8') as f:
       json.dump(workload_data, f, ensure_ascii=False, indent=4)
 
@@ -370,22 +372,22 @@ class Recorder:
       training_complete: bool,
   ):
     trial_data = self._get_eval_measurements(workload,
-                                           hyperparameters,
-                                           trial_idx,
-                                           global_step,
-                                           batch_size,
-                                           latest_eval_result,
-                                           global_start_time,
-                                           accumulated_submission_time,
-                                           goal_reached,
-                                           is_time_remaining,
-                                           training_complete)
+                                             hyperparameters,
+                                             trial_idx,
+                                             global_step,
+                                             batch_size,
+                                             latest_eval_result,
+                                             global_start_time,
+                                             accumulated_submission_time,
+                                             goal_reached,
+                                             is_time_remaining,
+                                             training_complete)
     trial_data['status'] = 'COMPLETE'
 
     # Save trial_results.json
     results_filepath = os.path.join(self._workload_log_dir,
-                                     'trial_' + str(trial_idx),
-                                     'trial_results.json')
+                                    'trial_' + str(trial_idx),
+                                    'trial_results.json')
     with open(results_filepath, 'w', encoding='utf-8') as f:
       json.dump(trial_data, f, ensure_ascii=False, indent=4)
 
@@ -471,20 +473,20 @@ class Recorder:
     loss, accuracy, training step, time elapsed, hparams, workload properties,
     and hardware utilization."""
     eval_data = self._get_eval_measurements(workload,
-                                               hyperparameters,
-                                               trial_idx,
-                                               global_step,
-                                               batch_size,
-                                               latest_eval_result,
-                                               global_start_time,
-                                               accumulated_submission_time,
-                                               goal_reached,
-                                               is_time_remaining,
-                                               training_complete)
+                                            hyperparameters,
+                                            trial_idx,
+                                            global_step,
+                                            batch_size,
+                                            latest_eval_result,
+                                            global_start_time,
+                                            accumulated_submission_time,
+                                            goal_reached,
+                                            is_time_remaining,
+                                            training_complete)
 
     # Save to CSV file
     results_filepath = os.path.join(self._workload_log_dir,
-                                     'trial_' + str(trial_idx))
+                                    'trial_' + str(trial_idx))
     os.makedirs(results_filepath, exist_ok=True)
     csv_path = os.path.join(results_filepath, 'eval_results.csv')
     logging.info(f'Recording measurements to: {csv_path}')
