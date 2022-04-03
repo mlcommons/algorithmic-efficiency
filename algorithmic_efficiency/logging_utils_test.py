@@ -144,6 +144,10 @@ class LoggingUtilsTest(absltest.TestCase):
         eval_frequency_override, self.workload, global_step, batch_size)
     self.assertFalse(eval_requested)
 
+    eval_frequency_override = '-1 epoch'
+    with self.assertRaises(ValueError):
+      eval_requested = self.recorder.check_eval_frequency_override(
+          eval_frequency_override, self.workload, global_step, batch_size)
 
 if __name__ == '__main__':
   absltest.main()

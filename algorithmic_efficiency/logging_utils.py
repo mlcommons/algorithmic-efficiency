@@ -505,6 +505,7 @@ class Recorder:
     try:
       freq, unit = eval_frequency_override.split(' ')
       freq = int(freq)
+      assert freq > 0
       assert (unit in ['epoch', 'step'])
     except:
       raise ValueError(
