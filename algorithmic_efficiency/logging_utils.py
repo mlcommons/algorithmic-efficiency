@@ -55,7 +55,7 @@ def _get_utilization() -> dict:
 
   # Temp
   sensor_temps = psutil.sensors_temperatures()
-  for key in sensor_temps.keys():
+  for key in sensor_temps.keys():  # pylint: disable=consider-using-dict-items
     # Take the first temp reading for each kind of device (CPU, GPU, Disk, etc.)
     value = sensor_temps[key][0].current
     util_data[f'temp.{key}.current'] = value
@@ -155,8 +155,8 @@ def _get_extra_metadata_as_dict(extra_metadata: list) -> dict:
     try:
       key, value = item.split("=")
       metadata['extra.' + key] = value
-    except:
-      raise ValueError(
+    except:  # pylint: disable=bare-except
+      raise ValueError(  # pylint: disable=raise-missing-from
           f'Failed to parse this extra_metadata CLI argument: {item}. ' +
           'Please check your command.')
   return metadata
@@ -179,7 +179,7 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
   for key in keys:
     try:
       attr = getattr(workload, key)
-    except:
+    except:  # pylint: disable=bare-except
       logging.warn(
           f'Unable to record workload.{key} information. Continuing without it.'
       )
@@ -310,13 +310,13 @@ class Recorder:
       workload_data['git_commit_hash'] = _get_git_commit_hash()
       # Note: do not store git repo url as it may be sensitive or contain a
       # secret.
-    except:
+    except:  # pylint: disable=bare-except
       logging.warn('Unable to record git information. Continuing without it.')
 
     try:
       workload_data['cpu_model_name'] = _get_cpu_model_name()
       workload_data['cpu_count'] = psutil.cpu_count()
-    except:
+    except:  # pylint: disable=bare-except
       logging.warn('Unable to record cpu information. Continuing without it.')
 
     gpus = GPUtil.getGPUs()
@@ -325,7 +325,7 @@ class Recorder:
         workload_data['gpu_model_name'] = gpus[0].name
         workload_data['gpu_count'] = len(gpus)
         workload_data['gpu_driver'] = gpus[0].driver
-      except:
+      except:  # pylint: disable=bare-except
         logging.warn('Unable to record gpu information. Continuing without it.')
 
     # Save workload_results.json
@@ -344,7 +344,7 @@ class Recorder:
     try:
       os_package_list = _get_os_package_list()
       pip_package_list = _get_pip_package_list()
-    except:
+    except:  # pylint: disable=bare-except
       logging.warn(
           'Unable to record package information. Continuing without it.')
       return
@@ -509,8 +509,8 @@ class Recorder:
       freq = int(freq)
       assert freq > 0
       assert (unit in ['epoch', 'step'])
-    except:
-      raise ValueError(
+    except:  # pylint: disable=bare-except
+      raise ValueError(  # pylint: disable=raise-missing-from
           'Failed to parse eval_frequency_override CLI argument: ' +
           f'{eval_frequency_override}. Please check your command.')
 

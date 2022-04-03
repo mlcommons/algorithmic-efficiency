@@ -17,10 +17,10 @@ class LoggingUtilsTest(absltest.TestCase):
   """Tests for logging_utils.py."""
 
   @classmethod
-  def setUpClass(self):
-    self.logging_dir = './test_logging_utils_temp'
-    self.workload = MnistWorkload()
-    self.workload_name = 'mnist'
+  def setUpClass(cls):
+    cls.logging_dir = './test_logging_utils_temp'
+    cls.workload = MnistWorkload()
+    cls.workload_name = 'mnist'
     submission_path = 'baselines/mnist/mnist_jax/submission.py'
     tuning_ruleset = 'external'
     tuning_search_space = 'baselines/mnist/tuning_search_space.json'
@@ -28,10 +28,10 @@ class LoggingUtilsTest(absltest.TestCase):
     extra_metadata = ['key=value']
 
     # Create recorder class
-    self.recorder = logging_utils.Recorder(
-        self.workload,
-        self.workload_name,
-        self.logging_dir,
+    cls.recorder = logging_utils.Recorder(
+        cls.workload,
+        cls.workload_name,
+        cls.logging_dir,
         submission_path,
         tuning_ruleset,
         tuning_search_space,
@@ -39,8 +39,8 @@ class LoggingUtilsTest(absltest.TestCase):
         extra_metadata=extra_metadata)
 
   @classmethod
-  def tearDownClass(self):
-    shutil.rmtree(self.logging_dir, ignore_errors=True)
+  def tearDownClass(cls):
+    shutil.rmtree(cls.logging_dir, ignore_errors=True)
     pass
 
   def test_workload_results_file_exists(self):
