@@ -24,7 +24,7 @@ class LoggingUtilsTest(absltest.TestCase):
     num_tuning_trials = 2
     extra_metadata = ['key=value']
 
-    # Create class
+    # Create recorder class
     self.recorder = logging_utils.Recorder(self.workload, self.workload_name, self.logging_dir,
                                     submission_path, tuning_ruleset,
                                     tuning_search_space, num_tuning_trials, extra_metadata=extra_metadata)

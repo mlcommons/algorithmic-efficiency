@@ -286,6 +286,9 @@ def score_submission_on_workload(workload: spec.Workload,
                                     extra_metadata=FLAGS.extra_metadata)
   else:
     recorder = logging_utils.NoOpRecorder()  # Do nothing if no logging_dir is set
+    if FLAGS.extra_metadata:
+      raise ValueError('You set --extra_metadata without setting --logging_dir.'
+        ' Please set --logging_dir and try again.')
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
