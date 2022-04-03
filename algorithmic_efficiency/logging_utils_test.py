@@ -1,14 +1,17 @@
 """Tests for logging_utils.py."""
 
-import pandas as pd
 import collections
 import json
 import os
-from absl.testing import absltest
-from algorithmic_efficiency import logging_utils
 import shutil
 
-from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import MnistWorkload
+from absl.testing import absltest
+import pandas as pd
+
+from algorithmic_efficiency import logging_utils
+from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
+    MnistWorkload
+
 
 class LoggingUtilsTest(absltest.TestCase):
   """Tests for logging_utils.py."""

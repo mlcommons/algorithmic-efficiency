@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for MNIST."""
 
 import functools
-from typing import Iterator, List, Tuple, Optional
+from typing import Iterator, List, Optional, Tuple
 
 from flax import jax_utils
 import jax
