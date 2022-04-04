@@ -111,7 +111,8 @@ class MaskConv(nn.Module):
       """
     seq_module: Sequence[nn.Module]
 
-    def __call__(self, x, mask):
+    @nn.compact
+    def __call__(self, x, mask, training):
         """Forward pass.
         Args:
           x: The input (before transposing it to channels-last) is of Shape[Batch, Channels, "D", TimeSteps]
@@ -123,7 +124,8 @@ class MaskConv(nn.Module):
         x = x.transpose(0, 2, 3, 1)
         for module in self.seq_module:
             x = module(x)
-            x *= mask
+            x = BatchNorm()(x, mask, training)
+            x = hard_tanh(x, 0, 20)
         x = x.transpose(0, 3, 1, 2)
         return x
 
@@ -261,16 +263,12 @@ class CNNLSTM(nn.Module):
                 strides=(2, 2),
                 padding=((20, 20), (5, 5)),
             ),
-            BatchNorm(),
-            functools.partial(hard_tanh, min_value=0, max_value=20),
             nn.Conv(
                 features=32,
                 kernel_size=(21, 11),
                 strides=(2, 1),
                 padding=((10, 10), (5, 5)),
             ),
-            BatchNorm(),
-            functools.partial(hard_tanh, min_value=0, max_value=20),
         ]
         self.conv = MaskConv(sequential)
 
