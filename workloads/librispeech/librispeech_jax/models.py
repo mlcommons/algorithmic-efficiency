@@ -23,6 +23,8 @@ class Sequential(nn.Module):
 
 
 class BatchNorm(nn.BatchNorm):
+    momentum: float = 0.9
+
     @nn.compact
     def __call__(self, x: jnp.ndarray, mask: jnp.ndarray, use_running_average: Optional[bool] = None):
         """Normalizes the input using batch statistics.
@@ -292,7 +294,7 @@ class CNNLSTM(nn.Module):
         mask: jnp.ndarray = jnp.arange(inputs.shape[1]).reshape(1, -1, 1, 1) >= output_lengths.reshape(-1, 1, 1, 1)
         mask = mask.astype(jnp.float32)
 
-        x, _ = self.conv(inputs, mask)
+        x = self.conv(inputs, mask)
 
         sizes = x.shape
         x = x.reshape(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
