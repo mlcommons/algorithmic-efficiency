@@ -124,7 +124,7 @@ class MaskConv(nn.Module):
         x = x.transpose(0, 2, 3, 1)
         for module in self.seq_module:
             x = module(x)
-            x = BatchNorm()(x, mask, training)
+            x = BatchNorm()(x, mask, not training)
             x = hard_tanh(x, 0, 20)
         x = x.transpose(0, 3, 1, 2)
         return x
@@ -299,7 +299,7 @@ class CNNLSTM(nn.Module):
 
         for rnn in self.rnns:
             x = rnn(x, output_lengths, mask, training=training)
-        x = self.out_norm(x, mask, training=training)
+        x = self.out_norm(x, mask, not training)
         x = self.fc(x)
         log_probs = jax.nn.log_softmax(x, axis=-1)
         log_probs = log_probs.transpose(1, 0, 2)  # [Seq, Batch, Feature] -> [Batch, Seq, Feature]
