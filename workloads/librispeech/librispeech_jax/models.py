@@ -2,11 +2,15 @@
 
 import functools
 import math
-from typing import Sequence
+from typing import Sequence, Optional, Iterable, Union
 
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
+from flax.linen.normalization import _canonicalize_axes, _normalize
+from jax import lax
+
+Axes = Union[int, Iterable[int]]
 
 
 class Sequential(nn.Module):
@@ -18,6 +22,66 @@ class Sequential(nn.Module):
         return x
 
 
+class BatchNorm(nn.BatchNorm):
+    @nn.compact
+    def __call__(self, x: jnp.ndarray, mask: jnp.ndarray, use_running_average: Optional[bool] = None):
+        """Normalizes the input using batch statistics.
+
+        NOTE:
+        During initialization (when parameters are mutable) the running average
+        of the batch statistics will not be updated. Therefore, the inputs
+        fed during initialization don't need to match that of the actual input
+        distribution and the reduction axis (set with `axis_name`) does not have
+        to exist.
+
+        Args:
+          x: the input to be normalized.
+          use_running_average: if true, the statistics stored in batch_stats
+            will be used instead of computing the batch statistics on the input.
+
+        Returns:
+          Normalized inputs (the same shape as inputs).
+        """
+
+        use_running_average = nn.merge_param(
+            'use_running_average', self.use_running_average, use_running_average)
+        feature_axes = _canonicalize_axes(x.ndim, self.axis)
+        reduction_axes = tuple(i for i in range(x.ndim) if i not in feature_axes)
+        feature_shape = [x.shape[ax] for ax in feature_axes]
+
+        # see NOTE above on initialization behavior
+        initializing = self.is_mutable_collection('params')
+
+        ra_mean = self.variable('batch_stats', 'mean',
+                                lambda s: jnp.zeros(s, jnp.float32),
+                                feature_shape)
+        ra_var = self.variable('batch_stats', 'var',
+                               lambda s: jnp.ones(s, jnp.float32),
+                               feature_shape)
+
+        if use_running_average:
+            mean, var = ra_mean.value, ra_var.value
+        else:
+            x: jnp.ndarray = jnp.asarray(x, jnp.promote_types(jnp.float32, jnp.result_type(x)))
+            non_zeros = jnp.sum(mask, reduction_axes)
+            mean = jnp.sum(x, reduction_axes) / non_zeros
+            mean2 = jnp.sum(lax.square(x), reduction_axes) / non_zeros
+            # mean2 - _abs_sq(mean) is not guaranteed to be non-negative due
+            # to floating point round-off errors.
+            var = jnp.maximum(0., mean2 - lax.square(mean))
+
+            if not initializing:
+                ra_mean.value = self.momentum * ra_mean.value + (1 - self.momentum) * mean
+                ra_var.value = self.momentum * ra_var.value + (1 - self.momentum) * var
+
+        out = _normalize(
+            self, x, mean, var, reduction_axes, feature_axes,
+            self.dtype, self.param_dtype, self.epsilon,
+            self.use_bias, self.use_scale,
+            self.bias_init, self.scale_init)
+        return out * mask
+
+
 class SequenceWise(nn.Module):
     """Collapses input of dim T*N*H to (T*N)*H, and applies to a module.
 
@@ -27,11 +91,11 @@ class SequenceWise(nn.Module):
       """
     module: nn.Module
 
-    def __call__(self, x, training=False):
+    def __call__(self, x, mask, training=False):
         # [Seq, Batch, Feature]
         t, n = x.shape[0], x.shape[1]
         x = jnp.reshape(x, (t * n, -1))  # [Seq, Batch, Feature] -> [Seq * Batch, Feature]
-        x = self.module(x)
+        x = self.module(x, mask, training)
         x = jnp.reshape(x, (t, n, -1))  # [Seq, Batch, Feature] -> [Seq, Batch, Feature]
         return x
 
@@ -45,7 +109,7 @@ class MaskConv(nn.Module):
       """
     seq_module: Sequence[nn.Module]
 
-    def __call__(self, x, lengths):
+    def __call__(self, x, mask):
         """Forward pass.
         Args:
           x: The input (before transposing it to channels-last) is of Shape[Batch, Channels, "D", TimeSteps]
@@ -57,11 +121,9 @@ class MaskConv(nn.Module):
         x = x.transpose(0, 2, 3, 1)
         for module in self.seq_module:
             x = module(x)
-            mask = jnp.arange(x.shape[1]).reshape(1, -1, 1, 1) >= lengths.reshape(-1, 1, 1, 1)
-            mask = mask.astype(jnp.float32)
             x *= mask
         x = x.transpose(0, 3, 1, 2)
-        return x, lengths
+        return x
 
 
 @jax.vmap
@@ -147,15 +209,15 @@ class BatchRNN(nn.Module):
 
     def setup(self):
         if self.use_batch_norm:
-            self.batch_norm = SequenceWise(nn.BatchNorm(use_running_average=True))
+            self.batch_norm = SequenceWise(BatchNorm(use_running_average=True))
         else:
             self.batch_norm = None
         self.rnn = SimpleBiLSTM(self.hidden_size)
 
-    def __call__(self, inputs, lengths, training=False):
+    def __call__(self, inputs, lengths, mask, training=False):
         # [Seq, Batch, Feature]
         if self.batch_norm is not None:
-            inputs = self.batch_norm(inputs)
+            inputs = self.batch_norm(inputs, mask)
         inputs = inputs.transpose(1, 0, 2)  # [Seq, Batch, Feature] -> [Batch, Seq, Feature]
         inputs = self.rnn(inputs, lengths)
         inputs = inputs.transpose(1, 0, 2)  # [Batch, Seq, Feature] -> [Seq, Batch, Feature]
@@ -221,21 +283,23 @@ class CNNLSTM(nn.Module):
                      for _ in range(self.hidden_layers - 1)])
         self.rnns = rnns
 
-        fully_connected = Sequential([nn.BatchNorm(use_running_average=True),
-                                      nn.Dense(self.num_classes, use_bias=False)])
-        self.fc = SequenceWise(fully_connected)
+        self.fc = Sequential([SequenceWise(nn.BatchNorm(use_running_average=True)),
+                              nn.Dense(self.num_classes, use_bias=False)])
 
     def __call__(self, inputs, lengths, training=False):
         output_lengths = get_seq_lens(lengths, self.conv.seq_module)
 
-        x, _ = self.conv(inputs, lengths)
+        mask: jnp.ndarray = jnp.arange(inputs.shape[1]).reshape(1, -1, 1, 1) >= output_lengths.reshape(-1, 1, 1, 1)
+        mask = mask.astype(jnp.float32)
+
+        x, _ = self.conv(inputs, mask)
 
         sizes = x.shape
         x = x.reshape(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
         x = x.transpose(2, 0, 1)  # [Batch, Feature, Seq] -> [Seq, Batch, Feature]
 
         for rnn in self.rnns:
-            x = rnn(x, output_lengths, training=training)
+            x = rnn(x, output_lengths, mask, training=training)
 
         x = self.fc(x, training=training)
         log_probs = jax.nn.log_softmax(x, axis=-1)
