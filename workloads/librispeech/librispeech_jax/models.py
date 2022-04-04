@@ -261,7 +261,7 @@ class CNNLSTM(nn.Module):
                 strides=(2, 2),
                 padding=((20, 20), (5, 5)),
             ),
-            nn.BatchNorm(),
+            BatchNorm(),
             functools.partial(hard_tanh, min_value=0, max_value=20),
             nn.Conv(
                 features=32,
@@ -269,7 +269,7 @@ class CNNLSTM(nn.Module):
                 strides=(2, 1),
                 padding=((10, 10), (5, 5)),
             ),
-            nn.BatchNorm(),
+            BatchNorm(),
             functools.partial(hard_tanh, min_value=0, max_value=20),
         ]
         self.conv = MaskConv(sequential)
@@ -284,7 +284,7 @@ class CNNLSTM(nn.Module):
         rnns.extend([BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
                      for _ in range(self.hidden_layers - 1)])
         self.rnns = rnns
-        self.out_norm = SequenceWise(nn.BatchNorm())
+        self.out_norm = SequenceWise(BatchNorm())
         self.fc = nn.Dense(self.num_classes, use_bias=False)
 
     def __call__(self, inputs, lengths, training=False):
