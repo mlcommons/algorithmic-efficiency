@@ -291,7 +291,7 @@ class CNNLSTM(nn.Module):
         mask: jnp.ndarray = jnp.arange(inputs.shape[1]).reshape(1, -1, 1, 1) >= output_lengths.reshape(-1, 1, 1, 1)
         mask = mask.astype(jnp.float32)
 
-        x = self.conv(inputs, mask)
+        x = self.conv(inputs, mask, training)
 
         sizes = x.shape
         x = x.reshape(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
