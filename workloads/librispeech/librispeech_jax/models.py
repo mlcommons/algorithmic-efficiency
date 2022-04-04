@@ -97,7 +97,7 @@ class SequenceWise(nn.Module):
         # [Seq, Batch, Feature]
         t, n = x.shape[0], x.shape[1]
         x = jnp.reshape(x, (t * n, -1))  # [Seq, Batch, Feature] -> [Seq * Batch, Feature]
-        x = self.module(x, mask, training)
+        x = self.module(x, mask, not training)
         x = jnp.reshape(x, (t, n, -1))  # [Seq, Batch, Feature] -> [Seq, Batch, Feature]
         return x
 
@@ -211,7 +211,7 @@ class BatchRNN(nn.Module):
 
     def setup(self):
         if self.use_batch_norm:
-            self.batch_norm = SequenceWise(BatchNorm(use_running_average=True))
+            self.batch_norm = SequenceWise(BatchNorm())
         else:
             self.batch_norm = None
         self.rnn = SimpleBiLSTM(self.hidden_size)
@@ -261,7 +261,7 @@ class CNNLSTM(nn.Module):
                 strides=(2, 2),
                 padding=((20, 20), (5, 5)),
             ),
-            nn.BatchNorm(use_running_average=True),
+            nn.BatchNorm(),
             functools.partial(hard_tanh, min_value=0, max_value=20),
             nn.Conv(
                 features=32,
@@ -269,7 +269,7 @@ class CNNLSTM(nn.Module):
                 strides=(2, 1),
                 padding=((10, 10), (5, 5)),
             ),
-            nn.BatchNorm(use_running_average=True),
+            nn.BatchNorm(),
             functools.partial(hard_tanh, min_value=0, max_value=20),
         ]
         self.conv = MaskConv(sequential)
@@ -284,9 +284,8 @@ class CNNLSTM(nn.Module):
         rnns.extend([BatchRNN(input_size=self.hidden_size, hidden_size=self.hidden_size)
                      for _ in range(self.hidden_layers - 1)])
         self.rnns = rnns
-
-        self.fc = Sequential([SequenceWise(nn.BatchNorm(use_running_average=True)),
-                              nn.Dense(self.num_classes, use_bias=False)])
+        self.out_norm = SequenceWise(nn.BatchNorm())
+        self.fc = nn.Dense(self.num_classes, use_bias=False)
 
     def __call__(self, inputs, lengths, training=False):
         output_lengths = get_seq_lens(lengths, self.conv.seq_module)
@@ -302,7 +301,7 @@ class CNNLSTM(nn.Module):
 
         for rnn in self.rnns:
             x = rnn(x, output_lengths, mask, training=training)
-
+        x = self.out_norm(x, mask, training=training)
         x = self.fc(x, training=training)
         log_probs = jax.nn.log_softmax(x, axis=-1)
         log_probs = log_probs.transpose(1, 0, 2)  # [Seq, Batch, Feature] -> [Batch, Seq, Feature]
