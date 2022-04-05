@@ -61,6 +61,7 @@ class BatchNorm(nn.BatchNorm):
                                lambda s: jnp.ones(s, jnp.float32),
                                feature_shape)
 
+        x = x * mask
         if use_running_average:
             mean, var = ra_mean.value, ra_var.value
         else:
@@ -112,7 +113,7 @@ class MaskConv(nn.Module):
     seq_module: Sequence[nn.Module]
 
     @nn.compact
-    def __call__(self, x, mask, training):
+    def __call__(self, x, lengths, training):
         """Forward pass.
         Args:
           x: The input (before transposing it to channels-last) is of Shape[Batch, Channels, "D", TimeSteps]
@@ -124,7 +125,8 @@ class MaskConv(nn.Module):
         x = x.transpose(0, 2, 3, 1)
         for module in self.seq_module:
             x = module(x)
-            x = BatchNorm()(x, mask, not training)
+            mask = jnp.arange(x.shape[1]).reshape(1, -1, 1, 1) < lengths.reshape(-1, 1, 1, 1)
+            x = BatchNorm()(x, mask.astype(jnp.float32), not training)
             x = hard_tanh(x, 0, 20)
         x = x.transpose(0, 3, 1, 2)
         return x
@@ -288,15 +290,12 @@ class CNNLSTM(nn.Module):
     def __call__(self, inputs, lengths, training=False):
         output_lengths = get_seq_lens(lengths, self.conv.seq_module)
 
-        mask: jnp.ndarray = jnp.arange(inputs.shape[1]).reshape(1, -1, 1, 1) < output_lengths.reshape(-1, 1, 1, 1)
-        mask = mask.astype(jnp.float32)
-
-        x = self.conv(inputs, mask, training)
+        x = self.conv(inputs, output_lengths, training)
         sizes = x.shape
         x = x.reshape(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
         x = x.transpose(2, 0, 1)  # [Batch, Feature, Seq] -> [Seq, Batch, Feature]
 
-        mask = mask.transpose(1, 0, 2, 3).reshape(mask.shape[1], mask.shape[0], 1)
+        mask = jnp.arange(x.shape[0]).reshape(-1, 1, 1) < lengths.reshape(-1, 1, 1)
         for rnn in self.rnns:
             x = rnn(x, output_lengths, mask, training=training)
         x = self.out_norm(x, mask, training=training)
