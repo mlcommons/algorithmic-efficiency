@@ -139,7 +139,8 @@ class WmtWorkload(BaseWmtWorkload):
         beam_size=beam_size,
         alpha=0.6,
         eos_id=eos_id,
-        max_decode_len=max_decode_len)
+        max_decode_len=max_decode_len,
+        lax_while=False)
 
     # Beam search returns [n_batch, n_beam, n_length + 1] with beam dimension
     # sorted in increasing order of log-probability.
