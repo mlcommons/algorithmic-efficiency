@@ -16,7 +16,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {"wmt_jax": 128}
+  batch_sizes = {"wmt": 128}
   return batch_sizes[workload_name]
 
 
