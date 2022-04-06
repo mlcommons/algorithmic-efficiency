@@ -256,14 +256,7 @@ class WmtWorkload(BaseWmtWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = Transformer(
-        ntoken=self._vocab_size,
-        d_model=1024,
-        nhead=16,
-        d_hid=4096,
-        nlayers=6,
-        dropout=0.1,
-        layer_norm_eps=1e-6)
+    model = Transformer()
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)

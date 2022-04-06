@@ -129,11 +129,11 @@ class Transformer(nn.Module):
   '''
 
   def __init__(self,
-               ntoken: int,
-               d_model: int,
-               nhead: int,
-               d_hid: int,
-               nlayers: int,
+               ntoken: int = 32000,
+               d_model: int = 1024,
+               nhead: int = 16,
+               d_hid: int = 4096,
+               nlayers: int = 6,
                dropout: float = 0.1,
                layer_norm_eps: float = 1e-6):
     super().__init__()
@@ -142,27 +142,23 @@ class Transformer(nn.Module):
     self.pos_encoder = PositionalEncoding(d_model, dropout)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
 
-    encoder_layers = TransformerEncoderLayer(
+    encoder_layer = TransformerEncoderLayer(
         d_model,
         nhead,
         d_hid,
         dropout,
-        layer_norm_eps=layer_norm_eps,
-        batch_first=True,
-        norm_first=True)
+        layer_norm_eps=layer_norm_eps)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
-    self.encoder = nn.TransformerEncoder(encoder_layers, nlayers, encoder_norm)
+    self.encoder = nn.TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
-    decoder_layers = TransformerDecoderLayer(
+    decoder_layer = TransformerDecoderLayer(
         d_model,
         nhead,
         d_hid,
         dropout,
-        layer_norm_eps=layer_norm_eps,
-        batch_first=True,
-        norm_first=True)
+        layer_norm_eps=layer_norm_eps)
     decoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
-    self.decoder = TransformerDecoder(decoder_layers, nlayers, decoder_norm)
+    self.decoder = TransformerDecoder(decoder_layer, nlayers, decoder_norm)
 
     self._reset_parameters()
 
@@ -306,20 +302,20 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
   pages 6000-6010. Users may modify or implement in a different way during
   application.
   Args:
-    d_model: the number of expected features in the input (required).
-    nhead: the number of heads in the multiheadattention models (required).
+    d_model: the number of expected features in the input (default=1024).
+    nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
-        (default=2048).
+        (default=4096).
     dropout: the dropout value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
-       string ("relu" or "gelu") or a unary callable. Default: relu
+       string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
-        (default=1e-5).
+        (default=1e-6).
     batch_first: If ``True``, then the input and output tensors are provided
-        as (batch, seq, feature). Default: ``False`` (seq, batch, feature).
+        as (batch, seq, feature). Default: ``True`` (batch, seq, feature).
     norm_first: if ``True``, layer norm is done prior to attention and
         feedforward operations, respectivaly. Otherwise it's done after.
-        Default: ``False`` (after).
+        Default: ``True``.
   Examples::
     >>> encoder_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8)
     >>> src = torch.rand(10, 32, 512)
@@ -333,14 +329,14 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
   __constants__ = ['batch_first', 'norm_first']
 
   def __init__(self,
-               d_model: int,
-               nhead: int,
-               dim_feedforward: int = 2048,
+               d_model: int = 1024,
+               nhead: int = 16,
+               dim_feedforward: int = 4096,
                dropout: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               layer_norm_eps: float = 1e-5,
-               batch_first: bool = False,
-               norm_first: bool = False,
+               layer_norm_eps: float = 1e-6,
+               batch_first: bool = True,
+               norm_first: bool = True,
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
@@ -383,7 +379,7 @@ class TransformerDecoder(nn.Module):
   def __init__(self, decoder_layer, num_layers, norm=None):
     super().__init__()
     self.layers = nn.ModuleList(
-        [copy.deepcopy(decoder_layer) for i in range(num_layers)])
+        [copy.deepcopy(decoder_layer) for _ in range(num_layers)])
     self.num_layers = num_layers
     self.norm = norm
 
@@ -439,20 +435,20 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
   pages 6000-6010. Users may modify or implement in a different way during
   application.
   Args:
-    d_model: the number of expected features in the input (required).
-    nhead: the number of heads in the multiheadattention models (required).
+    d_model: the number of expected features in the input (default=1024).
+    nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
-        (default=2048).
+        (default=4096).
     dropout: the dropout value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
-        string ("relu" or "gelu") or a unary callable. Default: relu
+        string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
-        (default=1e-5).
+        (default=1e-6).
     batch_first: If ``True``, then the input and output tensors are provided
-        as (batch, seq, feature). Default: ``False`` (seq, batch, feature).
+        as (batch, seq, feature). Default: ``True`` (batch, seq, feature).
     norm_first: if ``True``, layer norm is done prior to self attention,
         multihead attention and feedforward operations, respectivaly.
-        Otherwise it's done after. Default: ``False`` (after).
+        Otherwise it's done after. Default: ``True``.
   Examples::
     >>> decoder_layer = nn.TransformerDecoderLayer(d_model=512, nhead=8)
     >>> memory = torch.rand(10, 32, 512)
@@ -468,14 +464,14 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
   __constants__ = ['batch_first', 'norm_first']
 
   def __init__(self,
-               d_model: int,
-               nhead: int,
-               dim_feedforward: int = 2048,
+               d_model: int = 1024,
+               nhead: int = 16,
+               dim_feedforward: int = 4096,
                dropout: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               layer_norm_eps: float = 1e-5,
-               batch_first: bool = False,
-               norm_first: bool = False,
+               layer_norm_eps: float = 1e-6,
+               batch_first: bool = True,
+               norm_first: bool = True,
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
