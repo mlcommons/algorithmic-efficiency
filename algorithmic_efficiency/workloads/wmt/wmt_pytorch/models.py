@@ -1,4 +1,3 @@
-import copy
 import math
 from typing import Any, Callable, Optional, Tuple, Union
 import warnings
@@ -137,20 +136,25 @@ class Transformer(nn.Module):
                dropout: float = 0.1,
                layer_norm_eps: float = 1e-6):
     super().__init__()
-    self.d_model = d_model
-    self.nhead = nhead
     self.pos_encoder = PositionalEncoding(d_model, dropout)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
-
-    encoder_layer = TransformerEncoderLayer(
-        d_model, nhead, d_hid, dropout, layer_norm_eps=layer_norm_eps)
-    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
-    self.encoder = nn.TransformerEncoder(encoder_layer, nlayers, encoder_norm)
-
-    decoder_layer = TransformerDecoderLayer(
-        d_model, nhead, d_hid, dropout, layer_norm_eps=layer_norm_eps)
-    decoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
-    self.decoder = TransformerDecoder(decoder_layer, nlayers, decoder_norm)
+    self.encoder = Encoder(d_model,
+                           nhead,
+                           d_hid,
+                           nlayers,
+                           dropout,
+                           layer_norm_eps)
+    self.decoder = Decoder(d_model,
+                           nhead,
+                           d_hid,
+                           nlayers,
+                           dropout,
+                           layer_norm_eps)
+    # Share positional encoding and embedding between encoder and decoder.
+    self.encoder.pos_encoder = self.pos_encoder
+    self.encoder.shared_embedding = self.shared_embedding
+    self.decoder.pos_encoder = self.pos_encoder
+    self.decoder.shared_embedding = self.shared_embedding
 
     self._reset_parameters()
 
@@ -162,10 +166,66 @@ class Transformer(nn.Module):
         if module.bias is not None:
           normal_(module.bias, std=1e-6)
 
-  def encode(self,
-             src: Tensor,
-             inputs_positions: Optional[Tensor] = None,
-             inputs_segmentation: Optional[Tensor] = None) -> Tensor:
+  def forward(self,
+              src: Tensor,
+              tgt: Tensor,
+              inputs_positions: Optional[Tensor] = None,
+              targets_positions: Optional[Tensor] = None,
+              inputs_segmentation: Optional[Tensor] = None,
+              targets_segmentation: Optional[Tensor] = None,
+              decode: bool = False) -> Tensor:
+    """
+    Args:
+      src: Tensor, shape [batch_size, seq_len]
+      tgt: Tensor, shape [batch_size, seq_len]
+      inputs_positions: Optional[Tensor], shape [batch_size, seq_len]
+      targets_positions: Optional[Tensor], shape [batch_size, seq_len]
+      inputs_segmentation: Optional[Tensor], shape [batch_size, seq_len]
+      targets_segmentation: Optional[Tensor], shape [batch_size, seq_len]
+      decode: bool
+
+    Returns:
+      output Tensor of shape [batch_size, seq_len, ntoken]
+    """
+    if src.size(0) != tgt.size(0):
+      raise RuntimeError('The batch size of src and tgt must be equal.')
+    memory = self.encoder(
+        src,
+        inputs_positions=inputs_positions,
+        inputs_segmentation=inputs_segmentation)
+    output = self.decoder(
+        tgt,
+        memory,
+        src,  # just for calculating the padding mask
+        targets_positions=targets_positions,
+        inputs_segmentation=inputs_segmentation,
+        targets_segmentation=targets_segmentation,
+        decode=decode)
+    return output
+
+
+class Encoder(nn.Module):
+
+  def __init__(self,
+               d_model: int = 1024,
+               nhead: int = 16,
+               d_hid: int = 4096,
+               nlayers: int = 6,
+               dropout: float = 0.1,
+               layer_norm_eps: float = 1e-6):
+    super().__init__()
+    self.nhead = nhead
+    self.shared_embedding = None
+    self.pos_encoder = None
+    encoder_layer = TransformerEncoderLayer(
+        d_model, nhead, d_hid, dropout, layer_norm_eps=layer_norm_eps)
+    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+    self.encoder = nn.TransformerEncoder(encoder_layer, nlayers, encoder_norm)
+
+  def forward(self,
+              src: Tensor,
+              inputs_positions: Optional[Tensor] = None,
+              inputs_segmentation: Optional[Tensor] = None) -> Tensor:
     src = src.to(torch.int)
     src_mask = make_src_mask(src, inputs_segmentation, self.nhead)
     src = self.shared_embedding(src)
@@ -173,7 +233,28 @@ class Transformer(nn.Module):
     memory = self.encoder(src, mask=src_mask)
     return memory
 
-  def decode(
+
+class Decoder(nn.Module):
+
+  def __init__(self,
+               d_model: int = 1024,
+               nhead: int = 16,
+               d_hid: int = 4096,
+               nlayers: int = 6,
+               dropout: float = 0.1,
+               layer_norm_eps: float = 1e-6):
+    super().__init__()
+    self.nhead = nhead
+    self.shared_embedding = None
+    self.pos_encoder = None
+    self.decoder = TransformerDecoder(d_model,
+                                      nhead,
+                                      d_hid,
+                                      dropout,
+                                      layer_norm_eps,
+                                      nlayers)
+
+  def forward(
       self,
       tgt: Tensor,
       memory: Tensor,
@@ -200,43 +281,6 @@ class Transformer(nn.Module):
         max_len=max_len)
     normalize = math.sqrt(output.shape[-1])
     output = torch.matmul(output, self.shared_embedding.weight.T) / normalize
-    return output
-
-  def forward(self,
-              src: Tensor,
-              tgt: Tensor,
-              inputs_positions: Optional[Tensor] = None,
-              targets_positions: Optional[Tensor] = None,
-              inputs_segmentation: Optional[Tensor] = None,
-              targets_segmentation: Optional[Tensor] = None,
-              decode: bool = False) -> Tensor:
-    """
-    Args:
-      src: Tensor, shape [batch_size, seq_len]
-      tgt: Tensor, shape [batch_size, seq_len]
-      inputs_positions: Optional[Tensor], shape [batch_size, seq_len]
-      targets_positions: Optional[Tensor], shape [batch_size, seq_len]
-      inputs_segmentation: Optional[Tensor], shape [batch_size, seq_len]
-      targets_segmentation: Optional[Tensor], shape [batch_size, seq_len]
-      decode: bool
-
-    Returns:
-      output Tensor of shape [batch_size, seq_len, ntoken]
-    """
-    if src.size(0) != tgt.size(0):
-      raise RuntimeError('The batch size of src and tgt must be equal.')
-    memory = self.encode(
-        src,
-        inputs_positions=inputs_positions,
-        inputs_segmentation=inputs_segmentation)
-    output = self.decode(
-        tgt,
-        memory,
-        src,  # just for calculating the padding mask
-        targets_positions=targets_positions,
-        inputs_segmentation=inputs_segmentation,
-        targets_segmentation=targets_segmentation,
-        decode=decode)
     return output
 
 
@@ -356,9 +400,15 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
 class TransformerDecoder(nn.Module):
   r"""TransformerDecoder is a stack of N decoder layers
   Args:
+    d_model: the number of expected features in the input (default=1024).
+    nhead: the number of heads in the multiheadattention models (default=16).
+    d_hid: the dimension of the feedforward network model
+        (default=4096).
+    dropout: the dropout value (default=0.1).
+    layer_norm_eps: the eps value in layer normalization components
+        (default=1e-6).
     decoder_layer: an instance of the TransformerDecoderLayer() class (required)
     num_layers: the number of sub-decoder-layers in the decoder (required).
-    norm: the layer normalization component (optional).
   Examples::
     >>> decoder_layer = nn.TransformerDecoderLayer(d_model=512, nhead=8)
     >>> transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=6)
@@ -368,12 +418,16 @@ class TransformerDecoder(nn.Module):
   """
   __constants__ = ['norm']
 
-  def __init__(self, decoder_layer, num_layers, norm=None):
+  def __init__(self, d_model, nhead, d_hid, dropout, layer_norm_eps,
+               num_layers):
     super().__init__()
-    self.layers = nn.ModuleList(
-        [copy.deepcopy(decoder_layer) for _ in range(num_layers)])
+    self.layers = nn.ModuleList([
+        TransformerDecoderLayer(
+            d_model, nhead, d_hid, dropout, layer_norm_eps=layer_norm_eps)
+        for _ in range(num_layers)
+    ])
     self.num_layers = num_layers
-    self.norm = norm
+    self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
 
   def forward(self,
               tgt: Tensor,

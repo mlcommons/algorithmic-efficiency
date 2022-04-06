@@ -31,11 +31,12 @@ def _pytorch_to_jax(x: spec.Tensor):
 def _delete_decoding_cache(model):
   for module in model.modules():
     if len(list(module.buffers(recurse=False))) > 0:
-      names = [name for name, _ in module.named_buffers() if name != 'pe']
+      names = dict(module.named_buffers())
       # Deletion has to be done in seperate for-loop to avoid
       # mutating the OrderedDict during iteration.
-      for name in names:
-        del module._buffers[name]
+      for name in names.keys():
+        if name != 'pe':
+          del module._buffers[name]
 
 
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
@@ -99,7 +100,7 @@ class WmtWorkload(BaseWmtWorkload):
     _delete_decoding_cache(params)
     params.eval()
     encoded_inputs = torch.repeat_interleave(
-        params.encode(inputs), repeats=beam_size, dim=0)
+        params.encoder(inputs), repeats=beam_size, dim=0)
     raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
 
     def tokens_ids_to_logits(flat_ids, flat_cache):
@@ -111,7 +112,7 @@ class WmtWorkload(BaseWmtWorkload):
           params.name = _jax_to_pytorch(flat_cache[name])
       # --> [batch * beam, 1, vocab]
       flat_ids = _jax_to_pytorch(flat_ids)
-      flat_logits = params.decode(
+      flat_logits = params.decoder(
           flat_ids,
           encoded_inputs,
           raw_inputs,

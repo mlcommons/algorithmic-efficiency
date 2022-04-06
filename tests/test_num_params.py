@@ -57,8 +57,7 @@ def get_models(workload):
         jnp.ones(input_shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))['params']
     # Init PyTorch model.
-    pytorch_model = PyTorchTransformer(
-        ntoken=32000, d_model=1024, nhead=16, d_hid=4096, nlayers=6)
+    pytorch_model = PyTorchTransformer()
   else:
     raise ValueError(f'Models for workload {workload} are not available.')
   return jax_model, pytorch_model
