@@ -2,7 +2,7 @@
 
 <br />
 <p align="center">
-<a href="#"><img width="600" img src="https://nextcloud.tuebingen.mpg.de/index.php/apps/files_sharing/publicpreview/FisBKmn9ZtmEp9f?x=1272&y=973&a=true&file=mlc_lockup_black_green.png&scalingup=0" alt="MLCommons Logo"/></a>
+<a href="#"><img width="600" img src="https://nextcloud.tuebingen.mpg.de/index.php/s/oKEeMfksqdyc6Wf/preview" alt="MLCommons Logo"/></a>
 </p>
 
 <p align="center">
