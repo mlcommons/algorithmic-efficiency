@@ -71,10 +71,10 @@ class BaseWmtWorkload(spec.Workload):
                         batch_size: int):
     del data_rng
     del split
-    del data_dir
     tf.io.gfile.makedirs(WORKDIR)
     self._batch_size = batch_size
     datasets = input_pipeline.get_wmt_datasets(
+        data_dir=data_dir,
         vocab_size=self._vocab_size,
         batch_size=batch_size,
         reverse_translation=True,
@@ -86,9 +86,8 @@ class BaseWmtWorkload(spec.Workload):
 
   def compute_metrics(self, logits, labels, weights):
     """Compute summary metrics."""
-    loss, weight_sum = self.compute_weighted_cross_entropy(
-        logits, labels, weights, 0.0)
-    acc, _ = self.compute_weighted_accuracy(logits, labels, weights)
+    loss = self.compute_weighted_cross_entropy(logits, labels, weights, 0.0)
+    acc, weight_sum = self.compute_weighted_accuracy(logits, labels, weights)
     metrics = {
         'loss': loss.sum(),
         'accuracy': acc,
@@ -96,13 +95,13 @@ class BaseWmtWorkload(spec.Workload):
     }
     return metrics
 
-  def compute_weighted_accuracy(self, logits, targets, weights=None):
+  def compute_weighted_accuracy(self, logits, targets, weights):
     """Compute weighted accuracy for log probs and targets.
 
     Args:
       logits: [batch, length, num_classes] float array.
       targets: categorical targets [batch, length] int array.
-      weights: None or array of shape [batch, length]
+      weights: array of shape [batch, length]
 
     Returns:
       Tuple of scalar loss and batch normalizing factor.
@@ -110,12 +109,8 @@ class BaseWmtWorkload(spec.Workload):
     if logits.ndim != targets.ndim + 1:
       raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
                        (str(logits.shape), str(targets.shape)))
-    loss = logits.argmax(-1) == targets
-    normalizing_factor = np.prod([*logits.shape[:-1]])
-    if weights is not None:
-      loss = loss * weights
-      normalizing_factor = weights.sum()
-
+    loss = (logits.argmax(-1) == targets) * weights
+    normalizing_factor = weights.sum()
     return loss.sum(), normalizing_factor
 
   def _decode_tokens(self, toks):

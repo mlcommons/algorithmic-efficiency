@@ -143,20 +143,12 @@ class Transformer(nn.Module):
     self.shared_embedding = nn.Embedding(ntoken, d_model)
 
     encoder_layer = TransformerEncoderLayer(
-        d_model,
-        nhead,
-        d_hid,
-        dropout,
-        layer_norm_eps=layer_norm_eps)
+        d_model, nhead, d_hid, dropout, layer_norm_eps=layer_norm_eps)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
     self.encoder = nn.TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
     decoder_layer = TransformerDecoderLayer(
-        d_model,
-        nhead,
-        d_hid,
-        dropout,
-        layer_norm_eps=layer_norm_eps)
+        d_model, nhead, d_hid, dropout, layer_norm_eps=layer_norm_eps)
     decoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
     self.decoder = TransformerDecoder(decoder_layer, nlayers, decoder_norm)
 

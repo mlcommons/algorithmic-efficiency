@@ -289,7 +289,8 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
   return dataset
 
 
-def get_wmt_datasets(vocab_size: int,
+def get_wmt_datasets(data_dir: str,
+                     vocab_size: int,
                      batch_size: int,
                      reverse_translation: bool = True,
                      vocab_path: Optional[str] = None,
@@ -299,14 +300,12 @@ def get_wmt_datasets(vocab_size: int,
     vocab_path = os.path.expanduser('~/wmt_sentencepiece_model')
 
   train_ds_builder = tfds.builder(
-      'wmt17_translate/de-en',
-      data_dir='/mnt/qb/work/hennig/reschenhagen26/tensorflow_datasets/')
+      'wmt17_translate/de-en', data_dir=data_dir)
   train_data = get_raw_dataset(
       train_ds_builder, 'train', reverse_translation=reverse_translation)
 
   eval_ds_builder = tfds.builder(
-      'wmt14_translate/de-en',
-      data_dir='/mnt/qb/work/hennig/reschenhagen26/tensorflow_datasets/')
+      'wmt14_translate/de-en', data_dir=data_dir)
   eval_data = get_raw_dataset(
       eval_ds_builder, 'test', reverse_translation=reverse_translation)
 

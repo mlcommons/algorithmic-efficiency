@@ -33,14 +33,14 @@ class WmtWorkload(BaseWmtWorkload):
   def compute_weighted_cross_entropy(self,
                                      logits,
                                      targets,
-                                     weights=None,
+                                     weights,
                                      label_smoothing=0.0):
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
      logits: [batch, length, num_classes] float array.
      targets: categorical targets [batch, length] int array.
-     weights: None or array of shape [batch, length].
+     weights: array of shape [batch, length].
      label_smoothing: label smoothing constant, used to determine the on and off
        values.
 
@@ -61,14 +61,8 @@ class WmtWorkload(BaseWmtWorkload):
         targets, vocab_size, on_value=confidence, off_value=low_confidence)
 
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
-    loss = loss - normalizing_constant
-
-    normalizing_factor = np.prod(targets.shape)
-    if weights is not None:
-      loss = loss * weights
-      normalizing_factor = weights.sum()
-
-    return loss, normalizing_factor
+    loss = (loss - normalizing_constant) * weights
+    return loss
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
@@ -244,12 +238,7 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_matches = bleu.bleu_partial(references, predictions)
     all_bleu_matches = self.per_host_sum_pmap(bleu_matches)
     bleu_score = bleu.complete_bleu(*all_bleu_matches)
-
-    # Save translation samples for tensorboard.
-    exemplars = ""
-    for n in np.random.choice(np.arange(len(predictions)), 8):
-      exemplars += f"{sources[n]}\n\n{references[n]}\n\n{predictions[n]}\n\n"
-    return exemplars, bleu_score
+    return bleu_score
 
   @property
   def param_shapes(self):
@@ -347,9 +336,8 @@ class WmtWorkload(BaseWmtWorkload):
       mask_batch: Optional[spec.Tensor]) -> spec.Tensor:
     del mask_batch
     weights = jnp.where(label_batch > 0, 1.0, 0.0)
-    loss, _ = self.compute_weighted_cross_entropy(logits_batch, label_batch,
-                                                  weights)
-
+    loss = self.compute_weighted_cross_entropy(
+        logits_batch, label_batch, weights)
     return loss
 
   def eval_model(self,
@@ -366,7 +354,7 @@ class WmtWorkload(BaseWmtWorkload):
         eval_ds=self._eval_ds,
         num_eval_steps=20)
 
-    _, bleu_score = self.translate_and_calculate_bleu(
+    bleu_score = self.translate_and_calculate_bleu(
         p_pred_step=self._p_pred_step,
         p_init_cache=self._p_init_cache,
         target=params,

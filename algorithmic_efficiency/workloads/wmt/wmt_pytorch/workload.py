@@ -18,17 +18,17 @@ from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-def jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
+def _jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
   return torch.utils.dlpack.from_dlpack(
       jax.dlpack.to_dlpack(x, take_ownership=take_ownership))
 
 
-def pytorch_to_jax(x: spec.Tensor):
+def _pytorch_to_jax(x: spec.Tensor):
   x = x.contiguous()  # https://github.com/google/jax/issues/8082
   return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
 
 
-def delete_decoding_cache(model):
+def _delete_decoding_cache(model):
   for module in model.modules():
     if len(list(module.buffers(recurse=False))) > 0:
       names = [name for name, _ in module.named_buffers() if name != 'pe']
@@ -83,13 +83,9 @@ class WmtWorkload(BaseWmtWorkload):
       loss_fn = torch.nn.DataParallel(loss_fn)
 
     loss = loss_fn(logits, targets, label_smoothing=label_smoothing)
-
-    normalizing_factor = np.prod([*targets.shape])
     if weights is not None:
       loss = loss * weights
-      normalizing_factor = weights.sum()
-
-    return loss, normalizing_factor
+    return loss
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
@@ -100,7 +96,7 @@ class WmtWorkload(BaseWmtWorkload):
     params = params.module if isinstance(params,
                                          torch.nn.DataParallel) else params
     # Delete cache for autoregressive decoding.
-    delete_decoding_cache(params)
+    _delete_decoding_cache(params)
     params.eval()
     encoded_inputs = torch.repeat_interleave(
         params.encode(inputs), repeats=beam_size, dim=0)
@@ -112,9 +108,9 @@ class WmtWorkload(BaseWmtWorkload):
         for name, _ in params.named_buffers():
           if name == 'pos_encoder.pe':
             continue
-          params.name = jax_to_pytorch(flat_cache[name])
+          params.name = _jax_to_pytorch(flat_cache[name])
       # --> [batch * beam, 1, vocab]
-      flat_ids = jax_to_pytorch(flat_ids)
+      flat_ids = _jax_to_pytorch(flat_ids)
       flat_logits = params.decode(
           flat_ids,
           encoded_inputs,
@@ -122,12 +118,12 @@ class WmtWorkload(BaseWmtWorkload):
           decode=True,
           max_len=max_decode_len)
       new_flat_cache = {
-          name: pytorch_to_jax(buffer) for name,
+          name: _pytorch_to_jax(buffer) for name,
           buffer in params.named_buffers() if name != 'pos_encoder.pe'
       }
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = _pytorch_to_jax(flat_logits).squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
@@ -190,12 +186,7 @@ class WmtWorkload(BaseWmtWorkload):
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)
     bleu_score = bleu.complete_bleu(*bleu_matches)
-
-    # Save translation samples for tensorboard.
-    exemplars = ''
-    for n in np.random.choice(np.arange(len(predictions)), 8):
-      exemplars += f'{sources[n]}\n\n{references[n]}\n\n{predictions[n]}\n\n'
-    return exemplars, bleu_score
+    return bleu_score
 
   @property
   def param_shapes(self):
@@ -293,7 +284,7 @@ class WmtWorkload(BaseWmtWorkload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor) -> spec.Tensor:
-    loss, _ = self.compute_weighted_cross_entropy(logits_batch, label_batch)
+    loss = self.compute_weighted_cross_entropy(logits_batch, label_batch)
     return loss
 
   def eval_step(self, params, batch, model_state, rng):
@@ -340,7 +331,7 @@ class WmtWorkload(BaseWmtWorkload):
     eval_results = self.evaluate(
         params=params, num_eval_steps=20, model_state=model_state, rng=rng)
 
-    _, bleu_score = self.translate_and_calculate_bleu(
+    bleu_score = self.translate_and_calculate_bleu(
         params=params,
         predict_ds=self._predict_ds,
         decode_tokens=self._decode_tokens,
