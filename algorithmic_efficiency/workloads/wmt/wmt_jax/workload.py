@@ -336,8 +336,9 @@ class WmtWorkload(BaseWmtWorkload):
       mask_batch: Optional[spec.Tensor]) -> spec.Tensor:
     del mask_batch
     weights = jnp.where(label_batch > 0, 1.0, 0.0)
-    loss = self.compute_weighted_cross_entropy(
-        logits_batch, label_batch, weights)
+    loss = self.compute_weighted_cross_entropy(logits_batch,
+                                               label_batch,
+                                               weights)
     return loss
 
   def eval_model(self,
