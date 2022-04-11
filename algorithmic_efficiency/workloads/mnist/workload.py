@@ -1,10 +1,15 @@
 """MNIST workload parent class."""
+from typing import Dict
 
+import itertools
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
 
 class BaseMnistWorkload(spec.Workload):
+
+  def __init__(self):
+    self._eval_iters = {}
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['accuracy'] > self.target_value
@@ -22,7 +27,14 @@ class BaseMnistWorkload(spec.Workload):
     return 60000
 
   @property
-  def num_eval_examples(self):
+  def num_eval_train_examples(self):
+    return 10000
+
+  @property
+  def num_validation_examples(self):
+    return 10000
+
+  def num_test_examples(self):
     return 10000
 
   @property
@@ -45,23 +57,37 @@ class BaseMnistWorkload(spec.Workload):
     """Return the mean accuracy and loss as a dict."""
     raise NotImplementedError
 
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
+  def build_input_queue(self,
+                        data_rng,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int):
+    return iter(
+        self._build_dataset(data_rng, split, data_dir, global_batch_size))
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    # DO NOT SUBMIT use num_examples
     data_rng, model_rng = prng.split(rng, 2)
-    eval_batch_size = 2000
-    self._eval_ds = self.build_input_queue(
-        data_rng, 'test', data_dir, batch_size=eval_batch_size)
+    if split not in self._eval_iters:
+      eval_iter = self.build_input_queue(
+          data_rng, split, data_dir, global_batch_size=global_batch_size)
+      # Note that this stores the entire val dataset in memory.
+      self._eval_iters[split] = itertools.cycle(eval_iter)
 
     total_metrics = {
         'accuracy': 0.,
         'loss': 0.,
     }
     n_data = 0
-    for (images, labels) in self._eval_ds:
+    for (images, labels) in self._eval_iters[split]:
       images, labels = self.preprocess_for_eval(images, labels, None, None)
       logits, _ = self.model_fn(
           params,
@@ -70,7 +96,6 @@ class BaseMnistWorkload(spec.Workload):
           spec.ForwardPassMode.EVAL,
           model_rng,
           update_batch_norm=False)
-      # TODO(znado): add additional eval metrics?
       batch_metrics = self._eval_metric(logits, labels)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()

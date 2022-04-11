@@ -5,9 +5,6 @@ from algorithmic_efficiency import spec
 
 class BaseImagenetWorkload(spec.Workload):
 
-  def __init__(self):
-    self._eval_ds = None
-
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['accuracy'] > self.target_value
 
@@ -85,5 +82,6 @@ class BaseImagenetWorkload(spec.Workload):
                         data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
+                        global_batch_size: int):
+    return iter(
+        self._build_dataset(data_rng, split, data_dir, global_batch_size))

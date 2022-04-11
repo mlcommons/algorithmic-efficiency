@@ -66,10 +66,10 @@ def build_input_queue(
     data_rng: RandomState,
     split: str,
     data_dir: str,
-    batch_size: int) -> Iterator[Dict[str, Tensor]]:
+    global_batch_size: int) -> Iterator[Dict[str, Tensor]]:
 ```
 
-- The `build_input_queue` function will be called to produce the iterator over batches that the submitted data selection function consumes. It is responsible for all data reading, shuffling, repeating, preprocessing, and batching.
+- The `build_input_queue` function will be called to produce the iterator over batches that the submitted data selection function consumes. It is responsible for all data reading, shuffling, repeating, preprocessing, and batching. Note that for Jax this should return an itertor over tensors of shape `(num_devices, per_device_batch_size, ...)`, and for PyTorch this should return tensors of shape `(global_batch_size, ...)`.
 
 ###### Model initialization
 
@@ -388,7 +388,7 @@ We will score submissions using the following algorithm described in [Benchmarki
 </p>
 
 - <img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau) = (\frac{1}{n_p}) \cdot [\text{number of problems where}\, r(p,s)\leq \tau]">
-  
+
   - Need to be careful about weighting tasks to not favor any data modality. We might need to weigh the problems somehow to handle different numbers of models on a given dataset
 
 **The area between a submitted performance profile <img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau)"> and the performance profile of the reference implementation will be used as a score to compare submissions, where the area is computed by integrating <img src="https://render.githubusercontent.com/render/math?math=\log\tau"> from <img src="https://render.githubusercontent.com/render/math?math=[0, \infty)"> OR <img src="https://render.githubusercontent.com/render/math?math=\tau"> from <img src="https://render.githubusercontent.com/render/math?math=[1, \infty)"> , whether or not to log scale is a decision to be made after further investigation.**

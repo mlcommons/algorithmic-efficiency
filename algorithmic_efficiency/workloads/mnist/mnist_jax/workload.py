@@ -1,6 +1,5 @@
 """MNIST workload implemented in Jax."""
-
-from typing import Tuple
+from typing import Dict, Tuple
 
 from flax import linen as nn
 import jax
@@ -31,7 +30,6 @@ class _Model(nn.Module):
 class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
-    self._eval_ds = None
     self._param_shapes = None
     self._model = _Model()
 
@@ -51,13 +49,6 @@ class MnistWorkload(BaseMnistWorkload):
       ds = ds.repeat()
     ds = ds.batch(batch_size)
     return tfds.as_numpy(ds)
-
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   @property
   def param_shapes(self):
@@ -99,7 +90,8 @@ class MnistWorkload(BaseMnistWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    initial_params = self._model.init(rng, init_val, train=True)['params']
+    initial_params = self._model.init(
+        {'params': rng}, init_val, train=True)['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       initial_params)
     return initial_params, None

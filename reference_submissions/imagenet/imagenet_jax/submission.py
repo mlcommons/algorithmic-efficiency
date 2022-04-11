@@ -125,12 +125,6 @@ def update_params(workload: spec.Workload,
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, rng)
-
-  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
-  if (global_step + 1) % steps_per_epoch == 0:
-    # sync batch statistics across replicas once per epoch
-    new_model_state = workload.sync_batch_stats(new_model_state)
-
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

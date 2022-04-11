@@ -66,7 +66,7 @@ class LibriSpeechWorkload(spec.Workload):
                         data_rng,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
+                        global_batch_size: int):
     torch.manual_seed(data_rng[0])
     train_set = input_pipeline.LibriSpeechDataset(
         os.path.join(data_dir, "features_train-clean-100.csv"))
@@ -77,7 +77,7 @@ class LibriSpeechWorkload(spec.Workload):
 
     self._train_loader = torch.utils.data.DataLoader(
         train_set,
-        batch_size=batch_size,
+        batch_size=global_batch_size,
         shuffle=True,
         num_workers=2,
         pin_memory=True,
@@ -85,7 +85,7 @@ class LibriSpeechWorkload(spec.Workload):
 
     self._valid_loader = torch.utils.data.DataLoader(
         valid_set,
-        batch_size=batch_size,
+        batch_size=global_batch_size,
         num_workers=2,
         pin_memory=True,
         collate_fn=train_collate_fn)

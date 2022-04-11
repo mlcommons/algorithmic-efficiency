@@ -1,4 +1,5 @@
 """MNIST workload implemented in PyTorch."""
+from typing import Dict
 
 from collections import OrderedDict
 import contextlib
@@ -39,7 +40,7 @@ class _Model(nn.Module):
 class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
-    self._eval_ds = None
+    self._param_shapes = None
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -63,13 +64,6 @@ class MnistWorkload(BaseMnistWorkload):
       dataloader = itertools.cycle(dataloader)
 
     return dataloader
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
 
   @property
   def model_params_types(self):
@@ -109,10 +103,22 @@ class MnistWorkload(BaseMnistWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = _Model()
+    self._param_shapes = {
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+    }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)
     return model, None
+
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
 
   def model_fn(
       self,

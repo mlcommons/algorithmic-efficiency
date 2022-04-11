@@ -104,10 +104,14 @@ class Workload(metaclass=abc.ABCMeta):
                         data_rng: RandomState,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
+                        global_batch_size: int):
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
+
+    For Jax this should return an itertor over tensors of shape
+    (num_devices, per_device_batch_size, ...), and for PyTorch this should
+    return tensors of shape (global_batch_size, ...).
     """
 
   @property
@@ -214,11 +218,58 @@ class Workload(metaclass=abc.ABCMeta):
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: ParameterContainer,
+                           model_state: ModelAuxiliaryState,
+                           rng: RandomState,
+                           data_dir: str) -> Dict[str, float]:
+    """Evaluate the model on a given dataset split, return final scalars."""
+
   def eval_model(self,
+                 global_batch_size: int,
                  params: ParameterContainer,
                  model_state: ModelAuxiliaryState,
-                 rng: RandomState):
+                 rng: RandomState,
+                 data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    # DO NOT SUBMIT handle the case where batch size > num examples
+    train_metrics = self._eval_model_on_split(
+        split='eval_train',
+        num_examples=self.num_eval_train_examples,
+        global_batch_size=global_batch_size,
+        params=params,
+        model_state=model_state,
+        rng=rng,
+        data_dir=data_dir)
+    validation_metrics = self._eval_model_on_split(
+        'validation',
+        num_examples=self.num_validation_examples,
+        global_batch_size=global_batch_size,
+        params=params,
+        model_state=model_state,
+        rng=rng,
+        data_dir=data_dir)
+    eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
+    for k, v in validation_metrics.items():
+      eval_metrics['validation/' + k] = v
+    # Evaluate on the test set if we have one.
+    try:
+      test_metrics = self._eval_model_on_split(
+          'test',
+          num_examples=self.num_test_examples,
+          global_batch_size=global_batch_size,
+          params=params,
+          model_state=model_state,
+          rng=rng,
+          data_dir=data_dir)
+      for k, v in test_metrics.items():
+        eval_metrics['test/' + k] = v
+    except NotImplementedError:
+      pass
+    return eval_metrics
 
 
 class TrainingCompleteError(Exception):

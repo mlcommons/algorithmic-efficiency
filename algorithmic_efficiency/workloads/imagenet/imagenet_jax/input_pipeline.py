@@ -194,9 +194,10 @@ def preprocess_for_eval(image_bytes,
   return image
 
 
-def create_split(dataset_builder,
+def create_split(split,
+                 dataset_builder,
                  rng,
-                 batch_size,
+                 global_batch_size,
                  train,
                  image_size,
                  resize_size,
@@ -207,21 +208,9 @@ def create_split(dataset_builder,
                  num_batches=None,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
                  area_range=(0.08, 1.0)):
-  """Creates a split from the ImageNet dataset using TensorFlow Datasets.
-
-  Args:
-    dataset_builder: TFDS dataset builder for ImageNet.
-    batch_size: the batch size returned by the data pipeline.
-    train: Whether to load the train or evaluation split.
-    image_size: The target size of the images.
-    cache: Whether to cache the dataset.
-  Returns:
-    A `tf.data.Dataset`.
-  """
-  if train:
+  """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
+  if split == 'eval_train':
     split = 'train'
-  else:
-    split = 'validation'
 
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 
@@ -265,10 +254,10 @@ def create_split(dataset_builder,
 
   if train:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * batch_size, seed=shuffle_rng[0])
+    ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
   ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  ds = ds.batch(batch_size, drop_remainder=True)
+  ds = ds.batch(global_batch_size, drop_remainder=True)
 
   if num_batches is not None:
     ds = ds.take(num_batches)
@@ -300,9 +289,10 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def create_input_iter(dataset_builder,
+def create_input_iter(split,
+                      dataset_builder,
                       rng,
-                      batch_size,
+                      global_batch_size,
                       mean_rgb,
                       stddev_rgb,
                       image_size,
@@ -314,9 +304,10 @@ def create_input_iter(dataset_builder,
                       repeat_final_dataset,
                       num_batches):
   ds = create_split(
+      split,
       dataset_builder,
       rng,
-      batch_size,
+      global_batch_size,
       train=train,
       dtype=tf.float32,
       image_size=image_size,
@@ -330,7 +321,7 @@ def create_input_iter(dataset_builder,
       area_range=area_range)
   it = map(shard_numpy_ds, ds)
 
-  # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%
+  # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)
 
   return it
