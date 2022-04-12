@@ -1,5 +1,5 @@
 """MNIST workload parent class."""
-from typing import Dict
+from typing import Dict, Tuple
 
 import itertools
 from algorithmic_efficiency import spec
@@ -53,17 +53,18 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 10
 
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      images: spec.Tensor,
+      labels: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    raise NotImplementedError
+
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     raise NotImplementedError
-
-  def build_input_queue(self,
-                        data_rng,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
-    return iter(
-        self._build_dataset(data_rng, split, data_dir, global_batch_size))
 
   def _eval_model_on_split(self,
                            split: str,
@@ -87,16 +88,13 @@ class BaseMnistWorkload(spec.Workload):
         'loss': 0.,
     }
     n_data = 0
-    for (images, labels) in self._eval_iters[split]:
-      images, labels = self.preprocess_for_eval(images, labels, None, None)
-      logits, _ = self.model_fn(
+    for (images, labels, _) in self._eval_iters[split]:
+      batch_metrics = self._eval_model(
           params,
           images,
+          labels,
           model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, labels)
+          model_rng)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }

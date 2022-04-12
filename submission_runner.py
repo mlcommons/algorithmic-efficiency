@@ -205,8 +205,8 @@ def train_once(workload: spec.Workload,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(model_params,
-                                               global_batch_size,
+      latest_eval_result = workload.eval_model(global_batch_size,
+                                               model_params,
                                                model_state,
                                                eval_rng,
                                                data_dir)

@@ -17,13 +17,53 @@ from absl.testing import parameterized
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
+import numpy as np
 import submission_runner
 
+flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 FLAGS = flags.FLAGS
 
 
+def _make_fake_input_queue_fn(
+    workload_name, framework, global_batch_size, num_steps):
+
+  def f(*unused_args, **unused_kwargs):
+    del unused_args
+    del unused_kwargs
+    if workload_name == 'mnist':
+      data_shape = (28, 28, 1)
+      num_classes = 10
+    elif workload_name == 'imagenet':
+      data_shape = (224, 224, 3)
+      num_classes = 1000
+    else:
+      raise ValueError(
+          f'Workload {workload_name} does not have a fake data shape defined '
+          'yet, you can add it or use --use_fake_input_queue=false.')
+
+    if framework == 'jax':
+      batch_shape = (1, global_batch_size)
+    else:
+      batch_shape = (global_batch_size,)
+
+    np.random.seed(42)
+    for _ in range(num_steps):
+      examples = np.random.normal(size=(*batch_shape, *data_shape))
+      labels = np.random.randint(0, num_classes, size=batch_shape)
+      # labels = np.eye(num_classes)[dense_labels]
+      masks = np.ones_like((*batch_shape, *data_shape))
+      yield examples, labels, masks
+
+  return f
+
+
 def _test_submission(
-    workload_name, framework, submission_path, search_space_path, data_dir):
+    workload_name,
+    framework,
+    submission_path,
+    search_space_path,
+    data_dir,
+    use_fake_input_queue):
   FLAGS.framework = framework
   workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload_name])
   workload_metadata['workload_path'] = os.path.join(
@@ -47,16 +87,19 @@ def _test_submission(
   # Get a sample hyperparameter setting.
   with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
     hyperparameters = halton.generate_search(
-        json.load(search_space_file), 1)[0]
-    print(hyperparameters)
-    return
+        json.load(search_space_file), num_trials=1)[0]
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
   model_params, model_state = workload.init_model_fn(model_init_rng)
-  return
+  if use_fake_input_queue:
+    workload.build_input_queue = _make_fake_input_queue_fn(
+        workload_name, framework, global_batch_size, num_steps=1)
   input_queue = workload.build_input_queue(
-      data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
+      data_rng,
+      'train',
+      data_dir=data_dir,
+      global_batch_size=global_batch_size)
   optimizer_state = init_optimizer_state(workload,
                                          model_params,
                                          model_state,
@@ -89,8 +132,8 @@ def _test_submission(
       global_step=global_step,
       rng=update_rng)
 
-  eval_result = workload.eval_model(model_params,
-                                    global_batch_size,
+  eval_result = workload.eval_model(global_batch_size,
+                                    model_params,
                                     model_state,
                                     eval_rng,
                                     data_dir)
@@ -124,7 +167,8 @@ class ReferenceSubmissionTest(parameterized.TestCase):
               framework,
               submission_path,
               search_space_path,
-              data_dir)
+              data_dir,
+              FLAGS.use_fake_input_queue)
 
 
 

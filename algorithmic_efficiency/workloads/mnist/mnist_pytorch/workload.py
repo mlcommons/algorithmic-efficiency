@@ -40,6 +40,7 @@ class _Model(nn.Module):
 class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
+    super().__init__()
     self._param_shapes = None
 
   def _build_dataset(self,
@@ -77,28 +78,16 @@ class MnistWorkload(BaseMnistWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
-    del rng
-    return self.preprocess_for_eval(selected_raw_input_batch,
-                                    selected_label_batch,
-                                    None,
-                                    None)
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    raw_input_batch_size = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(raw_input_batch_size, -1)
-    return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
+  def build_input_queue(self,
+                        data_rng,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int):
+    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    for (images, labels) in ds:
+      images_size = images.size()[0]
+      images = images.view(images_size, -1)
+      yield (images.to(DEVICE), labels.to(DEVICE), None)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
@@ -162,10 +151,23 @@ class MnistWorkload(BaseMnistWorkload):
 
     return F.nll_loss(logits_batch, label_batch, reduction='none')
 
-  def _eval_metric(self, logits, labels):
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      images: spec.Tensor,
+      labels: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
+    logits, _ = self.model_fn(
+        params,
+        images,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
-    # not accuracy, but nr. of correct predictions
+    # Number of correct predictions.
     accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
     n_data = len(logits)
