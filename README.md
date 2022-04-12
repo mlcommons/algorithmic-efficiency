@@ -123,6 +123,15 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 
    </details>
 
+## Packages to be installed from source
+
+some of the dependencies need to be installed from source like `ctcdecode`, here's the steps for source installation of `ctcdecode`
+
+1) git clone https://github.com/githubharald/CTCDecoder.git 
+2) cd CTCDecoder 
+3) pip install .
+
+
 ## Running a workload
 
 ### JAX
