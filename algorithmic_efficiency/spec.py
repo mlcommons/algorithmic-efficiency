@@ -235,7 +235,7 @@ class Workload(metaclass=abc.ABCMeta):
                  rng: RandomState,
                  data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
-    # DO NOT SUBMIT handle the case where batch size > num examples
+    # DO NOT SUBMIT handle the case where batch size > num examples or when num_examples % batch_size != 0
     train_metrics = self._eval_model_on_split(
         split='eval_train',
         num_examples=self.num_eval_train_examples,
@@ -244,6 +244,8 @@ class Workload(metaclass=abc.ABCMeta):
         model_state=model_state,
         rng=rng,
         data_dir=data_dir)
+    eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
+    # We always require a validation set.
     validation_metrics = self._eval_model_on_split(
         'validation',
         num_examples=self.num_validation_examples,
@@ -252,7 +254,6 @@ class Workload(metaclass=abc.ABCMeta):
         model_state=model_state,
         rng=rng,
         data_dir=data_dir)
-    eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
     # Evaluate on the test set if we have one.

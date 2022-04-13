@@ -9,6 +9,7 @@ from typing import Tuple
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.utils.data as data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
@@ -34,14 +35,11 @@ class _Model(nn.Module):
                      ('output', torch.nn.LogSoftmax(dim=1))]))
 
   def forward(self, x: spec.Tensor):
+    x = x.view(x.size()[0], -1)
     return self.net(x)
 
 
 class MnistWorkload(BaseMnistWorkload):
-
-  def __init__(self):
-    super().__init__()
-    self._param_shapes = None
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -49,18 +47,26 @@ class MnistWorkload(BaseMnistWorkload):
                      data_dir: str,
                      batch_size: int):
 
-    assert split in ['train', 'test']
-    is_train = split == 'train'
+    dataloader_split = 'train' if split == 'eval_train' else split
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
     dataset = MNIST(
-        data_dir, train=is_train, download=True, transform=transform)
+        data_dir, train=dataloader_split, download=True, transform=transform)
+    if split != 'test':
+      train_dataset, validation_dataset = data_utils.random_split(
+          dataset,
+          [self.num_train_examples, self.num_validation_examples],
+          generator=torch.Generator().manual_seed(int(data_rng[0])))
+      if split in ['train', 'eval_train']:
+        dataset = train_dataset
+      elif split == 'validation':
+        dataset = validation_dataset
     # TODO: set seeds properly
+    is_train = split == 'train'
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=is_train, pin_memory=True)
-
     if is_train:
       dataloader = itertools.cycle(dataloader)
 
@@ -68,10 +74,19 @@ class MnistWorkload(BaseMnistWorkload):
 
   @property
   def model_params_types(self):
-    """
-    TODO: return type tuples from model as a tree
-    """
-    raise NotImplementedError
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.model_params_types!')
+    if self._param_types is None:
+      self._param_types = {}
+      for name in self._param_shapes.keys():
+        if 'bias' in name:
+          self._param_types[name] = spec.ParameterType.BIAS
+        else:
+          self._param_types[name] = spec.ParameterType.WEIGHT
+    return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
@@ -84,9 +99,7 @@ class MnistWorkload(BaseMnistWorkload):
                         data_dir: str,
                         global_batch_size: int):
     ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for (images, labels) in ds:
-      images_size = images.size()[0]
-      images = images.view(images_size, -1)
+    for images, labels in ds:
       yield (images.to(DEVICE), labels.to(DEVICE), None)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
@@ -170,5 +183,5 @@ class MnistWorkload(BaseMnistWorkload):
     # Number of correct predictions.
     accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
-    n_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
+    num_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}

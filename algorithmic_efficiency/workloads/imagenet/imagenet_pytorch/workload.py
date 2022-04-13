@@ -61,7 +61,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
         'accuracy': 0.,
         'loss': 0.,
     }
-    n_data = 0
+    num_data = 0
     for (images, labels) in self._eval_iters[split]:
       images = images.float().to(DEVICE)
       labels = labels.float().to(DEVICE)
@@ -76,8 +76,8 @@ class ImagenetWorkload(BaseImagenetWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-      n_data += batch_metrics['n_data']
-    return {k: float(v / n_data) for k, v in total_metrics.items()}
+      num_data += batch_metrics['num_data']
+    return {k: float(v / num_data) for k, v in total_metrics.items()}
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -204,5 +204,5 @@ class ImagenetWorkload(BaseImagenetWorkload):
     # not accuracy, but nr. of correct predictions
     accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
-    n_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
+    num_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}

@@ -1,5 +1,11 @@
 """Test that each reference submission can run a train and eval step.
 
+This is a brief test that runs the for the workload and reference submission
+code for one train and one eval step for all workloads, without the real data
+iterator because it is not realistic to have all datasets available at testing
+time. For end-to-end tests of submission_runner.py see
+submission_runner_test.py.
+
 Assumes that each reference submission is using the external tuning ruleset and
 that it is defined in:
 "reference_submissions/{workload}/{workload}_{framework}/submission.py"
@@ -13,19 +19,29 @@ import os
 from absl import flags
 from absl import logging
 from absl.testing import absltest
-from absl.testing import parameterized
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 import numpy as np
 import submission_runner
+import torch
+
 
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 FLAGS = flags.FLAGS
+PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+
+_EXPECTED_METRICS = {
+  'mnist': {
+    'jax': {'test/accuracy': 0.0947265625},
+    'pytorch': {'test/accuracy': 0.109375},
+  }
+}
 
 
 def _make_fake_input_queue_fn(
-    workload_name, framework, global_batch_size, num_steps):
+    workload_name, framework, global_batch_size, num_unique_fake_batches):
 
   def f(*unused_args, **unused_kwargs):
     del unused_args
@@ -47,11 +63,15 @@ def _make_fake_input_queue_fn(
       batch_shape = (global_batch_size,)
 
     np.random.seed(42)
-    for _ in range(num_steps):
-      examples = np.random.normal(size=(*batch_shape, *data_shape))
+    for _ in range(num_unique_fake_batches):
+      examples = np.random.normal(
+          size=(*batch_shape, *data_shape)).astype(np.float32)
       labels = np.random.randint(0, num_classes, size=batch_shape)
       # labels = np.eye(num_classes)[dense_labels]
-      masks = np.ones_like((*batch_shape, *data_shape))
+      masks = np.ones_like((*batch_shape, *data_shape), dtype=np.float32)
+      if framework == 'pytorch':
+        examples = torch.from_numpy(examples).to(PYTORCH_DEVICE)
+        labels = torch.from_numpy(labels).to(PYTORCH_DEVICE)
       yield examples, labels, masks
 
   return f
@@ -94,7 +114,7 @@ def _test_submission(
   model_params, model_state = workload.init_model_fn(model_init_rng)
   if use_fake_input_queue:
     workload.build_input_queue = _make_fake_input_queue_fn(
-        workload_name, framework, global_batch_size, num_steps=1)
+        workload_name, framework, global_batch_size, num_unique_fake_batches=1)
   input_queue = workload.build_input_queue(
       data_rng,
       'train',
@@ -137,12 +157,10 @@ def _test_submission(
                                     model_state,
                                     eval_rng,
                                     data_dir)
-  print(eval_result)
+  return eval_result
 
 
-
-
-class ReferenceSubmissionTest(parameterized.TestCase):
+class ReferenceSubmissionTest(absltest.TestCase):
   """Tests for reference submissions."""
 
   def test_submission(self):
@@ -161,14 +179,19 @@ class ReferenceSubmissionTest(parameterized.TestCase):
               f'reference_submissions/{workload_name}/'
               f'{workload_name}_{framework}/submission.py')
           data_dir = None # DO NOT SUBMIT
-          logging.info(f'Testing {workload_name} in {framework}.')
-          _test_submission(
+          logging.info(f'\n\n========= Testing {workload_name} in {framework}.')
+          eval_result = _test_submission(
               workload_name,
               framework,
               submission_path,
               search_space_path,
               data_dir,
               FLAGS.use_fake_input_queue)
+          expected = _EXPECTED_METRICS[workload_name][framework]
+          metric_name = list(expected.keys())[0]
+          actual_value = eval_result[metric_name]
+          expected_value = expected[metric_name]
+          self.assertAlmostEqual(actual_value, expected_value, places=3)
 
 
 

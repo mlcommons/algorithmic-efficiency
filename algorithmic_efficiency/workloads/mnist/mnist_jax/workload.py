@@ -47,8 +47,6 @@ class MnistWorkload(BaseMnistWorkload):
 
   def __init__(self):
     super().__init__()
-    self._param_shapes = None
-    self._param_types = None
     self._model = _Model()
 
   def _normalize(self, image):
@@ -59,8 +57,14 @@ class MnistWorkload(BaseMnistWorkload):
                      split: str,
                      data_dir: str,
                      batch_size):
-    tfds_split = 'train' if split == 'eval_train' else split
-    ds = tfds.load('mnist', split=tfds_split)
+    if split == 'eval_train':
+      tfds_split = 'train[:50000]'
+    elif split == 'validation':
+      tfds_split = 'train[50000:]'
+    else:
+      tfds_split = split
+    ds = tfds.load(
+        'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.cache()
     ds = ds.map(lambda x: (self._normalize(x['image']), x['label']))
     if split == 'train':
@@ -98,8 +102,9 @@ class MnistWorkload(BaseMnistWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    return iter(
-        self._build_dataset(data_rng, split, data_dir, global_batch_size))
+    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    for images, labels in iter(ds):
+      yield images, labels, None
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
@@ -120,8 +125,6 @@ class MnistWorkload(BaseMnistWorkload):
       return jax.nn.sigmoid(logits_batch)
     if loss_type == spec.LossType.MEAN_SQUARED_ERROR:
       return logits_batch
-
-
 
   def model_fn(
       self,
@@ -168,7 +171,7 @@ class MnistWorkload(BaseMnistWorkload):
         update_batch_norm=False)
     accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == labels)
     loss = jnp.sum(self.loss_fn(labels, logits))
-    n_data = len(logits)
-    metrics = {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
+    num_data = len(logits)
+    metrics = {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics
