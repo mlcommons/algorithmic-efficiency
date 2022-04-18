@@ -56,7 +56,7 @@ class MaskConv(nn.Module):
     lengths = lengths.view(-1, 1, 1, 1).to(device=x.device, non_blocking=True)
     for module in self.seq_module:
       x = module(x)
-      mask = torch.arange(x.size(2), device=x.device).view(1, 1, -1, 1) > lengths
+      mask = torch.arange(x.size(2), device=x.device).view(1, 1, -1, 1) >= lengths
       x = x.masked_fill(mask, 0)
     return x, lengths
 
