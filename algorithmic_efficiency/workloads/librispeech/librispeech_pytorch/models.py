@@ -162,7 +162,7 @@ class CNNLSTM(nn.Module):
     sizes = x.size()
     x = x.view(sizes[0], sizes[1] * sizes[2],
                sizes[3])  # Collapse feature dimension
-    x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
+    x = x.permute(2, 0, 1).contiguous()  # TxNxH
 
     for rnn in self.rnns:
       x = rnn(x, output_lengths)
