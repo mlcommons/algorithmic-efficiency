@@ -89,7 +89,6 @@ class BatchRNN(nn.Module):
     x, _ = nn.utils.rnn.pad_packed_sequence(
         x, batch_first=True, total_length=total_length)
     x = x.transpose(0, 1)
-    hidden = x.size(-1) // 2
     t, n, h = x.size()
     x = x.view(t, n, 2, h // 2).sum(2).view(t, n, h // 2)  # (TxNxH*2) -> (TxNxH) by sum
     return x
