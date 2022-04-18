@@ -367,7 +367,7 @@ class Recorder:
       f.write('\n\nOS Packages:\n')
       f.write(os_package_list)
 
-  def trial_complete(
+  def save_trial_results(
       self,
       workload: spec.Workload,
       hyperparameters: Optional[spec.Hyperparamters],
@@ -401,7 +401,7 @@ class Recorder:
     with open(results_filepath, 'w', encoding='utf-8') as f:
       json.dump(trial_data, f, ensure_ascii=False, indent=4)
 
-  def workload_complete(self, score: float):
+  def save_workload_results(self, score: float):
     """Set status to 'COMPLETE' in the workload_results.json file."""
     self._write_workload_results_file(score=score, status='COMPLETE')
 
@@ -462,7 +462,7 @@ class Recorder:
 
     return eval_data
 
-  def save_eval(
+  def save_eval_results(
       self,
       workload: spec.Workload,
       hyperparameters: Optional[spec.Hyperparamters],

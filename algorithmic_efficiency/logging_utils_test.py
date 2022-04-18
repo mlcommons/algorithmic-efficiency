@@ -71,7 +71,7 @@ class LoggingUtilsTest(absltest.TestCase):
     training_complete = False
 
     # Save a mock model evaluation
-    self.recorder.save_eval(self.workload,
+    self.recorder.save_eval_results(self.workload,
                             hyperparameters,
                             trial_idx,
                             global_step,
@@ -107,7 +107,7 @@ class LoggingUtilsTest(absltest.TestCase):
     training_complete = False
 
     # Save a mock model evaluation
-    self.recorder.trial_complete(self.workload,
+    self.recorder.save_trial_results(self.workload,
                                  hyperparameters,
                                  trial_idx,
                                  global_step,
@@ -130,7 +130,7 @@ class LoggingUtilsTest(absltest.TestCase):
 
   def test_workload_complete(self):
     score = 100
-    self.recorder.workload_complete(score)
+    self.recorder.save_workload_results(score)
 
     # Assert the score '100' has been saved to 'workload_results.json'
     output_file = os.path.join(self.logging_dir,
