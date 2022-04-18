@@ -112,6 +112,44 @@ def _get_utilization() -> dict:
 
   return util_data
 
+def _get_system_hardware_info() -> dict:
+  system_hardware_info = {}
+  try:
+    system_hardware_info['cpu_model_name'] = _get_cpu_model_name()
+    system_hardware_info['cpu_count'] = psutil.cpu_count()
+  except:  # pylint: disable=bare-except
+    logging.warn('Unable to record cpu information. Continuing without it.')
+
+  gpus = GPUtil.getGPUs()
+  if gpus:
+    try:
+      system_hardware_info['gpu_model_name'] = gpus[0].name
+      system_hardware_info['gpu_count'] = len(gpus)
+      system_hardware_info['gpu_driver'] = gpus[0].driver
+    except:  # pylint: disable=bare-except
+      logging.warn('Unable to record gpu information. Continuing without it.')
+
+  return system_hardware_info
+
+def _get_system_software_info() -> dict:
+  system_software_info = {}
+
+  system_software_info['os_platform'] = \
+      platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
+  system_software_info['python_version'] = platform.python_version()  # Ex. '3.8.10'
+  system_software_info['python_compiler'] = platform.python_compiler(
+  )  # Ex. 'GCC 9.3.0'
+  # Note: do not store hostname as that may be sensitive
+
+  try:
+    system_software_info['git_branch'] = _get_git_branch()
+    system_software_info['git_commit_hash'] = _get_git_commit_hash()
+    # Note: do not store git repo url as it may be sensitive or contain a
+    # secret.
+  except:  # pylint: disable=bare-except
+    logging.warn('Unable to record git information. Continuing without it.')
+
+  return system_software_info
 
 def _get_git_commit_hash() -> str:
   return subprocess.check_output(['git', 'rev-parse',
@@ -297,36 +335,8 @@ class Recorder:
       extra_metadata = _get_extra_metadata_as_dict(self._extra_metadata)
       workload_data.update(extra_metadata)
 
-    # System Information
-    workload_data['os_platform'] = \
-        platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
-    workload_data['python_version'] = platform.python_version()  # Ex. '3.8.10'
-    workload_data['python_compiler'] = platform.python_compiler(
-    )  # Ex. 'GCC 9.3.0'
-    # Note: do not store hostname as that may be sensitive
-
-    try:
-      workload_data['git_branch'] = _get_git_branch()
-      workload_data['git_commit_hash'] = _get_git_commit_hash()
-      # Note: do not store git repo url as it may be sensitive or contain a
-      # secret.
-    except:  # pylint: disable=bare-except
-      logging.warn('Unable to record git information. Continuing without it.')
-
-    try:
-      workload_data['cpu_model_name'] = _get_cpu_model_name()
-      workload_data['cpu_count'] = psutil.cpu_count()
-    except:  # pylint: disable=bare-except
-      logging.warn('Unable to record cpu information. Continuing without it.')
-
-    gpus = GPUtil.getGPUs()
-    if gpus:
-      try:
-        workload_data['gpu_model_name'] = gpus[0].name
-        workload_data['gpu_count'] = len(gpus)
-        workload_data['gpu_driver'] = gpus[0].driver
-      except:  # pylint: disable=bare-except
-        logging.warn('Unable to record gpu information. Continuing without it.')
+    workload_data.update(_get_system_software_info())
+    workload_data.update(_get_system_hardware_info())
 
     # Save workload_results.json
     os.makedirs(self._workload_log_dir, exist_ok=True)
