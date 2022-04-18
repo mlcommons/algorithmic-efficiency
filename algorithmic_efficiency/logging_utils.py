@@ -392,6 +392,8 @@ class Recorder:
                                              goal_reached,
                                              is_time_remaining,
                                              training_complete)
+    trial_data.update(_get_system_software_info())
+    trial_data.update(_get_system_hardware_info())
     trial_data['status'] = 'COMPLETE'
 
     # Save trial_results.json
@@ -493,6 +495,8 @@ class Recorder:
                                             goal_reached,
                                             is_time_remaining,
                                             training_complete)
+    eval_data.update(_get_system_software_info())
+    eval_data.update(_get_system_hardware_info())
 
     # Save to CSV file
     results_filepath = os.path.join(self._workload_log_dir,
