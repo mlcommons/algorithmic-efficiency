@@ -289,6 +289,8 @@ class Recorder:
       logging.warn(
           'Warning: You may overwrite data because recording output path '
           f'already exists: {self._workload_log_dir}')
+    self._get_system_software_info = _get_system_software_info()
+    self._get_system_hardware_info = _get_system_hardware_info()
     # Record initial information about workload at startup
     self._write_workload_results_file(status='INCOMPLETE')
     self._write_package_list_file()
@@ -335,8 +337,8 @@ class Recorder:
       extra_metadata = _get_extra_metadata_as_dict(self._extra_metadata)
       workload_data.update(extra_metadata)
 
-    workload_data.update(_get_system_software_info())
-    workload_data.update(_get_system_hardware_info())
+    workload_data.update(self._get_system_software_info)
+    workload_data.update(self._get_system_hardware_info)
 
     # Save workload_results.json
     os.makedirs(self._workload_log_dir, exist_ok=True)
@@ -392,8 +394,8 @@ class Recorder:
                                              goal_reached,
                                              is_time_remaining,
                                              training_complete)
-    trial_data.update(_get_system_software_info())
-    trial_data.update(_get_system_hardware_info())
+    trial_data.update(self._get_system_software_info)
+    trial_data.update(self._get_system_hardware_info)
     trial_data['status'] = 'COMPLETE'
 
     # Save trial_results.json
@@ -495,8 +497,8 @@ class Recorder:
                                             goal_reached,
                                             is_time_remaining,
                                             training_complete)
-    eval_data.update(_get_system_software_info())
-    eval_data.update(_get_system_hardware_info())
+    eval_data.update(self._get_system_software_info)
+    eval_data.update(self._get_system_hardware_info)
 
     # Save to CSV file
     results_filepath = os.path.join(self._workload_log_dir,
