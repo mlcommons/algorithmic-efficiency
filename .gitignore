@@ -10,3 +10,5 @@ makefile
 logs*/
 *.png
 *.csv
+wandb/
+
