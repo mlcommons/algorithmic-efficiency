@@ -10,6 +10,7 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
+import torch
 
 # Constants
 # We assume the default End-of-Sentence token id is 2 (SentencePiece).
@@ -36,7 +37,7 @@ def brevity_penalty(alpha, length):
 
 def add_beam_dim(x, beam_size):
   """Creates new beam dimension in non-scalar array and tiles into it."""
-  if x.ndim == 0:  # ignore scalars (e.g. cache index)
+  if x.ndim < 2:  # ignore scalars (e.g. cache index)
     return x
   x = jnp.expand_dims(x, axis=1)
   tile_dims = [1] * x.ndim
@@ -46,14 +47,14 @@ def add_beam_dim(x, beam_size):
 
 def flatten_beam_dim(x):
   """Flattens the first two dimensions of a non-scalar array."""
-  if x.ndim == 0:  # ignore scalars (e.g. cache index)
+  if x.ndim < 2:  # ignore scalars (e.g. cache index)
     return x
   return x.reshape((x.shape[0] * x.shape[1],) + x.shape[2:])
 
 
 def unflatten_beam_dim(x, batch_size, beam_size):
   """Unflattens the first, flat batch*beam dimension of a non-scalar array."""
-  if x.ndim == 0:  # ignore scalars (e.g. cache index)
+  if x.ndim < 2:  # ignore scalars (e.g. cache index)
     return x
   assert batch_size * beam_size == x.shape[0]
   return x.reshape((batch_size, beam_size) + x.shape[1:])
@@ -82,9 +83,11 @@ def gather_beams(nested, beam_indices, batch_size, new_beam_size):
       (batch_size, new_beam_size))
 
   def gather_fn(x):
-    if x.ndim == 0:  # ignore scalars (e.g. cache index)
+    if x.ndim < 2:  # ignore scalars (e.g. cache index)
       return x
     else:
+      if isinstance(x, torch.Tensor):
+        return x[np.asarray(batch_indices), np.asarray(beam_indices)]
       return x[batch_indices, beam_indices]
 
   return jax.tree_map(gather_fn, nested)

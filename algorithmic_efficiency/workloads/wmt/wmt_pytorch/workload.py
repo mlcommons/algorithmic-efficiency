@@ -28,17 +28,6 @@ def _pytorch_to_jax(x: spec.Tensor):
   return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
 
 
-def _delete_decoding_cache(model):
-  for module in model.modules():
-    if len(list(module.buffers(recurse=False))) > 0:
-      names = dict(module.named_buffers())
-      # Deletion has to be done in seperate for-loop to avoid
-      # mutating the OrderedDict during iteration.
-      for name in names.keys():
-        if name != 'pe':
-          del module._buffers[name]
-
-
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
 
   def forward(self, logits, targets, label_smoothing=0.1):
@@ -96,32 +85,28 @@ class WmtWorkload(BaseWmtWorkload):
     # This means that decoding will always happen on a single GPU!
     params = params.module if isinstance(params,
                                          torch.nn.DataParallel) else params
-    # Delete cache for autoregressive decoding.
-    _delete_decoding_cache(params)
     params.eval()
+    encoder = params.encoder
+    if torch.cuda.device_count() > 1:
+      encoder = torch.nn.DataParallel(encoder)
     encoded_inputs = torch.repeat_interleave(
-        params.encoder(inputs), repeats=beam_size, dim=0)
+        encoder(inputs), repeats=beam_size, dim=0)
     raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
+    decoder = params.decoder
+    if torch.cuda.device_count() > 1:
+      decoder = torch.nn.DataParallel(decoder)
 
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
-      if flat_cache is not None:
-        for name, _ in params.named_buffers():
-          if name == 'pos_encoder.pe':
-            continue
-          params.name = _jax_to_pytorch(flat_cache[name])
       # --> [batch * beam, 1, vocab]
       flat_ids = _jax_to_pytorch(flat_ids)
-      flat_logits = params.decoder(
+      flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
           raw_inputs,
           decode=True,
-          max_len=max_decode_len)
-      new_flat_cache = {
-          name: _pytorch_to_jax(buffer) for name,
-          buffer in params.named_buffers() if name != 'pos_encoder.pe'
-      }
+          max_len=max_decode_len,
+          cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
       flat_logits = _pytorch_to_jax(flat_logits).squeeze(axis=1)

@@ -263,7 +263,8 @@ class Decoder(nn.Module):
       inputs_segmentation: Optional[Tensor] = None,
       targets_segmentation: Optional[Tensor] = None,
       decode: bool = False,
-      max_len: Optional[int] = None) -> Tensor:
+      max_len: Optional[int] = None,
+      cache: Optional[dict] = None) -> Tensor:
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
         tgt, src, inputs_segmentation, targets_segmentation,
@@ -271,16 +272,23 @@ class Decoder(nn.Module):
     if not decode:
       tgt = shift_right(tgt)
     tgt = self.shared_embedding(tgt)
-    tgt = self.pos_encoder(tgt, targets_positions, decode=decode)
+    tgt = self.pos_encoder(tgt, targets_positions, decode=decode, cache=cache)
+    if decode:
+      tgt, cache = tgt
     output = self.decoder(
         tgt,
         memory,
         tgt_mask=tgt_mask,
         memory_mask=memory_mask,
         decode=decode,
-        max_len=max_len)
+        max_len=max_len,
+        cache=cache)
+    if decode:
+      output, cache = output
     normalize = math.sqrt(output.shape[-1])
     output = torch.matmul(output, self.shared_embedding.weight.T) / normalize
+    if decode:
+      return output, cache
     return output
 
 
@@ -301,7 +309,8 @@ class PositionalEncoding(nn.Module):
   def forward(self,
               x: Tensor,
               inputs_positions: Tensor,
-              decode: bool = False) -> Tensor:
+              decode: bool = False,
+              cache: Optional[dict] = None) -> Tensor:
     """
     Args:
       x: Tensor, shape [batch_size, seq_len, embedding_dim]
@@ -310,14 +319,15 @@ class PositionalEncoding(nn.Module):
     """
     # We use a cache position index for tracking decoding position.
     if decode:
-      buffer = dict(self.named_buffers())
-      if 'cache_index' in buffer:
-        x = x + self.pe[0, self.cache_index, :]
-        self.cache_index += 1
-        return self.dropout(x)
-      self.register_buffer(
-          'cache_index',
-          torch.tensor(0, dtype=torch.long, device=self.pe.device))
+      name = self._get_name()
+      if cache is None:
+        cache = {}
+        cache[name] = {}
+        cache[name]['cache_index'] = torch.tensor(
+            0, dtype=torch.long, device=self.pe.device)
+      x = x + self.pe[0, cache[name]['cache_index'], :]
+      cache[name]['cache_index'] += 1
+      return self.dropout(x), cache
     if inputs_positions is not None:
       x = x + self.pe[0, inputs_positions, :]
     else:
@@ -437,7 +447,8 @@ class TransformerDecoder(nn.Module):
               tgt_key_padding_mask: Optional[Tensor] = None,
               memory_key_padding_mask: Optional[Tensor] = None,
               decode: bool = False,
-              max_len: Optional[int] = None) -> Tensor:
+              max_len: Optional[int] = None,
+              cache: Optional[dict] = None) -> Tensor:
     r"""Pass the inputs (and mask) through the decoder layer in turn.
     Args:
       tgt: the sequence to the decoder (required).
@@ -453,8 +464,8 @@ class TransformerDecoder(nn.Module):
     """
     output = tgt
 
-    for mod in self.layers:
-      output = mod(
+    for idx, mod in enumerate(self.layers):
+      output, cache = mod(
           output,
           memory,
           tgt_mask=tgt_mask,
@@ -462,11 +473,15 @@ class TransformerDecoder(nn.Module):
           tgt_key_padding_mask=tgt_key_padding_mask,
           memory_key_padding_mask=memory_key_padding_mask,
           decode=decode,
-          max_len=max_len)
+          max_len=max_len,
+          cache=cache,
+          index=idx)
 
     if self.norm is not None:
       output = self.norm(output)
 
+    if decode:
+      return output, cache
     return output
 
 
@@ -555,7 +570,9 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
               tgt_key_padding_mask: Optional[Tensor] = None,
               memory_key_padding_mask: Optional[Tensor] = None,
               decode: bool = False,
-              max_len: Optional[int] = None) -> Tensor:
+              max_len: Optional[int] = None,
+              cache: Optional[dict] = None,
+              index: Optional[int] = None) -> Tensor:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -573,23 +590,33 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
 
     x = tgt
     if self.norm_first:
-      x = x + self._sa_block(
+      sa_out, cache = self._sa_block(
           self.norm1(x),
           tgt_mask,
           tgt_key_padding_mask,
           decode=decode,
-          max_len=max_len)
+          max_len=max_len,
+          cache=cache,
+          index=index)
+      x = x + sa_out
       x = x + self._mha_block(
           self.norm2(x), memory, memory_mask, memory_key_padding_mask)
       x = x + self._ff_block(self.norm3(x))
     else:
-      x = self.norm1(x + self._sa_block(
-          x, tgt_mask, tgt_key_padding_mask, decode=decode, max_len=max_len))
+      sa_out, cache = self._sa_block(
+          x,
+          tgt_mask,
+          tgt_key_padding_mask,
+          decode=decode,
+          max_len=max_len,
+          cache=cache,
+          index=index)
+      x = self.norm1(x + sa_out)
       x = self.norm2(
           x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
       x = self.norm3(x + self._ff_block(x))
 
-    return x
+    return x, cache
 
   # self-attention block
   def _sa_block(self,
@@ -597,8 +624,10 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
                 attn_mask: Optional[Tensor],
                 key_padding_mask: Optional[Tensor],
                 decode: bool = False,
-                max_len: Optional[int] = None) -> Tensor:
-    x = self.self_attn(
+                max_len: Optional[int] = None,
+                cache: Optional[dict] = None,
+                index: Optional[int] = None) -> Tensor:
+    x, _, cache = self.self_attn(
         x,
         x,
         x,
@@ -606,8 +635,10 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         key_padding_mask=key_padding_mask,
         need_weights=False,
         decode=decode,
-        max_len=max_len)[0]
-    return self.dropout1(x)
+        max_len=max_len,
+        cache=cache,
+        index=index)
+    return self.dropout1(x), cache
 
 
 # Only difference to standard PyTorch class is that 'self._qkv_same_embed_dim'
@@ -692,7 +723,9 @@ class MultiheadAttention(nn.MultiheadAttention):
               attn_mask: Optional[Tensor] = None,
               average_attn_weights: bool = True,
               decode: bool = False,
-              max_len: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
+              max_len: Optional[int] = None,
+              cache: Optional[dict] = None,
+              index: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
     r"""
     Args:
       query: Query embeddings of shape :math:`(L, E_q)` for unbatched input,
@@ -772,10 +805,10 @@ class MultiheadAttention(nn.MultiheadAttention):
       else:
         query, key, value = [x.transpose(1, 0) for x in (query, key, value)]
 
-    buffer = dict(self.named_buffers())
-    cache = buffer if decode and 'cache_index' in buffer else None
+    name = f'decoder.layers.{index}.self_attn'
+    loc_cache = cache[name] if decode and name in cache else None
 
-    attn_output, attn_output_weights, cache = multi_head_attention_forward(
+    attn_output, attn_output_weights, loc_cache = multi_head_attention_forward(
         query, key, value, self.embed_dim, self.num_heads,
         self.in_proj_weight, self.in_proj_bias,
         self.bias_k, self.bias_v, self.add_zero_attn,
@@ -787,20 +820,15 @@ class MultiheadAttention(nn.MultiheadAttention):
         k_proj_weight=self.k_proj_weight,
         v_proj_weight=self.v_proj_weight,
         average_attn_weights=average_attn_weights,
-        decode=decode, cache=cache, max_len=max_len)
+        decode=decode, cache=loc_cache, max_len=max_len)
 
     if decode:
-      if len(list(self.buffers())) > 0:
-        for name, _ in self.named_buffers():
-          self.name = cache[name]
-      else:
-        for name, c in cache.items():
-          self.register_buffer(name, c)
+      cache[name] = loc_cache
 
     if self.batch_first and is_batched:
-      return attn_output.transpose(1, 0), attn_output_weights
+      return attn_output.transpose(1, 0), attn_output_weights, cache
     else:
-      return attn_output, attn_output_weights
+      return attn_output, attn_output_weights, cache
 
 
 # Modified to create cache for autoregressive decoding.
