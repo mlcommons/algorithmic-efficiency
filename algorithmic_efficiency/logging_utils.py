@@ -293,7 +293,9 @@ class Recorder:
     self._get_system_hardware_info = _get_system_hardware_info()
     # Record initial information about workload at startup
     self._write_workload_results_file(status='INCOMPLETE')
-    self._write_package_list_file()
+    # self._write_package_list_file() # Disabled due to security concern. The
+    # problem is that pip package list can contain a git repo url which can
+    # contain a users github personal access token.
 
   def _write_workload_results_file(
       self,
