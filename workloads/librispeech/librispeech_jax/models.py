@@ -67,8 +67,18 @@ class BatchNorm(nn.BatchNorm):
         else:
             x: jnp.ndarray = jnp.asarray(x, jnp.promote_types(jnp.float32, jnp.result_type(x)))
             non_zeros = jnp.sum(mask, reduction_axes)
-            mean = jnp.sum(x, reduction_axes) / non_zeros
-            mean2 = jnp.sum(lax.square(x), reduction_axes) / non_zeros
+            mean = jnp.sum(x, reduction_axes)
+            mean2 = jnp.sum(lax.square(x), reduction_axes)
+            try:
+                non_zeros = lax.psum(non_zeros, 'batch')
+            except NameError:
+                pass
+            else:
+                mean = lax.psum(mean, 'batch')
+                mean2 = lax.psum(mean2, 'batch')
+            mean = mean / non_zeros
+            mean2 = mean2 / non_zeros
+
             # mean2 - _abs_sq(mean) is not guaranteed to be non-negative due
             # to floating point round-off errors.
             var = jnp.maximum(0., mean2 - lax.square(mean))

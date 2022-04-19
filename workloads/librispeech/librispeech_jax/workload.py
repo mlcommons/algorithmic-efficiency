@@ -10,8 +10,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import torch
-from flax import jax_utils
 import torch.utils.data
+from flax import jax_utils
 from jax import lax
 
 import spec
@@ -101,16 +101,6 @@ class LibriSpeechWorkload(spec.Workload):
         self._valid_loader_len = len(valid_loader)
 
         return iter(itertools.cycle(self._train_loader))
-
-    def sync_batch_stats(self, model_state):
-        """Sync the batch statistics across replicas."""
-        # An axis_name is passed to pmap which can then be used by pmean.
-        # In this case each device has its own version of the batch statistics and
-        # we average them.
-        avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-        new_model_state = model_state.copy({
-            'batch_stats': avg_fn(model_state['batch_stats'])})
-        return new_model_state
 
     @property
     def param_shapes(self):
@@ -258,8 +248,6 @@ class LibriSpeechWorkload(spec.Workload):
             data_dir: str):
         """Run a full evaluation of the model."""
         # sync batch statistics across replicas
-        model_state = self.sync_batch_stats(model_state)
-
         total_error = 0.0
         total_length = 0.0
 
