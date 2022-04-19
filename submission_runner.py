@@ -84,7 +84,11 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-
+flags.DEFINE_enum(
+    'logging_backend',
+    'none',
+    enum_values=['aim', 'tensorboard', 'none'],
+    help='Which backend to use for interactive logging/plotting')
 FLAGS = flags.FLAGS
 
 
@@ -148,7 +152,18 @@ def train_once(
     hyperparameters: Optional[spec.Hyperparamters],
     rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
-
+  if FLAGS.logging_backend == 'aim':
+      from aim import Run as log_writer
+      def log(self:log_writer, name:str, value, step:int) -> None:
+          log_writer.track(self, value, name, step)
+  elif FLAGS.logging_backend == 'tensorboard':
+      from torch.utils.tensorboard import SummaryWriter as log_writer
+      def log(self:log_writer, name:str, value, step:int) -> None:
+           log_writer.add_scalar(self, name, value, step)
+  elif FLAGS.logging_backend == 'none':
+      from contextlib import nullcontext
+      def log(*args, **kwargs):
+          return
   # Workload setup.
   logging.info('Initializing dataset.')
   input_queue = workload.build_input_queue(
@@ -174,51 +189,54 @@ def train_once(
   global_start_time = time.time()
 
   logging.info('Starting training loop.')
-  while (is_time_remaining and not goal_reached and not training_complete):
-    step_rng = prng.fold_in(rng, global_step)
-    data_select_rng, update_rng, eval_rng = prng.split(
-        step_rng, 3)
-    start_time = time.time()
-    selected_train_input_batch, selected_train_label_batch = data_selection(
-        workload,
-        input_queue,
-        optimizer_state,
-        model_params,
-        hyperparameters,
-        global_step,
-        data_select_rng)
-    try:
-      optimizer_state, model_params, model_state = update_params(
-          workload=workload,
-          current_param_container=model_params,
-          current_params_types=workload.model_params_types(),
-          model_state=model_state,
-          hyperparameters=hyperparameters,
-          input_batch=selected_train_input_batch,
-          label_batch=selected_train_label_batch,
-          loss_type=workload.loss_type,
-          optimizer_state=optimizer_state,
-          eval_results=eval_results,
-          global_step=global_step,
-          rng=update_rng)
-    except spec.TrainingCompleteError:
-      training_complete = True
-    global_step += 1
-    current_time = time.time()
-    accumulated_submission_time += current_time - start_time
-    is_time_remaining = (
-        accumulated_submission_time < workload.max_allowed_runtime_sec)
-    # Check if submission is eligible for an untimed eval.
-    if (current_time - last_eval_time >= workload.eval_period_time_sec or
-        training_complete):
-      latest_eval_result = workload.eval_model(
-          model_params, model_state, eval_rng, data_dir)
-      logging.info(
-          f'{current_time - global_start_time:.2f}s\t{global_step}'
-          f'\t{latest_eval_result}')
-      last_eval_time = current_time
-      eval_results.append((global_step, latest_eval_result))
-      goal_reached = workload.has_reached_goal(latest_eval_result)
+  with log_writer() as writer:
+    while (is_time_remaining and not goal_reached and not training_complete):
+      step_rng = prng.fold_in(rng, global_step)
+      data_select_rng, update_rng, eval_rng = prng.split(
+          step_rng, 3)
+      start_time = time.time()
+      selected_train_input_batch, selected_train_label_batch = data_selection(
+          workload,
+          input_queue,
+          optimizer_state,
+          model_params,
+          hyperparameters,
+          global_step,
+          data_select_rng)
+      try:
+        optimizer_state, model_params, model_state = update_params(
+            workload=workload,
+            current_param_container=model_params,
+            current_params_types=workload.model_params_types(),
+            model_state=model_state,
+            hyperparameters=hyperparameters,
+            input_batch=selected_train_input_batch,
+            label_batch=selected_train_label_batch,
+            loss_type=workload.loss_type,
+            optimizer_state=optimizer_state,
+            eval_results=eval_results,
+            global_step=global_step,
+            rng=update_rng)
+      except spec.TrainingCompleteError:
+        training_complete = True
+      global_step += 1
+      current_time = time.time()
+      accumulated_submission_time += current_time - start_time
+      is_time_remaining = (
+          accumulated_submission_time < workload.max_allowed_runtime_sec)
+      # Check if submission is eligible for an untimed eval.
+      if (current_time - last_eval_time >= workload.eval_period_time_sec or
+          training_complete):
+        latest_eval_result = workload.eval_model(
+            model_params, model_state, eval_rng, data_dir)
+        log(writer, "EvalResult", latest_eval_result, global_step)
+        log(writer, "StepsPerSecond", (current_time - global_start_time) / global_step, global_step)
+        logging.info(
+            f'{current_time - global_start_time:.2f}s\t{global_step}'
+            f'\t{latest_eval_result}')
+        last_eval_time = current_time
+        eval_results.append((global_step, latest_eval_result))
+        goal_reached = workload.has_reached_goal(latest_eval_result)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   return accumulated_submission_time, metrics
 
