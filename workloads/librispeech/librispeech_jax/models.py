@@ -301,11 +301,12 @@ class CNNLSTM(nn.Module):
         output_lengths = get_seq_lens(lengths, self.conv.seq_module)
 
         x = self.conv(inputs, output_lengths, training)
-        sizes = x.shape
-        x = x.reshape(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
+        batch, features0, features1, sequence = x.shape
+        x = x.reshape(batch, features0 * features1, sequence)  # Collapse feature dimension
         x = x.transpose(2, 0, 1)  # [Batch, Feature, Seq] -> [Seq, Batch, Feature]
 
-        mask = jnp.arange(x.shape[0]).reshape(-1, 1, 1) < lengths.reshape(1, -1, 1)
+        mask = jnp.arange(x.shape[0]).reshape(-1, 1, 1) < output_lengths.reshape(1, -1, 1)
+        mask = mask.reshape(batch * sequence, 1)  # For BatchNorm, so Batch and Sequence have to be collapsed
         for rnn in self.rnns:
             x = rnn(x, output_lengths, mask, training=training)
         x = self.out_norm(x, mask, training=training)
