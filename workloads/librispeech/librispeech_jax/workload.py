@@ -225,12 +225,7 @@ class LibriSpeechWorkload(spec.Workload):
 
         return jnp.mean(loss)
 
-    @functools.partial(
-        jax.pmap,
-        axis_name='batch',
-        in_axes=(None, 0, 0, 0, None),
-        static_broadcasted_argnums=(0,))
-    def eval_model_fn(self, params, batch, state, rng):
+    def _eval_model_fn(self, params, batch, state, rng):
         logits, _ = self.model_fn(
             params,
             batch["input"],
@@ -239,6 +234,9 @@ class LibriSpeechWorkload(spec.Workload):
             rng,
             update_batch_norm=False)
         return logits
+
+    eval_model_fn = jax.pmap(_eval_model_fn, axis_name='batch', in_axes=(None, 0, 0, 0, None),
+                             static_broadcasted_argnums=(0,))
 
     def eval_model(
             self,
