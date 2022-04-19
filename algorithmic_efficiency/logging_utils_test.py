@@ -72,16 +72,16 @@ class LoggingUtilsTest(absltest.TestCase):
 
     # Save a mock model evaluation
     self.recorder.save_eval_results(self.workload,
-                            hyperparameters,
-                            trial_idx,
-                            global_step,
-                            batch_size,
-                            latest_eval_result,
-                            global_start_time,
-                            accumulated_submission_time,
-                            goal_reached,
-                            is_time_remaining,
-                            training_complete)
+                                    hyperparameters,
+                                    trial_idx,
+                                    global_step,
+                                    batch_size,
+                                    latest_eval_result,
+                                    global_start_time,
+                                    accumulated_submission_time,
+                                    goal_reached,
+                                    is_time_remaining,
+                                    training_complete)
 
     # Assert the workload name 'mnist' has been saved to 'eval_results.csv'
     output_file = os.path.join(self.logging_dir,
@@ -108,16 +108,16 @@ class LoggingUtilsTest(absltest.TestCase):
 
     # Save a mock model evaluation
     self.recorder.save_trial_results(self.workload,
-                                 hyperparameters,
-                                 trial_idx,
-                                 global_step,
-                                 batch_size,
-                                 latest_eval_result,
-                                 global_start_time,
-                                 accumulated_submission_time,
-                                 goal_reached,
-                                 is_time_remaining,
-                                 training_complete)
+                                     hyperparameters,
+                                     trial_idx,
+                                     global_step,
+                                     batch_size,
+                                     latest_eval_result,
+                                     global_start_time,
+                                     accumulated_submission_time,
+                                     goal_reached,
+                                     is_time_remaining,
+                                     training_complete)
 
     # Assert the workload name 'mnist' has been saved to 'trial_results.csv'
     output_file = os.path.join(self.logging_dir,

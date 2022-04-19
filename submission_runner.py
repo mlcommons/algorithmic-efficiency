@@ -252,29 +252,29 @@ def train_once(workload: spec.Workload,
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
       recorder.save_eval_results(workload,
-                         hyperparameters,
-                         trial_idx,
-                         global_step,
-                         batch_size,
-                         latest_eval_result,
-                         global_start_time,
-                         accumulated_submission_time,
-                         goal_reached,
-                         is_time_remaining,
-                         training_complete)
+                                 hyperparameters,
+                                 trial_idx,
+                                 global_step,
+                                 batch_size,
+                                 latest_eval_result,
+                                 global_start_time,
+                                 accumulated_submission_time,
+                                 goal_reached,
+                                 is_time_remaining,
+                                 training_complete)
     global_step += 1
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   recorder.save_trial_results(workload,
-                          hyperparameters,
-                          trial_idx,
-                          global_step,
-                          batch_size,
-                          latest_eval_result,
-                          global_start_time,
-                          accumulated_submission_time,
-                          goal_reached,
-                          is_time_remaining,
-                          training_complete)
+                              hyperparameters,
+                              trial_idx,
+                              global_step,
+                              batch_size,
+                              latest_eval_result,
+                              global_start_time,
+                              accumulated_submission_time,
+                              goal_reached,
+                              is_time_remaining,
+                              training_complete)
   return accumulated_submission_time, metrics
 
 

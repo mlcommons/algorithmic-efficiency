@@ -112,6 +112,7 @@ def _get_utilization() -> dict:
 
   return util_data
 
+
 def _get_system_hardware_info() -> dict:
   system_hardware_info = {}
   try:
@@ -131,12 +132,14 @@ def _get_system_hardware_info() -> dict:
 
   return system_hardware_info
 
+
 def _get_system_software_info() -> dict:
   system_software_info = {}
 
   system_software_info['os_platform'] = \
       platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
-  system_software_info['python_version'] = platform.python_version()  # Ex. '3.8.10'
+  system_software_info['python_version'] = platform.python_version(
+  )  # Ex. '3.8.10'
   system_software_info['python_compiler'] = platform.python_compiler(
   )  # Ex. 'GCC 9.3.0'
   # Note: do not store hostname as that may be sensitive
@@ -150,6 +153,7 @@ def _get_system_software_info() -> dict:
     logging.warn('Unable to record git information. Continuing without it.')
 
   return system_software_info
+
 
 def _get_git_commit_hash() -> str:
   return subprocess.check_output(['git', 'rev-parse',
