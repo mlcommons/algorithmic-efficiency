@@ -139,7 +139,7 @@ class LibriSpeechWorkload(spec.Workload):
 
     @property
     def max_allowed_runtime_sec(self):
-        return 80000
+        return 800000  # TODO: Reduce this to 80000 once debugging is complete
 
     @property
     def eval_period_time_sec(self):
@@ -170,7 +170,7 @@ class LibriSpeechWorkload(spec.Workload):
 
     def initialized(self, key, model):
         init_val = [jnp.ones((1, 1, 161, 2453), jnp.float32), jnp.array([2087])]
-        variables = model.init(jax.random.PRNGKey(key[0] + 2 ** 32 + key[1]), *init_val, training=True)
+        variables = model.init(jax.random.PRNGKey(key[0] ^ key[1]), *init_val, training=True)
         params = variables["params"]
         model_state = variables["batch_stats"]
         return params, model_state
