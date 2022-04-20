@@ -18,4 +18,5 @@ jobs:
         pip install .[jax_cpu]
     - name: Run pytest
       run: |
-        pytest -vx tests/
+        pytest -vx tests/version_test.py
+        pytest -vx tests/workloads/imagenet/imagenet_jax/workload_test.py

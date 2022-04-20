@@ -33,12 +33,13 @@ class ImagenetWorkload(BaseImagenetWorkload):
                      cache: Optional[bool] = None,
                      repeat_final_dataset: Optional[bool] = None,
                      num_batches: Optional[int] = None):
-    if batch_size % jax.device_count() > 0:
+    if batch_size % jax.local_device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
     ds = input_pipeline.create_input_iter(
+        split,
         ds_builder,
         data_rng,
         batch_size,
@@ -102,7 +103,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
       axis_name='batch',
       in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
-  def eval_model_fn(self, params, batch, state, rng):
+  def _eval_model_fn(self, params, batch, state, rng):
     logits, _ = self.model_fn(
         params,
         batch,
@@ -110,7 +111,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self.compute_metrics(logits, batch['label'])
+    return self._compute_metrics(logits, batch['label'])
 
   def model_fn(
       self,
@@ -146,7 +147,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
         logits=logits_batch, labels=one_hot_labels)
     return xentropy
 
-  def compute_metrics(self, logits, labels):
+  def _compute_metrics(self, logits, labels):
     loss = jnp.mean(self.loss_fn(labels, logits))
     accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
     metrics = {
@@ -158,61 +159,39 @@ class ImagenetWorkload(BaseImagenetWorkload):
 
   def _eval_model_on_split(self,
                            split: str,
+                           num_examples: int,
+                           global_batch_size: int,
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str):
-    eval_per_core_batch_size = 256
-    eval_total_batch_size = eval_per_core_batch_size * jax.local_device_count()
-    if split == 'train':
-      num_examples = self.num_eval_train_examples
-    else:
-      num_examples = self.num_validation_examples
-    num_batches = num_examples // eval_total_batch_size
+    data_rng, model_rng = jax.random.split(rng, 2)
+    # Sync batch statistics across replicas before evaluating.
+    model_state = self.sync_batch_stats(model_state)
+    num_batches = num_examples // global_batch_size
     # We already repeat the dataset indefinitely in tf.data.
-    if self._eval_iters[split] is None:
-      eval_ds = self._build_dataset(
-          rng,
+    if split not in self._eval_iters:
+      self._eval_iters[split] = self.build_input_queue(
+          data_rng,
           split=split,
-          batch_size=eval_per_core_batch_size,
+          global_batch_size=global_batch_size,
           data_dir=data_dir,
           cache=True,
           repeat_final_dataset=True,
           num_batches=num_batches)
-      self._eval_iters[split] = iter(eval_ds)
 
     eval_metrics = {}
     for _ in range(num_batches + 1):
       batch = next(self._eval_iters[split])
-      # We already average these metrics across devices inside compute_metrics.
-      synced_metrics = self.eval_model_fn(params, batch, model_state, rng)
+      # We already average these metrics across devices inside _compute_metrics.
+      synced_metrics = self._eval_model_fn(params,
+                                           batch,
+                                           model_state,
+                                           model_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
     eval_metrics = jax.tree_map(lambda x: x / num_examples, eval_metrics)
-    return eval_metrics
-
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
-    """Run a full evaluation of the model."""
-    # Sync batch statistics across replicas before evaluating.
-    model_state = self.sync_batch_stats(model_state)
-    train_metrics = self._eval_model_on_split('train',
-                                              params,
-                                              model_state,
-                                              rng,
-                                              data_dir)
-    validation_metrics = self._eval_model_on_split('validation',
-                                                   params,
-                                                   model_state,
-                                                   rng,
-                                                   data_dir)
-    eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
-    for k, v in validation_metrics.items():
-      eval_metrics['validation/' + k] = v
     return eval_metrics

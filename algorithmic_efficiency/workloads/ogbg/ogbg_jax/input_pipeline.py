@@ -26,7 +26,7 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
   read_config = tfds.ReadConfig(add_tfds_id=True, shuffle_seed=file_data_rng)
   dataset = tfds.load(
       'ogbg_molpcba',
-      split=split,
+      split='train' if split == 'eval_train' else split,
       shuffle_files=should_shuffle,
       read_config=read_config,
       data_dir=data_dir)
@@ -35,6 +35,9 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
     dataset = dataset.shuffle(seed=dataset_data_rng, buffer_size=2**15)
     dataset = dataset.repeat()
 
+  # We do not need to worry about repeating the dataset for evaluations because
+  # we call itertools.cycle on the eval iterator, which stored the iterator in
+  # memory to be repeated through.
   return dataset
 
 
@@ -102,10 +105,10 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
     smaller batches.
   """
   if not num_shards:
-    num_shards = jax.device_count()
+    num_shards = jax.local_device_count()
 
   # We will construct num_shards smaller batches and then put them together.
-  per_device_batch_size = global_batch_size / num_shards
+  per_device_batch_size = global_batch_size // num_shards
 
   max_n_nodes = AVG_NODES_PER_GRAPH * per_device_batch_size
   max_n_edges = AVG_EDGES_PER_GRAPH * per_device_batch_size

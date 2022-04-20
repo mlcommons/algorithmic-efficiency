@@ -1,5 +1,4 @@
 """MNIST workload implemented in PyTorch."""
-
 from collections import OrderedDict
 import contextlib
 import itertools
@@ -8,6 +7,7 @@ from typing import Tuple
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.utils.data as data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
@@ -33,13 +33,11 @@ class _Model(nn.Module):
                      ('output', torch.nn.LogSoftmax(dim=1))]))
 
   def forward(self, x: spec.Tensor):
+    x = x.view(x.size()[0], -1)
     return self.net(x)
 
 
 class MnistWorkload(BaseMnistWorkload):
-
-  def __init__(self):
-    self._eval_ds = None
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -47,72 +45,87 @@ class MnistWorkload(BaseMnistWorkload):
                      data_dir: str,
                      batch_size: int):
 
-    assert split in ['train', 'test']
-    is_train = split == 'train'
+    dataloader_split = 'train' if split == 'eval_train' else split
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
     dataset = MNIST(
-        data_dir, train=is_train, download=True, transform=transform)
+        data_dir, train=dataloader_split, download=True, transform=transform)
+    if split != 'test':
+      if split in ['train', 'validation']:
+        train_dataset, validation_dataset = data_utils.random_split(
+            dataset,
+            [self.num_train_examples, self.num_validation_examples],
+            generator=torch.Generator().manual_seed(int(data_rng[0])))
+        if split == 'train':
+          dataset = train_dataset
+        elif split == 'validation':
+          dataset = validation_dataset
+      if split == 'eval_train':
+        dataset, _ = data_utils.random_split(
+            dataset,
+            [self.num_eval_train_examples,
+             60000 - self.num_eval_train_examples],
+            generator=torch.Generator().manual_seed(int(data_rng[0])))
     # TODO: set seeds properly
+    is_train = split == 'train'
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=is_train, pin_memory=True)
-
     if is_train:
       dataloader = itertools.cycle(dataloader)
 
     return dataloader
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        batch_size: int):
-    return iter(self._build_dataset(data_rng, split, data_dir, batch_size))
-
   @property
   def model_params_types(self):
-    """
-    TODO: return type tuples from model as a tree
-    """
-    raise NotImplementedError
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.model_params_types!')
+    if self._param_types is None:
+      self._param_types = {}
+      for name in self._param_shapes.keys():
+        if 'bias' in name:
+          self._param_types[name] = spec.ParameterType.BIAS
+        else:
+          self._param_types[name] = spec.ParameterType.WEIGHT
+    return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
-    del rng
-    return self.preprocess_for_eval(selected_raw_input_batch,
-                                    selected_label_batch,
-                                    None,
-                                    None)
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    raw_input_batch_size = raw_input_batch.size()[0]
-    raw_input_batch = raw_input_batch.view(raw_input_batch_size, -1)
-    return (raw_input_batch.to(DEVICE), raw_label_batch.to(DEVICE))
+  def build_input_queue(self,
+                        data_rng,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int):
+    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    for images, labels in ds:
+      yield (images.to(DEVICE), labels.to(DEVICE), None)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = _Model()
+    self._param_shapes = {
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+    }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)
     return model, None
+
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
 
   def model_fn(
       self,
@@ -156,11 +169,24 @@ class MnistWorkload(BaseMnistWorkload):
 
     return F.nll_loss(logits_batch, label_batch, reduction='none')
 
-  def _eval_metric(self, logits, labels):
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      images: spec.Tensor,
+      labels: spec.Tensor,
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
+    logits, _ = self.model_fn(
+        params,
+        images,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
-    # not accuracy, but nr. of correct predictions
+    # Number of correct predictions.
     accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
-    n_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
+    num_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}

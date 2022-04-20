@@ -1,7 +1,8 @@
 """OGB workload implemented in Jax."""
 import functools
 import itertools
-from typing import Optional, Tuple
+import math
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -18,32 +19,25 @@ from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 class OgbgWorkload(BaseOgbgWorkload):
 
   def __init__(self):
-    self._eval_iterator = None
+    self._eval_iters = {}
     self._param_shapes = None
     self._init_graphs = None
     self._model = models.GNN()
-
-  def _build_iterator(self,
-                      data_rng: jax.random.PRNGKey,
-                      split: str,
-                      data_dir: str,
-                      batch_size: int):
-    dataset_iter = input_pipeline.get_dataset_iter(split,
-                                                   data_rng,
-                                                   data_dir,
-                                                   batch_size)
-    if self._init_graphs is None:
-      init_graphs, _, _ = next(dataset_iter)
-      # Unreplicate the iterator that has the leading dim for pmapping.
-      self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
-    return dataset_iter
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
-    return self._build_iterator(data_rng, split, data_dir, batch_size)
+                        global_batch_size: int):
+    dataset_iter = input_pipeline.get_dataset_iter(split,
+                                                   data_rng,
+                                                   data_dir,
+                                                   global_batch_size)
+    if self._init_graphs is None:
+      init_graphs, _, _ = next(dataset_iter)
+      # Unreplicate the iterator that has the leading dim for pmapping.
+      self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
+    return dataset_iter
 
   @property
   def param_shapes(self):
@@ -176,27 +170,27 @@ class OgbgWorkload(BaseOgbgWorkload):
         update_batch_norm=False)
     return self._eval_metric(labels, logits, masks)
 
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
-    total_eval_batch_size = 8192
-    if self._eval_iterator is None:
-      self._eval_iterator = self._build_iterator(
-          data_rng, 'validation', data_dir, batch_size=total_eval_batch_size)
-      # Note that this effectively stores the entire val dataset in memory.
-      self._eval_iterator = itertools.cycle(self._eval_iterator)
+    if split not in self._eval_iters:
+      eval_iter = self.build_input_queue(
+          data_rng, split, data_dir, global_batch_size=global_batch_size)
+      # Note that this stores the entire val dataset in memory.
+      self._eval_iters[split] = itertools.cycle(eval_iter)
 
     total_metrics = None
-    # Both val and test have the same (prime) number of examples.
-    num_val_examples = 43793
-    num_val_steps = num_val_examples // total_eval_batch_size + 1
+    num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
     # Loop over graph batches in eval dataset.
-    for _ in range(num_val_steps):
-      graphs, labels, masks = next(self._eval_iterator)
+    for _ in range(num_eval_steps):
+      graphs, labels, masks = next(self._eval_iters[split])
       batch_metrics = self._eval_batch(params,
                                        graphs,
                                        labels,
