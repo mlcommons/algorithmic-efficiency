@@ -304,8 +304,7 @@ def update_params(
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
-    input_batch: Tensor,
-    label_batch: Tensor,  # Dense (not one-hot) labels.
+    batch: Dict[str, Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
     optimizer_state: OptimizerState,
@@ -332,7 +331,7 @@ def data_selection(workload: Workload,
   We left out `current_params_types` because we do not believe that it would
   # be necessary for this function.
   """
-  # return input_batch, label_batch (dense (not one-hot) labels)
+  # return next(input_queue)
   pass
 
 

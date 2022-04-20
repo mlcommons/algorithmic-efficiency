@@ -1,6 +1,6 @@
 """Training algorithm track submission functions for MNIST."""
 
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 import torch
 
@@ -38,9 +38,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
-    mask_batch: spec.Tensor,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -49,7 +47,6 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del hyperparameters
-  del mask_batch
   del loss_type
   del current_params_types
   del eval_results
@@ -61,13 +58,13 @@ def update_params(
 
   output, new_model_state = workload.model_fn(
       params=current_model,
-      augmented_and_preprocessed_input_batch=input_batch,
+      augmented_and_preprocessed_input_batch=batch['inputs'],
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
       update_batch_norm=True)
 
-  loss = workload.loss_fn(label_batch=label_batch, logits_batch=output).mean()
+  loss = workload.loss_fn(label_batch=batch['targets'], logits_batch=output).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()

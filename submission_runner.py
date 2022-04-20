@@ -174,15 +174,13 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    (selected_train_input_batch,
-     selected_train_label_batch,
-     selected_train_mask_batch) = data_selection(workload,
-                                                 input_queue,
-                                                 optimizer_state,
-                                                 model_params,
-                                                 hyperparameters,
-                                                 global_step,
-                                                 data_select_rng)
+    batch = data_selection(workload,
+                           input_queue,
+                           optimizer_state,
+                           model_params,
+                           hyperparameters,
+                           global_step,
+                           data_select_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -190,9 +188,7 @@ def train_once(workload: spec.Workload,
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
-          input_batch=selected_train_input_batch,
-          label_batch=selected_train_label_batch,
-          mask_batch=selected_train_mask_batch,
+          batch=batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,

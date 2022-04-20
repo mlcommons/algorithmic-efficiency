@@ -2,7 +2,7 @@
 from collections import OrderedDict
 import contextlib
 import itertools
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn
@@ -37,6 +37,13 @@ class _Model(nn.Module):
     return self.net(x)
 
 
+class DictMNIST(MNIST):
+
+  def __getitem__(self, index: int) -> Dict[str, Any]:
+    image, label = super().__getitem__(index)
+    return {'inputs': image, 'targets': label}
+
+
 class MnistWorkload(BaseMnistWorkload):
 
   def _build_dataset(self,
@@ -50,7 +57,7 @@ class MnistWorkload(BaseMnistWorkload):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = MNIST(
+    dataset = DictMNIST(
         data_dir, train=dataloader_split, download=True, transform=transform)
     if split != 'test':
       if split in ['train', 'validation']:
@@ -103,9 +110,7 @@ class MnistWorkload(BaseMnistWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for images, labels in ds:
-      yield (images.to(DEVICE), labels.to(DEVICE), None)
+    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])

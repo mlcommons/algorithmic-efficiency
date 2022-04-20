@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for MNIST."""
 
 import functools
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 import jax
@@ -87,9 +87,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
-    mask_batch: spec.Tensor,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -101,7 +99,6 @@ def update_params(
   del loss_type
   del eval_results
   del global_step
-  del mask_batch
 
   num_devices = jax.local_device_count()
 
@@ -110,8 +107,8 @@ def update_params(
       current_param_container,
       model_state,
       hyperparameters,
-      input_batch,
-      label_batch,
+      batch['inputs'],
+      batch['targets'],
       optimizer_state,
       rng,
       jnp.arange(num_devices))

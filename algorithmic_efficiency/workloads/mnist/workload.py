@@ -100,14 +100,15 @@ class BaseMnistWorkload(spec.Workload):
     }
     num_data = 0
     num_batches = num_examples // global_batch_size
-    for bi, (images, labels, _) in enumerate(self._eval_iters[split]):
+    for bi, batch in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break
-      batch_metrics = self._eval_model(params,
-                                       images,
-                                       labels,
-                                       model_state,
-                                       model_rng)
+      batch_metrics = self._eval_model(
+          params,
+          batch['inputs'],
+          batch['targets'],
+          model_state,
+          model_rng)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }

@@ -66,7 +66,10 @@ class MnistWorkload(BaseMnistWorkload):
     ds = tfds.load(
         'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.cache()
-    ds = ds.map(lambda x: (self._normalize(x['image']), x['label']))
+    ds = ds.map(lambda x: {
+        'inputs': self._normalize(x['image']),
+        'targets': x['label'],
+    })
     if split == 'train':
       ds = ds.shuffle(1024, seed=data_rng[0])
       ds = ds.repeat()
