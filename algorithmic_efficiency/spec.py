@@ -235,7 +235,6 @@ class Workload(metaclass=abc.ABCMeta):
                  rng: RandomState,
                  data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
-    # DO NOT SUBMIT handle the case where batch size > num examples or when num_examples % batch_size != 0
     train_metrics = self._eval_model_on_split(
         split='eval_train',
         num_examples=self.num_eval_train_examples,
