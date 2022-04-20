@@ -106,8 +106,10 @@ class ImagenetWorkload(BaseImagenetWorkload):
                 transforms.RandomHorizontalFlip(),
                 normalize
             ]),
-        'eval_train': eval_transform_config,
-        'validation': eval_transform_config,
+        'eval_train':
+            eval_transform_config,
+        'validation':
+            eval_transform_config,
     }
 
     folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}

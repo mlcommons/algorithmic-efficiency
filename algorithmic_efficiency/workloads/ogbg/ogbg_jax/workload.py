@@ -182,10 +182,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       eval_iter = self.build_input_queue(
-          data_rng,
-          split,
-          data_dir,
-          global_batch_size=global_batch_size)
+          data_rng, split, data_dir, global_batch_size=global_batch_size)
       # Note that this stores the entire val dataset in memory.
       self._eval_iters[split] = itertools.cycle(eval_iter)
 

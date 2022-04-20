@@ -1,7 +1,7 @@
 """MNIST workload parent class."""
+import itertools
 from typing import Dict, Tuple
 
-import itertools
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
@@ -94,12 +94,11 @@ class BaseMnistWorkload(spec.Workload):
     for bi, (images, labels, _) in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break
-      batch_metrics = self._eval_model(
-          params,
-          images,
-          labels,
-          model_state,
-          model_rng)
+      batch_metrics = self._eval_model(params,
+                                       images,
+                                       labels,
+                                       model_state,
+                                       model_rng)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }

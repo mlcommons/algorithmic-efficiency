@@ -301,13 +301,13 @@ class WmtWorkload(spec.Workload):
                         data_rng: jax.random.PRNGKey,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
+                        global_batch_size: int):
     tf.io.gfile.makedirs(WORKDIR)
-    self._per_device_batch_size = batch_size
+    self._per_device_batch_size = global_batch_size // jax.local_device_count()
     self._train_ds, self._eval_ds, self._predict_ds, self._encoder \
       = input_pipeline.get_wmt_datasets(
         vocab_size=self._vocab_size,
-        batch_size=jax.local_device_count() * batch_size,
+        batch_size=global_batch_size,
         reverse_translation=True,
         vocab_path=VOCAB_PATH)
     self._vocab_size = int(self._encoder.vocab_size())

@@ -13,8 +13,8 @@ AUTOTUNE = tf.data.AUTOTUNE
 Features = Dict[str, tf.Tensor]
 
 
-def normalize_feature_names(
-    ds_info, reverse_translation, features: Features) -> Features:
+def normalize_feature_names(ds_info, reverse_translation,
+                            features: Features) -> Features:
   """Normalizes feature names to 'inputs' and 'targets'."""
   input_lang, target_lang = ds_info.supervised_keys
   if reverse_translation:
@@ -254,16 +254,15 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
   return dataset
 
 
-def get_wmt_dataset(
-    data_rng,
-    split: str,
-    data_dir: str,
-    vocab_size: int,
-    global_batch_size: int,
-    num_batches: Optional[int] = None,
-    reverse_translation: bool = True,
-    repeat_final_dataset: bool = False,
-    vocab_path: Optional[str] = None):
+def get_wmt_dataset(data_rng,
+                    split: str,
+                    data_dir: str,
+                    vocab_size: int,
+                    global_batch_size: int,
+                    num_batches: Optional[int] = None,
+                    reverse_translation: bool = True,
+                    repeat_final_dataset: bool = False,
+                    vocab_path: Optional[str] = None):
   """Load and return dataset of batched examples for use during training."""
   if vocab_path is None:
     vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
@@ -275,20 +274,15 @@ def get_wmt_dataset(
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
   ds = ds.map(
-      functools.partial(
-          normalize_feature_names,
-          dataset_builder.info,
-          reverse_translation),
+      functools.partial(normalize_feature_names,
+                        dataset_builder.info,
+                        reverse_translation),
       num_parallel_calls=AUTOTUNE)
 
   # Tokenize data.
   sp_tokenizer = tokenizer.load_or_train_tokenizer(
-      ds,
-      vocab_path=vocab_path,
-      vocab_size=vocab_size,
-      max_corpus_chars=10 ** 7)
-  ds = ds.map(
-      tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
+      ds, vocab_path=vocab_path, vocab_size=vocab_size, max_corpus_chars=10**7)
+  ds = ds.map(tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
 
   num_devices = jax.local_device_count()
   per_device_batch_size = global_batch_size // num_devices

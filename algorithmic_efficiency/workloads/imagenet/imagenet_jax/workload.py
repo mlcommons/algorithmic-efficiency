@@ -184,8 +184,10 @@ class ImagenetWorkload(BaseImagenetWorkload):
     for _ in range(num_batches + 1):
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model_fn(
-          params, batch, model_state, model_rng)
+      synced_metrics = self._eval_model_fn(params,
+                                           batch,
+                                           model_state,
+                                           model_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

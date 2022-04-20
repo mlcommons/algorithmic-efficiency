@@ -1,6 +1,6 @@
 """MNIST workload implemented in Jax."""
 import functools
-from typing import Dict, Tuple
+from typing import Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -108,8 +108,8 @@ class MnistWorkload(BaseMnistWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    initial_params = self._model.init(
-        {'params': rng}, init_val, train=True)['params']
+    initial_params = self._model.init({'params': rng}, init_val,
+                                      train=True)['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       initial_params)
     return jax_utils.replicate(initial_params), None

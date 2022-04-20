@@ -1,6 +1,4 @@
 """MNIST workload implemented in PyTorch."""
-from typing import Dict
-
 from collections import OrderedDict
 import contextlib
 import itertools

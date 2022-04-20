@@ -10,6 +10,7 @@ import os
 from absl import flags
 from absl.testing import absltest
 from absl.testing import parameterized
+
 import submission_runner
 
 FLAGS = flags.FLAGS
@@ -24,16 +25,22 @@ class SubmissionRunnerTest(parameterized.TestCase):
           workload='mnist',
           framework='jax',
           submission_path='reference_submissions/mnist/mnist_jax/submission.py',
-          tuning_search_space='reference_submissions/mnist/tuning_search_space.json'),
+          tuning_search_space=(
+              'reference_submissions/mnist/tuning_search_space.json')),
       dict(
           testcase_name='mnist_pytorch',
           workload='mnist',
           framework='pytorch',
-          submission_path='reference_submissions/mnist/mnist_pytorch/submission.py',
-          tuning_search_space='reference_submissions/mnist/tuning_search_space.json'),
+          submission_path=(
+              'reference_submissions/mnist/mnist_pytorch/submission.py'),
+          tuning_search_space=(
+              'reference_submissions/mnist/tuning_search_space.json')),
   )
-  def test_submission(
-      self, workload, framework, submission_path, tuning_search_space):
+  def test_submission(self,
+                      workload,
+                      framework,
+                      submission_path,
+                      tuning_search_space):
     FLAGS.framework = framework
     workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload])
     workload_metadata['workload_path'] = os.path.join(
