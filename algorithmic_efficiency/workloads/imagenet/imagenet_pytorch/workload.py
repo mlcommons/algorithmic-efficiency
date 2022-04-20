@@ -51,7 +51,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
                            rng: spec.RandomState,
                            data_dir: str):
     """Run a full evaluation of the model."""
-    # DO NOT SUBMIT use num_examples
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self.build_input_queue(

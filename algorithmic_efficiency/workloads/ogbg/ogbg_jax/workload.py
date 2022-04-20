@@ -1,6 +1,7 @@
 """OGB workload implemented in Jax."""
 import functools
 import itertools
+import math
 from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
@@ -178,7 +179,6 @@ class OgbgWorkload(BaseOgbgWorkload):
                            rng: spec.RandomState,
                            data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
-    # DO NOT SUBMIT use num_examples
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       eval_iter = self.build_input_queue(
@@ -190,11 +190,9 @@ class OgbgWorkload(BaseOgbgWorkload):
       self._eval_iters[split] = itertools.cycle(eval_iter)
 
     total_metrics = None
-    # Both val and test have the same (prime) number of examples.
-    num_val_examples = 43793
-    num_val_steps = num_val_examples // global_batch_size + 1
+    num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
     # Loop over graph batches in eval dataset.
-    for _ in range(num_val_steps):
+    for _ in range(num_eval_steps):
       graphs, labels, masks = next(self._eval_iters[split])
       batch_metrics = self._eval_batch(params,
                                        graphs,

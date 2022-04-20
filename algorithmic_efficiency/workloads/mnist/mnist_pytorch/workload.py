@@ -55,14 +55,21 @@ class MnistWorkload(BaseMnistWorkload):
     dataset = MNIST(
         data_dir, train=dataloader_split, download=True, transform=transform)
     if split != 'test':
-      train_dataset, validation_dataset = data_utils.random_split(
-          dataset,
-          [self.num_train_examples, self.num_validation_examples],
-          generator=torch.Generator().manual_seed(int(data_rng[0])))
-      if split in ['train', 'eval_train']:
-        dataset = train_dataset
-      elif split == 'validation':
-        dataset = validation_dataset
+      if split in ['train', 'validation']:
+        train_dataset, validation_dataset = data_utils.random_split(
+            dataset,
+            [self.num_train_examples, self.num_validation_examples],
+            generator=torch.Generator().manual_seed(int(data_rng[0])))
+        if split == 'train':
+          dataset = train_dataset
+        elif split == 'validation':
+          dataset = validation_dataset
+      if split == 'eval_train':
+        dataset, _ = data_utils.random_split(
+            dataset,
+            [self.num_eval_train_examples,
+             60000 - self.num_eval_train_examples],
+            generator=torch.Generator().manual_seed(int(data_rng[0])))
     # TODO: set seeds properly
     is_train = split == 'train'
     dataloader = torch.utils.data.DataLoader(
