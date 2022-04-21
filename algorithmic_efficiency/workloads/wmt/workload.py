@@ -1,5 +1,9 @@
-from typing import Dict
+import math
+from typing import Dict, Optional
 
+from flax.training import common_utils
+import jax
+import jax.numpy as jnp
 import numpy as np
 import tensorflow as tf
 import torch
@@ -68,24 +72,21 @@ class BaseWmtWorkload(spec.Workload):
     return 800
 
   def build_input_queue(self,
-                        data_rng: spec.RandomState,
+                        data_rng: jax.random.PRNGKey,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    del data_rng
-    del split
-    tf.io.gfile.makedirs(WORKDIR)
-    self._global_batch_size = global_batch_size
-    datasets = input_pipeline.get_wmt_datasets(
-        data_dir=data_dir,
+                        global_batch_size: int,
+                        num_batches: Optional[int] = None):
+    ds, self._tokenizer = input_pipeline.get_wmt_dataset(
+        data_rng,
+        split,
+        data_dir,
         vocab_size=self._vocab_size,
         global_batch_size=global_batch_size,
+        num_batches=num_batches,
         reverse_translation=True,
-        vocab_path=VOCAB_PATH,
-        pack_examples=True)
-    self._train_ds, self._eval_ds, self._predict_ds, self._encoder = datasets
-    self._vocab_size = int(self._encoder.vocab_size())
-    return iter(self._train_ds)
+        repeat_final_dataset=split != 'train')
+    return iter(ds)
 
   def _eval_model_on_split(self,
                            split: str,
@@ -95,27 +96,37 @@ class BaseWmtWorkload(spec.Workload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str) -> Dict[str, float]:
-    """Evaluate the model on a given dataset split, return final scalars."""
-    del model_state
-    del rng
-    del data_dir
-
-    if split == 'test':
-      raise NotImplementedError
-    ds = self._train_ds if split == 'eval_train' else self._eval_ds
-    num_batches = num_examples // global_batch_size
-
-    eval_results = self.evaluate(
-        params=params, eval_ds=ds, num_eval_steps=num_batches)
+    """Run a full evaluation of the model."""
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    if split not in self._eval_iters:
+      # These iterators will repeat indefinitely.
+      self._eval_iters[split] = self.build_input_queue(
+          rng,
+          split,
+          data_dir,
+          global_batch_size,
+          num_batches,
+          repeat_final_dataset=True)
+    eval_metrics = []
+    for _ in range(num_batches):
+      eval_batch = next(self._eval_iters[split])
+      metrics = self.eval_step(params, eval_batch)
+      eval_metrics.append(metrics)
+    eval_metrics = common_utils.get_metrics(eval_metrics)
+    eval_metrics_sums = jax.tree_map(jnp.sum, eval_metrics)
+    eval_denominator = eval_metrics_sums.pop("denominator")
+    eval_results = jax.tree_map(
+        lambda x: x / eval_denominator,  # pylint: disable=cell-var-from-loop
+        eval_metrics_sums)
 
     bleu_score = self.translate_and_calculate_bleu(
-        params=params,
-        predict_ds=ds,
-        max_predict_length=256,
-        num_eval_steps=num_batches)
+        target=params,
+        ds_iter=self._eval_iters[split],
+        num_batches=num_batches,
+        decode_tokens=self._decode_tokens,
+        max_predict_length=256)
 
     eval_results['bleu'] = bleu_score
-
     return eval_results
 
   def compute_metrics(self, logits, labels, weights):
