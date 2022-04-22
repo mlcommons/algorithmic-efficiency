@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for ImageNet."""
 
 import functools
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 import jax
@@ -83,12 +83,12 @@ def pmapped_train_step(workload,
     variables = {'params': params, **model_state}
     logits, new_model_state = workload.model_fn(
         params,
-        batch,
+        batch['inputs'],
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = jnp.mean(workload.loss_fn(batch['label'], logits))
+    loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
     weight_penalty_params = jax.tree_leaves(variables['params'])
     weight_l2 = sum(
         [jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1])
@@ -112,15 +112,13 @@ def update_params(workload: spec.Workload,
                   current_params_types: spec.ParameterTypeTree,
                   model_state: spec.ModelAuxiliaryState,
                   hyperparameters: spec.Hyperparamters,
-                  input_batch: spec.Tensor,
-                  label_batch: spec.Tensor,
+                  batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
-  batch = {'image': input_batch, 'label': label_batch}
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,

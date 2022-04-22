@@ -147,7 +147,11 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
       graphs_shards = f(graphs_shards)
       labels_shards = f(labels_shards)
       weights_shards = f(weights_shards)
-      yield (graphs_shards, labels_shards, weights_shards)
+      yield {
+          'inputs': graphs_shards,
+          'targets': labels_shards,
+          'weights': weights_shards
+      }
 
       count = 0
       graphs_shards = []

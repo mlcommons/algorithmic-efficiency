@@ -323,7 +323,7 @@ def data_selection(workload: Workload,
                    current_param_container: ParameterContainer,
                    hyperparameters: Hyperparamters,
                    global_step: int,
-                   rng: RandomState) -> Tuple[Tensor, Tensor]:
+                   rng: RandomState) -> Dict[str, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
   Each element of the queue is a single training example and label.

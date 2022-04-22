@@ -75,11 +75,11 @@ def pack_dataset(dataset: tf.data.Dataset,
   The output example is:
   {
                  "inputs": [8, 7, 1, 2, 3, 4, 1, 0, 0, 0]
-    "inputs_segmentation": [1, 1, 1, 2, 2, 2, 2, 0, 0, 0]
-        "inputs_position": [0, 1, 2, 0, 1, 2, 3, 0, 0, 0]
+   "inputs_segmentations": [1, 1, 1, 2, 2, 2, 2, 0, 0, 0]
+       "inputs_positions": [0, 1, 2, 0, 1, 2, 3, 0, 0, 0]
                 "targets": [4, 1, 5, 6, 1, 0, 0, 0, 0, 0]
-   "targets_segmentation": [1, 1, 2, 2, 2, 0, 0, 0, 0, 0]
-       "targets_position": [0, 1, 0, 1, 2, 0, 0, 0, 0, 0]
+  "targets_segmentations": [1, 1, 2, 2, 2, 0, 0, 0, 0, 0]
+      "targets_positions": [0, 1, 0, 1, 2, 0, 0, 0, 0, 0]
   }
   0 represents padding in both the inputs and the outputs.
   Sequences in the incoming examples are truncated to length "length", and the

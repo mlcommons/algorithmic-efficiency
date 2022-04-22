@@ -71,8 +71,6 @@ def update_params(
   del hyperparameters
   del loss_type
   del eval_results
-  input_batch, label_batch = (
-      workload.preprocess_for_train(input_batch, label_batch, None, None, None))
 
   current_model = current_param_container
   current_param_container.train()

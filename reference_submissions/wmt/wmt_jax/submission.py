@@ -90,20 +90,12 @@ def train_step(optimizer,
   # metadata.
   # if such features are not present they are ignored and the example is
   # treated like a normal, unpacked sequence example.
-  train_keys = [
-      "inputs",
-      "targets",
-      "inputs_position",
-      "targets_position",
-      "inputs_segmentation",
-      "targets_segmentation"
-  ]
-  (inputs,
-   targets,
-   inputs_positions,
-   targets_positions,
-   inputs_segmentation,
-   targets_segmentation) = [batch.get(k, None) for k in train_keys]
+  inputs = batch.get('inputs', None)
+  targets = batch.get('targets', None)
+  inputs_positions = batch.get('inputs_positions', None)
+  targets_positions = batch.get('targets_positions', None)
+  inputs_segmentations = batch.get('inputs_segmentations', None)
+  targets_segmentations = batch.get('targets_segmentations', None)
 
   weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
 
@@ -117,8 +109,8 @@ def train_step(optimizer,
         targets,
         inputs_positions=inputs_positions,
         targets_positions=targets_positions,
-        inputs_segmentation=inputs_segmentation,
-        targets_segmentation=targets_segmentation,
+        inputs_segmentation=inputs_segmentations,
+        targets_segmentation=targets_segmentations,
         rngs={"dropout": dropout_rng})
 
     vocab_size = logits.shape[-1]
@@ -143,7 +135,7 @@ def train_step(optimizer,
   lr = learning_rate_fn(step)
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   _, grad = grad_fn(optimizer.target)
-  grad = jax.lax.pmean(grad, "batch")
+  grad = jax.lax.pmean(grad, 'batch')
   new_optimizer = optimizer.apply_gradient(grad, learning_rate=lr)
 
   return new_optimizer
@@ -191,9 +183,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
-    mask_batch: spec.Tensor,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -209,12 +199,10 @@ def update_params(
   del model_state
   del loss_type
   del hyperparameters
-  del label_batch
-  del mask_batch
 
   optimizer, p_train_step = optimizer_state
   dropout_rngs = jax.random.split(rng, jax.local_device_count())
-  optimizer = p_train_step(optimizer, input_batch, dropout_rng=dropout_rngs)
+  optimizer = p_train_step(optimizer, batch, dropout_rng=dropout_rngs)
 
   return (optimizer, p_train_step), optimizer.target, None
 

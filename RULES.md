@@ -147,8 +147,7 @@ update_params(
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparamters,
-    input_batch: Dict[Tensor],
-    label_batch: Dict[Tensor],
+    batch: Dict[str, Tensor],
     loss_type: LossType,
     optimizer_state: OptimizerState,
     eval_results: List[Tuple[int, float]],
@@ -186,7 +185,7 @@ data_selection(
     hyperparameters: Hyperparamters,
     global_step: int,
     rng: RandomState
-) -> (input_batch, label_batch)
+) -> Dict[str, Tensor]
 ```
 
 - `input_queue` can yield up to the number of elements in the training dataset

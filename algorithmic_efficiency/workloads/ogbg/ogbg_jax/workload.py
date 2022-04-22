@@ -56,25 +56,6 @@ class OgbgWorkload(BaseOgbgWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    del rng
-    return selected_raw_input_batch, selected_label_batch
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    return raw_input_batch, raw_label_batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     if self._init_graphs is None:
@@ -160,15 +141,15 @@ class OgbgWorkload(BaseOgbgWorkload):
       axis_name='batch',
       in_axes=(None, 0, 0, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
-  def _eval_batch(self, params, graphs, labels, masks, model_state, rng):
+  def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
         params,
-        graphs,
+        batch['inputs'],
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._eval_metric(labels, logits, masks)
+    return self._eval_metric(batch['targets'], logits, batch['weights'])
 
   def _eval_model_on_split(self,
                            split: str,
@@ -190,11 +171,9 @@ class OgbgWorkload(BaseOgbgWorkload):
     num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
     # Loop over graph batches in eval dataset.
     for _ in range(num_eval_steps):
-      graphs, labels, masks = next(self._eval_iters[split])
+      batch = next(self._eval_iters[split])
       batch_metrics = self._eval_batch(params,
-                                       graphs,
-                                       labels,
-                                       masks,
+                                       batch,
                                        model_state,
                                        model_rng)
       total_metrics = (

@@ -239,7 +239,7 @@ def create_split(split,
                                   dtype,
                                   image_size,
                                   resize_size)
-    return {'image': image, 'label': example['label']}
+    return {'inputs': image, 'targets': example['label']}
 
   ds = dataset_builder.as_dataset(
       split=split, decoders={

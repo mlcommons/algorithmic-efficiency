@@ -53,8 +53,13 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
       trn = np.pad(
           trn, (0, max_target_len - len(trn)), "constant", constant_values=0)
 
-      batch[i] = (int(index), feature, trn, input_length)
+      batch[i] = {
+          'indices': int(index),
+          'features': feature,
+          'transcripts': trn,
+          'input_lengths': input_length,
+      }
 
-    batch.sort(key=lambda x: x[3], reverse=True)
+    batch.sort(key=lambda x: x['input_lengths'], reverse=True)
 
     return torch.utils.data.dataloader.default_collate(batch)

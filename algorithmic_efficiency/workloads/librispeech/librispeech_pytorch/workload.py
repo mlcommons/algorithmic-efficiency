@@ -151,25 +151,6 @@ class LibriSpeechWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    del rng
-    return selected_raw_input_batch, selected_label_batch
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    return raw_input_batch
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model = models.CNNLSTM()
     if torch.cuda.device_count() > 1:
@@ -188,18 +169,24 @@ class LibriSpeechWorkload(spec.Workload):
     del model_state
     del rng
     del update_batch_norm
+    features = augmented_and_preprocessed_input_batch['features']
+    transcripts = augmented_and_preprocessed_input_batch['transcripts']
+    input_lengths = augmented_and_preprocessed_input_batch['input_lengths']
+    features = features.float().to(self._device)
+    features = features.transpose(1, 2).unsqueeze(1)
+    transcripts = transcripts.long().to(self._device)
+    input_lengths = input_lengths.long().to(self._device)
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
-    (features, transcripts,
-     input_lengths) = augmented_and_preprocessed_input_batch
     log_y, output_lengths = params(features, input_lengths, transcripts)
 
     return (log_y.transpose(0, 1), output_lengths), None
 
   def loss_fn(
       self,
-      label_batch: spec.Tensor,  # transcripts
+      batch: spec.Tensor,  # transcripts
       logits_batch: spec.Tensor) -> spec.Tensor:
+    label_batch = batch['transcripts']
 
     log_y, output_lengths = logits_batch
     target_lengths = torch.IntTensor([len(y[y != 0]) for y in label_batch])

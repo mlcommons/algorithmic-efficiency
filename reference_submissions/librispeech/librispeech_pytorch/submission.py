@@ -1,5 +1,5 @@
 """Training algorithm track submission functions for LibriSpeech."""
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 import torch
 
@@ -35,8 +35,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -50,23 +49,14 @@ def update_params(
   del model_state
   del loss_type
   del hyperparameters
-  del label_batch
-
-  _, features, transcripts, input_lengths = input_batch
-  features = features.float().to(device)
-  features = features.transpose(1, 2).unsqueeze(1)
-  transcripts = transcripts.long().to(device)
-  input_lengths = input_lengths.long().to(device)
 
   optimizer_state.zero_grad()
 
   (log_y, output_lengths), _ = workload.model_fn(
-      current_param_container, (features, transcripts, input_lengths), None,
+      current_param_container, batch, None,
       spec.ForwardPassMode.TRAIN, rng, False)
 
-  train_ctc_loss = torch.mean(
-      workload.loss_fn(transcripts, (log_y, output_lengths)))
-
+  train_ctc_loss = torch.mean(workload.loss_fn(batch, (log_y, output_lengths)))
   train_ctc_loss.backward()
   optimizer_state.step()
 

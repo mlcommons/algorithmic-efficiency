@@ -77,6 +77,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
                      data_dir: str,
                      batch_size: int):
     is_train = (split == "train")
+    # DO NOT SUBMIT make into dicts
 
     normalize = transforms.Compose([
         transforms.ToTensor(),
