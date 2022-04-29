@@ -39,6 +39,9 @@ WORKLOADS = {
     'mnist': {
         'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
     },
+    'cifar': {
+        'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
+    },
     'imagenet': {
         'workload_path': 'imagenet/imagenet',
         'workload_class_name': 'ImagenetWorkload'
