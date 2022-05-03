@@ -22,3 +22,5 @@ jobs:
       run: |
         pytest -vx tests/version_test.py
         pytest -vx tests/workloads/imagenet/imagenet_jax/workload_test.py
+        pytest -vx tests/test_num_params.py
+        pytest -vx tests/test_param_shapes.py
