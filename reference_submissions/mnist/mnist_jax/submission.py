@@ -38,11 +38,11 @@ def init_optimizer_state(workload: spec.Workload,
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   opt_init_fn, _ = optimizer(hyperparameters)
-  return opt_init_fn(params_zeros_like)
+  return jax_utils.replicate(opt_init_fn(params_zeros_like))
 
 
 # We need to jax.pmap here instead of inside update_params because the latter
-# the latter would recompile the function every step.
+# would recompile the function every step.
 @functools.partial(
     jax.pmap,
     axis_name='batch',
@@ -89,6 +89,7 @@ def update_params(
     hyperparameters: spec.Hyperparamters,
     input_batch: spec.Tensor,
     label_batch: spec.Tensor,
+    mask_batch: spec.Tensor,
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -100,26 +101,21 @@ def update_params(
   del loss_type
   del eval_results
   del global_step
+  del mask_batch
 
   num_devices = jax.local_device_count()
-  input_shape = input_batch.shape
-  reshaped_input_batch = jnp.reshape(
-      input_batch,
-      (num_devices, input_shape[0] // num_devices, *input_shape[1:]))
-  reshaped_label_batch = jnp.reshape(
-      label_batch,
-      (num_devices, label_batch.shape[0] // num_devices,
-       *label_batch.shape[1:]))
 
-  # TODO(znado) we should be more efficient than replicating state each step.
   new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
-      workload, jax_utils.replicate(current_param_container),
-      jax_utils.replicate(model_state), hyperparameters, reshaped_input_batch,
-      reshaped_label_batch, jax_utils.replicate(optimizer_state), rng,
+      workload,
+      current_param_container,
+      model_state,
+      hyperparameters,
+      input_batch,
+      label_batch,
+      optimizer_state,
+      rng,
       jnp.arange(num_devices))
-  return (jax_utils.unreplicate(new_optimizer_state),
-          jax_utils.unreplicate(updated_params),
-          jax_utils.unreplicate(new_model_state))
+  return new_optimizer_state, updated_params, new_model_state
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or

@@ -5,9 +5,9 @@ Example command:
 python3 submission_runner.py \
     --workload=mnist \
     --framework=jax \
-    --submission_path=baselines/mnist/mnist_jax/submission.py \
+    --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=baselines/mnist/tuning_search_space.json \
+    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
     --num_tuning_trials=3
 """
 import importlib
@@ -34,7 +34,7 @@ tf.config.experimental.set_visible_devices([], 'GPU')
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
-# workload_path will be appended by '_pytorch' or '_jax' automatically.
+# Workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = {
     'mnist': {
         'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
@@ -55,7 +55,7 @@ WORKLOADS = {
 
 flags.DEFINE_string(
     'submission_path',
-    'baselines/mnist/mnist_jax/submission.py',
+    'reference_submissions/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
@@ -70,7 +70,7 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'baselines/mnist/tuning_search_space.json',
+    'reference_submissions/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
                      20,
@@ -86,7 +86,7 @@ flags.DEFINE_enum(
 FLAGS = flags.FLAGS
 
 
-def _convert_filepath_to_module(path: str):
+def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)
 
   if extension != '.py':
@@ -95,8 +95,8 @@ def _convert_filepath_to_module(path: str):
   return base.replace('/', '.')
 
 
-def _import_workload(workload_path: str,
-                     workload_class_name: str) -> spec.Workload:
+def import_workload(workload_path: str,
+                    workload_class_name: str) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -112,7 +112,7 @@ def _import_workload(workload_path: str,
   """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  workload_path = _convert_filepath_to_module(workload_path)
+  workload_path = convert_filepath_to_module(workload_path)
 
   # Import the workload module.
   workload_module = importlib.import_module(workload_path)
@@ -134,7 +134,7 @@ def _import_workload(workload_path: str,
 # Example reference implementation showing how to use the above functions
 # together.
 def train_once(workload: spec.Workload,
-               batch_size: int,
+               global_batch_size: int,
                data_dir: str,
                init_optimizer_state: spec.InitOptimizerFn,
                update_params: spec.UpdateParamsFn,
@@ -146,7 +146,7 @@ def train_once(workload: spec.Workload,
   # Workload setup.
   logging.info('Initializing dataset.')
   input_queue = workload.build_input_queue(
-      data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
+      data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
   logging.info('Initializing model.')
   model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
@@ -205,7 +205,8 @@ def train_once(workload: spec.Workload,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(model_params,
+      latest_eval_result = workload.eval_model(global_batch_size,
+                                               model_params,
                                                model_state,
                                                eval_rng,
                                                data_dir)
@@ -228,14 +229,13 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = _convert_filepath_to_module(submission_path)
+  submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
-  get_batch_size = submission_module.get_batch_size
-  batch_size = get_batch_size(workload_name)
+  global_batch_size = submission_module.get_batch_size(workload_name)
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -262,7 +262,7 @@ def score_submission_on_workload(workload: spec.Workload,
       # number.
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
-      timing, metrics = train_once(workload, batch_size, data_dir,
+      timing, metrics = train_once(workload, global_batch_size, data_dir,
                                    init_optimizer_state, update_params,
                                    data_selection, hyperparameters, rng)
       all_timings.append(timing)
@@ -279,7 +279,7 @@ def score_submission_on_workload(workload: spec.Workload,
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
-    score, _ = train_once(workload, batch_size, init_optimizer_state,
+    score, _ = train_once(workload, global_batch_size, init_optimizer_state,
                           update_params, data_selection, None, rng)
   # TODO(znado): record and return other information (number of steps).
   return score
@@ -292,7 +292,7 @@ def main(_):
       BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + FLAGS.framework,
       'workload.py')
-  workload = _import_workload(
+  workload = import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 

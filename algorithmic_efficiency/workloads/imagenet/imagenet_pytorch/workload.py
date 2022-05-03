@@ -32,36 +32,29 @@ def cycle(iterable):
 
 class ImagenetWorkload(BaseImagenetWorkload):
 
-  @property
-  def param_shapes(self):
-    """Return shape tuples from model as a tree."""
-    model, _ = self.init_model_fn([0])
-    param_shapes = {}
-    for name, module in model.named_modules():
-      if len(list(module.parameters(recurse=False))) > 0:
-        param_shapes[name] = {}
-        for param_name, param in module.named_parameters(recurse=False):
-          param_shapes[name][param_name] = spec.ShapeTuple(param.shape)
-    return param_shapes
+  def __init__(self):
+    self._eval_iters = {}
 
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
-    eval_batch_size = 128
-    if self._eval_ds is None:
-      self._eval_ds = self._build_dataset(
-          data_rng, 'test', data_dir, batch_size=eval_batch_size)
+    if split not in self._eval_iters:
+      self._eval_iters[split] = self.build_input_queue(
+          data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = {
         'accuracy': 0.,
         'loss': 0.,
     }
-    n_data = 0
-    for (images, labels) in self._eval_ds:
+    num_data = 0
+    for (images, labels) in self._eval_iters[split]:
       images = images.float().to(DEVICE)
       labels = labels.float().to(DEVICE)
       logits, _ = self.model_fn(
@@ -75,15 +68,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-      n_data += batch_metrics['n_data']
-    return {k: float(v / n_data) for k, v in total_metrics.items()}
+      num_data += batch_metrics['num_data']
+    return {k: float(v / num_data) for k, v in total_metrics.items()}
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
                      batch_size: int):
-
     is_train = (split == "train")
 
     normalize = transforms.Compose([
@@ -92,8 +84,13 @@ class ImagenetWorkload(BaseImagenetWorkload):
             mean=[i / 255 for i in self.train_mean],
             std=[i / 255 for i in self.train_stddev])
     ])
+    eval_transform_config = transforms.Compose([
+        transforms.Resize(self.resize_size),
+        transforms.CenterCrop(self.center_crop_size),
+        normalize
+    ])
     transform_config = {
-        "train":
+        'train':
             transforms.Compose([
                 transforms.RandomResizedCrop(
                     self.center_crop_size,
@@ -102,15 +99,13 @@ class ImagenetWorkload(BaseImagenetWorkload):
                 transforms.RandomHorizontalFlip(),
                 normalize
             ]),
-        "test":
-            transforms.Compose([
-                transforms.Resize(self.resize_size),
-                transforms.CenterCrop(self.center_crop_size),
-                normalize
-            ])
+        'eval_train':
+            eval_transform_config,
+        'validation':
+            eval_transform_config,
     }
 
-    folder = {'train': 'train', 'test': 'val'}
+    folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}
 
     dataset = ImageFolder(
         os.path.join(data_dir, folder[split]),
@@ -132,6 +127,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = resnet50()
+    self._param_shapes = {
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+    }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)
@@ -203,5 +201,5 @@ class ImagenetWorkload(BaseImagenetWorkload):
     # not accuracy, but nr. of correct predictions
     accuracy = (predicted == labels).sum().item()
     loss = self.loss_fn(labels, logits).sum().item()
-    n_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'n_data': n_data}
+    num_data = len(logits)
+    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}

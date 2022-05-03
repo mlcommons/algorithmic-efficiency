@@ -1,3 +1,4 @@
+from typing import Dict
 import numpy as np
 import tensorflow as tf
 import torch
@@ -19,10 +20,11 @@ class BaseWmtWorkload(spec.Workload):
     self._predict_ds = None
     self._encoder = None
     self._vocab_size = 32000
-    self._batch_size = None
+    self._global_batch_size = None
+    self._param_shapes = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['bleu'] > self.target_value
+    return eval_result['validation/bleu'] > self.target_value
 
   @property
   def target_value(self):
@@ -38,7 +40,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    pass
+    return 3004
 
   @property
   def num_validation_examples(self):
@@ -68,21 +70,54 @@ class BaseWmtWorkload(spec.Workload):
                         data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
+                        global_batch_size: int):
     del data_rng
     del split
     tf.io.gfile.makedirs(WORKDIR)
-    self._batch_size = batch_size
+    self._global_batch_size = global_batch_size
     datasets = input_pipeline.get_wmt_datasets(
         data_dir=data_dir,
         vocab_size=self._vocab_size,
-        batch_size=batch_size,
+        global_batch_size=global_batch_size,
         reverse_translation=True,
         vocab_path=VOCAB_PATH,
         pack_examples=True)
     self._train_ds, self._eval_ds, self._predict_ds, self._encoder = datasets
     self._vocab_size = int(self._encoder.vocab_size())
     return iter(self._train_ds)
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str) -> Dict[str, float]:
+    """Evaluate the model on a given dataset split, return final scalars."""
+    del model_state
+    del rng
+    del data_dir
+
+    if split == 'test':
+      raise NotImplementedError
+    ds = self._train_ds if split == 'eval_train' else self._eval_ds
+    num_batches = num_examples // global_batch_size
+
+    eval_results = self.evaluate(
+        params=params,
+        eval_ds=ds,
+        num_eval_steps=num_batches)
+
+    bleu_score = self.translate_and_calculate_bleu(
+        params=params,
+        predict_ds=ds,
+        max_predict_length=256,
+        num_eval_steps=num_batches)
+
+    eval_results['bleu'] = bleu_score
+
+    return eval_results
 
   def compute_metrics(self, logits, labels, weights):
     """Compute summary metrics."""
@@ -123,6 +158,15 @@ class BaseWmtWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
+
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
 
   @property
   def model_params_types(self):

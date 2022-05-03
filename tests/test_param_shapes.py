@@ -42,21 +42,21 @@ def get_workload(workload):
   if workload == 'mnist':
     # Init Jax workload.
     jax_workload = JaxMnistWorkload()
-    _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
     # Init PyTorch workload.
     pytorch_workload = PyTorchMnistWorkload()
   elif workload == 'imagenet':
     # Init Jax workload.
     jax_workload = JaxImagenetWorkload()
-    _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
     # Init PyTorch workload.
     pytorch_workload = PyTorchImagenetWorkload()
   elif workload == 'wmt':
     # Init Jax workload.
     jax_workload = JaxWmtWorkload()
-    jax_workload._batch_size = 128
+    jax_workload._global_batch_size = 128
     # Init PyTorch workload.
     pytorch_workload = PyTorchWmtWorkload()
   else:
     raise ValueError(f'Workload {workload} is not available.')
+  _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
+  _ = pytorch_workload.init_model_fn([0])
   return jax_workload, pytorch_workload

@@ -138,15 +138,15 @@ class WmtWorkload(BaseWmtWorkload):
     return torch.cat([x, torch.tile(x[-1], (batch_pad, 1))], dim=0)
 
   def translate_and_calculate_bleu(self,
-                                   params,
+                                   params: spec.ParameterContainer,
                                    predict_ds: tf.data.Dataset,
-                                   decode_tokens,
-                                   max_predict_length: int):
+                                   max_predict_length: int,
+                                   num_eval_steps: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
     n_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
-    for pred_batch in predict_ds:
+    for _, pred_batch in zip(range(num_eval_steps+1), predict_ds):
       inputs, targets = self.preprocess_for_eval(pred_batch, None, None)  # pylint: disable=unbalanced-tuple-unpacking
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = inputs.shape[0]
@@ -161,9 +161,9 @@ class WmtWorkload(BaseWmtWorkload):
 
       # Iterate through non-padding examples of batch.
       for i, s in enumerate(predicted[:cur_pred_batch_size]):
-        sources.append(decode_tokens(inputs[i]))
-        references.append(decode_tokens(targets[i]))
-        predictions.append(decode_tokens(s))
+        sources.append(self._decode_tokens(inputs[i]))
+        references.append(self._decode_tokens(targets[i]))
+        predictions.append(self._decode_tokens(s))
     logging.info("Translation: %d predictions %d references %d sources.",
                  len(predictions),
                  len(references),
@@ -173,18 +173,6 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_matches = bleu.bleu_partial(references, predictions)
     bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
-
-  @property
-  def param_shapes(self):
-    """Return shape tuples from model as a tree."""
-    model, _ = self.init_model_fn([0])
-    param_shapes = {}
-    for name, module in model.named_modules():
-      if len(list(module.parameters(recurse=False))) > 0:
-        param_shapes[name] = {}
-        for param_name, param in module.named_parameters(recurse=False):
-          param_shapes[name][param_name] = spec.ShapeTuple(param.shape)
-    return param_shapes
 
   def preprocess_for_train(self,
                            selected_raw_input_batch: spec.Tensor,
@@ -234,6 +222,9 @@ class WmtWorkload(BaseWmtWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = Transformer()
+    self._param_shapes = {
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+    }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)
@@ -273,7 +264,7 @@ class WmtWorkload(BaseWmtWorkload):
     loss = self.compute_weighted_cross_entropy(logits_batch, label_batch)
     return loss
 
-  def eval_step(self, params, batch, model_state, rng):
+  def eval_step(self, params, batch):
     """Calculate evaluation metrics on a batch."""
     targets = batch[1]
     weights = torch.where(targets > 0, 1.0, 0.0)
@@ -281,48 +272,26 @@ class WmtWorkload(BaseWmtWorkload):
         params,
         batch,
         mode=spec.ForwardPassMode.EVAL,
-        model_state=model_state,
-        rng=rng,
+        model_state=None,
+        rng=None,
         update_batch_norm=False)
     return self.compute_metrics(logits, targets, weights)
 
   def evaluate(self,
                params: spec.ParameterContainer,
-               num_eval_steps: int,
-               model_state,
-               rng):
-    """Evaluate the target and return a dictionary with the metrics."""
+               eval_ds: tf.data.Dataset,
+               num_eval_steps: int):
+    """Evaluate the model and return a dictionary with the metrics."""
     logging.info('Gathering evaluation metrics.')
     eval_metrics = {
         'loss': 0.,
         'accuracy': 0.,
         'denominator': 0,
     }
-    eval_iter = iter(self._eval_ds)  # pytype: disable=wrong-arg-types
+    eval_iter = iter(eval_ds)  # pytype: disable=wrong-arg-types
     for _, eval_batch in zip(range(num_eval_steps), eval_iter):
       eval_batch = self.preprocess_for_eval(eval_batch, None, None)
-      metrics = self.eval_step(params, eval_batch, model_state, rng)
+      metrics = self.eval_step(params, eval_batch)
       eval_metrics = {k: v + metrics[k] for k, v in eval_metrics.items()}
     denominator = eval_metrics.pop('denominator')
     return {k: float(v / denominator) for k, v in eval_metrics.items()}
-
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
-    """Run a full evaluation of the model."""
-    del data_dir
-
-    eval_results = self.evaluate(
-        params=params, num_eval_steps=20, model_state=model_state, rng=rng)
-
-    bleu_score = self.translate_and_calculate_bleu(
-        params=params,
-        predict_ds=self._predict_ds,
-        decode_tokens=self._decode_tokens,
-        max_predict_length=256)
-
-    eval_results['bleu'] = bleu_score
-
-    return eval_results

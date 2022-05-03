@@ -291,7 +291,7 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
 
 def get_wmt_datasets(data_dir: str,
                      vocab_size: int,
-                     batch_size: int,
+                     global_batch_size: int,
                      reverse_translation: bool = True,
                      vocab_path: Optional[str] = None,
                      pack_examples: bool = True):
@@ -323,14 +323,14 @@ def get_wmt_datasets(data_dir: str,
       shuffle=True,
       num_epochs=None,
       pack_examples=pack_examples,
-      batch_size=batch_size,
+      batch_size=global_batch_size,
       max_length=256)
 
   eval_ds = preprocess_wmt_data(
       eval_data,
       shuffle=False,
       pack_examples=False,
-      batch_size=batch_size,
+      batch_size=global_batch_size,
       max_length=256,
       drop_remainder=False)
 
@@ -338,7 +338,7 @@ def get_wmt_datasets(data_dir: str,
       eval_data,
       shuffle=False,
       pack_examples=False,
-      batch_size=batch_size,
+      batch_size=global_batch_size,
       max_length=256,
       drop_remainder=False)
 
