@@ -41,10 +41,6 @@ class BaseMnistWorkload(spec.Workload):
     return 10000
 
   @property
-  def num_test_examples(self):
-    pass
-
-  @property
   def train_mean(self):
     return 0.1307
 

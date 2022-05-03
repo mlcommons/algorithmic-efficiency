@@ -146,7 +146,7 @@ class WmtWorkload(BaseWmtWorkload):
     n_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
-    for _, pred_batch in zip(range(num_eval_steps+1), predict_ds):
+    for _, pred_batch in zip(range(num_eval_steps + 1), predict_ds):
       inputs, targets = self.preprocess_for_eval(pred_batch, None, None)  # pylint: disable=unbalanced-tuple-unpacking
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = inputs.shape[0]

@@ -105,9 +105,7 @@ class BaseWmtWorkload(spec.Workload):
     num_batches = num_examples // global_batch_size
 
     eval_results = self.evaluate(
-        params=params,
-        eval_ds=ds,
-        num_eval_steps=num_batches)
+        params=params, eval_ds=ds, num_eval_steps=num_batches)
 
     bleu_score = self.translate_and_calculate_bleu(
         params=params,

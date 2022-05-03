@@ -172,10 +172,7 @@ class WmtWorkload(BaseWmtWorkload):
     n_device, n_batch, *remaining_dims = x.shape
     return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
 
-  def evaluate(self,
-               params,
-               eval_ds: tf.data.Dataset,
-               num_eval_steps: int):
+  def evaluate(self, params, eval_ds: tf.data.Dataset, num_eval_steps: int):
     """Evaluate the target an return a dictionary with the metrics."""
     logging.info("Gathering evaluation metrics.")
     eval_metrics = []
@@ -202,7 +199,7 @@ class WmtWorkload(BaseWmtWorkload):
     n_devices = jax.local_device_count()
     logging.info("Translating evaluation dataset.")
     sources, references, predictions = [], [], []
-    for _, pred_batch in zip(range(num_eval_steps+1), predict_ds):
+    for _, pred_batch in zip(range(num_eval_steps + 1), predict_ds):
       pred_batch = jax.tree_map(lambda x: x._numpy(), pred_batch)  # pylint: disable=protected-access
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = pred_batch["inputs"].shape[0]
@@ -284,8 +281,8 @@ class WmtWorkload(BaseWmtWorkload):
         static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
 
     rng, init_rng = jax.random.split(rng)
-    per_device_batch_size = int(
-        self._global_batch_size / jax.local_device_count())
+    per_device_batch_size = int(self._global_batch_size /
+                                jax.local_device_count())
     input_shape = (per_device_batch_size, 256)
     target_shape = (per_device_batch_size, 256)
 
@@ -295,8 +292,8 @@ class WmtWorkload(BaseWmtWorkload):
         jnp.ones(target_shape, jnp.float32))
 
     initial_params = initial_variables["params"]
-    self._param_shapes = jax.tree_map(
-        lambda x: spec.ShapeTuple(x.shape), initial_params)
+    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
+                                      initial_params)
 
     return initial_params, None
 
