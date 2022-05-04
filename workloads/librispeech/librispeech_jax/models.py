@@ -138,7 +138,7 @@ class MaskConv(nn.Module):
         x = x.transpose(0, 2, 3, 1)
         for module in self.seq_module:
             x = module(x)
-            mask = jnp.arange(x.shape[1]).reshape(1, -1, 1, 1) < lengths.reshape(-1, 1, 1, 1)
+            mask = jnp.arange(x.shape[1]).reshape(1, 1, -1, 1) < lengths.reshape(-1, 1, 1, 1)
             x = BatchNorm()(x, mask.astype(jnp.float32), not training)
             x = hard_tanh(x, 0, 20)
         x = x.transpose(0, 3, 1, 2)
