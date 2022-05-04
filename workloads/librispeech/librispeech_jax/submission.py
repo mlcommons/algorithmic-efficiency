@@ -134,9 +134,9 @@ def update_params(
     current_param_container, hyperparameters, batch, rng)
 
   steps_per_epoch = workload.num_train_examples // get_batch_size('librispeech_jax')
-  if (global_step + 1) % steps_per_epoch == 0:
-    # sync batch statistics across replicas once per epoch
-    new_model_state = workload.sync_batch_stats(new_model_state)
+  # due to the psum, batchnorm states don't have to be synchronised
+  #if (global_step + 1) % steps_per_epoch == 0:
+    #new_model_state = workload.sync_batch_stats(new_model_state)
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
