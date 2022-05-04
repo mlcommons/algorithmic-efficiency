@@ -230,7 +230,7 @@ def train_once(
         latest_eval_result = workload.eval_model(
             model_params, model_state, eval_rng, data_dir)
         log(writer, "EvalResult", latest_eval_result, global_step)
-        log(writer, "StepsPerSecond", (current_time - global_start_time) / global_step, global_step)
+        log(writer, "Seconds Per Step", (current_time - global_start_time) / global_step, global_step)
         logging.info(
             f'{current_time - global_start_time:.2f}s\t{global_step}'
             f'\t{latest_eval_result}')
