@@ -130,7 +130,7 @@ def update_params(
   }
   optimizer_state, opt_update_fn = optimizer_state
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
-    workload, opt_update_fn, model_state, optimizer_state,
+    workload, opt_update_fn, in_len, out_len, model_state, optimizer_state,
     current_param_container, hyperparameters, batch, rng)
 
   steps_per_epoch = workload.num_train_examples // get_batch_size('librispeech_jax')
