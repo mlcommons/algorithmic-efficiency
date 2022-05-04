@@ -9,8 +9,11 @@ import jax.numpy as jnp
 from flax import linen as nn
 from flax.linen.normalization import _canonicalize_axes, _normalize
 from jax import lax
+from jax.experimental.compilation_cache import compilation_cache
 
 Axes = Union[int, Iterable[int]]
+
+compilation_cache.initialize_cache("compilation_cache")
 
 
 class Sequential(nn.Module):

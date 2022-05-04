@@ -43,9 +43,11 @@ def init_optimizer_state(
   jax.pmap,
   axis_name='batch',
   in_axes=(None, None, 0, 0, 0, None, 0, None),
-  static_broadcasted_argnums=(0, 1))
-def pmapped_train_step(workload, opt_update_fn, model_state, optimizer_state,
+  static_broadcasted_argnums=(0, 1, 2, 3))
+def pmapped_train_step(workload, opt_update_fn, in_len, out_len, model_state, optimizer_state,
                        current_param_container, hyperparameters, batch, rng):
+  _ = in_len
+  _ = out_len
   def _loss_fn(params):
     """loss function used for training."""
     variables = {'params': params, **model_state}
@@ -83,7 +85,7 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
-  _, features, transcripts, input_lengths,  transcripts_padding = input_batch
+  _, features, transcripts, input_lengths,  transcripts_padding, in_len, out_len = input_batch
   features = jnp.expand_dims(features.transpose(0, 2, 1), axis=1)
   num_devices = jax.local_device_count()
   reshaped_features = jnp.reshape(

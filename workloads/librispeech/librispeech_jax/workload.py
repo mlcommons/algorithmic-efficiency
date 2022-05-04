@@ -12,7 +12,6 @@ import numpy as np
 import torch
 import torch.utils.data
 from flax import jax_utils
-from jax import lax
 
 import spec
 from . import ctc_loss, input_pipeline, models
@@ -225,7 +224,9 @@ class LibriSpeechWorkload(spec.Workload):
 
         return jnp.mean(loss)
 
-    def _eval_model_fn(self, params, batch, state, rng):
+    def _eval_model_fn(self, in_len, out_len, params, batch, state, rng):
+        _ = in_len
+        _ = out_len
         logits, _ = self.model_fn(
             params,
             batch["input"],
@@ -236,7 +237,7 @@ class LibriSpeechWorkload(spec.Workload):
         return logits
 
     eval_model_fn = jax.pmap(_eval_model_fn, axis_name='batch', in_axes=(None, 0, 0, 0, None),
-                             static_broadcasted_argnums=(0,))
+                             static_broadcasted_argnums=(0, 1, 2))
 
     def eval_model(
             self,
@@ -250,7 +251,8 @@ class LibriSpeechWorkload(spec.Workload):
         total_length = 0.0
 
         num_devices = jax.local_device_count()
-        for step_idx, (_, features, transcripts, input_lengths, transcripts_padding) in enumerate(self._valid_loader):
+        for step_idx, (_, features, transcripts, input_lengths, transcripts_padding, in_len,
+                       out_len) in enumerate(self._valid_loader):
             if step_idx >= self._valid_loader_len:
                 break
             features = jnp.expand_dims(features.transpose(0, 2, 1), axis=1)
@@ -263,7 +265,7 @@ class LibriSpeechWorkload(spec.Workload):
             batch = {
                 'input': (reshaped_features, reshaped_input_lengths)
             }
-            log_y, _ = self.eval_model_fn(params, batch, model_state, rng)
+            log_y, _ = self.eval_model_fn(in_len, out_len, params, batch, model_state, rng)
             log_y = to_cpu(log_y)
             log_y = jnp.reshape(log_y, (-1, *log_y.shape[2:]))
             log_y = torch.tensor(np.asarray(log_y), device='cpu')
