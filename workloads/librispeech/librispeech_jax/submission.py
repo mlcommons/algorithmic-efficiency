@@ -42,7 +42,7 @@ def init_optimizer_state(
 @functools.partial(
   jax.pmap,
   axis_name='batch',
-  in_axes=(None, None, 0, 0, 0, None, 0, None),
+  in_axes=(None, None, None, None, 0, 0, 0, None, 0, None),
   static_broadcasted_argnums=(0, 1, 2, 3))
 def pmapped_train_step(workload, opt_update_fn, in_len, out_len, model_state, optimizer_state,
                        current_param_container, hyperparameters, batch, rng):
