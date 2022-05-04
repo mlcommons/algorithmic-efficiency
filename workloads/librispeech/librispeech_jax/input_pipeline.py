@@ -14,7 +14,7 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         self.df = pd.read_csv(feat_csv)
         self.df["features"] = self.df["features"].apply(np.load)
         self.df["trans_ids"] = self.df["trans_ids"].apply(json.loads)
-        self.df["len"] = self.df["features"].apply(len)
+        self.df["len"] = self.df["trans_ids"].apply(len)
         self.df.sort_values("len", inplace=True)
         self.sample_size = len(self.df)
         self.df["id"] = list(range(self.sample_size))
@@ -27,8 +27,8 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         return self.sample_size
 
     def pad_collate(self, batch):
-        max_input_len = 128
-        max_target_len = 128
+        max_input_len = 256  # 142 to 3496
+        max_target_len = 16  # 11 to 586
 
         for elem in batch:
             index, feature, trn = elem
