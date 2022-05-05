@@ -1,5 +1,5 @@
 """Training algorithm track submission functions for ImageNet."""
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -58,8 +58,7 @@ def update_params(
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -78,14 +77,14 @@ def update_params(
 
   logits_batch, new_model_state = workload.model_fn(
       params=current_model,
-      input_batch=input_batch,
+      augmented_and_preprocessed_input_batch=batch['inputs'],
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      label_batch=label_batch, logits_batch=logits_batch).mean()
+      label_batch=batch['targets'], logits_batch=logits_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()

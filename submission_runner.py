@@ -99,7 +99,8 @@ def convert_filepath_to_module(path: str):
 
 
 def import_workload(workload_path: str,
-                    workload_class_name: str) -> spec.Workload:
+                    workload_class_name: str,
+                    return_class=False) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -112,6 +113,8 @@ def import_workload(workload_path: str,
     workload_path: the path to the `workload.py` file to load.
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
+    return_class: if true, then the workload class is returned instead of the
+      instantiated object. Useful for testing when methods need to be overriden.
   """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
@@ -131,6 +134,8 @@ def import_workload(workload_path: str,
         f'Could not find member {workload_class_name} in {workload_path}. '
         'Make sure the Workload class is spelled correctly and defined in '
         'the top scope of the module.')
+  if return_class:
+    return workload_class
   return workload_class()
 
 

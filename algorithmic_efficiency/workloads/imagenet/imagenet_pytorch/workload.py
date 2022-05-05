@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
@@ -33,7 +34,23 @@ def cycle(iterable):
 class ImagenetWorkload(BaseImagenetWorkload):
 
   def __init__(self):
+    self._param_types = None
     self._eval_iters = {}
+
+  @property
+  def param_shapes(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
+
+  @property
+  def model_params_types(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_types is None:
+      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
+    return self._param_types
 
   def _eval_model_on_split(self,
                            split: str,
@@ -54,9 +71,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
         'loss': 0.,
     }
     num_data = 0
-    for (images, labels) in self._eval_iters[split]:
-      images = images.float().to(DEVICE)
-      labels = labels.float().to(DEVICE)
+    for batch in self._eval_iters[split]:
+      images = batch['inputs'].float().to(DEVICE)
+      labels = batch['targets'].to(DEVICE)
       logits, _ = self.model_fn(
           params,
           images,
@@ -186,14 +203,13 @@ class ImagenetWorkload(BaseImagenetWorkload):
         spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
         spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
     }
-
     return activation_fn[loss_type](logits_batch)
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
+  def loss_fn(self,
+              label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-
     return F.cross_entropy(logits_batch, label_batch, reduction='none')
 
   def _eval_metric(self, logits, labels):

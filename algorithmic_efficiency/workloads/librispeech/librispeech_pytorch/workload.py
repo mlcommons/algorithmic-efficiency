@@ -1,13 +1,15 @@
 """LibriSpeech workload implemented in Pytorch."""
-
 import itertools
+import math
 import os
 from typing import Tuple
 
 import ctcdecode
 import Levenshtein
 import torch
+import torch.utils.data as data_utils
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
     input_pipeline
@@ -15,14 +17,16 @@ from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
     models
 
 
+device = torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu")
+
 class LibriSpeechWorkload(spec.Workload):
   """A LibriSpeech workload."""
 
   def __init__(self):
-    self._train_loader = None
-    self._valid_loader = None
-    self._device = torch.device(
-        "cuda:0" if torch.cuda.is_available() else "cpu")
+    self._param_shapes = None
+    self._param_types = None
+    self._eval_iters = {}
     self._loss = torch.nn.CTCLoss(blank=0, reduction="none")
     self._label_dict = {
         "_": 0,
@@ -68,36 +72,33 @@ class LibriSpeechWorkload(spec.Workload):
                         data_dir: str,
                         global_batch_size: int):
     torch.manual_seed(data_rng[0])
-    train_set = input_pipeline.LibriSpeechDataset(
-        os.path.join(data_dir, "features_train-clean-100.csv"))
-    valid_set = input_pipeline.LibriSpeechDataset(
-        os.path.join(data_dir, "features_test-clean.csv"))
+    is_train = split in ['train', 'eval_train']
+    if is_train:
+      # DO NOT SUBMIT make sure we load in all train files (not just 100)
+      filename = "features_train-clean-100.csv"
+    elif split == 'validation':
+      filename = "features_dev-clean.csv"
+    elif split == 'test':
+      filename = "features_test-clean.csv"
+    else:
+      raise ValueError('Received unsupported dataset split "{}".'.format(split))
 
-    train_collate_fn = train_set.pad_collate
-
-    self._train_loader = torch.utils.data.DataLoader(
-        train_set,
+    ds = input_pipeline.LibriSpeechDataset(
+        os.path.join(data_dir, filename))
+    if split == 'eval_train':
+      ds, _ = data_utils.random_split(
+          ds,
+          [self.num_eval_train_examples,
+           len(ds) - self.num_eval_train_examples],
+          generator=torch.Generator().manual_seed(int(data_rng[1])))
+    loader = torch.utils.data.DataLoader(
+        ds,
         batch_size=global_batch_size,
-        shuffle=True,
+        shuffle=is_train,
         num_workers=2,
         pin_memory=True,
-        collate_fn=train_collate_fn)
-
-    self._valid_loader = torch.utils.data.DataLoader(
-        valid_set,
-        batch_size=global_batch_size,
-        num_workers=2,
-        pin_memory=True,
-        collate_fn=train_collate_fn)
-
-    return iter(itertools.cycle(self._train_loader))
-
-  @property
-  def param_shapes(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
+        collate_fn=ds.pad_collate)
+    return iter(loader)
 
   @property
   def target_value(self):
@@ -132,11 +133,19 @@ class LibriSpeechWorkload(spec.Workload):
     return 1.0
 
   @property
+  def param_shapes(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
+
+  @property
   def model_params_types(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
+    """The shapes of the parameters in the workload model."""
+    if self._param_types is None:
+      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
+    return self._param_types
 
   @property
   def max_allowed_runtime_sec(self):
@@ -153,9 +162,12 @@ class LibriSpeechWorkload(spec.Workload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model = models.CNNLSTM()
+    self._param_shapes = {
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+    }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
-    model.to(self._device)
+    model.to(device)
     return model, None
 
   def model_fn(
@@ -172,10 +184,10 @@ class LibriSpeechWorkload(spec.Workload):
     features = augmented_and_preprocessed_input_batch['features']
     transcripts = augmented_and_preprocessed_input_batch['transcripts']
     input_lengths = augmented_and_preprocessed_input_batch['input_lengths']
-    features = features.float().to(self._device)
+    features = features.float().to(device)
     features = features.transpose(1, 2).unsqueeze(1)
-    transcripts = transcripts.long().to(self._device)
-    input_lengths = input_lengths.long().to(self._device)
+    transcripts = transcripts.long().to(device)
+    input_lengths = input_lengths.long().to(device)
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
     log_y, output_lengths = params(features, input_lengths, transcripts)
@@ -192,7 +204,7 @@ class LibriSpeechWorkload(spec.Workload):
     target_lengths = torch.IntTensor([len(y[y != 0]) for y in label_batch])
 
     loss = self._loss(log_y, label_batch, output_lengths, target_lengths) / (
-        target_lengths.float().to(self._device))
+        target_lengths.float().to(device))
 
     return loss
 
@@ -202,22 +214,20 @@ class LibriSpeechWorkload(spec.Workload):
     """Return the final activations of the model."""
     pass
 
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
+  def eval_model(
+      self, params: spec.ParameterContainer, ds_iter, num_batches: int):
     """Run a full evaluation of the model."""
-
     params.eval()
     total_error = 0.0
     total_length = 0.0
     with torch.no_grad():
-      for (_, features, transcripts, input_lengths) in self._valid_loader:
-        features = features.float().to(self._device)
+      for (bi, batch) in enumerate(ds_iter):
+        if bi > num_batches:
+          break
+        features = batch['features'].float().to(device)
         features = features.transpose(1, 2).unsqueeze(1)
-        transcripts = transcripts.long().to(self._device)
-        input_lengths = input_lengths.int()
+        transcripts = batch['transcripts'].long().to(device)
+        input_lengths = batch['input_lengths'].int()
 
         log_y, _ = params(features, input_lengths, transcripts)
 
@@ -236,3 +246,24 @@ class LibriSpeechWorkload(spec.Workload):
           total_length += tlength
 
     return total_error / total_length
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    del model_state
+    if split not in self._eval_iters:
+      data_loader = self.build_input_queue(
+          rng,
+          split,
+          data_dir,
+          global_batch_size)
+      # Note that this saves the entire dataset split in memory.
+      self._eval_iters[split] = itertools.cycle(data_loader)
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    wer = self.eval_model(params, self._eval_iters[split], num_batches)
+    return {'word_error_rate': wer}

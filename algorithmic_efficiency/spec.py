@@ -104,7 +104,7 @@ class Workload(metaclass=abc.ABCMeta):
                         data_rng: RandomState,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
+                        global_batch_size: int) -> Dict[str, Any]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -112,6 +112,10 @@ class Workload(metaclass=abc.ABCMeta):
     For Jax this should return an itertor over tensors of shape
     (num_devices, per_device_batch_size, ...), and for PyTorch this should
     return tensors of shape (global_batch_size, ...).
+
+    The required keys are 'inputs' and 'targets', and in general the naming
+    convention should be plural key names because the values are batches of
+    examples.
     """
 
   @property
@@ -257,16 +261,17 @@ class Workload(metaclass=abc.ABCMeta):
       eval_metrics['validation/' + k] = v
     # Evaluate on the test set if we have one.
     try:
-      test_metrics = self._eval_model_on_split(
-          'test',
-          num_examples=self.num_test_examples,
-          global_batch_size=global_batch_size,
-          params=params,
-          model_state=model_state,
-          rng=rng,
-          data_dir=data_dir)
-      for k, v in test_metrics.items():
-        eval_metrics['test/' + k] = v
+      if self.num_test_examples is not None:
+        test_metrics = self._eval_model_on_split(
+            'test',
+            num_examples=self.num_test_examples,
+            global_batch_size=global_batch_size,
+            params=params,
+            model_state=model_state,
+            rng=rng,
+            data_dir=data_dir)
+        for k, v in test_metrics.items():
+          eval_metrics['test/' + k] = v
     except NotImplementedError:
       pass
     return eval_metrics

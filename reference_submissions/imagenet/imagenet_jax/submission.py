@@ -139,5 +139,4 @@ def data_selection(workload: spec.Workload,
 
   Return a tuple of input label batches.
   """
-  x = next(input_queue)
-  return x['image'], x['label']
+  return next(input_queue)

@@ -11,6 +11,7 @@ import torch.utils.data as data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
@@ -87,17 +88,8 @@ class MnistWorkload(BaseMnistWorkload):
   @property
   def model_params_types(self):
     """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.model_params_types!')
     if self._param_types is None:
-      self._param_types = {}
-      for name in self._param_shapes.keys():
-        if 'bias' in name:
-          self._param_types[name] = spec.ParameterType.BIAS
-        else:
-          self._param_types[name] = spec.ParameterType.WEIGHT
+      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer

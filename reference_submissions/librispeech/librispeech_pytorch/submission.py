@@ -87,5 +87,4 @@ def data_selection(workload: spec.Workload,
   del rng
   del hyperparameters
   del workload
-
-  return next(input_queue), None
+  return next(input_queue)
