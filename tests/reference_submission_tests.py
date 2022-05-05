@@ -19,6 +19,8 @@ import os
 from absl import flags
 from absl import logging
 from absl.testing import absltest
+import jax
+import jraph
 import numpy as np
 import torch
 
@@ -50,7 +52,7 @@ def _make_fake_input_queue_fn(workload_name,
                               global_batch_size,
                               num_unique_fake_batches):
 
-  def f(*unused_args, **unused_kwargs):
+  def f(self, *unused_args, **unused_kwargs):
     del unused_args
     del unused_kwargs
 
@@ -77,6 +79,18 @@ def _make_fake_input_queue_fn(workload_name,
           'transcripts': np.ones((8, 246)),
           'input_lengths': np.ones((8,)),
       }
+    elif workload_name == 'ogbg':
+      fake_batch = jraph.GraphsTuple(
+          n_node=np.asarray([1]),
+          n_edge=np.asarray([1]),
+          nodes=np.ones((1, 3)),
+          edges=np.ones((1, 7)),
+          globals=np.zeros((1, 5)),
+          senders=np.asarray([0]),
+          receivers=np.asarray([0]))
+      if self._init_graphs is None:
+        # Unreplicate the iterator that has the leading dim for pmapping.
+        self._init_graphs = jax.tree_map(lambda x: x[0], fake_batch)
     else:
       raise ValueError(
           f'Workload {workload_name} does not have a fake batch defined , you '
