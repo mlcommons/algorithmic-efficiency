@@ -10,7 +10,8 @@ import torch
 
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
-    def __init__(self, feat_csv):
+    def __init__(self, feat_csv: str, batch_size: int):
+        self.batch_size = batch_size
         self.df = pd.read_csv(feat_csv)
         self.df["features"] = self.df["features"].apply(np.load)
         self.df["trans_ids"] = self.df["trans_ids"].apply(json.loads)
@@ -20,26 +21,22 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         self.df["id"] = list(range(self.sample_size))
 
     def __getitem__(self, idx):
-        sample = self.df.iloc[idx]
-        return sample["id"], sample["features"], sample["trans_ids"]
-
-    def __len__(self):
-        return self.sample_size
-
-    def pad_collate(self, batch):
+        idx *= self.batch_size
         max_input_len = 256  # 142 to 3496
         max_target_len = 16  # 11 to 586
 
-        for elem in batch:
-            index, feature, trn = elem
+        for i in range(self.batch_size):
+            sample = self.df.iloc[idx + i]
+            index, feature, trn = sample["id"], sample["features"], sample["trans_ids"]
             max_input_len = max(max_input_len, feature.shape[0])
             max_target_len = max(max_target_len, len(trn))
 
         max_input_len = int(2 ** math.ceil(math.log2(max_input_len)))
         max_target_len = int(2 ** math.ceil(math.log2(max_target_len)))
 
-        for i, elem in enumerate(batch):
-            index, f, trn = elem
+        for i in range(self.batch_size):
+            sample = self.df.iloc[idx + i]
+            index, feature, trn = sample["id"], sample["features"], sample["trans_ids"]
             input_length = np.array(f.shape[0])
             input_dim = f.shape[1]
             feature = np.zeros((max_input_len, input_dim), dtype=np.float)
@@ -60,3 +57,9 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         target_padding = np.array([x[4] for x in batch], dtype=jnp.int32)
 
         return index, feature, trn, input_length, target_padding, max_input_len, max_target_len
+
+    def __len__(self):
+        return self.sample_size // self.batch_size
+
+    def pad_collate(self, batch):
+        return batch[0]
