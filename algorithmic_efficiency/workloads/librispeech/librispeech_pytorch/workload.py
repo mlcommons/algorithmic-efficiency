@@ -214,14 +214,29 @@ class LibriSpeechWorkload(spec.Workload):
     """Return the final activations of the model."""
     pass
 
-  def eval_model(
-      self, params: spec.ParameterContainer, ds_iter, num_batches: int):
-    """Run a full evaluation of the model."""
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    del model_state
+    if split not in self._eval_iters:
+      data_loader = self.build_input_queue(
+          rng,
+          split,
+          data_dir,
+          global_batch_size)
+      # Note that this saves the entire dataset split in memory.
+      self._eval_iters[split] = itertools.cycle(data_loader)
+    num_batches = int(math.ceil(num_examples / global_batch_size))
     params.eval()
     total_error = 0.0
     total_length = 0.0
     with torch.no_grad():
-      for (bi, batch) in enumerate(ds_iter):
+      for (bi, batch) in enumerate(self._eval_iters[split]):
         if bi > num_batches:
           break
         features = batch['features'].float().to(device)
@@ -245,25 +260,5 @@ class LibriSpeechWorkload(spec.Workload):
           total_error += error
           total_length += tlength
 
-    return total_error / total_length
-
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str):
-    del model_state
-    if split not in self._eval_iters:
-      data_loader = self.build_input_queue(
-          rng,
-          split,
-          data_dir,
-          global_batch_size)
-      # Note that this saves the entire dataset split in memory.
-      self._eval_iters[split] = itertools.cycle(data_loader)
-    num_batches = int(math.ceil(num_examples / global_batch_size))
-    wer = self.eval_model(params, self._eval_iters[split], num_batches)
+    wer = total_error / total_length
     return {'word_error_rate': wer}

@@ -33,6 +33,7 @@ PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 _EXPECTED_METRIC_NAMES = {
     'mnist': ['validation/accuracy', 'test/accuracy'],
     'imagenet': ['validation/accuracy'],
+    'librispeech': ['validation/word_error_rate', 'train/word_error_rate'],
 }
 
 
@@ -70,40 +71,12 @@ def _make_fake_input_queue_fn(workload_name,
       fake_batch = _make_fake_image_batch(
           framework, batch_shape, data_shape=data_shape, num_classes=1000)
     elif workload_name == 'librispeech':
-      max_input_len = 101
-      max_target_len = 137
-      input_dim = 7
-      # indices = np.arange(global_batch_size)
-      # if framework == 'jax':
-      #   indices = np.expand_dims(indices, axis=0)
-      # fake_batch = {
-      #     'indices': indices,
-      #     'features': np.zeros((*batch_shape, max_input_len, input_dim)),
-      #     'transcripts': np.zeros((*batch_shape, max_target_len)),
-      #     'input_lengths': 13 * np.ones(*batch_shape),
-      # }
-
-      fake_batch_list = []
-      for i in range(global_batch_size):
-        input_length = np.array(max_input_len)
-        feature = np.ones((max_input_len, input_dim), dtype=np.float)
-        trn = np.ones((max_input_len, input_dim), dtype=np.float)
-        trn = np.pad(
-            trn, (0, max_target_len - len(trn)), 'constant', constant_values=0)
-        fake_batch_list.append({
-            'indices': i,
-            'features': feature,
-            'transcripts': trn,
-            'input_lengths': input_length,
-        })
-
-      fake_batch = {}
-      print({k: np.shape(v) for k, v in fake_batch_list[0].items()})
-      for key in fake_batch_list[0].keys():
-        fake_batch[key] = np.stack((b[key] for b in fake_batch_list))
-        if framework == 'jax':
-          fake_batch[key] = np.expand_dims(fake_batch[key], axis=0)
-      print({k: np.shape(v) for k, v in fake_batch.items()})
+      fake_batch = {
+          'indices': np.ones((8,)),
+          'features': np.ones((8, 1593, 161)),
+          'transcripts': np.ones((8, 246)),
+          'input_lengths': np.ones((8,)),
+      }
     else:
       raise ValueError(
           f'Workload {workload_name} does not have a fake batch defined , you '
@@ -235,7 +208,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
         submission_dir = f'{workload_dir}/{workload_name}_{framework}'
         if os.path.exists(submission_dir):
           # DO NOT SUBMIT
-          if 'mnist' in submission_dir or framework == 'jax' or 'imagenet' in submission_dir:
+          if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir:
             continue
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
