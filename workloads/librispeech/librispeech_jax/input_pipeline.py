@@ -33,10 +33,11 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
 
         max_input_len = int(2 ** math.ceil(math.log2(max_input_len)))
         max_target_len = int(2 ** math.ceil(math.log2(max_target_len)))
+        samples = []
 
         for i in range(self.batch_size):
             sample = self.df.iloc[idx + i]
-            index, feature, trn = sample["id"], sample["features"], sample["trans_ids"]
+            index, f, trn = sample["id"], sample["features"], sample["trans_ids"]
             input_length = np.array(f.shape[0])
             input_dim = f.shape[1]
             feature = np.zeros((max_input_len, input_dim), dtype=np.float)
@@ -46,15 +47,13 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
             target_padding[target_len:] = 1
             trn = np.pad(trn, (0, max_target_len - len(trn)), "constant", constant_values=0)
 
-            batch[i] = (int(index), feature, trn, input_length, target_padding)
+            samples.append((int(index), feature, trn, input_length, target_padding))
 
-        batch.sort(key=lambda x: x[3], reverse=True)
-
-        index = np.array([x[0] for x in batch], dtype=jnp.int32)
-        feature = np.array([x[1] for x in batch], dtype=jnp.float32)
-        trn = np.array([x[2] for x in batch], dtype=jnp.int32)
-        input_length = np.array([x[3] for x in batch], dtype=jnp.int32)
-        target_padding = np.array([x[4] for x in batch], dtype=jnp.int32)
+        index = np.array([x[0] for x in samples], dtype=jnp.int32)
+        feature = np.array([x[1] for x in samples], dtype=jnp.float32)
+        trn = np.array([x[2] for x in samples], dtype=jnp.int32)
+        input_length = np.array([x[3] for x in samples], dtype=jnp.int32)
+        target_padding = np.array([x[4] for x in samples], dtype=jnp.int32)
 
         return index, feature, trn, input_length, target_padding, max_input_len, max_target_len
 
