@@ -36,7 +36,7 @@ class GNN(nn.Module):
   The model assumes the input data is a jraph.GraphsTuple without global
   variables. The final prediction will be encoded in the globals.
   """
-  num_outputs: int = 128
+  num_outputs: int
   latent_dim: int = 256
   hidden_dims: Tuple[int] = (256,)
   dropout_rate: float = 0.1

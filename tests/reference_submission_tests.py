@@ -36,6 +36,8 @@ _EXPECTED_METRIC_NAMES = {
     'mnist': ['validation/accuracy', 'test/accuracy'],
     'imagenet': ['validation/accuracy'],
     'librispeech': ['validation/word_error_rate', 'train/word_error_rate'],
+    'ogbg': [
+        'train/accuracy', 'validation/loss', 'test/mean_average_precision'],
 }
 
 
@@ -52,7 +54,7 @@ def _make_fake_input_queue_fn(workload_name,
                               global_batch_size,
                               num_unique_fake_batches):
 
-  def f(self, *unused_args, **unused_kwargs):
+  def f(*unused_args, **unused_kwargs):
     del unused_args
     del unused_kwargs
 
@@ -80,20 +82,31 @@ def _make_fake_input_queue_fn(workload_name,
           'input_lengths': np.ones((8,)),
       }
     elif workload_name == 'ogbg':
-      fake_batch = jraph.GraphsTuple(
-          n_node=np.asarray([1]),
-          n_edge=np.asarray([1]),
-          nodes=np.ones((1, 3)),
-          edges=np.ones((1, 7)),
-          globals=np.zeros((1, 5)),
-          senders=np.asarray([0]),
-          receivers=np.asarray([0]))
-      if self._init_graphs is None:
-        # Unreplicate the iterator that has the leading dim for pmapping.
-        self._init_graphs = jax.tree_map(lambda x: x[0], fake_batch)
+      num_classes = 128
+      fake_graph = jraph.GraphsTuple(
+            n_node=np.asarray([1]),
+            n_edge=np.asarray([1]),
+            nodes=np.ones((1, 3)),
+            edges=np.ones((1, 7)),
+            globals=np.zeros((1, num_classes)),
+            senders=np.asarray([0]),
+            receivers=np.asarray([0]))
+      fake_graph = jax.tree_map(lambda x: np.expand_dims(x, axis=0), fake_graph)
+      labels = fake_graph.globals
+      fake_graph = fake_graph._replace(globals={})
+      fake_batch = {
+          'inputs': fake_graph,
+          'targets': labels,
+          'weights': np.ones_like(labels),
+      }
+    elif workload_name == 'wmt':
+      max_len = 256
+      fake_batch = {
+          'inputs': np.ones((max_len,)), 'targets': np.ones((max_len,)),
+      }
     else:
       raise ValueError(
-          f'Workload {workload_name} does not have a fake batch defined , you '
+          f'Workload {workload_name} does not have a fake batch defined, you '
           'can add it or use --use_fake_input_queue=false.')
 
     if framework == 'pytorch':
@@ -164,12 +177,12 @@ def _test_submission(workload_name,
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
-  model_params, model_state = workload.init_model_fn(model_init_rng)
   if use_fake_input_queue:
     workload.build_input_queue = _make_fake_input_queue_fn(
         workload_name, framework, global_batch_size, num_unique_fake_batches=1)
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
+  model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(workload,
                                          model_params,
                                          model_state,
@@ -222,7 +235,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
         submission_dir = f'{workload_dir}/{workload_name}_{framework}'
         if os.path.exists(submission_dir):
           # DO NOT SUBMIT
-          if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir:
+          if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir or 'ogbg' in submission_dir:
             continue
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
@@ -234,7 +247,6 @@ class ReferenceSubmissionTest(absltest.TestCase):
               search_space_path,
               data_dir=None,
               use_fake_input_queue=FLAGS.use_fake_input_queue)
-          print(eval_result)
           expected_names = _EXPECTED_METRIC_NAMES[workload_name]
           actual_names = list(eval_result.keys())
           for expected_name in expected_names:

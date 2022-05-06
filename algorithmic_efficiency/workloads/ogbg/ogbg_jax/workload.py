@@ -7,6 +7,7 @@ from typing import Dict, Optional, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+import jraph
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
@@ -21,8 +22,8 @@ class OgbgWorkload(BaseOgbgWorkload):
   def __init__(self):
     self._eval_iters = {}
     self._param_shapes = None
-    self._init_graphs = None
-    self._model = models.GNN()
+    self._num_outputs = 128
+    self._model = models.GNN(self._num_outputs)
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
@@ -33,10 +34,6 @@ class OgbgWorkload(BaseOgbgWorkload):
                                                    data_rng,
                                                    data_dir,
                                                    global_batch_size)
-    if self._init_graphs is None:
-      init_graphs, _, _ = next(dataset_iter)
-      # Unreplicate the iterator that has the leading dim for pmapping.
-      self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
     return dataset_iter
 
   @property
@@ -57,14 +54,17 @@ class OgbgWorkload(BaseOgbgWorkload):
     pass
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    if self._init_graphs is None:
-      raise ValueError(
-          'This should not happen, workload.build_input_queue() should be '
-          'called before workload.init_model_fn()!')
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
-    params = init_fn({'params': params_rng, 'dropout': dropout_rng},
-                     self._init_graphs)
+    fake_batch = jraph.GraphsTuple(
+        n_node=jnp.asarray([1]),
+        n_edge=jnp.asarray([1]),
+        nodes=jnp.ones((1, 3)),
+        edges=jnp.ones((1, 7)),
+        globals=jnp.zeros((1, self._num_outputs)),
+        senders=jnp.asarray([0]),
+        receivers=jnp.asarray([0]))
+    params = init_fn({'params': params_rng, 'dropout': dropout_rng}, fake_batch)
     params = params['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
@@ -104,8 +104,12 @@ class OgbgWorkload(BaseOgbgWorkload):
                                       logits: jnp.ndarray,
                                       mask: jnp.ndarray) -> jnp.ndarray:
     """Binary cross entropy loss for logits, with masked elements."""
-    assert logits.shape == labels.shape == mask.shape
-    assert len(logits.shape) == 2
+    if not (logits.shape == labels.shape == mask.shape):  # pylint: disable=superfluous-parens
+      raise ValueError(
+          f'Shape mismatch between logits ({logits.shape}), targets '
+          f'({labels.shape}), and weights ({mask.shape}).')
+    if len(logits.shape) != 2:
+      raise ValueError(f'Rank of logits ({logits.shape}) must be 2.')
 
     # To prevent propagation of NaNs during grad().
     # We mask over the loss for invalid targets later.
@@ -138,7 +142,7 @@ class OgbgWorkload(BaseOgbgWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, 0, 0, None),
+      in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(

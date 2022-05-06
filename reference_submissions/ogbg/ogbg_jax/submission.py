@@ -90,12 +90,11 @@ def update_params(
   pmapped_train_step = jax.pmap(
       train_step,
       axis_name='batch',
-      in_axes=(None, None, 0, 0, 0, None, 0, 0, 0, None),
+      in_axes=(None, None, 0, 0, 0, None, 0, None),
       static_broadcasted_argnums=(0, 1))
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, rng)
-
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
