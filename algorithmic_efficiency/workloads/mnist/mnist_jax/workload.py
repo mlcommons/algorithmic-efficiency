@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
@@ -84,7 +85,8 @@ class MnistWorkload(BaseMnistWorkload):
           'This should not happen, workload.init_model_fn() should be called '
           'before workload.param_shapes!')
     if self._param_types is None:
-      self._param_types = _param_types(self._param_shapes.unfreeze())
+      self._param_types = param_utils.jax_param_types(
+          self._param_shapes.unfreeze())
     return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer

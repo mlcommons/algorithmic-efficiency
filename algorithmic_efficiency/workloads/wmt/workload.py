@@ -180,7 +180,14 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def model_params_types(self):
-    pass
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(
+          self._param_shapes.unfreeze())
+    return self._param_types
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,

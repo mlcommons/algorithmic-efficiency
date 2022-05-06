@@ -18,3 +18,25 @@ def pytorch_param_types(param_shapes):
     else:
       param_types[name] = spec.ParameterType.WEIGHT
   return param_types
+
+
+def jax_param_types(param_tree):
+  param_types_dict = {}
+  for name, value in param_tree.items():
+    if isinstance(value, dict):
+      param_types_dict[name] = jax_param_types(value)
+    else:
+      if 'bias' in name:
+        param_types_dict[name] = spec.ParameterType.BIAS
+      elif 'BatchNorm' in name:
+        param_types_dict[name] = spec.ParameterType.BATCH_NORM
+      elif 'Conv' in name:
+        param_types_dict[name] = spec.ParameterType.CONV_WEIGHT
+      # Note that this is exact equality, not contained in, because
+      # flax.linen.Embed names the embedding parameter "embedding"
+      # https://github.com/google/flax/blob/main/flax/linen/linear.py#L604.
+      elif name == 'embedding':
+        param_types_dict[name] = spec.ParameterType.EMBEDDING
+      else:
+        param_types_dict[name] = spec.ParameterType.WEIGHT
+  return param_types_dict

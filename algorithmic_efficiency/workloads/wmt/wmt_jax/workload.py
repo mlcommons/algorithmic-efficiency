@@ -11,6 +11,7 @@ import jax.numpy as jnp
 import numpy as np
 import tensorflow as tf
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
@@ -52,6 +53,7 @@ class WmtWorkload(BaseWmtWorkload):
 
   def __init__(self):
     self._initial_params = None
+    self._param_types = None
     self._tokenizer = None
     self._vocab_size = 32000
     self._train_config = models.TransformerConfig()

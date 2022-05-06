@@ -234,9 +234,9 @@ class ReferenceSubmissionTest(absltest.TestCase):
       for framework in ['jax', 'pytorch']:
         submission_dir = f'{workload_dir}/{workload_name}_{framework}'
         if os.path.exists(submission_dir):
-          # DO NOT SUBMIT
-          if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir or 'ogbg' in submission_dir:
-            continue
+          # # DO NOT SUBMIT
+          # if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir or 'ogbg' in submission_dir:
+          #   continue
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
           logging.info(f'\n\n========= Testing {workload_name} in {framework}.')

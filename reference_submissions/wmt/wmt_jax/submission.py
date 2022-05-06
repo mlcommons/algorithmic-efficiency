@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for WMT."""
 
 import functools
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 from flax import linen as nn

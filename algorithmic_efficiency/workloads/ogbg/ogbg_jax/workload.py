@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import jraph
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax import input_pipeline
@@ -22,6 +23,7 @@ class OgbgWorkload(BaseOgbgWorkload):
   def __init__(self):
     self._eval_iters = {}
     self._param_shapes = None
+    self._param_types = None
     self._num_outputs = 128
     self._model = models.GNN(self._num_outputs)
 
@@ -46,7 +48,14 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   @property
   def model_params_types(self):
-    pass
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(
+          self._param_shapes.unfreeze())
+    return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
