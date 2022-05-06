@@ -16,17 +16,17 @@ FLAGS = flags.FLAGS
 
 # Annoyingly, RandomState(seed) requires seed to be in [0, 2 ** 32 - 1] (an
 # unsigned int), while RandomState.randint only accepts and returns signed ints.
-MAX_INT32 = 2**31
+MAX_INT32 = 2 ** 31
 MIN_INT32 = -MAX_INT32
 
 
 def _signed_to_unsigned(seed):
   if isinstance(seed, int):
-    return seed + 2**32 if seed < 0 else seed
+    return seed + 2 ** 32 if seed < 0 else seed
   if isinstance(seed, list):
-    return [s + 2**32 if s < 0 else s for s in seed]
+    return [s + 2 ** 32 if s < 0 else s for s in seed]
   if isinstance(seed, np.ndarray):
-    return np.array([s + 2**32 if s < 0 else s for s in seed.tolist()])
+    return np.array([s + 2 ** 32 if s < 0 else s for s in seed.tolist()])
 
 
 def _fold_in(seed, data):
