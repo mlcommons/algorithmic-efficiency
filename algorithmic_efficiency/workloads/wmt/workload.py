@@ -9,6 +9,7 @@ import tensorflow as tf
 import torch
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt import input_pipeline
 
@@ -76,17 +77,24 @@ class BaseWmtWorkload(spec.Workload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int,
-                        num_batches: Optional[int] = None):
+                        num_batches: Optional[int] = None,
+                        repeat_final_dataset: bool = False):
+    is_training = split == 'train'
+    if split == 'eval_train':
+      split = 'train'
     ds, self._tokenizer = input_pipeline.get_wmt_dataset(
         data_rng,
         split,
         data_dir,
+        is_training=is_training,
         vocab_size=self._vocab_size,
         global_batch_size=global_batch_size,
         num_batches=num_batches,
         reverse_translation=True,
-        repeat_final_dataset=split != 'train')
-    return iter(ds)
+        repeat_final_dataset=repeat_final_dataset)
+    for eval_batch in iter(ds):
+      eval_batch = jax.tree_map(lambda x: x._numpy(), eval_batch)  # pylint: disable=protected-access
+      yield eval_batch
 
   def _eval_model_on_split(self,
                            split: str,
@@ -97,7 +105,7 @@ class BaseWmtWorkload(spec.Workload):
                            rng: spec.RandomState,
                            data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
-    num_batches = int(math.ceil(num_examples / global_batch_size))
+    num_batches = num_examples // global_batch_size
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(

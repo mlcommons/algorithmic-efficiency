@@ -3,7 +3,7 @@
 import abc
 import enum
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
-
+from absl import logging
 
 class LossType(enum.Enum):
   SOFTMAX_CROSS_ENTROPY = 0
@@ -56,7 +56,7 @@ ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
 OptimizerState = Any
-Hyperparamters = Any
+Hyperparameters = Any
 Timing = int
 Steps = int
 
@@ -65,13 +65,13 @@ ModelAuxiliaryState = Any
 ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
-InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparamters, RandomState],
+InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparameters, RandomState],
                            OptimizerState]
 UpdateParamsFn = Callable[[
     ParameterContainer,
     ParameterTypeTree,
     ModelAuxiliaryState,
-    Hyperparamters,
+    Hyperparameters,
     Tensor,
     Tensor,
     LossType,
@@ -86,7 +86,7 @@ DataSelectionFn = Callable[[
     OptimizerState,
     ParameterContainer,
     LossType,
-    Hyperparamters,
+    Hyperparameters,
     int,
     RandomState
 ],
@@ -239,6 +239,7 @@ class Workload(metaclass=abc.ABCMeta):
                  rng: RandomState,
                  data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    logging.info('Evaluating on the training split.')
     train_metrics = self._eval_model_on_split(
         split='eval_train',
         num_examples=self.num_eval_train_examples,
@@ -249,6 +250,7 @@ class Workload(metaclass=abc.ABCMeta):
         data_dir=data_dir)
     eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     # We always require a validation set.
+    logging.info('Evaluating on the validation split.')
     validation_metrics = self._eval_model_on_split(
         'validation',
         num_examples=self.num_validation_examples,
@@ -262,6 +264,7 @@ class Workload(metaclass=abc.ABCMeta):
     # Evaluate on the test set if we have one.
     try:
       if self.num_test_examples is not None:
+        logging.info('Evaluating on the test split.')
         test_metrics = self._eval_model_on_split(
             'test',
             num_examples=self.num_test_examples,
@@ -288,7 +291,7 @@ class TrainingCompleteError(Exception):
 def init_optimizer_state(workload: Workload,
                          model_params: ParameterContainer,
                          model_state: ModelAuxiliaryState,
-                         hyperparameters: Hyperparamters,
+                         hyperparameters: Hyperparameters,
                          rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
   pass
@@ -308,7 +311,7 @@ def update_params(
     current_param_container: ParameterContainer,
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     batch: Dict[str, Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
@@ -326,7 +329,7 @@ def data_selection(workload: Workload,
                    input_queue: Iterator[Tuple[Tensor, Tensor]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
-                   hyperparameters: Hyperparamters,
+                   hyperparameters: Hyperparameters,
                    global_step: int,
                    rng: RandomState) -> Dict[str, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.

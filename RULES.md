@@ -130,7 +130,7 @@ init_optimizer_state(
     workload: Workload,
     model_params: ParameterContainer,
     model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     rng: RandomState
 ) -> initial_optimizer_state
 ```
@@ -146,7 +146,7 @@ update_params(
     current_param_container: ParameterContainer,
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     batch: Dict[str, Tensor],
     loss_type: LossType,
     optimizer_state: OptimizerState,
@@ -182,7 +182,7 @@ data_selection(
     input_queue: Iterator[Tuple[Tensor, Tensor]],
     optimizer_state: OptimizerState,
     current_param_container: ParameterContainer,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     global_step: int,
     rng: RandomState
 ) -> Dict[str, Tensor]

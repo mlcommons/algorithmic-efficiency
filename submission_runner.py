@@ -147,7 +147,7 @@ def train_once(workload: spec.Workload,
                init_optimizer_state: spec.InitOptimizerFn,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparamters],
+               hyperparameters: Optional[spec.Hyperparameters],
                rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 

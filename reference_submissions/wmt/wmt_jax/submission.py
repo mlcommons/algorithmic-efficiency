@@ -10,6 +10,7 @@ from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
@@ -78,12 +79,37 @@ def create_learning_rate_scheduler(
   return step_fn
 
 
-def train_step(optimizer,
-               batch,
-               config,
-               learning_rate_fn,
-               label_smoothing=0.1,
-               dropout_rng=None):
+def init_optimizer_state(workload: spec.Workload,
+                         model_params: spec.ParameterContainer,
+                         model_state: spec.ModelAuxiliaryState,
+                         hyperparameters: spec.Hyperparameters,
+                         rng: spec.RandomState) -> spec.OptimizerState:
+  del model_state
+  del rng
+  learning_rate_fn = create_learning_rate_scheduler(
+      base_learning_rate=hyperparameters.learning_rate, warmup_steps=1000)
+  opt_init_fn, opt_update_fn = optax.adam(
+      b1=1.0 - hyperparameters.one_minus_beta_1,
+      b2=0.98,
+      eps=hyperparameters.epsilon,
+      learning_rate=learning_rate_fn)
+  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+                                   workload.param_shapes)
+  optimizer_state = opt_init_fn(params_zeros_like)
+  return jax_utils.replicate(optimizer_state), opt_update_fn
+
+
+@functools.partial(
+    jax.pmap,
+    in_axes=(None, 0, 0, 0, None, 0),
+    axis_name='batch',
+    static_broadcasted_argnums=(0, 4))
+def pmapped_train_step(opt_update_fn,
+                       optimizer_state,
+                       current_param_container,
+                       batch,
+                       hyperparameters,
+                       dropout_rng):
   """Perform a single training step."""
   # X_position and X_segmentation are needed only when using "packed examples"
   # where multiple sequences are packed into the same example with this
@@ -98,8 +124,9 @@ def train_step(optimizer,
   targets_segmentations = batch.get('targets_segmentations', None)
 
   weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
-
-  dropout_rng = jax.random.fold_in(dropout_rng, optimizer.state.step)
+  config = models.TransformerConfig(
+      dropout_rate=hyperparameters.dropout_rate,
+      attention_dropout_rate=hyperparameters.attention_dropout_rate)
 
   def loss_fn(params):
     """loss function used for training."""
@@ -112,8 +139,11 @@ def train_step(optimizer,
         inputs_segmentation=inputs_segmentations,
         targets_segmentation=targets_segmentations,
         rngs={"dropout": dropout_rng})
-
     vocab_size = logits.shape[-1]
+    if hasattr(hyperparameters, 'label_smoothing'):
+      label_smoothing = hyperparameters.label_smoothing
+    else:
+      label_smoothing = 0.1
     confidence = 1.0 - label_smoothing
     low_confidence = (1.0 - confidence) / (vocab_size - 1)
     normalizing_constant = -(
@@ -121,60 +151,20 @@ def train_step(optimizer,
         (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
     soft_targets = common_utils.onehot(
         targets, vocab_size, on_value=confidence, off_value=low_confidence)
-
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
     loss = loss - normalizing_constant
-
     loss = loss * weights
     normalizing_factor = weights.sum()
-
     mean_loss = loss.sum() / normalizing_factor
-    return mean_loss, logits
+    return mean_loss
 
-  step = optimizer.state.step
-  lr = learning_rate_fn(step)
-  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  _, grad = grad_fn(optimizer.target)
-  grad = jax.lax.pmean(grad, 'batch')
-  new_optimizer = optimizer.apply_gradient(grad, learning_rate=lr)
-
-  return new_optimizer
-
-
-def init_optimizer_state(workload: spec.Workload,
-                         model_params: spec.ParameterContainer,
-                         model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparamters,
-                         rng: spec.RandomState) -> spec.OptimizerState:
-  del model_state
-  del rng
-  del workload
-
-  optimizer_def = optim.Adam(
-      learning_rate=hyperparameters.learning_rate,
-      beta1=1.0 - hyperparameters.one_minus_beta_1,
-      beta2=0.98,
-      eps=hyperparameters.epsilon)
-  optimizer = optimizer_def.create(model_params)
-
-  # Replicate optimizer.
-  optimizer = jax_utils.replicate(optimizer)
-
-  learning_rate_fn = create_learning_rate_scheduler(
-      base_learning_rate=hyperparameters.learning_rate, warmup_steps=1000)
-
-  # compile multidevice versions of train.
-  p_train_step = jax.pmap(
-      functools.partial(
-          train_step,
-          config=models.TransformerConfig(
-              dropout_rate=hyperparameters.dropout_rate,
-              attention_dropout_rate=hyperparameters.attention_dropout_rate),
-          learning_rate_fn=learning_rate_fn),
-      axis_name="batch",
-      donate_argnums=(0,))
-
-  return optimizer, p_train_step
+  grad_fn = jax.value_and_grad(loss_fn)
+  _, grad = grad_fn(current_param_container)
+  grad = jax.lax.pmean(grad, axis_name='batch')
+  updates, new_optimizer_state = opt_update_fn(
+      grad, optimizer_state, current_param_container)
+  updated_params = optax.apply_updates(current_param_container, updates)
+  return new_optimizer_state, updated_params
 
 
 def update_params(
@@ -182,7 +172,7 @@ def update_params(
     current_param_container: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparamters,
+    hyperparameters: spec.Hyperparameters,
     batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
@@ -192,19 +182,22 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del workload
-  del current_param_container
   del current_params_types
   del eval_results
   del global_step
   del model_state
   del loss_type
-  del hyperparameters
 
-  optimizer, p_train_step = optimizer_state
+  optimizer_state, opt_update_fn = optimizer_state
   dropout_rngs = jax.random.split(rng, jax.local_device_count())
-  optimizer = p_train_step(optimizer, batch, dropout_rng=dropout_rngs)
-
-  return (optimizer, p_train_step), optimizer.target, None
+  new_optimizer_state, updated_params = pmapped_train_step(
+      opt_update_fn,
+      optimizer_state,
+      current_param_container,
+      batch,
+      hyperparameters,
+      dropout_rngs)
+  return (new_optimizer_state, opt_update_fn), updated_params, None
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
@@ -213,7 +206,7 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters,
+                   hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
@@ -232,5 +225,4 @@ def data_selection(workload: spec.Workload,
   del hyperparameters
   del workload
 
-  return common_utils.shard(
-      jax.tree_map(np.asarray, next(input_queue))), None, None
+  return next(input_queue)

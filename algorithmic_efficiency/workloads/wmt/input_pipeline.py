@@ -289,12 +289,16 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
   return dataset
 
 
-def get_wmt_datasets(data_dir: str,
-                     vocab_size: int,
-                     global_batch_size: int,
-                     reverse_translation: bool = True,
-                     vocab_path: Optional[str] = None,
-                     pack_examples: bool = True):
+def get_wmt_dataset(data_rng,
+                    split: str,
+                    data_dir: str,
+                    is_training: bool,
+                    vocab_size: int,
+                    global_batch_size: int,
+                    num_batches: Optional[int] = None,
+                    reverse_translation: bool = True,
+                    repeat_final_dataset: bool = False,
+                    vocab_path: Optional[str] = None):
   """Load and return dataset of batched examples for use during training."""
   if vocab_path is None:
     vocab_path = os.path.expanduser('~/wmt_sentencepiece_model')
@@ -318,12 +322,13 @@ def get_wmt_datasets(data_dir: str,
   eval_data = eval_data.map(
       tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
 
-  train_ds = preprocess_wmt_data(
-      train_data,
-      shuffle=True,
-      num_epochs=None,
-      pack_examples=pack_examples,
-      batch_size=global_batch_size,
+  num_devices = jax.local_device_count()
+  per_device_batch_size = global_batch_size // num_devices
+  ds = preprocess_wmt_data(
+      ds,
+      data_rng,
+      train=is_training,
+      per_device_batch_size=per_device_batch_size,
       max_length=256)
 
   eval_ds = preprocess_wmt_data(

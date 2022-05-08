@@ -339,7 +339,7 @@ def generate_search(search_space: Dict[str,
     corresponding to the given hyperparameters, and values randomly sampled.
   """
   all_hyperparameter_names = list(search_space.keys())
-  named_tuple_class = collections.namedtuple('Hyperparamters',
+  named_tuple_class = collections.namedtuple('Hyperparameters',
                                              all_hyperparameter_names)
 
   # hyper.zipit([

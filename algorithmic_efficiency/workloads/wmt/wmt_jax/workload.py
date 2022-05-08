@@ -4,6 +4,7 @@ import functools
 from typing import Dict, Optional, Tuple
 
 from absl import logging
+from flax import jax_utils
 from flax import linen as nn
 from flax.training import common_utils
 import jax
@@ -11,7 +12,6 @@ import jax.numpy as jnp
 import numpy as np
 import tensorflow as tf
 
-from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
@@ -52,9 +52,10 @@ class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
   def __init__(self):
-    self._initial_params = None
+    self._param_shapes = None
     self._param_types = None
     self._tokenizer = None
+    self._eval_iters = {}
     self._vocab_size = 32000
     self._train_config = models.TransformerConfig()
     self._eval_config = models.TransformerConfig(deterministic=True)
@@ -217,15 +218,16 @@ class WmtWorkload(BaseWmtWorkload):
   def translate_and_calculate_bleu(self,
                                    params,
                                    target,
-                                   predict_ds: tf.data.Dataset,
-                                   max_predict_length: int,
-                                   num_eval_steps: int):
+                                   ds_iter,
+                                   num_batches,
+                                   decode_tokens,
+                                   max_predict_length: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
     n_devices = jax.local_device_count()
     logging.info("Translating evaluation dataset.")
     sources, references, predictions = [], [], []
-    for _, pred_batch in zip(range(num_eval_steps + 1), predict_ds):
-      pred_batch = jax.tree_map(lambda x: x._numpy(), pred_batch)  # pylint: disable=protected-access
+    for _ in range(num_batches):
+      pred_batch = next(ds_iter)
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = pred_batch["inputs"].shape[0]
       if cur_pred_batch_size % n_devices:
@@ -270,7 +272,7 @@ class WmtWorkload(BaseWmtWorkload):
     initial_params = initial_variables["params"]
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       initial_params)
-    return initial_params, None
+    return jax_utils.replicate(initial_params), None
 
   def model_fn(
       self,

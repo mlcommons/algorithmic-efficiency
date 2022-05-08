@@ -22,6 +22,7 @@ from absl.testing import absltest
 import jax
 import jraph
 import numpy as np
+import tensorflow as tf
 import torch
 
 from algorithmic_efficiency import halton
@@ -38,6 +39,7 @@ _EXPECTED_METRIC_NAMES = {
     'librispeech': ['validation/word_error_rate', 'train/word_error_rate'],
     'ogbg': [
         'train/accuracy', 'validation/loss', 'test/mean_average_precision'],
+    'wmt': ['train/bleu', 'validation/loss', 'test/accuracy'],
 }
 
 
@@ -49,94 +51,105 @@ def _make_fake_image_batch(framework, batch_shape, data_shape, num_classes):
   return {'inputs': examples, 'targets': labels, 'weights': masks}
 
 
-def _make_fake_input_queue_fn(workload_name,
-                              framework,
-                              global_batch_size,
-                              num_unique_fake_batches):
+class _FakeTokenizer:
 
-  def f(*unused_args, **unused_kwargs):
-    del unused_args
-    del unused_kwargs
-
-    np.random.seed(42)
-    if framework == 'jax':
-      batch_shape = (1, global_batch_size)
-    else:
-      batch_shape = (global_batch_size,)
-
-    if workload_name == 'mnist':
-      fake_batch = _make_fake_image_batch(
-          framework, batch_shape, data_shape=(28, 28, 1), num_classes=10)
-    elif workload_name == 'imagenet':
-      if framework == 'jax':
-        data_shape = (224, 224, 3)
-      else:
-        data_shape = (3, 224, 224)
-      fake_batch = _make_fake_image_batch(
-          framework, batch_shape, data_shape=data_shape, num_classes=1000)
-    elif workload_name == 'librispeech':
-      fake_batch = {
-          'indices': np.ones((8,)),
-          'features': np.ones((8, 1593, 161)),
-          'transcripts': np.ones((8, 246)),
-          'input_lengths': np.ones((8,)),
-      }
-    elif workload_name == 'ogbg':
-      num_classes = 128
-      fake_graph = jraph.GraphsTuple(
-            n_node=np.asarray([1]),
-            n_edge=np.asarray([1]),
-            nodes=np.ones((1, 3)),
-            edges=np.ones((1, 7)),
-            globals=np.zeros((1, num_classes)),
-            senders=np.asarray([0]),
-            receivers=np.asarray([0]))
-      fake_graph = jax.tree_map(lambda x: np.expand_dims(x, axis=0), fake_graph)
-      labels = fake_graph.globals
-      fake_graph = fake_graph._replace(globals={})
-      fake_batch = {
-          'inputs': fake_graph,
-          'targets': labels,
-          'weights': np.ones_like(labels),
-      }
-    elif workload_name == 'wmt':
-      max_len = 256
-      fake_batch = {
-          'inputs': np.ones((max_len,)), 'targets': np.ones((max_len,)),
-      }
-    else:
-      raise ValueError(
-          f'Workload {workload_name} does not have a fake batch defined, you '
-          'can add it or use --use_fake_input_queue=false.')
-
-    if framework == 'pytorch':
-      fake_batch = {
-          k: torch.from_numpy(v).to(PYTORCH_DEVICE)
-          for k, v in fake_batch.items()
-      }
-    for _ in range(num_unique_fake_batches):
-      yield fake_batch
-
-  return f
+  def detokenize(self, *args):
+    del args
+    return tf.constant('this is a fake sequence?')
 
 
-def _make_one_batch_workload(workload_class, batch_size):
+def _make_one_batch_workload(
+    workload_class,
+    workload_name,
+    framework,
+    global_batch_size,
+    use_fake_input_queue):
   class _OneEvalBatchWorkload(workload_class):
 
     @property
     def num_eval_train_examples(self):
-      return batch_size
+      return global_batch_size
 
     @property
     def num_validation_examples(self):
-      return batch_size
+      return global_batch_size
 
     @property
     def num_test_examples(self):
       super_num_test = super().num_test_examples
       if super_num_test is not None:
-        return batch_size
+        return global_batch_size
       return None
+
+    def build_input_queue(self, *args, **kwargs):
+      if not use_fake_input_queue:
+        return super().build_input_queue(*args, **kwargs)
+      del args
+      del kwargs
+
+      np.random.seed(42)
+      if framework == 'jax':
+        batch_shape = (1, global_batch_size)
+      else:
+        batch_shape = (global_batch_size,)
+
+      if workload_name == 'mnist':
+        fake_batch = _make_fake_image_batch(
+            framework, batch_shape, data_shape=(28, 28, 1), num_classes=10)
+      elif workload_name == 'imagenet':
+        if framework == 'jax':
+          data_shape = (224, 224, 3)
+        else:
+          data_shape = (3, 224, 224)
+        fake_batch = _make_fake_image_batch(
+            framework, batch_shape, data_shape=data_shape, num_classes=1000)
+      elif workload_name == 'librispeech':
+        fake_batch = {
+            'indices': np.random.normal(size=(8,)),
+            'features': np.random.normal(size=(8, 1593, 161)),
+            'transcripts': np.random.normal(size=(8, 246)),
+            'input_lengths': np.random.normal(size=(8,)),
+        }
+      elif workload_name == 'ogbg':
+        num_classes = 128
+        fake_graph = jraph.GraphsTuple(
+              n_node=np.asarray([1]),
+              n_edge=np.asarray([1]),
+              nodes=np.random.normal(size=(1, 3)),
+              edges=np.random.normal(size=(1, 7)),
+              globals=np.zeros((1, num_classes)),
+              senders=np.asarray([0]),
+              receivers=np.asarray([0]))
+        if framework == 'jax':
+          fake_graph = jax.tree_map(
+              lambda x: np.expand_dims(x, axis=0), fake_graph)
+        labels = fake_graph.globals
+        fake_graph = fake_graph._replace(globals={})
+        fake_batch = {
+            'inputs': fake_graph,
+            'targets': labels,
+            'weights': np.random.normal(size=labels.shape),
+        }
+      elif workload_name == 'wmt':
+        max_len = 256
+        fake_batch = {
+            'inputs': np.random.normal(size=(*batch_shape, max_len)),
+            'targets': np.random.normal(size=(*batch_shape, max_len)),
+        }
+        self._tokenizer = _FakeTokenizer()
+      else:
+        raise ValueError(
+            f'Workload {workload_name} does not have a fake batch defined, you '
+            'can add it or use --use_fake_input_queue=false.')
+
+      if framework == 'pytorch':
+        fake_batch = {
+            k: torch.from_numpy(v).to(PYTORCH_DEVICE)
+            for k, v in fake_batch.items()
+        }
+      # We set the number of examples to the batch size for all splits, so only
+      # yield one batch.
+      yield fake_batch
 
   return _OneEvalBatchWorkload()
 
@@ -168,7 +181,12 @@ def _test_submission(workload_name,
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
   global_batch_size = 2
-  workload = _make_one_batch_workload(workload_class, global_batch_size)
+  workload = _make_one_batch_workload(
+      workload_class,
+      workload_name,
+      framework,
+      global_batch_size,
+      use_fake_input_queue)
 
   # Get a sample hyperparameter setting.
   with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
@@ -177,9 +195,6 @@ def _test_submission(workload_name,
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
-  if use_fake_input_queue:
-    workload.build_input_queue = _make_fake_input_queue_fn(
-        workload_name, framework, global_batch_size, num_unique_fake_batches=1)
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
   model_params, model_state = workload.init_model_fn(model_init_rng)
@@ -216,6 +231,12 @@ def _test_submission(workload_name,
                                     model_state,
                                     eval_rng,
                                     data_dir)
+  _ = workload.eval_model(
+      global_batch_size,
+      model_params,
+      model_state,
+      eval_rng,
+      data_dir)
   return eval_result
 
 
