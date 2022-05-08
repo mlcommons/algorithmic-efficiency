@@ -38,14 +38,15 @@ _EXPECTED_METRIC_NAMES = {
     'imagenet': ['validation/accuracy'],
     'librispeech': ['validation/word_error_rate', 'train/word_error_rate'],
     'ogbg': [
-        'train/accuracy', 'validation/loss', 'test/mean_average_precision'],
+        'train/accuracy', 'validation/loss', 'test/mean_average_precision'
+    ],
     'wmt': ['train/bleu', 'validation/loss', 'test/accuracy'],
 }
 
 
 def _make_fake_image_batch(batch_shape, data_shape, num_classes):
-  examples = np.random.normal(
-      size=(*batch_shape, *data_shape)).astype(np.float32)
+  examples = np.random.normal(size=(*batch_shape,
+                                    *data_shape)).astype(np.float32)
   labels = np.random.randint(0, num_classes, size=batch_shape)
   masks = np.ones((*batch_shape, *data_shape), dtype=np.float32)
   return {'inputs': examples, 'targets': labels, 'weights': masks}
@@ -58,12 +59,12 @@ class _FakeTokenizer:
     return tf.constant('this is a fake sequence?')
 
 
-def _make_one_batch_workload(
-    workload_class,
-    workload_name,
-    framework,
-    global_batch_size,
-    use_fake_input_queue):
+def _make_one_batch_workload(workload_class,
+                             workload_name,
+                             framework,
+                             global_batch_size,
+                             use_fake_input_queue):
+
   class _OneEvalBatchWorkload(workload_class):
 
     @property
@@ -113,16 +114,16 @@ def _make_one_batch_workload(
       elif workload_name == 'ogbg':
         num_classes = 128
         fake_graph = jraph.GraphsTuple(
-              n_node=np.asarray([1]),
-              n_edge=np.asarray([1]),
-              nodes=np.random.normal(size=(1, 3)),
-              edges=np.random.normal(size=(1, 7)),
-              globals=np.zeros((1, num_classes)),
-              senders=np.asarray([0]),
-              receivers=np.asarray([0]))
+            n_node=np.asarray([1]),
+            n_edge=np.asarray([1]),
+            nodes=np.random.normal(size=(1, 3)),
+            edges=np.random.normal(size=(1, 7)),
+            globals=np.zeros((1, num_classes)),
+            senders=np.asarray([0]),
+            receivers=np.asarray([0]))
         if framework == 'jax':
-          fake_graph = jax.tree_map(
-              lambda x: np.expand_dims(x, axis=0), fake_graph)
+          fake_graph = jax.tree_map(lambda x: np.expand_dims(x, axis=0),
+                                    fake_graph)
         labels = fake_graph.globals
         fake_graph = fake_graph._replace(globals={})
         fake_batch = {
@@ -144,8 +145,8 @@ def _make_one_batch_workload(
 
       if framework == 'pytorch':
         fake_batch = {
-            k: torch.from_numpy(v).to(PYTORCH_DEVICE)
-            for k, v in fake_batch.items()
+            k: torch.from_numpy(v).to(PYTORCH_DEVICE) for k,
+            v in fake_batch.items()
         }
       # We set the number of examples to the batch size for all splits, so only
       # yield two batches, one for each call to eval_model().
@@ -187,12 +188,11 @@ def _test_submission(workload_name,
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
   global_batch_size = 2
-  workload = _make_one_batch_workload(
-      workload_class,
-      workload_name,
-      framework,
-      global_batch_size,
-      use_fake_input_queue)
+  workload = _make_one_batch_workload(workload_class,
+                                      workload_name,
+                                      framework,
+                                      global_batch_size,
+                                      use_fake_input_queue)
 
   # Get a sample hyperparameter setting.
   with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
@@ -212,14 +212,13 @@ def _test_submission(workload_name,
 
   global_step = 0
   data_select_rng, update_rng, eval_rng = prng.split(rng, 3)
-  batch = data_selection(
-      workload,
-      input_queue,
-      optimizer_state,
-      model_params,
-      hyperparameters,
-      global_step,
-      data_select_rng)
+  batch = data_selection(workload,
+                         input_queue,
+                         optimizer_state,
+                         model_params,
+                         hyperparameters,
+                         global_step,
+                         data_select_rng)
   _, model_params, model_state = update_params(
       workload=workload,
       current_param_container=model_params,
@@ -237,12 +236,11 @@ def _test_submission(workload_name,
                                     model_state,
                                     eval_rng,
                                     data_dir)
-  _ = workload.eval_model(
-      global_batch_size,
-      model_params,
-      model_state,
-      eval_rng,
-      data_dir)
+  _ = workload.eval_model(global_batch_size,
+                          model_params,
+                          model_state,
+                          eval_rng,
+                          data_dir)
   return eval_result
 
 

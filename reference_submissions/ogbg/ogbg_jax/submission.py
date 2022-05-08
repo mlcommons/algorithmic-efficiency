@@ -51,8 +51,9 @@ def train_step(workload,
         rng,
         update_batch_norm=True)
     mask_batch = batch['weights']
-    per_example_losses = workload.loss_fn(
-        batch['targets'], logits_batch, mask_batch)
+    per_example_losses = workload.loss_fn(batch['targets'],
+                                          logits_batch,
+                                          mask_batch)
     mean_loss = (
         jnp.sum(jnp.where(mask_batch, per_example_losses, 0)) /
         jnp.sum(mask_batch))

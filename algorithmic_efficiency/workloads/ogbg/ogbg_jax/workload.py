@@ -184,10 +184,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     # Loop over graph batches in eval dataset.
     for _ in range(num_eval_steps):
       batch = next(self._eval_iters[split])
-      batch_metrics = self._eval_batch(params,
-                                       batch,
-                                       model_state,
-                                       model_rng)
+      batch_metrics = self._eval_batch(params, batch, model_state, model_rng)
       total_metrics = (
           batch_metrics
           if total_metrics is None else total_metrics.merge(batch_metrics))

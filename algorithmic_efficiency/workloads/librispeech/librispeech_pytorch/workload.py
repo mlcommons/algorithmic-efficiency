@@ -16,8 +16,8 @@ from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
 from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
     models
 
-device = torch.device(
-        "cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class LibriSpeechWorkload(spec.Workload):
   """A LibriSpeech workload."""
@@ -82,8 +82,7 @@ class LibriSpeechWorkload(spec.Workload):
     else:
       raise ValueError('Received unsupported dataset split "{}".'.format(split))
 
-    ds = input_pipeline.LibriSpeechDataset(
-        os.path.join(data_dir, filename))
+    ds = input_pipeline.LibriSpeechDataset(os.path.join(data_dir, filename))
     if split == 'eval_train':
       ds, _ = data_utils.random_split(
           ds,
@@ -223,11 +222,10 @@ class LibriSpeechWorkload(spec.Workload):
                            data_dir: str):
     del model_state
     if split not in self._eval_iters:
-      data_loader = self.build_input_queue(
-          rng,
-          split,
-          data_dir,
-          global_batch_size)
+      data_loader = self.build_input_queue(rng,
+                                           split,
+                                           data_dir,
+                                           global_batch_size)
       # Note that this saves the entire dataset split in memory.
       self._eval_iters[split] = itertools.cycle(data_loader)
     num_batches = int(math.ceil(num_examples / global_batch_size))

@@ -123,15 +123,14 @@ class WmtWorkload(BaseWmtWorkload):
     return accuracy.sum()
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      static_broadcasted_argnums=(0,))
+      jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
   def eval_step(self, params, batch):
     """Calculate evaluation metrics on a batch."""
     inputs, targets = batch["inputs"], batch["targets"]
     weights = jnp.where(targets > 0, 1.0, 0.0)
-    logits = models.Transformer(self._eval_config).apply(
-        {"params": params}, inputs, targets)
+    logits = models.Transformer(self._eval_config).apply({"params": params},
+                                                         inputs,
+                                                         targets)
     loss, weight_sum = self.compute_weighted_cross_entropy(
         logits, targets, weights, 0.0)
     metrics = {
@@ -143,9 +142,7 @@ class WmtWorkload(BaseWmtWorkload):
     return metrics
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      static_broadcasted_argnums=(0,))
+      jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
   def initialize_cache(self, inputs, max_decode_len=256):
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
@@ -158,9 +155,7 @@ class WmtWorkload(BaseWmtWorkload):
 
   # eos_id, max_decode_len are constant.
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      static_broadcasted_argnums=(0, 4, 5))
+      jax.pmap, axis_name='batch', static_broadcasted_argnums=(0, 4, 5))
   def predict_step(self,
                    inputs,
                    params,
@@ -251,9 +246,9 @@ class WmtWorkload(BaseWmtWorkload):
       targets = _to_host(pred_batch["targets"])
       # Iterate through non-padding examples of batch.
       for i, s in enumerate(predicted[:cur_pred_batch_size]):
-        sources.append(self._decode_tokens(inputs[i]))
-        references.append(self._decode_tokens(targets[i]))
-        predictions.append(self._decode_tokens(s))
+        sources.append(decode_tokens(inputs[i]))
+        references.append(decode_tokens(targets[i]))
+        predictions.append(decode_tokens(s))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)

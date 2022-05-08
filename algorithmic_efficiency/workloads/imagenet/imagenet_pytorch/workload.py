@@ -171,8 +171,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
+  def loss_fn(self, label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     return F.cross_entropy(logits_batch, label_batch, reduction='none')
 

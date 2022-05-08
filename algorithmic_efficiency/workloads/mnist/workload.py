@@ -104,12 +104,11 @@ class BaseMnistWorkload(spec.Workload):
     for bi, batch in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break
-      batch_metrics = self._eval_model(
-          params,
-          batch['inputs'],
-          batch['targets'],
-          model_state,
-          model_rng)
+      batch_metrics = self._eval_model(params,
+                                       batch['inputs'],
+                                       batch['targets'],
+                                       model_state,
+                                       model_rng)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
