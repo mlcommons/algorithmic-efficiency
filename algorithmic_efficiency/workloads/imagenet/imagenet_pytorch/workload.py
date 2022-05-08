@@ -3,7 +3,7 @@
 import contextlib
 import math
 import os
-from typing import Tuple
+from typing import Dict, Tuple
 
 import torch
 from torch import nn
@@ -27,7 +27,8 @@ def cycle(iterable):
   iterator = iter(iterable)
   while True:
     try:
-      yield next(iterator)
+      images, labels = next(iterator)
+      yield {'inputs': images, 'targets': labels}
     except StopIteration:
       iterator = iter(iterable)
 
@@ -128,7 +129,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
