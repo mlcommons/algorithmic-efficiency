@@ -73,7 +73,7 @@ class LibriSpeechWorkload(spec.Workload):
     torch.manual_seed(data_rng[0])
     is_train = split in ['train', 'eval_train']
     if is_train:
-      # DO NOT SUBMIT make sure we load in all train files (not just 100)
+      # TODO(znado): make sure we load in all train files (not just -100).
       filename = "features_train-clean-100.csv"
     elif split == 'validation':
       filename = "features_dev-clean.csv"
