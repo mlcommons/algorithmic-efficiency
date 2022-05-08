@@ -16,7 +16,6 @@ from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
 from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
     models
 
-
 device = torch.device(
         "cuda:0" if torch.cuda.is_available() else "cpu")
 

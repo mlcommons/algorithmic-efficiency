@@ -5,11 +5,9 @@ from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
-from flax import optim
 from flax.training import common_utils
 import jax
 import jax.numpy as jnp
-import numpy as np
 import optax
 
 from algorithmic_efficiency import spec

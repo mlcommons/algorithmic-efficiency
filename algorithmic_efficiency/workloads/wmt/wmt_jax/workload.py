@@ -11,7 +11,6 @@ from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
-import tensorflow as tf
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
@@ -89,7 +88,10 @@ class WmtWorkload(BaseWmtWorkload):
         ((self._vocab_size - 1) * low_confidence *
          jnp.log(low_confidence + 1e-20)))
     soft_targets = common_utils.onehot(
-        targets, self._vocab_size, on_value=confidence, off_value=low_confidence)
+        targets,
+        self._vocab_size,
+        on_value=confidence,
+        off_value=low_confidence)
 
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
     loss = loss - normalizing_constant

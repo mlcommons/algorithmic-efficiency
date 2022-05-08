@@ -1,8 +1,8 @@
 """ImageNet workload implemented in PyTorch."""
 
 import contextlib
-import os
 import math
+import os
 from typing import Tuple
 
 import torch

@@ -220,18 +220,18 @@ def _test_submission(workload_name,
       hyperparameters,
       global_step,
       data_select_rng)
-  # _, model_params, model_state = update_params(
-  #     workload=workload,
-  #     current_param_container=model_params,
-  #     current_params_types=workload.model_params_types,
-  #     model_state=model_state,
-  #     hyperparameters=hyperparameters,
-  #     batch=batch,
-  #     loss_type=workload.loss_type,
-  #     optimizer_state=optimizer_state,
-  #     eval_results=[],
-  #     global_step=global_step,
-  #     rng=update_rng)
+  _, model_params, model_state = update_params(
+      workload=workload,
+      current_param_container=model_params,
+      current_params_types=workload.model_params_types,
+      model_state=model_state,
+      hyperparameters=hyperparameters,
+      batch=batch,
+      loss_type=workload.loss_type,
+      optimizer_state=optimizer_state,
+      eval_results=[],
+      global_step=global_step,
+      rng=update_rng)
   eval_result = workload.eval_model(global_batch_size,
                                     model_params,
                                     model_state,
@@ -261,11 +261,6 @@ class ReferenceSubmissionTest(absltest.TestCase):
       for framework in ['jax', 'pytorch']:
         submission_dir = f'{workload_dir}/{workload_name}_{framework}'
         if os.path.exists(submission_dir):
-          # # DO NOT SUBMIT
-          # if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir or 'ogbg' in submission_dir:
-          #   continue
-          # if not ('librispeech' in submission_dir):
-          #   continue
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
           logging.info(f'========= Testing {workload_name} in {framework}.')
