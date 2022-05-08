@@ -1,5 +1,6 @@
 """MNIST workload parent class."""
 import itertools
+import math
 from typing import Dict, Tuple
 
 from algorithmic_efficiency import spec
@@ -99,7 +100,7 @@ class BaseMnistWorkload(spec.Workload):
         'loss': 0.,
     }
     num_data = 0
-    num_batches = num_examples // global_batch_size
+    num_batches = int(math.ceil(num_examples / global_batch_size))
     for bi, batch in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break

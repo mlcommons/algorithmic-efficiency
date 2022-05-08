@@ -1,6 +1,7 @@
 """WMT workload implemented in Jax."""
 import collections
 import functools
+import math
 from typing import Dict, Optional, Tuple
 
 from absl import logging

@@ -36,7 +36,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
                      cache: Optional[bool] = None,
                      repeat_final_dataset: Optional[bool] = None,
                      num_batches: Optional[int] = None):
-    if batch_size % jax.local_device_count() > 0:
+    if batch_size % jax.local_device_count() != 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()

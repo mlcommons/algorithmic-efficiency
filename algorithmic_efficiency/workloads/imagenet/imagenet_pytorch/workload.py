@@ -2,6 +2,7 @@
 
 import contextlib
 import os
+import math
 from typing import Tuple
 
 import torch
@@ -52,42 +53,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str):
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
-
-    total_metrics = {
-        'accuracy': 0.,
-        'loss': 0.,
-    }
-    num_data = 0
-    for batch in self._eval_iters[split]:
-      images = batch['inputs'].float().to(DEVICE)
-      labels = batch['targets'].to(DEVICE)
-      logits, _ = self.model_fn(
-          params,
-          images,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, labels)
-      total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
-      }
-      num_data += batch_metrics['num_data']
-    return {k: float(v / num_data) for k, v in total_metrics.items()}
-
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
@@ -137,8 +102,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
         pin_memory=True,
         drop_last=is_train)
 
-    if is_train:
-      dataloader = cycle(dataloader)
+    dataloader = cycle(dataloader)
 
     return dataloader
 
@@ -220,3 +184,42 @@ class ImagenetWorkload(BaseImagenetWorkload):
     loss = self.loss_fn(labels, logits).sum().item()
     num_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    """Run a full evaluation of the model."""
+    data_rng, model_rng = prng.split(rng, 2)
+    if split not in self._eval_iters:
+      # These iterators repeat indefinitely.
+      self._eval_iters[split] = self.build_input_queue(
+          data_rng, split, data_dir, global_batch_size=global_batch_size)
+
+    total_metrics = {
+        'accuracy': 0.,
+        'loss': 0.,
+    }
+    num_data = 0
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    for _ in range(num_batches):
+      batch = next(self._eval_iters[split])
+      images = batch['inputs'].float().to(DEVICE)
+      labels = batch['targets'].to(DEVICE)
+      logits, _ = self.model_fn(
+          params,
+          images,
+          model_state,
+          spec.ForwardPassMode.EVAL,
+          model_rng,
+          update_batch_norm=False)
+      batch_metrics = self._eval_metric(logits, labels)
+      total_metrics = {
+          k: v + batch_metrics[k] for k, v in total_metrics.items()
+      }
+      num_data += batch_metrics['num_data']
+    return {k: float(v / num_data) for k, v in total_metrics.items()}

@@ -105,7 +105,7 @@ class BaseWmtWorkload(spec.Workload):
                            rng: spec.RandomState,
                            data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
-    num_batches = num_examples // global_batch_size
+    num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(

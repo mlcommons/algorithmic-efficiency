@@ -43,9 +43,9 @@ _EXPECTED_METRIC_NAMES = {
 }
 
 
-def _make_fake_image_batch(framework, batch_shape, data_shape, num_classes):
-  examples = np.random.normal(size=(*batch_shape,
-                                    *data_shape)).astype(np.float32)
+def _make_fake_image_batch(batch_shape, data_shape, num_classes):
+  examples = np.random.normal(
+      size=(*batch_shape, *data_shape)).astype(np.float32)
   labels = np.random.randint(0, num_classes, size=batch_shape)
   masks = np.ones((*batch_shape, *data_shape), dtype=np.float32)
   return {'inputs': examples, 'targets': labels, 'weights': masks}
@@ -95,20 +95,20 @@ def _make_one_batch_workload(
 
       if workload_name == 'mnist':
         fake_batch = _make_fake_image_batch(
-            framework, batch_shape, data_shape=(28, 28, 1), num_classes=10)
+            batch_shape, data_shape=(28, 28, 1), num_classes=10)
       elif workload_name == 'imagenet':
         if framework == 'jax':
           data_shape = (224, 224, 3)
         else:
           data_shape = (3, 224, 224)
         fake_batch = _make_fake_image_batch(
-            framework, batch_shape, data_shape=data_shape, num_classes=1000)
+            batch_shape, data_shape=data_shape, num_classes=1000)
       elif workload_name == 'librispeech':
         fake_batch = {
-            'indices': np.random.normal(size=(8,)),
-            'features': np.random.normal(size=(8, 1593, 161)),
-            'transcripts': np.random.normal(size=(8, 246)),
-            'input_lengths': np.random.normal(size=(8,)),
+            'indices': np.ones((8,)),
+            'features': np.ones((8, 1593, 161)),
+            'transcripts': np.ones((8, 246)),
+            'input_lengths': np.ones((8,)),
         }
       elif workload_name == 'ogbg':
         num_classes = 128
@@ -148,8 +148,14 @@ def _make_one_batch_workload(
             for k, v in fake_batch.items()
         }
       # We set the number of examples to the batch size for all splits, so only
-      # yield one batch.
-      yield fake_batch
+      # yield two batches, one for each call to eval_model().
+      num_batches = 2
+      # For WMT we also iterate through the eval iters a second time to complute
+      # the BLEU score.
+      if workload_name == 'wmt':
+        num_batches *= 2
+      for _ in range(num_batches):
+        yield fake_batch
 
   return _OneEvalBatchWorkload()
 
@@ -214,18 +220,18 @@ def _test_submission(workload_name,
       hyperparameters,
       global_step,
       data_select_rng)
-  _, model_params, model_state = update_params(
-      workload=workload,
-      current_param_container=model_params,
-      current_params_types=workload.model_params_types,
-      model_state=model_state,
-      hyperparameters=hyperparameters,
-      batch=batch,
-      loss_type=workload.loss_type,
-      optimizer_state=optimizer_state,
-      eval_results=[],
-      global_step=global_step,
-      rng=update_rng)
+  # _, model_params, model_state = update_params(
+  #     workload=workload,
+  #     current_param_container=model_params,
+  #     current_params_types=workload.model_params_types,
+  #     model_state=model_state,
+  #     hyperparameters=hyperparameters,
+  #     batch=batch,
+  #     loss_type=workload.loss_type,
+  #     optimizer_state=optimizer_state,
+  #     eval_results=[],
+  #     global_step=global_step,
+  #     rng=update_rng)
   eval_result = workload.eval_model(global_batch_size,
                                     model_params,
                                     model_state,
@@ -258,9 +264,11 @@ class ReferenceSubmissionTest(absltest.TestCase):
           # # DO NOT SUBMIT
           # if 'mnist' in submission_dir or 'imagenet' in submission_dir or 'librispeech' in submission_dir or 'ogbg' in submission_dir:
           #   continue
+          # if not ('librispeech' in submission_dir):
+          #   continue
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
-          logging.info(f'\n\n========= Testing {workload_name} in {framework}.')
+          logging.info(f'========= Testing {workload_name} in {framework}.')
           eval_result = _test_submission(
               workload_name,
               framework,
