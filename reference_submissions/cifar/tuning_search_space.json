@@ -1,27 +1,7 @@
 {
-    "learning_rate": {
-        "feasible_points": [
-            0.1
-        ]
-    },
-    "warmup_epochs": {
-        "feasible_points": [
-            5
-        ]
-    },
-    "num_epochs": {
-        "feasible_points": [
-            200
-        ]
-    },
-    "l2": {
-        "feasible_points": [
-            5e-4
-        ]
-    },
-    "momentum": {
-        "feasible_points": [
-            0.9
-        ]
-    }
+    "learning_rate": {"feasible_points": [0.1]},
+    "warmup_epochs": {"feasible_points": [5]},
+    "num_epochs": {"feasible_points": [200]},
+    "l2": {"feasible_points": [5e-4]},
+    "momentum": {"feasible_points": [0.9]}
 }

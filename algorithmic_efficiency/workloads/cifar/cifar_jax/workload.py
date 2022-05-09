@@ -1,6 +1,6 @@
 """CIFAR10 workload implemented in Jax."""
 import functools
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -10,9 +10,10 @@ import jax.numpy as jnp
 import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
-from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.cifar.cifar_jax import input_pipeline
+from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
+from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
+
 
 def _param_types(param_tree):
   param_types_dict = {}
