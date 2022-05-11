@@ -35,13 +35,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def __init__(self):
     self._eval_iters = {}
 
-  @property
-  def param_shapes(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
-
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
@@ -134,6 +127,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = resnet50()
+    self._param_shapes = {
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+    }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
     model.to(DEVICE)

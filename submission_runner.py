@@ -58,7 +58,7 @@ WORKLOADS = {
 
 flags.DEFINE_string(
     'submission_path',
-    'baselines/mnist/mnist_jax/submission.py',
+    'reference_submissions/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
@@ -73,7 +73,7 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'baselines/mnist/tuning_search_space.json',
+    'reference_submissions/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
                      20,

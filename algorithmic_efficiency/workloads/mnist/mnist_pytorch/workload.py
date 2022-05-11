@@ -118,15 +118,6 @@ class MnistWorkload(BaseMnistWorkload):
     model.to(DEVICE)
     return model, None
 
-  @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
   def model_fn(
       self,
       params: spec.ParameterContainer,

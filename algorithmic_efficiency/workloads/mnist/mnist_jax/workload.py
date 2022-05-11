@@ -75,14 +75,6 @@ class MnistWorkload(BaseMnistWorkload):
     return tfds.as_numpy(ds)
 
   @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
   def model_params_types(self):
     if self._param_shapes is None:
       raise ValueError(

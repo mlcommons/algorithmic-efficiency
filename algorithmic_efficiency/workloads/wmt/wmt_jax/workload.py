@@ -12,25 +12,17 @@ import numpy as np
 import tensorflow as tf
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt.wmt_jax import bleu
-from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
-from algorithmic_efficiency.workloads.wmt.wmt_jax import input_pipeline
+from algorithmic_efficiency.workloads.wmt import bleu
+from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
-
-VOCAB_PATH = "./wmt_256/sentencepiece_model"
-WORKDIR = "./wmt_256"
+from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 
-class WmtWorkload(spec.Workload):
-  """A WMT workload."""
+class WmtWorkload(BaseWmtWorkload):
+  """WMT Jax workload."""
 
   def __init__(self):
-    self._eval_ds = None
-    self._train_ds = None
-    self._predict_ds = None
-    self._encoder = None
-    self._vocab_size = 32000
-    self._per_device_batch_size = None
+    super().__init__()
     self._train_config = None
     self._eval_config = None
     self._predict_config = None
@@ -41,14 +33,14 @@ class WmtWorkload(spec.Workload):
   def compute_weighted_cross_entropy(self,
                                      logits,
                                      targets,
-                                     weights=None,
+                                     weights,
                                      label_smoothing=0.0):
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
      logits: [batch, length, num_classes] float array.
      targets: categorical targets [batch, length] int array.
-     weights: None or array of shape [batch, length].
+     weights: array of shape [batch, length].
      label_smoothing: label smoothing constant, used to determine the on and off
        values.
 
@@ -69,49 +61,8 @@ class WmtWorkload(spec.Workload):
         targets, vocab_size, on_value=confidence, off_value=low_confidence)
 
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
-    loss = loss - normalizing_constant
-
-    normalizing_factor = np.prod(targets.shape)
-    if weights is not None:
-      loss = loss * weights
-      normalizing_factor = weights.sum()
-
-    return loss, normalizing_factor
-
-  def compute_weighted_accuracy(self, logits, targets, weights=None):
-    """Compute weighted accuracy for log probs and targets.
-
-    Args:
-     logits: [batch, length, num_classes] float array.
-     targets: categorical targets [batch, length] int array.
-     weights: None or array of shape [batch, length]
-
-    Returns:
-      Tuple of scalar loss and batch normalizing factor.
-    """
-    if logits.ndim != targets.ndim + 1:
-      raise ValueError(f"Incorrect shapes. Got shape {str(logits.shape)} logits"
-                       f" and {str(targets.shape)} targets")
-    loss = jnp.equal(jnp.argmax(logits, axis=-1), targets)
-    normalizing_factor = np.prod(logits.shape[:-1])
-    if weights is not None:
-      loss = loss * weights
-      normalizing_factor = weights.sum()
-
-    return loss.sum(), normalizing_factor
-
-  def compute_metrics(self, logits, labels, weights):
-    """Compute summary metrics."""
-    loss, weight_sum = self.compute_weighted_cross_entropy(
-        logits, labels, weights, 0.0)
-    acc, _ = self.compute_weighted_accuracy(logits, labels, weights)
-    metrics = {
-        "loss": loss.sum(),
-        "accuracy": acc,
-        "denominator": weight_sum,
-    }
-    metrics = jax.lax.psum(metrics, axis_name="batch")
-    return metrics
+    loss = (loss - normalizing_constant) * weights
+    return loss
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
@@ -123,8 +74,8 @@ class WmtWorkload(spec.Workload):
     logits = models.Transformer(config).apply({"params": params},
                                               inputs,
                                               targets)
-
-    return self.compute_metrics(logits, targets, weights)
+    metrics = self.compute_metrics(logits, targets, weights)
+    return jax.lax.psum(metrics, axis_name="batch")
 
   def initialize_cache(self, inputs, max_decode_len, config):
     """Initialize a cache for a given input shape and max decode length."""
@@ -221,11 +172,7 @@ class WmtWorkload(spec.Workload):
     n_device, n_batch, *remaining_dims = x.shape
     return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
 
-  def evaluate(self,
-               p_eval_step,
-               target,
-               eval_ds: tf.data.Dataset,
-               num_eval_steps: int):
+  def evaluate(self, params, eval_ds: tf.data.Dataset, num_eval_steps: int):
     """Evaluate the target an return a dictionary with the metrics."""
     logging.info("Gathering evaluation metrics.")
     eval_metrics = []
@@ -233,7 +180,7 @@ class WmtWorkload(spec.Workload):
     for _, eval_batch in zip(range(num_eval_steps), eval_iter):
       eval_batch = jax.tree_map(lambda x: x._numpy(), eval_batch)  # pylint: disable=protected-access
       eval_batch = common_utils.shard(eval_batch)
-      metrics = p_eval_step(target, eval_batch)
+      metrics = self._p_eval_step(params, eval_batch)
       eval_metrics.append(metrics)
     eval_metrics = common_utils.get_metrics(eval_metrics)
     eval_metrics_sums = jax.tree_map(jnp.sum, eval_metrics)
@@ -244,17 +191,15 @@ class WmtWorkload(spec.Workload):
     return eval_summary
 
   def translate_and_calculate_bleu(self,
-                                   p_pred_step,
-                                   p_init_cache,
-                                   target,
+                                   params: spec.ParameterContainer,
                                    predict_ds: tf.data.Dataset,
-                                   decode_tokens,
-                                   max_predict_length: int):
+                                   max_predict_length: int,
+                                   num_eval_steps: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
     n_devices = jax.local_device_count()
     logging.info("Translating evaluation dataset.")
     sources, references, predictions = [], [], []
-    for pred_batch in predict_ds:
+    for _, pred_batch in zip(range(num_eval_steps + 1), predict_ds):
       pred_batch = jax.tree_map(lambda x: x._numpy(), pred_batch)  # pylint: disable=protected-access
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = pred_batch["inputs"].shape[0]
@@ -264,20 +209,20 @@ class WmtWorkload(spec.Workload):
             lambda x: self.pad_examples(x, padded_size),  # pylint: disable=cell-var-from-loop
             pred_batch)
       pred_batch = common_utils.shard(pred_batch)
-      cache = p_init_cache(pred_batch["inputs"])
-      predicted = p_pred_step(pred_batch["inputs"],
-                              target,
-                              cache,
-                              decode.EOS_ID,
-                              max_predict_length)
+      cache = self._p_init_cache(pred_batch["inputs"])
+      predicted = self._p_pred_step(pred_batch["inputs"],
+                                    params,
+                                    cache,
+                                    decode.EOS_ID,
+                                    max_predict_length)
       predicted = self.tohost(predicted)
       inputs = self.tohost(pred_batch["inputs"])
       targets = self.tohost(pred_batch["targets"])
       # Iterate through non-padding examples of batch.
       for i, s in enumerate(predicted[:cur_pred_batch_size]):
-        sources.append(decode_tokens(inputs[i]))
-        references.append(decode_tokens(targets[i]))
-        predictions.append(decode_tokens(s))
+        sources.append(self._decode_tokens(inputs[i]))
+        references.append(self._decode_tokens(targets[i]))
+        predictions.append(self._decode_tokens(s))
     logging.info("Translation: %d predictions %d references %d sources.",
                  len(predictions),
                  len(references),
@@ -287,92 +232,7 @@ class WmtWorkload(spec.Workload):
     bleu_matches = bleu.bleu_partial(references, predictions)
     all_bleu_matches = self.per_host_sum_pmap(bleu_matches)
     bleu_score = bleu.complete_bleu(*all_bleu_matches)
-
-    # Save translation samples for tensorboard.
-    exemplars = ""
-    for n in np.random.choice(np.arange(len(predictions)), 8):
-      exemplars += f"{sources[n]}\n\n{references[n]}\n\n{predictions[n]}\n\n"
-    return exemplars, bleu_score
-
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result["bleu"] > self.target_value
-
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
-    tf.io.gfile.makedirs(WORKDIR)
-    self._per_device_batch_size = global_batch_size // jax.local_device_count()
-    self._train_ds, self._eval_ds, self._predict_ds, self._encoder \
-      = input_pipeline.get_wmt_datasets(
-        vocab_size=self._vocab_size,
-        batch_size=global_batch_size,
-        reverse_translation=True,
-        vocab_path=VOCAB_PATH)
-    self._vocab_size = int(self._encoder.vocab_size())
-    return iter(self._train_ds)
-
-  @property
-  def param_shapes(self):
-    init_params, _ = self.init_model_fn(jax.random.PRNGKey(0))
-    return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), init_params)
-
-  @property
-  def target_value(self):
-    return 25
-
-  @property
-  def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
-
-  @property
-  def num_train_examples(self):
-    return 5906184
-
-  @property
-  def num_eval_train_examples(self):
-    return 10000
-
-  @property
-  def num_validation_examples(self):
-    return 3004
-
-  @property
-  def num_test_examples(self):
-    return None
-
-  @property
-  def train_mean(self):
-    return 0.0
-
-  @property
-  def train_stddev(self):
-    return 1.0
-
-  @property
-  def model_params_types(self):
-    """
-    TODO: return type tuples from model as a tree
-    """
-    raise NotImplementedError
-
-  @property
-  def max_allowed_runtime_sec(self):
-    return 80000
-
-  @property
-  def eval_period_time_sec(self):
-    return 800
-
-  def _decode_tokens(self, toks):
-    valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
-    return self._encoder.detokenize(valid_toks).numpy().decode("utf-8")
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return bleu_score
 
   def preprocess_for_train(self,
                            selected_raw_input_batch: spec.Tensor,
@@ -421,8 +281,10 @@ class WmtWorkload(spec.Workload):
         static_broadcasted_argnums=(3, 4))  # eos token, max_length are constant
 
     rng, init_rng = jax.random.split(rng)
-    input_shape = (self._per_device_batch_size, 256)
-    target_shape = (self._per_device_batch_size, 256)
+    per_device_batch_size = int(self._global_batch_size /
+                                jax.local_device_count())
+    input_shape = (per_device_batch_size, 256)
+    target_shape = (per_device_batch_size, 256)
 
     initial_variables = jax.jit(models.Transformer(self._eval_config).init)(
         init_rng,
@@ -430,6 +292,8 @@ class WmtWorkload(spec.Workload):
         jnp.ones(target_shape, jnp.float32))
 
     initial_params = initial_variables["params"]
+    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
+                                      initial_params)
 
     return initial_params, None
 
@@ -464,39 +328,7 @@ class WmtWorkload(spec.Workload):
       mask_batch: Optional[spec.Tensor]) -> spec.Tensor:
     del mask_batch
     weights = jnp.where(label_batch > 0, 1.0, 0.0)
-    loss, _ = self.compute_weighted_cross_entropy(logits_batch, label_batch,
-                                                  weights)
-
+    loss = self.compute_weighted_cross_entropy(logits_batch,
+                                               label_batch,
+                                               weights)
     return loss
-
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
-
-  def eval_model(self,
-                 params: spec.ParameterContainer,
-                 model_state: spec.ModelAuxiliaryState,
-                 rng: spec.RandomState,
-                 data_dir: str):
-    """Run a full evaluation of the model."""
-    del data_dir
-
-    eval_results = self.evaluate(
-        p_eval_step=self._p_eval_step,
-        target=params,
-        eval_ds=self._eval_ds,
-        num_eval_steps=20)
-
-    _, bleu_score = self.translate_and_calculate_bleu(
-        p_pred_step=self._p_pred_step,
-        p_init_cache=self._p_init_cache,
-        target=params,
-        predict_ds=self._predict_ds,
-        decode_tokens=self._decode_tokens,
-        max_predict_length=256)
-
-    eval_results["bleu"] = bleu_score
-
-    return eval_results

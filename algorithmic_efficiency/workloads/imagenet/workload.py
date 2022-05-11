@@ -5,6 +5,9 @@ from algorithmic_efficiency import spec
 
 class BaseImagenetWorkload(spec.Workload):
 
+  def __init__(self):
+    self._param_shapes = None
+
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['accuracy'] > self.target_value
 
@@ -65,6 +68,15 @@ class BaseImagenetWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 6000  # 100 mins
+
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
 
   @property
   def model_params_types(self):

@@ -1,29 +1,54 @@
 """Input pipeline for a WMT dataset."""
-import functools
+
 import os
 from typing import Dict, List, Optional, Union
 
-import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from algorithmic_efficiency.workloads.wmt.wmt_jax import tokenizer
+from algorithmic_efficiency.workloads.wmt import tokenizer
 
 AUTOTUNE = tf.data.AUTOTUNE
 Features = Dict[str, tf.Tensor]
 
 
-def normalize_feature_names(ds_info, reverse_translation,
-                            features: Features) -> Features:
+class NormalizeFeatureNamesOp:
   """Normalizes feature names to 'inputs' and 'targets'."""
-  input_lang, target_lang = ds_info.supervised_keys
-  if reverse_translation:
-    input_lang = target_lang
-    target_lang = input_lang
 
-  features['inputs'] = features.pop(input_lang)
-  features['targets'] = features.pop(target_lang)
-  return features
+  def __init__(self, ds_info: tfds.core.DatasetInfo, reverse_translation: bool):
+    self.input_lang, self.target_lang = ds_info.supervised_keys
+    if reverse_translation:
+      self.input_lang, self.target_lang = self.target_lang, self.input_lang
+
+  def __call__(self, features: Features) -> Features:
+    features['inputs'] = features.pop(self.input_lang)
+    features['targets'] = features.pop(self.target_lang)
+    return features
+
+
+def get_raw_dataset(dataset_builder: tfds.core.DatasetBuilder,
+                    split: str,
+                    *,
+                    reverse_translation: bool = False) -> tf.data.Dataset:
+  """Loads a raw WMT dataset and normalizes feature keys.
+
+  Args:
+    dataset_builder: TFDS dataset builder that can build `slit`.
+    split: Split to use. This must be the full split. We shard the split across
+      multiple hosts and currently don't support sharding subsplits.
+    reverse_translation: bool: whether to reverse the translation direction.
+      e.g. for 'de-en' this translates from english to german.
+
+  Returns:
+    Dataset with source and target language features mapped to 'inputs' and
+    'targets'.
+  """
+  ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
+  ds = ds.map(
+      NormalizeFeatureNamesOp(
+          dataset_builder.info, reverse_translation=reverse_translation),
+      num_parallel_calls=AUTOTUNE)
+  return ds
 
 
 def pack_dataset(dataset: tf.data.Dataset,
@@ -218,12 +243,18 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset,
   return dataset.unbatch()
 
 
+# -----------------------------------------------------------------------------
+# Main dataset prep routines.
+# -----------------------------------------------------------------------------
 def preprocess_wmt_data(dataset: tf.data.Dataset,
-                        data_rng,
-                        train: bool,
+                        shuffle: bool,
+                        num_epochs: Optional[int] = 1,
+                        pack_examples: bool = True,
                         shuffle_buffer_size: int = 1024,
                         max_length: int = 512,
-                        per_device_batch_size: int = 256):
+                        batch_size: int = 256,
+                        drop_remainder: bool = True,
+                        prefetch_size: int = AUTOTUNE):
   """Shuffle and batch/pack the given dataset."""
 
   def length_filter(max_len):
@@ -238,67 +269,77 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
   if max_length > 0:
     dataset = dataset.filter(length_filter(max_length))
 
-  if train:
-    dataset = dataset.shuffle(shuffle_buffer_size, seed=data_rng[0])
-    dataset = dataset.repeat()
+  if shuffle:
+    dataset = dataset.shuffle(shuffle_buffer_size)
+  dataset = dataset.repeat(num_epochs)
+
+  if pack_examples:
     dataset = pack_dataset(dataset, max_length)
-    dataset = dataset.batch(per_device_batch_size, drop_remainder=train)
+    dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)
   else:  # simple (static-shape) padded batching
     dataset = dataset.padded_batch(
-        per_device_batch_size,
+        batch_size,
         padded_shapes={'inputs': max_length, 'targets': max_length},
         padding_values={'inputs': 0, 'targets': 0},
-        drop_remainder=train)
+        drop_remainder=drop_remainder)
 
-  dataset = dataset.prefetch(AUTOTUNE)
+  if prefetch_size:
+    dataset = dataset.prefetch(prefetch_size)
+
   return dataset
 
 
-def get_wmt_dataset(data_rng,
-                    split: str,
-                    data_dir: str,
-                    vocab_size: int,
-                    global_batch_size: int,
-                    num_batches: Optional[int] = None,
-                    reverse_translation: bool = True,
-                    repeat_final_dataset: bool = False,
-                    vocab_path: Optional[str] = None):
+def get_wmt_datasets(data_dir: str,
+                     vocab_size: int,
+                     global_batch_size: int,
+                     reverse_translation: bool = True,
+                     vocab_path: Optional[str] = None,
+                     pack_examples: bool = True):
   """Load and return dataset of batched examples for use during training."""
   if vocab_path is None:
-    vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
+    vocab_path = os.path.expanduser('~/wmt_sentencepiece_model')
 
-  if split in ['validation', 'test']:
-    ds_name = 'wmt14_translate/de-en'
-  else:
-    ds_name = 'wmt17_translate/de-en'
-  dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
-  ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
-  ds = ds.map(
-      functools.partial(normalize_feature_names,
-                        dataset_builder.info,
-                        reverse_translation),
-      num_parallel_calls=AUTOTUNE)
+  train_ds_builder = tfds.builder('wmt17_translate/de-en', data_dir=data_dir)
+  train_data = get_raw_dataset(
+      train_ds_builder, 'train', reverse_translation=reverse_translation)
+
+  eval_ds_builder = tfds.builder('wmt14_translate/de-en', data_dir=data_dir)
+  eval_data = get_raw_dataset(
+      eval_ds_builder, 'test', reverse_translation=reverse_translation)
 
   # Tokenize data.
   sp_tokenizer = tokenizer.load_or_train_tokenizer(
-      ds, vocab_path=vocab_path, vocab_size=vocab_size, max_corpus_chars=10**7)
-  ds = ds.map(tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
+      train_data,
+      vocab_path=vocab_path,
+      vocab_size=vocab_size,
+      max_corpus_chars=10**7)
+  train_data = train_data.map(
+      tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
+  eval_data = eval_data.map(
+      tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
 
-  num_devices = jax.local_device_count()
-  per_device_batch_size = global_batch_size // num_devices
-  ds = preprocess_wmt_data(
-      ds,
-      data_rng,
-      train=split == 'train',
-      per_device_batch_size=per_device_batch_size,
+  train_ds = preprocess_wmt_data(
+      train_data,
+      shuffle=True,
+      num_epochs=None,
+      pack_examples=pack_examples,
+      batch_size=global_batch_size,
       max_length=256)
 
-  if num_batches:
-    ds = ds.take(num_batches)
+  eval_ds = preprocess_wmt_data(
+      eval_data,
+      shuffle=False,
+      pack_examples=False,
+      batch_size=global_batch_size,
+      max_length=256,
+      drop_remainder=False)
 
-  ds = ds.batch(num_devices)
+  predict_ds = preprocess_wmt_data(
+      eval_data,
+      shuffle=False,
+      pack_examples=False,
+      batch_size=global_batch_size,
+      max_length=256,
+      drop_remainder=False)
 
-  if repeat_final_dataset:
-    ds = ds.repeat()
-
-  return ds, sp_tokenizer
+  return train_ds, eval_ds, predict_ds, sp_tokenizer

@@ -21,7 +21,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
 
   def __init__(self):
     super().__init__()
-    self._param_shapes = None
     self.epoch_metrics = []
     self._eval_iters = {}
 
@@ -64,13 +63,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
     new_model_state = model_state.copy(
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
-
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError('This should not happen, workload.init_model_fn() '
-                       'should be called before workload.param_shapes!')
-    return self._param_shapes
 
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)

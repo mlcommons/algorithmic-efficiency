@@ -56,6 +56,15 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 10
 
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
+
   def _eval_model(
       self,
       params: spec.ParameterContainer,

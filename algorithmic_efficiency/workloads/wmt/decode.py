@@ -10,6 +10,7 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
+import torch
 
 # Constants
 # We assume the default End-of-Sentence token id is 2 (SentencePiece).
@@ -36,7 +37,7 @@ def brevity_penalty(alpha, length):
 
 def add_beam_dim(x, beam_size):
   """Creates new beam dimension in non-scalar array and tiles into it."""
-  if x.ndim == 0:  # ignore scalars (e.g. cache index)
+  if x.ndim < 2:  # ignore scalars (e.g. cache index)
     return x
   x = jnp.expand_dims(x, axis=1)
   tile_dims = [1] * x.ndim
@@ -46,14 +47,14 @@ def add_beam_dim(x, beam_size):
 
 def flatten_beam_dim(x):
   """Flattens the first two dimensions of a non-scalar array."""
-  if x.ndim == 0:  # ignore scalars (e.g. cache index)
+  if x.ndim < 2:  # ignore scalars (e.g. cache index)
     return x
   return x.reshape((x.shape[0] * x.shape[1],) + x.shape[2:])
 
 
 def unflatten_beam_dim(x, batch_size, beam_size):
   """Unflattens the first, flat batch*beam dimension of a non-scalar array."""
-  if x.ndim == 0:  # ignore scalars (e.g. cache index)
+  if x.ndim < 2:  # ignore scalars (e.g. cache index)
     return x
   assert batch_size * beam_size == x.shape[0]
   return x.reshape((batch_size, beam_size) + x.shape[1:])
@@ -82,9 +83,11 @@ def gather_beams(nested, beam_indices, batch_size, new_beam_size):
       (batch_size, new_beam_size))
 
   def gather_fn(x):
-    if x.ndim == 0:  # ignore scalars (e.g. cache index)
+    if x.ndim < 2:  # ignore scalars (e.g. cache index)
       return x
     else:
+      if isinstance(x, torch.Tensor):
+        return x[np.asarray(batch_indices), np.asarray(beam_indices)]
       return x[batch_indices, beam_indices]
 
   return jax.tree_map(gather_fn, nested)
@@ -160,7 +163,8 @@ def beam_search(inputs,
                 beam_size=4,
                 alpha=0.6,
                 eos_id=EOS_ID,
-                max_decode_len=None):
+                max_decode_len=None,
+                lax_while=True):
   """Beam search for transformer machine translation.
 
   Args:
@@ -172,6 +176,7 @@ def beam_search(inputs,
     alpha: float: scaling factor for brevity penalty.
     eos_id: int: id of end-of-sentence token for target vocabulary.
     max_decode_len: int: maximum length of decoded translations.
+    lax_while: bool: if True, use jax.lax.while_loop.
 
   Returns:
      Tuple of:
@@ -342,9 +347,15 @@ def beam_search(inputs,
         cache=top_alive_cache)
 
   # Run while loop and get final beam search state.
-  final_state = lax.while_loop(beam_search_loop_cond_fn,
-                               beam_search_loop_body_fn,
-                               beam_search_init_state)
+  if lax_while:  # For the Jax workload.
+    final_state = lax.while_loop(beam_search_loop_cond_fn,
+                                 beam_search_loop_body_fn,
+                                 beam_search_init_state)
+  else:  # For the PyTorch workload.
+    state = beam_search_init_state
+    while beam_search_loop_cond_fn(state):
+      state = beam_search_loop_body_fn(state)
+    final_state = state
 
   # Account for the edge-case where there are no finished sequences for a
   # particular batch item. If so, return live sequences for that batch item.
