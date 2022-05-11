@@ -73,18 +73,7 @@ def _resize(image, image_size):
                          method=tf.image.ResizeMethod.BICUBIC)[0]
 
 
-def _at_least_x_are_equal(a, b, x):
-  """At least `x` of `a` and `b` `Tensors` are equal."""
-  match = tf.equal(a, b)
-  match = tf.cast(match, tf.int32)
-  return tf.greater_equal(tf.reduce_sum(match), x)
-
-
-def _random_crop(image,
-                 rng,
-                 image_size,
-                 aspect_ratio_range,
-                 area_range):
+def _random_crop(image, rng, image_size, aspect_ratio_range, area_range):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image_cropped = _distorted_bounding_box_crop(
