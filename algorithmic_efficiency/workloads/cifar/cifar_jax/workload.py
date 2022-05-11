@@ -51,7 +51,6 @@ class CifarWorkload(BaseCifarWorkload):
         self.train_mean,
         self.train_stddev,
         self.center_crop_size,
-        self.resize_size,
         self.aspect_ratio_range,
         self.scale_ratio_range,
         train=train,
@@ -93,18 +92,14 @@ class CifarWorkload(BaseCifarWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def initialized(self, key, model):
-    input_shape = (1, 32, 32, 3)
-    variables = jax.jit(model.init)({'params': key},
-                                    jnp.ones(input_shape, model.dtype))
-    model_state, params = variables.pop('params')
-    return params, model_state
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=10, dtype=jnp.float32)
     self._model = model
-    params, model_state = self.initialized(rng, model)
+    input_shape = (1, 32, 32, 3)
+    variables = jax.jit(model.init)({'params': rng},
+                                    jnp.ones(input_shape, model.dtype))
+    model_state, params = variables.pop('params')
 
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)

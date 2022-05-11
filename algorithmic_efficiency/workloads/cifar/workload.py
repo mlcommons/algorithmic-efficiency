@@ -63,10 +63,6 @@ class BaseCifarWorkload(spec.Workload):
     return 32
 
   @property
-  def resize_size(self):
-    return 40
-
-  @property
   def max_allowed_runtime_sec(self):
     return 3600
 

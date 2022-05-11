@@ -10,7 +10,6 @@ import jax
 import tensorflow as tf
 
 IMAGE_SIZE = 32
-RESIZE_SIZE = 40
 MEAN_RGB = [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
 STDDEV_RGB = [0.24703233 * 255, 0.24348505 * 255, 0.26158768 * 255]
 
@@ -85,8 +84,7 @@ def _random_crop(image,
                  rng,
                  image_size,
                  aspect_ratio_range,
-                 area_range,
-                 resize_size=RESIZE_SIZE):
+                 area_range):
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image_cropped = _distorted_bounding_box_crop(
@@ -97,37 +95,8 @@ def _random_crop(image,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
       max_attempts=10)
-  original_shape = tf.shape(image)
-  bad = _at_least_x_are_equal(original_shape, tf.shape(image_cropped), 3)
 
-  image_cropped = tf.cond(bad,
-                          lambda: _center_crop(image, image_size, resize_size),
-                          lambda: _resize(image_cropped, image_size))
-
-  return image_cropped
-
-
-def _center_crop(image, image_size, resize_size):
-  """Crops to center of image with padding then scales image_size."""
-  shape = tf.shape(image)
-  image_height = shape[0]
-  image_width = shape[1]
-
-  padded_center_crop_size = tf.cast(
-      ((image_size / resize_size) *
-       tf.cast(tf.minimum(image_height, image_width), tf.float32)),
-      tf.int32)
-
-  offset_height = ((image_height - padded_center_crop_size) + 1) // 2
-  offset_width = ((image_width - padded_center_crop_size) + 1) // 2
-  image_cropped = tf.image.crop_to_bounding_box(image,
-                                                offset_height,
-                                                offset_width,
-                                                padded_center_crop_size,
-                                                padded_center_crop_size)
-  image_cropped = _resize(image_cropped, image_size)
-
-  return image_cropped
+  return _resize(image_cropped, image_size)
 
 
 def normalize_image(image, mean_rgb, stddev_rgb):
@@ -143,8 +112,7 @@ def preprocess_for_train(image,
                          aspect_ratio_range,
                          area_range,
                          dtype=tf.float32,
-                         image_size=IMAGE_SIZE,
-                         resize_size=RESIZE_SIZE):
+                         image_size=IMAGE_SIZE):
   """Preprocesses the given image for training.
 
   Args:
@@ -164,8 +132,7 @@ def preprocess_for_train(image,
                        crop_rng,
                        image_size,
                        aspect_ratio_range,
-                       area_range,
-                       resize_size)
+                       area_range)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.stateless_random_flip_left_right(image, seed=flip_rng)
   image = normalize_image(image, mean_rgb, stddev_rgb)
@@ -177,8 +144,7 @@ def preprocess_for_eval(image,
                         mean_rgb,
                         stddev_rgb,
                         dtype=tf.float32,
-                        image_size=IMAGE_SIZE,
-                        resize_size=RESIZE_SIZE):
+                        image_size=IMAGE_SIZE):
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -189,7 +155,7 @@ def preprocess_for_eval(image,
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _center_crop(image, image_size, resize_size)
+  image = _resize(image, image_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
@@ -202,7 +168,6 @@ def create_split(split,
                  global_batch_size,
                  train,
                  image_size,
-                 resize_size,
                  mean_rgb,
                  stddev_rgb,
                  cache=False,
@@ -233,15 +198,13 @@ def create_split(split,
                                    aspect_ratio_range,
                                    area_range,
                                    dtype,
-                                   image_size,
-                                   resize_size)
+                                   image_size)
     else:
       image = preprocess_for_eval(example['image'],
                                   mean_rgb,
                                   stddev_rgb,
                                   dtype,
-                                  image_size,
-                                  resize_size)
+                                  image_size)
     return {'image': image, 'label': example['label']}
 
   ds = dataset_builder.as_dataset(split=split)
@@ -299,7 +262,6 @@ def create_input_iter(split,
                       mean_rgb,
                       stddev_rgb,
                       image_size,
-                      resize_size,
                       aspect_ratio_range,
                       area_range,
                       train,
@@ -313,7 +275,6 @@ def create_input_iter(split,
       global_batch_size,
       train=train,
       image_size=image_size,
-      resize_size=resize_size,
       mean_rgb=mean_rgb,
       stddev_rgb=stddev_rgb,
       cache=cache,
