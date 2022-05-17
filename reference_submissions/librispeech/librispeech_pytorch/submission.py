@@ -66,20 +66,15 @@ def update_params(
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
 def data_selection(workload: spec.Workload,
-                   input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
+                   input_queue: Iterator[Dict[str, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
                    hyperparameters: spec.Hyperparameters,
                    global_step: int,
-                   rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
+                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
-  Each element of the queue is a single training example and label.
-
-  We left out `current_params_types` because we do not believe that it would
-  be necessary for this function.
-
-  Return a tuple of input label batches.
+  Each element of the queue is a batch of training examples and labels.
   """
   del optimizer_state
   del current_param_container
