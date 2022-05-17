@@ -9,6 +9,7 @@ import tensorflow as tf
 import torch
 import torch.nn.functional as F
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
@@ -274,3 +275,13 @@ class WmtWorkload(BaseWmtWorkload):
       eval_metrics = {k: v + metrics[k] for k, v in eval_metrics.items()}
     denominator = eval_metrics.pop('denominator')
     return {k: float(v / denominator) for k, v in eval_metrics.items()}
+
+  @property
+  def model_params_types(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(self._param_shapes)
+    return self._param_types

@@ -11,6 +11,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
@@ -275,3 +276,13 @@ class WmtWorkload(BaseWmtWorkload):
         targets_segmentation=targets_segmentations,
         rngs={'dropout': rng})
     return logits_batch, None
+
+  @property
+  def model_params_types(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(self._param_shapes)
+    return self._param_types
