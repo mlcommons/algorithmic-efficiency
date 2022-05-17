@@ -89,11 +89,3 @@ class BaseImagenetWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
-    return iter(
-        self._build_dataset(data_rng, split, data_dir, global_batch_size))

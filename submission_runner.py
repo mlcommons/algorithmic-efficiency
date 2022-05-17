@@ -99,7 +99,8 @@ def convert_filepath_to_module(path: str):
 
 
 def import_workload(workload_path: str,
-                    workload_class_name: str) -> spec.Workload:
+                    workload_class_name: str,
+                    return_class=False) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -112,6 +113,8 @@ def import_workload(workload_path: str,
     workload_path: the path to the `workload.py` file to load.
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
+    return_class: if true, then the workload class is returned instead of the
+      instantiated object. Useful for testing when methods need to be overriden.
   """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
@@ -131,6 +134,8 @@ def import_workload(workload_path: str,
         f'Could not find member {workload_class_name} in {workload_path}. '
         'Make sure the Workload class is spelled correctly and defined in '
         'the top scope of the module.')
+  if return_class:
+    return workload_class
   return workload_class()
 
 
@@ -142,7 +147,7 @@ def train_once(workload: spec.Workload,
                init_optimizer_state: spec.InitOptimizerFn,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparamters],
+               hyperparameters: Optional[spec.Hyperparameters],
                rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
@@ -174,15 +179,13 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    (selected_train_input_batch,
-     selected_train_label_batch,
-     selected_train_mask_batch) = data_selection(workload,
-                                                 input_queue,
-                                                 optimizer_state,
-                                                 model_params,
-                                                 hyperparameters,
-                                                 global_step,
-                                                 data_select_rng)
+    batch = data_selection(workload,
+                           input_queue,
+                           optimizer_state,
+                           model_params,
+                           hyperparameters,
+                           global_step,
+                           data_select_rng)
     try:
       optimizer_state, model_params, model_state = update_params(
           workload=workload,
@@ -190,9 +193,7 @@ def train_once(workload: spec.Workload,
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
-          input_batch=selected_train_input_batch,
-          label_batch=selected_train_label_batch,
-          mask_batch=selected_train_mask_batch,
+          batch=batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,

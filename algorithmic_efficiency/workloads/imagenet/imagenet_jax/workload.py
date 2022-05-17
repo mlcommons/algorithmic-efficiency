@@ -1,6 +1,7 @@
 """ImageNet workload implemented in Jax."""
 import functools
-from typing import Optional, Tuple
+import math
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -9,6 +10,7 @@ import jax.numpy as jnp
 import optax
 import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import \
     input_pipeline
@@ -21,8 +23,18 @@ class ImagenetWorkload(BaseImagenetWorkload):
 
   def __init__(self):
     super().__init__()
+    self._param_shapes = None
+    self._param_types = None
     self.epoch_metrics = []
     self._eval_iters = {}
+
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int):
+    return iter(
+        self._build_dataset(data_rng, split, data_dir, global_batch_size))
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -32,7 +44,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
                      cache: Optional[bool] = None,
                      repeat_final_dataset: Optional[bool] = None,
                      num_batches: Optional[int] = None):
-    if batch_size % jax.local_device_count() > 0:
+    if batch_size % jax.local_device_count() != 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()
@@ -63,6 +75,25 @@ class ImagenetWorkload(BaseImagenetWorkload):
     new_model_state = model_state.copy(
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
+
+  @property
+  def param_shapes(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
+
+  @property
+  def model_params_types(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(
+          self._param_shapes.unfreeze())
+    return self._param_types
 
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
@@ -95,7 +126,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
       axis_name='batch',
       in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
-  def _eval_model_fn(self, params, batch, state, rng):
+  def _eval_model(self, params, batch, state, rng):
     logits, _ = self.model_fn(
         params,
         batch,
@@ -103,12 +134,12 @@ class ImagenetWorkload(BaseImagenetWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._compute_metrics(logits, batch['label'])
+    return self._compute_metrics(logits, batch['targets'])
 
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -117,14 +148,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch,
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch,
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None
@@ -160,7 +191,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
     data_rng, model_rng = jax.random.split(rng, 2)
     # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)
-    num_batches = num_examples // global_batch_size
+    num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
       self._eval_iters[split] = self.build_input_queue(
@@ -173,13 +204,10 @@ class ImagenetWorkload(BaseImagenetWorkload):
           num_batches=num_batches)
 
     eval_metrics = {}
-    for _ in range(num_batches + 1):
+    for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model_fn(params,
-                                           batch,
-                                           model_state,
-                                           model_rng)
+      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

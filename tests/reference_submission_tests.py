@@ -19,7 +19,10 @@ import os
 from absl import flags
 from absl import logging
 from absl.testing import absltest
+import jax
+import jraph
 import numpy as np
+import tensorflow as tf
 import torch
 
 from algorithmic_efficiency import halton
@@ -30,51 +33,140 @@ flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 FLAGS = flags.FLAGS
 PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-_EXPECTED_METRICS = {
-    'mnist': {
-        'jax': {'test/accuracy': 0.0947265625},
-        'pytorch': {'test/accuracy': 0.109375},
-    }
+_EXPECTED_METRIC_NAMES = {
+    'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
+    'imagenet': ['train/accuracy', 'validation/accuracy'],
+    'librispeech': [
+        'train/word_error_rate',
+        'validation/word_error_rate',
+        'train/word_error_rate',
+    ],
+    'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
+    'ogbg': [
+        'train/accuracy', 'validation/loss', 'test/mean_average_precision'
+    ],
+    'wmt': ['train/bleu', 'validation/loss', 'validation/accuracy'],
 }
 
 
-def _make_fake_input_queue_fn(workload_name,
-                              framework,
-                              global_batch_size,
-                              num_unique_fake_batches):
+def _make_fake_image_batch(batch_shape, data_shape, num_classes):
+  examples = np.random.normal(size=(*batch_shape,
+                                    *data_shape)).astype(np.float32)
+  labels = np.random.randint(0, num_classes, size=batch_shape)
+  masks = np.ones((*batch_shape, *data_shape), dtype=np.float32)
+  return {'inputs': examples, 'targets': labels, 'weights': masks}
 
-  def f(*unused_args, **unused_kwargs):
-    del unused_args
-    del unused_kwargs
-    if workload_name == 'mnist':
-      data_shape = (28, 28, 1)
-      num_classes = 10
-    elif workload_name == 'imagenet':
-      data_shape = (224, 224, 3)
-      num_classes = 1000
-    else:
-      raise ValueError(
-          f'Workload {workload_name} does not have a fake data shape defined '
-          'yet, you can add it or use --use_fake_input_queue=false.')
 
-    if framework == 'jax':
-      batch_shape = (1, global_batch_size)
-    else:
-      batch_shape = (global_batch_size,)
+class _FakeTokenizer:
 
-    np.random.seed(42)
-    for _ in range(num_unique_fake_batches):
-      examples = np.random.normal(size=(*batch_shape,
-                                        *data_shape)).astype(np.float32)
-      labels = np.random.randint(0, num_classes, size=batch_shape)
-      # labels = np.eye(num_classes)[dense_labels]
-      masks = np.ones_like((*batch_shape, *data_shape), dtype=np.float32)
+  def detokenize(self, *args):
+    del args
+    return tf.constant('this is a fake sequence?')
+
+
+def _make_one_batch_workload(workload_class,
+                             workload_name,
+                             framework,
+                             global_batch_size,
+                             use_fake_input_queue):
+
+  class _OneEvalBatchWorkload(workload_class):
+
+    @property
+    def num_eval_train_examples(self):
+      return global_batch_size
+
+    @property
+    def num_validation_examples(self):
+      return global_batch_size
+
+    @property
+    def num_test_examples(self):
+      super_num_test = super().num_test_examples
+      if super_num_test is not None:
+        return global_batch_size
+      return None
+
+    def build_input_queue(self, *args, **kwargs):
+      if not use_fake_input_queue:
+        return super().build_input_queue(*args, **kwargs)
+      del args
+      del kwargs
+
+      np.random.seed(42)
+      if framework == 'jax':
+        batch_shape = (1, global_batch_size)
+      else:
+        batch_shape = (global_batch_size,)
+
+      if workload_name == 'mnist':
+        fake_batch = _make_fake_image_batch(
+            batch_shape, data_shape=(28, 28, 1), num_classes=10)
+      elif workload_name == 'cifar':
+        fake_batch = _make_fake_image_batch(
+            batch_shape, data_shape=(32, 32, 3), num_classes=10)
+      elif workload_name == 'imagenet':
+        if framework == 'jax':
+          data_shape = (224, 224, 3)
+        else:
+          data_shape = (3, 224, 224)
+        fake_batch = _make_fake_image_batch(
+            batch_shape, data_shape=data_shape, num_classes=1000)
+      elif workload_name == 'librispeech':
+        fake_batch = {
+            'indices': np.ones((8,)),
+            'features': np.ones((8, 1593, 161)),
+            'transcripts': np.ones((8, 246)),
+            'input_lengths': np.ones((8,)),
+        }
+      elif workload_name == 'ogbg':
+        num_classes = 128
+        fake_graph = jraph.GraphsTuple(
+            n_node=np.asarray([1]),
+            n_edge=np.asarray([1]),
+            nodes=np.random.normal(size=(1, 3)),
+            edges=np.random.normal(size=(1, 7)),
+            globals=np.zeros((1, num_classes)),
+            senders=np.asarray([0]),
+            receivers=np.asarray([0]))
+        if framework == 'jax':
+          fake_graph = jax.tree_map(lambda x: np.expand_dims(x, axis=0),
+                                    fake_graph)
+        labels = fake_graph.globals
+        fake_graph = fake_graph._replace(globals={})
+        fake_batch = {
+            'inputs': fake_graph,
+            'targets': labels,
+            'weights': np.random.normal(size=labels.shape),
+        }
+      elif workload_name == 'wmt':
+        max_len = 256
+        fake_batch = {
+            'inputs': np.ones((*batch_shape, max_len)),
+            'targets': np.ones((*batch_shape, max_len), dtype=np.int64),
+        }
+        self._tokenizer = _FakeTokenizer()
+      else:
+        raise ValueError(
+            f'Workload {workload_name} does not have a fake batch defined, you '
+            'can add it or use --use_fake_input_queue=false.')
+
       if framework == 'pytorch':
-        examples = torch.from_numpy(examples).to(PYTORCH_DEVICE)
-        labels = torch.from_numpy(labels).to(PYTORCH_DEVICE)
-      yield examples, labels, masks
+        fake_batch = {
+            k: torch.from_numpy(v).to(PYTORCH_DEVICE) for k,
+            v in fake_batch.items()
+        }
+      # We set the number of examples to the batch size for all splits, so only
+      # yield two batches, one for each call to eval_model().
+      num_batches = 2
+      # For WMT we also iterate through the eval iters a second time to complute
+      # the BLEU score.
+      if workload_name == 'wmt':
+        num_batches *= 2
+      for _ in range(num_batches):
+        yield fake_batch
 
-  return f
+  return _OneEvalBatchWorkload()
 
 
 def _test_submission(workload_name,
@@ -89,9 +181,10 @@ def _test_submission(workload_name,
       submission_runner.BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + framework,
       'workload.py')
-  workload = submission_runner.import_workload(
+  workload_class = submission_runner.import_workload(
       workload_path=workload_metadata['workload_path'],
-      workload_class_name=workload_metadata['workload_class_name'])
+      workload_class_name=workload_metadata['workload_class_name'],
+      return_class=True)
 
   submission_module_path = submission_runner.convert_filepath_to_module(
       submission_path)
@@ -102,6 +195,12 @@ def _test_submission(workload_name,
   data_selection = submission_module.data_selection
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
+  global_batch_size = 2
+  workload = _make_one_batch_workload(workload_class,
+                                      workload_name,
+                                      framework,
+                                      global_batch_size,
+                                      use_fake_input_queue)
 
   # Get a sample hyperparameter setting.
   with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
@@ -110,12 +209,9 @@ def _test_submission(workload_name,
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
-  model_params, model_state = workload.init_model_fn(model_init_rng)
-  if use_fake_input_queue:
-    workload.build_input_queue = _make_fake_input_queue_fn(
-        workload_name, framework, global_batch_size, num_unique_fake_batches=1)
   input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
+  model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(workload,
                                          model_params,
                                          model_state,
@@ -124,35 +220,35 @@ def _test_submission(workload_name,
 
   global_step = 0
   data_select_rng, update_rng, eval_rng = prng.split(rng, 3)
-  (selected_train_input_batch,
-   selected_train_label_batch,
-   selected_train_mask_batch) = data_selection(workload,
-                                               input_queue,
-                                               optimizer_state,
-                                               model_params,
-                                               hyperparameters,
-                                               global_step,
-                                               data_select_rng)
+  batch = data_selection(workload,
+                         input_queue,
+                         optimizer_state,
+                         model_params,
+                         hyperparameters,
+                         global_step,
+                         data_select_rng)
   _, model_params, model_state = update_params(
       workload=workload,
       current_param_container=model_params,
       current_params_types=workload.model_params_types,
       model_state=model_state,
       hyperparameters=hyperparameters,
-      input_batch=selected_train_input_batch,
-      label_batch=selected_train_label_batch,
-      mask_batch=selected_train_mask_batch,
+      batch=batch,
       loss_type=workload.loss_type,
       optimizer_state=optimizer_state,
       eval_results=[],
       global_step=global_step,
       rng=update_rng)
-
   eval_result = workload.eval_model(global_batch_size,
                                     model_params,
                                     model_state,
                                     eval_rng,
                                     data_dir)
+  _ = workload.eval_model(global_batch_size,
+                          model_params,
+                          model_state,
+                          eval_rng,
+                          data_dir)
   return eval_result
 
 
@@ -173,19 +269,18 @@ class ReferenceSubmissionTest(absltest.TestCase):
         if os.path.exists(submission_dir):
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
-          data_dir = None  # DO NOT SUBMIT
-          logging.info(f'\n\n========= Testing {workload_name} in {framework}.')
-          eval_result = _test_submission(workload_name,
-                                         framework,
-                                         submission_path,
-                                         search_space_path,
-                                         data_dir,
-                                         FLAGS.use_fake_input_queue)
-          expected = _EXPECTED_METRICS[workload_name][framework]
-          metric_name = list(expected.keys())[0]
-          actual_value = eval_result[metric_name]
-          expected_value = expected[metric_name]
-          self.assertAlmostEqual(actual_value, expected_value, places=3)
+          logging.info(f'========= Testing {workload_name} in {framework}.')
+          eval_result = _test_submission(
+              workload_name,
+              framework,
+              submission_path,
+              search_space_path,
+              data_dir=None,
+              use_fake_input_queue=FLAGS.use_fake_input_queue)
+          expected_names = _EXPECTED_METRIC_NAMES[workload_name]
+          actual_names = list(eval_result.keys())
+          for expected_name in expected_names:
+            self.assertIn(expected_name, actual_names)
 
 
 if __name__ == '__main__':

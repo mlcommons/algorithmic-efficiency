@@ -1,5 +1,5 @@
 """Training algorithm track submission functions for LibriSpeech."""
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 import torch
 
@@ -18,7 +18,7 @@ def get_batch_size(workload_name):
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparamters,
+                         hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   del workload
   del model_state
@@ -34,9 +34,8 @@ def update_params(
     current_param_container: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
+    hyperparameters: spec.Hyperparameters,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -50,23 +49,14 @@ def update_params(
   del model_state
   del loss_type
   del hyperparameters
-  del label_batch
-
-  _, features, transcripts, input_lengths = input_batch
-  features = features.float().to(device)
-  features = features.transpose(1, 2).unsqueeze(1)
-  transcripts = transcripts.long().to(device)
-  input_lengths = input_lengths.long().to(device)
 
   optimizer_state.zero_grad()
 
   (log_y, output_lengths), _ = workload.model_fn(
-      current_param_container, (features, transcripts, input_lengths), None,
+      current_param_container, batch, None,
       spec.ForwardPassMode.TRAIN, rng, False)
 
-  train_ctc_loss = torch.mean(
-      workload.loss_fn(transcripts, (log_y, output_lengths)))
-
+  train_ctc_loss = torch.mean(workload.loss_fn(batch, (log_y, output_lengths)))
   train_ctc_loss.backward()
   optimizer_state.step()
 
@@ -79,7 +69,7 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters,
+                   hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
@@ -97,5 +87,4 @@ def data_selection(workload: spec.Workload,
   del rng
   del hyperparameters
   del workload
-
-  return next(input_queue), None
+  return next(input_queue)

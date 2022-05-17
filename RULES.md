@@ -1,6 +1,6 @@
 # MLCommons™ Algorithmic Efficiency Benchmark Rules
 
-**Version:** 0.0.5 *(Last updated 19 April 2022)*
+**Version:** 0.0.6 *(Last updated 17 May 2022)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -130,7 +130,7 @@ init_optimizer_state(
     workload: Workload,
     model_params: ParameterContainer,
     model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     rng: RandomState
 ) -> initial_optimizer_state
 ```
@@ -146,9 +146,8 @@ update_params(
     current_param_container: ParameterContainer,
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparamters,
-    input_batch: Dict[Tensor],
-    label_batch: Dict[Tensor],
+    hyperparameters: Hyperparameters,
+    batch: Dict[str, Tensor],
     loss_type: LossType,
     optimizer_state: OptimizerState,
     eval_results: List[Tuple[int, float]],
@@ -183,10 +182,10 @@ data_selection(
     input_queue: Iterator[Tuple[Tensor, Tensor]],
     optimizer_state: OptimizerState,
     current_param_container: ParameterContainer,
-    hyperparameters: Hyperparamters,
+    hyperparameters: Hyperparameters,
     global_step: int,
     rng: RandomState
-) -> (input_batch, label_batch)
+) -> Dict[str, Tensor]
 ```
 
 - `input_queue` can yield up to the number of elements in the training dataset

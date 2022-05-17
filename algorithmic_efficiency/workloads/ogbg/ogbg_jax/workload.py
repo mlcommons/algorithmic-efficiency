@@ -7,7 +7,9 @@ from typing import Dict, Optional, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+import jraph
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax import input_pipeline
@@ -21,8 +23,9 @@ class OgbgWorkload(BaseOgbgWorkload):
   def __init__(self):
     self._eval_iters = {}
     self._param_shapes = None
-    self._init_graphs = None
-    self._model = models.GNN()
+    self._param_types = None
+    self._num_outputs = 128
+    self._model = models.GNN(self._num_outputs)
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
@@ -33,10 +36,6 @@ class OgbgWorkload(BaseOgbgWorkload):
                                                    data_rng,
                                                    data_dir,
                                                    global_batch_size)
-    if self._init_graphs is None:
-      init_graphs, _, _ = next(dataset_iter)
-      # Unreplicate the iterator that has the leading dim for pmapping.
-      self._init_graphs = jax.tree_map(lambda x: x[0], init_graphs)
     return dataset_iter
 
   @property
@@ -49,42 +48,32 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   @property
   def model_params_types(self):
-    pass
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(
+          self._param_shapes.unfreeze())
+    return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    del rng
-    return selected_raw_input_batch, selected_label_batch
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          raw_label_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    return raw_input_batch, raw_label_batch
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    if self._init_graphs is None:
-      raise ValueError(
-          'This should not happen, workload.build_input_queue() should be '
-          'called before workload.init_model_fn()!')
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
-    params = init_fn({'params': params_rng, 'dropout': dropout_rng},
-                     self._init_graphs)
+    fake_batch = jraph.GraphsTuple(
+        n_node=jnp.asarray([1]),
+        n_edge=jnp.asarray([1]),
+        nodes=jnp.ones((1, 3)),
+        edges=jnp.ones((1, 7)),
+        globals=jnp.zeros((1, self._num_outputs)),
+        senders=jnp.asarray([0]),
+        receivers=jnp.asarray([0]))
+    params = init_fn({'params': params_rng, 'dropout': dropout_rng}, fake_batch)
     params = params['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
@@ -104,17 +93,19 @@ class OgbgWorkload(BaseOgbgWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del update_batch_norm  # No BN in the GNN model.
-    assert model_state is None
+    if model_state is not None:
+      raise ValueError(
+          f'Expected model_state to be None, received {model_state}.')
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch,
+                               augmented_and_preprocessed_input_batch['inputs'],
                                rngs={'dropout': rng},
                                train=train)
     return logits, None
@@ -124,8 +115,12 @@ class OgbgWorkload(BaseOgbgWorkload):
                                       logits: jnp.ndarray,
                                       mask: jnp.ndarray) -> jnp.ndarray:
     """Binary cross entropy loss for logits, with masked elements."""
-    assert logits.shape == labels.shape == mask.shape
-    assert len(logits.shape) == 2
+    if not (logits.shape == labels.shape == mask.shape):  # pylint: disable=superfluous-parens
+      raise ValueError(
+          f'Shape mismatch between logits ({logits.shape}), targets '
+          f'({labels.shape}), and weights ({mask.shape}).')
+    if len(logits.shape) != 2:
+      raise ValueError(f'Rank of logits ({logits.shape}) must be 2.')
 
     # To prevent propagation of NaNs during grad().
     # We mask over the loss for invalid targets later.
@@ -158,17 +153,17 @@ class OgbgWorkload(BaseOgbgWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, 0, 0, None),
+      in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
-  def _eval_batch(self, params, graphs, labels, masks, model_state, rng):
+  def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
         params,
-        graphs,
+        batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._eval_metric(labels, logits, masks)
+    return self._eval_metric(batch['targets'], logits, batch['weights'])
 
   def _eval_model_on_split(self,
                            split: str,
@@ -190,13 +185,8 @@ class OgbgWorkload(BaseOgbgWorkload):
     num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
     # Loop over graph batches in eval dataset.
     for _ in range(num_eval_steps):
-      graphs, labels, masks = next(self._eval_iters[split])
-      batch_metrics = self._eval_batch(params,
-                                       graphs,
-                                       labels,
-                                       masks,
-                                       model_state,
-                                       model_rng)
+      batch = next(self._eval_iters[split])
+      batch_metrics = self._eval_batch(params, batch, model_state, model_rng)
       total_metrics = (
           batch_metrics
           if total_metrics is None else total_metrics.merge(batch_metrics))

@@ -1,6 +1,9 @@
 """MNIST workload parent class."""
 import itertools
+import math
 from typing import Dict, Tuple
+
+import jax
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
@@ -99,15 +102,15 @@ class BaseMnistWorkload(spec.Workload):
         'loss': 0.,
     }
     num_data = 0
-    num_batches = num_examples // global_batch_size
-    for bi, (images, labels, _) in enumerate(self._eval_iters[split]):
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    for bi, batch in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break
+      per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
       batch_metrics = self._eval_model(params,
-                                       images,
-                                       labels,
+                                       batch,
                                        model_state,
-                                       model_rng)
+                                       per_device_model_rngs)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }

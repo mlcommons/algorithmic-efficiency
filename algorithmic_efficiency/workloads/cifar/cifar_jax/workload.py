@@ -1,6 +1,6 @@
 """CIFAR10 workload implemented in Jax."""
 import functools
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -9,23 +9,11 @@ from jax import lax
 import jax.numpy as jnp
 import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.cifar.cifar_jax import input_pipeline
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax import models
-
-
-def _param_types(param_tree):
-  param_types_dict = {}
-  for name, value in param_tree.items():
-    if isinstance(value, dict):
-      param_types_dict[name] = _param_types(value)
-    else:
-      if 'bias' in name:
-        param_types_dict[name] = spec.ParameterType.BIAS
-      else:
-        param_types_dict[name] = spec.ParameterType.WEIGHT
-  return param_types_dict
 
 
 class CifarWorkload(BaseCifarWorkload):
@@ -84,7 +72,8 @@ class CifarWorkload(BaseCifarWorkload):
           'This should not happen, workload.init_model_fn() should be called '
           'before workload.param_shapes!')
     if self._param_types is None:
-      self._param_types = _param_types(self._param_shapes.unfreeze())
+      self._param_types = param_utils.jax_param_types(
+          self._param_shapes.unfreeze())
     return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
@@ -122,7 +111,7 @@ class CifarWorkload(BaseCifarWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -131,14 +120,14 @@ class CifarWorkload(BaseCifarWorkload):
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch,
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch,
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None
@@ -153,24 +142,23 @@ class CifarWorkload(BaseCifarWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, 0, None),
+      in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
   def _eval_model(
       self,
       params: spec.ParameterContainer,
-      images: spec.Tensor,
-      labels: spec.Tensor,
+      batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     logits, _ = self.model_fn(
         params,
-        images,
+        batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == labels)
-    loss = jnp.sum(self.loss_fn(labels, logits))
+    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
+    loss = jnp.sum(self.loss_fn(batch['targets'], logits))
     num_data = len(logits)
     metrics = {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
     metrics = lax.psum(metrics, axis_name='batch')

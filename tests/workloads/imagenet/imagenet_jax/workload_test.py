@@ -35,7 +35,7 @@ class ModelsTest(absltest.TestCase):
         static_broadcasted_argnums=(3, 5))
     logits, updated_batch_stats = pmapped_model_fn(
         model_params,
-        first_input_batch,
+        {'inputs': first_input_batch},
         batch_stats,
         spec.ForwardPassMode.TRAIN,
         rng,
@@ -49,7 +49,7 @@ class ModelsTest(absltest.TestCase):
     # Test that batch stats are not updated when we say so.
     _, same_batch_stats = pmapped_model_fn(
         model_params,
-        second_input_batch,
+        {'inputs': second_input_batch},
         batch_stats,
         spec.ForwardPassMode.TRAIN,
         rng,
@@ -59,7 +59,7 @@ class ModelsTest(absltest.TestCase):
     # Test eval model.
     logits, _ = pmapped_model_fn(
         model_params,
-        second_input_batch,
+        {'inputs': second_input_batch},
         batch_stats,
         spec.ForwardPassMode.EVAL,
         rng,

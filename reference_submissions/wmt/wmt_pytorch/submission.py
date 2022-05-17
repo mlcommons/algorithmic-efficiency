@@ -1,4 +1,4 @@
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 import numpy as np
 import torch
@@ -68,7 +68,7 @@ def create_learning_rate_scheduler(
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparamters,
+                         hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   del workload
   del model_state
@@ -88,48 +88,39 @@ def init_optimizer_state(workload: spec.Workload,
   return optimizer_state
 
 
-def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
-    mask_batch: spec.Tensor,
-    # This will define the output activation via `output_activation_fn`.
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(workload: spec.Workload,
+                  current_param_container: spec.ParameterContainer,
+                  current_params_types: spec.ParameterTypeTree,
+                  model_state: spec.ModelAuxiliaryState,
+                  hyperparameters: spec.Hyperparameters,
+                  batch: Dict[str, spec.Tensor],
+                  loss_type: spec.LossType,
+                  optimizer_state: spec.OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
   del eval_results
   del loss_type
   del hyperparameters
-  del label_batch
-  del mask_batch
-
-  input_batch = workload.preprocess_for_train(
-      input_batch, None, None, None, None, packed_examples=True)
 
   current_model = current_param_container
   current_param_container.train()
   optimizer = optimizer_state['optimizer']
   optimizer.zero_grad()
 
-  output, new_model_state = workload.model_fn(
+  logits, _ = workload.model_fn(
       params=current_model,
-      augmented_and_preprocessed_input_batch=input_batch,
+      augmented_and_preprocessed_input_batch=batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
-      update_batch_norm=True)
+      update_batch_norm=False)
 
-  targets = input_batch[1]
+  targets = batch['targets']
   weights = torch.where(targets > 0, 1.0, 0.0)
-  loss = (workload.loss_fn(targets, output) * weights).sum() / weights.sum()
+  loss = (workload.loss_fn(targets, logits) * weights).sum() / weights.sum()
   loss.backward()
 
   lr = optimizer_state['scheduler'](global_step).item()
@@ -137,7 +128,7 @@ def update_params(
     g['lr'] = lr
   optimizer.step()
 
-  return (optimizer_state, current_param_container, new_model_state)
+  return (optimizer_state, current_param_container, None)
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
@@ -146,7 +137,7 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters,
+                   hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
@@ -164,4 +155,4 @@ def data_selection(workload: spec.Workload,
   del hyperparameters
   del global_step
   del rng
-  return next(input_queue), None, None
+  return next(input_queue)

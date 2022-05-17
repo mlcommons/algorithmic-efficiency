@@ -1,5 +1,5 @@
 """Training algorithm track submission functions for ImageNet."""
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -18,7 +18,7 @@ def get_batch_size(workload_name):
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparamters,
+                         hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   del workload
   del model_state
@@ -57,9 +57,8 @@ def update_params(
     current_param_container: spec.ParameterContainer,
     current_params_types: spec.ParameterTypeTree,
     model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparamters,
-    input_batch: spec.Tensor,
-    label_batch: spec.Tensor,
+    hyperparameters: spec.Hyperparameters,
+    batch: Dict[str, spec.Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: spec.LossType,
     optimizer_state: spec.OptimizerState,
@@ -71,8 +70,6 @@ def update_params(
   del hyperparameters
   del loss_type
   del eval_results
-  input_batch, label_batch = (
-      workload.preprocess_for_train(input_batch, label_batch, None, None, None))
 
   current_model = current_param_container
   current_param_container.train()
@@ -80,14 +77,14 @@ def update_params(
 
   logits_batch, new_model_state = workload.model_fn(
       params=current_model,
-      input_batch=input_batch,
+      augmented_and_preprocessed_input_batch=batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      label_batch=label_batch, logits_batch=logits_batch).mean()
+      label_batch=batch['targets'], logits_batch=logits_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()
@@ -105,7 +102,7 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Tuple[spec.Tensor, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparamters,
+                   hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.

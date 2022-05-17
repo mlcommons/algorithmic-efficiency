@@ -1,8 +1,9 @@
 """ImageNet workload implemented in PyTorch."""
 
 import contextlib
+import math
 import os
-from typing import Tuple
+from typing import Dict, Tuple
 
 import torch
 from torch import nn
@@ -10,6 +11,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
@@ -25,7 +27,8 @@ def cycle(iterable):
   iterator = iter(iterable)
   while True:
     try:
-      yield next(iterator)
+      images, labels = next(iterator)
+      yield {'inputs': images, 'targets': labels}
     except StopIteration:
       iterator = iter(iterable)
 
@@ -33,43 +36,35 @@ def cycle(iterable):
 class ImagenetWorkload(BaseImagenetWorkload):
 
   def __init__(self):
+    self._param_types = None
     self._eval_iters = {}
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str):
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+  @property
+  def param_shapes(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
 
-    total_metrics = {
-        'accuracy': 0.,
-        'loss': 0.,
-    }
-    num_data = 0
-    for (images, labels) in self._eval_iters[split]:
-      images = images.float().to(DEVICE)
-      labels = labels.float().to(DEVICE)
-      logits, _ = self.model_fn(
-          params,
-          images,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, labels)
-      total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
+  @property
+  def model_params_types(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_types is None:
+      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
+    return self._param_types
+
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int):
+    it = iter(self._build_dataset(data_rng, split, data_dir, global_batch_size))
+    for batch in it:
+      yield {
+          'inputs': batch['inputs'].float().to(DEVICE),
+          'targets': batch['targets'].to(DEVICE),
       }
-      num_data += batch_metrics['num_data']
-    return {k: float(v / num_data) for k, v in total_metrics.items()}
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -119,8 +114,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
         pin_memory=True,
         drop_last=is_train)
 
-    if is_train:
-      dataloader = cycle(dataloader)
+    dataloader = cycle(dataloader)
 
     return dataloader
 
@@ -146,7 +140,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -172,7 +166,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch)
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
 
@@ -185,14 +179,12 @@ class ImagenetWorkload(BaseImagenetWorkload):
         spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
         spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
     }
-
     return activation_fn[loss_type](logits_batch)
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self, label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-
     return F.cross_entropy(logits_batch, label_batch, reduction='none')
 
   def _eval_metric(self, logits, labels):
@@ -203,3 +195,40 @@ class ImagenetWorkload(BaseImagenetWorkload):
     loss = self.loss_fn(labels, logits).sum().item()
     num_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    """Run a full evaluation of the model."""
+    data_rng, model_rng = prng.split(rng, 2)
+    if split not in self._eval_iters:
+      # These iterators repeat indefinitely.
+      self._eval_iters[split] = self.build_input_queue(
+          data_rng, split, data_dir, global_batch_size=global_batch_size)
+
+    total_metrics = {
+        'accuracy': 0.,
+        'loss': 0.,
+    }
+    num_data = 0
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    for _ in range(num_batches):
+      batch = next(self._eval_iters[split])
+      logits, _ = self.model_fn(
+          params,
+          batch,
+          model_state,
+          spec.ForwardPassMode.EVAL,
+          model_rng,
+          update_batch_norm=False)
+      batch_metrics = self._eval_metric(logits, batch['targets'])
+      total_metrics = {
+          k: v + batch_metrics[k] for k, v in total_metrics.items()
+      }
+      num_data += batch_metrics['num_data']
+    return {k: float(v / num_data) for k, v in total_metrics.items()}

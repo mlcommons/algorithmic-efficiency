@@ -2,7 +2,7 @@
 from collections import OrderedDict
 import contextlib
 import itertools
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn
@@ -11,6 +11,7 @@ import torch.utils.data as data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
@@ -37,6 +38,13 @@ class _Model(nn.Module):
     return self.net(x)
 
 
+class DictMNIST(MNIST):
+
+  def __getitem__(self, index: int) -> Dict[str, Any]:
+    image, label = super().__getitem__(index)
+    return {'inputs': image, 'targets': label}
+
+
 class MnistWorkload(BaseMnistWorkload):
 
   def _build_dataset(self,
@@ -50,7 +58,7 @@ class MnistWorkload(BaseMnistWorkload):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = MNIST(
+    dataset = DictMNIST(
         data_dir, train=dataloader_split, download=True, transform=transform)
     if split != 'test':
       if split in ['train', 'validation']:
@@ -80,17 +88,8 @@ class MnistWorkload(BaseMnistWorkload):
   @property
   def model_params_types(self):
     """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.model_params_types!')
     if self._param_types is None:
-      self._param_types = {}
-      for name in self._param_shapes.keys():
-        if 'bias' in name:
-          self._param_types[name] = spec.ParameterType.BIAS
-        else:
-          self._param_types[name] = spec.ParameterType.WEIGHT
+      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
@@ -103,9 +102,7 @@ class MnistWorkload(BaseMnistWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for images, labels in ds:
-      yield (images.to(DEVICE), labels.to(DEVICE), None)
+    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
@@ -121,7 +118,7 @@ class MnistWorkload(BaseMnistWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -141,7 +138,7 @@ class MnistWorkload(BaseMnistWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch)
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
 
@@ -163,21 +160,20 @@ class MnistWorkload(BaseMnistWorkload):
   def _eval_model(
       self,
       params: spec.ParameterContainer,
-      images: spec.Tensor,
-      labels: spec.Tensor,
+      batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
     logits, _ = self.model_fn(
         params,
-        images,
+        batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = (predicted == labels).sum().item()
-    loss = self.loss_fn(labels, logits).sum().item()
+    accuracy = (predicted == batch['targets']).sum().item()
+    loss = self.loss_fn(batch['targets'], logits).sum().item()
     num_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}

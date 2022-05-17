@@ -239,7 +239,7 @@ def create_split(split,
                                   dtype,
                                   image_size,
                                   resize_size)
-    return {'image': image, 'label': example['label']}
+    return {'inputs': image, 'targets': example['label']}
 
   ds = dataset_builder.as_dataset(
       split=split, decoders={
@@ -262,7 +262,7 @@ def create_split(split,
   if num_batches is not None:
     ds = ds.take(num_batches)
 
-  if not train or repeat_final_dataset:
+  if repeat_final_dataset:
     ds = ds.repeat()
 
   ds = ds.prefetch(10)
