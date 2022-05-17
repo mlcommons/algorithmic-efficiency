@@ -93,17 +93,19 @@ class OgbgWorkload(BaseOgbgWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del update_batch_norm  # No BN in the GNN model.
-    assert model_state is None
+    if model_state is not None:
+      raise ValueError(
+          f'Expected model_state to be None, received {model_state}.')
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch,
+                               augmented_and_preprocessed_input_batch['inputs'],
                                rngs={'dropout': rng},
                                train=train)
     return logits, None
@@ -156,7 +158,7 @@ class OgbgWorkload(BaseOgbgWorkload):
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
         params,
-        batch['inputs'],
+        batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,

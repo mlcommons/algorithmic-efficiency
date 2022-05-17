@@ -8,6 +8,7 @@ import copy
 import os
 
 from absl import flags
+from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -59,7 +60,7 @@ class SubmissionRunnerTest(parameterized.TestCase):
         tuning_ruleset='external',
         tuning_search_space=tuning_search_space,
         num_tuning_trials=1)
-    print(score)
+    logging.info(score)
 
   def test_convert_filepath_to_module(self):
     """Sample test for the `convert_filepath_to_module` function."""

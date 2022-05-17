@@ -1,6 +1,6 @@
 """WMT workload implemented in PyTorch."""
 import contextlib
-from typing import Tuple
+from typing import Dict, Optional, Tuple
 
 from absl import logging
 import jax.dlpack
@@ -139,15 +139,17 @@ class WmtWorkload(BaseWmtWorkload):
 
   def translate_and_calculate_bleu(self,
                                    params: spec.ParameterContainer,
-                                   predict_ds: tf.data.Dataset,
-                                   max_predict_length: int,
-                                   num_eval_steps: int):
-    """Translates the `predict_ds` and calculates the BLEU score."""
+                                   ds_iter: tf.data.Dataset,
+                                   num_batches: int,
+                                   max_predict_length: int):
+    """Translates the `ds_iter` and calculates the BLEU score."""
     n_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
-    for _, pred_batch in zip(range(num_eval_steps + 1), predict_ds):
-      inputs, targets = self.preprocess_for_eval(pred_batch, None, None)  # pylint: disable=unbalanced-tuple-unpacking
+    for _ in range(num_batches):
+      pred_batch = next(ds_iter)
+      inputs = pred_batch['inputs']
+      targets = pred_batch['targets']
       # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = inputs.shape[0]
       if cur_pred_batch_size % n_devices:
@@ -174,51 +176,6 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
 
-  def preprocess_for_train(self,
-                           selected_raw_input_batch: spec.Tensor,
-                           selected_label_batch: spec.Tensor,
-                           train_mean: spec.Tensor,
-                           train_stddev: spec.Tensor,
-                           rng: spec.RandomState,
-                           packed_examples: bool = False) -> spec.Tensor:
-    del selected_label_batch
-    del train_mean
-    del train_stddev
-    del rng
-    inputs = torch.tensor(
-        selected_raw_input_batch['inputs'].numpy(),
-        device=DEVICE,
-        dtype=torch.int)
-    targets = torch.tensor(
-        selected_raw_input_batch['targets'].numpy(),
-        device=DEVICE,
-        dtype=torch.int64)
-    if packed_examples:
-      extras = [
-          'inputs_position',
-          'targets_position',
-          'inputs_segmentation',
-          'targets_segmentation'
-      ]
-      extra_inputs = []
-      for extra in extras:
-        extra_inputs.append(
-            torch.tensor(
-                selected_raw_input_batch[extra].numpy(),
-                device=DEVICE,
-                dtype=torch.int64))
-      in_pos, tgt_pos, in_seg, tgt_seg = extra_inputs  # pylint: disable=unbalanced-tuple-unpacking
-      return inputs, targets, in_pos, tgt_pos, in_seg, tgt_seg
-    return inputs, targets
-
-  def preprocess_for_eval(self,
-                          raw_input_batch: spec.Tensor,
-                          train_mean: spec.Tensor,
-                          train_stddev: spec.Tensor) -> spec.Tensor:
-    del train_mean
-    del train_stddev
-    return self.preprocess_for_train(raw_input_batch, None, None, None, None)
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = Transformer()
@@ -233,7 +190,7 @@ class WmtWorkload(BaseWmtWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -253,20 +210,44 @@ class WmtWorkload(BaseWmtWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(*augmented_and_preprocessed_input_batch)
+      logits_batch = model(
+          src=augmented_and_preprocessed_input_batch['inputs'],
+          tgt=augmented_and_preprocessed_input_batch['targets'],
+          inputs_positions=augmented_and_preprocessed_input_batch.get(
+              'inputs_positions', None),
+          targets_positions=augmented_and_preprocessed_input_batch.get(
+              'targets_positions', None),
+          inputs_segmentation=augmented_and_preprocessed_input_batch.get(
+              'inputs_segmentation', None),
+          targets_segmentation=augmented_and_preprocessed_input_batch.get(
+              'targets_segmentation', None))
 
     return logits_batch, None
 
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,  # Dense (not one-hot) labels.
-      logits_batch: spec.Tensor) -> spec.Tensor:
-    loss = self.compute_weighted_cross_entropy(logits_batch, label_batch)
-    return loss
+  def build_input_queue(self,
+                        data_rng: jax.random.PRNGKey,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int,
+                        num_batches: Optional[int] = None,
+                        repeat_final_dataset: bool = False):
+    np_iter = super().build_input_queue(
+        data_rng,
+        split,
+        data_dir,
+        global_batch_size,
+        num_batches,
+        repeat_final_dataset)
+    for batch in np_iter:
+      batch = {
+        key: torch.tensor(value, device=DEVICE, dtype=torch.int)
+        for key, value in batch.items()
+      }
+      yield batch
 
   def eval_step(self, params, batch):
     """Calculate evaluation metrics on a batch."""
-    targets = batch[1]
+    targets = batch['targets']
     weights = torch.where(targets > 0, 1.0, 0.0)
     logits, _ = self.model_fn(
         params,
@@ -275,7 +256,7 @@ class WmtWorkload(BaseWmtWorkload):
         model_state=None,
         rng=None,
         update_batch_norm=False)
-    return self.compute_metrics(logits, targets, weights)
+    return self.compute_summed_metrics(logits, targets, weights)
 
   def evaluate(self,
                params: spec.ParameterContainer,
@@ -290,7 +271,6 @@ class WmtWorkload(BaseWmtWorkload):
     }
     eval_iter = iter(eval_ds)  # pytype: disable=wrong-arg-types
     for _, eval_batch in zip(range(num_eval_steps), eval_iter):
-      eval_batch = self.preprocess_for_eval(eval_batch, None, None)
       metrics = self.eval_step(params, eval_batch)
       eval_metrics = {k: v + metrics[k] for k, v in eval_metrics.items()}
     denominator = eval_metrics.pop('denominator')

@@ -71,7 +71,7 @@ def init_optimizer_state(workload: spec.Workload,
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, None),
+    in_axes=(None, None, 0, 0, 0, None, 0, 0),
     static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
@@ -87,7 +87,7 @@ def pmapped_train_step(workload,
     variables = {'params': params, **model_state}
     logits, new_model_state = workload.model_fn(
         params,
-        batch['inputs'],
+        batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
@@ -129,9 +129,10 @@ def update_params(workload: spec.Workload,
   del global_step
 
   optimizer_state, opt_update_fn = optimizer_state
+  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, rng)
+      current_param_container, hyperparameters, batch, per_device_rngs)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

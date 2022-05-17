@@ -58,7 +58,7 @@ def update_params(
 
   output, new_model_state = workload.model_fn(
       params=current_model,
-      augmented_and_preprocessed_input_batch=batch['inputs'],
+      augmented_and_preprocessed_input_batch=batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,

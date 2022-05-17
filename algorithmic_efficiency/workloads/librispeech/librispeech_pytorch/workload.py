@@ -2,7 +2,7 @@
 import itertools
 import math
 import os
-from typing import Tuple
+from typing import Dict, Tuple
 
 import ctcdecode
 import Levenshtein
@@ -171,7 +171,7 @@ class LibriSpeechWorkload(spec.Workload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,

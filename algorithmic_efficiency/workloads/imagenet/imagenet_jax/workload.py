@@ -1,7 +1,7 @@
 """ImageNet workload implemented in Jax."""
 import functools
 import math
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -27,6 +27,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
     self._param_types = None
     self.epoch_metrics = []
     self._eval_iters = {}
+
+  def build_input_queue(self,
+                      data_rng: spec.RandomState,
+                      split: str,
+                      data_dir: str,
+                      global_batch_size: int):
+    return iter(
+        self._build_dataset(data_rng, split, data_dir, global_batch_size))
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -118,10 +126,10 @@ class ImagenetWorkload(BaseImagenetWorkload):
       axis_name='batch',
       in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
-  def _eval_model_fn(self, params, batch, state, rng):
+  def _eval_model(self, params, batch, state, rng):
     logits, _ = self.model_fn(
         params,
-        batch['inputs'],
+        batch,
         state,
         spec.ForwardPassMode.EVAL,
         rng,
@@ -131,7 +139,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -140,14 +148,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch,
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=['batch_stats'])
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch,
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
       return logits, None
@@ -199,10 +207,10 @@ class ImagenetWorkload(BaseImagenetWorkload):
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model_fn(params,
-                                           batch,
-                                           model_state,
-                                           model_rng)
+      synced_metrics = self._eval_model(params,
+                                        batch,
+                                        model_state,
+                                        model_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

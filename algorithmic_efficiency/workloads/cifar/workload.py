@@ -1,6 +1,7 @@
 """Cifar workload parent class."""
 
 import itertools
+import jax
 from typing import Dict, Tuple
 
 from algorithmic_efficiency import spec
@@ -77,6 +78,7 @@ class BaseCifarWorkload(spec.Workload):
       labels: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Return the summed metrics for a given batch."""
     raise NotImplementedError
 
   def _eval_metric(self, logits, labels):
@@ -99,20 +101,17 @@ class BaseCifarWorkload(spec.Workload):
       # Note that this stores the entire eval dataset in memory.
       self._eval_iters[split] = itertools.cycle(eval_iter)
 
-    total_metrics = {
-        'accuracy': 0.,
-        'loss': 0.,
-    }
+    total_metrics = {'accuracy': 0., 'loss': 0.}
     num_data = 0
     num_batches = num_examples // global_batch_size
-    for bi, (images, labels, _) in enumerate(self._eval_iters[split]):
+    for bi, batch in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break
+      per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
       batch_metrics = self._eval_model(params,
-                                       images,
-                                       labels,
+                                       batch,
                                        model_state,
-                                       model_rng)
+                                       per_device_model_rngs)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
@@ -126,5 +125,6 @@ class BaseCifarWorkload(spec.Workload):
                         global_batch_size: int):
     """Build an input queue for the given split."""
     ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for example in iter(ds):
-      yield example['image'], example['label'], None
+    for batch in iter(ds):
+      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
+      yield batch

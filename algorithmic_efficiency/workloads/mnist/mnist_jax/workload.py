@@ -1,6 +1,6 @@
 """MNIST workload implemented in Jax."""
 import functools
-from typing import Tuple
+from typing import Dict, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -126,7 +126,7 @@ class MnistWorkload(BaseMnistWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -135,9 +135,10 @@ class MnistWorkload(BaseMnistWorkload):
     del rng
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits_batch = self._model.apply({'params': params},
-                                     augmented_and_preprocessed_input_batch,
-                                     train=train)
+    logits_batch = self._model.apply(
+        {'params': params},
+        augmented_and_preprocessed_input_batch['inputs'],
+        train=train)
     return logits_batch, None
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -150,24 +151,23 @@ class MnistWorkload(BaseMnistWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, 0, None),
+      in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
   def _eval_model(
       self,
       params: spec.ParameterContainer,
-      images: spec.Tensor,
-      labels: spec.Tensor,
+      batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     logits, _ = self.model_fn(
         params,
-        images,
+        batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == labels)
-    loss = jnp.sum(self.loss_fn(labels, logits))
+    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
+    loss = jnp.sum(self.loss_fn(batch['targets'], logits))
     num_data = len(logits)
     metrics = {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
     metrics = lax.psum(metrics, axis_name='batch')

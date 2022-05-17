@@ -197,7 +197,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def model_fn(self,
                params: ParameterContainer,
-               augmented_and_preprocessed_input_batch: Tensor,
+               augmented_and_preprocessed_input_batch: Dict[str, Tensor],
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
@@ -220,7 +220,7 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       label_batch: Tensor,  # Dense (not one-hot) labels.
       logits_batch: Tensor,
-      mask_batch: Optional[Tensor]) -> Tensor:  # differentiable
+      mask_batch: Optional[Tensor] = None) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod

@@ -99,44 +99,26 @@ def init_optimizer_state(workload: spec.Workload,
 
 @functools.partial(
     jax.pmap,
-    in_axes=(None, 0, 0, 0, None, 0),
+    in_axes=(None, None, 0, 0, 0, None, 0),
     axis_name='batch',
-    static_broadcasted_argnums=(0, 4))
-def pmapped_train_step(opt_update_fn,
+    static_broadcasted_argnums=(0, 1, 5))
+def pmapped_train_step(workload,
+                       opt_update_fn,
                        optimizer_state,
                        current_param_container,
                        batch,
                        hyperparameters,
                        dropout_rng):
   """Perform a single training step."""
-  # X_position and X_segmentation are needed only when using "packed examples"
-  # where multiple sequences are packed into the same example with this
-  # metadata.
-  # if such features are not present they are ignored and the example is
-  # treated like a normal, unpacked sequence example.
-  inputs = batch.get('inputs', None)
-  targets = batch.get('targets', None)
-  inputs_positions = batch.get('inputs_positions', None)
-  targets_positions = batch.get('targets_positions', None)
-  inputs_segmentations = batch.get('inputs_segmentations', None)
-  targets_segmentations = batch.get('targets_segmentations', None)
-
-  weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
-  config = models.TransformerConfig(
-      dropout_rate=hyperparameters.dropout_rate,
-      attention_dropout_rate=hyperparameters.attention_dropout_rate)
-
   def loss_fn(params):
-    """loss function used for training."""
-    logits = models.Transformer(config).apply(
-        {"params": params},
-        inputs,
-        targets,
-        inputs_positions=inputs_positions,
-        targets_positions=targets_positions,
-        inputs_segmentation=inputs_segmentations,
-        targets_segmentation=targets_segmentations,
-        rngs={"dropout": dropout_rng})
+    """Loss function used for training."""
+    logits, _ = workload.model_fn(
+      params,
+      batch,
+      model_state=None,
+      mode=spec.ForwardPassMode.TRAIN,
+      rng=dropout_rng,
+      update_batch_norm=False)
     vocab_size = logits.shape[-1]
     if hasattr(hyperparameters, 'label_smoothing'):
       label_smoothing = hyperparameters.label_smoothing
@@ -147,6 +129,8 @@ def pmapped_train_step(opt_update_fn,
     normalizing_constant = -(
         confidence * jnp.log(confidence) +
         (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
+    targets = batch['targets']
+    weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
     soft_targets = common_utils.onehot(
         targets, vocab_size, on_value=confidence, off_value=low_confidence)
     loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
@@ -179,7 +163,6 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
-  del workload
   del current_params_types
   del eval_results
   del global_step
@@ -189,6 +172,7 @@ def update_params(
   optimizer_state, opt_update_fn = optimizer_state
   dropout_rngs = jax.random.split(rng, jax.local_device_count())
   new_optimizer_state, updated_params = pmapped_train_step(
+      workload,
       opt_update_fn,
       optimizer_state,
       current_param_container,

@@ -45,7 +45,7 @@ def train_step(workload,
   def loss_fn(params):
     logits_batch, new_model_state  = workload.model_fn(
         params,
-        batch['inputs'],
+        batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,

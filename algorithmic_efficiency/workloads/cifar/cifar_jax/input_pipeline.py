@@ -194,7 +194,7 @@ def create_split(split,
                                   stddev_rgb,
                                   dtype,
                                   image_size)
-    return {'image': image, 'label': example['label']}
+    return {'inputs': image, 'targets': example['label']}
 
   ds = dataset_builder.as_dataset(split=split)
   options = tf.data.Options()

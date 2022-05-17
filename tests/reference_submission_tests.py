@@ -34,13 +34,14 @@ FLAGS = flags.FLAGS
 PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 _EXPECTED_METRIC_NAMES = {
-    'mnist': ['validation/accuracy', 'test/accuracy'],
+    'cifar': ['validation/loss', 'test/accuracy'],
     'imagenet': ['validation/accuracy'],
     'librispeech': ['validation/word_error_rate', 'train/word_error_rate'],
+    'mnist': ['validation/accuracy', 'test/accuracy'],
     'ogbg': [
         'train/accuracy', 'validation/loss', 'test/mean_average_precision'
     ],
-    'wmt': ['train/bleu', 'validation/loss', 'test/accuracy'],
+    'wmt': ['train/bleu', 'validation/loss', 'validation/accuracy'],
 }
 
 
@@ -97,6 +98,9 @@ def _make_one_batch_workload(workload_class,
       if workload_name == 'mnist':
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=(28, 28, 1), num_classes=10)
+      elif workload_name == 'cifar':
+        fake_batch = _make_fake_image_batch(
+            batch_shape, data_shape=(32, 32, 3), num_classes=10)
       elif workload_name == 'imagenet':
         if framework == 'jax':
           data_shape = (224, 224, 3)
@@ -134,8 +138,8 @@ def _make_one_batch_workload(workload_class,
       elif workload_name == 'wmt':
         max_len = 256
         fake_batch = {
-            'inputs': np.random.normal(size=(*batch_shape, max_len)),
-            'targets': np.random.normal(size=(*batch_shape, max_len)),
+            'inputs': np.ones((*batch_shape, max_len)),
+            'targets': np.ones((*batch_shape, max_len), dtype=np.int64),
         }
         self._tokenizer = _FakeTokenizer()
       else:

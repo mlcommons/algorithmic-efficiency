@@ -118,7 +118,7 @@ class MnistWorkload(BaseMnistWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: spec.Tensor,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
@@ -138,7 +138,7 @@ class MnistWorkload(BaseMnistWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch)
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
 
@@ -160,21 +160,20 @@ class MnistWorkload(BaseMnistWorkload):
   def _eval_model(
       self,
       params: spec.ParameterContainer,
-      images: spec.Tensor,
-      labels: spec.Tensor,
+      batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
     logits, _ = self.model_fn(
         params,
-        images,
+        batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = (predicted == labels).sum().item()
-    loss = self.loss_fn(labels, logits).sum().item()
+    accuracy = (predicted == batch['targets']).sum().item()
+    loss = self.loss_fn(batch['targets'], logits).sum().item()
     num_data = len(logits)
     return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}

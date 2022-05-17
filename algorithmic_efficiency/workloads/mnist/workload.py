@@ -1,5 +1,6 @@
 """MNIST workload parent class."""
 import itertools
+import jax
 import math
 from typing import Dict, Tuple
 
@@ -104,11 +105,11 @@ class BaseMnistWorkload(spec.Workload):
     for bi, batch in enumerate(self._eval_iters[split]):
       if bi > num_batches:
         break
+      per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
       batch_metrics = self._eval_model(params,
-                                       batch['inputs'],
-                                       batch['targets'],
+                                       batch,
                                        model_state,
-                                       model_rng)
+                                       per_device_model_rngs)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }

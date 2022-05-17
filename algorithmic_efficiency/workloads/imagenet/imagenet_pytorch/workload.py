@@ -54,6 +54,19 @@ class ImagenetWorkload(BaseImagenetWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
+  def build_input_queue(self,
+                      data_rng: spec.RandomState,
+                      split: str,
+                      data_dir: str,
+                      global_batch_size: int):
+    it = iter(
+        self._build_dataset(data_rng, split, data_dir, global_batch_size))
+    for batch in it:
+      yield {
+          'inputs': batch['inputs'].float().to(DEVICE),
+          'targets': batch['targets'].to(DEVICE),
+      }
+
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
@@ -154,7 +167,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch)
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
 
@@ -207,16 +220,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      images = batch['inputs'].float().to(DEVICE)
-      labels = batch['targets'].to(DEVICE)
       logits, _ = self.model_fn(
           params,
-          images,
+          batch,
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
           update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, labels)
+      batch_metrics = self._eval_metric(logits, batch['targets'])
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
