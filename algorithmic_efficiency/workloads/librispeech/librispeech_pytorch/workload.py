@@ -16,7 +16,7 @@ from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
 from algorithmic_efficiency.workloads.librispeech.librispeech_pytorch import \
     models
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class LibriSpeechWorkload(spec.Workload):
@@ -165,7 +165,7 @@ class LibriSpeechWorkload(spec.Workload):
     }
     if torch.cuda.device_count() > 1:
       model = torch.nn.DataParallel(model)
-    model.to(device)
+    model.to(DEVICE)
     return model, None
 
   def model_fn(
@@ -182,10 +182,10 @@ class LibriSpeechWorkload(spec.Workload):
     features = augmented_and_preprocessed_input_batch['features']
     transcripts = augmented_and_preprocessed_input_batch['transcripts']
     input_lengths = augmented_and_preprocessed_input_batch['input_lengths']
-    features = features.float().to(device)
+    features = features.float().to(DEVICE)
     features = features.transpose(1, 2).unsqueeze(1)
-    transcripts = transcripts.long().to(device)
-    input_lengths = input_lengths.long().to(device)
+    transcripts = transcripts.long().to(DEVICE)
+    input_lengths = input_lengths.long().to(DEVICE)
 
     params.train(mode == spec.ForwardPassMode.TRAIN)
     log_y, output_lengths = params(features, input_lengths, transcripts)
@@ -202,7 +202,7 @@ class LibriSpeechWorkload(spec.Workload):
     target_lengths = torch.IntTensor([len(y[y != 0]) for y in label_batch])
 
     loss = self._loss(log_y, label_batch, output_lengths, target_lengths) / (
-        target_lengths.float().to(device))
+        target_lengths.float().to(DEVICE))
 
     return loss
 
@@ -236,9 +236,9 @@ class LibriSpeechWorkload(spec.Workload):
       for (bi, batch) in enumerate(self._eval_iters[split]):
         if bi > num_batches:
           break
-        features = batch['features'].float().to(device)
+        features = batch['features'].float().to(DEVICE)
         features = features.transpose(1, 2).unsqueeze(1)
-        transcripts = batch['transcripts'].long().to(device)
+        transcripts = batch['transcripts'].long().to(DEVICE)
         input_lengths = batch['input_lengths'].int()
 
         log_y, _ = params(features, input_lengths, transcripts)

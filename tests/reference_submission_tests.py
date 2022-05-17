@@ -34,10 +34,14 @@ FLAGS = flags.FLAGS
 PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 _EXPECTED_METRIC_NAMES = {
-    'cifar': ['validation/loss', 'test/accuracy'],
-    'imagenet': ['validation/accuracy'],
-    'librispeech': ['validation/word_error_rate', 'train/word_error_rate'],
-    'mnist': ['validation/accuracy', 'test/accuracy'],
+    'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
+    'imagenet': ['train/accuracy', 'validation/accuracy'],
+    'librispeech': [
+        'train/word_error_rate',
+        'validation/word_error_rate',
+        'train/word_error_rate',
+    ],
+    'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
     'ogbg': [
         'train/accuracy', 'validation/loss', 'test/mean_average_precision'
     ],

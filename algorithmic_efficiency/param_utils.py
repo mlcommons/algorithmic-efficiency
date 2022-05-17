@@ -15,6 +15,8 @@ def pytorch_param_types(param_shapes):
       param_types[name] = spec.ParameterType.BATCH_NORM
     elif 'Conv' in name:
       param_types[name] = spec.ParameterType.CONV_WEIGHT
+    elif 'Embedding' in name:
+      param_types[name] = spec.ParameterType.EMBEDDING
     else:
       param_types[name] = spec.ParameterType.WEIGHT
   return param_types
