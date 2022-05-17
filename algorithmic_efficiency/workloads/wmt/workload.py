@@ -2,12 +2,11 @@ import math
 from typing import Dict, Optional
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 import torch
 
-from algorithmic_efficiency import spec
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt import input_pipeline
 
@@ -190,8 +189,7 @@ class BaseWmtWorkload(spec.Workload):
           'This should not happen, workload.init_model_fn() should be called '
           'before workload.param_shapes!')
     if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes)
+      self._param_types = param_utils.jax_param_types(self._param_shapes)
     return self._param_types
 
   def output_activation_fn(self,

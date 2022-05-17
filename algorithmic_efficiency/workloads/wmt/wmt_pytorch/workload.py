@@ -231,17 +231,16 @@ class WmtWorkload(BaseWmtWorkload):
                         global_batch_size: int,
                         num_batches: Optional[int] = None,
                         repeat_final_dataset: bool = False):
-    np_iter = super().build_input_queue(
-        data_rng,
-        split,
-        data_dir,
-        global_batch_size,
-        num_batches,
-        repeat_final_dataset)
+    np_iter = super().build_input_queue(data_rng,
+                                        split,
+                                        data_dir,
+                                        global_batch_size,
+                                        num_batches,
+                                        repeat_final_dataset)
     for batch in np_iter:
       batch = {
-        key: torch.tensor(value, device=DEVICE, dtype=torch.int)
-        for key, value in batch.items()
+          key: torch.tensor(value, device=DEVICE, dtype=torch.int) for key,
+          value in batch.items()
       }
       yield batch
 

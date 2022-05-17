@@ -11,7 +11,6 @@ import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 
 
 def get_batch_size(workload_name):
@@ -110,6 +109,7 @@ def pmapped_train_step(workload,
                        hyperparameters,
                        dropout_rng):
   """Perform a single training step."""
+
   def loss_fn(params):
     """Loss function used for training."""
     logits, _ = workload.model_fn(

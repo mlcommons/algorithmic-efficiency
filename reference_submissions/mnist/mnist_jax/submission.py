@@ -52,6 +52,7 @@ def pmapped_update_params(workload: spec.Workload,
                           batch: Dict[str, spec.Tensor],
                           optimizer_state: spec.OptimizerState,
                           rng: spec.RandomState) -> spec.UpdateReturn:
+
   def loss_fn(params):
     logits_batch, new_model_state = workload.model_fn(
         params,

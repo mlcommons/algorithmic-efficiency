@@ -1,8 +1,9 @@
 """Cifar workload parent class."""
 
 import itertools
-import jax
 from typing import Dict, Tuple
+
+import jax
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng

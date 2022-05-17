@@ -1,7 +1,7 @@
 """WMT workload implemented in Jax."""
 import collections
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from absl import logging
 from flax import jax_utils
@@ -204,12 +204,11 @@ class WmtWorkload(BaseWmtWorkload):
             functools.partial(_pad_examples, padded_size),  # pylint: disable=cell-var-from-loop
             pred_batch)
       cache = self.initialize_cache(pred_batch['inputs'])
-      predicted = self.predict_step(
-          pred_batch['inputs'],
-          params,
-          cache,
-          decode.EOS_ID,
-          max_predict_length)
+      predicted = self.predict_step(pred_batch['inputs'],
+                                    params,
+                                    cache,
+                                    decode.EOS_ID,
+                                    max_predict_length)
       predicted = _to_host(predicted)
       inputs = _to_host(pred_batch['inputs'])
       targets = _to_host(pred_batch['targets'])

@@ -89,5 +89,3 @@ class BaseImagenetWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
-
-

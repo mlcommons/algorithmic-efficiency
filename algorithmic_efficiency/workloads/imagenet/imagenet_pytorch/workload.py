@@ -55,12 +55,11 @@ class ImagenetWorkload(BaseImagenetWorkload):
     return self._param_types
 
   def build_input_queue(self,
-                      data_rng: spec.RandomState,
-                      split: str,
-                      data_dir: str,
-                      global_batch_size: int):
-    it = iter(
-        self._build_dataset(data_rng, split, data_dir, global_batch_size))
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int):
+    it = iter(self._build_dataset(data_rng, split, data_dir, global_batch_size))
     for batch in it:
       yield {
           'inputs': batch['inputs'].float().to(DEVICE),

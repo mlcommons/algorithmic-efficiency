@@ -1,8 +1,9 @@
 """MNIST workload parent class."""
 import itertools
-import jax
 import math
 from typing import Dict, Tuple
+
+import jax
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
