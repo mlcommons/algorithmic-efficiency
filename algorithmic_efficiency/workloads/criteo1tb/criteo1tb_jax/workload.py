@@ -78,11 +78,11 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 8 * 60 * 60  # 8 hours. TODO(znado): finalize.
+    return 6 * 60 * 60
 
   @property
   def eval_period_time_sec(self):
-    return 20 * 60  # 20 minutes. TODO(znado): finalize.
+    return 20 * 60
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
