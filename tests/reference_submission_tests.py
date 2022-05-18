@@ -281,8 +281,6 @@ class ReferenceSubmissionTest(absltest.TestCase):
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
           logging.info(f'========= Testing {workload_name} in {framework}.')
-          if 'criteo' not in workload_name:
-            continue
           eval_result = _test_submission(
               workload_name,
               framework,

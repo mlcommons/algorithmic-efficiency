@@ -33,7 +33,7 @@ def _conform_weights_to_targets(weights, targets):
         weights, axis=tuple(range(weights.ndim, targets.ndim)))
   elif weights.shape != targets.shape:
     raise ValueError('Incorrect shapes. Got shape %s weights and %s targets.' %
-                    (str(weights.shape), str(targets.shape)))
+                     (str(weights.shape), str(targets.shape)))
   return weights
 
 
@@ -50,8 +50,8 @@ def per_example_sigmoid_binary_cross_entropy(logits, targets):
   log_p = jax.nn.log_sigmoid(logits)
   log_not_p = jax.nn.log_sigmoid(-logits)
   per_example_losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
-  per_example_losses = (per_example_losses).reshape(
-      per_example_losses.shape[0], -1)
+  per_example_losses = (per_example_losses).reshape(per_example_losses.shape[0],
+                                                    -1)
   return jnp.sum(per_example_losses, axis=-1)
 
 

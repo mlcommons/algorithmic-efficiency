@@ -12,9 +12,9 @@ import jax.numpy as jnp
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import dlrm_small_model
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import \
+    dlrm_small_model
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import metrics
-
 
 _NUM_DENSE_FEATURES = 13
 _VOCAB_SIZES = [1024 * 128] * 26
@@ -62,7 +62,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 89_137_318 # DO NOT SUBMIT
+    return 89_137_318  # DO NOT SUBMIT
 
   @property
   def num_test_examples(self):
@@ -95,7 +95,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
         data_dir=data_dir,
-        is_training=(split =='train'),
+        is_training=(split == 'train'),
         global_batch_size=global_batch_size,
         num_dense_features=_NUM_DENSE_FEATURES,
         vocab_sizes=_VOCAB_SIZES,
@@ -226,4 +226,4 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def step_hint(self):
-    return 64_000 # DO NOT SUBMIT
+    return 64_000  # DO NOT SUBMIT
