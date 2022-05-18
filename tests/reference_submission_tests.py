@@ -35,6 +35,9 @@ PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
+    'criteo1tb': [
+        'train/loss', 'train/average_precision', 'validation/auc_roc'
+    ],
     'imagenet': ['train/accuracy', 'validation/accuracy'],
     'librispeech': [
         'train/word_error_rate',
@@ -99,12 +102,17 @@ def _make_one_batch_workload(workload_class,
       else:
         batch_shape = (global_batch_size,)
 
-      if workload_name == 'mnist':
-        fake_batch = _make_fake_image_batch(
-            batch_shape, data_shape=(28, 28, 1), num_classes=10)
-      elif workload_name == 'cifar':
+      if workload_name == 'cifar':
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=(32, 32, 3), num_classes=10)
+      elif workload_name == 'criteo1tb':
+        targets = np.ones(batch_shape)
+        targets[0] = 0
+        fake_batch = {
+            'inputs': np.ones((*batch_shape, 13 + 26)),
+            'targets': targets,
+            'weights': np.ones(batch_shape),
+        }
       elif workload_name == 'imagenet':
         if framework == 'jax':
           data_shape = (224, 224, 3)
@@ -119,6 +127,9 @@ def _make_one_batch_workload(workload_class,
             'transcripts': np.ones((8, 246)),
             'input_lengths': np.ones((8,)),
         }
+      elif workload_name == 'mnist':
+        fake_batch = _make_fake_image_batch(
+            batch_shape, data_shape=(28, 28, 1), num_classes=10)
       elif workload_name == 'ogbg':
         num_classes = 128
         fake_graph = jraph.GraphsTuple(
@@ -270,6 +281,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
           submission_path = (f'reference_submissions/{workload_name}/'
                              f'{workload_name}_{framework}/submission.py')
           logging.info(f'========= Testing {workload_name} in {framework}.')
+          if 'criteo' not in workload_name:
+            continue
           eval_result = _test_submission(
               workload_name,
               framework,

@@ -36,24 +36,28 @@ BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
 
 # Workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = {
-    'mnist': {
-        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
-    },
     'cifar': {
         'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
+    },
+    'criteo1tb': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallWorkload'
     },
     'imagenet': {
         'workload_path': 'imagenet/imagenet',
         'workload_class_name': 'ImagenetWorkload'
     },
-    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
     'librispeech': {
         'workload_path': 'librispeech/librispeech',
         'workload_class_name': 'LibriSpeechWorkload'
     },
+    'mnist': {
+        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
+    },
     'ogbg': {
         'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
     },
+    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
 }
 
 flags.DEFINE_string(
