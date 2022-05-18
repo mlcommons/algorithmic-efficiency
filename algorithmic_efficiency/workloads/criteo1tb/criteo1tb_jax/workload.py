@@ -62,7 +62,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 89_137_318  # DO NOT SUBMIT
+    return 131072 * 8  # TODO(znado): finalize the validation split size.
 
   @property
   def num_test_examples(self):
@@ -78,11 +78,11 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 8 * 60 * 60  # 8 hours. # DO NOT SUBMIT
+    return 8 * 60 * 60  # 8 hours. TODO(znado): finalize.
 
   @property
   def eval_period_time_sec(self):
-    return 20 * 60  # 20 minutes. # DO NOT SUBMIT
+    return 20 * 60  # 20 minutes. TODO(znado): finalize.
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
@@ -226,4 +226,4 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def step_hint(self):
-    return 64_000  # DO NOT SUBMIT
+    return 64_000  # TODO(znado): finalize.
