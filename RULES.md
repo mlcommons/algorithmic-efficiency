@@ -376,29 +376,27 @@ A target performance for the validation dataset will be defined for each [worklo
 
 #### Summary score using performance profiles
 
-We will score submissions using the following algorithm described in [Benchmarking Machine Learning with Performance Profiles](http://www.argmin.net/2018/03/26/performance-profiles/), originally from [Dolan and Moré](https://arxiv.org/abs/cs/0102001). Below we surface several relevant definitions from their work for easier readability, where we have <img src="https://render.githubusercontent.com/render/math?math=n_p"> benchmark problems we are evaluating on, and the user submission is abbreviated by <img src="https://render.githubusercontent.com/render/math?math=s">:
+We will score submissions using the following algorithm described in [Benchmarking Machine Learning with Performance Profiles](http://www.argmin.net/2018/03/26/performance-profiles/), originally from [Dolan and Moré](https://arxiv.org/abs/cs/0102001). Below we surface several relevant definitions from their work for easier readability, where we have $n_p$ benchmark problems we are evaluating on, and the user submission is abbreviated by $s$:
 
-- <img src="https://render.githubusercontent.com/render/math?math=r(p,s)">  =  Time spent on problem <img src="https://render.githubusercontent.com/render/math?math=p"> by submission <img src="https://render.githubusercontent.com/render/math?math=s"> / Time spent on problem <img src="https://render.githubusercontent.com/render/math?math=p"> by best submission
-  - a.k.a. "performance ratio of submission <img src="https://render.githubusercontent.com/render/math?math=s"> on problem <img src="https://render.githubusercontent.com/render/math?math=p"> "
-  - Can take on values between [1, <img src="https://render.githubusercontent.com/render/math?math=\infty">), lower is better.
+- $r(p,s)$  =  Time spent on problem $p$ by submission $s$ / Time spent on problem $p$ by best submission
 
-<p align="center">
-  <img width="200" img src="https://render.githubusercontent.com/render/math?math=r_{p,s}=\frac{t_{p,s}}{\min\{t_{p,s}:s \in \mathcal{S}\}}">
-</p>
+  - a.k.a. "performance ratio of submission $s$ on problem $p$"
+  
+  - Can take on values between $[1, \infty)$, lower is better.
 
-- <img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau) = (\frac{1}{n_p}) \cdot [\text{number of problems where}\, r(p,s)\leq \tau]">
+$$r_{p,s}=\frac{t_{p,s}}{\min\\{t_{p,s}:s \in \mathcal{S}\\}}$$
+
+- $\rho_s(\tau) = (\frac{1}{n_p}) \cdot [\text{number of problems where}\, r(p,s)\leq \tau]$
 
   - Need to be careful about weighting tasks to not favor any data modality. We might need to weigh the problems somehow to handle different numbers of models on a given dataset
 
-**The area between a submitted performance profile <img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau)"> and the performance profile of the reference implementation will be used as a score to compare submissions, where the area is computed by integrating <img src="https://render.githubusercontent.com/render/math?math=\log\tau"> from <img src="https://render.githubusercontent.com/render/math?math=[0, \infty)"> OR <img src="https://render.githubusercontent.com/render/math?math=\tau"> from <img src="https://render.githubusercontent.com/render/math?math=[1, \infty)"> , whether or not to log scale is a decision to be made after further investigation.**
+**The area between a submitted performance profile $\rho_s(\tau)$ and the performance profile of the reference implementation will be used as a score to compare submissions, where the area is computed by integrating $\log\tau$ from $[0, \infty)$ OR $\tau$ from $[1, \infty)$ , whether or not to log scale is a decision to be made after further investigation.**
 
-<p align="center">
-  <img width="300" img src="https://render.githubusercontent.com/render/math?math=\rho_s(\tau)=\frac{1}{n_p}\size\{p \in \mathcal{P}: r_{p,s} \leq \tau\}">
-</p>
+$$\rho_s(\tau)=\frac{1}{n_p} \text{size} \\{ p \in \mathcal{P}: r_{p,s} \leq \tau \\}$$
 
-For a given problem, we define the “speedup over the reference” as <img src="https://render.githubusercontent.com/render/math?math=\frac{t_{p, \text{ref}}}{t_{p,s}}">. For example, if a submission was 2x faster than the reference implementation, this would be equal to 2.
+For a given problem, we define the “speedup over the reference” as $\frac{t_{p, \text{ref}}}{t_{p,s}}$. For example, if a submission was 2x faster than the reference implementation, this would be equal to 2.
 
-To have a simpler to interpret number for press releases, we will also release (in addition to the raw <img src="https://render.githubusercontent.com/render/math?math=t(p,s)"> values) the geometric mean of <img src="https://render.githubusercontent.com/render/math?math=\frac{t_{p, \text{ref}}}{t_{p,s}}">.
+To have a simpler to interpret number for press releases, we will also release (in addition to the raw $t(p,s)$ values) the geometric mean of $\frac{t_{p, \text{ref}}}{t_{p,s}}$.
 
 - Once we fix a reference we can rerun the reference on the new set of problems for each iteration of the contest (using the new competition hardware), and then report our year over year progress as a community in speeding up training
 
