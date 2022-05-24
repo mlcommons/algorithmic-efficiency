@@ -215,9 +215,9 @@ class WmtWorkload(BaseWmtWorkload):
           src=augmented_and_preprocessed_input_batch['inputs'],
           tgt=augmented_and_preprocessed_input_batch['targets'],
           inputs_positions=augmented_and_preprocessed_input_batch.get(
-              'inputs_positions', None),
+              'inputs_position', None),
           targets_positions=augmented_and_preprocessed_input_batch.get(
-              'targets_positions', None),
+              'targets_position', None),
           inputs_segmentation=augmented_and_preprocessed_input_batch.get(
               'inputs_segmentation', None),
           targets_segmentation=augmented_and_preprocessed_input_batch.get(
@@ -240,7 +240,9 @@ class WmtWorkload(BaseWmtWorkload):
                                         repeat_final_dataset)
     for batch in np_iter:
       batch = {
-          key: torch.tensor(value, device=DEVICE, dtype=torch.int) for key,
+          key: torch.as_tensor(value, device=DEVICE,
+                               dtype=torch.int64).view(-1, value.shape[-1])
+          for key,
           value in batch.items()
       }
       yield batch

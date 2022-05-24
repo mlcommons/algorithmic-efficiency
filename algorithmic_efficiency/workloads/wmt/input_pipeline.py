@@ -16,10 +16,9 @@ Features = Dict[str, tf.Tensor]
 def normalize_feature_names(ds_info, reverse_translation,
                             features: Features) -> Features:
   """Normalizes feature names to 'inputs' and 'targets'."""
-  input_lang, target_lang = ds_info.supervised_keys
-  if reverse_translation:
-    input_lang = target_lang
-    target_lang = input_lang
+  in_lang, tar_lang = ds_info.supervised_keys
+  input_lang = tar_lang if reverse_translation else in_lang
+  target_lang = in_lang if reverse_translation else tar_lang
 
   features['inputs'] = features.pop(input_lang)
   features['targets'] = features.pop(target_lang)
