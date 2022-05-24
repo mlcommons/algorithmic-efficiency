@@ -682,7 +682,7 @@ class MultiheadAttention(nn.MultiheadAttention):
                add_zero_attn=False,
                kdim=None,
                vdim=None,
-               batch_first=False,
+               batch_first=True,
                device=None,
                dtype=None) -> None:
     super().__init__(
@@ -1027,6 +1027,12 @@ def multi_head_attention_forward(
 
   # update source sequence length after adjustments
   src_len = k.size(1)
+
+  # convert mask to float
+  if attn_mask is not None and attn_mask.dtype == torch.bool:
+    new_attn_mask = torch.zeros_like(attn_mask, dtype=q.dtype)
+    new_attn_mask.masked_fill_(attn_mask, -1e10)
+    attn_mask = new_attn_mask
 
   # adjust dropout probability
   if not training:
