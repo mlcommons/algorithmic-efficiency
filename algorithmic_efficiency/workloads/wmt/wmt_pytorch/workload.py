@@ -240,7 +240,9 @@ class WmtWorkload(BaseWmtWorkload):
                                         repeat_final_dataset)
     for batch in np_iter:
       batch = {
-          key: torch.as_tensor(value, device=DEVICE, dtype=torch.int64) for key,
+          key: torch.as_tensor(value, device=DEVICE,
+                               dtype=torch.int64).view(-1, value.shape[-1])
+          for key,
           value in batch.items()
       }
       yield batch
