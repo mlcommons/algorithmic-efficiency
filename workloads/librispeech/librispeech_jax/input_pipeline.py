@@ -22,8 +22,8 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         idx *= self.batch_size
-        max_input_len = 256  # 142 to 3496
-        max_target_len = 16  # 11 to 586
+        max_input_len = -1  # 142 to 3496
+        max_target_len = -1  # 11 to 586
 
         for i in range(self.batch_size):
             sample = self.df.iloc[idx + i]
@@ -31,8 +31,9 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
             max_input_len = max(max_input_len, feature.shape[0])
             max_target_len = max(max_target_len, len(trn))
 
-        max_input_len = int(2 ** math.ceil(math.log2(max_input_len)))
-        max_target_len = int(2 ** math.ceil(math.log2(max_target_len)))
+        # same as pytorch code except for the padding (128 vs 1)
+        max_input_len = max_input_len + (-max_input_len) % 128  
+        max_target_len = max_target_len + (-max_target_len) % 128
         samples = []
 
         for i in range(self.batch_size):
