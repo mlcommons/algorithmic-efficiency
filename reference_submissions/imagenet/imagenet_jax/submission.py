@@ -18,12 +18,6 @@ def get_batch_size(workload_name):
   return 128
 
 
-def cosine_decay(lr, step, total_steps):
-  ratio = jnp.maximum(0., step / total_steps)
-  mult = 0.5 * (1. + jnp.cos(jnp.pi * ratio))
-  return mult * lr
-
-
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
