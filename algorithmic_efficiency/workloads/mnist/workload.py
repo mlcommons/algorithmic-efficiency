@@ -2,11 +2,15 @@
 import itertools
 import math
 from typing import Dict, Tuple
+from absl import flags
 
 import jax
+from flax import jax_utils
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
+
+FLAGS =flags.FLAGS
 
 
 class BaseMnistWorkload(spec.Workload):
@@ -101,11 +105,9 @@ class BaseMnistWorkload(spec.Workload):
         'accuracy': 0.,
         'loss': 0.,
     }
-    num_data = 0
     num_batches = int(math.ceil(num_examples / global_batch_size))
-    for bi, batch in enumerate(self._eval_iters[split]):
-      if bi > num_batches:
-        break
+    for _ in range(num_batches):
+      batch = next(self._eval_iters[split])
       per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
       batch_metrics = self._eval_model(params,
                                        batch,
@@ -114,5 +116,6 @@ class BaseMnistWorkload(spec.Workload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-      num_data += batch_metrics['num_data']
-    return {k: float(v / num_data) for k, v in total_metrics.items()}
+    if FLAGS.framework == 'jax':
+      total_metrics = jax_utils.unreplicate(total_metrics)
+    return {k: float(v / num_examples) for k, v in total_metrics.items()}

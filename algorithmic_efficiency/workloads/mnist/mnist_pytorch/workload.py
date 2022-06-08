@@ -1,17 +1,16 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
-import itertools
 from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
-import torch.utils.data as data_utils
+import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
-from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import param_utils, data_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
@@ -38,13 +37,6 @@ class _Model(nn.Module):
     return self.net(x)
 
 
-class DictMNIST(MNIST):
-
-  def __getitem__(self, index: int) -> Dict[str, Any]:
-    image, label = super().__getitem__(index)
-    return {'inputs': image, 'targets': label}
-
-
 class MnistWorkload(BaseMnistWorkload):
 
   def _build_dataset(self,
@@ -58,11 +50,11 @@ class MnistWorkload(BaseMnistWorkload):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = DictMNIST(
+    dataset = MNIST(
         data_dir, train=dataloader_split, download=True, transform=transform)
     if split != 'test':
       if split in ['train', 'validation']:
-        train_dataset, validation_dataset = data_utils.random_split(
+        train_dataset, validation_dataset = pytorch_data_utils.random_split(
             dataset,
             [self.num_train_examples, self.num_validation_examples],
             generator=torch.Generator().manual_seed(int(data_rng[0])))
@@ -71,7 +63,7 @@ class MnistWorkload(BaseMnistWorkload):
         elif split == 'validation':
           dataset = validation_dataset
       if split == 'eval_train':
-        dataset, _ = data_utils.random_split(
+        dataset, _ = pytorch_data_utils.random_split(
             dataset,
             [self.num_eval_train_examples,
              60000 - self.num_eval_train_examples],
@@ -79,9 +71,13 @@ class MnistWorkload(BaseMnistWorkload):
     # TODO: set seeds properly
     is_train = split == 'train'
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=is_train, pin_memory=True)
+        dataset,
+        batch_size=batch_size,
+        shuffle=is_train,
+        pin_memory=True,
+        drop_last=is_train)
     if is_train:
-      dataloader = itertools.cycle(dataloader)
+      dataloader = data_utils.cycle(dataloader)
 
     return dataloader
 
@@ -101,8 +97,18 @@ class MnistWorkload(BaseMnistWorkload):
                         data_rng,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
+                        global_batch_size: int) -> Dict[str, Any]:
+    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    for batch in it:
+      if isinstance(batch, dict):
+        inputs = batch['inputs']
+        targets = batch['targets']
+      else:
+        inputs, targets = batch
+      yield {
+          'inputs': inputs.to(DEVICE, non_blocking=True),
+          'targets': targets.to(DEVICE, non_blocking=True),
+      }
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
@@ -175,5 +181,4 @@ class MnistWorkload(BaseMnistWorkload):
     # Number of correct predictions.
     accuracy = (predicted == batch['targets']).sum().item()
     loss = self.loss_fn(batch['targets'], logits).sum().item()
-    num_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+    return {'accuracy': accuracy, 'loss': loss}
