@@ -22,6 +22,8 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
+import torch
+import torch.distributed as dist
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -32,7 +34,7 @@ from algorithmic_efficiency import spec
 tf.config.experimental.set_visible_devices([], 'GPU')
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
-BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
+BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
 # Workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = {
@@ -79,9 +81,10 @@ flags.DEFINE_string(
     'tuning_search_space',
     'reference_submissions/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
-flags.DEFINE_integer('num_tuning_trials',
-                     20,
-                     'The number of external hyperparameter trials to run.')
+flags.DEFINE_integer(
+    'num_tuning_trials',
+    20,
+    'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
@@ -294,6 +297,24 @@ def score_submission_on_workload(workload: spec.Workload,
 
 
 def main(_):
+  # Check if distributed data parallel is used.
+  pytorch_ddp = 'LOCAL_RANK' in os.environ
+  if FLAGS.framework == 'pytorch':
+    # From the docs: "(...) causes cuDNN to benchmark multiple convolution
+    # algorithms and select the fastest."
+    torch.backends.cudnn.benchmark = True
+
+    if pytorch_ddp:
+      rank = int(os.environ['LOCAL_RANK'])
+      torch.cuda.set_device(rank)
+      # only log once (for local rank == 0)
+      if rank != 0:
+        def logging_pass(*args):
+          pass
+        logging.info = logging_pass
+      # initialize the process group
+      dist.init_process_group('nccl')
+
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
   workload_metadata['workload_path'] = os.path.join(
@@ -312,6 +333,10 @@ def main(_):
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
+
+  if pytorch_ddp:
+    # cleanup
+    dist.destroy_process_group()
 
 
 if __name__ == '__main__':
