@@ -10,7 +10,8 @@ import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
-from algorithmic_efficiency import param_utils, data_utils
+from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
