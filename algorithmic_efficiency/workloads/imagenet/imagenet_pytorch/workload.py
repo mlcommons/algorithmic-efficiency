@@ -8,10 +8,12 @@ from typing import Dict, Tuple
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
-from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import param_utils, data_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
@@ -19,18 +21,10 @@ from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
 from algorithmic_efficiency.workloads.imagenet.workload import \
     BaseImagenetWorkload
 
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
-
-# from https://github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
-def cycle(iterable):
-  iterator = iter(iterable)
-  while True:
-    try:
-      images, labels = next(iterator)
-      yield {'inputs': images, 'targets': labels}
-    except StopIteration:
-      iterator = iter(iterable)
+PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
+N_GPUS = torch.cuda.device_count()
 
 
 class ImagenetWorkload(BaseImagenetWorkload):
@@ -59,11 +53,11 @@ class ImagenetWorkload(BaseImagenetWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    it = iter(self._build_dataset(data_rng, split, data_dir, global_batch_size))
+    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
       yield {
-          'inputs': batch['inputs'].float().to(DEVICE),
-          'targets': batch['targets'].to(DEVICE),
+          'inputs': batch['inputs'].float().to(DEVICE, non_blocking=True),
+          'targets': batch['targets'].to(DEVICE, non_blocking=True),
       }
 
   def _build_dataset(self,
@@ -71,7 +65,8 @@ class ImagenetWorkload(BaseImagenetWorkload):
                      split: str,
                      data_dir: str,
                      batch_size: int):
-    is_train = (split == "train")
+    del data_rng
+    is_train = split == 'train'
 
     normalize = transforms.Compose([
         transforms.ToTensor(),
@@ -106,15 +101,36 @@ class ImagenetWorkload(BaseImagenetWorkload):
         os.path.join(data_dir, folder[split]),
         transform=transform_config[split])
 
+    if split == 'eval_train':
+      # We always use the same subset of the training data for evaluation.
+      dataset = torch.utils.data.Subset(
+          dataset, range(self.num_eval_train_examples))
+
+    sampler = None
+    if PYTORCH_DDP:
+      if is_train:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset,
+            num_replicas=N_GPUS,
+            rank=RANK,
+            shuffle=True)
+      else:
+        sampler = data_utils.DistributedEvalSampler(
+            dataset,
+            num_replicas=N_GPUS,
+            rank=RANK,
+            shuffle=False)
+      batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=is_train,
-        num_workers=5,
+        shuffle=not PYTORCH_DDP and is_train,
+        sampler=sampler,
+        num_workers=0,
         pin_memory=True,
         drop_last=is_train)
 
-    dataloader = cycle(dataloader)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
 
     return dataloader
 
@@ -124,14 +140,19 @@ class ImagenetWorkload(BaseImagenetWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
-    if torch.cuda.device_count() > 1:
-      model = torch.nn.DataParallel(model)
     model.to(DEVICE)
+    if N_GPUS > 1:
+      if PYTORCH_DDP:
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model = DDP(model, device_ids=[RANK], output_device=RANK)
+      else:
+        model = torch.nn.DataParallel(model)
     return model, None
 
   def _update_batch_norm(self, model, update_batch_norm):
     for m in model.modules():
-      if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+      if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d,
+                        nn.BatchNorm3d, nn.SyncBatchNorm)):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)
@@ -191,10 +212,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
     """Return the mean accuracy and loss as a dict."""
     predicted = torch.argmax(logits, 1)
     # not accuracy, but nr. of correct predictions
-    accuracy = (predicted == labels).sum().item()
-    loss = self.loss_fn(labels, logits).sum().item()
-    num_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+    accuracy = (predicted == labels).sum()
+    loss = self.loss_fn(labels, logits).sum()
+    return {'accuracy': accuracy, 'loss': loss}
 
   def _eval_model_on_split(self,
                            split: str,
@@ -212,10 +232,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = {
-        'accuracy': 0.,
-        'loss': 0.,
+        'accuracy': torch.tensor(0., device=DEVICE),
+        'loss': torch.tensor(0., device=DEVICE),
     }
-    num_data = 0
     num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
@@ -230,5 +249,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-      num_data += batch_metrics['num_data']
-    return {k: float(v / num_data) for k, v in total_metrics.items()}
+    if PYTORCH_DDP:
+      for metric in total_metrics.values():
+        dist.all_reduce(metric)
+    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
