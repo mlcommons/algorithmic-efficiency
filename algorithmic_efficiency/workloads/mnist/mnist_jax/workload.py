@@ -10,7 +10,8 @@ import jax.numpy as jnp
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from algorithmic_efficiency import param_utils, data_utils
+from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 

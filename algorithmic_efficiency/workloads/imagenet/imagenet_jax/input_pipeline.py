@@ -9,7 +9,7 @@ import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-import algorithmic_efficiency.data_utils as data_utils
+from algorithmic_efficiency import data_utils
 
 IMAGE_SIZE = 224
 RESIZE_SIZE = 256

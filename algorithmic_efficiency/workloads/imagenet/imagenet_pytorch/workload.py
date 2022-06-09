@@ -7,13 +7,14 @@ from typing import Dict, Tuple
 
 import torch
 from torch import nn
-import torch.nn.functional as F
 import torch.distributed as dist
+import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 
-from algorithmic_efficiency import param_utils, data_utils
+from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
@@ -103,23 +104,17 @@ class ImagenetWorkload(BaseImagenetWorkload):
 
     if split == 'eval_train':
       # We always use the same subset of the training data for evaluation.
-      dataset = torch.utils.data.Subset(
-          dataset, range(self.num_eval_train_examples))
+      dataset = torch.utils.data.Subset(dataset,
+                                        range(self.num_eval_train_examples))
 
     sampler = None
     if PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset,
-            num_replicas=N_GPUS,
-            rank=RANK,
-            shuffle=True)
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
       else:
         sampler = data_utils.DistributedEvalSampler(
-            dataset,
-            num_replicas=N_GPUS,
-            rank=RANK,
-            shuffle=False)
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
       batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -151,8 +146,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
 
   def _update_batch_norm(self, model, update_batch_norm):
     for m in model.modules():
-      if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d,
-                        nn.BatchNorm3d, nn.SyncBatchNorm)):
+      if isinstance(
+          m,
+          (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)

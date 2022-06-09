@@ -31,7 +31,7 @@ def cycle(iterable, keys=('inputs', 'targets'), custom_sampler=False):
     try:
       batch = next(iterator)
       assert len(keys) == len(batch)
-      yield {key: value for key, value in zip(keys, batch)}
+      yield dict(zip(keys, batch))
     except StopIteration:
       if custom_sampler:
         epoch += 1

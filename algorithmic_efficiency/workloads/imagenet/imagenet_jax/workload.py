@@ -36,14 +36,13 @@ class ImagenetWorkload(BaseImagenetWorkload):
                         cache: Optional[bool] = None,
                         repeat_final_dataset: Optional[bool] = None,
                         num_batches: Optional[int] = None):
-    return self._build_dataset(
-        data_rng,
-        split,
-        data_dir,
-        global_batch_size,
-        cache,
-        repeat_final_dataset,
-        num_batches)
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset,
+                               num_batches)
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -225,6 +224,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    eval_metrics = jax.tree_map(
-        lambda x: float(x[0] / num_examples), eval_metrics)
+    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
+                                eval_metrics)
     return eval_metrics

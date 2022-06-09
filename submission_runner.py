@@ -81,10 +81,9 @@ flags.DEFINE_string(
     'tuning_search_space',
     'reference_submissions/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
-flags.DEFINE_integer(
-    'num_tuning_trials',
-    20,
-    'The number of external hyperparameter trials to run.')
+flags.DEFINE_integer('num_tuning_trials',
+                     20,
+                     'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
@@ -309,8 +308,10 @@ def main(_):
       torch.cuda.set_device(rank)
       # only log once (for local rank == 0)
       if rank != 0:
+
         def logging_pass(*args):
           pass
+
         logging.info = logging_pass
       # initialize the process group
       dist.init_process_group('nccl')

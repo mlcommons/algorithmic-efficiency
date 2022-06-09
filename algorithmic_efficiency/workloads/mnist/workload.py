@@ -2,15 +2,15 @@
 import itertools
 import math
 from typing import Dict, Tuple
-from absl import flags
 
-import jax
+from absl import flags
 from flax import jax_utils
+import jax
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
-FLAGS =flags.FLAGS
+FLAGS = flags.FLAGS
 
 
 class BaseMnistWorkload(spec.Workload):
