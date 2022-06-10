@@ -1,16 +1,19 @@
 """MNIST workload parent class."""
 import itertools
 import math
+import os
 from typing import Dict, Tuple
 
 from absl import flags
 from flax import jax_utils
 import jax
+import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
 FLAGS = flags.FLAGS
+PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 class BaseMnistWorkload(spec.Workload):
@@ -118,4 +121,9 @@ class BaseMnistWorkload(spec.Workload):
       }
     if FLAGS.framework == 'jax':
       total_metrics = jax_utils.unreplicate(total_metrics)
+    elif PYTORCH_DDP:
+      for metric in total_metrics.values():
+        dist.all_reduce(metric)
+    if FLAGS.framework == 'pytorch':
+      total_metrics = {k: v.item() for k, v in total_metrics.items()}
     return {k: float(v / num_examples) for k, v in total_metrics.items()}

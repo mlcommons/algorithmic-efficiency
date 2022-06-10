@@ -1,11 +1,13 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
+import os
 from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
@@ -15,7 +17,10 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
+N_GPUS = torch.cuda.device_count()
 
 
 class _Model(nn.Module):
@@ -71,14 +76,26 @@ class MnistWorkload(BaseMnistWorkload):
             generator=torch.Generator().manual_seed(int(data_rng[0])))
     # TODO: set seeds properly
     is_train = split == 'train'
+
+    sampler = None
+    if PYTORCH_DDP:
+      if is_train:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
+      else:
+        sampler = data_utils.DistributedEvalSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+      batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=is_train,
+        shuffle=not PYTORCH_DDP and is_train,
+        sampler=sampler,
+        num_workers=0,
         pin_memory=True,
         drop_last=is_train)
     if is_train:
-      dataloader = data_utils.cycle(dataloader)
+      dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
 
     return dataloader
 
@@ -117,9 +134,12 @@ class MnistWorkload(BaseMnistWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
-    if torch.cuda.device_count() > 1:
-      model = torch.nn.DataParallel(model)
     model.to(DEVICE)
+    if N_GPUS > 1:
+      if PYTORCH_DDP:
+        model = DDP(model, device_ids=[RANK], output_device=RANK)
+      else:
+        model = torch.nn.DataParallel(model)
     return model, None
 
   def model_fn(
@@ -180,6 +200,6 @@ class MnistWorkload(BaseMnistWorkload):
         update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = (predicted == batch['targets']).sum().item()
-    loss = self.loss_fn(batch['targets'], logits).sum().item()
+    accuracy = (predicted == batch['targets']).sum()
+    loss = self.loss_fn(batch['targets'], logits).sum()
     return {'accuracy': accuracy, 'loss': loss}
