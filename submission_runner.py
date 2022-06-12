@@ -43,8 +43,8 @@ WORKLOADS = {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallWorkload'
     },
-    'imagenet': {
-        'workload_path': 'imagenet/imagenet',
+    'imagenet_resnet': {
+        'workload_path': 'imagenet_resnet/imagenet',
         'workload_class_name': 'ImagenetWorkload'
     },
     'librispeech': {

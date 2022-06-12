@@ -11,8 +11,8 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'imagenet': 128}
-  return batch_sizes[workload_name]
+  del workload_name
+  return 128
 
 
 def init_optimizer_state(workload: spec.Workload,

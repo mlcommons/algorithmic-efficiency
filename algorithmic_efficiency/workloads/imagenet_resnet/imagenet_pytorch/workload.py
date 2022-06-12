@@ -14,9 +14,9 @@ from torchvision.datasets.folder import ImageFolder
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50
-from algorithmic_efficiency.workloads.imagenet.workload import \
+from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

@@ -3,9 +3,9 @@ import jax.numpy as jnp
 import jax.random as jax_rng
 import pytest
 
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax.models import \
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet50 as JaxResNet
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
