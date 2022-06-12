@@ -14,7 +14,8 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     input_pipeline
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import models
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
+    models
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 

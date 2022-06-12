@@ -5,7 +5,8 @@ from flax import jax_utils
 import jax
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import ImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
+    ImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax import models
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     BaseImagenetVitWorkload
@@ -35,8 +36,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
-    logits = self._model.apply(
-        {'params': params},
-        augmented_and_preprocessed_input_batch['inputs'],
-        mutable=False)
+    logits = self._model.apply({'params': params},
+                               augmented_and_preprocessed_input_batch['inputs'],
+                               mutable=False)
     return logits, None

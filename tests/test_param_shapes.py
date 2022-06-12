@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
-    ImagenetWorkload as JaxImagenetWorkload
+    ImagenetResNetWorkload as JaxImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
-    ImagenetWorkload as PyTorchImagenetWorkload
+    ImagenetResNetWorkload as PyTorchImagenetResNetWorkload
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     MnistWorkload as JaxMnistWorkload
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
@@ -46,9 +46,9 @@ def get_workload(workload):
     pytorch_workload = PyTorchMnistWorkload()
   elif workload == 'imagenet':
     # Init Jax workload.
-    jax_workload = JaxImagenetWorkload()
+    jax_workload = JaxImagenetResNetWorkload()
     # Init PyTorch workload.
-    pytorch_workload = PyTorchImagenetWorkload()
+    pytorch_workload = PyTorchImagenetResNetWorkload()
   elif workload == 'wmt':
     # Init Jax workload.
     jax_workload = JaxWmtWorkload()
