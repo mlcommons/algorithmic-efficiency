@@ -16,10 +16,10 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import models
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
-    BaseImagenetWorkload
+    BaseImagenetResNetWorkload
 
 
-class ImagenetWorkload(BaseImagenetWorkload):
+class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   def __init__(self):
     super().__init__()
@@ -98,7 +98,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': key},
-                                    jnp.ones(input_shape, model.dtype))
+                                    jnp.ones(input_shape, jnp.float32))
     model_state, params = variables.pop('params')
     return params, model_state
 
@@ -190,7 +190,8 @@ class ImagenetWorkload(BaseImagenetWorkload):
                            data_dir: str):
     data_rng, model_rng = jax.random.split(rng, 2)
     # Sync batch statistics across replicas before evaluating.
-    model_state = self.sync_batch_stats(model_state)
+    if model_state:
+      model_state = self.sync_batch_stats(model_state)
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:

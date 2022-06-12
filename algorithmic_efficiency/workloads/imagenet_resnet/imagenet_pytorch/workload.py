@@ -17,7 +17,7 @@ import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
-    BaseImagenetWorkload
+    BaseResNetImagenetWorkload
 
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -33,7 +33,7 @@ def cycle(iterable):
       iterator = iter(iterable)
 
 
-class ImagenetWorkload(BaseImagenetWorkload):
+class ImagenetResNetWorkload(BaseResNetImagenetWorkload):
 
   def __init__(self):
     self._param_types = None

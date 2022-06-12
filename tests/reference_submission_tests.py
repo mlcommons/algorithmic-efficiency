@@ -39,6 +39,7 @@ _EXPECTED_METRIC_NAMES = {
         'train/loss', 'train/average_precision', 'validation/auc_roc'
     ],
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
+    'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
     'librispeech': [
         'train/word_error_rate',
         'validation/word_error_rate',
@@ -113,7 +114,7 @@ def _make_one_batch_workload(workload_class,
             'targets': targets,
             'weights': np.ones(batch_shape),
         }
-      elif workload_name == 'imagenet_resnet':
+      elif workload_name in ['imagenet_resnet', 'imagenet_vit']:
         if framework == 'jax':
           data_shape = (224, 224, 3)
         else:
@@ -283,7 +284,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
         submission_dir = f'{workload_dir}/{dataset_name}_{framework}'
         if not os.path.exists(submission_dir):
           continue
-        if 'imagenet' not in workload_dir:
+        if 'imagenet_vit' not in workload_dir:
           continue
         submission_path = (f'reference_submissions/{workload_name}/'
                            f'{dataset_name}_{framework}/submission.py')
