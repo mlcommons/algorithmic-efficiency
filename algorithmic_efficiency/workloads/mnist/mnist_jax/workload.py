@@ -1,6 +1,6 @@
 """MNIST workload implemented in Jax."""
 import functools
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
@@ -58,25 +59,27 @@ class MnistWorkload(BaseMnistWorkload):
                      split: str,
                      data_dir: str,
                      batch_size):
+    # TODO: choose a random split and match with PyTorch.
     if split == 'eval_train':
-      tfds_split = 'train[:50000]'
+      tfds_split = f'train[:{self.num_eval_train_examples}]'
     elif split == 'validation':
-      tfds_split = 'train[50000:]'
+      tfds_split = f'train[{self.num_train_examples}:]'
     else:
-      tfds_split = split
+      tfds_split = f'train[:{self.num_train_examples}]'
     ds = tfds.load(
         'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
-    ds = ds.cache()
     ds = ds.map(lambda x: {
         'inputs': self._normalize(x['image']),
         'targets': x['label'],
     })
-    if split == 'train':
-      ds = ds.shuffle(1024, seed=data_rng[0])
+    ds = ds.cache()
+    is_train = split == 'train'
+    if is_train:
+      ds = ds.shuffle(16 * batch_size, seed=data_rng[0])
       ds = ds.repeat()
-    ds = ds.batch(batch_size)
-    ds = ds.batch(jax.local_device_count())
-    return tfds.as_numpy(ds)
+    ds = ds.batch(batch_size, drop_remainder=is_train)
+    ds = map(data_utils.shard_numpy_ds, ds)
+    return iter(ds)
 
   @property
   def model_params_types(self):
@@ -98,10 +101,8 @@ class MnistWorkload(BaseMnistWorkload):
                         data_rng,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for images, labels in iter(ds):
-      yield images, labels, None
+                        global_batch_size: int) -> Dict[str, Any]:
+    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
@@ -168,7 +169,6 @@ class MnistWorkload(BaseMnistWorkload):
         update_batch_norm=False)
     accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
     loss = jnp.sum(self.loss_fn(batch['targets'], logits))
-    num_data = len(logits)
-    metrics = {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+    metrics = {'accuracy': accuracy, 'loss': loss}
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics

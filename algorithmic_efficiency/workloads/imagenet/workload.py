@@ -9,7 +9,7 @@ class BaseImagenetWorkload(spec.Workload):
     self._param_shapes = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['accuracy'] > self.target_value
+    return eval_result['validation/accuracy'] > self.target_value
 
   @property
   def target_value(self):

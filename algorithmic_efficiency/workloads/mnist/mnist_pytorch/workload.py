@@ -1,21 +1,26 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
-import itertools
+import os
 from typing import Any, Dict, Tuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
-import torch.utils.data as data_utils
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
+N_GPUS = torch.cuda.device_count()
 
 
 class _Model(nn.Module):
@@ -38,13 +43,6 @@ class _Model(nn.Module):
     return self.net(x)
 
 
-class DictMNIST(MNIST):
-
-  def __getitem__(self, index: int) -> Dict[str, Any]:
-    image, label = super().__getitem__(index)
-    return {'inputs': image, 'targets': label}
-
-
 class MnistWorkload(BaseMnistWorkload):
 
   def _build_dataset(self,
@@ -58,11 +56,11 @@ class MnistWorkload(BaseMnistWorkload):
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
-    dataset = DictMNIST(
+    dataset = MNIST(
         data_dir, train=dataloader_split, download=True, transform=transform)
     if split != 'test':
       if split in ['train', 'validation']:
-        train_dataset, validation_dataset = data_utils.random_split(
+        train_dataset, validation_dataset = pytorch_data_utils.random_split(
             dataset,
             [self.num_train_examples, self.num_validation_examples],
             generator=torch.Generator().manual_seed(int(data_rng[0])))
@@ -71,17 +69,33 @@ class MnistWorkload(BaseMnistWorkload):
         elif split == 'validation':
           dataset = validation_dataset
       if split == 'eval_train':
-        dataset, _ = data_utils.random_split(
+        dataset, _ = pytorch_data_utils.random_split(
             dataset,
             [self.num_eval_train_examples,
              60000 - self.num_eval_train_examples],
             generator=torch.Generator().manual_seed(int(data_rng[0])))
     # TODO: set seeds properly
     is_train = split == 'train'
+
+    sampler = None
+    if PYTORCH_DDP:
+      if is_train:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
+      else:
+        sampler = data_utils.DistributedEvalSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+      batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=is_train, pin_memory=True)
+        dataset,
+        batch_size=batch_size,
+        shuffle=not PYTORCH_DDP and is_train,
+        sampler=sampler,
+        num_workers=0,
+        pin_memory=True,
+        drop_last=is_train)
     if is_train:
-      dataloader = itertools.cycle(dataloader)
+      dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
 
     return dataloader
 
@@ -101,8 +115,18 @@ class MnistWorkload(BaseMnistWorkload):
                         data_rng,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
+                        global_batch_size: int) -> Dict[str, Any]:
+    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    for batch in it:
+      if isinstance(batch, dict):
+        inputs = batch['inputs']
+        targets = batch['targets']
+      else:
+        inputs, targets = batch
+      yield {
+          'inputs': inputs.to(DEVICE, non_blocking=True),
+          'targets': targets.to(DEVICE, non_blocking=True),
+      }
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
@@ -110,9 +134,12 @@ class MnistWorkload(BaseMnistWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
-    if torch.cuda.device_count() > 1:
-      model = torch.nn.DataParallel(model)
     model.to(DEVICE)
+    if N_GPUS > 1:
+      if PYTORCH_DDP:
+        model = DDP(model, device_ids=[RANK], output_device=RANK)
+      else:
+        model = torch.nn.DataParallel(model)
     return model, None
 
   def model_fn(
@@ -173,7 +200,6 @@ class MnistWorkload(BaseMnistWorkload):
         update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = (predicted == batch['targets']).sum().item()
-    loss = self.loss_fn(batch['targets'], logits).sum().item()
-    num_data = len(logits)
-    return {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+    accuracy = (predicted == batch['targets']).sum()
+    loss = self.loss_fn(batch['targets'], logits).sum()
+    return {'accuracy': accuracy, 'loss': loss}

@@ -9,6 +9,8 @@ import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import data_utils
+
 IMAGE_SIZE = 224
 RESIZE_SIZE = 256
 MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
@@ -156,16 +158,18 @@ def preprocess_for_train(image_bytes,
   Returns:
     A preprocessed image `Tensor`.
   """
-  crop_rng, flip_rng = tf.random.experimental.stateless_split(rng, 2)
+  # Note (runame): Cannot be done in graph mode, i.e. during ds.map().
+  # Alternative?
+  # crop_rng, flip_rng = tf.random.experimental.stateless_split(rng, 2)
 
   image = _decode_and_random_crop(image_bytes,
-                                  crop_rng,
+                                  rng,
                                   image_size,
                                   aspect_ratio_range,
                                   area_range,
                                   resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
-  image = tf.image.stateless_random_flip_left_right(image, seed=flip_rng)
+  image = tf.image.stateless_random_flip_left_right(image, seed=rng)
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
@@ -209,22 +213,19 @@ def create_split(split,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
                  area_range=(0.08, 1.0)):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
+  del num_batches
   if split == 'eval_train':
-    split = 'train'
+    split = 'train[:50000]'
 
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 
-  def decode_example(example):
+  def decode_example(example_index, example):
     dtype = tf.float32
     if train:
-      # We call ds.enumerate() to get a globally unique per-example, per-step
-      # index that we can fold into the RNG seed.
-      (example_index, example) = example
       per_step_preprocess_rng = tf.random.experimental.stateless_fold_in(
           tf.cast(preprocess_rng, tf.int64), example_index)
       image = preprocess_for_train(example['image'],
                                    per_step_preprocess_rng,
-                                   example_index,
                                    mean_rgb,
                                    stddev_rgb,
                                    aspect_ratio_range,
@@ -246,7 +247,7 @@ def create_split(split,
           'image': tfds.decode.SkipDecoding(),
       })
   options = tf.data.Options()
-  options.experimental_threading.private_threadpool_size = 48
+  options.threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
   if cache:
@@ -256,11 +257,11 @@ def create_split(split,
     ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
+  # We call ds.enumerate() to get a globally unique per-example, per-step
+  # index that we can fold into the RNG seed.
+  ds = ds.enumerate()
   ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  ds = ds.batch(global_batch_size, drop_remainder=True)
-
-  if num_batches is not None:
-    ds = ds.take(num_batches)
+  ds = ds.batch(global_batch_size, drop_remainder=train)
 
   if repeat_final_dataset:
     ds = ds.repeat()
@@ -268,25 +269,6 @@ def create_split(split,
   ds = ds.prefetch(10)
 
   return ds
-
-
-def shard_numpy_ds(xs):
-  """Prepare tf data for JAX
-
-  Convert an input batch from tf Tensors to numpy arrays and reshape it to be
-  sharded across devices.
-  """
-  local_device_count = jax.local_device_count()
-
-  def _prepare(x):
-    # Use _numpy() for zero-copy conversion between TF and NumPy.
-    x = x._numpy()  # pylint: disable=protected-access
-
-    # reshape (host_batch_size, height, width, 3) to
-    # (local_devices, device_batch_size, height, width, 3)
-    return x.reshape((local_device_count, -1) + x.shape[1:])
-
-  return jax.tree_map(_prepare, xs)
 
 
 def create_input_iter(split,
@@ -309,7 +291,6 @@ def create_input_iter(split,
       rng,
       global_batch_size,
       train=train,
-      dtype=tf.float32,
       image_size=image_size,
       resize_size=resize_size,
       mean_rgb=mean_rgb,
@@ -319,9 +300,9 @@ def create_input_iter(split,
       num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
-  it = map(shard_numpy_ds, ds)
+  it = map(data_utils.shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)
 
-  return it
+  return iter(it)

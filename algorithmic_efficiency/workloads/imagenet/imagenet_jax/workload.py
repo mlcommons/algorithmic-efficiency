@@ -32,9 +32,17 @@ class ImagenetWorkload(BaseImagenetWorkload):
                         data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    return iter(
-        self._build_dataset(data_rng, split, data_dir, global_batch_size))
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset,
+                               num_batches)
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -144,6 +152,8 @@ class ImagenetWorkload(BaseImagenetWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    del mode
+    del rng
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
@@ -171,13 +181,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
     return xentropy
 
   def _compute_metrics(self, logits, labels):
-    loss = jnp.mean(self.loss_fn(labels, logits))
-    accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
+    loss = jnp.sum(self.loss_fn(labels, logits))
+    # not accuracy, but nr. of correct predictions
+    accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
     metrics = {
         'loss': loss,
         'accuracy': accuracy,
     }
-    metrics = lax.pmean(metrics, axis_name='batch')
+    metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _eval_model_on_split(self,
@@ -213,5 +224,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    eval_metrics = jax.tree_map(lambda x: x / num_examples, eval_metrics)
+    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
+                                eval_metrics)
     return eval_metrics

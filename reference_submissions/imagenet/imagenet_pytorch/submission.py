@@ -109,8 +109,10 @@ def data_selection(workload: spec.Workload,
 
   Each element of the queue is a batch of training examples and labels.
   """
+  del workload
   del optimizer_state
   del current_param_container
+  del hyperparameters
   del global_step
   del rng
   return next(input_queue)
