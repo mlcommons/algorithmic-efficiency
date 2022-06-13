@@ -57,6 +57,8 @@ class ImagenetWorkload(BaseImagenetWorkload):
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
+    if split == 'eval_train':
+      split = f'train[:{self.num_eval_train_examples}]'
     ds = input_pipeline.create_input_iter(
         split,
         ds_builder,

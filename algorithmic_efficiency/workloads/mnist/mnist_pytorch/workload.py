@@ -94,8 +94,7 @@ class MnistWorkload(BaseMnistWorkload):
         num_workers=0,
         pin_memory=True,
         drop_last=is_train)
-    if is_train:
-      dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
 
     return dataloader
 
@@ -118,14 +117,9 @@ class MnistWorkload(BaseMnistWorkload):
                         global_batch_size: int) -> Dict[str, Any]:
     it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
-      if isinstance(batch, dict):
-        inputs = batch['inputs']
-        targets = batch['targets']
-      else:
-        inputs, targets = batch
       yield {
-          'inputs': inputs.to(DEVICE, non_blocking=True),
-          'targets': targets.to(DEVICE, non_blocking=True),
+          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
+          'targets': batch['targets'].to(DEVICE, non_blocking=True),
       }
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:

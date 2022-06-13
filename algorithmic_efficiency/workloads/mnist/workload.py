@@ -1,5 +1,4 @@
 """MNIST workload parent class."""
-import itertools
 import math
 import os
 from typing import Dict, Tuple
@@ -99,10 +98,8 @@ class BaseMnistWorkload(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
+      self._eval_iters[split] = self.build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
-      # Note that this stores the entire eval dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
 
     total_metrics = {
         'accuracy': 0.,
