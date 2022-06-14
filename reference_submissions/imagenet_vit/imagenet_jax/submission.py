@@ -18,10 +18,16 @@ def get_batch_size(workload_name):
   return 128
 
 
+def cosine_decay(lr, step, total_steps):
+  ratio = jnp.maximum(0., step / total_steps)
+  mult = 0.5 * (1. + jnp.cos(jnp.pi * ratio))
+  return mult * lr
+
+
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
-  base_learning_rate = hparams.learning_rate * get_batch_size('imagenet') / 256.
+  base_learning_rate = hparams.learning_rate * get_batch_size('imagenet_vit') / 256.
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=base_learning_rate,
@@ -37,7 +43,7 @@ def create_learning_rate_fn(hparams: spec.Hyperparameters,
 
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
-  steps_per_epoch = num_train_examples // get_batch_size('imagenet')
+  steps_per_epoch = num_train_examples // get_batch_size('imagenet_vit')
   learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
   opt_init_fn, opt_update_fn = optax.sgd(
       nesterov=True,
@@ -88,7 +94,8 @@ def pmapped_train_step(workload,
         update_batch_norm=True)
     loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
     weight_penalty_params = jax.tree_leaves(variables['params'])
-    weight_l2 = sum(jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1)
+    weight_l2 = sum(
+        [jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1])
     weight_penalty = hyperparameters.l2 * 0.5 * weight_l2
     loss = loss + weight_penalty
     return loss, (new_model_state, logits)
@@ -137,7 +144,6 @@ def data_selection(workload: spec.Workload,
                    global_step: int,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
-
   Each element of the queue is a batch of training examples and labels.
   """
   del workload

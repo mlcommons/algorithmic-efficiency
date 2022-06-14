@@ -1,12 +1,10 @@
 """Tests for submission_runner.py.
-
 This is an end-to-end test for MNIST in PyTorch and Jax that requires the
 dataset to be available. For testing the workload and reference submission code
 for all workloads, see reference_submission_tests.py.
 """
 import copy
 import os
-import sys
 
 from absl import flags
 from absl import logging
@@ -16,9 +14,6 @@ from absl.testing import parameterized
 import submission_runner
 
 FLAGS = flags.FLAGS
-# Needed to avoid UnparsedFlagAccessError
-# (see https://github.com/google/model_search/pull/8).
-FLAGS(sys.argv)
 
 
 class SubmissionRunnerTest(parameterized.TestCase):
