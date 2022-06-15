@@ -1,6 +1,9 @@
 import jax
+import numpy as np
 import torch
 import torch.distributed as dist
+from torch.utils.data import DataLoader
+from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
 
@@ -33,7 +36,7 @@ def cycle(iterable, keys=('inputs', 'targets'), custom_sampler=False):
       assert len(keys) == len(batch)
       yield dict(zip(keys, batch))
     except StopIteration:
-      if custom_sampler:
+      if custom_sampler and isinstance(iterable, DataLoader):
         epoch += 1
         iterable.sampler.set_epoch(epoch)
       iterator = iter(iterable)
@@ -144,3 +147,69 @@ class DistributedEvalSampler(Sampler):
         epoch (int): _epoch number.
     """
     self.epoch = epoch
+
+
+# github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
+# ConvNets/image_classification/dataloaders.py
+def fast_collate(batch, memory_format=torch.contiguous_format):
+  imgs = [img[0] for img in batch]
+  targets = torch.tensor([target[1] for target in batch], dtype=torch.int64)
+  w = imgs[0].size[0]
+  h = imgs[0].size[1]
+  tensor = torch.zeros(
+      (len(imgs), 3, h, w),
+      dtype=torch.uint8).contiguous(memory_format=memory_format)
+  for i, img in enumerate(imgs):
+    nump_array = np.asarray(img, dtype=np.uint8)
+    if nump_array.ndim < 3:
+      nump_array = np.expand_dims(nump_array, axis=-1)
+    nump_array = np.rollaxis(nump_array, 2)
+    tensor[i] += torch.from_numpy(nump_array.copy())
+  return tensor, targets
+
+
+# Inspired by
+# github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
+# ConvNets/image_classification/dataloaders.py
+class PrefetchedWrapper:
+
+  def __init__(self, dataloader, device, mean, std, start_epoch=0):
+    self.dataloader = dataloader
+    self.epoch = start_epoch
+    self.device = device
+    self.data_mean = torch.tensor([i / 255 for i in mean],
+                                  device=device).view(1, 3, 1, 1)
+    self.data_std = torch.tensor([i / 255 for i in std],
+                                 device=device).view(1, 3, 1, 1)
+
+  def __len__(self):
+    return len(self.dataloader)
+
+  def __iter__(self):
+    if isinstance(self.dataloader.sampler,
+                  (DistributedSampler, DistributedEvalSampler)):
+      self.dataloader.sampler.set_epoch(self.epoch)
+    self.epoch += 1
+    return self.prefetched_loader()
+
+  def prefetched_loader(self):
+    stream = torch.cuda.Stream()
+    first = True
+
+    for next_inputs, next_targets in self.dataloader:
+      with torch.cuda.stream(stream):
+        next_inputs = next_inputs.to(
+            self.device, dtype=torch.float,
+            non_blocking=True).sub(self.data_mean).div(self.data_std)
+        next_targets = next_targets.to(self.device, non_blocking=True)
+
+      if not first:
+        yield inputs, targets
+      else:
+        first = False
+
+      torch.cuda.current_stream().wait_stream(stream)
+      inputs = next_inputs
+      targets = next_targets
+
+    yield inputs, targets

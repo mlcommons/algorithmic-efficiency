@@ -54,12 +54,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].float().to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-      }
+    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -69,16 +64,9 @@ class ImagenetWorkload(BaseImagenetWorkload):
     del data_rng
     is_train = split == 'train'
 
-    normalize = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[i / 255 for i in self.train_mean],
-            std=[i / 255 for i in self.train_stddev])
-    ])
     eval_transform_config = transforms.Compose([
         transforms.Resize(self.resize_size),
         transforms.CenterCrop(self.center_crop_size),
-        normalize
     ])
     transform_config = {
         'train':
@@ -88,7 +76,6 @@ class ImagenetWorkload(BaseImagenetWorkload):
                     scale=self.scale_ratio_range,
                     ratio=self.aspect_ratio_range),
                 transforms.RandomHorizontalFlip(),
-                normalize
             ]),
         'eval_train':
             eval_transform_config,
@@ -121,10 +108,14 @@ class ImagenetWorkload(BaseImagenetWorkload):
         batch_size=batch_size,
         shuffle=not PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=0,
+        num_workers=4,
         pin_memory=True,
+        collate_fn=data_utils.fast_collate,
         drop_last=is_train)
-
+    dataloader = data_utils.PrefetchedWrapper(dataloader,
+                                              DEVICE,
+                                              self.train_mean,
+                                              self.train_stddev)
     dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
 
     return dataloader
