@@ -161,7 +161,7 @@ def train_once(
       def log(self:log_writer, name:str, value, step:int) -> None:
            log_writer.add_scalar(self, name, value, step)
   elif FLAGS.logging_backend == 'none':
-      from contextlib import nullcontext
+      from contextlib import nullcontext as log_writer
       def log(*args, **kwargs):
           return
   # Workload setup.
