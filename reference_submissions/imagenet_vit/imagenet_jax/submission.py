@@ -27,7 +27,8 @@ def cosine_decay(lr, step, total_steps):
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
-  base_learning_rate = hparams.learning_rate * get_batch_size('imagenet_vit') / 256.
+  base_learning_rate = hparams.learning_rate * \
+                       get_batch_size('imagenet_vit') / 256.
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=base_learning_rate,

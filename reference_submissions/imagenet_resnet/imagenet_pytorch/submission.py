@@ -24,7 +24,8 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  base_lr = hyperparameters.learning_rate * get_batch_size('imagenet_resnet') / 256.
+  base_lr = hyperparameters.learning_rate * \
+            get_batch_size('imagenet_resnet') / 256.
   optimizer_state = {
       'optimizer':
           torch.optim.SGD(
@@ -89,7 +90,8 @@ def update_params(
   loss.backward()
   optimizer_state['optimizer'].step()
 
-  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet_resnet')
+  steps_per_epoch = workload.num_train_examples // \
+                    get_batch_size('imagenet_resnet')
   if (global_step + 1) % steps_per_epoch == 0:
     optimizer_state['scheduler'].step()
 

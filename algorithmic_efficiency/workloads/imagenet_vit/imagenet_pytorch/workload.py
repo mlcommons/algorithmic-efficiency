@@ -1,17 +1,11 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
-import math
 import os
 from typing import Dict, Tuple
 
 import torch
-from torch import nn
-import torch.distributed as dist
-import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torchvision import transforms
-from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
@@ -47,13 +41,13 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     return model, None
 
   def model_fn(
-          self,
-          params: spec.ParameterContainer,
-          augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-          model_state: spec.ModelAuxiliaryState,
-          mode: spec.ForwardPassMode,
-          rng: spec.RandomState,
-          update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
 

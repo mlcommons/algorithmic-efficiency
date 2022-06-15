@@ -10,7 +10,8 @@ import torch.nn.functional as F
 def posemb_sincos_2d(patches, temperature=10_000.):
   _, width, h, w = patches.shape
   device = patches.device
-  y, x = torch.meshgrid(torch.arange(h, device=device), torch.arange(w, device=device), indexing='ij')
+  y, x = torch.meshgrid(torch.arange(h, device=device),
+                        torch.arange(w, device=device), indexing='ij')
 
   if width % 4 != 0:
     raise ValueError('Width must be mult of 4 for sincos posemb.')
@@ -178,7 +179,8 @@ class Encoder(nn.Module):
     self.num_heads = num_heads
 
     self.net = nn.ModuleList([
-      Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout) for _ in range(depth)
+      Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout)
+        for _ in range(depth)
     ])
     self.encoder_norm = nn.LayerNorm(self.width)
     init_weights(self.encoder_norm)
@@ -228,7 +230,8 @@ class ViT(nn.Module):
     self.head_zeroinit = head_zeroinit
     self.dtype = dtype
 
-    num_patches = (self.image_height // self.patch_size[0]) * (self.image_width // self.patch_size[1])
+    num_patches = (self.image_height // self.patch_size[0]) * \
+                  (self.image_width // self.patch_size[1])
     if self.posemb == 'learn':
       self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, width))
       self.pos_embedding.data.normal_(std=1 / math.sqrt(self.width))
