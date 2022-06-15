@@ -17,8 +17,8 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
 DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
@@ -78,7 +78,7 @@ class MnistWorkload(BaseMnistWorkload):
     is_train = split == 'train'
 
     sampler = None
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
@@ -89,12 +89,12 @@ class MnistWorkload(BaseMnistWorkload):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=not PYTORCH_DDP and is_train,
+        shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=0,
         pin_memory=True,
         drop_last=is_train)
-    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
 
     return dataloader
 
@@ -130,7 +130,7 @@ class MnistWorkload(BaseMnistWorkload):
     }
     model.to(DEVICE)
     if N_GPUS > 1:
-      if PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)

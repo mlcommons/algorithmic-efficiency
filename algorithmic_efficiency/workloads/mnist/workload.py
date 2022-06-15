@@ -12,7 +12,7 @@ from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
 FLAGS = flags.FLAGS
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 class BaseMnistWorkload(spec.Workload):
@@ -118,7 +118,7 @@ class BaseMnistWorkload(spec.Workload):
       }
     if FLAGS.framework == 'jax':
       total_metrics = jax_utils.unreplicate(total_metrics)
-    elif PYTORCH_DDP:
+    elif USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     if FLAGS.framework == 'pytorch':

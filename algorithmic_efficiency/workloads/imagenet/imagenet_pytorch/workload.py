@@ -22,8 +22,8 @@ from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
 from algorithmic_efficiency.workloads.imagenet.workload import \
     BaseImagenetWorkload
 
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
 DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
@@ -95,7 +95,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
                                         range(self.num_eval_train_examples))
 
     sampler = None
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
@@ -106,7 +106,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=not PYTORCH_DDP and is_train,
+        shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,
         pin_memory=True,
@@ -116,7 +116,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
                                               DEVICE,
                                               self.train_mean,
                                               self.train_stddev)
-    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
 
     return dataloader
 
@@ -128,7 +128,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
     }
     model.to(DEVICE)
     if N_GPUS > 1:
-      if PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
@@ -236,7 +236,7 @@ class ImagenetWorkload(BaseImagenetWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
