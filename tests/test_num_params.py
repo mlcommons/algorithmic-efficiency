@@ -2,8 +2,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jax_rng
 import pytest
-# import os
-# os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet50 as JaxResNet
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \

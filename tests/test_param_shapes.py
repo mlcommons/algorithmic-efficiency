@@ -1,8 +1,7 @@
 import jax
 import numpy as np
 import pytest
-import os
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload as JaxImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
