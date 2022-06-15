@@ -173,7 +173,7 @@ def flip_sequences(inputs, lengths):
     # a single example.
     max_length = inputs.shape[0]
     flipped = jnp.flip(jnp.roll(inputs, max_length - lengths, axis=0), axis=0)
-    mask = jnp.arange(max_length) < lengths
+    mask = jnp.arange(max_length).reshape(-1, 1) < lengths
     return flipped * mask
 
 
