@@ -2,8 +2,8 @@
 from typing import Dict, Tuple
 
 from flax import jax_utils
-import jax.numpy as jnp
 import jax
+import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
