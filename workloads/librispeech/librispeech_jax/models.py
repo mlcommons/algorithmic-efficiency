@@ -172,7 +172,9 @@ def flip_sequences(inputs, lengths):
     # Note: since this function is vmapped, the code below is effectively for
     # a single example.
     max_length = inputs.shape[0]
-    return jnp.flip(jnp.roll(inputs, max_length - lengths, axis=0), axis=0)
+    flipped = jnp.flip(jnp.roll(inputs, max_length - lengths, axis=0), axis=0)
+    mask = jnp.arange(max_length) < lengths
+    return flipped * mask
 
 
 class SimpleLSTM(nn.Module):
