@@ -217,7 +217,7 @@ class ViT(nn.Module):
                depth: int = 12,
                mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
                num_heads: int = 12,
-               posemb: str = 'sincos2d',  # Can also be "learn"
+               posemb: str = 'sincos2d',  # Can also be 'learn'
                rep_size: Union[int, bool] = False,
                dropout: float = 0.0,
                pool_type: str = 'gap',  # Can also be 'tok'
