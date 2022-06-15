@@ -8,35 +8,7 @@ from typing import Optional, Sequence, Union
 
 from flax import linen as nn
 import jax.numpy as jnp
-from ml_collections.config_dict import config_dict
 import numpy as np
-
-# NOTE(dsuo): could be useful to have a `base_config` for models as well.
-DEFAULT_HPARAMS = config_dict.ConfigDict(
-    dict(
-        num_classes=1000,
-        variant='B/32',
-        rep_size=True,
-        pool_type='gap',
-        posemb='sincos2d',
-        lr_hparams={
-            'base_lr': 1e-3,
-            'schedule': 'cosine_warmup',
-            'warmup_steps': 10_000
-        },
-        optimizer='adam',
-        opt_hparams={
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            'weight_decay': 1e-1,
-        },
-        l2_decay_factor=None,
-        l2_decay_rank_threshold=2,
-        batch_size=1024,
-        rng_seed=-1,
-        model_dtype='float32',
-        grad_clip=None))
 
 
 def posemb_sincos_2d(h, w, width, temperature=10_000., dtype=jnp.float32):
