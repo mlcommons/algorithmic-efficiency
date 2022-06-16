@@ -2,7 +2,7 @@ To run an experiment on TPU, you need to install the dependencies and execute th
 
 ```BASH
 sudo apt update
-sudo apt install libsndfile -y
+sudo apt install libsndfile-dev -y
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade "jax[tpu]" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
 python3 -m pip install --upgrade flax optax git+https://github.com/parlance/ctcdecode Levenshtein pandas librosa sndfile
