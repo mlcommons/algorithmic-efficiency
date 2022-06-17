@@ -18,8 +18,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
-    variables = jax.jit(model.init)({'params': key},
-                                    jnp.ones(input_shape))
+    variables = jax.jit(model.init)({'params': key}, jnp.ones(input_shape))
     model_state, params = variables.pop('params')
     return params, model_state
 

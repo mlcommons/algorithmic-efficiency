@@ -1,9 +1,11 @@
 """Test that each reference submission can run a train and eval step.
+
 This is a brief test that runs the for the workload and reference submission
 code for one train and one eval step for all workloads, without the real data
 iterator because it is not realistic to have all datasets available at testing
 time. For end-to-end tests of submission_runner.py see
 submission_runner_test.py.
+
 Assumes that each reference submission is using the external tuning ruleset and
 that it is defined in:
 "reference_submissions/{workload}/{workload}_{framework}/submission.py"

@@ -1,4 +1,5 @@
 """A refactored and simplified ViT.
+
 NOTE: Forked from
 https://github.com/google/init2winit/blob/master/init2winit/model_lib/vit.py,
 originally from https://github.com/google/big_vision with modifications noted.

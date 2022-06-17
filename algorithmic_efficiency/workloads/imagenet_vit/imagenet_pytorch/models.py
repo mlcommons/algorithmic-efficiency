@@ -23,7 +23,7 @@ def posemb_sincos_2d(patches, temperature=10_000.):
   if width % 4 != 0:
     raise ValueError('Width must be mult of 4 for sincos posemb.')
   omega = torch.arange(width // 4, device=device) / (width // 4 - 1)
-  omega = 1. / (temperature ** omega)
+  omega = 1. / (temperature**omega)
   y = y.flatten()[:, None] * omega[None, :]
   x = x.flatten()[:, None] * omega[None, :]
   pe = torch.cat((x.sin(), x.cos(), y.sin(), y.cos()), dim=1)
@@ -45,10 +45,11 @@ def init_weights(module) -> None:
 class MlpBlock(nn.Module):
   """Transformer MLP / feed-forward block."""
 
-  def __init__(self,
-               width: int,
-               mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
-               dropout: float = 0.0) -> None:
+  def __init__(
+      self,
+      width: int,
+      mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
+      dropout: float = 0.0) -> None:
     super().__init__()
 
     self.width = width
@@ -56,11 +57,10 @@ class MlpBlock(nn.Module):
     self.dropout = dropout
 
     self.net = nn.Sequential(
-      nn.Linear(self.width, self.mlp_dim),
-      nn.GELU(),
-      nn.Dropout(self.dropout),
-      nn.Linear(self.mlp_dim, self.width)
-    )
+        nn.Linear(self.width, self.mlp_dim),
+        nn.GELU(),
+        nn.Dropout(self.dropout),
+        nn.Linear(self.mlp_dim, self.width))
     self._init_weights()
 
   def _init_weights(self) -> None:
@@ -87,7 +87,7 @@ class SelfAttention(nn.Module):
     self.num_heads = num_heads
 
     assert width % num_heads == 0, (
-      'Memory dimension must be divisible by number of heads.')
+        'Memory dimension must be divisible by number of heads.')
 
     self.head_dim = int(width / num_heads)
     self.all_head_dim = self.num_heads * self.head_dim
@@ -186,7 +186,7 @@ class Encoder(nn.Module):
     self.num_heads = num_heads
 
     self.net = nn.ModuleList([
-      Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout)
+        Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout)
         for _ in range(depth)
     ])
     self.encoder_norm = nn.LayerNorm(self.width)
@@ -210,19 +210,20 @@ class ViT(nn.Module):
   image_width: int = 224
   channels: int = 3
 
-  def __init__(self,
-               num_classes: int = 1000,
-               patch_size: Tuple[int] = (16, 16),
-               width: int = 768,
-               depth: int = 12,
-               mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
-               num_heads: int = 12,
-               posemb: str = 'sincos2d',  # Can also be 'learn'
-               rep_size: Union[int, bool] = False,
-               dropout: float = 0.0,
-               pool_type: str = 'gap',  # Can also be 'tok'
-               head_zeroinit: bool = True,
-               dtype: Any = torch.float32) -> None:
+  def __init__(
+      self,
+      num_classes: int = 1000,
+      patch_size: Tuple[int] = (16, 16),
+      width: int = 768,
+      depth: int = 12,
+      mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
+      num_heads: int = 12,
+      posemb: str = 'sincos2d',  # Can also be 'learn'
+      rep_size: Union[int, bool] = False,
+      dropout: float = 0.0,
+      pool_type: str = 'gap',  # Can also be 'tok'
+      head_zeroinit: bool = True,
+      dtype: Any = torch.float32) -> None:
     super().__init__()
 
     self.num_classes = num_classes
@@ -252,18 +253,21 @@ class ViT(nn.Module):
       self.pre_logits = nn.Linear(self.width, rep_size)
       init_weights(self.pre_logits)
 
-    self.embedding = nn.Conv2d(self.channels, self.width, self.patch_size,
-                               stride=self.patch_size, padding='valid')
+    self.embedding = nn.Conv2d(
+        self.channels,
+        self.width,
+        self.patch_size,
+        stride=self.patch_size,
+        padding='valid')
     init_weights(self.embedding)
     self.dropout = nn.Dropout(p=dropout)
 
     self.encoder = Encoder(
-      depth=self.depth,
-      width=self.width,
-      mlp_dim=self.mlp_dim,
-      num_heads=self.num_heads,
-      dropout=dropout
-    )
+        depth=self.depth,
+        width=self.width,
+        mlp_dim=self.mlp_dim,
+        num_heads=self.num_heads,
+        dropout=dropout)
 
     if self.num_classes:
       self.head = nn.Linear(self.width, self.num_classes)
@@ -339,40 +343,40 @@ def decode_variant(variant):
   v, patch = variant.split('/')
 
   return {
-    # pylint:disable=line-too-long
-    # Reference: Table 2 of https://arxiv.org/abs/2106.04560.
-    'width': {
-      'Ti': 192,
-      'S': 384,
-      'M': 512,
-      'B': 768,
-      'L': 1024,
-      'H': 1280,
-      'g': 1408,
-      'G': 1664
-    }[v],
-    'depth': {
-      'Ti': 12,
-      'S': 12,
-      'M': 12,
-      'B': 12,
-      'L': 24,
-      'H': 32,
-      'g': 40,
-      'G': 48
-    }[v],
-    'mlp_dim': {
-      'Ti': 768,
-      'S': 1536,
-      'M': 2048,
-      'B': 3072,
-      'L': 4096,
-      'H': 5120,
-      'g': 6144,
-      'G': 8192
-    }[v],
-    'num_heads': {
-      'Ti': 3, 'S': 6, 'M': 8, 'B': 12, 'L': 16, 'H': 16, 'g': 16, 'G': 16
-    }[v],  # pylint:enable=line-too-long
-    'patch_size': (int(patch), int(patch))
+      # pylint:disable=line-too-long
+      # Reference: Table 2 of https://arxiv.org/abs/2106.04560.
+      'width': {
+          'Ti': 192,
+          'S': 384,
+          'M': 512,
+          'B': 768,
+          'L': 1024,
+          'H': 1280,
+          'g': 1408,
+          'G': 1664
+      }[v],
+      'depth': {
+          'Ti': 12,
+          'S': 12,
+          'M': 12,
+          'B': 12,
+          'L': 24,
+          'H': 32,
+          'g': 40,
+          'G': 48
+      }[v],
+      'mlp_dim': {
+          'Ti': 768,
+          'S': 1536,
+          'M': 2048,
+          'B': 3072,
+          'L': 4096,
+          'H': 5120,
+          'g': 6144,
+          'G': 8192
+      }[v],
+      'num_heads': {
+          'Ti': 3, 'S': 6, 'M': 8, 'B': 12, 'L': 16, 'H': 16, 'g': 16, 'G': 16
+      }[v],  # pylint:enable=line-too-long
+      'patch_size': (int(patch), int(patch))
   }

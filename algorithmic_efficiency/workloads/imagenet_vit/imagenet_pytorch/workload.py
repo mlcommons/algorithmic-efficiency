@@ -29,7 +29,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     model_kwargs = models.decode_variant('S/16')
     model = models.ViT(num_classes=1000, **model_kwargs)
     self._param_shapes = {
-      k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
     model.to(DEVICE)
     if N_GPUS > 1:
@@ -56,15 +56,15 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     if mode == spec.ForwardPassMode.EVAL:
       if update_batch_norm:
         raise ValueError(
-          'Batch norm statistics cannot be updated during evaluation.')
+            'Batch norm statistics cannot be updated during evaluation.')
       model.eval()
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
 
     contexts = {
-      spec.ForwardPassMode.EVAL: torch.no_grad,
-      spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.EVAL: torch.no_grad,
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
 
     with contexts[mode]():

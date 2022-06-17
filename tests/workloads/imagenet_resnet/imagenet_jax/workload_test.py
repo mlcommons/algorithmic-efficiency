@@ -1,4 +1,4 @@
-"""Tests for resnet/jax/workload.py."""
+"""Tests for imagenet_resnet/imagenet_jax/workload.py."""
 
 from absl.testing import absltest
 import jax
@@ -16,7 +16,7 @@ def _pytree_total_diff(pytree_a, pytree_b):
 
 
 class ModelsTest(absltest.TestCase):
-  """Tests for resnet/jax/workload.py."""
+  """Tests for imagenet_resnet/imagenet_jax/workload.py."""
 
   def test_forward_pass(self):
     batch_size = 11

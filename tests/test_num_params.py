@@ -55,9 +55,8 @@ def get_models(workload):
   elif workload == 'imagenet_vit':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
-    jax_model = JaxViT(
-        num_classes=1000).init(init_rngs, jnp.ones(input_shape,
-                                                    jnp.float32))['params']
+    jax_model = JaxViT(num_classes=1000).init(
+        init_rngs, jnp.ones(input_shape, jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchViT()
   elif workload == 'wmt':
