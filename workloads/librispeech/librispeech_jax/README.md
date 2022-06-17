@@ -1,11 +1,12 @@
-To run an experiment on TPU, you need to install the dependencies and execute the submission runnion
+To run an experiment on TPU, you need to install the dependencies and execute the submission runner
 
 ```BASH
 sudo apt update
 sudo apt install libsndfile-dev -y
 python3 -m pip install --upgrade pip
+sudo python3 -m pip uninstall -y tf-nightly tb-nightly
 python3 -m pip install --upgrade "jax[tpu]" -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
-python3 -m pip install --upgrade flax optax git+https://github.com/parlance/ctcdecode Levenshtein pandas librosa sndfile
+python3 -m pip install --upgrade flax optax git+https://github.com/parlance/ctcdecode Levenshtein pandas librosa sndfile tensorflow tensorboard
 
 git clone https://github.com/ClashLuke/algorithmic-efficiency/
 cd algorithmic-efficiency
