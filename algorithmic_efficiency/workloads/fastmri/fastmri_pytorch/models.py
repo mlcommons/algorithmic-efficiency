@@ -1,6 +1,6 @@
-"""Unet Model.
+"""U-Net Model.
 
-Adapted from:
+Adapted from fastMRI:
 https://github.com/facebookresearch/fastMRI/blob/main/fastmri/models/unet.py
 """
 
@@ -8,19 +8,18 @@ from typing import Any
 
 import torch
 from torch import nn
+from torch import Tensor
 from torch.nn import functional as F
 
 
 class Unet(nn.Module):
 
-  def __init__(
-      self,
-      in_chans: int = 1,
-      out_chans: int = 1,
-      chans: int = 32,
-      num_pool_layers: int = 4,
-      dropout: float = 0.0,
-  ):
+  def __init__(self,
+               in_chans: int = 1,
+               out_chans: int = 1,
+               chans: int = 1,
+               num_pool_layers: int = 4,
+               dropout: float = 0.0) -> None:
     super().__init__()
 
     self.in_chans = in_chans
@@ -51,7 +50,7 @@ class Unet(nn.Module):
             nn.Conv2d(ch, self.out_chans, kernel_size=1, stride=1),
         ))
 
-  def forward(self, x: torch.Tensor) -> torch.Tensor:
+  def forward(self, x: Tensor) -> Tensor:
     stack = []
     output = x
 
@@ -87,7 +86,10 @@ class ConvBlock(nn.Module):
   # A Convolutional Block that consists of two convolution layers each
   # followed by instance normalization, LeakyReLU activation and dropout.
 
-  def __init__(self, in_chans: int, out_chans: int, dropout: float):
+  def __init__(self,
+               in_chans: int,
+               out_chans: int,
+               dropout: float = 0.0) -> None:
     super().__init__()
 
     self.in_chans = in_chans
@@ -105,7 +107,7 @@ class ConvBlock(nn.Module):
         nn.Dropout2d(dropout),
     )
 
-  def forward(self, x: torch.Tensor) -> torch.Tensor:
+  def forward(self, x: Tensor) -> Tensor:
     return self.layers(x)
 
 
@@ -126,7 +128,7 @@ class TransposeConvBlock(nn.Module):
         nn.LeakyReLU(negative_slope=0.2, inplace=True),
     )
 
-  def forward(self, x: torch.Tensor) -> torch.Tensor:
+  def forward(self, x: Tensor) -> Tensor:
     return self.layers(x)
 
 
