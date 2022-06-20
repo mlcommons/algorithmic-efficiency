@@ -17,7 +17,7 @@ class Unet(nn.Module):
   def __init__(self,
                in_chans: int = 1,
                out_chans: int = 1,
-               chans: int = 1,
+               chans: int = 32,
                num_pool_layers: int = 4,
                dropout: float = 0.0) -> None:
     super().__init__()

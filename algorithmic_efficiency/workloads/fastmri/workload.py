@@ -9,7 +9,7 @@ class BaseFastMRIWorkload(spec.Workload):
     self._param_shapes = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/accuracy'] > self.target_value
+    return eval_result['validation/ssim'] > self.target_value
 
   @property
   def target_value(self):
@@ -17,11 +17,11 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
+    return spec.LossType.MEAN_ABSOLUTE_ERROR
 
   @property
   def num_train_examples(self):
-    return 1281167
+    return 34742
 
   @property
   def num_eval_train_examples(self):
@@ -29,7 +29,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 50000
+    return 7135
 
   @property
   def num_test_examples(self):

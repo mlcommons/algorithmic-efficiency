@@ -30,9 +30,9 @@ DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
 
-def ssim(
-    gt: np.ndarray, pred: np.ndarray, maxval: Optional[float] = None
-) -> np.ndarray:
+def ssim(gt: np.ndarray,
+         pred: np.ndarray,
+         maxval: Optional[float] = None) -> np.ndarray:
   """Compute Structural Similarity Index Metric (SSIM)"""
   if not gt.ndim == 3:
     raise ValueError("Unexpected number of dimensions in ground truth.")
@@ -44,8 +44,7 @@ def ssim(
   ssim = np.array([0])
   for slice_num in range(gt.shape[0]):
     ssim = ssim + structural_similarity(
-      gt[slice_num], pred[slice_num], data_range=maxval
-    )
+        gt[slice_num], pred[slice_num], data_range=maxval)
 
   return ssim / gt.shape[0]
 
