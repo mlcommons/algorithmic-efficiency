@@ -46,8 +46,8 @@ WORKLOADS = {
         'workload_class_name': 'Criteo1TbDlrmSmallWorkload'
     },
     'fastmri': {
-      'workload_path': 'fastmri/fastmri',
-      'workload_class_name': 'BaseFastMRIWorkload'
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRIWorkload'
     },
     'imagenet_resnet': {
         'workload_path': 'imagenet_resnet/imagenet',

@@ -25,7 +25,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 50000
+    return 7135
 
   @property
   def num_validation_examples(self):
@@ -37,29 +37,25 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def train_mean(self):
-    return [0.485 * 255, 0.456 * 255, 0.406 * 255]
+    return [0., 0., 0.]
 
   @property
   def train_stddev(self):
-    return [0.229 * 255, 0.224 * 255, 0.225 * 255]
+    return [1., 1., 1.]
 
   # data augmentation settings
 
   @property
-  def scale_ratio_range(self):
-    return (0.08, 1.0)
+  def center_fractions(self):
+    return (0.08,)
 
   @property
   def aspect_ratio_range(self):
     return (0.75, 4.0 / 3.0)
 
   @property
-  def center_crop_size(self):
-    return 224
-
-  @property
-  def resize_size(self):
-    return 256
+  def accelerations(self):
+    return (4,)
 
   @property
   def max_allowed_runtime_sec(self):

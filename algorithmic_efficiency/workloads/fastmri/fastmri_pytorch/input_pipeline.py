@@ -1,26 +1,264 @@
 """Data pipeline for FastMRI dataset.
 
-Modified from https://github.com/facebookresearch/fastMRI/blob/main/fastmri/data.
+Modified from https://github.com/facebookresearch/fastMRI/blob/main/fastmri/data
 """
 
-import logging
+import contextlib
 import os
+from pathlib import Path
 import pickle
 import random
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union, Any
 import xml.etree.ElementTree as etree
-from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
-from warnings import warn
-import contextlib
-from typing import Optional, Sequence, Tuple, Union
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch import fftc
-import numpy as np
-import torch
+
 import h5py
 import numpy as np
-import pandas as pd
-import requests
 import torch
+from torch import Tensor
+
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.fftc import \
+    ifft2c_new
+
+
+@contextlib.contextmanager
+def temp_seed(rng: np.random.RandomState,
+              seed: Optional[Union[int, Tuple[int, ...]]]) -> None:
+  # A context manager for temporarily adjusting the random seed
+  if seed is None:
+    try:
+      yield
+    finally:
+      pass
+  else:
+    state = rng.get_state()
+    rng.seed(seed)
+    try:
+      yield
+    finally:
+      rng.set_state(state)
+
+
+class RandomMask:
+
+  def __init__(self,
+               center_fractions: Sequence[float],
+               accelerations: Sequence[int],
+               allow_any_combination: bool = False,
+               seed: Optional[int] = None) -> None:
+    if len(center_fractions) != len(accelerations) and \
+            not allow_any_combination:
+      raise ValueError(
+          "Number of center fractions should match number of accelerations "
+          "if allow_any_combination is False.")
+
+    self.center_fractions = center_fractions
+    self.accelerations = accelerations
+    self.allow_any_combination = allow_any_combination
+    self.rng = np.random.RandomState(seed)
+
+  def __call__(self,
+               shape: Sequence[int],
+               seed: Optional[Union[int, Tuple[int, ...]]] = None) -> Tuple[torch.Tensor, int]:
+    if len(shape) < 3:
+      raise ValueError("Shape should have 3 or more dimensions")
+
+    with temp_seed(self.rng, seed):
+      center_mask, accel_mask, num_low_frequencies = self.sample_mask(shape)
+
+    # combine masks together
+    return torch.max(center_mask, accel_mask), num_low_frequencies
+
+  def sample_mask(self, shape: Sequence[int]) -> Tuple[torch.Tensor, torch.Tensor, int]:
+    num_cols = shape[-2]
+    center_fraction, acceleration = self.choose_acceleration()
+    num_low_frequencies = round(num_cols * center_fraction)
+    center_mask = self.reshape_mask(
+        self.calculate_center_mask(shape, num_low_frequencies), shape)
+    acceleration_mask = self.reshape_mask(
+        self.calculate_acceleration_mask(num_cols,
+                                         acceleration,
+                                         num_low_frequencies),
+        shape,
+    )
+
+    return center_mask, acceleration_mask, num_low_frequencies
+
+  def reshape_mask(self,
+                   mask: np.ndarray,
+                   shape: Sequence[int]) -> torch.Tensor:
+    num_cols = shape[-2]
+    mask_shape = [1 for _ in shape]
+    mask_shape[-2] = num_cols
+
+    return torch.from_numpy(mask.reshape(*mask_shape).astype(np.float32))
+
+  def calculate_acceleration_mask(self,
+                                  num_cols: int,
+                                  acceleration: int,
+                                  num_low_frequencies: int) -> np.ndarray:
+    prob = (num_cols / acceleration - num_low_frequencies) / (
+        num_cols - num_low_frequencies)
+
+    return self.rng.uniform(size=num_cols) < prob
+
+  def calculate_center_mask(self,
+                            shape: Sequence[int],
+                            num_low_freqs: int) -> np.ndarray:
+    num_cols = shape[-2]
+    mask = np.zeros(num_cols, dtype=np.float32)
+    pad = (num_cols - num_low_freqs + 1) // 2
+    mask[pad:pad + num_low_freqs] = 1
+    assert mask.sum() == num_low_freqs
+
+    return mask
+
+  def choose_acceleration(self):
+    """Choose acceleration based on class parameters."""
+    if self.allow_any_combination:
+      return self.rng.choice(self.center_fractions), self.rng.choice(
+        self.accelerations
+      )
+    else:
+      choice = self.rng.randint(len(self.center_fractions))
+      return self.center_fractions[choice], self.accelerations[choice]
+
+
+def to_tensor(data: np.ndarray) -> torch.Tensor:
+  if np.iscomplexobj(data):
+    data = np.stack((data.real, data.imag), axis=-1)
+
+  return torch.from_numpy(data)
+
+
+def tensor_to_complex_np(data: torch.Tensor) -> np.ndarray:
+  return torch.view_as_complex(data).numpy()
+
+
+def apply_mask(data: torch.Tensor,
+        mask_func: RandomMask,
+        seed: Optional[Union[int, Tuple[int, ...]]] = None,
+        padding: Optional[Sequence[int]] = None) -> Tuple[torch.Tensor, torch.Tensor, int]:
+  shape = (1,) * len(data.shape[:-3]) + tuple(data.shape[-3:])
+  mask, num_low_frequencies = mask_func(shape, seed)
+  if padding is not None:
+    mask[:, :, : padding[0]] = 0
+    # padding value inclusive on right of zeros
+    mask[:, :, padding[1]:] = 0
+
+  # the + 0.0 removes the sign of the zeros
+  masked_data = data * mask + 0.0
+
+  return masked_data, mask, num_low_frequencies
+
+
+def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
+  if not (0 < shape[0] <= data.shape[-2] and 0 < shape[1] <= data.shape[-1]):
+    raise ValueError("Invalid shapes.")
+
+  w_from = (data.shape[-2] - shape[0]) // 2
+  h_from = (data.shape[-1] - shape[1]) // 2
+  w_to = w_from + shape[0]
+  h_to = h_from + shape[1]
+
+  return data[..., w_from:w_to, h_from:h_to]
+
+
+def complex_center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
+  if not (0 < shape[0] <= data.shape[-3] and 0 < shape[1] <= data.shape[-2]):
+    raise ValueError("Invalid shapes.")
+
+  w_from = (data.shape[-3] - shape[0]) // 2
+  h_from = (data.shape[-2] - shape[1]) // 2
+  w_to = w_from + shape[0]
+  h_to = h_from + shape[1]
+
+  return data[..., w_from:w_to, h_from:h_to, :]
+
+
+def normalize(
+        data: torch.Tensor,
+        mean: Union[float, torch.Tensor],
+        stddev: Union[float, torch.Tensor],
+        eps: Union[float, torch.Tensor] = 0.0) -> torch.Tensor:
+  return (data - mean) / (stddev + eps)
+
+
+def normalize_instance(
+        data: torch.Tensor, eps: Union[float, torch.Tensor] = 0.0) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+  mean = data.mean()
+  std = data.std()
+
+  return normalize(data, mean, std, eps), mean, std
+
+
+def complex_abs(data: torch.Tensor) -> torch.Tensor:
+  if not data.shape[-1] == 2:
+    raise ValueError("Tensor does not have separate complex dim.")
+
+  return (data ** 2).sum(dim=-1).sqrt()
+
+
+class UnetDataTransform:
+
+  def __init__(self,
+          mask_func: Optional[RandomMask] = None,
+          use_seed: bool = True) -> None:
+    self.mask_func = mask_func
+    self.use_seed = use_seed
+
+  def __call__(self,
+          kspace: np.ndarray,
+          mask: np.ndarray,
+          target: np.ndarray,
+          attrs: Dict,
+          fname: str,
+          slice_num: int,
+  ) -> Tuple[Any, Union[Tensor, Any], Tensor, Tensor, str, int, Union[float, Any]]:
+    kspace_torch = to_tensor(kspace)
+
+    # check for max value
+    max_value = attrs["max"] if "max" in attrs.keys() else 0.0
+
+    # apply mask
+    if self.mask_func:
+      seed = None if not self.use_seed else tuple(map(ord, fname))
+      # we only need first element, which is k-space after masking
+      masked_kspace = apply_mask(kspace_torch, self.mask_func, seed=seed)[0]
+    else:
+      masked_kspace = kspace_torch
+
+    # inverse Fourier transform to get zero filled solution
+    image = ifft2c_new(masked_kspace)
+
+    # crop input to correct size
+    if target is not None:
+      crop_size = (target.shape[-2], target.shape[-1])
+    else:
+      crop_size = (attrs["recon_size"][0], attrs["recon_size"][1])
+
+    # check for FLAIR 203
+    if image.shape[-2] < crop_size[1]:
+      crop_size = (image.shape[-2], image.shape[-2])
+
+    image = complex_center_crop(image, crop_size)
+
+    # absolute value
+    image = complex_abs(image)
+
+    # normalize input
+    image, mean, std = normalize_instance(image, eps=1e-11)
+    image = image.clamp(-6, 6)
+
+    # normalize target
+    if target is not None:
+      target_torch = to_tensor(target)
+      target_torch = center_crop(target_torch, crop_size)
+      target_torch = normalize(target_torch, mean, std, eps=1e-11)
+      target_torch = target_torch.clamp(-6, 6)
+    else:
+      target_torch = torch.Tensor([0])
+
+    return (image, target_torch, mean, std, fname, slice_num, max_value)
 
 
 def et_query(
@@ -28,18 +266,6 @@ def et_query(
     qlist: Sequence[str],
     namespace: str = "http://www.ismrm.org/ISMRMRD",
 ) -> str:
-  """
-  ElementTree query function.
-  This can be used to query an xml document via ElementTree. It uses qlist
-  for nested queries.
-  Args:
-      root: Root of the xml to search through.
-      qlist: A list of strings for nested searches, e.g. ["Encoding",
-          "matrixSize"]
-      namespace: Optional; xml namespace to prepend query.
-  Returns:
-      The retrieved data as a string.
-  """
   s = "."
   prefix = "ismrmrd_namespace"
 
@@ -53,319 +279,6 @@ def et_query(
     raise RuntimeError("Element not found")
 
   return str(value.text)
-
-def to_tensor(data: np.ndarray) -> torch.Tensor:
-  """
-  Convert numpy array to PyTorch tensor.
-  For complex arrays, the real and imaginary parts are stacked along the last
-  dimension.
-  Args:
-      data: Input numpy array.
-  Returns:
-      PyTorch version of data.
-  """
-  if np.iscomplexobj(data):
-    data = np.stack((data.real, data.imag), axis=-1)
-
-  return torch.from_numpy(data)
-
-def apply_mask(
-    data: torch.Tensor,
-    mask_func: MaskFunc,
-    offset: Optional[int] = None,
-    seed: Optional[Union[int, Tuple[int, ...]]] = None,
-    padding: Optional[Sequence[int]] = None,
-) -> Tuple[torch.Tensor, torch.Tensor, int]:
-  """
-  Subsample given k-space by multiplying with a mask.
-  Args:
-      data: The input k-space data. This should have at least 3 dimensions,
-          where dimensions -3 and -2 are the spatial dimensions, and the
-          final dimension has size 2 (for complex values).
-      mask_func: A function that takes a shape (tuple of ints) and a random
-          number seed and returns a mask.
-      seed: Seed for the random number generator.
-      padding: Padding value to apply for mask.
-  Returns:
-      tuple containing:
-          masked data: Subsampled k-space data.
-          mask: The generated mask.
-          num_low_frequencies: The number of low-resolution frequency samples
-              in the mask.
-  """
-  shape = (1,) * len(data.shape[:-3]) + tuple(data.shape[-3:])
-  mask, num_low_frequencies = mask_func(shape, offset, seed)
-  if padding is not None:
-    mask[:, :, : padding[0]] = 0
-    mask[:, :, padding[1]:] = 0  # padding value inclusive on right of zeros
-
-  masked_data = data * mask + 0.0  # the + 0.0 removes the sign of the zeros
-
-  return masked_data, mask, num_low_frequencies
-
-  def to_tensor(data: np.ndarray) -> torch.Tensor:
-    """
-    Convert numpy array to PyTorch tensor.
-    For complex arrays, the real and imaginary parts are stacked along the last
-    dimension.
-    Args:
-        data: Input numpy array.
-    Returns:
-        PyTorch version of data.
-    """
-    if np.iscomplexobj(data):
-      data = np.stack((data.real, data.imag), axis=-1)
-
-    return torch.from_numpy(data)
-
-
-def tensor_to_complex_np(data: torch.Tensor) -> np.ndarray:
-  """
-  Converts a complex torch tensor to numpy array.
-  Args:
-      data: Input data to be converted to numpy.
-  Returns:
-      Complex numpy version of data.
-  """
-  return torch.view_as_complex(data).numpy()
-
-
-def apply_mask(
-    data: torch.Tensor,
-    mask_func: MaskFunc,
-    offset: Optional[int] = None,
-    seed: Optional[Union[int, Tuple[int, ...]]] = None,
-    padding: Optional[Sequence[int]] = None,
-) -> Tuple[torch.Tensor, torch.Tensor, int]:
-  """
-  Subsample given k-space by multiplying with a mask.
-  Args:
-      data: The input k-space data. This should have at least 3 dimensions,
-          where dimensions -3 and -2 are the spatial dimensions, and the
-          final dimension has size 2 (for complex values).
-      mask_func: A function that takes a shape (tuple of ints) and a random
-          number seed and returns a mask.
-      seed: Seed for the random number generator.
-      padding: Padding value to apply for mask.
-  Returns:
-      tuple containing:
-          masked data: Subsampled k-space data.
-          mask: The generated mask.
-          num_low_frequencies: The number of low-resolution frequency samples
-              in the mask.
-  """
-  shape = (1,) * len(data.shape[:-3]) + tuple(data.shape[-3:])
-  mask, num_low_frequencies = mask_func(shape, offset, seed)
-  if padding is not None:
-    mask[:, :, : padding[0]] = 0
-    mask[:, :, padding[1]:] = 0  # padding value inclusive on right of zeros
-
-  masked_data = data * mask + 0.0  # the + 0.0 removes the sign of the zeros
-
-  return masked_data, mask, num_low_frequencies
-
-
-def mask_center(x: torch.Tensor, mask_from: int, mask_to: int) -> torch.Tensor:
-  """
-  Initializes a mask with the center filled in.
-  Args:
-      mask_from: Part of center to start filling.
-      mask_to: Part of center to end filling.
-  Returns:
-      A mask with the center filled.
-  """
-  mask = torch.zeros_like(x)
-  mask[:, :, :, mask_from:mask_to] = x[:, :, :, mask_from:mask_to]
-
-  return mask
-
-
-def batched_mask_center(
-    x: torch.Tensor, mask_from: torch.Tensor, mask_to: torch.Tensor
-) -> torch.Tensor:
-  """
-  Initializes a mask with the center filled in.
-  Can operate with different masks for each batch element.
-  Args:
-      mask_from: Part of center to start filling.
-      mask_to: Part of center to end filling.
-  Returns:
-      A mask with the center filled.
-  """
-  if not mask_from.shape == mask_to.shape:
-    raise ValueError("mask_from and mask_to must match shapes.")
-  if not mask_from.ndim == 1:
-    raise ValueError("mask_from and mask_to must have 1 dimension.")
-  if not mask_from.shape[0] == 1:
-    if (not x.shape[0] == mask_from.shape[0]) or (
-        not x.shape[0] == mask_to.shape[0]
-    ):
-      raise ValueError("mask_from and mask_to must have batch_size length.")
-
-  if mask_from.shape[0] == 1:
-    mask = mask_center(x, int(mask_from), int(mask_to))
-  else:
-    mask = torch.zeros_like(x)
-    for i, (start, end) in enumerate(zip(mask_from, mask_to)):
-      mask[i, :, :, start:end] = x[i, :, :, start:end]
-
-  return mask
-
-
-def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
-  """
-  Apply a center crop to the input real image or batch of real images.
-  Args:
-      data: The input tensor to be center cropped. It should
-          have at least 2 dimensions and the cropping is applied along the
-          last two dimensions.
-      shape: The output shape. The shape should be smaller
-          than the corresponding dimensions of data.
-  Returns:
-      The center cropped image.
-  """
-  if not (0 < shape[0] <= data.shape[-2] and 0 < shape[1] <= data.shape[-1]):
-    raise ValueError("Invalid shapes.")
-
-  w_from = (data.shape[-2] - shape[0]) // 2
-  h_from = (data.shape[-1] - shape[1]) // 2
-  w_to = w_from + shape[0]
-  h_to = h_from + shape[1]
-
-  return data[..., w_from:w_to, h_from:h_to]
-
-
-def complex_center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
-  """
-  Apply a center crop to the input image or batch of complex images.
-  Args:
-      data: The complex input tensor to be center cropped. It should have at
-          least 3 dimensions and the cropping is applied along dimensions -3
-          and -2 and the last dimensions should have a size of 2.
-      shape: The output shape. The shape should be smaller than the
-          corresponding dimensions of data.
-  Returns:
-      The center cropped image
-  """
-  if not (0 < shape[0] <= data.shape[-3] and 0 < shape[1] <= data.shape[-2]):
-    raise ValueError("Invalid shapes.")
-
-  w_from = (data.shape[-3] - shape[0]) // 2
-  h_from = (data.shape[-2] - shape[1]) // 2
-  w_to = w_from + shape[0]
-  h_to = h_from + shape[1]
-
-  return data[..., w_from:w_to, h_from:h_to, :]
-
-
-def center_crop_to_smallest(
-    x: torch.Tensor, y: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
-  """
-  Apply a center crop on the larger image to the size of the smaller.
-  The minimum is taken over dim=-1 and dim=-2. If x is smaller than y at
-  dim=-1 and y is smaller than x at dim=-2, then the returned dimension will
-  be a mixture of the two.
-  Args:
-      x: The first image.
-      y: The second image.
-  Returns:
-      tuple of tensors x and y, each cropped to the minimim size.
-  """
-  smallest_width = min(x.shape[-1], y.shape[-1])
-  smallest_height = min(x.shape[-2], y.shape[-2])
-  x = center_crop(x, (smallest_height, smallest_width))
-  y = center_crop(y, (smallest_height, smallest_width))
-
-  return x, y
-
-
-def normalize(
-    data: torch.Tensor,
-    mean: Union[float, torch.Tensor],
-    stddev: Union[float, torch.Tensor],
-    eps: Union[float, torch.Tensor] = 0.0,
-) -> torch.Tensor:
-  """
-  Normalize the given tensor.
-  Applies the formula (data - mean) / (stddev + eps).
-  Args:
-      data: Input data to be normalized.
-      mean: Mean value.
-      stddev: Standard deviation.
-      eps: Added to stddev to prevent dividing by zero.
-  Returns:
-      Normalized tensor.
-  """
-  return (data - mean) / (stddev + eps)
-
-
-def normalize_instance(
-    data: torch.Tensor, eps: Union[float, torch.Tensor] = 0.0
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-  """
-  Normalize the given tensor  with instance norm/
-  Applies the formula (data - mean) / (stddev + eps), where mean and stddev
-  are computed from the data itself.
-  Args:
-      data: Input data to be normalized
-      eps: Added to stddev to prevent dividing by zero.
-  Returns:
-      torch.Tensor: Normalized tensor
-  """
-  mean = data.mean()
-  std = data.std()
-
-  return normalize(data, mean, std, eps), mean, std
-
-
-def _process_example(kspace, mask_func, mask, target, attrs, fname, slice_num):
-  kspace_torch = to_tensor(kspace)
-
-  # check for max value
-  max_value = attrs["max"] if "max" in attrs.keys() else 0.0
-
-  # apply mask
-  if mask_func:
-    seed = tuple(map(ord, fname))
-    # we only need first element, which is k-space after masking
-    masked_kspace = apply_mask(kspace_torch, mask_func, seed=seed)[0]
-  else:
-    masked_kspace = kspace_torch
-
-  # inverse Fourier transform to get zero filled solution
-  image = ifft2c(masked_kspace)
-
-  # crop input to correct size
-  if target is not None:
-    crop_size = (target.shape[-2], target.shape[-1])
-  else:
-    crop_size = (attrs["recon_size"][0], attrs["recon_size"][1])
-
-  # check for FLAIR 203
-  if image.shape[-2] < crop_size[1]:
-    crop_size = (image.shape[-2], image.shape[-2])
-
-  image = complex_center_crop(image, crop_size)
-
-  # absolute value
-  image = fastmri.complex_abs(image)
-
-
-  # normalize input
-  image, mean, std = normalize_instance(image, eps=1e-11)
-  image = image.clamp(-6, 6)
-
-  # normalize target
-  if target is not None:
-    target_torch = to_tensor(target)
-    target_torch = center_crop(target_torch, crop_size)
-    target_torch = normalize(target_torch, mean, std, eps=1e-11)
-    target_torch = target_torch.clamp(-6, 6)
-  else:
-    target_torch = torch.Tensor([0])
-
-  return {'inputs': image, 'targets': target_torch, 'volume_max': max_value}
 
 
 class SliceDataset(torch.utils.data.Dataset):
@@ -383,35 +296,6 @@ class SliceDataset(torch.utils.data.Dataset):
       dataset_cache_file: Union[str, Path, os.PathLike] = "dataset_cache.pkl",
       num_cols: Optional[Tuple[int]] = None,
   ):
-    """
-    Args:
-        root: Path to the dataset.
-        challenge: "singlecoil" or "multicoil" depending on which challenge
-            to use.
-        transform: Optional; A callable object that pre-processes the raw
-            data into appropriate form. The transform function should take
-            'kspace', 'target', 'attributes', 'filename', and 'slice' as
-            inputs. 'target' may be null for test data.
-        use_dataset_cache: Whether to cache dataset metadata. This is very
-            useful for large datasets like the brain data.
-        sample_rate: Optional; A float between 0 and 1. This controls what fraction
-            of the slices should be loaded. Defaults to 1 if no value is given.
-            When creating a sampled dataset either set sample_rate (sample by slices)
-            or volume_sample_rate (sample by volumes) but not both.
-        volume_sample_rate: Optional; A float between 0 and 1. This controls what fraction
-            of the volumes should be loaded. Defaults to 1 if no value is given.
-            When creating a sampled dataset either set sample_rate (sample by slices)
-            or volume_sample_rate (sample by volumes) but not both.
-        dataset_cache_file: Optional; A file in which to cache dataset
-            information for faster load times.
-        num_cols: Optional; If provided, only slices with the desired
-            number of columns will be considered.
-    """
-    if sample_rate is not None and volume_sample_rate is not None:
-      raise ValueError(
-        "either set sample_rate (sample by slices) or volume_sample_rate (sample by volumes) but not both"
-      )
-
     self.dataset_cache_file = Path(dataset_cache_file)
 
     self.transform = transform
@@ -439,16 +323,16 @@ class SliceDataset(torch.utils.data.Dataset):
         metadata, num_slices = self._retrieve_metadata(fname)
 
         self.examples += [
-          (fname, slice_ind, metadata) for slice_ind in range(num_slices)
+            (fname, slice_ind, metadata) for slice_ind in range(num_slices)
         ]
 
       if dataset_cache.get(root) is None and use_dataset_cache:
         dataset_cache[root] = self.examples
-        logging.info(f"Saving dataset cache to {self.dataset_cache_file}.")
+        print(f"Saving dataset cache to {self.dataset_cache_file}.")
         with open(self.dataset_cache_file, "wb") as cache_f:
           pickle.dump(dataset_cache, cache_f)
     else:
-      logging.info(f"Using dataset cache from {self.dataset_cache_file}.")
+      print(f"Using dataset cache from {self.dataset_cache_file}.")
       self.examples = dataset_cache[root]
 
     # subsample if desired
@@ -462,14 +346,14 @@ class SliceDataset(torch.utils.data.Dataset):
       num_volumes = round(len(vol_names) * volume_sample_rate)
       sampled_vols = vol_names[:num_volumes]
       self.examples = [
-        example for example in self.examples if example[0].stem in sampled_vols
+          example for example in self.examples
+          if example[0].stem in sampled_vols
       ]
 
     if num_cols:
       self.examples = [
-        ex
-        for ex in self.examples
-        if ex[2]["encoding_size"][1] in num_cols  # type: ignore
+          ex for ex in self.examples
+          if ex[2]["encoding_size"][1] in num_cols
       ]
 
   def _retrieve_metadata(self, fname):
@@ -478,15 +362,15 @@ class SliceDataset(torch.utils.data.Dataset):
 
       enc = ["encoding", "encodedSpace", "matrixSize"]
       enc_size = (
-        int(et_query(et_root, enc + ["x"])),
-        int(et_query(et_root, enc + ["y"])),
-        int(et_query(et_root, enc + ["z"])),
+          int(et_query(et_root, enc + ["x"])),
+          int(et_query(et_root, enc + ["y"])),
+          int(et_query(et_root, enc + ["z"])),
       )
       rec = ["encoding", "reconSpace", "matrixSize"]
       recon_size = (
-        int(et_query(et_root, rec + ["x"])),
-        int(et_query(et_root, rec + ["y"])),
-        int(et_query(et_root, rec + ["z"])),
+          int(et_query(et_root, rec + ["x"])),
+          int(et_query(et_root, rec + ["y"])),
+          int(et_query(et_root, rec + ["z"])),
       )
 
       lims = ["encoding", "encodingLimits", "kspace_encoding_step_1"]
@@ -499,10 +383,10 @@ class SliceDataset(torch.utils.data.Dataset):
       num_slices = hf["kspace"].shape[0]
 
     metadata = {
-      "padding_left": padding_left,
-      "padding_right": padding_right,
-      "encoding_size": enc_size,
-      "recon_size": recon_size,
+        "padding_left": padding_left,
+        "padding_right": padding_right,
+        "encoding_size": enc_size,
+        "recon_size": recon_size,
     }
 
     return metadata, num_slices
@@ -526,10 +410,11 @@ class SliceDataset(torch.utils.data.Dataset):
     if self.transform is None:
       sample = (kspace, mask, target, attrs, fname.name, dataslice)
     else:
-      sample = self.transform(kspace, mask, target, attrs, fname.name, dataslice)
+      sample = self.transform(kspace,
+                              mask,
+                              target,
+                              attrs,
+                              fname.name,
+                              dataslice)
 
     return sample
-
-
-a = SliceDataset("/Users/juhanbae/Downloads/singlecoil_test_v2")
-print(help(a))

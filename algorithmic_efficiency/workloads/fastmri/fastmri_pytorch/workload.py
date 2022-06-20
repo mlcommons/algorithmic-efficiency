@@ -3,10 +3,10 @@
 import contextlib
 import math
 import os
-from typing import Dict, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+
 import numpy as np
 from skimage.metrics import structural_similarity
-
 import torch
 from torch import nn
 import torch.distributed as dist
@@ -19,6 +19,10 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.input_pipeline import \
+    SliceDataset, RandomMask
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.input_pipeline import \
+    UnetDataTransform
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
 from algorithmic_efficiency.workloads.fastmri.workload import \
@@ -32,6 +36,7 @@ N_GPUS = torch.cuda.device_count()
 
 def ssim(gt: np.ndarray,
          pred: np.ndarray,
+          weights: Optional[float] = None,
          maxval: Optional[float] = None) -> np.ndarray:
   """Compute Structural Similarity Index Metric (SSIM)"""
   if not gt.ndim == 3:
@@ -44,7 +49,7 @@ def ssim(gt: np.ndarray,
   ssim = np.array([0])
   for slice_num in range(gt.shape[0]):
     ssim = ssim + structural_similarity(
-        gt[slice_num], pred[slice_num], data_range=maxval)
+      gt[slice_num], pred[slice_num], data_range=maxval)
 
   return ssim / gt.shape[0]
 
@@ -52,6 +57,7 @@ def ssim(gt: np.ndarray,
 class FastMRIWorkload(BaseFastMRIWorkload):
 
   def __init__(self):
+    super().__init__()
     self._param_types = None
     self._eval_iters = {}
 
@@ -59,8 +65,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def param_shapes(self):
     if self._param_shapes is None:
       raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
+        'This should not happen, workload.init_model_fn() should be called '
+        'before workload.param_shapes!')
     return self._param_shapes
 
   @property
@@ -78,8 +84,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
       yield {
-          'inputs': batch['inputs'].float().to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
+        'inputs': batch['inputs'].float().to(DEVICE, non_blocking=True),
+        'targets': batch['targets'].to(DEVICE, non_blocking=True),
+        'mean': batch['mean'].to(DEVICE, non_blocking=True),
+        'std': batch['std'].to(DEVICE, non_blocking=True),
+        'fname': batch['fname'],
+        'slice_num': batch['slice_num'].to(DEVICE, non_blocking=True),
+        'max_value': batch['max_value']
       }
 
   def _build_dataset(self,
@@ -89,39 +100,20 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                      batch_size: int):
     del data_rng
     is_train = split == 'train'
+    mask = RandomMask(self.center_fractions, self.accelerations)
 
-    normalize = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[i / 255 for i in self.train_mean],
-            std=[i / 255 for i in self.train_stddev])
-    ])
-    eval_transform_config = transforms.Compose([
-        transforms.Resize(self.resize_size),
-        transforms.CenterCrop(self.center_crop_size),
-        normalize
-    ])
     transform_config = {
-        'train':
-            transforms.Compose([
-                transforms.RandomResizedCrop(
-                    self.center_crop_size,
-                    scale=self.scale_ratio_range,
-                    ratio=self.aspect_ratio_range),
-                transforms.RandomHorizontalFlip(),
-                normalize
-            ]),
-        'eval_train':
-            eval_transform_config,
-        'validation':
-            eval_transform_config,
+      'train': UnetDataTransform(mask_func=mask, use_seed=False),
+      'eval_train': UnetDataTransform(mask_func=mask),
+      'validation': UnetDataTransform(mask_func=mask),
     }
 
     folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}
 
-    dataset = ImageFolder(
-        os.path.join(data_dir, folder[split]),
-        transform=transform_config[split])
+    dataset = SliceDataset(
+      root=os.path.join(data_dir, "singlecoil_" + folder[split]),
+      transform=transform_config[split],
+    )
 
     if split == 'eval_train':
       # We always use the same subset of the training data for evaluation.
@@ -132,21 +124,22 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     if PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
+          dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
       else:
         sampler = data_utils.DistributedEvalSampler(
-            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+          dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
       batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=not PYTORCH_DDP and is_train,
-        sampler=sampler,
-        num_workers=0,
-        pin_memory=True,
-        drop_last=is_train)
+      dataset,
+      batch_size=batch_size,
+      shuffle=not PYTORCH_DDP and is_train,
+      sampler=sampler,
+      num_workers=0,
+      pin_memory=True,
+      drop_last=is_train)
 
-    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP,
+                                  keys=('inputs', 'targets', 'mean', 'std', 'fname', 'slice_num', 'max_value'))
 
     return dataloader
 
@@ -154,7 +147,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     torch.random.manual_seed(rng[0])
     model = unet()
     self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
+      k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
     model.to(DEVICE)
     if N_GPUS > 1:
@@ -168,21 +161,21 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def _update_batch_norm(self, model, update_batch_norm):
     for m in model.modules():
       if isinstance(
-          m,
-          (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)):
+              m,
+              (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)
         m.track_running_stats = update_batch_norm
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+          self,
+          params: spec.ParameterContainer,
+          augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+          model_state: spec.ModelAuxiliaryState,
+          mode: spec.ForwardPassMode,
+          rng: spec.RandomState,
+          update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
 
@@ -191,7 +184,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     if mode == spec.ForwardPassMode.EVAL:
       if update_batch_norm:
         raise ValueError(
-            'Batch norm statistics cannot be updated during evaluation.')
+          'Batch norm statistics cannot be updated during evaluation.')
       model.eval()
 
     if mode == spec.ForwardPassMode.TRAIN:
@@ -199,23 +192,25 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       self._update_batch_norm(model, update_batch_norm)
 
     contexts = {
-        spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+      spec.ForwardPassMode.EVAL: torch.no_grad,
+      spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      targets_batch = model(augmented_and_preprocessed_input_batch['inputs'].unsqueeze(1)).squeeze(1)
 
-    return logits_batch, None
+    return targets_batch, None
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
 
     activation_fn = {
-        spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
-        spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
-        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
+      spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
+      spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
+      spec.LossType.MEAN_SQUARED_ERROR: lambda z: z,
+      spec.LossType.MEAN_ABSOLUTE_ERROR: lambda z: z
+
     }
     return activation_fn[loss_type](logits_batch)
 
@@ -225,13 +220,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
               logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
     return F.l1_loss(logits_batch, label_batch, reduction='none')
 
-  def _eval_metric(self, logits, labels):
+  def _eval_metric(self, output, target, maxval):
     """Return the SSIM and loss as a dict."""
-    predicted = torch.argmax(logits, 1)
+    loss = self.loss_fn(output, target).sum()
     # not accuracy, but nr. of correct predictions
-    accuracy = (predicted == labels).sum()
-    loss = self.loss_fn(labels, logits).sum()
-    return {'ssim': accuracy, 'loss': loss}
+    output = output.detach().cpu().numpy()
+    target = target.cpu().numpy()
+    ssim_vals = ssim(target, output, maxval=maxval.detach().cpu().numpy()).sum()
+    return {'ssim': ssim_vals, 'loss': loss}
 
   def _eval_model_on_split(self,
                            split: str,
@@ -246,25 +242,25 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+        data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = {
-        'ssim': torch.tensor(0., device=DEVICE),
-        'loss': torch.tensor(0., device=DEVICE),
+      'ssim': torch.tensor(0., device=DEVICE),
+      'loss': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       logits, _ = self.model_fn(
-          params,
-          batch,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, batch['targets'])
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        model_rng,
+        update_batch_norm=False)
+      batch_metrics = self._eval_metric(logits, batch['targets'], batch['max_value'])
       total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
+        k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
     if PYTORCH_DDP:
       for metric in total_metrics.values():
