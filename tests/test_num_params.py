@@ -4,13 +4,13 @@ import jax.random as jax_rng
 import pytest
 
 from algorithmic_efficiency.workloads.imagenet.imagenet_jax.models import \
+    ResNet18 as JaxResNet_c10
+from algorithmic_efficiency.workloads.imagenet.imagenet_jax.models import \
     ResNet50 as JaxResNet
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
-    resnet50 as PyTorchResNet
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax.models import \
-    ResNet18 as JaxResNet_c10
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet18 as PyTorchResNet_c10
+from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
+    resnet50 as PyTorchResNet
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
@@ -46,9 +46,9 @@ def get_models(workload):
   elif workload == 'cifar':
     # Init Jax model.
     input_shape = (1, 32, 32, 3)
-    jax_model = jax.jit(JaxResNet_c10(
-        num_classes=10, dtype=jnp.float32).init)(init_rngs, jnp.ones(input_shape,
-                                                    jnp.float32))["params"]
+    model_init = jax.jit(JaxResNet_c10(num_classes=10, dtype=jnp.float32).init)
+    jax_model = model_init(init_rngs, jnp.ones(input_shape,
+                                               jnp.float32))["params"]
     # Init PyTorch model.
     pytorch_model = PyTorchResNet_c10(num_classes=10)
   elif workload == 'imagenet':

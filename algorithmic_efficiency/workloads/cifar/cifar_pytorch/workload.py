@@ -18,10 +18,9 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
+from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet18
-from algorithmic_efficiency.workloads.cifar.workload import \
-    BaseCifarWorkload
 
 PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
@@ -61,14 +60,14 @@ class CifarWorkload(BaseCifarWorkload):
           'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
           'targets': batch['targets'].to(DEVICE, non_blocking=True),
       }
-  
+
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
                      batch_size: int):
     is_train = split == 'train'
-    
+
     normalize = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
@@ -76,30 +75,31 @@ class CifarWorkload(BaseCifarWorkload):
             std=[i / 255 for i in self.train_stddev])
     ])
     eval_transform_config = normalize
-    train_transform_config =transforms.Compose([
-                transforms.RandomResizedCrop(
-                    self.center_crop_size,
-                    scale=self.scale_ratio_range,
-                    ratio=self.aspect_ratio_range),
-                transforms.RandomHorizontalFlip(),
-                normalize
-            ])
+    train_transform_config = transforms.Compose([
+        transforms.RandomResizedCrop(
+            self.center_crop_size,
+            scale=self.scale_ratio_range,
+            ratio=self.aspect_ratio_range),
+        transforms.RandomHorizontalFlip(),
+        normalize
+    ])
 
     dataset = CIFAR10(root=data_dir,
-                      train=split in ["train","eval_train","validation"],
-                      download=True, 
-                      transform=train_transform_config if "train" in split else eval_transform_config)
-    assert self.num_train_examples+self.num_validation_examples==50000
+                train=split in ["train","eval_train","validation"],
+                download=True,
+                transform=train_transform_config if "train" in split \
+                                            else eval_transform_config)
+    assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
     random.Random(data_rng[0]).shuffle(indices)
     indices_split = {
-      "train": indices[:self.num_train_examples],
-      "validation":indices[self.num_train_examples:],
-      "eval_train":indices[:self.num_eval_train_examples]
-    } 
+        "train": indices[:self.num_train_examples],
+        "validation": indices[self.num_train_examples:],
+        "eval_train": indices[:self.num_eval_train_examples]
+    }
     if split in indices_split:
       dataset = torch.utils.data.Subset(dataset, indices_split[split])
-    
+
     sampler = None
     if PYTORCH_DDP:
       if is_train:
