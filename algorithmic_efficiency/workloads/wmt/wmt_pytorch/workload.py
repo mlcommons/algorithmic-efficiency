@@ -38,7 +38,7 @@ def _pytorch_to_jax(x: spec.Tensor):
 
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
 
-  def forward(self, input, target, label_smoothing=0.1):
+  def forward(self, input, target, label_smoothing=0.1):  # pylint: disable=redefined-builtin
     vocab_size = input.shape[-1]
     confidence = 1.0 - label_smoothing
     low_confidence = (1.0 - confidence) / (vocab_size - 1)
