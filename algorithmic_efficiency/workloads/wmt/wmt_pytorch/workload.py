@@ -1,5 +1,6 @@
 """WMT workload implemented in PyTorch."""
 import contextlib
+import os
 from typing import Dict, Optional, Tuple
 
 from absl import logging
@@ -7,8 +8,11 @@ import jax.dlpack
 import numpy as np
 import tensorflow as tf
 import torch
+import torch.distributed as dist
 import torch.nn.functional as F
+from torch.nn.parallel import DistributedDataParallel as DDP
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
@@ -16,7 +20,10 @@ from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
+DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
+N_GPUS = torch.cuda.device_count()
 
 
 def _jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
@@ -31,17 +38,17 @@ def _pytorch_to_jax(x: spec.Tensor):
 
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
 
-  def forward(self, logits, targets, label_smoothing=0.1):
-    vocab_size = logits.shape[-1]
+  def forward(self, input, target, label_smoothing=0.1):
+    vocab_size = input.shape[-1]
     confidence = 1.0 - label_smoothing
     low_confidence = (1.0 - confidence) / (vocab_size - 1)
     normalizing_constant = -(
         confidence * np.log(confidence) +
         (vocab_size - 1) * low_confidence * np.log(low_confidence + 1e-20))
-    one_hot_targets = F.one_hot(targets, num_classes=vocab_size)
+    one_hot_targets = F.one_hot(target, num_classes=vocab_size)
     soft_targets = torch.where(one_hot_targets == 1, confidence, low_confidence)
     loss = super().forward(
-        input=logits.transpose(-2, -1), target=soft_targets.transpose(-2, -1))
+        input=input.transpose(-2, -1), target=soft_targets.transpose(-2, -1))
     return loss - normalizing_constant
 
 
@@ -70,7 +77,7 @@ class WmtWorkload(BaseWmtWorkload):
                        (str(logits.shape), str(targets.shape)))
 
     loss_fn = CrossEntropyLoss(reduction='none')
-    if torch.cuda.device_count() > 1:
+    if N_GPUS > 1 and not USE_PYTORCH_DDP:
       loss_fn = torch.nn.DataParallel(loss_fn)
 
     loss = loss_fn(logits, targets, label_smoothing=label_smoothing)
@@ -84,23 +91,23 @@ class WmtWorkload(BaseWmtWorkload):
   def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
     """Predict translation with fast decoding beam search on a batch."""
     # This means that decoding will always happen on a single GPU!
-    params = params.module if isinstance(params,
-                                         torch.nn.DataParallel) else params
+    params = params.module if isinstance(params, (torch.nn.DataParallel,
+                                                  DDP)) else params
     params.eval()
     encoder = params.encoder
-    if torch.cuda.device_count() > 1:
+    if N_GPUS > 1 and not USE_PYTORCH_DDP:
       encoder = torch.nn.DataParallel(encoder)
     encoded_inputs = torch.repeat_interleave(
         encoder(inputs), repeats=beam_size, dim=0)
     raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
     decoder = params.decoder
-    if torch.cuda.device_count() > 1:
+    if N_GPUS > 1 and not USE_PYTORCH_DDP:
       decoder = torch.nn.DataParallel(decoder)
 
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = _jax_to_pytorch(flat_ids)
+      flat_ids = _jax_to_pytorch(flat_ids).to(DEVICE)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
@@ -144,19 +151,19 @@ class WmtWorkload(BaseWmtWorkload):
                                    num_batches: int,
                                    max_predict_length: int):
     """Translates the `ds_iter` and calculates the BLEU score."""
-    n_devices = torch.cuda.device_count() if torch.cuda.is_available() else 1
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       inputs = pred_batch['inputs']
       targets = pred_batch['targets']
-      # Handle final odd-sized batch by padding instead of dropping it.
       cur_pred_batch_size = inputs.shape[0]
-      if cur_pred_batch_size % n_devices:
-        padded_size = int(np.ceil(cur_pred_batch_size / n_devices) * n_devices)
-        inputs = self.pad_examples(inputs, padded_size)  # pylint: disable=cell-var-from-loop
-        targets = self.pad_examples(targets, padded_size)
+      if not USE_PYTORCH_DDP:
+        # Handle final odd-sized batch by padding instead of dropping it.
+        if cur_pred_batch_size % N_GPUS:
+          padded_size = int(np.ceil(cur_pred_batch_size / N_GPUS) * N_GPUS)
+          inputs = self.pad_examples(inputs, padded_size)  # pylint: disable=cell-var-from-loop
+          targets = self.pad_examples(targets, padded_size)
       predicted = self.predict_step(inputs,
                                     params,
                                     decode.EOS_ID,
@@ -167,13 +174,15 @@ class WmtWorkload(BaseWmtWorkload):
         sources.append(self._decode_tokens(inputs[i]))
         references.append(self._decode_tokens(targets[i]))
         predictions.append(self._decode_tokens(s))
-    logging.info("Translation: %d predictions %d references %d sources.",
-                 len(predictions),
-                 len(references),
-                 len(sources))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)
+    if USE_PYTORCH_DDP:
+      # Sync matches across devices.
+      for idx, array in enumerate(bleu_matches):
+        tensor = torch.as_tensor(array, device=DEVICE)
+        dist.all_reduce(tensor)
+        bleu_matches[idx] = tensor.cpu().numpy()
     bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
 
@@ -183,9 +192,12 @@ class WmtWorkload(BaseWmtWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
-    if torch.cuda.device_count() > 1:
-      model = torch.nn.DataParallel(model)
     model.to(DEVICE)
+    if N_GPUS > 1:
+      if USE_PYTORCH_DDP:
+        model = DDP(model, device_ids=[RANK], output_device=RANK)
+      else:
+        model = torch.nn.DataParallel(model)
     return model, None
 
   def model_fn(
@@ -238,14 +250,20 @@ class WmtWorkload(BaseWmtWorkload):
                                         global_batch_size,
                                         num_batches,
                                         repeat_final_dataset)
-    for batch in np_iter:
-      batch = {
-          key: torch.as_tensor(value, device=DEVICE,
-                               dtype=torch.int64).view(-1, value.shape[-1])
-          for key,
-          value in batch.items()
-      }
-      yield batch
+    if USE_PYTORCH_DDP:
+      return data_utils.TFDistributedSampler(np_iter, device=DEVICE, rank=RANK)
+
+    def _input_queue_generator():
+      for batch in np_iter:
+        batch = {
+            key: torch.as_tensor(value, device=DEVICE,
+                                 dtype=torch.int64).view(-1, value.shape[-1])
+            for key,
+            value in batch.items()
+        }
+        yield batch
+
+    return _input_queue_generator()
 
   def eval_step(self, params, batch):
     """Calculate evaluation metrics on a batch."""
@@ -259,24 +277,6 @@ class WmtWorkload(BaseWmtWorkload):
         rng=None,
         update_batch_norm=False)
     return self.compute_summed_metrics(logits, targets, weights)
-
-  def evaluate(self,
-               params: spec.ParameterContainer,
-               eval_ds: tf.data.Dataset,
-               num_eval_steps: int):
-    """Evaluate the model and return a dictionary with the metrics."""
-    logging.info('Gathering evaluation metrics.')
-    eval_metrics = {
-        'loss': 0.,
-        'accuracy': 0.,
-        'denominator': 0,
-    }
-    eval_iter = iter(eval_ds)  # pytype: disable=wrong-arg-types
-    for _, eval_batch in zip(range(num_eval_steps), eval_iter):
-      metrics = self.eval_step(params, eval_batch)
-      eval_metrics = {k: v + metrics[k] for k, v in eval_metrics.items()}
-    denominator = eval_metrics.pop('denominator')
-    return {k: float(v / denominator) for k, v in eval_metrics.items()}
 
   @property
   def model_params_types(self):
