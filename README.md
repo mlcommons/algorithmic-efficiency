@@ -151,6 +151,14 @@ python3 submission_runner.py \
     --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
 
+When using multiple GPUs on a single node it is recommended to use PyTorch's
+[distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
+To do so, simply replace `python3` by 
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
+```
+where `N_GPUS` is the number of available GPUs on the node.
+
 ## Rules
 
 The rules for the MLCommons Algorithmic Efficency benchmark can be found in the seperate [rules document](RULES.md). Suggestions, clarifications and questions can be raised via pull requests.
