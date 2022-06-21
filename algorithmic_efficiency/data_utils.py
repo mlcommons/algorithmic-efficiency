@@ -8,7 +8,7 @@ from torch.utils.data import Sampler
 
 
 def shard_numpy_ds(xs):
-  """Prepare tf data for JAX
+  """Prepare tf data for JAX or PyTorch DDP.
 
   Convert an input batch from tf Tensors to numpy arrays and reshape it to be
   sharded across devices.
@@ -19,8 +19,9 @@ def shard_numpy_ds(xs):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     x = x._numpy()  # pylint: disable=protected-access
 
-    # reshape (host_batch_size, height, width, 3) to
-    # (local_devices, device_batch_size, height, width, 3)
+    # Reshape (global_batch_size, ...) to
+    # (local_device_count, per_device_batch_size, ...).
+    # Assumes that `global_batch_size % local_device_count == 0`.
     return x.reshape((local_device_count, -1) + x.shape[1:])
 
   return jax.tree_map(_prepare, xs)
@@ -57,7 +58,7 @@ class DistributedEvalSampler(Sampler):
   Sampler that restricts data loading to a subset of the dataset.
   It is especially useful in conjunction with
   :class:`torch.nn.parallel.DistributedDataParallel`. In such a case, each
-  process can pass a :class`~torch.utils.data.DistributedSampler` instance as
+  process can pass a :class`~DistributedEvalSampler` instance as
   a :class:`~torch.utils.data.DataLoader` sampler, and load a subset of the
   original dataset that is exclusive to it.
   .. note::
@@ -213,3 +214,31 @@ class PrefetchedWrapper:
       targets = next_targets
 
     yield inputs, targets
+
+
+# Inspired by github.com/PetrochukM/PyTorch-NLP/blob/master/torchnlp/samplers/
+# distributed_sampler.py
+class TFDistributedSampler:
+
+  def __init__(self, iterator, device='cuda:0', rank=None):
+    self.iterator = iterator
+    self.device = device
+    self.rank = rank
+    if rank is None:
+      if not torch.distributed.is_initialized():
+        raise RuntimeError('Requires `torch.distributed` to be initialized.')
+      self.rank = torch.distributed.get_rank()
+
+  def __iter__(self):
+    return self
+
+  def __next__(self):
+    batch = next(self.iterator)
+    batch = {
+        # Assumes that len(value) > self.rank, i.e. there needs to be data for
+        # each rank/GPU.
+        key: torch.as_tensor(
+            value[self.rank], device=self.device, dtype=torch.int64) for key,
+        value in batch.items()
+    }
+    return batch
