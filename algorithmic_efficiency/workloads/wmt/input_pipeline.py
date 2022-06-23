@@ -210,8 +210,8 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
                         data_rng,
                         train: bool,
                         shuffle_buffer_size: int = 1024,
-                        max_length: int = 512,
-                        batch_size: int = 256):
+                        max_length: int = 256,
+                        global_batch_size: int = 128):
   """Shuffle and batch/pack the given dataset."""
 
   def length_filter(max_len):
@@ -230,10 +230,10 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
     dataset = dataset.shuffle(shuffle_buffer_size, seed=data_rng[0])
     dataset = dataset.repeat()
     dataset = pack_dataset(dataset, max_length)
-    dataset = dataset.batch(batch_size, drop_remainder=train)
+    dataset = dataset.batch(global_batch_size, drop_remainder=train)
   else:  # simple (static-shape) padded batching
     dataset = dataset.padded_batch(
-        batch_size,
+        global_batch_size,
         padded_shapes={'inputs': max_length, 'targets': max_length},
         padding_values={'inputs': 0, 'targets': 0},
         drop_remainder=train)
@@ -277,7 +277,7 @@ def get_wmt_dataset(data_rng,
       ds,
       data_rng,
       train=is_training,
-      batch_size=global_batch_size,
+      global_batch_size=global_batch_size,
       max_length=256)
 
   if num_batches:

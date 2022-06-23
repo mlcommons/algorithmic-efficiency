@@ -137,14 +137,6 @@ class WmtWorkload(BaseWmtWorkload):
     # Return the highest scoring beam sequence, drop first dummy 0 token.
     return beam_seqs[:, -1, 1:]
 
-  # Utils for prediction and BLEU calculation
-  # ----------------------------------------------------------------------------
-
-  def pad_examples(self, x, desired_batch_size):
-    """Expand batch to desired size by repeating last slice."""
-    batch_pad = desired_batch_size - x.shape[0]
-    return torch.cat([x, torch.tile(x[-1], (batch_pad, 1))], dim=0)
-
   def translate_and_calculate_bleu(self,
                                    params: spec.ParameterContainer,
                                    ds_iter: tf.data.Dataset,
@@ -157,20 +149,13 @@ class WmtWorkload(BaseWmtWorkload):
       pred_batch = next(ds_iter)
       inputs = pred_batch['inputs']
       targets = pred_batch['targets']
-      cur_pred_batch_size = inputs.shape[0]
-      if not USE_PYTORCH_DDP:
-        # Handle final odd-sized batch by padding instead of dropping it.
-        if cur_pred_batch_size % N_GPUS:
-          padded_size = int(np.ceil(cur_pred_batch_size / N_GPUS) * N_GPUS)
-          inputs = self.pad_examples(inputs, padded_size)  # pylint: disable=cell-var-from-loop
-          targets = self.pad_examples(targets, padded_size)
       predicted = self.predict_step(inputs,
                                     params,
                                     decode.EOS_ID,
                                     max_predict_length)
 
       # Iterate through non-padding examples of batch.
-      for i, s in enumerate(predicted[:cur_pred_batch_size]):
+      for i, s in enumerate(predicted):
         sources.append(self._decode_tokens(inputs[i]))
         references.append(self._decode_tokens(targets[i]))
         predictions.append(self._decode_tokens(s))
