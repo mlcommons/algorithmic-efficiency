@@ -9,7 +9,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 from algorithmic_efficiency import spec
-
+import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import DlrmSmall
 
 
@@ -221,7 +221,65 @@ class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
          normalization = label_batch.shape[0]
     
          return torch.sum(weighted_losses, dim=-1) / normalization
-    
+
+     def _eval_metric(self, 
+             logits:spec.Tensor,
+             targets: spec.Tensor) -> Dict[str, int]:
+         # implement the metrics in question
+
+
+
+     def _eval_model_on_split(self:
+                            split: str,
+                            num_examples: int,
+                            global_batch_size: int, 
+                            params: spec.ParameterContainer,
+                            model_state: spec.ModelAuxiliaryState,
+                            rng: spec.RandomState,
+                            data_dir: str) -> Dict[str, float]:
+
+        """Evaluate the model on a given dataset split, return final scalars."""
+        data_rng, model_rng = prng.split(rng, 2)
+        if split not in self._eval_iters:
+            # These iterators repeat indefinitely.
+            self._eval_iters[split] = self.build_input_queue(
+                    data_rng, split, data_dir, global_batch_size = global_batch_size)
+
+        total_metrics = {
+                loss: torch.tensor(0., device=DEVICE),
+                average_precision: torch.tensor(0., device=DEVICE),
+                auc_roc: torch.tensor(0., device=DEVICE),
+                }
+
+        num_batches = int(math.ceil(num_examples/global_batch_size))
+        
+        for _ in range(num_batches):
+            batch = next(self._eval_iters[split])
+            logits, _ = self.model_fn(
+                    params,
+                    batch,
+                    model_state,
+                    spec.ForwardPassMode.EVAL,
+                    model_rng,
+                    update_batch_norm = False
+                    )
+
+            batch_metrics = self._eval_metric(logits, batch['targets'])
+            total_metrics = {
+                    k: v + batch_metrics[k] for k, v in total_metrics.items()
+            }
+
+        if PYTORCH_DDP:
+            for metric in total_metric.values():
+                dist.all_reduce(metric)
+            return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+
+
+
+
+
+
 
     @property 
     def step_hint(self):
