@@ -14,6 +14,8 @@ from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch import \
     models
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     BaseImagenetVitWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.workload import \
+    decode_variant
 
 PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
@@ -26,7 +28,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model_kwargs = models.decode_variant('S/16')
+    model_kwargs = decode_variant('S/16')
     model = models.ViT(num_classes=1000, **model_kwargs)
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()

@@ -11,6 +11,8 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload impo
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax import models
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     BaseImagenetVitWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.workload import \
+    decode_variant
 
 
 # Make sure we inherit from the ViT base workload first.
@@ -23,7 +25,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     return params, model_state
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    model_kwargs = models.decode_variant('S/16')
+    model_kwargs = decode_variant('S/16')
     model = models.ViT(num_classes=1000, **model_kwargs)
     self._model = model
     params, model_state = self.initialized(rng, model)
