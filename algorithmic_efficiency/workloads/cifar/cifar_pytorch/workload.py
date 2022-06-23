@@ -22,8 +22,8 @@ from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
     resnet18
 
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
 DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
@@ -85,7 +85,7 @@ class CifarWorkload(BaseCifarWorkload):
     ])
 
     dataset = CIFAR10(root=data_dir,
-                train=split in ["train","eval_train","validation"],
+                train=split in ['train','eval_train','validation'],
                 download=True,
                 transform=train_transform_config if "train" in split \
                                             else eval_transform_config)
@@ -101,7 +101,7 @@ class CifarWorkload(BaseCifarWorkload):
       dataset = torch.utils.data.Subset(dataset, indices_split[split])
 
     sampler = None
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
@@ -112,12 +112,12 @@ class CifarWorkload(BaseCifarWorkload):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=not PYTORCH_DDP and is_train,
+        shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=0,
         pin_memory=True,
         drop_last=is_train)
-    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
 
     return dataloader
 
@@ -134,7 +134,7 @@ class CifarWorkload(BaseCifarWorkload):
     }
     model.to(DEVICE)
     if N_GPUS > 1:
-      if PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
@@ -242,7 +242,7 @@ class CifarWorkload(BaseCifarWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
