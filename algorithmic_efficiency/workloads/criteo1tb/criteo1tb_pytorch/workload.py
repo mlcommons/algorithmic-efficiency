@@ -1,5 +1,9 @@
 import contextlib
-from typing import Any, Callable, List, Optional, Type, Union
+import os 
+from typing import Any, Callable, List, Optional, Type, Union, Dict, Tuple
+import functools
+import sys
+import time
 
 import numpy as np
 import torch
@@ -10,21 +14,23 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import DlrmSmall
-
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.dlrm_small_model import DlrmSmall
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.data import CriteoBinDataset, data_collate_fn, prefetcher
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.utils.distributed import DistributedSampler
 
 
 
 PYTORCH_DDP = 'LOCAL_RANK' in os.environ 
 RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
-DEVICE = torch.device(f'cuda :{RANK}' torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
 
 _NUM_DENSE_FEATURES = 13
 _VOCAB_SIZES = [1024 * 128] * 26 
 
-class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
+#class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
+class Criteo1TbDlrmSmallPytorchWorkload():
     """
     Criteo1TB DLRM-Small Pytorch workload.
     """
@@ -84,7 +90,7 @@ class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
     @property 
     def param_shapes(self):
         if self._param_shapes is None:
-            raise ValueError("This should not happen, workload.init_model_fn() should be called 
+            raise ValueError("This should not happen, workload.init_model_fn() should be called \
           before workload.param_shapes!")
         return self._param_shapes
 
@@ -97,39 +103,87 @@ class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
 
 
 
-    def _build_dataset(self, 
-                        data_rng: jax.random.PRNGKey,
+    def _get_data_loader(self, 
+                        data_rng: spec.RandomState,
                         split: str,
                         data_dir: str, 
                         global_batch_size: int, 
                         ):
-    
-    
-        del data_rng
-        is_train = split == "train"
+        is_train = split =="train"
+
+
+        if PYTORCH_DDP:
+            batch_size = global_batch_size//N_GPUS
+            if batch_size == 0:
+                raise ValueError("global_bs can't be 0")
+        else:
+           batch_size = global_batch_size 
+
+        return_device = DEVICE
+        data_loader_args = dict(
+                batch_size = None,
+                num_workers = 0,
+                pin_memory = False, 
+                generator = torch.Generator(device='cpu').manual_seed(data_rng),
+                collate_fn=functools.partial(data_collate_fn, device=return_device, orig_stream=torch.cuda.current_stream()))
+
+        if is_train:
+            train_data_set_bin = os.path.join(data_dir, "train_data.bin")
+            dataset_train = CriteoBinDataset(train_data_set_bin, batch_size = batch_size, shuffle=False)
+            if PYTORCH_DDP:
+                sampler = DistributedSampler(
+                    dataset_train, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+                data_loader_args.update({'sampler':sampler})
+            data_loader_train = torch.utils.data.DataLoader(dataset_train, **data_loader_args)
+            return data_loader_train
+
+        else:
+            test_data_set_bin = os.path.join(data_dir, "test_data.bin")
+            dataset_test = CriteoBinDataset(test_data_set_bin, batch_size = batch_size)
+            if PYTORCH_DDP:
+                sampler = data_utils.DistributedEvalSampler(
+                    dataset_test, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+                data_loader_args.update({'sampler':sampler})
+            data_loader_test = torch.utils.data.DataLoader(dataset_test, **data_loader_args)
+            return data_loader_test
+
     
     
     def build_input_queue(self, 
-                          data_rng: jax.random.PRNGKey, 
+                          data_rng: spec.RandomState, 
                           split: str, 
                           data_dir: str,
                           global_batch_size: int,
                           num_batches: Optional[int] = None,
                           repeat_final_dataset: bool = False):
     
-        ds = input_pipeline.get_criteo1tb_dataset(
-                split = split, 
-                data_dir = data_dir,
-                is_training=(split == 'train'),
-                global_batch_size = global_batch_size,
-                vocab_sizes = _VOCAB_SIZES,
-                num_batches = num_batches,
-                repeat_final_dataset = repeat_final_dataset)
-        
-        #  run the iterator from here: https://pytorch.org/docs/master/data.html#torch.utils.data.IterableDataset
-        for batch in iter(ds):
-            batch = jax.tree_map(lambda x: x._numpy(), batch)
-            yield batch
+        data_stream = torch.cuda.Stream()
+
+        if split == "train":
+            data_loader_train = self._get_data_loader(data_rng, split, data_dir, global_batch_size)
+            for step, (numerical_features, categorical_features, click) in enumerate(prefetcher(iter(data_loader_train), data_stream)):
+                torch.cuda.current_stream().wait_stream(data_stream)
+                
+                print(f"##################################### num_fea: {numerical_features.shape}################")
+                print(f"##################################### cat_fea: {categorical_features.shape}################")
+                print(f"##################################### click: {click.shape}################")
+
+                yield {
+                        'inputs': (numerical_features, categorical_features),
+                        'targets': click 
+                      }
+        else:
+            data_loader_test = self._get_data_loader(data_rng, split, data_dir, global_batch_size) 
+            for step, (numerical_features, categorical_features, click) in enumerate(prefetcher(iter(data_loader_test), data_stream)):
+                torch.cuda.current_stream().wait_stream(data_stream)
+                yield {
+                         'inputs': (numerical_features, categorical_features),
+                         'targets': click
+                      }
+
+
+
+
 
 
         
@@ -222,57 +276,59 @@ class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
     
          return torch.sum(weighted_losses, dim=-1) / normalization
 
-     def _eval_metric(self, 
-             logits:spec.Tensor,
-             targets: spec.Tensor) -> Dict[str, int]:
-         # implement the metrics in question
+    def _eval_metric(self, 
+           logits:spec.Tensor,
+           targets: spec.Tensor) -> Dict[str, int]:
+        # implement the metrics in question
+       pass
 
 
 
-     def _eval_model_on_split(self:
-                            split: str,
-                            num_examples: int,
-                            global_batch_size: int, 
-                            params: spec.ParameterContainer,
-                            model_state: spec.ModelAuxiliaryState,
-                            rng: spec.RandomState,
-                            data_dir: str) -> Dict[str, float]:
 
-        """Evaluate the model on a given dataset split, return final scalars."""
-        data_rng, model_rng = prng.split(rng, 2)
-        if split not in self._eval_iters:
-            # These iterators repeat indefinitely.
-            self._eval_iters[split] = self.build_input_queue(
-                    data_rng, split, data_dir, global_batch_size = global_batch_size)
+    def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int, 
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str) -> Dict[str, float]:
 
-        total_metrics = {
-                loss: torch.tensor(0., device=DEVICE),
-                average_precision: torch.tensor(0., device=DEVICE),
-                auc_roc: torch.tensor(0., device=DEVICE),
-                }
+       """Evaluate the model on a given dataset split, return final scalars."""
+       data_rng, model_rng = prng.split(rng, 2)
+       if split not in self._eval_iters:
+           # These iterators repeat indefinitely.
+           self._eval_iters[split] = self.build_input_queue(
+                   data_rng, split, data_dir, global_batch_size = global_batch_size)
 
-        num_batches = int(math.ceil(num_examples/global_batch_size))
-        
-        for _ in range(num_batches):
-            batch = next(self._eval_iters[split])
-            logits, _ = self.model_fn(
-                    params,
-                    batch,
-                    model_state,
-                    spec.ForwardPassMode.EVAL,
-                    model_rng,
-                    update_batch_norm = False
-                    )
+       total_metrics = {
+               loss: torch.tensor(0., device=DEVICE),
+               average_precision: torch.tensor(0., device=DEVICE),
+               auc_roc: torch.tensor(0., device=DEVICE),
+               }
 
-            batch_metrics = self._eval_metric(logits, batch['targets'])
-            total_metrics = {
-                    k: v + batch_metrics[k] for k, v in total_metrics.items()
-            }
+       num_batches = int(math.ceil(num_examples/global_batch_size))
+       
+       for _ in range(num_batches):
+           batch = next(self._eval_iters[split])
+           logits, _ = self.model_fn(
+                   params,
+                   batch,
+                   model_state,
+                   spec.ForwardPassMode.EVAL,
+                   model_rng,
+                   update_batch_norm = False
+                   )
 
-        if PYTORCH_DDP:
-            for metric in total_metric.values():
-                dist.all_reduce(metric)
-            return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+           batch_metrics = self._eval_metric(logits, batch['targets'])
+           total_metrics = {
+                   k: v + batch_metrics[k] for k, v in total_metrics.items()
+           }
+
+       if PYTORCH_DDP:
+           for metric in total_metric.values():
+               dist.all_reduce(metric)
+           return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
 
 
 
