@@ -116,11 +116,13 @@ def import_workload(workload_path: str,
                     workload_class_name: str,
                     return_class=False) -> spec.Workload:
   """Import and add the workload to the registry.
+
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
   a submitter only wants to write Jax code, the try/except below will catch
   the import errors caused if they do not have the PyTorch dependencies
   installed on their system.
+
   Args:
     workload_path: the path to the `workload.py` file to load.
     workload_class_name: the name of the Workload class that implements the

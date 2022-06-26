@@ -224,7 +224,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     return targets_batch, None
 
   def output_activation_fn(self,
-                           targets_batch: spec.Tensor,
+                           logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
 
     activation_fn = {
@@ -233,7 +233,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         spec.LossType.MEAN_SQUARED_ERROR: lambda z: z,
         spec.LossType.MEAN_ABSOLUTE_ERROR: lambda z: z
     }
-    return activation_fn[loss_type](targets_batch)
+    return activation_fn[loss_type](logits_batch)
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
@@ -244,7 +244,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   def _eval_metric(self, outputs, targets, mean, std, volume_max):
     """Return the SSIM and loss as a dict."""
-    ssim_vals = ssim(targets, outputs, mean=mean, std=std, volume_max=volume_max)
+    ssim_vals = ssim(
+        targets, outputs, mean=mean, std=std, volume_max=volume_max)
     loss = self.loss_fn(outputs, targets).sum()
     return {'ssim': ssim_vals, 'loss': loss}
 

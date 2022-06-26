@@ -18,7 +18,7 @@ import torch
 from torch import Tensor
 
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.fftc import \
-  ifft2c_new
+    ifft2c_new
 
 
 @contextlib.contextmanager
@@ -78,8 +78,7 @@ class RandomMask:
     )
     return center_mask, acceleration_mask, num_low_frequencies
 
-  def reshape_mask(self,
-                   mask: np.ndarray,
+  def reshape_mask(self, mask: np.ndarray,
                    shape: Sequence[int]) -> torch.Tensor:
     num_cols = shape[-2]
     mask_shape = [1 for _ in shape]
@@ -94,8 +93,7 @@ class RandomMask:
         num_cols - num_low_frequencies)
     return self.rng.uniform(size=num_cols) < prob
 
-  def calculate_center_mask(self,
-                            shape: Sequence[int],
+  def calculate_center_mask(self, shape: Sequence[int],
                             num_low_freqs: int) -> np.ndarray:
     num_cols = shape[-2]
     mask = np.zeros(num_cols, dtype=np.float32)

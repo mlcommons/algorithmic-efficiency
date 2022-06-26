@@ -10,7 +10,7 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'fastmri': 2}
+  batch_sizes = {'fastmri': 8}
   return batch_sizes[workload_name]
 
 
