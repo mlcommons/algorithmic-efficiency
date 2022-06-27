@@ -3,10 +3,14 @@ import jax.numpy as jnp
 import jax.random as jax_rng
 import pytest
 
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax.models import \
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet50 as JaxResNet
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.models import \
+    ViT as JaxViT
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.models import \
+    ViT as PyTorchViT
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
@@ -18,7 +22,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'imagenet', 'wmt']
+WORKLOADS = ['mnist', 'imagenet_resnet', 'imagenet_vit', 'wmt']
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -39,7 +43,7 @@ def get_models(workload):
     jax_model = JaxMLP().init(init_rngs, init_val, train=True)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchMLP()
-  elif workload == 'imagenet':
+  elif workload == 'imagenet_resnet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
     jax_model = JaxResNet(
@@ -48,6 +52,13 @@ def get_models(workload):
                                                     jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchResNet()
+  elif workload == 'imagenet_vit':
+    # Init Jax model.
+    input_shape = (1, 224, 224, 3)
+    jax_model = JaxViT(num_classes=1000).init(
+        init_rngs, jnp.ones(input_shape, jnp.float32))['params']
+    # Init PyTorch model.
+    pytorch_model = PyTorchViT()
   elif workload == 'wmt':
     # Init Jax model.
     input_shape = (16, 256)

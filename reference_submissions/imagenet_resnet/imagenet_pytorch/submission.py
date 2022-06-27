@@ -23,7 +23,7 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  batch_size = get_batch_size('imagenet')
+  batch_size = get_batch_size('imagenet_resnet')
   base_lr = hyperparameters.learning_rate * batch_size / 256.
   optimizer_state = {
       'optimizer':
@@ -72,6 +72,7 @@ def update_params(
   del hyperparameters
   del loss_type
   del eval_results
+  del global_step
 
   current_model = current_param_container
   current_param_container.train()

@@ -38,7 +38,8 @@ _EXPECTED_METRIC_NAMES = {
     'criteo1tb': [
         'train/loss', 'train/average_precision', 'validation/auc_roc'
     ],
-    'imagenet': ['train/accuracy', 'validation/accuracy'],
+    'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
+    'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
     'librispeech': [
         'train/word_error_rate',
         'validation/word_error_rate',
@@ -113,7 +114,7 @@ def _make_one_batch_workload(workload_class,
             'targets': targets,
             'weights': np.ones(batch_shape),
         }
-      elif workload_name == 'imagenet':
+      elif workload_name in ['imagenet_resnet', 'imagenet_vit']:
         if framework == 'jax':
           data_shape = (224, 224, 3)
         else:
@@ -273,25 +274,32 @@ class ReferenceSubmissionTest(absltest.TestCase):
     repo_location = '/'.join(self_location.split('/')[:-1])
     references_dir = f'{repo_location}/reference_submissions'
     for workload_name in os.listdir(references_dir):
+      if '_' in workload_name:
+        dataset_name = workload_name.split('_')[0]
+      else:
+        dataset_name = workload_name
       workload_dir = f'{repo_location}/reference_submissions/{workload_name}'
       search_space_path = f'{workload_dir}/tuning_search_space.json'
       for framework in ['jax', 'pytorch']:
-        submission_dir = f'{workload_dir}/{workload_name}_{framework}'
-        if os.path.exists(submission_dir):
-          submission_path = (f'reference_submissions/{workload_name}/'
-                             f'{workload_name}_{framework}/submission.py')
-          logging.info(f'========= Testing {workload_name} in {framework}.')
-          eval_result = _test_submission(
-              workload_name,
-              framework,
-              submission_path,
-              search_space_path,
-              data_dir=None,
-              use_fake_input_queue=FLAGS.use_fake_input_queue)
-          expected_names = _EXPECTED_METRIC_NAMES[workload_name]
-          actual_names = list(eval_result.keys())
-          for expected_name in expected_names:
-            self.assertIn(expected_name, actual_names)
+        submission_dir = f'{workload_dir}/{dataset_name}_{framework}'
+        if not os.path.exists(submission_dir):
+          continue
+        if 'imagenet_vit' not in workload_dir:
+          continue
+        submission_path = (f'reference_submissions/{workload_name}/'
+                           f'{dataset_name}_{framework}/submission.py')
+        logging.info(f'========= Testing {workload_name} in {framework}.')
+        eval_result = _test_submission(
+            workload_name,
+            framework,
+            submission_path,
+            search_space_path,
+            data_dir=None,
+            use_fake_input_queue=FLAGS.use_fake_input_queue)
+        expected_names = _EXPECTED_METRIC_NAMES[workload_name]
+        actual_names = list(eval_result.keys())
+        for expected_name in expected_names:
+          self.assertIn(expected_name, actual_names)
 
 
 if __name__ == '__main__':

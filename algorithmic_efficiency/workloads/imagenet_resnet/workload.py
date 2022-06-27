@@ -3,7 +3,7 @@
 from algorithmic_efficiency import spec
 
 
-class BaseImagenetWorkload(spec.Workload):
+class BaseImagenetResNetWorkload(spec.Workload):
 
   def __init__(self):
     self._param_shapes = None
