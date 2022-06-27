@@ -27,8 +27,8 @@ from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
 DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
@@ -72,8 +72,8 @@ def worker_init_fn(worker_id):
 
   if data.transform.mask_func is not None:
     # DDP training: unique seed is determined by worker and device
-    if PYTORCH_DDP:
-      seed = base_seed + torch.distributed.get_rank() * worker_info.num_workers
+    if USE_PYTORCH_DDP:
+      seed = base_seed + RANK * worker_info.num_workers
     else:
       seed = base_seed
     data.transform.mask_func.rng.seed(seed % (2**32 - 1))
@@ -146,7 +146,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                                         range(self.num_eval_train_examples))
 
     sampler = None
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
@@ -157,16 +157,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=not PYTORCH_DDP and is_train,
+        shuffle=not USE_PYTORCH_DDP and is_train,
         worker_init_fn=worker_init_fn,
         sampler=sampler,
-        num_workers=0,
+        num_workers=4,
         pin_memory=True,
         drop_last=is_train)
 
     dataloader = data_utils.cycle(
         dataloader,
-        custom_sampler=PYTORCH_DDP,
+        custom_sampler=USE_PYTORCH_DDP,
         keys=('inputs',
               'targets',
               'mean',
@@ -185,7 +185,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
     model.to(DEVICE)
     if N_GPUS > 1:
-      if PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
@@ -286,7 +286,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
