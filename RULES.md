@@ -1,6 +1,6 @@
 # MLCommons™ Algorithmic Efficiency Benchmark Rules
 
-**Version:** 0.0.6 *(Last updated 17 May 2022)*
+**Version:** 0.0.7 *(Last updated 23 June 2022)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -390,7 +390,7 @@ $$r_{p,s}=\frac{t_{p,s}}{\min\\{t_{p,s}:s \in \mathcal{S}\\}}$$
 
   - Need to be careful about weighting tasks to not favor any data modality. We might need to weigh the problems somehow to handle different numbers of models on a given dataset
 
-**The area between a submitted performance profile $\rho_s(\tau)$ and the performance profile of the reference implementation will be used as a score to compare submissions, where the area is computed by integrating $\log\tau$ from $[0, \infty)$ OR $\tau$ from $[1, \infty)$ , whether or not to log scale is a decision to be made after further investigation.**
+**The area between a submitted performance profile  $\rho_s(\tau) $ and the performance profile of the baseline submission will be used as a score to compare submissions, where the area is computed by integrating  $\log\tau $ from  $[0, \infty) $ OR  $\tau $ from $[1, \infty) $, whether or not to log scale is a decision to be made after further investigation.**
 
 $$\rho_s(\tau)=\frac{1}{n_p} \text{size} \\{ p \in \mathcal{P}: r_{p,s} \leq \tau \\}$$
 
