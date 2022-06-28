@@ -396,7 +396,7 @@ $$\rho_s(\tau)=\frac{1}{n_p} \text{size} \\{ p \in \mathcal{P}: r_{p,s} \leq \ta
 
 For a given problem, we define the “speedup over the reference” as $\frac{t_{p, \text{ref}}}{t_{p,s}}$. For example, if a submission was 2x faster than the reference implementation, this would be equal to 2.
 
-To have a simpler to interpret number for press releases, we will also release (in addition to the raw $t(p,s)$ values) the geometric mean of $\frac{t_{p, \text{ref}}}{t_{p,s}}$.
+To have a simpler to interpret number for press releases, we will also release (in addition to the raw  $t(p,s) $ values) the geometric mean of  $\frac{t_{p, \text{ref}}}{t_{p,s}} $.
 
 - Once we fix a reference we can rerun the reference on the new set of problems for each iteration of the contest (using the new competition hardware), and then report our year over year progress as a community in speeding up training
 
