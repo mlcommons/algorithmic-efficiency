@@ -214,8 +214,6 @@ def create_split(split,
                  area_range=(0.08, 1.0)):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
   del num_batches
-  if split == 'eval_train':
-    split = 'train[:50000]'
 
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 

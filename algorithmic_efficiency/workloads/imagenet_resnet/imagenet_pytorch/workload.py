@@ -22,8 +22,8 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models im
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
 DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
@@ -54,12 +54,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].float().to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-      }
+    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -69,16 +64,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del data_rng
     is_train = split == 'train'
 
-    normalize = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[i / 255 for i in self.train_mean],
-            std=[i / 255 for i in self.train_stddev])
-    ])
     eval_transform_config = transforms.Compose([
         transforms.Resize(self.resize_size),
         transforms.CenterCrop(self.center_crop_size),
-        normalize
     ])
     transform_config = {
         'train':
@@ -88,7 +76,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                     scale=self.scale_ratio_range,
                     ratio=self.aspect_ratio_range),
                 transforms.RandomHorizontalFlip(),
-                normalize
             ]),
         'eval_train':
             eval_transform_config,
@@ -108,7 +95,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                                         range(self.num_eval_train_examples))
 
     sampler = None
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
@@ -119,13 +106,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=not PYTORCH_DDP and is_train,
+        shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=0,
+        num_workers=4,
         pin_memory=True,
+        collate_fn=data_utils.fast_collate,
         drop_last=is_train)
-
-    dataloader = data_utils.cycle(dataloader, custom_sampler=PYTORCH_DDP)
+    dataloader = data_utils.PrefetchedWrapper(dataloader,
+                                              DEVICE,
+                                              self.train_mean,
+                                              self.train_stddev)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
 
     return dataloader
 
@@ -137,7 +128,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     }
     model.to(DEVICE)
     if N_GPUS > 1:
-      if PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
@@ -245,7 +236,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    if PYTORCH_DDP:
+    if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

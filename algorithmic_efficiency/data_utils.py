@@ -1,11 +1,14 @@
 import jax
+import numpy as np
 import torch
 import torch.distributed as dist
+from torch.utils.data import DataLoader
+from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
 
 def shard_numpy_ds(xs):
-  """Prepare tf data for JAX
+  """Prepare tf data for JAX or PyTorch DDP.
 
   Convert an input batch from tf Tensors to numpy arrays and reshape it to be
   sharded across devices.
@@ -16,8 +19,9 @@ def shard_numpy_ds(xs):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     x = x._numpy()  # pylint: disable=protected-access
 
-    # reshape (host_batch_size, height, width, 3) to
-    # (local_devices, device_batch_size, height, width, 3)
+    # Reshape (global_batch_size, ...) to
+    # (local_device_count, per_device_batch_size, ...).
+    # Assumes that `global_batch_size % local_device_count == 0`.
     return x.reshape((local_device_count, -1) + x.shape[1:])
 
   return jax.tree_map(_prepare, xs)
@@ -33,7 +37,7 @@ def cycle(iterable, keys=('inputs', 'targets'), custom_sampler=False):
       assert len(keys) == len(batch)
       yield dict(zip(keys, batch))
     except StopIteration:
-      if custom_sampler:
+      if custom_sampler and isinstance(iterable, DataLoader):
         epoch += 1
         iterable.sampler.set_epoch(epoch)
       iterator = iter(iterable)
@@ -54,7 +58,7 @@ class DistributedEvalSampler(Sampler):
   Sampler that restricts data loading to a subset of the dataset.
   It is especially useful in conjunction with
   :class:`torch.nn.parallel.DistributedDataParallel`. In such a case, each
-  process can pass a :class`~torch.utils.data.DistributedSampler` instance as
+  process can pass a :class`~DistributedEvalSampler` instance as
   a :class:`~torch.utils.data.DataLoader` sampler, and load a subset of the
   original dataset that is exclusive to it.
   .. note::
@@ -144,3 +148,97 @@ class DistributedEvalSampler(Sampler):
         epoch (int): _epoch number.
     """
     self.epoch = epoch
+
+
+# github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
+# ConvNets/image_classification/dataloaders.py
+def fast_collate(batch, memory_format=torch.contiguous_format):
+  imgs = [img[0] for img in batch]
+  targets = torch.tensor([target[1] for target in batch], dtype=torch.int64)
+  w = imgs[0].size[0]
+  h = imgs[0].size[1]
+  tensor = torch.zeros(
+      (len(imgs), 3, h, w),
+      dtype=torch.uint8).contiguous(memory_format=memory_format)
+  for i, img in enumerate(imgs):
+    nump_array = np.asarray(img, dtype=np.uint8)
+    if nump_array.ndim < 3:
+      nump_array = np.expand_dims(nump_array, axis=-1)
+    nump_array = np.rollaxis(nump_array, 2)
+    tensor[i] += torch.from_numpy(nump_array.copy())
+  return tensor, targets
+
+
+# Inspired by
+# github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
+# ConvNets/image_classification/dataloaders.py
+class PrefetchedWrapper:
+
+  def __init__(self, dataloader, device, mean, std, start_epoch=0):
+    self.dataloader = dataloader
+    self.epoch = start_epoch
+    self.device = device
+    self.data_mean = torch.tensor([i / 255 for i in mean],
+                                  device=device).view(1, 3, 1, 1)
+    self.data_std = torch.tensor([i / 255 for i in std],
+                                 device=device).view(1, 3, 1, 1)
+
+  def __len__(self):
+    return len(self.dataloader)
+
+  def __iter__(self):
+    if isinstance(self.dataloader.sampler,
+                  (DistributedSampler, DistributedEvalSampler)):
+      self.dataloader.sampler.set_epoch(self.epoch)
+    self.epoch += 1
+    return self.prefetched_loader()
+
+  def prefetched_loader(self):
+    stream = torch.cuda.Stream()
+    first = True
+
+    for next_inputs, next_targets in self.dataloader:
+      with torch.cuda.stream(stream):
+        next_inputs = next_inputs.to(
+            self.device, dtype=torch.float,
+            non_blocking=True).sub(self.data_mean).div(self.data_std)
+        next_targets = next_targets.to(self.device, non_blocking=True)
+
+      if not first:
+        yield inputs, targets
+      else:
+        first = False
+
+      torch.cuda.current_stream().wait_stream(stream)
+      inputs = next_inputs
+      targets = next_targets
+
+    yield inputs, targets
+
+
+# Inspired by github.com/PetrochukM/PyTorch-NLP/blob/master/torchnlp/samplers/
+# distributed_sampler.py
+class TFDistributedSampler:
+
+  def __init__(self, iterator, device='cuda:0', rank=None):
+    self.iterator = iterator
+    self.device = device
+    self.rank = rank
+    if rank is None:
+      if not torch.distributed.is_initialized():
+        raise RuntimeError('Requires `torch.distributed` to be initialized.')
+      self.rank = torch.distributed.get_rank()
+
+  def __iter__(self):
+    return self
+
+  def __next__(self):
+    batch = next(self.iterator)
+    batch = {
+        # Assumes that len(value) > self.rank, i.e. there needs to be data for
+        # each rank/GPU.
+        key: torch.as_tensor(
+            value[self.rank], device=self.device, dtype=torch.int64) for key,
+        value in batch.items()
+    }
+    return batch

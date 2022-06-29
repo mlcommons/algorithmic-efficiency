@@ -3,10 +3,10 @@ import functools
 import os
 from typing import Dict, List, Optional, Union
 
-import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency.workloads.wmt import tokenizer
 
 AUTOTUNE = tf.data.AUTOTUNE
@@ -210,8 +210,8 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
                         data_rng,
                         train: bool,
                         shuffle_buffer_size: int = 1024,
-                        max_length: int = 512,
-                        per_device_batch_size: int = 256):
+                        max_length: int = 256,
+                        global_batch_size: int = 128):
   """Shuffle and batch/pack the given dataset."""
 
   def length_filter(max_len):
@@ -230,10 +230,10 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
     dataset = dataset.shuffle(shuffle_buffer_size, seed=data_rng[0])
     dataset = dataset.repeat()
     dataset = pack_dataset(dataset, max_length)
-    dataset = dataset.batch(per_device_batch_size, drop_remainder=train)
+    dataset = dataset.batch(global_batch_size, drop_remainder=train)
   else:  # simple (static-shape) padded batching
     dataset = dataset.padded_batch(
-        per_device_batch_size,
+        global_batch_size,
         padded_shapes={'inputs': max_length, 'targets': max_length},
         padding_values={'inputs': 0, 'targets': 0},
         drop_remainder=train)
@@ -273,21 +273,19 @@ def get_wmt_dataset(data_rng,
       ds, vocab_path=vocab_path, vocab_size=vocab_size, max_corpus_chars=10**7)
   ds = ds.map(tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
 
-  num_devices = jax.local_device_count()
-  per_device_batch_size = global_batch_size // num_devices
   ds = preprocess_wmt_data(
       ds,
       data_rng,
       train=is_training,
-      per_device_batch_size=per_device_batch_size,
+      global_batch_size=global_batch_size,
       max_length=256)
 
   if num_batches:
     ds = ds.take(num_batches)
 
-  ds = ds.batch(num_devices)
-
   if repeat_final_dataset:
     ds = ds.repeat()
+
+  ds = map(data_utils.shard_numpy_ds, ds)
 
   return ds, sp_tokenizer

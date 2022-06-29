@@ -136,7 +136,7 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 ```bash
 python3 submission_runner.py \
     --framework=jax \
-    --workload=mnist |\
+    --workload=mnist \
     --submission_path=baselines/mnist/mnist_jax/submission.py \
     --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
@@ -150,6 +150,14 @@ python3 submission_runner.py \
     --submission_path=baselines/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=baselines/mnist/tuning_search_space.json
 ```
+
+When using multiple GPUs on a single node it is recommended to use PyTorch's
+[distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
+To do so, simply replace `python3` by 
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
+```
+where `N_GPUS` is the number of available GPUs on the node.
 
 ## Rules
 

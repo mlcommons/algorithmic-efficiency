@@ -301,13 +301,13 @@ def score_submission_on_workload(workload: spec.Workload,
 
 def main(_):
   # Check if distributed data parallel is used.
-  pytorch_ddp = 'LOCAL_RANK' in os.environ
+  use_pytorch_ddp = 'LOCAL_RANK' in os.environ
   if FLAGS.framework == 'pytorch':
     # From the docs: "(...) causes cuDNN to benchmark multiple convolution
     # algorithms and select the fastest."
     torch.backends.cudnn.benchmark = True
 
-    if pytorch_ddp:
+    if use_pytorch_ddp:
       rank = int(os.environ['LOCAL_RANK'])
       torch.cuda.set_device(rank)
       # only log once (for local rank == 0)
@@ -339,7 +339,7 @@ def main(_):
                                        FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
-  if pytorch_ddp:
+  if use_pytorch_ddp:
     # cleanup
     dist.destroy_process_group()
 

@@ -17,8 +17,8 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     decode_variant
 
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if PYTORCH_DDP else 0
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
 DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
 N_GPUS = torch.cuda.device_count()
 
@@ -35,7 +35,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     }
     model.to(DEVICE)
     if N_GPUS > 1:
-      if PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)

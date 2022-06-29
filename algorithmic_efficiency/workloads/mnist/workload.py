@@ -1,5 +1,4 @@
 """MNIST workload parent class."""
-import itertools
 import math
 import os
 from typing import Dict, Tuple
@@ -13,7 +12,7 @@ from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
 FLAGS = flags.FLAGS
-PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 class BaseMnistWorkload(spec.Workload):
@@ -99,10 +98,8 @@ class BaseMnistWorkload(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
+      self._eval_iters[split] = self.build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
-      # Note that this stores the entire eval dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
 
     total_metrics = {
         'accuracy': 0.,
@@ -121,7 +118,7 @@ class BaseMnistWorkload(spec.Workload):
       }
     if FLAGS.framework == 'jax':
       total_metrics = jax_utils.unreplicate(total_metrics)
-    elif PYTORCH_DDP:
+    elif USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     if FLAGS.framework == 'pytorch':

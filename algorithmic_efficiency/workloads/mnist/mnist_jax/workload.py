@@ -1,5 +1,6 @@
 """MNIST workload implemented in Jax."""
 import functools
+import itertools
 from typing import Any, Dict, Tuple
 
 from flax import jax_utils
@@ -102,7 +103,11 @@ class MnistWorkload(BaseMnistWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int) -> Dict[str, Any]:
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    if split != 'train':
+      # Note that this stores the entire eval dataset in memory.
+      ds = itertools.cycle(ds)
+    return ds
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)

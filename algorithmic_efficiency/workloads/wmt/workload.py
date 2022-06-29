@@ -1,9 +1,12 @@
 import math
+import os
 from typing import Dict, Optional
 
+from absl import flags
 import jax
 import numpy as np
 import torch
+import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import decode
@@ -11,6 +14,8 @@ from algorithmic_efficiency.workloads.wmt import input_pipeline
 
 VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+FLAGS = flags.FLAGS
 
 
 class BaseWmtWorkload(spec.Workload):
@@ -36,15 +41,18 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def num_train_examples(self):
+    # wmt17_translate/de-en 'train' split size
     return 5906184
 
   @property
   def num_eval_train_examples(self):
-    return 3004
+    # same as `num_validation_examples`
+    return 3000
 
   @property
   def num_validation_examples(self):
-    return 3004
+    # wmt14_translate/de-en 'validation' split size
+    return 3000
 
   @property
   def num_test_examples(self):
@@ -75,7 +83,9 @@ class BaseWmtWorkload(spec.Workload):
                         repeat_final_dataset: bool = False):
     is_training = split == 'train'
     if split == 'eval_train':
-      split = 'train'
+      # Without the '+1' only `num_eval_train_examples-1` examples are used
+      # since one example is filtered out in the input pipeline.
+      split = f'train[:{self.num_eval_train_examples+1}]'
     ds, self._tokenizer = input_pipeline.get_wmt_dataset(
         data_rng,
         split,
@@ -87,7 +97,6 @@ class BaseWmtWorkload(spec.Workload):
         reverse_translation=True,
         repeat_final_dataset=repeat_final_dataset)
     for batch in iter(ds):
-      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       yield batch
 
   def _eval_model_on_split(self,
@@ -99,6 +108,7 @@ class BaseWmtWorkload(spec.Workload):
                            rng: spec.RandomState,
                            data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    del model_state
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
@@ -109,27 +119,30 @@ class BaseWmtWorkload(spec.Workload):
           global_batch_size,
           num_batches,
           repeat_final_dataset=True)
-    eval_metrics = []
+
+    eval_metrics = {}
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
       metrics = self.eval_step(params, eval_batch)
-      eval_metrics.append(metrics)
-    eval_metrics_sums = {k: 0.0 for k in eval_metrics[0].keys()}
-    for m in eval_metrics:
-      for k, v in m.items():
-        eval_metrics_sums[k] += v
-    eval_denominator = eval_metrics_sums.pop("denominator")
-    eval_results = jax.tree_map(
-        lambda x: x / eval_denominator,  # pylint: disable=cell-var-from-loop
-        eval_metrics_sums)
+      for metric_name, metric_value in metrics.items():
+        if metric_name not in eval_metrics:
+          eval_metrics[metric_name] = 0.0
+        eval_metrics[metric_name] += metric_value
+    if USE_PYTORCH_DDP:
+      for metric in eval_metrics.values():
+        dist.all_reduce(metric)
+    if FLAGS.framework == 'pytorch':
+      eval_metrics = {k: v.item() for k, v in eval_metrics.items()}
+    eval_denominator = eval_metrics.pop('denominator')
+    eval_results = jax.tree_map(lambda x: float(x / eval_denominator),
+                                eval_metrics)
 
-    bleu_score = self.translate_and_calculate_bleu(
+    eval_results['bleu'] = self.translate_and_calculate_bleu(
         params=params,
         ds_iter=self._eval_iters[split],
         num_batches=num_batches,
         max_predict_length=256)
 
-    eval_results['bleu'] = bleu_score
     return eval_results
 
   def compute_summed_metrics(self, logits, labels, weights):
