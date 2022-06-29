@@ -7,3 +7,5 @@ env/
 venv/
 workdir/
 makefile
+*.out
+*.sh

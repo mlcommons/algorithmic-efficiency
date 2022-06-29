@@ -15,13 +15,14 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 128
+  return 512
 
 
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
-  base_learning_rate = hparams.learning_rate * get_batch_size('imagenet') / 256.
+  base_learning_rate = hparams.learning_rate * \
+                       get_batch_size('imagenet_resnet') / 256.
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=base_learning_rate,
@@ -37,7 +38,7 @@ def create_learning_rate_fn(hparams: spec.Hyperparameters,
 
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
-  steps_per_epoch = num_train_examples // get_batch_size('imagenet')
+  steps_per_epoch = num_train_examples // get_batch_size('imagenet_resnet')
   learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
   opt_init_fn, opt_update_fn = optax.sgd(
       nesterov=True,

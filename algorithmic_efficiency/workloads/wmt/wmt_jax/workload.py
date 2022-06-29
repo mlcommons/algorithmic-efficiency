@@ -19,12 +19,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 
-def _pad_examples(desired_batch_size, x):
-  """Expand batch to desired size by repeating last slice."""
-  batch_pad = desired_batch_size - x.shape[0]
-  return np.concatenate([x, np.tile(x[-1], (batch_pad, 1))], axis=0)
-
-
 def _per_host_sum_pmap(in_tree):
   """Execute psum on in_tree's leaves over one device per host."""
   host2devices = collections.defaultdict(list)
@@ -192,18 +186,10 @@ class WmtWorkload(BaseWmtWorkload):
                                    num_batches,
                                    max_predict_length: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
-    n_devices = jax.local_device_count()
     logging.info('Translating evaluation dataset.')
     sources, references, predictions = [], [], []
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
-      # Handle final odd-sized batch by padding instead of dropping it.
-      cur_pred_batch_size = pred_batch['inputs'].shape[0]
-      if cur_pred_batch_size % n_devices:
-        padded_size = int(np.ceil(cur_pred_batch_size / n_devices) * n_devices)
-        pred_batch = jax.tree_map(
-            functools.partial(_pad_examples, padded_size),  # pylint: disable=cell-var-from-loop
-            pred_batch)
       cache = self.initialize_cache(pred_batch['inputs'])
       predicted = self.predict_step(pred_batch['inputs'],
                                     params,
@@ -214,7 +200,7 @@ class WmtWorkload(BaseWmtWorkload):
       inputs = _to_host(pred_batch['inputs'])
       targets = _to_host(pred_batch['targets'])
       # Iterate through non-padding examples of batch.
-      for i, s in enumerate(predicted[:cur_pred_batch_size]):
+      for i, s in enumerate(predicted):
         sources.append(self._decode_tokens(inputs[i]))
         references.append(self._decode_tokens(targets[i]))
         predictions.append(self._decode_tokens(s))

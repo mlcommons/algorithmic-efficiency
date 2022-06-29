@@ -6,10 +6,14 @@ from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import \
     CifarWorkload as JaxCifarWorkload
 from algorithmic_efficiency.workloads.cifar.cifar_pytorch.workload import \
     CifarWorkload as PyTorchCifarWorkload
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import \
-    ImagenetWorkload as JaxImagenetWorkload
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.workload import \
-    ImagenetWorkload as PyTorchImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
+    ImagenetResNetWorkload as JaxImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
+    ImagenetResNetWorkload as PyTorchImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
+    ImagenetVitWorkload as JaxImagenetViTWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
+    ImagenetVitWorkload as PyTorchImagenetViTWorkload
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     MnistWorkload as JaxMnistWorkload
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
@@ -19,7 +23,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet', 'wmt']
+WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt']
 
 
 # Ideally we would match the shapes layer-wise, but for that we
@@ -53,11 +57,16 @@ def get_workload(workload):
     jax_workload = JaxCifarWorkload()
     # Init PyTorch workload.
     pytorch_workload = PyTorchCifarWorkload()
-  elif workload == 'imagenet':
+  elif workload == 'imagenet_resnet':
     # Init Jax workload.
-    jax_workload = JaxImagenetWorkload()
+    jax_workload = JaxImagenetResNetWorkload()
     # Init PyTorch workload.
-    pytorch_workload = PyTorchImagenetWorkload()
+    pytorch_workload = PyTorchImagenetResNetWorkload()
+  elif workload == 'imagenet_vit':
+    # Init Jax workload.
+    jax_workload = JaxImagenetViTWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchImagenetViTWorkload()
   elif workload == 'wmt':
     # Init Jax workload.
     jax_workload = JaxWmtWorkload()
