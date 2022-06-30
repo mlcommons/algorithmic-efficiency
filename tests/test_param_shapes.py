@@ -2,6 +2,10 @@ import jax
 import numpy as np
 import pytest
 
+from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import \
+    CifarWorkload as JaxCifarWorkload
+from algorithmic_efficiency.workloads.cifar.cifar_pytorch.workload import \
+    CifarWorkload as PyTorchCifarWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload as JaxImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
@@ -23,7 +27,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-WORKLOADS = ['mnist', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
+WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 
 # Ideally we would match the shapes layer-wise, but for that we
@@ -52,6 +56,11 @@ def get_workload(workload):
     jax_workload = JaxMnistWorkload()
     # Init PyTorch workload.
     pytorch_workload = PyTorchMnistWorkload()
+  elif workload == 'cifar':
+    # Init Jax workload.
+    jax_workload = JaxCifarWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchCifarWorkload()
   elif workload == 'imagenet_resnet':
     # Init Jax workload.
     jax_workload = JaxImagenetResNetWorkload()

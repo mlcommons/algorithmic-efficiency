@@ -5,7 +5,11 @@ import jraph
 import pytest
 
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
+    ResNet18 as JaxResNet_c10
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet50 as JaxResNet
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+    resnet18 as PyTorchResNet_c10
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.models import \
@@ -26,7 +30,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
+WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -47,6 +51,14 @@ def get_models(workload):
     jax_model = JaxMLP().init(init_rngs, init_val, train=True)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchMLP()
+  elif workload == 'cifar':
+    # Init Jax model.
+    input_shape = (1, 32, 32, 3)
+    model_init = jax.jit(JaxResNet_c10(num_classes=10, dtype=jnp.float32).init)
+    jax_model = model_init(init_rngs, jnp.ones(input_shape,
+                                               jnp.float32))["params"]
+    # Init PyTorch model.
+    pytorch_model = PyTorchResNet_c10(num_classes=10)
   elif workload == 'imagenet_resnet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
