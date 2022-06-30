@@ -11,8 +11,8 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'imagenet': 128}
-  return batch_sizes[workload_name]
+  del workload_name
+  return 512
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -20,34 +20,36 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  del workload
   del model_state
   del rng
 
-  base_lr = hyperparameters.learning_rate * get_batch_size('imagenet') / 256.
+  batch_size = get_batch_size('imagenet_resnet')
+  base_lr = hyperparameters.learning_rate * batch_size / 256.
   optimizer_state = {
       'optimizer':
           torch.optim.SGD(
               model_params.parameters(),
               lr=base_lr,
               momentum=hyperparameters.momentum,
-              weight_decay=hyperparameters.l2)
+              weight_decay=hyperparameters.l2,
+              nesterov=True)
   }
 
+  steps_per_epoch = workload.num_train_examples // batch_size
   scheduler1 = LinearLR(
       optimizer_state['optimizer'],
-      start_factor=1e-5,
+      start_factor=1e-10,
       end_factor=1.,
-      total_iters=hyperparameters.warmup_epochs)
+      total_iters=hyperparameters.warmup_epochs * steps_per_epoch)
   cosine_epochs = max(
       hyperparameters.num_epochs - hyperparameters.warmup_epochs, 1)
   scheduler2 = CosineAnnealingLR(
-      optimizer_state['optimizer'], T_max=cosine_epochs)
+      optimizer_state['optimizer'], T_max=cosine_epochs * steps_per_epoch)
 
   optimizer_state['scheduler'] = SequentialLR(
       optimizer_state['optimizer'],
       schedulers=[scheduler1, scheduler2],
-      milestones=[hyperparameters.warmup_epochs])
+      milestones=[hyperparameters.warmup_epochs * steps_per_epoch])
 
   return optimizer_state
 
@@ -70,6 +72,7 @@ def update_params(
   del hyperparameters
   del loss_type
   del eval_results
+  del global_step
 
   current_model = current_param_container
   current_param_container.train()
@@ -88,10 +91,7 @@ def update_params(
 
   loss.backward()
   optimizer_state['optimizer'].step()
-
-  steps_per_epoch = workload.num_train_examples // get_batch_size('imagenet')
-  if (global_step + 1) % steps_per_epoch == 0:
-    optimizer_state['scheduler'].step()
+  optimizer_state['scheduler'].step()
 
   return (optimizer_state, current_param_container, new_model_state)
 

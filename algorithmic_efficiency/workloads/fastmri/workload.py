@@ -1,35 +1,35 @@
-"""ImageNet workload parent class."""
+"""FastMRI workload parent class."""
 
 from algorithmic_efficiency import spec
 
 
-class BaseImagenetWorkload(spec.Workload):
+class BaseFastMRIWorkload(spec.Workload):
 
   def __init__(self):
     self._param_shapes = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/accuracy'] > self.target_value
+    return eval_result['validation/ssim'] > self.target_value
 
   @property
   def target_value(self):
-    return 0.76
+    return 0.70
 
   @property
   def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
+    return spec.LossType.MEAN_ABSOLUTE_ERROR
 
   @property
   def num_train_examples(self):
-    return 1281167
+    return 34742
 
   @property
   def num_eval_train_examples(self):
-    return 50000
+    return 3474
 
   @property
   def num_validation_examples(self):
-    return 50000
+    return 7135
 
   @property
   def num_test_examples(self):
@@ -37,33 +37,23 @@ class BaseImagenetWorkload(spec.Workload):
 
   @property
   def train_mean(self):
-    return [0.485 * 255, 0.456 * 255, 0.406 * 255]
+    return [0., 0., 0.]
 
   @property
   def train_stddev(self):
-    return [0.229 * 255, 0.224 * 255, 0.225 * 255]
-
-  # data augmentation settings
+    return [1., 1., 1.]
 
   @property
-  def scale_ratio_range(self):
-    return (0.08, 1.0)
+  def center_fractions(self):
+    return (0.08,)
 
   @property
-  def aspect_ratio_range(self):
-    return (0.75, 4.0 / 3.0)
-
-  @property
-  def center_crop_size(self):
-    return 224
-
-  @property
-  def resize_size(self):
-    return 256
+  def accelerations(self):
+    return (4,)
 
   @property
   def max_allowed_runtime_sec(self):
-    return 111600  # 31 hours
+    return 10800  # 3 hours
 
   @property
   def eval_period_time_sec(self):

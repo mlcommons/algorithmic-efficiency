@@ -1,12 +1,12 @@
-"""Tests for imagenet_jax/workload.py."""
+"""Tests for imagenet_resnet/imagenet_jax/workload.py."""
 
 from absl.testing import absltest
 import jax
 import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet.imagenet_jax.workload import \
-    ImagenetWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
+    ImagenetResNetWorkload
 
 
 def _pytree_total_diff(pytree_a, pytree_b):
@@ -16,13 +16,13 @@ def _pytree_total_diff(pytree_a, pytree_b):
 
 
 class ModelsTest(absltest.TestCase):
-  """Tests for imagenet_jax/workload.py."""
+  """Tests for imagenet_resnet/imagenet_jax/workload.py."""
 
   def test_forward_pass(self):
     batch_size = 11
     rng = jax.random.PRNGKey(0)
     rng, model_init_rng, *data_rngs = jax.random.split(rng, 4)
-    workload = ImagenetWorkload()
+    workload = ImagenetResNetWorkload()
     model_params, batch_stats = workload.init_model_fn(model_init_rng)
     input_shape = (jax.local_device_count(), batch_size, 224, 224, 3)
     first_input_batch = jax.random.normal(data_rngs[0], shape=input_shape)
