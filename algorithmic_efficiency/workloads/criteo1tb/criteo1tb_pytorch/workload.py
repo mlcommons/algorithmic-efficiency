@@ -4,19 +4,24 @@ from typing import Any, Callable, List, Optional, Type, Union, Dict, Tuple
 import functools
 import sys
 import time
+import math
 
-import numpy as np
+#import numpy as np
 import torch
 from torch import nn 
+import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
-
+from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.dlrm_small_model import DlrmSmall
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.data import CriteoBinDataset, data_collate_fn, prefetcher
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.utils.distributed import DistributedSampler
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.input_pipeline import CriteoBinDataset, data_collate_fn, prefetcher
+#from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.utils.distributed import DistributedSampler
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import metrics 
 
 
 
@@ -29,8 +34,7 @@ N_GPUS = torch.cuda.device_count()
 _NUM_DENSE_FEATURES = 13
 _VOCAB_SIZES = [1024 * 128] * 26 
 
-#class Criteo1TbDlrmSmallPytorchWorkload(spec.Workload):
-class Criteo1TbDlrmSmallPytorchWorkload():
+class Criteo1TbDlrmSmallWorkload(spec.Workload):
     """
     Criteo1TB DLRM-Small Pytorch workload.
     """
@@ -124,15 +128,16 @@ class Criteo1TbDlrmSmallPytorchWorkload():
                 batch_size = None,
                 num_workers = 0,
                 pin_memory = False, 
-                generator = torch.Generator(device='cpu').manual_seed(data_rng),
+                generator = torch.Generator().manual_seed(int(data_rng[0])),
                 collate_fn=functools.partial(data_collate_fn, device=return_device, orig_stream=torch.cuda.current_stream()))
+
 
         if is_train:
             train_data_set_bin = os.path.join(data_dir, "train_data.bin")
             dataset_train = CriteoBinDataset(train_data_set_bin, batch_size = batch_size, shuffle=False)
             if PYTORCH_DDP:
                 sampler = DistributedSampler(
-                    dataset_train, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+                    dataset_train, num_replicas=N_GPUS, rank=RANK, shuffle=False, drop_last=False)
                 data_loader_args.update({'sampler':sampler})
             data_loader_train = torch.utils.data.DataLoader(dataset_train, **data_loader_args)
             return data_loader_train
@@ -163,10 +168,11 @@ class Criteo1TbDlrmSmallPytorchWorkload():
             data_loader_train = self._get_data_loader(data_rng, split, data_dir, global_batch_size)
             for step, (numerical_features, categorical_features, click) in enumerate(prefetcher(iter(data_loader_train), data_stream)):
                 torch.cuda.current_stream().wait_stream(data_stream)
+            #for step, (numerical_features, categorical_features, click) in enumerate(iter(data_loader_train)):
                 
-                print(f"##################################### num_fea: {numerical_features.shape}################")
-                print(f"##################################### cat_fea: {categorical_features.shape}################")
-                print(f"##################################### click: {click.shape}################")
+                #print(f"##################################### num_fea: {numerical_features.shape}################")
+                #print(f"##################################### cat_fea: {categorical_features.shape}################")
+                #print(f"##################################### click: {click.shape}################")
 
                 yield {
                         'inputs': (numerical_features, categorical_features),
@@ -187,10 +193,11 @@ class Criteo1TbDlrmSmallPytorchWorkload():
 
 
         
-    def init_model_fn(self, rng: spec,RandomState) -> spec.ModelInitState:
+    def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+        #print(rng)
         torch.random.manual_seed(rng[0])
-        np.random.seed(rng[0])
-        np.set_printoptions(precision=4)
+        #np.random.seed(rng[0])
+        #np.set_printoptions(precision=4)
         torch.set_printoptions(precision=4)
         torch.manual_seed(rng[0])
     
@@ -211,7 +218,6 @@ class Criteo1TbDlrmSmallPytorchWorkload():
 
         if N_GPUS > 1:
             if PYTORCH_DDP:
-                #model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
                 model = DDP(model, device_ids=[RANK], output_device=RANK)
             else:
                 model = torch.nn.DataParallel(model)
@@ -233,9 +239,6 @@ class Criteo1TbDlrmSmallPytorchWorkload():
         model = params
 
         if mode == spec.ForwardPassMode.EVAL:
-            if update_batch_norm:
-                raise ValueError(
-                        "Batch norm statistics cannot be updated during evaluation.")
             model.eval()
 
         if mode == spec.ForwardPassMode.TRAIN:
@@ -247,7 +250,7 @@ class Criteo1TbDlrmSmallPytorchWorkload():
         }
 
         with contexts[mode]():
-            logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+            logits_batch = model(augmented_and_preprocessed_input_batch['inputs'], None)
 
         return logits_batch, None
 
@@ -280,7 +283,9 @@ class Criteo1TbDlrmSmallPytorchWorkload():
            logits:spec.Tensor,
            targets: spec.Tensor) -> Dict[str, int]:
         # implement the metrics in question
-       pass
+        loss = self.loss_fn(logits, logits) 
+        auc_roc = metrics.roc_auc_score(logits, targets)
+        return {'auc_roc':auc_roc, 'loss': loss} 
 
 
 
@@ -302,12 +307,12 @@ class Criteo1TbDlrmSmallPytorchWorkload():
                    data_rng, split, data_dir, global_batch_size = global_batch_size)
 
        total_metrics = {
-               loss: torch.tensor(0., device=DEVICE),
-               average_precision: torch.tensor(0., device=DEVICE),
-               auc_roc: torch.tensor(0., device=DEVICE),
+               'loss': torch.tensor(0., device=DEVICE),
+               'auc_roc': torch.tensor(0., device=DEVICE),
                }
 
-       num_batches = int(math.ceil(num_examples/global_batch_size))
+       num_batches =  int(math.ceil(num_examples / global_batch_size))
+
        
        for _ in range(num_batches):
            batch = next(self._eval_iters[split])
@@ -317,7 +322,7 @@ class Criteo1TbDlrmSmallPytorchWorkload():
                    model_state,
                    spec.ForwardPassMode.EVAL,
                    model_rng,
-                   update_batch_norm = False
+                   False
                    )
 
            batch_metrics = self._eval_metric(logits, batch['targets'])
@@ -326,14 +331,9 @@ class Criteo1TbDlrmSmallPytorchWorkload():
            }
 
        if PYTORCH_DDP:
-           for metric in total_metric.values():
+           for metric in total_metrics.values():
                dist.all_reduce(metric)
            return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
-
-
-
-
-
 
 
 
@@ -341,6 +341,9 @@ class Criteo1TbDlrmSmallPytorchWorkload():
     def step_hint(self):
         return 64_000
 
+    
+    def is_output_params(self, param_key:spec.ParameterKey) -> bool:
+        raise NotImplementedError
     
 
   
