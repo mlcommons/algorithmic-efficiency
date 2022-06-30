@@ -9,8 +9,6 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import
     ResNet50 as JaxResNet
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet18 as PyTorchResNet_c10
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
-    ResNet50 as JaxResNet
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.models import \

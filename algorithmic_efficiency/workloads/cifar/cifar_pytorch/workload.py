@@ -19,7 +19,7 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
-from algorithmic_efficiency.workloads.imagenet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet18
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
