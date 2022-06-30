@@ -18,6 +18,7 @@ jobs:
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
         pip install .[wmt]
+        pip install .[ogbg]
     - name: Run pytest
       run: |
         pytest -vx tests/version_test.py

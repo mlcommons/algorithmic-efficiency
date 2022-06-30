@@ -84,9 +84,8 @@ class BaseOgbgWorkload(spec.Workload):
                                                    global_batch_size)
     return dataset_iter
 
-# Does NOT apply regularization, which is left to the submitter to do in
-# `update_params`.
-
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
   def loss_fn(
       self,
       label_batch: spec.Tensor,
