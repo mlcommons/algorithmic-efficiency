@@ -1,4 +1,4 @@
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 import jax

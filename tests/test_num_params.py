@@ -78,8 +78,8 @@ def get_models(workload):
     fake_batch = jraph.GraphsTuple(
         n_node=jnp.asarray([1]),
         n_edge=jnp.asarray([1]),
-        nodes=jnp.ones((1, 3)),
-        edges=jnp.ones((1, 7)),
+        nodes=jnp.ones((1, 9)),
+        edges=jnp.ones((1, 3)),
         globals=jnp.zeros((1, 128)),
         senders=jnp.asarray([0]),
         receivers=jnp.asarray([0]))
