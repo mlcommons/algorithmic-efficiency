@@ -12,6 +12,7 @@ class LossType(enum.Enum):
   SIGMOID_CROSS_ENTROPY = 1
   MEAN_SQUARED_ERROR = 2
   CTC_LOSS = 3
+  MEAN_ABSOLUTE_ERROR = 4
 
 
 class ForwardPassMode(enum.Enum):

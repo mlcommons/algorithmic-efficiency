@@ -38,6 +38,7 @@ _EXPECTED_METRIC_NAMES = {
     'criteo1tb': [
         'train/loss', 'train/average_precision', 'validation/auc_roc'
     ],
+    'fastmri': ['train/ssim', 'validation/ssim'],
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
     'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
     'librispeech': [
