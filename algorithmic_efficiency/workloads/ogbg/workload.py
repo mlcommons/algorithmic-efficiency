@@ -78,6 +78,8 @@ class BaseOgbgWorkload(spec.Workload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
+    if split == 'eval_train':
+      split = f'train[:{self.num_eval_train_examples}]'
     dataset_iter = input_pipeline.get_dataset_iter(split,
                                                    data_rng,
                                                    data_dir,
