@@ -333,7 +333,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
        if PYTORCH_DDP:
            for metric in total_metrics.values():
                dist.all_reduce(metric)
-           return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+        return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
 
 
 
