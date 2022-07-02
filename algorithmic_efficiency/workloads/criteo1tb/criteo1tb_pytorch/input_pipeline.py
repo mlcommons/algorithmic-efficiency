@@ -1,15 +1,36 @@
-import os 
+""" Datapipeline 
+Adapted from NVIDIA:
+https://github.com/mlcommons/training_results_v0.7/blob/master/NVIDIA/benchmarks/dlrm/implementations/pytorch/dlrm/data/dataset.py
+"""
+
+import concurrent
 import math
+import os
+import queue
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-import queue
-import concurrent
+
+def cycle(iterable, keys=('inputs', 'targets'), custom_sampler=False):
+  iterator = iter(iterable)
+  epoch = 0
+  while True:
+    try:
+      batch = next(iterator)
+      # inputs = numerical_features + categorical_features
+      assert len(keys) + 1 == len(batch)
+      yield {'inputs': (batch[0], batch[1]), 'targets': batch[2]}
+    except StopIteration:
+      if custom_sampler and isinstance(iterable, torch.utils.data.DataLoader):
+        epoch += 1
+        iterable.sampler.set_epoch(epoch)
+      iterator = iter(iterable)
+
 
 def data_collate_fn(batch_data, device="cuda", orig_stream=None):
-    """Split raw batch data to features and labels
+  """Split raw batch data to features and labels
     Args:
         batch_data (Tensor): One batch of data from CriteoBinDataset.
         device (torch.device): Output device. If device is GPU, split data on GPU is much faster.
@@ -19,142 +40,149 @@ def data_collate_fn(batch_data, device="cuda", orig_stream=None):
         categorical_features (Tensor):
         click (Tensor):
     """
-    if not isinstance(batch_data, torch.Tensor):
-        # Distributed pass
-        if batch_data[1] is not None:
-            numerical_features = torch.log(batch_data[1].to(device, non_blocking=True) + 1.).squeeze()
-        else:
-            # There are codes rely on numerical_features' dtype
-            numerical_features = torch.empty(batch_data[0].shape[0], 13, dtype=torch.float32, device=device)
-        if batch_data[2] is not None:
-            categorical_features = batch_data[2].to(device, non_blocking=True)
-        else:
-            categorical_features = None
-        click = batch_data[0].to(device, non_blocking=True).squeeze()
+  if not isinstance(batch_data, torch.Tensor):
+    # Distributed pass
+    if batch_data[1] is not None:
+      numerical_features = torch.log(
+          batch_data[1].to(device, non_blocking=True) + 1.).squeeze()
     else:
-        batch_data = batch_data.to(device, non_blocking=True).split([1, 13, 26], dim=1)
-        numerical_features = torch.log(batch_data[1].to(torch.float32) + 1.).squeeze()
-        categorical_features = batch_data[2].to(torch.long)
-        click = batch_data[0].to(torch.float32).squeeze()
+      # There are codes rely on numerical_features' dtype
+      numerical_features = torch.empty(batch_data[0].shape[0],
+                                       13,
+                                       dtype=torch.float32,
+                                       device=device)
+    if batch_data[2] is not None:
+      categorical_features = batch_data[2].to(device, non_blocking=True)
+    else:
+      categorical_features = None
+    click = batch_data[0].to(device, non_blocking=True).squeeze()
+  else:
+    batch_data = batch_data.to(device, non_blocking=True).split([1, 13, 26],
+                                                                dim=1)
+    numerical_features = torch.log(batch_data[1].to(torch.float32) +
+                                   1.).squeeze()
+    categorical_features = batch_data[2].to(torch.long)
+    click = batch_data[0].to(torch.float32).squeeze()
 
-    categorical_features = categorical_features % 1024*128
+  categorical_features = categorical_features % 1024 * 128
 
-    # record_stream() prevents data being unintentionally reused. Aslo NOTE that it may not work
-    # with num_works >=1 in the DataLoader when use this data_collate_fn() as collate function.
-    if orig_stream is not None:
-        numerical_features.record_stream(orig_stream)
-        if categorical_features is not None:
-            categorical_features.record_stream(orig_stream)
-        click.record_stream(orig_stream)
+  # record_stream() prevents data being unintentionally reused. Aslo NOTE that it may not work
+  # with num_works >=1 in the DataLoader when use this data_collate_fn() as collate function.
+  if orig_stream is not None:
+    numerical_features.record_stream(orig_stream)
+    if categorical_features is not None:
+      categorical_features.record_stream(orig_stream)
+    click.record_stream(orig_stream)
 
-    return numerical_features, categorical_features, click
+  return numerical_features, categorical_features, click
 
 
 def prefetcher(load_iterator, prefetch_stream):
-    def _prefetch():
-        with torch.cuda.stream(prefetch_stream):
-            try:
-                data_batch = next(load_iterator)
-            except StopIteration:
-                return None
 
-        return data_batch
+  def _prefetch():
+    with torch.cuda.stream(prefetch_stream):
+      try:
+        data_batch = next(load_iterator)
+      except StopIteration:
+        return None
 
+    return data_batch
+
+  next_data_batch = _prefetch()
+
+  while next_data_batch is not None:
+    torch.cuda.current_stream().wait_stream(prefetch_stream)
+    data_batch = next_data_batch
     next_data_batch = _prefetch()
+    yield data_batch
 
-    while next_data_batch is not None:
-        torch.cuda.current_stream().wait_stream(prefetch_stream)
-        data_batch = next_data_batch
-        next_data_batch = _prefetch()
-        yield data_batch
 
 def _dist_permutation(size):
-    """Generate permutation for dataset shuffle
+  """Generate permutation for dataset shuffle
 
         Args:
             size (int): Size and high value of permutation
         Returns:
             permutation (ndarray):
     """
-    if torch.distributed.get_world_size() > 1:
-        # To guarantee all ranks have the same same permutation, generating it from rank 0 and sync
-        # to other rank by writing to disk
-        permutation_file = "/tmp/permutation.npy"
+  if torch.distributed.get_world_size() > 1:
+    # To guarantee all ranks have the same same permutation, generating it from rank 0 and sync
+    # to other rank by writing to disk
+    permutation_file = "/tmp/permutation.npy"
 
-        if int(os.environ['LOCAL_RANK'])== 0:
-            np.save(permutation_file, np.random.permutation(size))
+    if int(os.environ['LOCAL_RANK']) == 0:
+      np.save(permutation_file, np.random.permutation(size))
 
-        torch.distributed.barrier()
-        permutation = np.load(permutation_file)
-    else:
-        permutation = np.random.permutation(size)
+    torch.distributed.barrier()
+    permutation = np.load(permutation_file)
+  else:
+    permutation = np.random.permutation(size)
 
-    return permutation
-
-
+  return permutation
 
 
 class CriteoBinDataset(Dataset):
-    """Binary version of criteo dataset.
+  """Binary version of criteo dataset.
     Main structure is copied from reference. With following changes:
     - Removed unnecessary things, like counts_file which is not really used in training.
     - _transform_features is removed, doing it on GPU is much faster.
     """
-    def __init__(self, data_file, batch_size=1, bytes_per_feature=4, shuffle=False):
-        # dataset. single target, 13 dense features, 26 sparse features
-        self.tad_fea = 1 + 13
-        self.tot_fea = 1 + 13 + 26
-        self.prefetch_depth = 10
 
-        self.batch_size = batch_size
-        self.bytes_per_batch = (bytes_per_feature * self.tot_fea * batch_size)
+  def __init__(self,
+               data_file,
+               batch_size=1,
+               bytes_per_feature=4,
+               shuffle=False):
+    # dataset. single target, 13 dense features, 26 sparse features
+    self.tad_fea = 1 + 13
+    self.tot_fea = 1 + 13 + 26
+    self.prefetch_depth = 10
 
-        self.num_batches = math.ceil(os.path.getsize(data_file) / self.bytes_per_batch)
+    self.batch_size = batch_size
+    self.bytes_per_batch = (bytes_per_feature * self.tot_fea * batch_size)
 
-        #print('data file:', data_file, 'number of batches:', self.num_batches)
-        self.file = open(data_file, 'rb', buffering=0)
+    self.num_batches = math.ceil(
+        os.path.getsize(data_file) / self.bytes_per_batch)
 
-        if shuffle:
-            self.permutation = _dist_permutation(self.num_batches - 1)
-        else:
-            self.permutation = None
+    print('data file:', data_file, 'number of batches:', self.num_batches)
+    self.file = open(data_file, 'rb', buffering=0)
 
-        self.prefetch_depth = min(self.prefetch_depth, self.num_batches)
-        self.prefetch_queue = queue.Queue()
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    if shuffle:
+      self.permutation = _dist_permutation(self.num_batches - 1)
+    else:
+      self.permutation = None
 
+    self.prefetch_depth = min(self.prefetch_depth, self.num_batches)
+    self.prefetch_queue = queue.Queue()
+    self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
-    def __len__(self):
-        return self.num_batches
+  def __len__(self):
+    return self.num_batches
 
-    def getitem(self, idx):
-        if self.permutation is not None and idx != self.num_batches - 1:
-            idx = self.permutation[idx]
+  def getitem(self, idx):
+    if self.permutation is not None and idx != self.num_batches - 1:
+      idx = self.permutation[idx]
 
-        self.file.seek(idx * self.bytes_per_batch, 0)
-        raw_data = self.file.read(self.bytes_per_batch)
-        array = np.frombuffer(raw_data, dtype=np.int32)
-        tensor = torch.from_numpy(array).view((-1, self.tot_fea))
+    self.file.seek(idx * self.bytes_per_batch, 0)
+    raw_data = self.file.read(self.bytes_per_batch)
+    array = np.frombuffer(raw_data, dtype=np.int32)
+    tensor = torch.from_numpy(array).view((-1, self.tot_fea))
 
-        return tensor
+    return tensor
 
+  def __getitem__(self, idx):
+    #if self.prefetch_depth <= 1:
+    #    return self.getitem(idx)
+    #
+    #if idx == 0:
+    #    for i in range(self.prefetch_depth):
+    #        self.prefetch_queue.put(self.executor.submit(self.getitem, (i)))
+    #
+    #if idx < self.num_batches - self.prefetch_depth:
+    #    self.prefetch_queue.put(self.executor.submit(self.getitem, (idx + self.prefetch_depth)))
+    #
+    #return self.prefetch_queue.get().result()
+    return self.getitem(idx)
 
-
-    def __getitem__(self, idx):
-        #if self.prefetch_depth <= 1:
-        #    return self.getitem(idx)
-        #
-        #if idx == 0:
-        #    for i in range(self.prefetch_depth):
-        #        self.prefetch_queue.put(self.executor.submit(self.getitem, (i)))
-        #
-        #if idx < self.num_batches - self.prefetch_depth:
-        #    self.prefetch_queue.put(self.executor.submit(self.getitem, (idx + self.prefetch_depth)))
-        #
-        #return self.prefetch_queue.get().result()
-        return self.getitem(idx)
-			
-
-
-    def __del__(self):
-        self.file.close()
+  def __del__(self):
+    self.file.close()
