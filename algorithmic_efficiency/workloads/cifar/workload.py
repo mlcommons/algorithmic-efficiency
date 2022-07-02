@@ -29,7 +29,7 @@ class BaseCifarWorkload(spec.Workload):
 
   @property
   def num_train_examples(self):
-    return 50000
+    return 45000
 
   @property
   def num_eval_train_examples(self):
@@ -37,7 +37,7 @@ class BaseCifarWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 10000
+    return 5000
 
   @property
   def num_test_examples(self):
