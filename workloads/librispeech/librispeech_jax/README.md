@@ -19,5 +19,5 @@ cd LibriSpeech
 python3 ../../../prepare_data.py . jax
 
 cd ../../../../..
-python3 submission_runner.py --workload=librispeech_jax --submission_path=workloads/librispeech/librispeech_jax/submission.py tuning_search_space=baselines/librispeech/tuning_search_space.json --data_dir=`pwd`/workloads/librispeech/librispeech_jax/data/LibriSpeech/data
+python3 submission_runner.py --workload=librispeech_jax --submission_path=workloads/librispeech/librispeech_jax/submission.py tuning_search_space=baselines/librispeech/tuning_search_space.json --data_dir=`pwd`/workloads/librispeech/librispeech_jax/data/LibriSpeech/data --logging_backend tensorboard
 ```
