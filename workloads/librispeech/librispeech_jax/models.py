@@ -173,8 +173,7 @@ def flip_sequences(inputs, lengths):
     # a single example.
     max_length = inputs.shape[0]
     flipped = jnp.flip(jnp.roll(inputs, max_length - lengths, axis=0), axis=0)
-    mask = jnp.arange(max_length).reshape(-1, 1) < lengths
-    return flipped * mask
+    return flipped
 
 
 class SimpleLSTM(nn.Module):
@@ -219,7 +218,11 @@ class SimpleBiLSTM(nn.Module):
         backward_outputs = flip_sequences(backward_outputs, lengths)
 
         # Add the forward and backward representations.
-        return forward_outputs + backward_outputs
+        out = forward_outputs + backward_outputs
+        
+        # remove hidden states for padded zeros
+        mask = jnp.arange(inputs.shape[1]).reshape(1, -1, 1) < lengths.reshape(-1, 1, 1)
+        return out * mask
 
 
 class BatchRNN(nn.Module):
