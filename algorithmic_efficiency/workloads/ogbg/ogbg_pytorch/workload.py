@@ -9,7 +9,6 @@ from jraph import GraphsTuple
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg import metrics
@@ -23,6 +22,9 @@ N_GPUS = torch.cuda.device_count()
 
 
 def _pytorch_map(input_dict: Dict) -> Dict:
+  if USE_PYTORCH_DDP:
+    return tree.tree_map(
+        lambda array: torch.as_tensor(array[RANK], device=DEVICE), input_dict)
   return tree.tree_map(
       lambda a: torch.as_tensor(a, device=DEVICE).view(-1, a.shape[-1])
       if len(a.shape) == 3 else torch.as_tensor(a, device=DEVICE).view(-1),
@@ -41,34 +43,33 @@ class OgbgWorkload(BaseOgbgWorkload):
                                              split,
                                              data_dir,
                                              global_batch_size)
-    if USE_PYTORCH_DDP:
-      return data_utils.TFDistributedSampler(
-          dataset_iter, device=DEVICE, rank=RANK)
+    for batch in dataset_iter:
+      graph = batch.pop('inputs')
+      targets = batch.pop('targets')
+      weights = batch.pop('weights')
+      if USE_PYTORCH_DDP:
+        targets = torch.as_tensor(targets[RANK], device=DEVICE)
+        weights = torch.as_tensor(
+            weights[RANK], device=DEVICE, dtype=torch.bool)
+      else:
+        targets = torch.as_tensor(
+            targets, device=DEVICE).view(-1, targets.shape[-1])
+        weights = torch.as_tensor(
+            weights, device=DEVICE,
+            dtype=torch.bool).view(-1, weights.shape[-1])
 
-    def _input_queue_generator():
-      for batch in dataset_iter:
-        graph = batch.pop('inputs')
-        targets = batch['targets']
-        weights = batch['weights']
-        batch = {
-            'targets':
-                torch.as_tensor(targets,
-                                device=DEVICE).view(-1, targets.shape[-1]),
-            'weights':
-                torch.as_tensor(weights, device=DEVICE,
-                                dtype=torch.bool).view(-1, weights.shape[-1]),
-        }
-        batch['inputs'] = GraphsTuple(
-            nodes=_pytorch_map(graph.nodes),
-            edges=_pytorch_map(graph.edges),
-            receivers=_pytorch_map(graph.receivers),
-            senders=_pytorch_map(graph.senders),
-            globals=_pytorch_map(graph.globals),
-            n_node=_pytorch_map(graph.n_node),
-            n_edge=_pytorch_map(graph.n_edge))
-        yield batch
+      batch['inputs'] = GraphsTuple(
+          nodes=_pytorch_map(graph.nodes),
+          edges=_pytorch_map(graph.edges),
+          receivers=_pytorch_map(graph.receivers),
+          senders=_pytorch_map(graph.senders),
+          globals=_pytorch_map(graph.globals),
+          n_node=_pytorch_map(graph.n_node),
+          n_edge=_pytorch_map(graph.n_edge))
+      batch['targets'] = targets
+      batch['weights'] = weights
 
-    return _input_queue_generator()
+      yield batch
 
   @property
   def model_params_types(self):
