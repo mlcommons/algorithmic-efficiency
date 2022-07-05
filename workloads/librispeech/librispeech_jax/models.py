@@ -221,7 +221,7 @@ class SimpleBiLSTM(nn.Module):
         out = forward_outputs + backward_outputs
         
         # remove hidden states for padded zeros
-        mask = jnp.arange(inputs.shape[1]).reshape(1, -1, 1) < lengths.reshape(-1, 1, 1)
+        mask = jnp.arange(embedded_inputs.shape[1]).reshape(1, -1, 1) < lengths.reshape(-1, 1, 1)
         return out * mask
 
 
