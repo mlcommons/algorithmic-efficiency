@@ -41,24 +41,25 @@ class GNN(nn.Module):
 
     graph_network_layers = []
     for st in range(self.num_message_passing_steps):
-      # Constant in_dims are based on the requirements of the GraphNetwork.
+      # Constants in in_dims are based on the requirements of the GraphNetwork.
+      if st == 0:
+        in_dim = self.latent_dim * 3 + self.num_outputs
+        last_in_dim = self.latent_dim * 2 + self.num_outputs
+      else:
+        in_dim = self.hidden_dims[-1] * 4
+        last_in_dim = self.hidden_dims[-1] * 3
+
       graph_network_layers.append(
           GraphNetwork(
-              update_edge_fn=_make_mlp(
-                  self.latent_dim * 3 +
-                  self.num_outputs if st == 0 else self.hidden_dims[-1] * 4,
-                  self.hidden_dims,
-                  self.dropout_rate),
-              update_node_fn=_make_mlp(
-                  self.latent_dim * 3 +
-                  self.num_outputs if st == 0 else self.hidden_dims[-1] * 4,
-                  self.hidden_dims,
-                  self.dropout_rate),
-              update_global_fn=_make_mlp(
-                  self.latent_dim * 2 +
-                  self.num_outputs if st == 0 else self.hidden_dims[-1] * 3,
-                  self.hidden_dims,
-                  self.dropout_rate)))
+              update_edge_fn=_make_mlp(in_dim,
+                                       self.hidden_dims,
+                                       self.dropout_rate),
+              update_node_fn=_make_mlp(in_dim,
+                                       self.hidden_dims,
+                                       self.dropout_rate),
+              update_global_fn=_make_mlp(last_in_dim,
+                                         self.hidden_dims,
+                                         self.dropout_rate)))
     self.graph_network = nn.Sequential(*graph_network_layers)
 
     self.decoder = nn.Linear(
