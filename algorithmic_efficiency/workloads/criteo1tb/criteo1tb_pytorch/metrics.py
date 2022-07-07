@@ -18,8 +18,8 @@ def per_example_sigmoid_binary_cross_entropy(logits, targets):
   log_p = ls(logits)
   log_not_p = ls(-logits)
   per_example_losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
-  per_example_losses = (per_example_losses).reshape(
-      per_example_losses.shape[0], -1)
+  per_example_losses = (per_example_losses).reshape(per_example_losses.shape[0],
+                                                    -1)
   return torch.sum(per_example_losses, dim=1)
 
 
@@ -41,8 +41,8 @@ def roc_auc_score(logits, targets):
   logits = logits[desc_score_indices]
   targets = targets[desc_score_indices]
 
-  distinct_value_indices = torch.nonzero(logits[1:] - logits[:-1],
-                                         as_tuple=False).squeeze()
+  distinct_value_indices = torch.nonzero(
+      logits[1:] - logits[:-1], as_tuple=False).squeeze()
   threshold_idxs = torch.cat([
       distinct_value_indices,
       torch.tensor([targets.numel() - 1], device=device)

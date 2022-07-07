@@ -23,7 +23,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt']
+WORKLOADS = ['mnist', 'criteo1tb', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt']
 
 
 # Ideally we would match the shapes layer-wise, but for that we
@@ -73,6 +73,9 @@ def get_workload(workload):
     jax_workload._global_batch_size = 128
     # Init PyTorch workload.
     pytorch_workload = PyTorchWmtWorkload()
+  elif workload == 'criteo1tb':
+    jax_workload = JaxDLRMWorkload() 
+    pytorch_workload = PyTorchDLRMPyTorch()
   else:
     raise ValueError(f'Workload {workload} is not available.')
   _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))

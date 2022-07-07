@@ -10,8 +10,8 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
-  del workload_name
-  return 131072 * 8
+  batch_sizes = {'criteo1tb': 131072}
+  return batch_sizes[workload_name]
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -26,11 +26,11 @@ def init_optimizer_state(workload: spec.Workload,
 
   optimizer_state = {
       'optimizer':
-      torch.optim.AdamW(
-          model_params.parameters(),
-          lr=base_lr,
-          weight_decay=hyperparameters.weight_decay,
-      )
+          torch.optim.AdamW(
+              model_params.parameters(),
+              lr=base_lr,
+              weight_decay=hyperparameters.weight_decay,
+              betas=(hyperparameters.beta1, 0.999))
   }
 
   scheduler1 = LinearLR(
@@ -82,16 +82,12 @@ def update_params(
       rng=rng,
       update_batch_norm=False)
 
-  loss = workload.loss_fn(label_batch=batch['targets'],
-                          logits_batch=logits_batch).mean()
+  loss = workload.loss_fn(
+      label_batch=batch['targets'], logits_batch=logits_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()
-
-  steps_per_epoch = workload.num_train_examples // get_batch_size('criteo1b')
-
-  if (global_step + 1) % steps_per_epoch == 0:
-    optimizer_state['scheduler'].step()
+  optimizer_state['scheduler'].step()
 
   return (optimizer_state, current_param_container, new_model_state)
 
@@ -100,7 +96,8 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Dict[str, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
-                   hyperparameters: spec.Hyperparameters, global_step: int,
+                   hyperparameters: spec.Hyperparameters,
+                   global_step: int,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
     Each element of the queue is a batch of training examples and labels.

@@ -47,18 +47,16 @@ def data_collate_fn(batch_data, device="cuda", orig_stream=None):
           batch_data[1].to(device, non_blocking=True) + 1.).squeeze()
     else:
       # There are codes rely on numerical_features' dtype
-      numerical_features = torch.empty(batch_data[0].shape[0],
-                                       13,
-                                       dtype=torch.float32,
-                                       device=device)
+      numerical_features = torch.empty(
+          batch_data[0].shape[0], 13, dtype=torch.float32, device=device)
     if batch_data[2] is not None:
       categorical_features = batch_data[2].to(device, non_blocking=True)
     else:
       categorical_features = None
     click = batch_data[0].to(device, non_blocking=True).squeeze()
   else:
-    batch_data = batch_data.to(device, non_blocking=True).split([1, 13, 26],
-                                                                dim=1)
+    batch_data = batch_data.to(
+        device, non_blocking=True).split([1, 13, 26], dim=1)
     numerical_features = torch.log(batch_data[1].to(torch.float32) +
                                    1.).squeeze()
     categorical_features = batch_data[2].to(torch.long)

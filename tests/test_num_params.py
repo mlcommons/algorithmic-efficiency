@@ -26,7 +26,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt']
+WORKLOADS = ['mnist', 'cifar', 'criteo1tb','imagenet_resnet', 'imagenet_vit', 'wmt']
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -81,6 +81,22 @@ def get_models(workload):
         jnp.ones(target_shape, jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchTransformer()
+  elif workload == 'criteo1tb':
+    # Init Jax model.
+    _VOCAB_SIZES = [1024 * 128] * 26
+    _NUM_DENSE_FEATURES = 13
+    input_size = 13 + len(_VOCAB_SIZES)
+    input_shape = (2, input_size)
+    target_shape = (2, input_size)
+    jax_model = DLRMJax(
+      vocab_sizes=_VOCAB_SIZES,
+      total_vocab_sizes=sum(_VOCAB_SIZES),
+      num_dense_features=_NUM_DENSE_FEATURES).init(
+        init_rngs,
+        jnp.ones(input_shape, jnp.float32),
+        jnp.ones(target_shape, jnp.float32))
+    # Init PyTorch model.
+    pytorch_model = DLRMPyTorch(_VOCAB_SIZES, sum(_VOCAB_SIZES))
   else:
     raise ValueError(f'Models for workload {workload} are not available.')
   return jax_model, pytorch_model
