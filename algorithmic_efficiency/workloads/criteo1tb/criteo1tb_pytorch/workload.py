@@ -312,7 +312,6 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
     total_metrics = {
         'loss': torch.tensor(0., device=DEVICE),
-        'auc_roc': torch.tensor(0., device=DEVICE),
     }
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
@@ -330,13 +329,13 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
 
-    # all batch eval
-    output_receive_buffer = torch.empty((global_batch_size // N_GPUS),
-                                        device=DEVICE)
-    reciever = [output_receive_buffer] * N_GPUS
-    torch.distributed.all_gather(reciever, logits)
-    logits_list.append(output_receive_buffer.float())
-    targets_list.append(batch['targets'])
+      # all batch eval
+      output_receive_buffer = torch.empty((global_batch_size // N_GPUS),
+                                          device=DEVICE)
+      reciever = [output_receive_buffer] * N_GPUS
+      torch.distributed.all_gather(reciever, logits)
+      logits_list.append(output_receive_buffer.float())
+      targets_list.append(batch['targets'])
     compute_auc = metrics.roc_auc_score(
         torch.sigmoid(torch.cat(logits_list)), torch.cat(targets_list))
     if USE_PYTORCH_DDP:
