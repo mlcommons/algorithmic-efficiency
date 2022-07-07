@@ -1,12 +1,9 @@
 """Training algorithm track submission functions for MNIST."""
-
 from typing import Dict, Iterator, List, Tuple
 
 import torch
 
 from algorithmic_efficiency import spec
-
-DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 def get_batch_size(workload_name):

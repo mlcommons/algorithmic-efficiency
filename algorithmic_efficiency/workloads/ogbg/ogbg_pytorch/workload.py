@@ -1,6 +1,5 @@
 """OGBG workload implemented in PyTorch."""
 import contextlib
-import os
 from typing import Dict, Tuple
 
 import jax
@@ -11,14 +10,12 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.ogbg import metrics
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import GNN
 from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
-USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
-DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
-N_GPUS = torch.cuda.device_count()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def _pytorch_map(input_dict: Dict) -> Dict:

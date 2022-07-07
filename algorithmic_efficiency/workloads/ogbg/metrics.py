@@ -1,6 +1,5 @@
 # Forked from Flax example which can be found here:
 # https://github.com/google/flax/blob/main/examples/ogbg_molpcba/train.py
-import os
 from typing import Any
 
 from clu import metrics
@@ -12,10 +11,9 @@ from sklearn.metrics import average_precision_score
 import torch
 import torch.distributed as dist
 
-USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
-DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
-N_GPUS = torch.cuda.device_count()
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def predictions_match_labels(*,
