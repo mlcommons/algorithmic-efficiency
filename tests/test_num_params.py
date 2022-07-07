@@ -3,6 +3,10 @@ import jax.numpy as jnp
 import jax.random as jax_rng
 import pytest
 
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.dlrm_small_model import \
+    DlrmSmall as DLRMJax
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.dlrm_small_model import \
+    DlrmSmall as DLRMPyTorch
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet18 as JaxResNet_c10
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \

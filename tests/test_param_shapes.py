@@ -6,6 +6,10 @@ from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import \
     CifarWorkload as JaxCifarWorkload
 from algorithmic_efficiency.workloads.cifar.cifar_pytorch.workload import \
     CifarWorkload as PyTorchCifarWorkload
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
+    Criteo1TbDlrmSmallWorkload as JaxDLRMWorkload
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.workload import \
+    Criteo1TbDlrmSmallWorkload as PyTorchDLRMPyTorch
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload as JaxImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
