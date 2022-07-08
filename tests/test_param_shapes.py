@@ -18,12 +18,16 @@ from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     MnistWorkload as JaxMnistWorkload
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
     MnistWorkload as PyTorchMnistWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
+    OgbgWorkload as JaxOgbgWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
+    OgbgWorkload as PyTorchOgbgWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
     WmtWorkload as JaxWmtWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt']
+WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 
 # Ideally we would match the shapes layer-wise, but for that we
@@ -73,6 +77,11 @@ def get_workload(workload):
     jax_workload._global_batch_size = 128
     # Init PyTorch workload.
     pytorch_workload = PyTorchWmtWorkload()
+  elif workload == 'ogbg':
+    # Init Jax workload.
+    jax_workload = JaxOgbgWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchOgbgWorkload()
   else:
     raise ValueError(f'Workload {workload} is not available.')
   _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
