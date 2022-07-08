@@ -63,7 +63,7 @@
    **JAX (GPU)**
 
    ```bash
-   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_releases.html'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
    ```
 
    **JAX (CPU)**
