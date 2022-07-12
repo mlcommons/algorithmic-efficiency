@@ -271,23 +271,23 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
               logits_batch: spec.Tensor,
               mask_batch: Optional[spec.Tensor] = None) -> spec.Tensor:
 
-    #per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-    #        logits = logits_batch, targets=label_batch)
+    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
+            logits = logits_batch, targets=label_batch)
 
-    #if mask_batch is not None:
-    #    weighted_losses = per_example_losses * mask_batch
-    #    normalization = mask_batch.sum()
+    if mask_batch is not None:
+        weighted_losses = per_example_losses * mask_batch
+        normalization = mask_batch.sum()
 
-    #else:
-    #    weighted_losses = per_example_losses
-    #normalization = label_batch.shape[0]
+    else:
+        weighted_losses = per_example_losses
+    normalization = label_batch.shape[0]
 
-    #return torch.sum(weighted_losses, dim=-1) / normalization
+    return torch.sum(weighted_losses, dim=-1) / normalization
 
-    return F.binary_cross_entropy_with_logits(
-        logits_batch.reshape(-1, 1),
-        label_batch.reshape(-1, 1),
-        reduction='none')
+    #return F.binary_cross_entropy_with_logits(
+    #    logits_batch.reshape(-1, 1),
+    #    label_batch.reshape(-1, 1),
+    #    reduction='none')
 
   def _eval_metric(self, logits: spec.Tensor,
                    targets: spec.Tensor) -> Dict[str, int]:
