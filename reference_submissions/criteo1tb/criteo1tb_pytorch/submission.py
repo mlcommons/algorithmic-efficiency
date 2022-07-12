@@ -36,7 +36,7 @@ def init_optimizer_state(workload: spec.Workload,
   scheduler1 = LinearLR(
       optimizer_state['optimizer'],
       #(TODO:rakshithvasudev) check correctness
-      start_factor=1e-5,
+      start_factor=1e-12,
       end_factor=1.,
       total_iters=hyperparameters.warmup_steps)
 
