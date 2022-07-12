@@ -146,7 +146,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
     if is_train:
       train_data_set_bin = os.path.join(data_dir, "train_data.bin")
       dataset_train = CriteoBinDataset(
-          train_data_set_bin, batch_size=batch_size, shuffle=False)
+          train_data_set_bin, batch_size=batch_size, shuffle=True)
       if USE_PYTORCH_DDP:
         trainsampler = DistributedSampler(
             dataset_train,
