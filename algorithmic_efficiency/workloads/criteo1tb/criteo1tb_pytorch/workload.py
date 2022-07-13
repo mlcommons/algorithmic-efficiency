@@ -66,7 +66,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 131072 * 16
+    return 100_000
 
   @property
   def num_validation_examples(self):
@@ -74,8 +74,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_test_examples(self):
-    #return None
-    return 131072 * 16
+    return None
 
   @property
   def train_mean(self):
@@ -256,8 +255,9 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
 
     with contexts[mode]():
       #https://github.com/pytorch/pytorch/issues/1355#issuecomment-907986126
-      logits_batch = model.module.forward(
-          augmented_and_preprocessed_input_batch['inputs'])
+      #logits_batch = model.module.forward(
+      #    augmented_and_preprocessed_input_batch['inputs'])
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
 
