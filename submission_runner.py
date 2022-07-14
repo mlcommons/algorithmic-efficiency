@@ -28,6 +28,7 @@ import torch.distributed as dist
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -101,6 +102,7 @@ flags.DEFINE_enum(
     'other things if the Jax or Numpy RNG library is used for RNG.')
 
 FLAGS = flags.FLAGS
+USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
 
 def convert_filepath_to_module(path: str):
@@ -216,6 +218,9 @@ def train_once(workload: spec.Workload,
     except spec.TrainingCompleteError:
       training_complete = True
     global_step += 1
+    if USE_PYTORCH_DDP:
+      # Make sure all processes run eval after the same step when using DDP.
+      dist.barrier()
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
@@ -236,6 +241,11 @@ def train_once(workload: spec.Workload,
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
+  if USE_PYTORCH_DDP:
+    # Sync final score (accumulated training time); choose highest, i.e. worst.
+    score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
+    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
+    accumulated_submission_time = score_tensor.item()
   return accumulated_submission_time, metrics
 
 
@@ -304,18 +314,15 @@ def score_submission_on_workload(workload: spec.Workload,
 
 
 def main(_):
-  # Check if distributed data parallel is used.
-  use_pytorch_ddp = 'LOCAL_RANK' in os.environ
   if FLAGS.framework == 'pytorch':
     # From the docs: "(...) causes cuDNN to benchmark multiple convolution
     # algorithms and select the fastest."
     torch.backends.cudnn.benchmark = True
 
-    if use_pytorch_ddp:
-      rank = int(os.environ['LOCAL_RANK'])
-      torch.cuda.set_device(rank)
+    if USE_PYTORCH_DDP:
+      torch.cuda.set_device(RANK)
       # only log once (for local rank == 0)
-      if rank != 0:
+      if RANK != 0:
 
         def logging_pass(*args):
           pass
@@ -343,7 +350,7 @@ def main(_):
                                        FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
-  if use_pytorch_ddp:
+  if USE_PYTORCH_DDP:
     # cleanup
     dist.destroy_process_group()
 
