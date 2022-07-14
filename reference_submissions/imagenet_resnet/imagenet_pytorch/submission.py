@@ -12,7 +12,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 512
+  return 256
 
 
 def init_optimizer_state(workload: spec.Workload,

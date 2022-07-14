@@ -1,3 +1,10 @@
+"""Profiling code for Jax and PyTorch
+
+Modified from:
+https://github.com/Lightning-AI/lightning/tree/master/src/pytorch_lightning/profiler
+"""
+
+
 from collections import defaultdict
 from contextlib import contextmanager
 import os
@@ -19,17 +26,24 @@ class Profiler:
     self.recorded_durations = defaultdict(list)
     self.start_time = time.monotonic()
 
+  def set_local_rank(self, local_rank: int) -> None:
+      self._local_rank = local_rank
+
   @property
   def local_rank(self) -> int:
     return 0 if self._local_rank is None else self._local_rank
 
   def start(self, action_name: str) -> None:
+    if self.local_rank != 0:
+      pass
     if action_name in self.current_actions:
       raise ValueError(
           f'Attempted to start {action_name} which has already started.')
     self.current_actions[action_name] = time.monotonic()
 
   def stop(self, action_name: str) -> None:
+    if self.local_rank != 0:
+      pass
     end_time = time.monotonic()
     if action_name not in self.current_actions:
       raise ValueError(
@@ -47,16 +61,6 @@ class Profiler:
     finally:
       self.stop(action_name)
 
-  def _stats_to_str(self, stats: Dict[str, str]) -> str:
-    output = ['Profiler Report:']
-    for action, value in stats.items():
-      header = f'Profile stats for: {action}'
-      if self._local_rank is not None:
-        header += f' rank: {self._local_rank}'
-      output.append(header)
-      output.append(value)
-    return os.linesep.join(output)
-
   def _make_report(self) -> Tuple[_TABLE_DATA, int, float]:
     total_duration = time.monotonic() - self.start_time
     report = [(str(a),
@@ -73,7 +77,7 @@ class Profiler:
   def summary(self) -> str:
     sep = os.linesep
     output_string = ''
-    output_string += f'Profiler Report{sep}'
+    output_string += f'Profiler Report{sep}:'
 
     if len(self.recorded_durations) > 0:
       max_key = max(len(k) for k in self.recorded_durations.keys())
@@ -112,3 +116,11 @@ class Profiler:
       output_string += sep_lines
     output_string += sep
     return output_string
+
+
+class PassThroughProfiler(Profiler):
+    def start(self, action_name: str) -> None:
+        pass
+
+    def stop(self, action_name: str) -> None:
+        pass

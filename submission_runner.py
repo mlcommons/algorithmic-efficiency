@@ -17,7 +17,7 @@ import os
 import struct
 import time
 from typing import Optional, Tuple
-from algorithmic_efficiency.profiler import Profiler
+from algorithmic_efficiency.profiler import Profiler, PassThroughProfiler
 from absl import app
 from absl import flags
 from absl import logging
@@ -99,7 +99,7 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_boolean('profile', False, 'Produces profiling output.')
+flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
 
@@ -289,7 +289,8 @@ def score_submission_on_workload(workload: spec.Workload,
       # number.
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
-      timing, metrics = train_once(workload, global_batch_size, data_dir,
+      with profiler.profile("Train"):
+        timing, metrics = train_once(workload, global_batch_size, data_dir,
                                    init_optimizer_state, update_params,
                                    data_selection, hyperparameters, rng, profiler)
       all_timings.append(timing)
@@ -306,8 +307,10 @@ def score_submission_on_workload(workload: spec.Workload,
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
-    score, _ = train_once(workload, global_batch_size, init_optimizer_state,
-                          update_params, data_selection, None, rng)
+    with profiler.profile("train"):
+      score, _ = train_once(workload, global_batch_size, data_dir,
+                            init_optimizer_state, update_params, data_selection,
+                            None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -315,6 +318,12 @@ def score_submission_on_workload(workload: spec.Workload,
 def main(_):
   # Check if distributed data parallel is used.
   use_pytorch_ddp = 'LOCAL_RANK' in os.environ
+
+  if FLAGS.profile:
+      profiler = Profiler()
+  else:
+      profiler = PassThroughProfiler()
+
   if FLAGS.framework == 'pytorch':
     # From the docs: "(...) causes cuDNN to benchmark multiple convolution
     # algorithms and select the fastest."
@@ -330,11 +339,9 @@ def main(_):
           pass
 
         logging.info = logging_pass
-      profiler = Profiler(rank)
+      profiler.set_local_rank(rank)
       # initialize the process group
       dist.init_process_group('nccl')
-  else:
-    profiler = Profiler()
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
@@ -355,6 +362,9 @@ def main(_):
                                        FLAGS.num_tuning_trials,
                                        profiler)
   logging.info('Final %s score: %f', FLAGS.workload, score)
+
+  if FLAGS.profile:
+      logging.info(profiler.summary())
 
   if use_pytorch_ddp:
     # cleanup
