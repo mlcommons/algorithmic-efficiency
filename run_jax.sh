@@ -23,4 +23,4 @@ python submission_runner.py \
     --submission_path=reference_submissions/imagenet_resnet/imagenet_jax/submission.py \
     --tuning_search_space=reference_submissions/imagenet_resnet/tuning_search_space.json \
     --num_tuning_trials=1 \
-    --data_dir /scratch/ssd002/datasets/imagenet_tf
+    --data_dir /scratch/ssd002/datasets/imagenet_tf --profile

@@ -23,4 +23,4 @@ torchrun --standalone --nnodes=1 --nproc_per_node=4 submission_runner.py \
     --submission_path=reference_submissions/imagenet_resnet/imagenet_pytorch/submission.py \
     --tuning_search_space=reference_submissions/imagenet_resnet/tuning_search_space.json \
     --num_tuning_trials=1 \
-    --data_dir /scratch/ssd002/datasets/imagenet_pytorch
+    --data_dir /scratch/ssd002/datasets/imagenet_pytorch --profile
