@@ -17,7 +17,7 @@ import os
 import struct
 import time
 from typing import Optional, Tuple
-
+from algorithmic_efficiency.profiler import Profiler
 from absl import app
 from absl import flags
 from absl import logging
@@ -99,6 +99,7 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
+flags.DEFINE_boolean('profile', False, 'Produces profiling output.')
 
 FLAGS = flags.FLAGS
 
@@ -162,17 +163,21 @@ def train_once(workload: spec.Workload,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparameters],
-               rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
+               rng: spec.RandomState,
+               profiler: Profiler) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
   logging.info('Initializing dataset.')
-  input_queue = workload.build_input_queue(
+  with profiler.profile("Initializing dataset"):
+    input_queue = workload.build_input_queue(
       data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
   logging.info('Initializing model.')
-  model_params, model_state = workload.init_model_fn(model_init_rng)
+  with profiler.profile("Initializing model"):
+    model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  optimizer_state = init_optimizer_state(workload,
+  with profiler.profile("Initializing optimizer"):
+    optimizer_state = init_optimizer_state(workload,
                                          model_params,
                                          model_state,
                                          hyperparameters,
@@ -193,7 +198,8 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    batch = data_selection(workload,
+    with profiler.profile("Batch selection"):
+      batch = data_selection(workload,
                            input_queue,
                            optimizer_state,
                            model_params,
@@ -201,7 +207,8 @@ def train_once(workload: spec.Workload,
                            global_step,
                            data_select_rng)
     try:
-      optimizer_state, model_params, model_state = update_params(
+      with profiler.profile("Update parameters"):
+        optimizer_state, model_params, model_state = update_params(
           workload=workload,
           current_param_container=model_params,
           current_params_types=workload.model_params_types,
@@ -223,7 +230,8 @@ def train_once(workload: spec.Workload,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(global_batch_size,
+      with profiler.profile("Evaluation"):
+        latest_eval_result = workload.eval_model(global_batch_size,
                                                model_params,
                                                model_state,
                                                eval_rng,
@@ -245,7 +253,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  data_dir: str,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None):
+                                 num_tuning_trials: Optional[int] = None,
+                                 profiler: Optional[Profiler] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -282,7 +291,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       timing, metrics = train_once(workload, global_batch_size, data_dir,
                                    init_optimizer_state, update_params,
-                                   data_selection, hyperparameters, rng)
+                                   data_selection, hyperparameters, rng, profiler)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -321,8 +330,11 @@ def main(_):
           pass
 
         logging.info = logging_pass
+      profiler = Profiler(rank)
       # initialize the process group
       dist.init_process_group('nccl')
+  else:
+    profiler = Profiler()
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
@@ -340,7 +352,8 @@ def main(_):
                                        FLAGS.data_dir,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials)
+                                       FLAGS.num_tuning_trials,
+                                       profiler)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if use_pytorch_ddp:
