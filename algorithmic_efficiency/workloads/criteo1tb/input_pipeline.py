@@ -45,7 +45,8 @@ def get_criteo1tb_dataset(split: str,
     cat_features = []
     for idx in range(len(vocab_sizes)):
       cat_features.append(
-              tf.io.decode_raw(fields[idx + num_dense + num_labels], tf.int64)[:, 0] % vocab_sizes[idx])
+          tf.io.decode_raw(fields[idx + num_dense + num_labels], tf.int64)[:, 0]
+          % vocab_sizes[idx])
     print(cat_features)
     cat_features = tf.cast(
         tf.stack(cat_features, axis=1), dtype=int_features.dtype)

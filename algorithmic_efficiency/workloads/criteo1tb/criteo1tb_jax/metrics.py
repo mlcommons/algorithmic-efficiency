@@ -53,5 +53,3 @@ def per_example_sigmoid_binary_cross_entropy(logits, targets):
   per_example_losses = (per_example_losses).reshape(per_example_losses.shape[0],
                                                     -1)
   return jnp.sum(per_example_losses, axis=-1)
-
-
