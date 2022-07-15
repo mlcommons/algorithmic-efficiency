@@ -245,7 +245,7 @@ def create_split(split,
           'image': tfds.decode.SkipDecoding(),
       })
   options = tf.data.Options()
-  # options.threading.private_threadpool_size = 48
+  options.threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
   if cache:

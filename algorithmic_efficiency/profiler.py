@@ -4,7 +4,6 @@ Modified from:
 https://github.com/Lightning-AI/lightning/tree/master/src/pytorch_lightning/profiler
 """
 
-
 from collections import defaultdict
 from contextlib import contextmanager
 import os
@@ -27,7 +26,7 @@ class Profiler:
     self.start_time = time.monotonic()
 
   def set_local_rank(self, local_rank: int) -> None:
-      self._local_rank = local_rank
+    self._local_rank = local_rank
 
   @property
   def local_rank(self) -> int:
@@ -119,8 +118,9 @@ class Profiler:
 
 
 class PassThroughProfiler(Profiler):
-    def start(self, action_name: str) -> None:
-        pass
 
-    def stop(self, action_name: str) -> None:
-        pass
+  def start(self, action_name: str) -> None:
+    pass
+
+  def stop(self, action_name: str) -> None:
+    pass

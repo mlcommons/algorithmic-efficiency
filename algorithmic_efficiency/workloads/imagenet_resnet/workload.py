@@ -13,7 +13,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.5
+    return 0.76
 
   @property
   def loss_type(self):
