@@ -256,10 +256,10 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
+                                 profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None,
-                                 profiler: Optional[Profiler] = None):
+                                 num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -363,10 +363,10 @@ def main(_):
                                        FLAGS.workload,
                                        FLAGS.submission_path,
                                        FLAGS.data_dir,
+                                       profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials,
-                                       profiler)
+                                       FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.profile:
