@@ -1,4 +1,4 @@
-r'''Run a submission on a single workload.
+r"""Run a submission on a single workload.
 
 Example command:
 
@@ -9,7 +9,7 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
     --num_tuning_trials=3
-'''
+"""
 import importlib
 import inspect
 import json
@@ -118,7 +118,7 @@ def convert_filepath_to_module(path: str):
 def import_workload(workload_path: str,
                     workload_class_name: str,
                     return_class=False) -> spec.Workload:
-  '''Import and add the workload to the registry.
+  """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
@@ -132,7 +132,7 @@ def import_workload(workload_path: str,
       `Workload` abstract class in `spec.py`.
     return_class: if true, then the workload class is returned instead of the
       instantiated object. Useful for testing when methods need to be overriden.
-  '''
+  """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
   workload_path = convert_filepath_to_module(workload_path)
@@ -295,9 +295,10 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       with profiler.profile('Train'):
-        timing, metrics = train_once(workload, global_batch_size, data_dir,
-                                     init_optimizer_state, update_params,
-                                     data_selection, hyperparameters, rng, profiler)
+        timing, metrics = train_once(workload, global_batch_size,
+                                     data_dir, init_optimizer_state,
+                                     update_params, data_selection,
+                                     hyperparameters, rng, profiler)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -330,8 +331,8 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
-    # From the docs: '(...) causes cuDNN to benchmark multiple convolution
-    # algorithms and select the fastest.'
+    # From the docs: "(...) causes cuDNN to benchmark multiple convolution
+    # algorithms and select the fastest."
     torch.backends.cudnn.benchmark = True
 
     if use_pytorch_ddp:

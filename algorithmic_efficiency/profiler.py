@@ -12,9 +12,6 @@ from typing import Dict, Generator, List, Optional, Tuple
 
 import numpy as np
 
-_TABLE_ROW = Tuple[str, float, float, int, float, float]
-_TABLE_DATA = List[_TABLE_ROW]
-
 
 class Profiler:
 
@@ -45,9 +42,8 @@ class Profiler:
       pass
     end_time = time.monotonic()
     if action_name not in self.current_actions:
-      raise ValueError(
-          f'Attempting to stop recording an action ({action_name}) which was never started.'
-      )
+      raise ValueError(f'Attempting to stop recording an action '
+                       f'({action_name}) which was never started.')
     start_time = self.current_actions.pop(action_name)
     duration = end_time - start_time
     self.recorded_durations[action_name].append(duration)
@@ -60,7 +56,9 @@ class Profiler:
     finally:
       self.stop(action_name)
 
-  def _make_report(self) -> Tuple[_TABLE_DATA, int, float]:
+  def _make_report(
+      self
+  ) -> Tuple[List[Tuple[str, float, float, int, float, float]], int, float]:
     total_duration = time.monotonic() - self.start_time
     report = [(str(a),
                float(np.mean(d)),
@@ -82,7 +80,8 @@ class Profiler:
       max_key = max(len(k) for k in self.recorded_durations.keys())
 
       def log_row(action, mean, std, num_calls, total, per):
-        row = f'{sep}|  {action:<{max_key}s}\t|  {mean:<15}\t|  {std:<15}\t|'
+        row = f'{sep}|  {action:<{max_key}s}\t|  '
+        row += f'{mean:<15}\t|  {std:<15}\t|'
         row += f'  {num_calls:<15}\t|  {total:<15}\t|  {per:<15}\t|'
         return row
 
@@ -103,7 +102,8 @@ class Profiler:
                                f'{total_duration:.5}',
                                '100 %')
       output_string += sep_lines
-      for action, mean_duration, std_duration, num_calls, total_duration, duration_per in report:
+      for action, mean_duration, std_duration, num_calls, \
+          total_duration, duration_per in report:
         output_string += log_row(
             action,
             f'{mean_duration:.5}',
