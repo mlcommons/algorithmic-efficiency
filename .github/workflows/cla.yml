@@ -20,12 +20,19 @@ jobs:
           PERSONAL_ACCESS_TOKEN : ${{ secrets.MLCOMMONS_BOT_CLA_TOKEN }}
         with:
           path-to-signatures: 'cla-bot/v1/cla.json'
+          path-to-document: 'https://github.com/mlcommons/systems/blob/main/mlcommons_cla.txt' # e.g. a CLA or a DCO document
           # branch should not be protected
           branch: 'main'
           allowlist: user1,bot*
           remote-organization-name: mlcommons
           remote-repository-name: systems
-          
+          custom-notsigned-prcomment: >
+            <br/>Thank you very much for your submission, we really appreciate it. Before we can accept your contribution, 
+            we ask that you sign the MLCommons CLA (Apache 2). Please use this [Google form] ([LINK_TO_DOC]) to initiate 
+            authorization. If you are from an MLCommons member organization, we will request that you be added to the CLA. 
+            If you are not from a member organization, we will email you a CLA to sign. For any questions, please contact 
+            support@mlcommons.org.<br/>
+
          #below are the optional inputs - If the optional inputs are not given, then default values will be taken
           #remote-organization-name: enter the remote organization name where the signatures should be stored (Default is storing the signatures in the same repository)
           #remote-repository-name:  enter the  remote repository name where the signatures should be stored (Default is storing the signatures in the same repository)
