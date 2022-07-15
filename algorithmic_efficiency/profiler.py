@@ -92,7 +92,7 @@ class Profiler:
                               'Total Time (s)',
                               'Percentage %')
       output_string_len = len(header_string.expandtabs())
-      sep_lines = f'{sep}{" - " * output_string_len}'
+      sep_lines = f'{sep}{"-" * output_string_len}'
       output_string += sep_lines + header_string + sep_lines
       report, total_calls, total_duration = self._make_report()
       output_string += log_row('Total',
