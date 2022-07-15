@@ -313,7 +313,7 @@ def score_submission_on_workload(workload: spec.Workload,
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
-    with profiler.profile('train'):
+    with profiler.profile('Train'):
       score, _ = train_once(workload, global_batch_size, data_dir,
                             init_optimizer_state, update_params, data_selection,
                             None, rng, profiler)
