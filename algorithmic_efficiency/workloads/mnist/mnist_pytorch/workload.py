@@ -1,7 +1,6 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
-import os
 from typing import Any, Dict, Tuple
 
 import torch
@@ -15,12 +14,10 @@ from torchvision.datasets import MNIST
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
-USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
-DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
-N_GPUS = torch.cuda.device_count()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 class _Model(nn.Module):

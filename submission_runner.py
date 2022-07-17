@@ -28,6 +28,8 @@ import torch.distributed as dist
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.profiler import PassThroughProfiler
+from algorithmic_efficiency.profiler import Profiler
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -99,6 +101,7 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
+flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
 
@@ -162,21 +165,28 @@ def train_once(workload: spec.Workload,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparameters],
-               rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
+               rng: spec.RandomState,
+               profiler: Profiler) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
   logging.info('Initializing dataset.')
-  input_queue = workload.build_input_queue(
-      data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
+  with profiler.profile('Initializing dataset'):
+    input_queue = workload.build_input_queue(
+        data_rng,
+        'train',
+        data_dir=data_dir,
+        global_batch_size=global_batch_size)
   logging.info('Initializing model.')
-  model_params, model_state = workload.init_model_fn(model_init_rng)
+  with profiler.profile('Initializing model'):
+    model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  optimizer_state = init_optimizer_state(workload,
-                                         model_params,
-                                         model_state,
-                                         hyperparameters,
-                                         opt_init_rng)
+  with profiler.profile('Initializing optimizer'):
+    optimizer_state = init_optimizer_state(workload,
+                                           model_params,
+                                           model_state,
+                                           hyperparameters,
+                                           opt_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -189,19 +199,21 @@ def train_once(workload: spec.Workload,
   global_start_time = time.time()
 
   logging.info('Starting training loop.')
-  while (is_time_remaining and not goal_reached and not training_complete):
+  while is_time_remaining and not goal_reached and not training_complete:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    batch = data_selection(workload,
-                           input_queue,
-                           optimizer_state,
-                           model_params,
-                           hyperparameters,
-                           global_step,
-                           data_select_rng)
+    with profiler.profile('Data selection'):
+      batch = data_selection(workload,
+                             input_queue,
+                             optimizer_state,
+                             model_params,
+                             hyperparameters,
+                             global_step,
+                             data_select_rng)
     try:
-      optimizer_state, model_params, model_state = update_params(
+      with profiler.profile('Update parameters'):
+        optimizer_state, model_params, model_state = update_params(
           workload=workload,
           current_param_container=model_params,
           current_params_types=workload.model_params_types,
@@ -223,11 +235,12 @@ def train_once(workload: spec.Workload,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(global_batch_size,
-                                               model_params,
-                                               model_state,
-                                               eval_rng,
-                                               data_dir)
+      with profiler.profile('Evaluation'):
+        latest_eval_result = workload.eval_model(global_batch_size,
+                                                 model_params,
+                                                 model_state,
+                                                 eval_rng,
+                                                 data_dir)
       logging.info('%.2fs \t%d \t%s',
                    current_time - global_start_time,
                    global_step,
@@ -243,6 +256,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
+                                 profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None):
@@ -280,9 +294,11 @@ def score_submission_on_workload(workload: spec.Workload,
       # number.
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
-      timing, metrics = train_once(workload, global_batch_size, data_dir,
-                                   init_optimizer_state, update_params,
-                                   data_selection, hyperparameters, rng)
+      with profiler.profile('Train'):
+        timing, metrics = train_once(workload, global_batch_size,
+                                     data_dir, init_optimizer_state,
+                                     update_params, data_selection,
+                                     hyperparameters, rng, profiler)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -297,8 +313,10 @@ def score_submission_on_workload(workload: spec.Workload,
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
-    score, _ = train_once(workload, global_batch_size, init_optimizer_state,
-                          update_params, data_selection, None, rng)
+    with profiler.profile('Train'):
+      score, _ = train_once(workload, global_batch_size, data_dir,
+                            init_optimizer_state, update_params, data_selection,
+                            None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -306,6 +324,12 @@ def score_submission_on_workload(workload: spec.Workload,
 def main(_):
   # Check if distributed data parallel is used.
   use_pytorch_ddp = 'LOCAL_RANK' in os.environ
+
+  if FLAGS.profile:
+    profiler = Profiler()
+  else:
+    profiler = PassThroughProfiler()
+
   if FLAGS.framework == 'pytorch':
     # From the docs: "(...) causes cuDNN to benchmark multiple convolution
     # algorithms and select the fastest."
@@ -321,6 +345,7 @@ def main(_):
           pass
 
         logging.info = logging_pass
+      profiler.set_local_rank(rank)
       # initialize the process group
       dist.init_process_group('nccl')
 
@@ -338,10 +363,14 @@ def main(_):
                                        FLAGS.workload,
                                        FLAGS.submission_path,
                                        FLAGS.data_dir,
+                                       profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
+
+  if FLAGS.profile:
+    logging.info(profiler.summary())
 
   if use_pytorch_ddp:
     # cleanup

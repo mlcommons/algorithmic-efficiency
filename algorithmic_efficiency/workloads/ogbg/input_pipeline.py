@@ -26,7 +26,7 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
   read_config = tfds.ReadConfig(add_tfds_id=True, shuffle_seed=file_data_rng)
   dataset = tfds.load(
       'ogbg_molpcba',
-      split='train' if split == 'eval_train' else split,
+      split=split,
       shuffle_files=should_shuffle,
       read_config=read_config,
       data_dir=data_dir)

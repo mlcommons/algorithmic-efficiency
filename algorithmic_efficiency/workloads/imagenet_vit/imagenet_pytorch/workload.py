@@ -1,13 +1,13 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
-import os
 from typing import Dict, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
     ImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch import \
@@ -17,10 +17,7 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     decode_variant
 
-USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-RANK = int(os.environ['LOCAL_RANK']) if USE_PYTORCH_DDP else 0
-DEVICE = torch.device(f'cuda:{RANK}' if torch.cuda.is_available() else 'cpu')
-N_GPUS = torch.cuda.device_count()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 # Make sure we inherit from the ViT base workload first.
