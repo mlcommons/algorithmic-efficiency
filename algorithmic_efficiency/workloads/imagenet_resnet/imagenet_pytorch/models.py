@@ -265,6 +265,10 @@ class ResNet(nn.Module):
     return x
 
 
+def resnet18(**kwargs: Any) -> ResNet:
+  return ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+
+
 def resnet50(**kwargs: Any) -> ResNet:
   r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition"

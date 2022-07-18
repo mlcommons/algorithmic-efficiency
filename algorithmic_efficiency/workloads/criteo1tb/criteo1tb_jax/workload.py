@@ -17,7 +17,7 @@ from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import \
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import metrics
 
 _NUM_DENSE_FEATURES = 13
-_VOCAB_SIZES = [1024 * 128] * 26
+_VOCAB_SIZES = tuple([1024 * 128] * 26)
 
 
 # We use CLU metrics to handle aggregating per-example outputs across batches so
@@ -25,8 +25,6 @@ _VOCAB_SIZES = [1024 * 128] * 26
 @flax.struct.dataclass
 class EvalMetrics(clu_metrics.Collection):
   loss: clu_metrics.Average.from_output("loss")
-  average_precision: metrics.BinaryMeanAveragePrecision
-  auc_roc: metrics.BinaryAUCROC
 
 
 class Criteo1TbDlrmSmallWorkload(spec.Workload):
@@ -42,11 +40,11 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
         num_dense_features=_NUM_DENSE_FEATURES)
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/auc_roc'] > self.target_value
+    return eval_result['validation/loss'] < self.target_value
 
   @property
   def target_value(self):
-    return 0.8
+    return 0.12
 
   @property
   def loss_type(self):

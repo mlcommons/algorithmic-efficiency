@@ -1,10 +1,15 @@
 import jax
 import jax.numpy as jnp
 import jax.random as jax_rng
+import jraph
 import pytest
 
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
+    ResNet18 as JaxResNet_c10
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet50 as JaxResNet
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+    resnet18 as PyTorchResNet_c10
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.models import \
@@ -15,6 +20,9 @@ from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
     _Model as PyTorchMLP
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax.models import GNN as JaxGNN
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import \
+    GNN as PyTorchGNN
 from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
     Transformer as JaxTransformer
 from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
@@ -22,7 +30,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'imagenet_resnet', 'imagenet_vit', 'wmt']
+WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -43,6 +51,14 @@ def get_models(workload):
     jax_model = JaxMLP().init(init_rngs, init_val, train=True)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchMLP()
+  elif workload == 'cifar':
+    # Init Jax model.
+    input_shape = (1, 32, 32, 3)
+    model_init = jax.jit(JaxResNet_c10(num_classes=10, dtype=jnp.float32).init)
+    jax_model = model_init(init_rngs, jnp.ones(input_shape,
+                                               jnp.float32))["params"]
+    # Init PyTorch model.
+    pytorch_model = PyTorchResNet_c10(num_classes=10)
   elif workload == 'imagenet_resnet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
@@ -69,6 +85,20 @@ def get_models(workload):
         jnp.ones(target_shape, jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchTransformer()
+  elif workload == 'ogbg':
+    # Init Jax model.
+    fake_batch = jraph.GraphsTuple(
+        n_node=jnp.asarray([1]),
+        n_edge=jnp.asarray([1]),
+        nodes=jnp.ones((1, 9)),
+        edges=jnp.ones((1, 3)),
+        globals=jnp.zeros((1, 128)),
+        senders=jnp.asarray([0]),
+        receivers=jnp.asarray([0]))
+    jax_model = JaxGNN(num_outputs=128).init(
+        init_rngs, fake_batch, train=False)['params']
+    # Init PyTorch model.
+    pytorch_model = PyTorchGNN(num_outputs=128)
   else:
     raise ValueError(f'Models for workload {workload} are not available.')
   return jax_model, pytorch_model

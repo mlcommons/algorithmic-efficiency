@@ -27,7 +27,7 @@ def get_criteo1tb_dataset(split: str,
     """Parser function for pre-processed Criteo TSV records."""
     label_defaults = [[0.0]]
     int_defaults = [[0.0] for _ in range(num_dense_features)]
-    categorical_defaults = [[0] for _ in range(len(vocab_sizes))]
+    categorical_defaults = [['00000000'] for _ in range(len(vocab_sizes))]
     record_defaults = label_defaults + int_defaults + categorical_defaults
     fields = tf.io.decode_csv(
         example, record_defaults, field_delim='\t', na_value='-1')
@@ -39,13 +39,14 @@ def get_criteo1tb_dataset(split: str,
 
     int_features = []
     for idx in range(num_dense):
-      int_features.append(fields[idx + num_labels])
+      int_features.append(tf.math.log(fields[idx + num_labels] + 1))
     int_features = tf.stack(int_features, axis=1)
 
     cat_features = []
     for idx in range(len(vocab_sizes)):
       cat_features.append(
-          tf.cast(fields[idx + num_dense + num_labels], dtype=tf.int32))
+          tf.io.decode_raw(fields[idx + num_dense + num_labels], tf.int64)[:, 0]
+          % vocab_sizes[idx])
     cat_features = tf.cast(
         tf.stack(cat_features, axis=1), dtype=int_features.dtype)
     features['inputs'] = tf.concat([int_features, cat_features], axis=1)

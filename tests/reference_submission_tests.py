@@ -137,8 +137,8 @@ def _make_one_batch_workload(workload_class,
         fake_graph = jraph.GraphsTuple(
             n_node=np.asarray([1]),
             n_edge=np.asarray([1]),
-            nodes=np.random.normal(size=(1, 3)),
-            edges=np.random.normal(size=(1, 7)),
+            nodes=np.random.normal(size=(1, 9)),
+            edges=np.random.normal(size=(1, 3)),
             globals=np.zeros((1, num_classes)),
             senders=np.asarray([0]),
             receivers=np.asarray([0]))

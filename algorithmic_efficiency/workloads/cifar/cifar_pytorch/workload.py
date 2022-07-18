@@ -1,8 +1,8 @@
-"""ImageNet workload implemented in PyTorch."""
+"""CIFAR10 workload implemented in PyTorch."""
 
 import contextlib
 import math
-import os
+import random
 from typing import Dict, Tuple
 
 import torch
@@ -11,22 +11,21 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
-from torchvision.datasets.folder import ImageFolder
+from torchvision.datasets import CIFAR10
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
+from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
-    resnet50
-from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
-    BaseImagenetResNetWorkload
+    resnet18
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
+class CifarWorkload(BaseCifarWorkload):
 
   def __init__(self):
     self._param_types = None
@@ -52,45 +51,51 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    for batch in it:
+      yield {
+          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
+          'targets': batch['targets'].to(DEVICE, non_blocking=True),
+      }
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
                      batch_size: int):
-    del data_rng
     is_train = split == 'train'
 
-    eval_transform_config = transforms.Compose([
-        transforms.Resize(self.resize_size),
-        transforms.CenterCrop(self.center_crop_size),
+    normalize = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[i / 255 for i in self.train_mean],
+            std=[i / 255 for i in self.train_stddev])
     ])
-    transform_config = {
-        'train':
-            transforms.Compose([
-                transforms.RandomResizedCrop(
-                    self.center_crop_size,
-                    scale=self.scale_ratio_range,
-                    ratio=self.aspect_ratio_range),
-                transforms.RandomHorizontalFlip(),
-            ]),
-        'eval_train':
-            eval_transform_config,
-        'validation':
-            eval_transform_config,
+    eval_transform_config = normalize
+    train_transform_config = transforms.Compose([
+        transforms.RandomResizedCrop(
+            self.center_crop_size,
+            scale=self.scale_ratio_range,
+            ratio=self.aspect_ratio_range),
+        transforms.RandomHorizontalFlip(),
+        normalize
+    ])
+
+    dataset = CIFAR10(root=data_dir,
+                train=split in ['train','eval_train','validation'],
+                download=True,
+                transform=train_transform_config if "train" in split \
+                                            else eval_transform_config)
+    assert self.num_train_examples + self.num_validation_examples == 50000
+    indices = list(range(50000))
+    random.Random(data_rng[0]).shuffle(indices)
+    indices_split = {
+        "train": indices[:self.num_train_examples],
+        "validation": indices[self.num_train_examples:],
+        "eval_train": indices[:self.num_eval_train_examples]
     }
-
-    folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}
-
-    dataset = ImageFolder(
-        os.path.join(data_dir, folder[split]),
-        transform=transform_config[split])
-
-    if split == 'eval_train':
-      # We always use the same subset of the training data for evaluation.
-      dataset = torch.utils.data.Subset(dataset,
-                                        range(self.num_eval_train_examples))
+    if split in indices_split:
+      dataset = torch.utils.data.Subset(dataset, indices_split[split])
 
     sampler = None
     if USE_PYTORCH_DDP:
@@ -106,21 +111,21 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True,
-        collate_fn=data_utils.fast_collate,
         drop_last=is_train)
-    dataloader = data_utils.PrefetchedWrapper(dataloader,
-                                              DEVICE,
-                                              self.train_mean,
-                                              self.train_stddev)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
 
     return dataloader
 
+  # Return whether or not a key in spec.ParameterContainer is the output layer
+  # parameters.
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
+
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = resnet50()
+    model = resnet18(num_classes=10)
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }

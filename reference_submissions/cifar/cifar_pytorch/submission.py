@@ -1,14 +1,17 @@
-"""Training algorithm track submission functions for MNIST."""
+"""Training algorithm track submission functions for CIFAR10."""
 from typing import Dict, Iterator, List, Tuple
 
 import torch
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'mnist': 1024}
+  batch_sizes = {'cifar': 128}
   return batch_sizes[workload_name]
 
 
@@ -17,15 +20,35 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  del rng
-  del model_state
   del workload
+  del model_state
+  del rng
 
+  base_lr = hyperparameters.learning_rate * get_batch_size('cifar') / 256.
   optimizer_state = {
       'optimizer':
-          torch.optim.Adam(
-              model_params.parameters(), lr=hyperparameters.learning_rate)
+          torch.optim.SGD(
+              model_params.parameters(),
+              lr=base_lr,
+              momentum=hyperparameters.momentum,
+              weight_decay=hyperparameters.l2)
   }
+
+  scheduler1 = LinearLR(
+      optimizer_state['optimizer'],
+      start_factor=1e-5,
+      end_factor=1.,
+      total_iters=hyperparameters.warmup_epochs)
+  cosine_epochs = max(
+      hyperparameters.num_epochs - hyperparameters.warmup_epochs, 1)
+  scheduler2 = CosineAnnealingLR(
+      optimizer_state['optimizer'], T_max=cosine_epochs)
+
+  optimizer_state['scheduler'] = SequentialLR(
+      optimizer_state['optimizer'],
+      schedulers=[scheduler1, scheduler2],
+      milestones=[hyperparameters.warmup_epochs])
+
   return optimizer_state
 
 
@@ -43,17 +66,16 @@ def update_params(
     global_step: int,
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
+  del current_params_types
   del hyperparameters
   del loss_type
-  del current_params_types
   del eval_results
-  del global_step
 
   current_model = current_param_container
   current_param_container.train()
   optimizer_state['optimizer'].zero_grad()
 
-  output, new_model_state = workload.model_fn(
+  logits_batch, new_model_state = workload.model_fn(
       params=current_model,
       augmented_and_preprocessed_input_batch=batch,
       model_state=model_state,
@@ -62,10 +84,14 @@ def update_params(
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      label_batch=batch['targets'], logits_batch=output).mean()
+      label_batch=batch['targets'], logits_batch=logits_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()
+
+  steps_per_epoch = workload.num_train_examples // get_batch_size('cifar')
+  if (global_step + 1) % steps_per_epoch == 0:
+    optimizer_state['scheduler'].step()
 
   return (optimizer_state, current_param_container, new_model_state)
 
@@ -83,8 +109,10 @@ def data_selection(workload: spec.Workload,
 
   Each element of the queue is a batch of training examples and labels.
   """
+  del workload
   del optimizer_state
   del current_param_container
+  del hyperparameters
   del global_step
   del rng
   return next(input_queue)
