@@ -58,6 +58,12 @@
    pip3 install -e '.[full]'
    ```
 
+   For the PyTorch version of the ogbg workload, you might have to install
+   `torch-scatter` manually via
+   ```bash
+   pip install torch-scatter -f 'https://data.pyg.org/whl/torch-1.12.0+cu113.html'
+   ```
+
    Depending on the framework you want to use (e.g. `JAX` or `PyTorch`) you need to install them as well. You could either do this manually or by adding the corresponding options:
 
    **JAX (GPU)**
