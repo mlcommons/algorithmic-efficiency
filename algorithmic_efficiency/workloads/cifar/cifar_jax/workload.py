@@ -2,6 +2,7 @@
 import functools
 import math
 from typing import Dict, Optional, Tuple
+import itertools
 
 from flax import jax_utils
 from flax import linen as nn
@@ -204,7 +205,7 @@ class CifarWorkload(BaseCifarWorkload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      eval_iter = self.build_input_queue(
           data_rng,
           split=split,
           global_batch_size=global_batch_size,
@@ -212,7 +213,8 @@ class CifarWorkload(BaseCifarWorkload):
           cache=True,
           repeat_final_dataset=True,
           num_batches=num_batches)
-
+      # Note that this stores the entire eval dataset in memory.
+      self._eval_iters[split] = itertools.cycle(eval_iter)
     eval_metrics = {}
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
