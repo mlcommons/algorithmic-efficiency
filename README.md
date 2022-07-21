@@ -63,7 +63,7 @@
    **JAX (GPU)**
 
    ```bash
-   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_releases.html'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
    ```
 
    **JAX (CPU)**
@@ -72,10 +72,16 @@
    pip3 install -e '.[jax_cpu]'
    ```
 
-   **PyTorch**
+   **PyTorch (GPU)**
 
    ```bash
-   pip3 install -e '.[pytorch]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+   ```
+
+   **PyTorch (CPU)**
+
+   ```bash
+   pip3 install -e '.[pytorch_cpu]'
    ```
 
    **Development**
@@ -128,22 +134,30 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 ### JAX
 
 ```bash
-python3 algorithmic_efficiency/submission_runner.py \
+python3 submission_runner.py \
     --framework=jax \
-    --workload=mnist |\
-    --submission_path=baselines/mnist/mnist_jax/submission.py \
-    --tuning_search_space=baselines/mnist/tuning_search_space.json
+    --workload=mnist \
+    --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
+    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
 
 ```bash
-python3 algorithmic_efficiency/submission_runner.py \
+python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
-    --submission_path=baselines/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=baselines/mnist/tuning_search_space.json
+    --submission_path=reference_submissions/mnist/mnist_pytorch/submission.py \
+    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json
 ```
+
+When using multiple GPUs on a single node it is recommended to use PyTorch's
+[distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
+To do so, simply replace `python3` by 
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
+```
+where `N_GPUS` is the number of available GPUs on the node.
 
 ## Rules
 

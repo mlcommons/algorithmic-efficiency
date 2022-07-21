@@ -5,9 +5,9 @@ Example command:
 python3 submission_runner.py \
     --workload=mnist \
     --framework=jax \
-    --submission_path=baselines/mnist/mnist_jax/submission.py \
+    --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=baselines/mnist/tuning_search_space.json \
+    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
     --num_tuning_trials=3
 """
 import importlib
@@ -22,40 +22,59 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
+import torch
+import torch.distributed as dist
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.profiler import PassThroughProfiler
+from algorithmic_efficiency.profiler import Profiler
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.experimental.set_visible_devices([], 'GPU')
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
-BASE_WORKLOADS_DIR = "algorithmic_efficiency/workloads/"
+BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
-# workload_path will be appended by '_pytorch' or '_jax' automatically.
+# Workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = {
-    'mnist': {
-        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
+    'cifar': {
+        'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
     },
-    'imagenet': {
-        'workload_path': 'imagenet/imagenet',
-        'workload_class_name': 'ImagenetWorkload'
+    'criteo1tb': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallWorkload'
     },
-    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
+    'fastmri': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRIWorkload'
+    },
+    'imagenet_resnet': {
+        'workload_path': 'imagenet_resnet/imagenet',
+        'workload_class_name': 'ImagenetResNetWorkload'
+    },
+    'imagenet_vit': {
+        'workload_path': 'imagenet_vit/imagenet',
+        'workload_class_name': 'ImagenetVitWorkload'
+    },
     'librispeech': {
         'workload_path': 'librispeech/librispeech',
         'workload_class_name': 'LibriSpeechWorkload'
     },
+    'mnist': {
+        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
+    },
     'ogbg': {
         'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
     },
+    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
 }
 
 flags.DEFINE_string(
     'submission_path',
-    'baselines/mnist/mnist_jax/submission.py',
+    'reference_submissions/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
@@ -70,7 +89,7 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'baselines/mnist/tuning_search_space.json',
+    'reference_submissions/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
                      20,
@@ -82,11 +101,12 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
+flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
 
 
-def _convert_filepath_to_module(path: str):
+def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)
 
   if extension != '.py':
@@ -95,8 +115,9 @@ def _convert_filepath_to_module(path: str):
   return base.replace('/', '.')
 
 
-def _import_workload(workload_path: str,
-                     workload_class_name: str) -> spec.Workload:
+def import_workload(workload_path: str,
+                    workload_class_name: str,
+                    return_class=False) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -109,10 +130,12 @@ def _import_workload(workload_path: str,
     workload_path: the path to the `workload.py` file to load.
     workload_class_name: the name of the Workload class that implements the
       `Workload` abstract class in `spec.py`.
+    return_class: if true, then the workload class is returned instead of the
+      instantiated object. Useful for testing when methods need to be overriden.
   """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  workload_path = _convert_filepath_to_module(workload_path)
+  workload_path = convert_filepath_to_module(workload_path)
 
   # Import the workload module.
   workload_module = importlib.import_module(workload_path)
@@ -128,33 +151,42 @@ def _import_workload(workload_path: str,
         f'Could not find member {workload_class_name} in {workload_path}. '
         'Make sure the Workload class is spelled correctly and defined in '
         'the top scope of the module.')
+  if return_class:
+    return workload_class
   return workload_class()
 
 
 # Example reference implementation showing how to use the above functions
 # together.
 def train_once(workload: spec.Workload,
-               batch_size: int,
+               global_batch_size: int,
                data_dir: str,
                init_optimizer_state: spec.InitOptimizerFn,
                update_params: spec.UpdateParamsFn,
                data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparamters],
-               rng: spec.RandomState) -> Tuple[spec.Timing, spec.Steps]:
+               hyperparameters: Optional[spec.Hyperparameters],
+               rng: spec.RandomState,
+               profiler: Profiler) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
   logging.info('Initializing dataset.')
-  input_queue = workload.build_input_queue(
-      data_rng, 'train', data_dir=data_dir, batch_size=batch_size)
+  with profiler.profile('Initializing dataset'):
+    input_queue = workload.build_input_queue(
+        data_rng,
+        'train',
+        data_dir=data_dir,
+        global_batch_size=global_batch_size)
   logging.info('Initializing model.')
-  model_params, model_state = workload.init_model_fn(model_init_rng)
+  with profiler.profile('Initializing model'):
+    model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  optimizer_state = init_optimizer_state(workload,
-                                         model_params,
-                                         model_state,
-                                         hyperparameters,
-                                         opt_init_rng)
+  with profiler.profile('Initializing optimizer'):
+    optimizer_state = init_optimizer_state(workload,
+                                           model_params,
+                                           model_state,
+                                           hyperparameters,
+                                           opt_init_rng)
 
   # Bookkeeping.
   goal_reached = False
@@ -167,29 +199,27 @@ def train_once(workload: spec.Workload,
   global_start_time = time.time()
 
   logging.info('Starting training loop.')
-  while (is_time_remaining and not goal_reached and not training_complete):
+  while is_time_remaining and not goal_reached and not training_complete:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    (selected_train_input_batch,
-     selected_train_label_batch,
-     selected_train_mask_batch) = data_selection(workload,
-                                                 input_queue,
-                                                 optimizer_state,
-                                                 model_params,
-                                                 hyperparameters,
-                                                 global_step,
-                                                 data_select_rng)
+    with profiler.profile('Data selection'):
+      batch = data_selection(workload,
+                             input_queue,
+                             optimizer_state,
+                             model_params,
+                             hyperparameters,
+                             global_step,
+                             data_select_rng)
     try:
-      optimizer_state, model_params, model_state = update_params(
+      with profiler.profile('Update parameters'):
+        optimizer_state, model_params, model_state = update_params(
           workload=workload,
           current_param_container=model_params,
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
-          input_batch=selected_train_input_batch,
-          label_batch=selected_train_label_batch,
-          mask_batch=selected_train_mask_batch,
+          batch=batch,
           loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
           eval_results=eval_results,
@@ -205,10 +235,12 @@ def train_once(workload: spec.Workload,
     # Check if submission is eligible for an untimed eval.
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
-      latest_eval_result = workload.eval_model(model_params,
-                                               model_state,
-                                               eval_rng,
-                                               data_dir)
+      with profiler.profile('Evaluation'):
+        latest_eval_result = workload.eval_model(global_batch_size,
+                                                 model_params,
+                                                 model_state,
+                                                 eval_rng,
+                                                 data_dir)
       logging.info('%.2fs \t%d \t%s',
                    current_time - global_start_time,
                    global_step,
@@ -224,18 +256,18 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
+                                 profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = _convert_filepath_to_module(submission_path)
+  submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
-  get_batch_size = submission_module.get_batch_size
-  batch_size = get_batch_size(workload_name)
+  global_batch_size = submission_module.get_batch_size(workload_name)
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -262,9 +294,11 @@ def score_submission_on_workload(workload: spec.Workload,
       # number.
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
-      timing, metrics = train_once(workload, batch_size, data_dir,
-                                   init_optimizer_state, update_params,
-                                   data_selection, hyperparameters, rng)
+      with profiler.profile('Train'):
+        timing, metrics = train_once(workload, global_batch_size,
+                                     data_dir, init_optimizer_state,
+                                     update_params, data_selection,
+                                     hyperparameters, rng, profiler)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -279,20 +313,49 @@ def score_submission_on_workload(workload: spec.Workload,
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
-    score, _ = train_once(workload, batch_size, init_optimizer_state,
-                          update_params, data_selection, None, rng)
+    with profiler.profile('Train'):
+      score, _ = train_once(workload, global_batch_size, data_dir,
+                            init_optimizer_state, update_params, data_selection,
+                            None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
 
 
 def main(_):
+  # Check if distributed data parallel is used.
+  use_pytorch_ddp = 'LOCAL_RANK' in os.environ
+
+  if FLAGS.profile:
+    profiler = Profiler()
+  else:
+    profiler = PassThroughProfiler()
+
+  if FLAGS.framework == 'pytorch':
+    # From the docs: "(...) causes cuDNN to benchmark multiple convolution
+    # algorithms and select the fastest."
+    torch.backends.cudnn.benchmark = True
+
+    if use_pytorch_ddp:
+      rank = int(os.environ['LOCAL_RANK'])
+      torch.cuda.set_device(rank)
+      # only log once (for local rank == 0)
+      if rank != 0:
+
+        def logging_pass(*args):
+          pass
+
+        logging.info = logging_pass
+      profiler.set_local_rank(rank)
+      # initialize the process group
+      dist.init_process_group('nccl')
+
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
   workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + FLAGS.framework,
       'workload.py')
-  workload = _import_workload(
+  workload = import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
@@ -300,10 +363,18 @@ def main(_):
                                        FLAGS.workload,
                                        FLAGS.submission_path,
                                        FLAGS.data_dir,
+                                       profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials)
   logging.info('Final %s score: %f', FLAGS.workload, score)
+
+  if FLAGS.profile:
+    logging.info(profiler.summary())
+
+  if use_pytorch_ddp:
+    # cleanup
+    dist.destroy_process_group()
 
 
 if __name__ == '__main__':

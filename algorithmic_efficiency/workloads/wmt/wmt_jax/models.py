@@ -12,11 +12,9 @@ import numpy as np
 @struct.dataclass
 class TransformerConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
-  vocab_size: int = 32000
-  output_vocab_size: int = 32000
   share_embeddings: bool = True
-  logits_via_embedding: bool = True
   dtype: Any = jnp.float32
+  vocab_size: int = 32000
   emb_dim: int = 1024
   num_heads: int = 16
   num_layers: int = 6
@@ -366,7 +364,7 @@ class Decoder(nn.Module):
     # Target Embedding
     if self.shared_embedding is None:
       output_embed = nn.Embed(
-          num_embeddings=cfg.output_vocab_size,
+          num_embeddings=cfg.vocab_size,
           features=cfg.emb_dim,
           embedding_init=nn.initializers.normal(stddev=1.0))
     else:
@@ -393,20 +391,10 @@ class Decoder(nn.Module):
               encoder_decoder_mask=encoder_decoder_mask)
     y = nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_norm')(y)
 
-    # Decoded Logits
-    if cfg.logits_via_embedding:
-      # Use the transpose of embedding matrix for logit transform.
-      logits = output_embed.attend(y.astype(jnp.float32))
-      # Correctly normalize pre-softmax logits for this shared case.
-      logits = logits / jnp.sqrt(y.shape[-1])
-    else:
-      logits = nn.Dense(
-          cfg.output_vocab_size,
-          dtype=cfg.dtype,
-          kernel_init=cfg.kernel_init,
-          bias_init=cfg.bias_init,
-          name='logitdense')(
-              y)
+    # Use the transpose of embedding matrix for logit transform.
+    logits = output_embed.attend(y.astype(jnp.float32))
+    # Correctly normalize pre-softmax logits for this shared case.
+    logits = logits / jnp.sqrt(y.shape[-1])
     return logits
 
 
@@ -422,8 +410,8 @@ class Transformer(nn.Module):
     cfg = self.config
 
     if cfg.share_embeddings:
-      if cfg.output_vocab_size is not None:
-        assert cfg.output_vocab_size == cfg.vocab_size, (
+      if cfg.vocab_size is not None:
+        assert cfg.vocab_size == cfg.vocab_size, (
             "can't share embedding with different vocab sizes.")
       self.shared_embedding = nn.Embed(
           num_embeddings=cfg.vocab_size,

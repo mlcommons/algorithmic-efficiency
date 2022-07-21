@@ -250,7 +250,6 @@ class LibriSpeechWorkload(spec.Workload):
           hyp = beam_search(out_mat[k,:l], self._char_str)
           hh = "".join([self._rev_label_dict[i.item()] for i in hyp])
           t = transcripts[k].detach().cpu().tolist()
-          t = [ll for ll in t if ll != 0]
           tlength = len(t)
           tt = ''.join([self._rev_label_dict[i] for i in t])
           print(tt, hyp)

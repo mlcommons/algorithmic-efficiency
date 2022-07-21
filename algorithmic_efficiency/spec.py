@@ -4,12 +4,15 @@ import abc
 import enum
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
+from absl import logging
+
 
 class LossType(enum.Enum):
   SOFTMAX_CROSS_ENTROPY = 0
   SIGMOID_CROSS_ENTROPY = 1
   MEAN_SQUARED_ERROR = 2
   CTC_LOSS = 3
+  MEAN_ABSOLUTE_ERROR = 4
 
 
 class ForwardPassMode(enum.Enum):
@@ -56,7 +59,7 @@ ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
 OptimizerState = Any
-Hyperparamters = Any
+Hyperparameters = Any
 Timing = int
 Steps = int
 
@@ -65,13 +68,13 @@ ModelAuxiliaryState = Any
 ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
-InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparamters, RandomState],
+InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparameters, RandomState],
                            OptimizerState]
 UpdateParamsFn = Callable[[
     ParameterContainer,
     ParameterTypeTree,
     ModelAuxiliaryState,
-    Hyperparamters,
+    Hyperparameters,
     Tensor,
     Tensor,
     LossType,
@@ -86,7 +89,7 @@ DataSelectionFn = Callable[[
     OptimizerState,
     ParameterContainer,
     LossType,
-    Hyperparamters,
+    Hyperparameters,
     int,
     RandomState
 ],
@@ -104,10 +107,21 @@ class Workload(metaclass=abc.ABCMeta):
                         data_rng: RandomState,
                         split: str,
                         data_dir: str,
-                        batch_size: int):
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None) -> Dict[str, Any]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
+
+    For Jax this should return an itertor over tensors of shape
+    (num_devices, per_device_batch_size, ...), and for PyTorch this should
+    return tensors of shape (global_batch_size, ...).
+
+    The required keys are 'inputs' and 'targets', and in general the naming
+    convention should be plural key names because the values are batches of
+    examples.
     """
 
   @property
@@ -187,7 +201,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def model_fn(self,
                params: ParameterContainer,
-               augmented_and_preprocessed_input_batch: Tensor,
+               augmented_and_preprocessed_input_batch: Dict[str, Tensor],
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
@@ -210,15 +224,66 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       label_batch: Tensor,  # Dense (not one-hot) labels.
       logits_batch: Tensor,
-      mask_batch: Optional[Tensor]) -> Tensor:  # differentiable
+      mask_batch: Optional[Tensor] = None) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: ParameterContainer,
+                           model_state: ModelAuxiliaryState,
+                           rng: RandomState,
+                           data_dir: str) -> Dict[str, float]:
+    """Evaluate the model on a given dataset split, return final scalars."""
+
   def eval_model(self,
+                 global_batch_size: int,
                  params: ParameterContainer,
                  model_state: ModelAuxiliaryState,
-                 rng: RandomState):
+                 rng: RandomState,
+                 data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    logging.info('Evaluating on the training split.')
+    train_metrics = self._eval_model_on_split(
+        split='eval_train',
+        num_examples=self.num_eval_train_examples,
+        global_batch_size=global_batch_size,
+        params=params,
+        model_state=model_state,
+        rng=rng,
+        data_dir=data_dir)
+    eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
+    # We always require a validation set.
+    logging.info('Evaluating on the validation split.')
+    validation_metrics = self._eval_model_on_split(
+        'validation',
+        num_examples=self.num_validation_examples,
+        global_batch_size=global_batch_size,
+        params=params,
+        model_state=model_state,
+        rng=rng,
+        data_dir=data_dir)
+    for k, v in validation_metrics.items():
+      eval_metrics['validation/' + k] = v
+    # Evaluate on the test set if we have one.
+    try:
+      if self.num_test_examples is not None:
+        logging.info('Evaluating on the test split.')
+        test_metrics = self._eval_model_on_split(
+            'test',
+            num_examples=self.num_test_examples,
+            global_batch_size=global_batch_size,
+            params=params,
+            model_state=model_state,
+            rng=rng,
+            data_dir=data_dir)
+        for k, v in test_metrics.items():
+          eval_metrics['test/' + k] = v
+    except NotImplementedError:
+      pass
+    return eval_metrics
 
 
 class TrainingCompleteError(Exception):
@@ -232,7 +297,7 @@ class TrainingCompleteError(Exception):
 def init_optimizer_state(workload: Workload,
                          model_params: ParameterContainer,
                          model_state: ModelAuxiliaryState,
-                         hyperparameters: Hyperparamters,
+                         hyperparameters: Hyperparameters,
                          rng: RandomState) -> OptimizerState:
   # return initial_optimizer_state
   pass
@@ -252,9 +317,8 @@ def update_params(
     current_param_container: ParameterContainer,
     current_params_types: ParameterTypeTree,
     model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparamters,
-    input_batch: Tensor,
-    label_batch: Tensor,  # Dense (not one-hot) labels.
+    hyperparameters: Hyperparameters,
+    batch: Dict[str, Tensor],
     # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
     optimizer_state: OptimizerState,
@@ -268,20 +332,17 @@ def update_params(
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
 def data_selection(workload: Workload,
-                   input_queue: Iterator[Tuple[Tensor, Tensor]],
+                   input_queue: Iterator[Dict[str, Tensor]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
-                   hyperparameters: Hyperparamters,
+                   hyperparameters: Hyperparameters,
                    global_step: int,
-                   rng: RandomState) -> Tuple[Tensor, Tensor]:
+                   rng: RandomState) -> Dict[str, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
-  Each element of the queue is a single training example and label.
-
-  We left out `current_params_types` because we do not believe that it would
-  # be necessary for this function.
+  Each element of the queue is a batch of training examples and labels.
   """
-  # return input_batch, label_batch (dense (not one-hot) labels)
+  # return next(input_queue)
   pass
 
 
