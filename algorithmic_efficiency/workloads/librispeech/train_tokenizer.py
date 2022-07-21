@@ -40,7 +40,8 @@ parser.add_argument(
 parser.add_argument(
     '--train',
     help='whether to train a new tokenizer or load existing one to test',
-    type=str2bool, default=False)
+    type=str2bool,
+    default=False)
 
 
 def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
@@ -102,9 +103,11 @@ def train_tokenizer(data_dir: str,
       delete=False, prefix='/tmp/sp_tmp') as model_fp:
     pass  # we just want a prefix'd tmp-filename
   argstr = ' '.join([
-      f'--input={charfile.name}', f'--vocab_size={vocab_size}',
+      f'--input={charfile.name}',
+      f'--vocab_size={vocab_size}',
       f'--character_coverage={character_coverage}',
-      f'--model_prefix={model_fp.name}', f'--model_type={model_type}'
+      f'--model_prefix={model_fp.name}',
+      f'--model_type={model_type}'
   ])
   spm.SentencePieceTrainer.Train(argstr)
 
@@ -158,4 +161,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

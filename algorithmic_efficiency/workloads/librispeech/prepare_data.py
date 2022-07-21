@@ -63,8 +63,7 @@ def get_txt(data_folder, tokenizer):
           print('transcription = ', trans)
           file_trans.append([audio_path, targets])
 
-  return pd.DataFrame(
-      file_trans, columns=['file', 'targets'])
+  return pd.DataFrame(file_trans, columns=['file', 'targets'])
 
 
 def load_audio(audio_path):
@@ -105,9 +104,7 @@ def main():
   os.makedirs(trans_dir, exist_ok=True)
   os.makedirs(save_dir, exist_ok=True)
 
-  subset_list = [
-      'train-clean-100'
-  ]
+  subset_list = ['train-clean-100']
   for subset in subset_list:
     print(subset)
     df = get_txt(f'{data_dir}/{subset}', tokenizer)
@@ -137,4 +134,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-

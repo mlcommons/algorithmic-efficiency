@@ -243,11 +243,11 @@ class LibriSpeechWorkload(spec.Workload):
         input_lengths = batch['input_lengths'].int()
 
         log_y, output_lengths = params(features, input_lengths, transcripts)
-        mat = torch.exp(log_y).transpose(0,1).detach().cpu().numpy()
-        out_mat = np.concatenate([mat[:, :, 1:], mat[:,:, 0, np.newaxis]], 2)
+        mat = torch.exp(log_y).transpose(0, 1).detach().cpu().numpy()
+        out_mat = np.concatenate([mat[:, :, 1:], mat[:, :, 0, np.newaxis]], 2)
 
         for k, l in enumerate(output_lengths):  # iterate batch
-          hyp = beam_search(out_mat[k,:l], self._char_str)
+          hyp = beam_search(out_mat[k, :l], self._char_str)
           hh = "".join([self._rev_label_dict[i.item()] for i in hyp])
           t = transcripts[k].detach().cpu().tolist()
           tlength = len(t)
