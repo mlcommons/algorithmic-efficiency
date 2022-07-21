@@ -87,7 +87,6 @@ class WmtWorkload(BaseWmtWorkload):
   @torch.no_grad()
   def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
     """Predict translation with fast decoding beam search on a batch."""
-    # This means that decoding will always happen on a single GPU!
     params = params.module if isinstance(params, (torch.nn.DataParallel,
                                                   DDP)) else params
     params.eval()
