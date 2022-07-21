@@ -1,8 +1,8 @@
 """CIFAR workload implemented in Jax."""
 import functools
+import itertools
 import math
 from typing import Dict, Optional, Tuple
-import itertools
 
 from flax import jax_utils
 from flax import linen as nn
