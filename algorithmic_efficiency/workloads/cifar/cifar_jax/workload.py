@@ -1,5 +1,6 @@
-"""CIFAR10 workload implemented in Jax."""
+"""CIFAR workload implemented in Jax."""
 import functools
+import math
 from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
@@ -18,6 +19,29 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
 
 
 class CifarWorkload(BaseCifarWorkload):
+
+  def __init__(self):
+    super().__init__()
+    self._param_shapes = None
+    self._param_types = None
+    self.epoch_metrics = []
+    self._eval_iters = {}
+
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset,
+                               num_batches)
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -77,11 +101,6 @@ class CifarWorkload(BaseCifarWorkload):
           self._param_shapes.unfreeze())
     return self._param_types
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=10, dtype=jnp.float32)
@@ -96,6 +115,26 @@ class CifarWorkload(BaseCifarWorkload):
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+
+  @functools.partial(
+      jax.pmap,
+      axis_name='batch',
+      in_axes=(None, 0, 0, 0, None),
+      static_broadcasted_argnums=(0,))
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
+    return self._compute_metrics(logits, batch['targets'])
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
@@ -140,27 +179,50 @@ class CifarWorkload(BaseCifarWorkload):
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     return -jnp.sum(one_hot_targets * nn.log_softmax(logits_batch), axis=-1)
 
-  @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
-      static_broadcasted_argnums=(0,))
-  def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    logits, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
-    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
-    loss = jnp.sum(self.loss_fn(batch['targets'], logits))
-    num_data = len(logits)
-    metrics = {'accuracy': accuracy, 'loss': loss, 'num_data': num_data}
+  def _compute_metrics(self, logits, labels):
+    loss = jnp.sum(self.loss_fn(labels, logits))
+    # not accuracy, but nr. of correct predictions
+    accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
+    metrics = {
+        'loss': loss,
+        'accuracy': accuracy,
+    }
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    data_rng, model_rng = jax.random.split(rng, 2)
+    # Sync batch statistics across replicas before evaluating.
+    model_state = self.sync_batch_stats(model_state)
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    # We already repeat the dataset indefinitely in tf.data.
+    if split not in self._eval_iters:
+      self._eval_iters[split] = self.build_input_queue(
+          data_rng,
+          split=split,
+          global_batch_size=global_batch_size,
+          data_dir=data_dir,
+          cache=True,
+          repeat_final_dataset=True,
+          num_batches=num_batches)
+
+    eval_metrics = {}
+    for _ in range(num_batches):
+      batch = next(self._eval_iters[split])
+      # We already average these metrics across devices inside _compute_metrics.
+      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
+      for metric_name, metric_value in synced_metrics.items():
+        if metric_name not in eval_metrics:
+          eval_metrics[metric_name] = 0.0
+        eval_metrics[metric_name] += metric_value
+
+    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
+                                eval_metrics)
+    return eval_metrics
