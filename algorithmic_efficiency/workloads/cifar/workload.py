@@ -81,3 +81,8 @@ class BaseCifarWorkload(spec.Workload):
     TODO: return shape tuples from model as a tree
     """
     raise NotImplementedError
+
+  # Return whether or not a key in spec.ParameterTree is the output layer
+  # parameters.
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    raise NotImplementedError
