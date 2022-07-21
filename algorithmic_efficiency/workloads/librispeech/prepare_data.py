@@ -3,52 +3,36 @@
 Modified from https://github.com/lsari/librispeech_100.
 """
 
-import json
+import argparse
 import os
-import sys
+from os.path import exists
 
 import librosa
 import numpy as np
 import pandas as pd
 
-WINDOW_SIZE = 0.02
-WINDOW_STRIDE = 0.01
-WINDOW = 'hamming'
+import tensorflow as tf
+import tensorflow_text as tftxt
+
+gfile = tf.io.gfile
+copy = tf.io.gfile.copy
+exists = tf.io.gfile.exists
+rename = tf.io.gfile.rename
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    '--data_dir', help='path to training data directory', type=str)
+
+parser.add_argument(
+    '--tokenizer_vocab_path',
+    help='path to sentence piece tokenizer vocab file',
+    type=str)
+
+TRANSCRIPTION_MAX_LENGTH = 256
+AUDIO_MAX_LENGTH = 320000
 
 
-def check_characters(string, labels):
-  for c in string:
-    if c not in labels:
-      return False
-  return True
-
-
-def analyze_transcripts(train_data_dir, ignore_space=False):
-  char_labels = set()
-  for j, speaker_folder in enumerate(os.listdir(train_data_dir)):
-    if j % 10 == 0:
-      print(j)
-    for chapter_folder in os.listdir(f'{train_data_dir}/{speaker_folder}'):
-      trans_file = (f'{train_data_dir}/{speaker_folder}/{chapter_folder}/'
-                    f'{speaker_folder}-{chapter_folder}.trans.txt')
-      with open(trans_file, 'r', encoding='UTF-8') as f:
-        for line in f:
-          _, trans = line.strip().split(' ', maxsplit=1)
-          if ignore_space:
-            char_labels = char_labels.union(set(trans.replace(' ', '')))
-          else:
-            char_labels = char_labels.union(set(trans))
-
-  output_labels = ['_'] + sorted(list(char_labels))
-  output_label_dict_inner = {c: i for i, c in enumerate(output_labels)}
-  os.makedirs('data', exist_ok=True)
-  with open('data/labels.json', 'w', encoding='UTF-8') as f:
-    json.dump(output_label_dict_inner, f, indent=4)
-
-  return output_label_dict_inner
-
-
-def get_txt(data_folder, labels_dict, ignore_space=False):
+def get_txt(data_folder, tokenizer):
   file_trans = []
   for j, speaker_folder in enumerate(os.listdir(data_folder)):
     if j % 20 == 0:
@@ -58,25 +42,33 @@ def get_txt(data_folder, labels_dict, ignore_space=False):
     for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
       trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
                     f'{speaker_folder}-{chapter_folder}.trans.txt')
+      if not exists(trans_file):
+        print('path does not exist -> {}'.format(trans_file))
+        continue
+
       with open(trans_file, 'r', encoding='UTF-8') as f:
         for l in f:
           utt, trans = l.strip().split(' ', maxsplit=1)
           audio_path = (
               f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
           assert os.path.isfile(audio_path)
-          if check_characters(trans, labels_dict) and len(trans) > 10:
-            if ignore_space:
-              trans = trans.replace(' ', '')
-            trans_ids = [labels_dict[c] for c in trans]
-            file_trans.append(
-                [audio_path, trans, trans_ids, f'speaker-{speaker_folder}'])
+          if len(trans) > TRANSCRIPTION_MAX_LENGTH:
+            continue
+
+          sound, _ = librosa.load(audio_path, sr=16000)
+          if sound.shape[0] > AUDIO_MAX_LENGTH:
+            continue
+
+          targets = tokenizer.tokenize(trans).numpy()
+          print('transcription = ', trans)
+          file_trans.append([audio_path, targets])
 
   return pd.DataFrame(
-      file_trans, columns=['file', 'trans', 'trans_ids', 'speaker'])
+      file_trans, columns=['file', 'targets'])
 
 
 def load_audio(audio_path):
-  sound, sample_rate = librosa.load(audio_path, sr=16000)
+  sound, _ = librosa.load(audio_path, sr=16000)
   audio_duration = librosa.get_duration(filename=f'{audio_path}')
 
   if len(sound.shape) > 1:
@@ -84,60 +76,55 @@ def load_audio(audio_path):
       sound = sound.squeeze()
     else:
       sound = sound.mean(axis=1)  # multiple channels, average
-  return sound, sample_rate, audio_duration
+
+  return sound, audio_duration
 
 
-def extract_spect_mvn(audio_path):
-  y, sample_rate, audio_duration = load_audio(audio_path)
+def load_tokenizer(model_path: str = 'spm_model.vocab',
+                   add_bos: bool = False,
+                   add_eos: bool = True,
+                   reverse: bool = False):
+  """Load a tf-text SentencePiece tokenizer from given model filepath."""
+  if not exists(model_path):
+    print('tokenizer not found, please train one ....')
 
-  n_fft = int(sample_rate * WINDOW_SIZE)
-  win_length = n_fft
-  hop_length = int(sample_rate * WINDOW_STRIDE)
-  # STFT
-  d = librosa.stft(
-      y,
-      n_fft=n_fft,
-      hop_length=hop_length,
-      win_length=win_length,
-      window=WINDOW)
-  spect, _ = librosa.magphase(d)
-  # S = log(S+1)
-  spect = np.log1p(spect)
-  # spect = torch.FloatTensor(spect)
-  # if self.normalize:
-  print(spect.shape)
-  mean = np.mean(spect)
-  std = np.std(spect)
-  spect -= mean
-  spect /= std
-  return spect.T, audio_duration
+  with gfile.GFile(model_path, 'rb') as model_fp:
+    sp_model = model_fp.read()
+  sp_tokenizer = tftxt.SentencepieceTokenizer(
+      model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse)
+  return sp_tokenizer
 
 
-def main(data_dir):
+def main():
+  args = parser.parse_args()
+  data_dir = args.data_dir
+  tokenizer = load_tokenizer(args.tokenizer_vocab_path)
+
   trans_dir = os.getcwd() + 'data'
-  save_dir = os.getcwd() + '/data/stft/'
+  save_dir = os.getcwd() + '/data/audio/'
   os.makedirs(trans_dir, exist_ok=True)
   os.makedirs(save_dir, exist_ok=True)
 
-  output_label_dict = analyze_transcripts(f'{data_dir}/train-clean-100')
-
   subset_list = [
-      'dev-clean', 'test-clean', 'dev-other', 'test-other', 'train-clean-100'
+      'train-clean-100'
   ]
   for subset in subset_list:
     print(subset)
-    df = get_txt(f'{data_dir}/{subset}', output_label_dict)
+    df = get_txt(f'{data_dir}/{subset}', tokenizer)
     df.to_csv(f'data/trans_{subset}.csv')
 
   for subset in subset_list:
     df = pd.read_csv(f'data/trans_{subset}.csv')
     dataset = []
     for _, row in df.iterrows():
-      s, duration = extract_spect_mvn(row['file'])
+      sound, duration = load_audio(row['file'])
+
       wave, _ = os.path.splitext(os.path.basename(row['file']))
       feat_name = '{}_{:.3f}_{:.3f}.npy'.format(wave, 0, duration)
       save_path = os.path.join(save_dir, feat_name)
-      np.save(save_path, s)
+
+      print('saving features for {}'.format(save_path))
+      np.save(save_path, sound)
 
       row['features'] = save_path
       row['duration'] = duration
@@ -149,4 +136,5 @@ def main(data_dir):
 
 
 if __name__ == '__main__':
-  main(data_dir=sys.argv[1])
+  main()
+
