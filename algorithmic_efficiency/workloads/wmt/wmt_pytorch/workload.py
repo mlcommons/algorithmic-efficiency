@@ -14,23 +14,15 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import jax_to_pytorch
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency.pytorch_utils import pytorch_to_jax
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
-
-def _jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
-  return torch.utils.dlpack.from_dlpack(
-      jax.dlpack.to_dlpack(x, take_ownership=take_ownership))
-
-
-def _pytorch_to_jax(x: spec.Tensor):
-  x = x.contiguous()  # https://github.com/google/jax/issues/8082
-  return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
 
 
 class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
@@ -103,7 +95,7 @@ class WmtWorkload(BaseWmtWorkload):
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = _jax_to_pytorch(flat_ids).to(DEVICE)
+      flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
@@ -113,7 +105,7 @@ class WmtWorkload(BaseWmtWorkload):
           cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = _pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
