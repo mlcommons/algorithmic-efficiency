@@ -210,8 +210,6 @@ class CifarWorkload(BaseCifarWorkload):
           cache=True,
           repeat_final_dataset=True,
           num_batches=num_batches)
-      # Note that this stores the entire eval dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
     eval_metrics = {}
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
