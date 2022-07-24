@@ -345,6 +345,11 @@ def main(_):
     torch.backends.cudnn.benchmark = True
 
     if USE_PYTORCH_DDP:
+      # Avoid tf input pipeline creating too many threads.
+      if RANK != 0:
+        tf.config.threading.set_intra_op_parallelism_threads(1)
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+
       torch.cuda.set_device(RANK)
       profiler.set_local_rank(RANK)
       # only log once (for local rank == 0)

@@ -11,7 +11,6 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import jax_to_pytorch
@@ -217,26 +216,66 @@ class WmtWorkload(BaseWmtWorkload):
                         global_batch_size: int,
                         num_batches: Optional[int] = None,
                         repeat_final_dataset: bool = False):
+    per_device_batch_size = int(global_batch_size / N_GPUS)
+    n_inputs = 6 if split == 'train' else 2
+
+    # The input pipeline has to be created in all processes, because
+    # self._tokenizer has to be available in every process.
     np_iter = super().build_input_queue(data_rng,
                                         split,
                                         data_dir,
                                         global_batch_size,
                                         num_batches,
                                         repeat_final_dataset)
-    if USE_PYTORCH_DDP:
-      return data_utils.TFDistributedSampler(np_iter, device=DEVICE, rank=RANK)
-
-    def _input_queue_generator():
-      for batch in np_iter:
-        batch = {
-            key: torch.as_tensor(value, device=DEVICE,
-                                 dtype=torch.int64).view(-1, value.shape[-1])
-            for key,
-            value in batch.items()
-        }
-        yield batch
-
-    return _input_queue_generator()
+    while True:
+      # Only iterate over tf input pipeline in one Python process to
+      # avoid creating too many threads.
+      if RANK == 0:
+        batch = next(np_iter)  # pylint: disable=stop-iteration-return
+        tensor_list = []
+        for key, value in batch.items():
+          tensor = torch.as_tensor(value, dtype=torch.int64, device=DEVICE)
+          tensor_list.append(tensor)
+          batch[key] = (
+              tensor[0] if USE_PYTORCH_DDP else tensor.view(
+                  -1, value.shape[-1]))
+        # Send batch to other devices when using DDP.
+        if USE_PYTORCH_DDP:
+          # During eval, the batch size of the remainder might be different.
+          if split != 'train':
+            per_device_batch_size = torch.tensor(
+                len(batch['inputs']), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
+          dist.broadcast(torch.stack(tensor_list), src=0)
+      else:
+        # During eval, the batch size of the remainder might be different.
+        if split != 'train':
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
+        tensor = torch.empty((n_inputs, N_GPUS, per_device_batch_size, 256),
+                             dtype=torch.int64,
+                             device=DEVICE)
+        dist.broadcast(tensor, src=0)
+        # Note that the order of the keys is important.
+        # For split == 'train'.
+        if n_inputs == 6:
+          keys = [
+              'inputs',
+              'inputs_position',
+              'inputs_segmentation',
+              'targets',
+              'targets_position',
+              'targets_segmentation'
+          ]
+        # For all eval/test splits.
+        elif n_inputs == 2:
+          keys = ['inputs', 'targets']
+        batch = {}
+        for key, n in zip(keys, range(n_inputs)):
+          batch[key] = tensor[n][RANK]
+      yield batch
 
   def eval_step(self, params, batch):
     """Calculate evaluation metrics on a batch."""
