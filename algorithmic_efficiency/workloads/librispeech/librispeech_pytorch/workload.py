@@ -7,9 +7,9 @@ from typing import Dict, Tuple
 #import ctcdecode
 from ctc_decoder import beam_search
 from Levenshtein import distance as levenshtein_distance
+import numpy as np
 import torch
 import torch.utils.data as data_utils
-import numpy as np
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
