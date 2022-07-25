@@ -1,6 +1,5 @@
 """CIFAR workload implemented in Jax."""
 import functools
-import itertools
 import math
 from typing import Dict, Optional, Tuple
 
@@ -202,7 +201,7 @@ class CifarWorkload(BaseCifarWorkload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
+      self._eval_iters[split] = self.build_input_queue(
           data_rng,
           split=split,
           global_batch_size=global_batch_size,
@@ -210,6 +209,7 @@ class CifarWorkload(BaseCifarWorkload):
           cache=True,
           repeat_final_dataset=True,
           num_batches=num_batches)
+
     eval_metrics = {}
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
