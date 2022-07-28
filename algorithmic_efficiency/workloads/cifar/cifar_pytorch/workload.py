@@ -27,10 +27,6 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def __init__(self):
-    self._param_types = None
-    self._eval_iters = {}
-
   @property
   def param_shapes(self):
     if self._param_shapes is None:
@@ -112,7 +108,7 @@ class CifarWorkload(BaseCifarWorkload):
         batch_size=batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=0,
+        num_workers=4,
         pin_memory=True,
         drop_last=is_train)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)

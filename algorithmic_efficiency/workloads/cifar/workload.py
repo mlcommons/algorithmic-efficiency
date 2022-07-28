@@ -1,11 +1,6 @@
-"""Cifar workload parent class."""
-import math
-from typing import Dict, Optional, Tuple
-
-import jax
+"""CIFAR workload parent class."""
 
 from algorithmic_efficiency import spec
-import algorithmic_efficiency.random_utils as prng
 
 
 class BaseCifarWorkload(spec.Workload):
@@ -65,78 +60,29 @@ class BaseCifarWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 3600
+    return 3600  # 1 hours
 
   @property
   def eval_period_time_sec(self):
-    return 600
+    return 600  # 10 mins
 
-  def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      images: spec.Tensor,
-      labels: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Return the summed metrics for a given batch."""
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
+
+  @property
+  def model_params_types(self):
+    """
+    TODO: return shape tuples from model as a tree
+    """
     raise NotImplementedError
 
-  def _eval_metric(self, logits, labels):
-    """Return the mean accuracy and loss as a dict."""
+  # Return whether or not a key in spec.ParameterTree is the output layer
+  # parameters.
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
-
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str) -> Dict[str, float]:
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    num_batches = int(math.ceil(num_examples / global_batch_size))
-    # We already repeat the dataset indefinitely in tf.data.
-    if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
-          data_rng,
-          split=split,
-          global_batch_size=global_batch_size,
-          data_dir=data_dir,
-          cache=True,
-          repeat_final_dataset=True,
-          num_batches=num_batches)
-
-    total_metrics = {'accuracy': 0., 'loss': 0.}
-    num_data = 0
-    for _ in range(num_batches):
-      batch = next(self._eval_iters[split])
-      per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
-      batch_metrics = self._eval_model(params,
-                                       batch,
-                                       model_state,
-                                       per_device_model_rngs)
-      total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
-      }
-      num_data += batch_metrics['num_data'][0]
-    return {k: float(v[0] / num_data) for k, v in total_metrics.items()}
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
-    """Build an input queue for the given split."""
-    ds = self._build_dataset(data_rng,
-                             split,
-                             data_dir,
-                             global_batch_size,
-                             cache,
-                             repeat_final_dataset,
-                             num_batches)
-    for batch in iter(ds):
-      yield batch

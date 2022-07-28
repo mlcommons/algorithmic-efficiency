@@ -1,4 +1,4 @@
-"""CIFAR10 input pipeline.
+"""CIFAR input pipeline.
 
 Forked from Flax example which can be found here:
 https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
@@ -214,12 +214,12 @@ def create_split(split,
       lambda i,
       ex: preprocess_example((i, ex)),
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  ds = ds.batch(global_batch_size, drop_remainder=True)
+  ds = ds.batch(global_batch_size, drop_remainder=train)
 
   if num_batches is not None:
     ds = ds.take(num_batches)
 
-  if not train or repeat_final_dataset:
+  if repeat_final_dataset:
     ds = ds.repeat()
 
   ds = ds.prefetch(10)
