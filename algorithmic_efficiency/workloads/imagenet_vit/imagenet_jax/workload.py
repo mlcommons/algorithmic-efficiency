@@ -1,5 +1,4 @@
 """ImageNet workload implemented in Jax."""
-import math
 from typing import Dict, Tuple
 
 from flax import jax_utils
@@ -58,29 +57,11 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str):
-    data_rng, model_rng = jax.random.split(rng, 2)
-    num_batches = int(math.ceil(num_examples / global_batch_size))
-    # We already repeat the dataset indefinitely in tf.data.
-    if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
-          data_rng,
-          split=split,
-          global_batch_size=global_batch_size,
-          data_dir=data_dir,
-          cache=True,
-          repeat_final_dataset=True,
-          num_batches=num_batches)
-
-    eval_metrics = {}
-    for _ in range(num_batches):
-      batch = next(self._eval_iters[split])
-      # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
-      for metric_name, metric_value in synced_metrics.items():
-        if metric_name not in eval_metrics:
-          eval_metrics[metric_name] = 0.0
-        eval_metrics[metric_name] += metric_value
-
-    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
-                                eval_metrics)
-    return eval_metrics
+    model_state = None
+    return super()._eval_model_on_split(split,
+                                        num_examples,
+                                        global_batch_size,
+                                        params,
+                                        model_state,
+                                        rng,
+                                        data_dir)
