@@ -12,7 +12,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 512
+  return 2048
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -24,15 +24,14 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
 
   batch_size = get_batch_size('imagenet_vit')
-  base_lr = hyperparameters.learning_rate * batch_size / 256.
+  base_lr = hyperparameters.learning_rate * batch_size / 1024.
   optimizer_state = {
       'optimizer':
-          torch.optim.SGD(
+          torch.optim.Adam(
               model_params.parameters(),
               lr=base_lr,
-              momentum=hyperparameters.momentum,
-              weight_decay=hyperparameters.l2,
-              nesterov=True)
+              betas=(hyperparameters.beta1, hyperparameters.beta2),
+              eps=hyperparameters.epsilon)
   }
 
   steps_per_epoch = workload.num_train_examples // batch_size

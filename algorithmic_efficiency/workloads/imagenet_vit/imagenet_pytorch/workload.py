@@ -25,7 +25,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model_kwargs = decode_variant('S/16')
+    model_kwargs = decode_variant('B/32')
     model = models.ViT(num_classes=1000, **model_kwargs)
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
@@ -48,13 +48,11 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del update_batch_norm
 
     model = params
 
     if mode == spec.ForwardPassMode.EVAL:
-      if update_batch_norm:
-        raise ValueError(
-            'Batch norm statistics cannot be updated during evaluation.')
       model.eval()
 
     if mode == spec.ForwardPassMode.TRAIN:
