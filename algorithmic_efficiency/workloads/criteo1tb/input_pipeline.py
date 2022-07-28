@@ -39,7 +39,8 @@ def get_criteo1tb_dataset(split: str,
 
     int_features = []
     for idx in range(num_dense):
-      int_features.append(tf.math.log(fields[idx + num_labels] + 1))
+      positive_val = tf.nn.relu(fields[idx + num_labels]) 
+      int_features.append(tf.math.log(positive_val + 1))
     int_features = tf.stack(int_features, axis=1)
 
     cat_features = []
