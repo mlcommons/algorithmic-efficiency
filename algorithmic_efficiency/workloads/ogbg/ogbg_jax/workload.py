@@ -1,8 +1,6 @@
-"""OGB workload implemented in Jax."""
+"""OGBG workload implemented in Jax."""
 import functools
-import itertools
-import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from flax import jax_utils
 import jax
@@ -10,10 +8,8 @@ import jax.numpy as jnp
 import jraph
 
 from algorithmic_efficiency import param_utils
-from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.ogbg.ogbg_jax import input_pipeline
-from algorithmic_efficiency.workloads.ogbg.ogbg_jax import metrics
+from algorithmic_efficiency.workloads.ogbg import metrics
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax import models
 from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
@@ -21,30 +17,8 @@ from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 class OgbgWorkload(BaseOgbgWorkload):
 
   def __init__(self):
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
-    self._num_outputs = 128
+    super().__init__()
     self._model = models.GNN(self._num_outputs)
-
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
-    dataset_iter = input_pipeline.get_dataset_iter(split,
-                                                   data_rng,
-                                                   data_dir,
-                                                   global_batch_size)
-    return dataset_iter
-
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
 
   @property
   def model_params_types(self):
@@ -57,19 +31,14 @@ class OgbgWorkload(BaseOgbgWorkload):
           self._param_shapes.unfreeze())
     return self._param_types
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
     fake_batch = jraph.GraphsTuple(
         n_node=jnp.asarray([1]),
         n_edge=jnp.asarray([1]),
-        nodes=jnp.ones((1, 3)),
-        edges=jnp.ones((1, 7)),
+        nodes=jnp.ones((1, 9)),
+        edges=jnp.ones((1, 3)),
         globals=jnp.zeros((1, self._num_outputs)),
         senders=jnp.asarray([0]),
         receivers=jnp.asarray([0]))
@@ -78,17 +47,6 @@ class OgbgWorkload(BaseOgbgWorkload):
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
     return jax_utils.replicate(params), None
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    pass
-
-  @property
-  def loss_type(self):
-    return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   def model_fn(
       self,
@@ -133,17 +91,6 @@ class OgbgWorkload(BaseOgbgWorkload):
     abs_logits = jnp.where(positive_logits, logits, -logits)
     return relu_logits - (logits * labels) + (jnp.log(1 + jnp.exp(-abs_logits)))
 
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor]) -> spec.Tensor:  # differentiable
-    per_example_losses = self._binary_cross_entropy_with_mask(
-        labels=label_batch, logits=logits_batch, mask=mask_batch)
-    return per_example_losses
-
   def _eval_metric(self, labels, logits, masks):
     per_example_losses = self.loss_fn(labels, logits, masks)
     loss = jnp.sum(jnp.where(masks, per_example_losses, 0)) / jnp.sum(masks)
@@ -156,40 +103,4 @@ class OgbgWorkload(BaseOgbgWorkload):
       in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
   def _eval_batch(self, params, batch, model_state, rng):
-    logits, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
-    return self._eval_metric(batch['targets'], logits, batch['weights'])
-
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str) -> Dict[str, float]:
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
-      # Note that this stores the entire val dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
-
-    total_metrics = None
-    num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
-    # Loop over graph batches in eval dataset.
-    for _ in range(num_eval_steps):
-      batch = next(self._eval_iters[split])
-      batch_metrics = self._eval_batch(params, batch, model_state, model_rng)
-      total_metrics = (
-          batch_metrics
-          if total_metrics is None else total_metrics.merge(batch_metrics))
-    if total_metrics is None:
-      return {}
-    return {k: float(v) for k, v in total_metrics.reduce().compute().items()}
+    return super()._eval_batch(params, batch, model_state, rng)

@@ -22,13 +22,17 @@ from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     MnistWorkload as JaxMnistWorkload
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
     MnistWorkload as PyTorchMnistWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
+    OgbgWorkload as JaxOgbgWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
+    OgbgWorkload as PyTorchOgbgWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
     WmtWorkload as JaxWmtWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-WORKLOADS = ['mnist', 'criteo1tb', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt']
 
+WORKLOADS = ['mnist', 'criteo1tb', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 # Ideally we would match the shapes layer-wise, but for that we
 # have to ensure the exact same order of the shapes and that the
@@ -80,6 +84,11 @@ def get_workload(workload):
   elif workload == 'criteo1tb':
     jax_workload = JaxDLRMWorkload() 
     pytorch_workload = PyTorchDLRMPyTorch()
+  elif workload == 'ogbg':
+    # Init Jax workload.
+    jax_workload = JaxOgbgWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchOgbgWorkload()
   else:
     raise ValueError(f'Workload {workload} is not available.')
   _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))

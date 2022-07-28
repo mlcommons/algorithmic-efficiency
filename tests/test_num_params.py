@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 import jax.random as jax_rng
+import jraph
 import pytest
 
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.dlrm_small_model import \
@@ -23,6 +24,9 @@ from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
     _Model as PyTorchMLP
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax.models import GNN as JaxGNN
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import \
+    GNN as PyTorchGNN
 from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
     Transformer as JaxTransformer
 from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
@@ -30,8 +34,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'cifar', 'criteo1tb','imagenet_resnet', 'imagenet_vit', 'wmt']
-
+WORKLOADS = ['mnist', 'cifar', 'criteo1tb','imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 @pytest.mark.parametrize('workload', WORKLOADS)
 def test_matching_num_params(workload):
@@ -101,6 +104,20 @@ def get_models(workload):
         jnp.ones(target_shape, jnp.float32))
     # Init PyTorch model.
     pytorch_model = DLRMPyTorch(_VOCAB_SIZES, sum(_VOCAB_SIZES))
+  elif workload == 'ogbg':
+    # Init Jax model.
+    fake_batch = jraph.GraphsTuple(
+        n_node=jnp.asarray([1]),
+        n_edge=jnp.asarray([1]),
+        nodes=jnp.ones((1, 9)),
+        edges=jnp.ones((1, 3)),
+        globals=jnp.zeros((1, 128)),
+        senders=jnp.asarray([0]),
+        receivers=jnp.asarray([0]))
+    jax_model = JaxGNN(num_outputs=128).init(
+        init_rngs, fake_batch, train=False)['params']
+    # Init PyTorch model.
+    pytorch_model = PyTorchGNN(num_outputs=128)
   else:
     raise ValueError(f'Models for workload {workload} are not available.')
   return jax_model, pytorch_model
