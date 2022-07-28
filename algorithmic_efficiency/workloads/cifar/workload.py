@@ -1,7 +1,6 @@
 """Cifar workload parent class."""
-
-import itertools
-from typing import Dict, Tuple
+import math
+from typing import Dict, Optional, Tuple
 
 import jax
 
@@ -96,18 +95,22 @@ class BaseCifarWorkload(spec.Workload):
                            data_dir: str) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
+    num_batches = int(math.ceil(num_examples / global_batch_size))
+    # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
-      # Note that this stores the entire eval dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
+      self._eval_iters[split] = self.build_input_queue(
+          data_rng,
+          split=split,
+          global_batch_size=global_batch_size,
+          data_dir=data_dir,
+          cache=True,
+          repeat_final_dataset=True,
+          num_batches=num_batches)
 
     total_metrics = {'accuracy': 0., 'loss': 0.}
     num_data = 0
-    num_batches = num_examples // global_batch_size
-    for bi, batch in enumerate(self._eval_iters[split]):
-      if bi > num_batches:
-        break
+    for _ in range(num_batches):
+      batch = next(self._eval_iters[split])
       per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
       batch_metrics = self._eval_model(params,
                                        batch,
@@ -116,16 +119,24 @@ class BaseCifarWorkload(spec.Workload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-      num_data += batch_metrics['num_data']
-    return {k: float(v / num_data) for k, v in total_metrics.items()}
+      num_data += batch_metrics['num_data'][0]
+    return {k: float(v[0] / num_data) for k, v in total_metrics.items()}
 
   def build_input_queue(self,
                         data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
     """Build an input queue for the given split."""
-    ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
+    ds = self._build_dataset(data_rng,
+                             split,
+                             data_dir,
+                             global_batch_size,
+                             cache,
+                             repeat_final_dataset,
+                             num_batches)
     for batch in iter(ds):
-      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       yield batch

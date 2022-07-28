@@ -9,6 +9,8 @@ from flax import jax_utils
 import jax
 import tensorflow as tf
 
+from algorithmic_efficiency.data_utils import shard_numpy_ds
+
 IMAGE_SIZE = 32
 MEAN_RGB = [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
 STDDEV_RGB = [0.24703233 * 255, 0.24348505 * 255, 0.26158768 * 255]
@@ -198,7 +200,7 @@ def create_split(split,
 
   ds = dataset_builder.as_dataset(split=split)
   options = tf.data.Options()
-  options.experimental_threading.private_threadpool_size = 48
+  options.threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
   if cache:
@@ -223,25 +225,6 @@ def create_split(split,
   ds = ds.prefetch(10)
 
   return ds
-
-
-def shard_numpy_ds(xs):
-  """Prepare tf data for JAX
-
-  Convert an input batch from tf Tensors to numpy arrays and reshape it to be
-  sharded across devices.
-  """
-  local_device_count = jax.local_device_count()
-
-  def _prepare(x):
-    # Use _numpy() for zero-copy conversion between TF and NumPy.
-    x = x._numpy()  # pylint: disable=protected-access
-
-    # reshape (host_batch_size, height, width, 3) to
-    # (local_devices, device_batch_size, height, width, 3)
-    return x.reshape((local_device_count, -1) + x.shape[1:])
-
-  return jax.tree_map(_prepare, xs)
 
 
 def create_input_iter(split,
