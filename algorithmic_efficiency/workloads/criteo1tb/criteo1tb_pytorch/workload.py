@@ -272,14 +272,14 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
               mask_batch: Optional[spec.Tensor] = None) -> spec.Tensor:
 
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-            logits = logits_batch, targets=label_batch)
+        logits=logits_batch, targets=label_batch)
 
     if mask_batch is not None:
-        weighted_losses = per_example_losses * mask_batch
-        normalization = mask_batch.sum()
+      weighted_losses = per_example_losses * mask_batch
+      normalization = mask_batch.sum()
 
     else:
-        weighted_losses = per_example_losses
+      weighted_losses = per_example_losses
     normalization = label_batch.shape[0]
 
     return torch.sum(weighted_losses, dim=-1) / normalization
