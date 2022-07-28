@@ -1,4 +1,7 @@
 #! /bin/bash
+# script to download librispeech dataset splits and extract tar files.
+# after extraction the result is a folder named Librispeech containing audio files
+# in .flac format along with transcripts containing name of audio file and corresponding transcription.
 
 for d in dev test; do
     for s in clean other; do
