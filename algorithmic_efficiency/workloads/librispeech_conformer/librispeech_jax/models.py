@@ -17,39 +17,25 @@ from typing import Any, List
 
 from flax import linen as nn
 from flax import struct
-from algorithmic_efficiency.workloads.librispeech.conformer_jax import  import librispeech_preprocessor as preprocessor
-from algorithmic_efficiency.workloads.librispeech.conformer_jax import  import spectrum_augmenter
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import  librispeech_preprocessor as preprocessor
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import  spectrum_augmenter
 import jax
 import jax.numpy as jnp
 from ml_collections.config_dict import config_dict
 import numpy as np
 
-DEFAULT_HPARAMS = config_dict.ConfigDict(
+hps = config_dict.ConfigDict(
     dict(
         activation_function='relu',
         attention_dropout_rate=0.0,
-        optimizer='adam',
-        opt_hparams={
-            'beta1': .9,
-            'beta2': .98,
-            'epsilon': 1e-9,
-            'weight_decay': 0.0
-        },
-        lr_hparams={
-            'base_lr': 0.1,
-            'schedule': 'constant'
-        },
         batch_size=256,
         eval_batch_size=128,
-        l2_decay_factor=1e-6,
-        l2_decay_rank_threshold=0,
-        use_shallue_label_smoothing=False,
         rng_seed=-1,
         model_dtype='float32',
         grad_clip=5.0,
         encoder_dim=512,
         num_attention_heads=8,
-        num_encoder_layers=16,
+        num_encoder_layers=4,
         convolution_kernel_size=5,
         freq_mask_count=2,
         freq_mask_max_bins=27,
@@ -60,20 +46,17 @@ DEFAULT_HPARAMS = config_dict.ConfigDict(
         use_dynamic_time_mask_max_frames=True,
         use_specaug=True,
         residual_dropout_rate=0.1,
-        input_dropout_rate=0.1,
-        enable_decoder_pre_layer_norm=True,
-        enable_conformer_post_layer_norm=True,
-        use_lingvo_attention=False))
+        input_dropout_rate=0.1))
 
 
 @struct.dataclass
 class ConformerConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
-  vocab_size: int = 0
+  vocab_size: int = 1024
   dtype: Any = jnp.float32
-  encoder_dim: int = 0
-  num_attention_heads: int = 0
-  num_encoder_layers: int = 0
+  encoder_dim: int = 256
+  num_attention_heads: int = 8
+  num_encoder_layers: int = 4
   attention_dropout_rate: float = 0.0
   attention_residual_dropout_rate: float = 0.1
   input_dropout_rate: float = 0.0
@@ -437,27 +420,18 @@ class MultiHeadedSelfAttention(nn.Module):
 
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
-    if self.config.use_lingvo_attention:
-      atten_mask = self.convert_paddings_to_mask(paddings, inputs.dtype)
-
-      result = self.self_attention(
-          query_vec=inputs,
-          key_vec=inputs,
-          value_vec=inputs,
-          atten_mask=atten_mask)[0]
-    else:
-      result = nn.SelfAttention(
-          num_heads=config.num_attention_heads,
-          qkv_features=config.encoder_dim,
-          decode=False,
-          dtype=config.dtype,
-          kernel_init=nn.initializers.xavier_uniform(),
-          bias_init=nn.initializers.zeros,
-          use_bias=True,
-          broadcast_dropout=False,
-          attention_fn=dot_product_attention,
-          dropout_rate=config.attention_dropout_rate,
-          deterministic=not train)(inputs, attention_mask)
+    result = nn.SelfAttention(
+        num_heads=config.num_attention_heads,
+        qkv_features=config.encoder_dim,
+        decode=False,
+        dtype=config.dtype,
+        kernel_init=nn.initializers.xavier_uniform(),
+        bias_init=nn.initializers.zeros,
+        use_bias=True,
+        broadcast_dropout=False,
+        attention_fn=dot_product_attention,
+        dropout_rate=config.attention_dropout_rate,
+        deterministic=not train)(inputs, attention_mask)
 
     result = nn.Dropout(
         rate=config.attention_residual_dropout_rate, deterministic=not train)(
@@ -631,7 +605,7 @@ class ConformerBlock(nn.Module):
     return inputs
 
 
-class ConformerEncoderDecoder(nn.Module):
+class Conformer(nn.Module):
   """Conformer (encoder + decoder) block.
 
   Takes audio input signals and outputs probability distribution over vocab size
@@ -641,7 +615,7 @@ class ConformerEncoderDecoder(nn.Module):
   config: ConformerConfig
 
   def setup(self):
-    config = self.config
+    self.config = ConformerConfig()
     self.specaug = spectrum_augmenter.SpecAug(
         freq_mask_count=config.freq_mask_count,
         freq_mask_max_bins=config.freq_mask_max_bins,
@@ -675,8 +649,7 @@ class ConformerEncoderDecoder(nn.Module):
     # Subsample input by a factor of 4 by performing strided convolutions.
     outputs, output_paddings = Subsample(
         encoder_dim=config.encoder_dim,
-        input_dropout_rate=config.input_dropout_rate)(outputs, output_paddings,
-                                                      train)
+        input_dropout_rate=config.input_dropout_rate)(outputs, output_paddings, train)
 
     # Run the conformer encoder layers.
     for _ in range(config.num_encoder_layers):
@@ -690,179 +663,4 @@ class ConformerEncoderDecoder(nn.Module):
         use_bias=True,
         kernel_init=nn.initializers.xavier_uniform())(outputs)
 
-    return outputs, output_paddings
-
-
-class ConformerModel(base_model.BaseModel):
-  """Conformer model that takes in log mel spectrograms as inputs.
-
-  outputs probability distribution over vocab size for each time step.
-  """
-
-  # Adapted from lingvo's greedy decoding logic here:
-  # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138
-  def sequence_mask(self, lengths, maxlen):
-    batch_size = lengths.shape[0]
-    a = jnp.ones([batch_size, maxlen])
-    b = jnp.cumsum(a, axis=-1)
-    c = jnp.less_equal(b, lengths[:, jnp.newaxis]).astype(lengths.dtype)
-    return c
-
-  def compute_loss(self, logits, logit_paddings, labels, label_paddings):
-    logprobs = nn.log_softmax(logits)
-    per_seq_loss = self.loss_fn(logprobs, logit_paddings, labels,
-                                label_paddings)
-    normalizer = jnp.sum(1 - label_paddings)
-
-    normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
-    return normalized_loss
-
-  def collapse_and_remove_blanks(self, labels, seq_length, blank_id: int = 0):
-    b, t = labels.shape
-    # Zap out blank
-    blank_mask = 1 - jnp.equal(labels, blank_id)
-    labels = (labels * blank_mask).astype(labels.dtype)
-
-    # Mask labels that don't equal previous label.
-    label_mask = jnp.concatenate([
-        jnp.ones_like(labels[:, :1], dtype=jnp.int32),
-        jnp.not_equal(labels[:, 1:], labels[:, :-1])
-    ], axis=1)
-
-    # Filter labels that aren't in the original sequence.
-    maxlen = labels.shape[1]
-    seq_mask = self.sequence_mask(seq_length, maxlen=maxlen)
-    label_mask = label_mask * seq_mask
-
-    # remove repetitions from the labels
-    ulabels = label_mask * labels
-
-    # Count masks for new sequence lengths.
-    label_mask = jnp.not_equal(ulabels, 0).astype(labels.dtype)
-    new_seq_len = jnp.sum(label_mask, axis=1)
-
-    # Mask indexes based on sequence length mask.
-    new_maxlen = maxlen
-    idx_mask = self.sequence_mask(new_seq_len, maxlen=new_maxlen)
-
-    # Flatten everything and mask out labels to keep and sparse indices.
-    flat_labels = jnp.reshape(ulabels, [-1])
-    flat_idx_mask = jnp.reshape(idx_mask, [-1])
-
-    indices = jnp.nonzero(flat_idx_mask, size=b * t)[0]
-    values = jnp.nonzero(flat_labels, size=b * t)[0]
-    updates = jnp.take_along_axis(flat_labels, values, axis=-1)
-
-    # Scatter to flat shape.
-    flat = jnp.zeros(flat_idx_mask.shape).astype(labels.dtype)
-    flat = flat.at[indices].set(updates)
-    # 0'th position in the flat array gets clobbered by later padded updates,
-    # so reset it here to its original value
-    flat = flat.at[0].set(updates[0])
-
-    # Reshape back to square batch.
-    batch_size = labels.shape[0]
-    new_shape = [batch_size, new_maxlen]
-    return (jnp.reshape(flat, new_shape).astype(labels.dtype),
-            new_seq_len.astype(seq_length.dtype))
-
-  def greedy_decode(self, logits, logit_paddings):
-    per_frame_max = jnp.argmax(logits, axis=-1)
-    seqlen = jnp.sum(1.0 - logit_paddings, axis=-1)
-    hyp, _ = self.collapse_and_remove_blanks(per_frame_max, seqlen, blank_id=0)
-    hyp_paddings = jnp.equal(hyp, 0).astype(jnp.int32)
-    return hyp, hyp_paddings
-
-  def evaluate_batch(self, params, batch_stats, batch):
-    """Evaluates cross_entopy on the given batch."""
-
-    logits, logit_paddings = self.flax_module.apply(
-        {
-            'params': params,
-            'batch_stats': batch_stats
-        },
-        batch['inputs'],
-        batch['input_paddings'],
-        train=False,
-        mutable=False)
-
-    labels = batch['targets']
-    label_paddings = batch['target_paddings']
-
-    normalized_loss = self.compute_loss(logits, logit_paddings, labels,
-                                        label_paddings)
-    hyps, hyp_paddings = self.greedy_decode(logits, logit_paddings)
-
-    return self.metrics_bundle.gather_from_model_output(
-        normalized_loss=normalized_loss,
-        hyps=hyps,
-        hyp_paddings=hyp_paddings,
-        targets=labels,
-        target_paddings=label_paddings,
-        axis_name='batch')
-
-  def training_cost(self, params, batch, batch_stats=None, dropout_rng=None):
-    """Return CTC loss."""
-
-    # For more information on flax.linen.Module.apply, see the docs at
-    # https://flax.readthedocs.io/en/latest/flax.linen.html#flax.linen.Module.apply.
-    (outputs, output_paddings), new_batch_stats = self.flax_module.apply(
-        {
-            'params': params,
-            'batch_stats': batch_stats
-        },
-        batch['inputs'],
-        batch['input_paddings'],
-        rngs={'dropout': dropout_rng},
-        mutable=['batch_stats'],
-        train=True)
-
-    labels = batch['targets']
-    label_paddings = batch['target_paddings']
-
-    normalized_loss = self.compute_loss(outputs, output_paddings, labels,
-                                        label_paddings)
-    return normalized_loss, new_batch_stats
-
-  def apply_on_batch(self, params, batch_stats, batch, **apply_kwargs):
-    """Wrapper around flax_module.apply."""
-    if batch_stats is not None:
-      variables = {'params': params, 'batch_stats': batch_stats}
-    else:
-      variables = {'params': params}
-
-    return self.flax_module.apply(
-        variables,
-        batch['inputs'],
-        batch['input_paddings'],
-        **apply_kwargs)
-
-  def build_flax_module(self):
-    config = ConformerConfig(
-        vocab_size=self.hps.output_shape[1],
-        encoder_dim=self.hps.encoder_dim,
-        num_attention_heads=self.hps.num_attention_heads,
-        num_encoder_layers=self.hps.num_encoder_layers,
-        convolution_kernel_size=self.hps.convolution_kernel_size,
-        freq_mask_count=self.hps.freq_mask_count,
-        freq_mask_max_bins=self.hps.freq_mask_max_bins,
-        time_mask_count=self.hps.time_mask_count,
-        time_mask_max_frames=self.hps.time_mask_max_frames,
-        time_mask_max_ratio=self.hps.time_mask_max_ratio,
-        time_masks_per_frame=self.hps.time_masks_per_frame,
-        use_dynamic_time_mask_max_frames=self.hps
-        .use_dynamic_time_mask_max_frames,
-        use_specaug=self.hps.use_specaug,
-        attention_residual_dropout_rate=self.hps.residual_dropout_rate,
-        feed_forward_residual_dropout_rate=self.hps.residual_dropout_rate,
-        input_dropout_rate=self.hps.input_dropout_rate,
-        enable_conformer_post_layer_norm=self.hps
-        .enable_conformer_post_layer_norm,
-        enable_decoder_pre_layer_norm=self.hps.enable_decoder_pre_layer_norm,
-        use_lingvo_attention=self.hps.use_lingvo_attention)
-    module = ConformerEncoderDecoder(config)
-
-    return module
-
-
-
+    return outputs, output_paddings  

@@ -60,11 +60,11 @@ WORKLOADS = {
         'workload_class_name': 'ImagenetVitWorkload'
     },
     'librispeech_conformer': {
-        'workload_path': 'librispeech/conformer',
+        'workload_path': 'librispeech_conformer/librispeech',
         'workload_class_name': 'LibriSpeechConformerWorkload'
     },
     'librispeech_deepspeech': {
-        'workload_path': 'librispeech/deepspeech',
+        'workload_path': 'librispeech_deepspeech/librispeech',
         'workload_class_name': 'LibriSpeechDeepSpeechWorkload'
     },
     'mnist': {

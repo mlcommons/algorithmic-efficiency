@@ -12,7 +12,6 @@ import jax.numpy as jnp
 
 ModuleDef = nn.Module
 
-
 class ResNetBlock(nn.Module):
   """ResNet block."""
   filters: int

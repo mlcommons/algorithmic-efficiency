@@ -1,0 +1,9 @@
+{
+    "base_lr": {"feasible_points": [0.3]},
+    "beta1": {"feasible_points": [0.9]},
+    "beta2": {"feasible_points": [0.99]},
+    "epsilon": {"feasible_points": [1e-8]},
+    "weight_decay": {"feasible_points": [0.0]},
+    "warmup_epochs" : {"feasible_points": [5]}
+}
+

@@ -9,9 +9,10 @@ import flax.linen as nn
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.librispeech import input_pipeline
-from algorithmic_efficiency.workloads.librispeech import metrics
+from algorithmic_efficiency.workloads.librispeech_conformer import input_pipeline
+from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 
+import tensorflow_datasets as tfds
 FLAGS = flags.FLAGS
 
 
@@ -75,17 +76,44 @@ class BaseLibrispeechWorkload(spec.Workload):
     return self._param_shapes
 
   def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
+                        data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    if split == 'eval_train':
-      split = f'train_clean100[:{self.num_eval_train_examples}]'
-    dataset_iter = input_pipeline.get_dataset_iter(split,
-                                                   data_rng,
-                                                   data_dir,
-                                                   global_batch_size)
-    return dataset_iter
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset,
+                               num_batches)
+
+  def _build_dataset(self,
+                     data_rng: spec.RandomState,
+                     split: str,
+                     data_dir: str,
+                     batch_size: int,
+                     cache: Optional[bool] = None,
+                     repeat_final_dataset: Optional[bool] = None,
+                     num_batches: Optional[int] = None):
+    if batch_size % jax.local_device_count() > 0:
+      raise ValueError('Batch size must be divisible by the number of devices')
+    ds_builder = tfds.builder('librispeech', data_dir=data_dir)
+    ds_builder.download_and_prepare()
+    
+    train = split == 'train'
+    ds = input_pipeline.create_input_iter(
+        split,
+        ds_builder,
+        data_rng,
+        batch_size,
+        train=train,
+        cache=not train if cache is None else cache,
+        num_batches=num_batches)
+    return ds
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
