@@ -285,7 +285,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
         submission_dir = f'{workload_dir}/{dataset_name}_{framework}'
         if not os.path.exists(submission_dir):
           continue
-        if 'imagenet_vit' not in workload_dir:
+        if 'fastmri' not in workload_dir: #DO NOT SUBMIT
           continue
         submission_path = (f'reference_submissions/{workload_name}/'
                            f'{dataset_name}_{framework}/submission.py')

@@ -4,18 +4,15 @@ import datetime
 import itertools
 import os
 
+from algorithmic_efficiency import data_utils
+import functools
 import h5py
-from init2winit.dataset_lib import data_utils
 import jax
-from ml_collections.config_dict import config_dict
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 gfile = tf.io.gfile
 listdir = tf.io.gfile.listdir
 
-# _TRAIN_SIZE = 34742
-# _VALID_SIZE = 7135
 _NUM_TRAIN_H5_FILES = 973
 _TRAIN_DIR = 'knee_singlecoil_train'
 _NUM_VALID_H5_FILES = 199
@@ -116,7 +113,8 @@ def _process_example(kspace, kspace_shape, target, target_shape, volume_max,
       'targets': target,
       'mean': mean,
       'std': std,
-      'volume_max': volume_max
+      'volume_max': volume_max,
+      'weights': tf.ones((image.shape[0],)),
   }
 
 
@@ -146,8 +144,19 @@ def _create_generator(filename):
       _h5_to_examples, args=(filename,), output_signature=signature)
 
 
+def _pad_zeros_like(per_host_batch_size, x):
+  shape = x.shape[1:]
+  pad_size = per_host_batch_size - x.shape[0]
+  return tf.zeros((pad_size, *shape), x.dtype)
+
+
 def load_fastmri_split(
-    per_host_batch_size, split, data_dir, shuffle_rng, num_batches):
+    per_host_batch_size,
+    split,
+    data_dir,
+    shuffle_rng,
+    num_batches,
+    repeat_final_eval_dataset):
   """Creates a split from the FastMRI dataset using tfds.
 
   NOTE: only creates knee singlecoil datasets.
@@ -220,10 +229,20 @@ def load_fastmri_split(
 
   if split != 'train':
     ds = ds.cache()
-  ds = ds.prefetch(10)
-  iterator = tfds.as_numpy(ds)
   if split == 'train':
+    ds = ds.prefetch(10)
+    iterator = map(data_utils.shard_numpy_ds, ds)
     return iterator
 
-  for batch in itertools.islice(ds, num_batches):
-    yield data_utils.maybe_pad_batch(batch, per_host_batch_size)
+  ds = ds.take(num_batches)
+  if repeat_final_eval_dataset:
+    ds = ds.repeat()
+  ds = ds.prefetch(10)
+
+  for batch in iter(ds):
+    actual_batch_size = batch['inputs'].shape[0]
+    if actual_batch_size != per_host_batch_size:
+      batch = jax.tree_map(
+          functools.partial(_pad_zeros_like, per_host_batch_size), batch)
+    batch = data_utils.shard_numpy_ds(batch)
+    yield batch

@@ -153,7 +153,7 @@ python3 submission_runner.py \
 
 When using multiple GPUs on a single node it is recommended to use PyTorch's
 [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
-To do so, simply replace `python3` by 
+To do so, simply replace `python3` by
 ```bash
 torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
 ```

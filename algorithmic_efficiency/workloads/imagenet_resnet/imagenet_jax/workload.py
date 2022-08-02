@@ -135,15 +135,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
+      in_axes=(None, 0, 0, 0),
       static_broadcasted_argnums=(0,))
-  def _eval_model(self, params, batch, state, rng):
+  def _eval_model(self, params, batch, state):
     logits, _ = self.model_fn(
         params,
         batch,
         state,
         spec.ForwardPassMode.EVAL,
-        rng,
+        rng=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 
@@ -202,14 +202,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str):
-    data_rng, model_rng = jax.random.split(rng, 2)
     # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
       self._eval_iters[split] = self.build_input_queue(
-          data_rng,
+          rng,
           split=split,
           global_batch_size=global_batch_size,
           data_dir=data_dir,
@@ -221,7 +220,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
+      synced_metrics = self._eval_model(params, batch, model_state)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
