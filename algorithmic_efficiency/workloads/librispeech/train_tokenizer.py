@@ -4,16 +4,15 @@ forked from
 https://github.com/google/flax/blob/b60f7f45b90f8fc42a88b1639c9cc88a40b298d3/examples/lm1b/tokenizer.py
 """
 
+import argparse
 import os
 import sys
 import tempfile
 from typing import Dict, Iterable, Tuple
-import argparse
-
-import tensorflow as tf
-import tensorflow_text as tftxt
 
 import sentencepiece as spm
+import tensorflow as tf
+import tensorflow_text as tftxt
 
 gfile = tf.io.gfile
 copy = tf.io.gfile.copy
