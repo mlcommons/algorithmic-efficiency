@@ -6,9 +6,8 @@ https://github.com/google/flax/blob/b60f7f45b90f8fc42a88b1639c9cc88a40b298d3/exa
 
 import argparse
 import os
-import sys
 import tempfile
-from typing import Dict, Iterable, Tuple
+from typing import Dict
 
 import sentencepiece as spm
 import tensorflow as tf
