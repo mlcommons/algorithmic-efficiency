@@ -259,8 +259,7 @@ class WmtWorkload(BaseWmtWorkload):
                              device=DEVICE)
         dist.broadcast(tensor, src=0)
         # Note that the order of the keys is important.
-        # For split == 'train'.
-        if n_inputs == 6:
+        if split == 'train':
           keys = [
               'inputs',
               'inputs_position',
@@ -270,7 +269,7 @@ class WmtWorkload(BaseWmtWorkload):
               'targets_segmentation'
           ]
         # For all eval/test splits.
-        elif n_inputs == 2:
+        else:
           keys = ['inputs', 'targets']
         batch = {}
         for key, n in zip(keys, range(n_inputs)):

@@ -58,7 +58,7 @@
    pip3 install -e '.[full]'
    ```
 
-   For the PyTorch version of the ogbg workload, you might have to install
+   For the PyTorch version of the ogbg workload, you need to install
    `torch-scatter` manually via
    ```bash
    pip install torch-scatter -f 'https://data.pyg.org/whl/torch-1.12.0+cu113.html'

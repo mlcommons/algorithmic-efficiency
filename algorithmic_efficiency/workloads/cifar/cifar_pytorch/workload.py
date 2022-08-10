@@ -77,12 +77,12 @@ class CifarWorkload(BaseCifarWorkload):
         normalize
     ])
 
+    transform = train_transform_config if is_train else eval_transform_config
     dataset = CIFAR10(
         root=data_dir,
         train=split in ['train', 'eval_train', 'validation'],
         download=True,
-        transform=train_transform_config
-        if 'train' in split else eval_transform_config)
+        transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
     random.Random(data_rng[0]).shuffle(indices)
