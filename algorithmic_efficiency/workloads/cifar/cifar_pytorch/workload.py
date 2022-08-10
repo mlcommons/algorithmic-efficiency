@@ -27,10 +27,6 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def __init__(self):
-    self._param_types = None
-    self._eval_iters = {}
-
   @property
   def param_shapes(self):
     if self._param_shapes is None:
@@ -81,18 +77,19 @@ class CifarWorkload(BaseCifarWorkload):
         normalize
     ])
 
-    dataset = CIFAR10(root=data_dir,
-                train=split in ['train','eval_train','validation'],
-                download=True,
-                transform=train_transform_config if "train" in split \
-                                            else eval_transform_config)
+    transform = train_transform_config if is_train else eval_transform_config
+    dataset = CIFAR10(
+        root=data_dir,
+        train=split in ['train', 'eval_train', 'validation'],
+        download=True,
+        transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
     random.Random(data_rng[0]).shuffle(indices)
     indices_split = {
-        "train": indices[:self.num_train_examples],
-        "validation": indices[self.num_train_examples:],
-        "eval_train": indices[:self.num_eval_train_examples]
+        'train': indices[:self.num_train_examples],
+        'validation': indices[self.num_train_examples:],
+        'eval_train': indices[:self.num_eval_train_examples]
     }
     if split in indices_split:
       dataset = torch.utils.data.Subset(dataset, indices_split[split])
@@ -111,7 +108,7 @@ class CifarWorkload(BaseCifarWorkload):
         batch_size=batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=0,
+        num_workers=4,
         pin_memory=True,
         drop_last=is_train)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)

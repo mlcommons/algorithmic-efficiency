@@ -12,6 +12,8 @@ import jax.numpy as jnp
 import numpy as np
 import torch
 
+from algorithmic_efficiency.pytorch_utils import jax_to_pytorch
+
 # Constants
 # We assume the default End-of-Sentence token id is 2 (SentencePiece).
 EOS_ID = 2
@@ -87,7 +89,8 @@ def gather_beams(nested, beam_indices, batch_size, new_beam_size):
       return x
     else:
       if isinstance(x, torch.Tensor):
-        return x[np.asarray(batch_indices), np.asarray(beam_indices)]
+        return x[(jax_to_pytorch(batch_indices).long(),
+                  jax_to_pytorch(beam_indices).long())]
       return x[batch_indices, beam_indices]
 
   return jax.tree_map(gather_fn, nested)
