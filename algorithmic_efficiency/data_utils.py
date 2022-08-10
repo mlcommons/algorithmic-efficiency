@@ -214,31 +214,3 @@ class PrefetchedWrapper:
       targets = next_targets
 
     yield inputs, targets
-
-
-# Inspired by github.com/PetrochukM/PyTorch-NLP/blob/master/torchnlp/samplers/
-# distributed_sampler.py
-class TFDistributedSampler:
-
-  def __init__(self, iterator, device='cuda:0', rank=None):
-    self.iterator = iterator
-    self.device = device
-    self.rank = rank
-    if rank is None:
-      if not torch.distributed.is_initialized():
-        raise RuntimeError('Requires `torch.distributed` to be initialized.')
-      self.rank = torch.distributed.get_rank()
-
-  def __iter__(self):
-    return self
-
-  def __next__(self):
-    batch = next(self.iterator)
-    batch = {
-        # Assumes that len(value) > self.rank, i.e. there needs to be data for
-        # each rank/GPU.
-        key: torch.as_tensor(
-            value[self.rank], device=self.device, dtype=torch.int64) for key,
-        value in batch.items()
-    }
-    return batch

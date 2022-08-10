@@ -9,7 +9,7 @@ from flax import jax_utils
 import jax
 import tensorflow as tf
 
-from algorithmic_efficiency import data_utils
+from algorithmic_efficiency.data_utils import shard_numpy_ds
 
 IMAGE_SIZE = 32
 MEAN_RGB = [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
@@ -200,7 +200,7 @@ def create_split(split,
 
   ds = dataset_builder.as_dataset(split=split)
   options = tf.data.Options()
-  options.experimental_threading.private_threadpool_size = 48
+  options.threading.private_threadpool_size = 48
   ds = ds.with_options(options)
 
   if cache:
@@ -254,7 +254,7 @@ def create_input_iter(split,
       num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
-  it = map(data_utils.shard_numpy_ds, ds)
+  it = map(shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)
