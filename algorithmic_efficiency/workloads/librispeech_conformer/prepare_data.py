@@ -32,11 +32,10 @@ TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 
 
-def get_txt(data_folder, tokenizer):
+def preprocess_data(data_folder, tokenizer, split):
   file_trans = []
+  num_entries = 0
   for j, speaker_folder in enumerate(os.listdir(data_folder)):
-    if j % 20 == 0:
-      print(f'{j}th speaker')
     if not speaker_folder.isdigit():
       continue
     for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
@@ -56,14 +55,25 @@ def get_txt(data_folder, tokenizer):
             continue
 
           sound, _ = librosa.load(audio_path, sr=16000)
+          sound = np.array(sound, dtype=np.float32)
           if sound.shape[0] > AUDIO_MAX_LENGTH:
             continue
 
-          targets = tokenizer.tokenize(trans).numpy()
-          print('transcription = ', trans)
-          file_trans.append([audio_path, targets])
+          targets = tokenizer.tokenize(trans).numpy().astype(np.int32)
+          num_entries = num_entries + 1
 
-  return pd.DataFrame(file_trans, columns=['file', 'targets'])
+          print('{}) transcription = {}, audio = {}'.format(utt, len(trans), len(sound)))
+
+          np.save('data/{}/{}_audio.npy'.format(split, utt), sound)
+          np.save('data/{}/{}_targets.npy'.format(split, utt), targets)
+
+
+          if num_entries > 10:
+            return pd.DataFrame(file_trans, columns=['id'])
+        
+          file_trans.append([utt])
+
+    return pd.DataFrame(file_trans, columns=['id'])
 
 
 def load_audio(audio_path):
@@ -99,37 +109,17 @@ def main():
   data_dir = args.data_dir
   tokenizer = load_tokenizer(args.tokenizer_vocab_path)
 
-  trans_dir = os.getcwd() + 'data'
-  save_dir = os.getcwd() + '/data/audio/'
-  os.makedirs(trans_dir, exist_ok=True)
+  save_dir = 'data/'
   os.makedirs(save_dir, exist_ok=True)
 
-  subset_list = ['train-clean-100']
+  subset_list = ['train-clean-100',] #'test-clean']
   for subset in subset_list:
     print(subset)
-    df = get_txt(f'{data_dir}/{subset}', tokenizer)
-    df.to_csv(f'data/trans_{subset}.csv')
-
-  for subset in subset_list:
-    df = pd.read_csv(f'data/trans_{subset}.csv')
-    dataset = []
-    for _, row in df.iterrows():
-      sound, duration = load_audio(row['file'])
-
-      wave, _ = os.path.splitext(os.path.basename(row['file']))
-      feat_name = '{}_{:.3f}_{:.3f}.npy'.format(wave, 0, duration)
-      save_path = os.path.join(save_dir, feat_name)
-
-      print('saving features for {}'.format(save_path))
-      np.save(save_path, sound)
-
-      row['features'] = save_path
-      row['duration'] = duration
-      row.pop('Unnamed: 0')
-      dataset.append(row)
-
-    features_df = pd.DataFrame(dataset)
-    features_df.to_csv('data/features_{}.csv'.format(subset))
+    os.makedirs(save_dir + '/' + subset, exist_ok=True)
+    df = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)
+    print(df)
+    
+    df.to_csv('data/{}3.csv'.format(subset))
 
 
 if __name__ == '__main__':

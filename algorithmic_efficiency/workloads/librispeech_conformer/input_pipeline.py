@@ -1,81 +1,70 @@
-from flax import jax_utils
+"""Data loader for pre-processed Criteo data."""
+import os
+from typing import Optional, Sequence
+
 import jax
 import tensorflow as tf
+import csv
+import numpy as np
 
-from algorithmic_efficiency import data_utils
 
+def get_librispeech_dataset(split: str,
+                          data_dir: str,
+                          is_training: bool,
+                          global_batch_size: int,
+                          num_batches: Optional[int] = None,
+                          repeat_final_dataset: bool = False):
+  """Get the Librispeech  dataset for a given split."""
+  num_devices = jax.local_device_count()
+  per_device_batch_size = global_batch_size // num_devices
 
-def create_split(split,
-                 dataset_builder,
-                 rng,
-                 global_batch_size,
-                 train,
-                 cache=False,
-                 num_batches=None):
-  """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
-  if split == 'eval_train':
-    split = 'train'
-  elif split == 'validation':
-    split = 'test'
+  feat_csv = '{}/{}.csv'.format(data_dir, split)
+  print('data_dir = ', data_dir)
+  print('path = ', os.getcwd())
 
-  shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
+  with open(feat_csv, newline='') as csvfile:
+    data = list(csv.reader(csvfile))
+  
+  audio_list = []
+  audio_paddings_list = []
+  target_list = []
+  target_paddings_list = []
 
-  def preprocess_example(example):
-      dtype = tf.float32
-      # We call ds.enumerate() to get a globally unique per-example, per-step
-      # index that we can fold into the RNG seed.
-      (example_index, example) = example
-      if train:
-        per_step_preprocess_rng = tf.random.experimental.stateless_fold_in(
-            tf.cast(preprocess_rng, tf.int64), example_index)
+  for example in data[1:]:
+      audio = np.load('{}/{}/{}_audio.npy'.format(data_dir, split, example[1]))
+      targets = np.load('{}/{}/{}_targets.npy'.format(data_dir, split, example[1]))
+
+      audio_paddings = np.zeros_like(audio)
+      audio_paddings = np.pad(audio_paddings, (0, 3200000 - audio.shape[0]), constant_values=1.0)
+      audio = np.pad(audio, (0, 3200000 - audio.shape[0]), constant_values=0.0)
       
-      return {'inputs': image, 'targets': example['targets']}
+      target_paddings = np.zeros_like(targets)
+      target_paddings = np.pad(target_paddings, (0, 256 - target_paddings.shape[0]), constant_values=1.0)
+      targets = np.pad(targets, (0, 256 - targets.shape[0]), constant_values=0.0)
 
-  ds = dataset_builder.as_dataset(split=split)
-  options = tf.data.Options()
-  options.experimental_threading.private_threadpool_size = 48
-  ds = ds.with_options(options)
+      audio_list.append(tf.constant(audio))
+      audio_paddings_list.append(tf.constant(audio_paddings))
 
-  if cache:
-    ds = ds.cache()
+      target_list.append(tf.constant(targets))
+      target_paddings_list.append(target_paddings)
 
-  if train:
+  ds = tf.data.Dataset.from_tensor_slices({
+      'inputs' : audio_list, 
+      'input_paddings': audio_paddings_list, 
+      'targets' : target_list, 
+      'target_paddings' : target_paddings_list})
+
+  if is_training:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
-  ds = ds.enumerate().map(
-      lambda i,
-      ex: preprocess_example((i, ex)),
-      num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  ds = ds.batch(global_batch_size, drop_remainder=train)
-
+  # TODO(sourabh2k15): we will need to select a validation split size that is evenly
+  # divisible by the batch size.
+  ds = ds.batch(per_device_batch_size, drop_remainder=True)
   if num_batches is not None:
     ds = ds.take(num_batches)
-
   if repeat_final_dataset:
     ds = ds.repeat()
-
-  ds = ds.prefetch(10)
+  ds = ds.prefetch(tf.data.AUTOTUNE)
+  ds = ds.batch(num_devices)
+  
   return ds
-
-
-def create_input_iter(split,
-                      dataset_builder,
-                      rng,
-                      global_batch_size,
-                      train,
-                      cache,
-                      num_batches):
-  ds = create_split(
-      split,
-      dataset_builder,
-      rng,
-      global_batch_size,
-      train=train,
-      cache=cache,
-      num_batches=num_batches)
-  it = map(data_utils.shard_numpy_ds, ds)
-
-  # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
-  it = jax_utils.prefetch_to_device(it, 2)
-  return it

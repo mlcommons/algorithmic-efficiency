@@ -24,39 +24,14 @@ import jax.numpy as jnp
 from ml_collections.config_dict import config_dict
 import numpy as np
 
-hps = config_dict.ConfigDict(
-    dict(
-        activation_function='relu',
-        attention_dropout_rate=0.0,
-        batch_size=256,
-        eval_batch_size=128,
-        rng_seed=-1,
-        model_dtype='float32',
-        grad_clip=5.0,
-        encoder_dim=512,
-        num_attention_heads=8,
-        num_encoder_layers=4,
-        convolution_kernel_size=5,
-        freq_mask_count=2,
-        freq_mask_max_bins=27,
-        time_mask_count=10,
-        time_mask_max_frames=40,
-        time_mask_max_ratio=0.05,
-        time_masks_per_frame=0.0,
-        use_dynamic_time_mask_max_frames=True,
-        use_specaug=True,
-        residual_dropout_rate=0.1,
-        input_dropout_rate=0.1))
-
-
 @struct.dataclass
 class ConformerConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
   vocab_size: int = 1024
   dtype: Any = jnp.float32
   encoder_dim: int = 256
-  num_attention_heads: int = 8
-  num_encoder_layers: int = 4
+  num_attention_heads: int = 4
+  num_encoder_layers: int = 2
   attention_dropout_rate: float = 0.0
   attention_residual_dropout_rate: float = 0.1
   input_dropout_rate: float = 0.0
@@ -79,9 +54,6 @@ class ConformerConfig:
   use_dynamic_time_mask_max_frames: bool = False
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
-  enable_conformer_post_layer_norm: bool = False
-  enable_decoder_pre_layer_norm: bool = False
-  use_lingvo_attention: bool = False
 
 
 class LayerNorm(nn.Module):
@@ -389,27 +361,6 @@ class MultiHeadedSelfAttention(nn.Module):
 
   def setup(self):
     dim_per_head = self.config.encoder_dim // self.config.num_attention_heads
-    self.self_attention = lingvo_attention.DotProductAttention(
-        num_heads=self.config.num_attention_heads,
-        hidden_dim=self.config.encoder_dim,
-        input_dim=self.config.encoder_dim,
-        dim_per_head=dim_per_head)
-
-  def _get_large_negative_number(self, dtype):
-    if jnp.issubdtype(dtype, jnp.inexact):
-      dtype_max = jnp.finfo(dtype).max
-    elif jnp.issubdtype(dtype, jnp.integer):
-      dtype_max = jnp.iinfo(dtype).max
-    else:
-      raise ValueError('Unsupported dtype for inputs.')
-
-    return jnp.asarray(-0.7 * dtype_max, dtype=dtype)
-
-  def convert_paddings_to_mask(self, paddings, dtype=jnp.float32):
-    attention_mask = paddings[:, jnp.newaxis, jnp.newaxis, :]
-    attention_mask *= self._get_large_negative_number(dtype)
-
-    return attention_mask
 
   @nn.compact
   def __call__(self, inputs, paddings, train):
@@ -599,8 +550,7 @@ class ConformerBlock(nn.Module):
     inputs = inputs + 0.5 * FeedForwardModule(config=self.config)(
         inputs, padding_mask, train)
 
-    if config.enable_conformer_post_layer_norm:
-      inputs = LayerNorm(dim=config.encoder_dim)(inputs)
+    inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
     return inputs
 
@@ -655,8 +605,7 @@ class Conformer(nn.Module):
     for _ in range(config.num_encoder_layers):
       outputs = ConformerBlock(config)(outputs, output_paddings, train)
 
-    if config.enable_decoder_pre_layer_norm:
-      outputs = LayerNorm(config.encoder_dim)(outputs)
+    outputs = LayerNorm(config.encoder_dim)(outputs)
     # Run the decoder which in this case is a trivial projection layer.
     outputs = nn.Dense(
         config.vocab_size,

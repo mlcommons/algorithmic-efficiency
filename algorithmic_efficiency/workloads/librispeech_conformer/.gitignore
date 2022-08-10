@@ -3,3 +3,5 @@ work_dir/
 *.flac
 *.npy
 *.csv
+*.vocab
+data/

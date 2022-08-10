@@ -18,11 +18,12 @@ FLAGS = flags.FLAGS
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
         model_cls = getattr(models, 'Conformer')
-        model = model_cls()
+        model = model_cls(models.ConformerConfig())
         self._model = model
         input_shape = (320000, 320000)
+
         variables = jax.jit(model.init)({'params': rng},
-                                        jnp.ones(input_shape, model.dtype))
+                                        jnp.ones(input_shape, model.config.dtype))
         model_state, params = variables.pop('params')
 
         self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
