@@ -76,8 +76,8 @@ class AverageDDP(metrics.Average):
   def compute(self) -> Any:
     if USE_PYTORCH_DDP:
       # Sync counts across devices.
-      total_tensor = torch.as_tensor(np.asarray(self.total), device=DEVICE)
-      count_tensor = torch.as_tensor(np.asarray(self.count), device=DEVICE)
+      total_tensor = torch.tensor(np.asarray(self.total), device=DEVICE)
+      count_tensor = torch.tensor(np.asarray(self.count), device=DEVICE)
       dist.all_reduce(total_tensor)
       dist.all_reduce(count_tensor)
       # Hacky way to avoid FrozenInstanceError

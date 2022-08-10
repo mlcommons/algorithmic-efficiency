@@ -96,8 +96,14 @@ class BaseWmtWorkload(spec.Workload):
         num_batches=num_batches,
         reverse_translation=True,
         repeat_final_dataset=repeat_final_dataset)
-    for batch in iter(ds):
-      yield batch
+
+    # Separate function is necessary because the code above has to be executed
+    # when build_input_queue is called (not when next() is first called on it).
+    def _input_queue_generator():
+      for batch in iter(ds):
+        yield batch
+
+    return _input_queue_generator()
 
   def _eval_model_on_split(self,
                            split: str,
