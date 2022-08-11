@@ -25,7 +25,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     return params, model_state
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    model_kwargs = decode_variant('S/16')
+    model_kwargs = decode_variant('B/32')
     model = models.ViT(num_classes=1000, **model_kwargs)
     self._model = model
     params, model_state = self.initialized(rng, model)
@@ -46,6 +46,22 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     del model_state
     del update_batch_norm
     logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch['inputs'],
-                               mutable=False)
+                               augmented_and_preprocessed_input_batch['inputs'])
     return logits, None
+
+  def _eval_model_on_split(self,
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str):
+    model_state = None
+    return super()._eval_model_on_split(split,
+                                        num_examples,
+                                        global_batch_size,
+                                        params,
+                                        model_state,
+                                        rng,
+                                        data_dir)

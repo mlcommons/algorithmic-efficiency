@@ -7,9 +7,12 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.wmt import tokenizer
 
-AUTOTUNE = tf.data.AUTOTUNE
+RANK = pytorch_setup()[1]
+# Avoid multithreading in all processes but the first (rank 0).
+AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 Features = Dict[str, tf.Tensor]
 
 
@@ -262,6 +265,13 @@ def get_wmt_dataset(data_rng,
     ds_name = 'wmt17_translate/de-en'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
+
+  # Avoid creating too many threads when using PyTorch DDP.
+  if RANK != 0:
+    options = tf.data.Options()
+    options.threading.private_threadpool_size = 1
+    ds = ds.with_options(options)
+
   ds = ds.map(
       functools.partial(normalize_feature_names,
                         dataset_builder.info,
