@@ -110,6 +110,9 @@ class BaseLibrispeechWorkload(spec.Workload):
         batch_size,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
+    for batch in iter(ds):
+      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
+      yield batch
     return ds
 
   # Does NOT apply regularization, which is left to the submitter to do in

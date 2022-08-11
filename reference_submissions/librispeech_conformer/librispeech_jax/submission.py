@@ -2,8 +2,10 @@
 from typing import Dict, Iterator, List, Tuple
 
 import jax.numpy as jnp
+import jax
 import flax 
 import optax
+from flax import jax_utils
 
 from algorithmic_efficiency import spec
 
@@ -11,7 +13,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 64
+  return 8
 
 
 def cosine_decay(lr, step, total_steps):
@@ -23,7 +25,7 @@ def cosine_decay(lr, step, total_steps):
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
-  base_learning_rate = hparams.learning_rate * get_batch_size('librispeech') / 256.
+  base_learning_rate = hparams.base_lr
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=base_learning_rate,
@@ -82,13 +84,12 @@ def update_params(
   del current_params_types
   del eval_results
   del global_step
-  del model_state
   del loss_type
   del hyperparameters
 
 
   (outputs, output_paddings), _ = workload.model_fn(
-      current_param_container, batch, None,
+      current_param_container, batch, model_state,
       spec.ForwardPassMode.TRAIN, rng, False)
 
   train_ctc_loss = torch.mean(workload.loss_fn(batch, (log_y, output_lengths)))

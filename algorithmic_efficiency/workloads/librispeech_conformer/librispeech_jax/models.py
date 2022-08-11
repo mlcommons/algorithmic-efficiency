@@ -337,7 +337,7 @@ def dot_product_attention(query,
 
   # compute attention weights
   query = QueryScaler(dim=query.shape[-1])(query)
-  attn_weights = nn.dot_product_attention_weights(query, key, bias, mask,
+  attn_weights = nn.attention.dot_product_attention_weights(query, key, bias, mask,
                                                   broadcast_dropout,
                                                   dropout_rng, dropout_rate,
                                                   deterministic, dtype,
@@ -565,15 +565,14 @@ class Conformer(nn.Module):
   config: ConformerConfig
 
   def setup(self):
-    self.config = ConformerConfig()
     self.specaug = spectrum_augmenter.SpecAug(
-        freq_mask_count=config.freq_mask_count,
-        freq_mask_max_bins=config.freq_mask_max_bins,
-        time_mask_count=config.time_mask_count,
-        time_mask_max_frames=config.time_mask_max_frames,
-        time_mask_max_ratio=config.time_mask_max_ratio,
-        time_masks_per_frame=config.time_masks_per_frame,
-        use_dynamic_time_mask_max_frames=config
+        freq_mask_count=self.config.freq_mask_count,
+        freq_mask_max_bins=self.config.freq_mask_max_bins,
+        time_mask_count=self.config.time_mask_count,
+        time_mask_max_frames=self.config.time_mask_max_frames,
+        time_mask_max_ratio=self.config.time_mask_max_ratio,
+        time_masks_per_frame=self.config.time_masks_per_frame,
+        use_dynamic_time_mask_max_frames=self.config
         .use_dynamic_time_mask_max_frames)
 
   @nn.compact
@@ -582,6 +581,9 @@ class Conformer(nn.Module):
 
     outputs = inputs
     output_paddings = input_paddings
+
+    print('inputs.shape in Conformer = ', outputs.shape)
+    print('input_paddings.shape in Conformer = ', output_paddings.shape)
 
     # Compute normalized log mel spectrograms from input audio signal.
     preprocessing_config = preprocessor.LibrispeechPreprocessingConfig()
