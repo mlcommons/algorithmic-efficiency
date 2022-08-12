@@ -4,8 +4,10 @@ import math
 import os
 from typing import Dict, Tuple
 
-import ctcdecode
-import Levenshtein
+#import ctcdecode
+from ctc_decoder import beam_search
+from Levenshtein import distance as levenshtein_distance
+import numpy as np
 import torch
 import torch.utils.data as data_utils
 
@@ -59,8 +61,7 @@ class LibriSpeechWorkload(spec.Workload):
         "Z": 28,
     }
     self._rev_label_dict = {v: k for k, v in self._label_dict.items()}
-    self._decoder = ctcdecode.CTCBeamDecoder(
-        labels=[str(c) for c in self._rev_label_dict], beam_width=1)
+    self._char_str = ("".join([k for k, v in self._label_dict.items()]))[1:]
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result < self.target_value
@@ -241,19 +242,18 @@ class LibriSpeechWorkload(spec.Workload):
         transcripts = batch['transcripts'].long().to(DEVICE)
         input_lengths = batch['input_lengths'].int()
 
-        log_y, _ = params(features, input_lengths, transcripts)
+        log_y, output_lengths = params(features, input_lengths, transcripts)
+        mat = torch.exp(log_y).transpose(0, 1).detach().cpu().numpy()
+        out_mat = np.concatenate([mat[:, :, 1:], mat[:, :, 0, np.newaxis]], 2)
 
-        out, _, _, seq_lens = self._decoder.decode(
-            torch.exp(log_y).detach().cpu(), input_lengths)
-        for hyp, trn, length in zip(out, transcripts,
-                                    seq_lens):  # iterate batch
-          best_hyp = hyp[0, :length[0]]
-          hh = "".join([self._rev_label_dict[i.item()] for i in best_hyp])
-          t = trn.detach().cpu().tolist()
-          t = [ll for ll in t if ll != 0]
+        for k, l in enumerate(output_lengths):  # iterate batch
+          hyp = beam_search(out_mat[k, :l], self._char_str)
+          hh = "".join([self._rev_label_dict[i.item()] for i in hyp])
+          t = transcripts[k].detach().cpu().tolist()
           tlength = len(t)
-          tt = "".join([self._rev_label_dict[i] for i in t])
-          error = Levenshtein.distance(tt, hh)
+          tt = ''.join([self._rev_label_dict[i] for i in t])
+          print(tt, hyp)
+          error = levenshtein_distance(tt, hh)
           total_error += error
           total_length += tlength
 

@@ -1,11 +1,11 @@
 """OGBG workload implemented in PyTorch."""
 import contextlib
-from typing import Dict, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import jax
-import jax.tree_util as tree
 from jraph import GraphsTuple
 import torch
+import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
@@ -18,14 +18,30 @@ from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-def _pytorch_map(input_dict: Dict) -> Dict:
+def _pytorch_map(inputs: Any) -> Any:
   if USE_PYTORCH_DDP:
-    return tree.tree_map(
-        lambda array: torch.as_tensor(array[RANK], device=DEVICE), input_dict)
-  return tree.tree_map(
+    return jax.tree_map(lambda a: torch.as_tensor(a, device=DEVICE), inputs)
+  return jax.tree_map(
       lambda a: torch.as_tensor(a, device=DEVICE).view(-1, a.shape[-1])
       if len(a.shape) == 3 else torch.as_tensor(a, device=DEVICE).view(-1),
-      input_dict)
+      inputs)
+
+
+def _shard(inputs: Any) -> Any:
+  if not USE_PYTORCH_DDP:
+    return inputs
+  return jax.tree_map(lambda tensor: tensor[RANK].to(DEVICE), inputs)
+
+
+def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
+  return GraphsTuple(
+      nodes=function(graph.nodes),
+      edges=function(graph.edges),
+      receivers=function(graph.receivers),
+      senders=function(graph.senders),
+      globals=function(graph.globals),
+      n_node=function(graph.n_node),
+      n_edge=function(graph.n_edge))
 
 
 class OgbgWorkload(BaseOgbgWorkload):
@@ -35,36 +51,66 @@ class OgbgWorkload(BaseOgbgWorkload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int):
-    data_rng = data_rng.astype('uint32')
-    dataset_iter = super().build_input_queue(data_rng,
-                                             split,
-                                             data_dir,
-                                             global_batch_size)
-    for batch in dataset_iter:
-      graph = batch.pop('inputs')
-      targets = batch.pop('targets')
-      weights = batch.pop('weights')
-      if USE_PYTORCH_DDP:
-        targets = torch.as_tensor(targets[RANK], device=DEVICE)
-        weights = torch.as_tensor(
-            weights[RANK], device=DEVICE, dtype=torch.bool)
-      else:
-        targets = torch.as_tensor(
-            targets, device=DEVICE).view(-1, targets.shape[-1])
-        weights = torch.as_tensor(
-            weights, device=DEVICE,
-            dtype=torch.bool).view(-1, weights.shape[-1])
+    # TODO: Check where the + 1 comes from.
+    per_device_batch_size = int(global_batch_size / N_GPUS) + 1
 
-      batch['inputs'] = GraphsTuple(
-          nodes=_pytorch_map(graph.nodes),
-          edges=_pytorch_map(graph.edges),
-          receivers=_pytorch_map(graph.receivers),
-          senders=_pytorch_map(graph.senders),
-          globals=_pytorch_map(graph.globals),
-          n_node=_pytorch_map(graph.n_node),
-          n_edge=_pytorch_map(graph.n_edge))
-      batch['targets'] = targets
-      batch['weights'] = weights
+    # Only create and iterate over tf input pipeline in one Python process to
+    # avoid creating too many threads.
+    if RANK == 0:
+      data_rng = data_rng.astype('uint32')
+      dataset_iter = super().build_input_queue(data_rng,
+                                               split,
+                                               data_dir,
+                                               global_batch_size)
+
+    while True:
+      if RANK == 0:
+        batch = next(dataset_iter)  # pylint: disable=stop-iteration-return
+        graph = _graph_map(_pytorch_map, batch['inputs'])
+        targets = torch.as_tensor(batch['targets'], device=DEVICE)
+        weights = torch.as_tensor(
+            batch['weights'], dtype=torch.bool, device=DEVICE)
+        # Send batch to other devices when using DDP.
+        if USE_PYTORCH_DDP:
+          dist.broadcast_object_list([graph], src=0, device=DEVICE)
+          # During eval, the batch size of the remainder might be different.
+          if split != 'train':
+            per_device_batch_size = torch.tensor(
+                len(targets[0]), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
+          dist.broadcast(targets, src=0)
+          targets = targets[0]
+          dist.broadcast(weights, src=0)
+          weights = weights[0]
+        else:
+          targets = targets.view(-1, targets.shape[-1])
+          weights = weights.view(-1, weights.shape[-1])
+      else:
+        graph = [None]
+        dist.broadcast_object_list(graph, src=0, device=DEVICE)
+        graph = graph[0]
+        # During eval, the batch size of the remainder might be different.
+        if split != 'train':
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
+        targets = torch.empty(
+            (N_GPUS, per_device_batch_size, self._num_outputs), device=DEVICE)
+        dist.broadcast(targets, src=0)
+        targets = targets[RANK]
+        weights = torch.empty(
+            (N_GPUS, per_device_batch_size, self._num_outputs),
+            dtype=torch.bool,
+            device=DEVICE)
+        dist.broadcast(weights, src=0)
+        weights = weights[RANK]
+
+      batch = {
+          'inputs': _graph_map(_shard, graph),
+          'targets': targets,
+          'weights': weights,
+      }
 
       yield batch
 

@@ -30,10 +30,11 @@ from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
-tf.config.experimental.set_visible_devices([], 'GPU')
+tf.config.set_visible_devices([], 'GPU')
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -104,6 +105,7 @@ flags.DEFINE_enum(
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
+USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
 
 def convert_filepath_to_module(path: str):
@@ -228,6 +230,9 @@ def train_once(workload: spec.Workload,
     except spec.TrainingCompleteError:
       training_complete = True
     global_step += 1
+    if USE_PYTORCH_DDP:
+      # Make sure all processes run eval after the same step when using DDP.
+      dist.barrier()
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
@@ -249,6 +254,11 @@ def train_once(workload: spec.Workload,
       eval_results.append((global_step, latest_eval_result))
       goal_reached = workload.has_reached_goal(latest_eval_result)
   metrics = {'eval_results': eval_results, 'global_step': global_step}
+  if USE_PYTORCH_DDP:
+    # Sync final score (accumulated training time); choose highest, i.e. worst.
+    score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
+    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
+    accumulated_submission_time = score_tensor.item()
   return accumulated_submission_time, metrics
 
 
@@ -322,30 +332,33 @@ def score_submission_on_workload(workload: spec.Workload,
 
 
 def main(_):
-  # Check if distributed data parallel is used.
-  use_pytorch_ddp = 'LOCAL_RANK' in os.environ
-
   if FLAGS.profile:
     profiler = Profiler()
   else:
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
+    # Make sure no GPU memory is preallocated to Jax.
+    os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
     # From the docs: "(...) causes cuDNN to benchmark multiple convolution
     # algorithms and select the fastest."
     torch.backends.cudnn.benchmark = True
 
-    if use_pytorch_ddp:
-      rank = int(os.environ['LOCAL_RANK'])
-      torch.cuda.set_device(rank)
+    if USE_PYTORCH_DDP:
+      # Avoid tf input pipeline creating too many threads.
+      if RANK != 0:
+        tf.config.threading.set_intra_op_parallelism_threads(1)
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+
+      torch.cuda.set_device(RANK)
+      profiler.set_local_rank(RANK)
       # only log once (for local rank == 0)
-      if rank != 0:
+      if RANK != 0:
 
         def logging_pass(*args):
           pass
 
         logging.info = logging_pass
-      profiler.set_local_rank(rank)
       # initialize the process group
       dist.init_process_group('nccl')
 
@@ -372,7 +385,7 @@ def main(_):
   if FLAGS.profile:
     logging.info(profiler.summary())
 
-  if use_pytorch_ddp:
+  if USE_PYTORCH_DDP:
     # cleanup
     dist.destroy_process_group()
 
