@@ -44,15 +44,15 @@
 
   *TL;DR to install the Jax version for GPU run:*
    ```bash
-   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-   pip3 install -e '.[full_jax]'
    pip3 install -e '.[pytorch_cpu]'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+   pip3 install -e '.[full]'
    ```
   *TL;DR to install the PyTorch version for GPU run:*
    ```bash
    pip3 install -e '.[jax_cpu]'
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
-   pip3 install -e '.[full_pytorch]'
+   pip3 install -e '.[full]'
    ```
 
   #### Additional Details
