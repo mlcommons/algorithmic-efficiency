@@ -203,8 +203,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            rng: spec.RandomState,
                            data_dir: str):
     data_rng, model_rng = jax.random.split(rng, 2)
-    # Sync batch statistics across replicas before evaluating.
-    model_state = self.sync_batch_stats(model_state)
+    if model_state is not None:
+      # Sync batch statistics across replicas before evaluating.
+      model_state = self.sync_batch_stats(model_state)
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
