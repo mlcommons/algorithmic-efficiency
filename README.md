@@ -50,8 +50,8 @@
    ```
   *TL;DR to install the PyTorch version for GPU run:*
    ```bash
+   pip3 install -e '.[jax_cpu]'
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
-   pip install torch-scatter -f 'https://data.pyg.org/whl/torch-1.12.0+cu113.html'
    pip3 install -e '.[full_pytorch]'
    ```
 
