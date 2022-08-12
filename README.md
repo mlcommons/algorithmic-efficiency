@@ -29,7 +29,7 @@
 
    ```bash
     sudo apt-get install python3-venv
-    python3 -m venv env
+    python3.9 -m venv env
     source env/bin/activate
    ```
 
