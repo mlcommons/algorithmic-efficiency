@@ -12,11 +12,12 @@
     - [Evaluation during training](#evaluation-during-training)
     - [Valid submissions](#valid-submissions)
   - [Tuning](#tuning)
-    - [External Tuning Ruleset](#external-tuning-ruleset)
-    - [Self-Tuning Ruleset](#self-tuning-ruleset)
+    - [External tuning ruleset](#external-tuning-ruleset)
+    - [Self-tuning ruleset](#self-tuning-ruleset)
   - [Workloads](#workloads)
     - [Public workloads](#public-workloads)
     - [Held-out workloads](#held-out-workloads)
+    - [Qualification set](#qualification-set)
   - [Scoring](#scoring)
     - [Competition hardware](#competition-hardware)
     - [Defining target performance](#defining-target-performance)
@@ -39,7 +40,7 @@ The goal of the Training Algorithm Track is to reach the same results faster ("t
 
 In general, submissions to the Training Algorithm Track will replace specific pieces of a reference implementation in order to produce a training program that reaches the same results faster on as many workloads as possible. The training program has a fixed, high-level structure and competitors are allowed to replace a particular set of functions in the program (the [**submission functions**](#submission-functions)), but must leave all other pieces ([**fixed functions**](#fixed-functions) and high-level structure) of the reference implementation unchanged. The submitted code must perform well on multiple datasets and models simultaneously (a model and dataset pair constitute a [workload](#workloads) for the purposes of this track).
 
-Submissions to the Training Algorithm Track can be entered under two separate rulesets, named [External Tuning Ruleset](#external-tuning-ruleset) and [Self-tuning Ruleset](#self-tuning-ruleset), with it being possible to submit to both rulesets. The main difference is that the External Tuning Ruleset allows moderate, automatic tuning of the optimizer's hyperparameters on each workload, using the submitted workload-agnostic search space. This allows the training algorithm to adapt to a particular task while ensuring that it is not too difficult to tune automatically. Under the Self-tuning Ruleset, there is no external tuning and submissions need to adapt to a particular task autonomously within a single optimization run. Unless otherwise specified, the rules in this section apply to both rulesets (see, for example, the [Tuning](#tuning) Section for the most substantial difference between the rulesets).
+Submissions to the Training Algorithm Track can be entered under two separate rulesets, named [external tuning ruleset](#external-tuning-ruleset) and [self-tuning ruleset](#self-tuning-ruleset), with it being possible to submit to both rulesets. The main difference is that the external tuning ruleset allows moderate, automatic tuning of the optimizer's hyperparameters on each workload, using the submitted workload-agnostic search space. This allows the training algorithm to adapt to a particular task while ensuring that it is not too difficult to tune automatically. Under the Self-tuning Ruleset, there is no external tuning and submissions need to adapt to a particular task autonomously within a single optimization run. Unless otherwise specified, the rules in this section apply to both rulesets (see, for example, the [Tuning](#tuning) Section for the most substantial difference between the rulesets).
 
 The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific [workload](#workloads) (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful. In order to further discourage submissions that overfit to the particular [public benchmark workloads](#public-workloads), submissions must also perform well on one or more [held-out workloads](#held-out-workloads) released after the submission deadline.
 
@@ -318,21 +319,21 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 </details>
 
-##### Software Dependencies
+##### Software dependencies
 
 We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) Section. In case of doubts, these additional dependencies will be judged by the spirit jury.
 
 ### Tuning
 
-Tuning will be substantially different for the [External](#external-tuning-ruleset) and the [Self-tuning Ruleset](#self-tuning-ruleset) and the individual specifications for each will be described in the following.
+Tuning will be substantially different for the [external](#external-tuning-ruleset) and the [self-tuning ruleset](#self-tuning-ruleset) and the individual specifications for each will be described in the following.
 
-#### External Tuning Ruleset
+#### External tuning ruleset
 
 For each workload, the hyperparameters are tuned using $O=20$ tuning **trials**. To estimate the variance of the results, this tuning will be repeated for $S=5$ **studies**, for a total of $S\cdot O = 100$ different hyperparameter settings. The submitters will provide a workload-agnostic search space and the working group will then return $100$ hyperparameters settings obtained using [(quasi)random search](https://arxiv.org/abs/1706.03200). The working group will also randomly partition these $100$ trials into $5$ studies of $20$ trials each.
 
 In each study, the fastest training time across the $O=20$ settings will be taken into account and the median of these $5$ per-study training times will be the final training time for the submission on this workload (see [Scoring submissions](#scoring) Section). Runs that do not reach the target performance of the evaluation metric have an infinite time. Submissions are always free to perform additional self-tuning while being timed.
 
-#### Self-Tuning Ruleset
+#### Self-tuning ruleset
 
 Submissions to this ruleset are not allowed to have user-defined hyperparameters. This ruleset allows both submissions that use the same hyperparameters for all workloads, including the held-out ones (e.g. Adam with default parameters), as well as submissions that perform inner-loop tuning during their training run (e.g. SGD with line searches).
 
@@ -340,21 +341,42 @@ Submissions will run on one instance of the [competition hardware](#competition-
 
 ### Workloads
 
-For the purposes of the Training Algorithm Track, we consider the combination of a `dataset`, `model`, and `loss_fn` a workload. E.g., ResNet50 on ImageNet using cross-entropy loss would constitute a workload. The evaluation metric, in this example misclassification error, is directly implied by the dataset/task. In addition to the [public workload](#public-workloads) set, submissions must also perform well on a set of [held-out workloads](#held-out-workloads). These held-out workloads will be specified after the submission deadline, but their generating process is publicly available with the call for submission.
+For the purposes of the Training Algorithm Track, we consider the combination of a `dataset`, `model`, and `loss_fn` a workload. E.g., ResNet50 on ImageNet using cross-entropy loss would constitute a workload. The evaluation metric, in this example the misclassification error, is directly implied by the dataset/task. In addition to the [public workload](#public-workloads) set, submissions must also perform well on a set of [held-out workloads](#held-out-workloads). These held-out workloads will be specified after the submission deadline, but their generating process is publicly available with the call for submission.
 
 The submissions will be [scored](#scoring) according to their performance on all workloads, including the public as well as the held-out workloads.
 
+Furthermore, a less computationally expensive subset of the public workloads is collected with the [qualification set](#qualification-set). Submitters without enough compute ressources to self-report on the full set of public and held-out workloads can instead self-report on this smaller qualification set. Well-performing submissions can thereby qualify for computational resources provided by sponsors of the competition to be scored on the full benchmark set.
+
 #### Public workloads
 
-The public workloads will contain tasks such as image classification, object detection, machine translation, language modeling, speech recognition, or other typical machine learning tasks. There will be roughly 5 datasets with one or two models each. The full list of workloads as well as the exact specification of each workload will be made public with the call for submissions. The entire set of public workloads should have a combined runtime of roughly one week on the [competition hardware](#competition-hardware). Furthermore, a less computationally expensive subset of the public workloads might be identified as "qualification workloads." Submissions that achieve good performance on this set would potentially qualify for computational resources during scoring, provided by sponsors of the benchmark.
+The public workloads are fully specified with the call for submissions. They contain a diverse set of tasks such as image classification, machine translation, speech recognition, or other typical machine learning tasks. For a single tasks there might be multiple models and therefore multiple public workloads. The entire set of public workloads should have a combined runtime of roughly one week on the [competition hardware](#competition-hardware).
+
+The currently nine public workloads are:
+
+|                 | Task                          | Dataset     | Model                        | Loss | Metric   |
+|-----------------|-------------------------------|-------------|------------------------------|------|----------|
+| **1<br>2**      | Image classification          | ImageNet    | ResNet-50<br>ViT             | CE   | accuracy |
+| **3**           | Translation                   | WMT         | Transformer                  | CE   | BLEU     |
+| **4<br>5<br>6** | Speech recognition            | LibriSpeech | DeepSpeech<br>Conformer<br>? | CTC  | WER      |
+| **7**           | Binary classification         | Criteo 1TB  | DLRMsmall                    | CE   | CE       |
+| **8**           | Molecular property prediction | OGBG        | GNN                          | CE   | mAP      |
+| **9**           | MRI reconstruction            | fastMRI     | U-Net                        | L1   | SSIM     |
 
 #### Held-out workloads
 
-The held-out workloads function similarly to a holdout test set discouraging submissions that overfit to the [public and known workloads](#public-workloads). Each held-out workload will introduce minor modifications to the data pre-processing and/or model of a public workload. These workloads will be created by a third party after the submission deadline. The instructions for creating them will be defined by this working group and made public with the call for submission, to allow the members of this working group to submit as well as ensuring that they do not possess any additional information compared to other submitters.
+The held-out workloads function similarly to a holdout test set discouraging submissions that overfit to the [public and known workloads](#public-workloads). Each held-out workload will introduce minor modifications to the data pre-processing and/or model of a public workload. These exact instances of the held-out workloads will be created after the submission deadline. The instructions for creating them will be defined by this working group and made public with the call for submission, to allow the members of this working group to submit as well as ensuring that they do not possess any additional information compared to other submitters.
 
 For each workload in the public workloads, a distribution of possible modifications will be defined. After the submission deadline, a third party will draw a sample from this distribution to generate a held-out workload. Changes could, for example, include changing the number of layers or units (drawn from an interval), swapping the activation function (drawn from a set of applicable functions), or using different data augmentations (drawn from a list of possible pre-processing steps). The sample space should be wide enough to discourage submitters from simply trying them all out, but at the same time should be restricted enough to produce realistic workloads with acceptable achievable performances. If a held-out workload exhibits a significant performance decrease compared to its closest public workload, it might be rejected and instead re-sampled.
 
 The target performance on each held-out workload will be defined by using the performance of the baselines algorithms, [analogously to the public workloads](#defining-target-performance).
+
+#### Qualification set
+
+The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [public](#public-workloads) and [held-out workloads](#held-out-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](#awards-and-prize-money).
+
+The qualification set consists of the same [public workloads](#public-workloads) as mentioned above, except for both workloads on *ImageNet*, the *DeepSpeech* and *Conformer* model on *LibriSpeech*, and the *fastMRI* workload. The remaining four workloads (*WMT*, *LibriSpeech (small)*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [held-out workloads](#held-out-workloads) in the qualification set. The qualification set of workloads should have a combined runtime of roughly 24 hours on the [competition hardware](#competition-hardware).
+
+For the [external tuning ruleset](#external-tuning-ruleset), we will only use $1$ study instead of the proposed $5$, when evaluating on the qualification set. The [self-tuning ruleset](#self-tuning-ruleset) will use $5$ studies on the qualification set as well since it is computationally cheaper.
 
 ### Scoring
 
@@ -402,7 +424,7 @@ An awards committee will award a prize for the "*Best Performance*" in each rule
 
 The prize money for "*Best Performance*" in a ruleset is 20.000$ each. The  "*Most Innovative*" submission will be awarded 10.000$. We reserve the right to split the prize money and distribute it among multiple submissions.
 
-The chairs of the MLCommons Algorithms Working Group (presently George Dahl and Frank Schneider) and their institutions (currently Google Inc. and the University of Tübingen) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money (regular attendance at the working group's meetings is a prerequisite for joining the awards committee). A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
+The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money (regular attendance at the working group's meetings is a prerequisite for joining the awards committee). A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
 
 ## Model Track
 
