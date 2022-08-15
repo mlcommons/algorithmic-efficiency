@@ -21,6 +21,7 @@
     - [Competition hardware](#competition-hardware)
     - [Defining target performance](#defining-target-performance)
     - [Summary score using performance profiles](#summary-score-using-performance-profiles)
+    - [Awards and prize money](#awards-and-prize-money)
 - [Model Track](#model-track)
 
 ## Introduction
@@ -394,13 +395,21 @@ $$r_{p,s}=\frac{t_{p,s}}{\min\\{t_{p,s}:s \in \mathcal{S}\\}}$$
 
 $$\rho_s(\tau)=\frac{1}{n_p} \text{size} \\{ p \in \mathcal{P}: r_{p,s} \leq \tau \\}$$
 
-For a given problem, we define the “speedup over the reference” as $\frac{t_{p, \text{ref}}}{t_{p,s}}$. For example, if a submission was 2x faster than the reference implementation, this would be equal to 2.
+For a given problem, we define the "speedup over the reference" as $\frac{t_{p, \text{ref}}}{t_{p,s}}$. For example, if a submission was 2x faster than the reference implementation, this would be equal to 2.
 
 To have a simpler to interpret number for press releases, we will also release (in addition to the raw  $t(p,s) $ values) the geometric mean of  $\frac{t_{p, \text{ref}}}{t_{p,s}} $.
 
 - Once we fix a reference we can rerun the reference on the new set of problems for each iteration of the contest (using the new competition hardware), and then report our year over year progress as a community in speeding up training
 
 While performance profiles take a bit of effort to explain, we believe they are fairer and well-supported by research in the machine learning and optimization community.
+
+#### Awards and prize money
+
+An awards committee will award a prize for the "*Best Performance*" in each ruleset and an award for the "*Most Innovative*" submission. The prize for the best-performing submission will be awarded based on the [summary score](#summary-score-using-performance-profiles) on the full benchmark including [held-out workloads](#held-out-workloads). The most innovative submission will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
+
+The prize money for "*Best Performance*" in a ruleset is 20.000$ each. The  "*Most Innovative*" submission will be awarded 10.000$. We reserve the right to split the prize money and distribute it among multiple submissions.
+
+The chairs of the MLCommons Algorithms Working Group (presently George Dahl and Frank Schneider) and their institutions (currently Google Inc. and the University of Tübingen) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money (regular attendance at the working group's meetings is a prerequisite for joining the awards committee). A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
 
 ## Model Track
 
