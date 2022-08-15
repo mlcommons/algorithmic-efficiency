@@ -328,22 +328,15 @@ Tuning will be substantially different for the [External](#external-tuning-rules
 
 #### External Tuning Ruleset
 
-For each workload, we will run *S\*O* (e.g. *S=5*, *O=20*) hyperparameter settings. All hyperparameter settings will be obtained from the submission-provided workload-agnostic search space with [(quasi)random search](https://arxiv.org/abs/1706.03200). The **trials** will be randomly partitioned into *S* groups of *O* trials each. In each group of the *S* **studies**, the best training times over all *O* settings will be taken into account and the median of the *S* per-study training times will be the final training time (see [Scoring submissions](#scoring) Section). Runs that do not reach the target error of the evaluation metric have an infinite time.
+For each workload, the hyperparameters are tuned using $O=20$ tuning **trials**. To estimate the variance of the results, this tuning will be repeated for $S=5$ **studies**, for a total of $S\cdot O = 100$ different hyperparameter settings. The submitters will provide a workload-agnostic search space and the working group will then return $100$ hyperparameters settings obtained using [(quasi)random search](https://arxiv.org/abs/1706.03200). The working group will also randomly partition these $100$ trials into $5$ studies of $20$ trials each.
 
-- Suggestion: *S=5*, *O=20*.
-- The number of trials that will be performed is known to the submissions.
-- Run on 20 machines in parallel, report the minimum time per study.
-- Submissions should work with a simple random search, within the provided search space.
-- To estimate study variance and to rule out lucky studies, *S* studies will be run.
-- Submissions are always free to perform additional self-tuning while being timed.
+In each study, the fastest training time across the $O=20$ settings will be taken into account and the median of these $5$ per-study training times will be the final training time for the submission on this workload (see [Scoring submissions](#scoring) Section). Runs that do not reach the target performance of the evaluation metric have an infinite time. Submissions are always free to perform additional self-tuning while being timed.
 
 #### Self-Tuning Ruleset
 
-Submissions to this ruleset are not allowed to have user-defined hyperparameters. This ruleset allows both submissions that use the same hyperparameters for all workloads, including the held-out ones (e.g. Adam with default parameters), as well as submissions that perform inner-loop tuning during their training run (e.g. SGD with line-searches).
+Submissions to this ruleset are not allowed to have user-defined hyperparameters. This ruleset allows both submissions that use the same hyperparameters for all workloads, including the held-out ones (e.g. Adam with default parameters), as well as submissions that perform inner-loop tuning during their training run (e.g. SGD with line searches).
 
-- Submissions will run on one instance of the [competition hardware](#competition-hardware) (likely a single machine).
-- As always, submissions are allowed to perform inner-loop tuning (e.g. for their learning rate) but the tuning efforts will be part of their score.
-- A submission will run *S* times and its score will be the median time to reach the target evaluation metric value on the held-out data.
+Submissions will run on one instance of the [competition hardware](#competition-hardware). As always, submissions are allowed to perform inner-loop tuning (e.g. for their learning rate) but the tuning efforts will be part of their score. A submission will run *S=5* times and its score will be the median time to reach the target evaluation metric value on the held-out data. Runs that do not reach the target performance of the evaluation metric have an infinite time.
 
 ### Workloads
 
