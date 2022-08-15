@@ -1,7 +1,0 @@
-{
-    "learning_rate": {"feasible_points": [0.001]},
-    "num_epochs": {"feasible_points": [50]},
-    "l2": {"feasible_points": [0.0]},
-    "lr_step_size": {"feasible_points": [40]},
-    "lr_gamma": {"feasible_points": [0.1]}
-}

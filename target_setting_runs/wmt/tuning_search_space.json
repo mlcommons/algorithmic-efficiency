@@ -1,0 +1,27 @@
+{
+    "learning_rate": {
+        "feasible_points": [
+            0.000487
+        ]
+    },
+    "beta1": {
+        "feasible_points": [
+            0.8194
+        ]
+    },
+    "beta2": {
+        "feasible_points": [
+            0.9803
+        ]
+    },
+    "warmup_epochs": {
+        "feasible_points": [
+            0.02
+        ]
+    },
+    "l2": {
+        "feasible_points": [
+            0.407336
+        ]
+    }
+}
