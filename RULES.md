@@ -75,7 +75,7 @@ def build_input_queue(
 ###### Model initialization
 
 ```python
-init_model_fn(
+def init_model_fn(
     rng: RandomState
 ) -> initial model parameters
 ```
@@ -85,7 +85,7 @@ init_model_fn(
 ###### Forward pass
 
 ```python
-model_fn(
+def model_fn(
     params: ParameterContainer,
     augmented_and_preprocessed_input_batch: Tensor,
     model_state: ModelAuxiliaryState,
@@ -105,7 +105,7 @@ model_fn(
 ###### Loss function
 
 ```python
-loss_fn(label_batch, logits_output_batch) -> 1d array of losses per example  # differentiable
+def loss_fn(label_batch, logits_output_batch) -> 1d array of losses per example  # differentiable
 ```
 
 - Unlike in the [Model Track](#model-track), we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
@@ -117,7 +117,7 @@ loss_fn(label_batch, logits_output_batch) -> 1d array of losses per example  # d
 ###### Batch size getter
 
 ```python
-get_batch_size(workload_name: str) -> int
+def get_batch_size(workload_name: str) -> int
 ```
 
 - Submitters define a specific batch size for each [workload](#workloads).
@@ -127,7 +127,7 @@ get_batch_size(workload_name: str) -> int
 ###### Optimizer state initializer
 
 ```python
-init_optimizer_state(
+def init_optimizer_state(
     workload: Workload,
     model_params: ParameterContainer,
     model_state: ModelAuxiliaryState,
@@ -142,7 +142,7 @@ init_optimizer_state(
 ###### Variable update function
 
 ```python
-update_params(
+def update_params(
     workload: Workload,
     current_param_container: ParameterContainer,
     current_params_types: ParameterTypeTree,
@@ -178,7 +178,7 @@ update_params(
 ###### Data selection
 
 ```python
-data_selection(
+def data_selection(
     workload: Workload,
     input_queue: Iterator[Tuple[Tensor, Tensor]],
     optimizer_state: OptimizerState,
