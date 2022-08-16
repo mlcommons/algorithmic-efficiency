@@ -159,6 +159,15 @@ def _make_one_batch_workload(workload_class,
             'targets': np.ones((*batch_shape, max_len), dtype=np.int64),
         }
         self._tokenizer = _FakeTokenizer()
+      elif workload_name == 'fastmri':
+        fake_batch = {
+            'inputs': np.zeros((*batch_shape, 320, 320)),
+            'targets': np.zeros((*batch_shape, 320, 320)),
+            'mean': np.zeros(batch_shape),
+            'std': np.ones(batch_shape),
+            'volume_max': np.zeros(batch_shape),
+            'weights': np.ones(batch_shape),
+        }
       else:
         raise ValueError(
             f'Workload {workload_name} does not have a fake batch defined, you '
@@ -284,8 +293,6 @@ class ReferenceSubmissionTest(absltest.TestCase):
       for framework in ['jax', 'pytorch']:
         submission_dir = f'{workload_dir}/{dataset_name}_{framework}'
         if not os.path.exists(submission_dir):
-          continue
-        if 'fastmri' not in workload_dir: #DO NOT SUBMIT
           continue
         submission_path = (f'reference_submissions/{workload_name}/'
                            f'{dataset_name}_{framework}/submission.py')

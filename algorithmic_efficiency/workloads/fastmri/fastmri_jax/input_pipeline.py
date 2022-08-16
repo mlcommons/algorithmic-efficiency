@@ -8,6 +8,7 @@ from algorithmic_efficiency import data_utils
 import functools
 import h5py
 import jax
+import numpy as np
 import tensorflow as tf
 
 gfile = tf.io.gfile
@@ -244,5 +245,10 @@ def load_fastmri_split(
     if actual_batch_size != per_host_batch_size:
       batch = jax.tree_map(
           functools.partial(_pad_zeros_like, per_host_batch_size), batch)
+      batch['weights'] = np.concatenate(
+        (np.ones((actual_batch_size,)),
+         np.zeros((per_host_batch_size - actual_batch_size,))))
+    else:
+      batch['weights'] = np.ones((per_host_batch_size,))
     batch = data_utils.shard_numpy_ds(batch)
     yield batch

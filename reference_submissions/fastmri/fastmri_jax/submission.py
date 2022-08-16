@@ -26,7 +26,7 @@ def create_learning_rate_fn(hparams: spec.Hyperparameters,
   decay_events = range(
       decay_epoch_period, max_num_train_steps, decay_epoch_period)
   schedule_fn = optax.piecewise_constant_schedule(
-      initial_value=hparams.learning_rate,
+      init_value=hparams.learning_rate,
       boundaries_and_scales={t: hparams.lr_gamma for t in decay_events})
   return schedule_fn
 
@@ -59,11 +59,10 @@ def init_optimizer_state(workload: spec.Workload,
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, 0),
+    in_axes=(None, None, 0, 0, None, 0, 0),
     static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
-                       model_state,
                        optimizer_state,
                        current_param_container,
                        hyperparameters,
@@ -72,30 +71,28 @@ def pmapped_train_step(workload,
 
   def _loss_fn(params):
     """loss function used for training."""
-    variables = {'params': params, **model_state}
-    logits, new_model_state = workload.model_fn(
+    logits, _ = workload.model_fn(
         params,
         batch,
-        model_state,
-        spec.ForwardPassMode.TRAIN,
-        rng,
+        model_state=None,
+        mode=spec.ForwardPassMode.TRAIN,
+        rng=rng,
         update_batch_norm=True)
     loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
-    weight_penalty_params = jax.tree_leaves(variables['params'])
+    weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum(jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1)
     weight_penalty = hyperparameters.l2 * 0.5 * weight_l2
     loss = loss + weight_penalty
-    return loss, (new_model_state, logits)
+    return loss
 
-  grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  aux, grad = grad_fn(current_param_container)
+  grad_fn = jax.grad(_loss_fn)
+  grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
-  new_model_state, _ = aux[1]
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
 
-  return new_model_state, new_optimizer_state, updated_params
+  return new_optimizer_state, updated_params
 
 
 def update_params(workload: spec.Workload,
@@ -111,16 +108,17 @@ def update_params(workload: spec.Workload,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
+  del model_state
   del loss_type
   del eval_results
   del global_step
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params = pmapped_train_step(
-      workload, opt_update_fn, model_state, optimizer_state,
+  new_optimizer_state, new_params = pmapped_train_step(
+      workload, opt_update_fn, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs)
-  return (new_optimizer_state, opt_update_fn), new_params, new_model_state
+  return (new_optimizer_state, opt_update_fn), new_params, None
 
 
 def data_selection(workload: spec.Workload,

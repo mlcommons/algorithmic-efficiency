@@ -4,9 +4,9 @@ import functools
 import math
 from typing import Dict, Optional, Tuple
 
+from flax import jax_utils
 import jax
 import jax.numpy as jnp
-from skimage.metrics import structural_similarity
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -15,6 +15,88 @@ from algorithmic_efficiency.workloads.fastmri.fastmri_jax import input_pipeline
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax import models
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
+
+
+def _uniform_filter(im, size=7):
+  def conv(im):
+    return jnp.convolve(
+        jnp.pad(im, pad_width=size // 2, mode='symmetric'),
+        jnp.ones(size),
+        mode='valid') / size
+  im = jax.vmap(conv, (0,))(im)
+  im = jax.vmap(conv, (1,))(im)
+  return im.T
+
+
+def structural_similarity(im1,
+                          im2,
+                          data_range=1.0,
+                          win_size=7,
+                          k1=0.01,
+                          k2=0.03):
+  """Compute the mean structural similarity index between two images.
+
+  NOTE(dsuo): modified from skimage.metrics.structural_similarity.
+
+  Args:
+    im1: ndarray Images. Any dimensionality with same shape.
+    im2: ndarray Images. Any dimensionality with same shape.
+    data_range: float. The data range of the input image (distance
+      between minimum and maximum possible values). By default, this is
+    win_size: int or None. The side-length of the sliding window used
+      in comparison. Must be an odd value. If `gaussian_weights` is True, this
+      is ignored and the window size will depend on `sigma`.
+      estimated from the image data-type.
+    k1: float. Algorithm parameter K1 (see [1]).
+    k2: float. Algorithm parameter K2 (see [2]).
+
+  Returns:
+    mssim: float
+        The mean structural similarity index over the image.
+
+  References
+    [1] Wang, Z., Bovik, A. C., Sheikh, H. R., & Simoncelli, E. P.
+      (2004). Image quality assessment: From error visibility to
+      structural similarity. IEEE Transactions on Image Processing,
+      13, 600-612.
+      https://ece.uwaterloo.ca/~z70wang/publications/ssim.pdf,
+      :DOI:`10.1109/TIP.2003.819861`
+  """
+  filter_func = functools.partial(_uniform_filter, size=win_size)
+
+  num_points = win_size ** len(im1.shape)
+
+  # filter has already normalized by num_points
+  cov_norm = num_points / (num_points - 1)  # sample covariance
+
+  # compute (weighted) means
+  ux = filter_func(im1)
+  uy = filter_func(im2)
+
+  # compute (weighted) variances and covariances
+  uxx = filter_func(im1 * im1)
+  uyy = filter_func(im2 * im2)
+  uxy = filter_func(im1 * im2)
+  vx = cov_norm * (uxx - ux * ux)
+  vy = cov_norm * (uyy - uy * uy)
+  vxy = cov_norm * (uxy - ux * uy)
+
+  c1 = (k1 * data_range) ** 2
+  c2 = (k2 * data_range) ** 2
+
+  a1 = 2 * ux * uy + c1
+  a2 = 2 * vxy + c2
+  b1 = ux ** 2 + uy ** 2 + c1
+  b2 = vx + vy + c2
+
+  d = b1 * b2
+  s = (a1 * a2) / d
+
+  # to avoid edge effects will ignore filter radius strip around edges
+  pad = (win_size - 1) // 2
+
+  # compute (weighted) mean of ssim.
+  return jnp.mean(s.at[pad:-pad, pad:-pad].get())
 
 
 def ssim(logits, targets, mean=None, std=None, volume_max=None):
@@ -50,6 +132,7 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   std = std.reshape((-1,) + (1,) * (len(logits.shape) - 1))
   logits = logits * std + mean
   targets = targets * std + mean
+  print(logits.shape, targets.shape, volume_max.shape)
   ssims = jax.vmap(structural_similarity)(logits, targets, volume_max)
   return ssims
 
@@ -92,11 +175,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         repeat_final_dataset)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    fake_batch = None
+    fake_batch = jnp.zeros((13, 320, 320))
     variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
+    params = jax_utils.replicate(params)
     return params, None
 
   def model_fn(
@@ -108,7 +192,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
-    del rng
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply({'params': params},
@@ -156,9 +239,10 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         mean=batch['mean'],
         std=batch['std'],
         volume_max=batch['volume_max'])
+    ssim_sum = jnp.sum(ssim_vals)
     loss = jnp.sum(self.loss_fn(outputs, batch['targets']))
     metrics = {
-        'ssim': ssim_vals, 'loss': loss, 'weight': jnp.sum(batch['weights']),
+        'ssim': ssim_sum, 'loss': loss, 'weight': jnp.sum(batch['weights']),
     }
     metrics = jax.lax.psum(metrics, axis_name='batch')
     return metrics
@@ -182,13 +266,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
     total_metrics = {'ssim': 0., 'loss': 0., 'weight': 0.}
     num_batches = int(math.ceil(num_examples / global_batch_size))
-    eval_rngs = prng.split(model_rng, jax.num_local_devices())
+    eval_rngs = prng.split(model_rng, jax.local_device_count())
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      # We already average these metrics across devices inside _compute_metrics.
+      # We already sum these metrics across devices inside _compute_metrics.
       synced_metrics = self._eval_model(params, batch, eval_rngs)
       total_metrics = {
-          k: v + synced_metrics[k] for k, v in total_metrics.items()
+          k: v + synced_metrics[k][0] for k, v in total_metrics.items()
       }
     num_examples = total_metrics.pop('weight')
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

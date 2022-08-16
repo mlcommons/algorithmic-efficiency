@@ -153,8 +153,7 @@ class ConvBlock(nn.Module):
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
     x = nn.Dropout(
-        self.drop_prob, broadcast_dims=(1, 2), deterministic=not train)(
-            x)
+        self.drop_prob, broadcast_dims=(1, 2), deterministic=not train)(x)
     x = nn.Conv(
         features=self.out_channels,
         kernel_size=(3, 3),
@@ -164,8 +163,7 @@ class ConvBlock(nn.Module):
     x = _simple_instance_norm2d(x, (1, 2))
     x = jax.nn.leaky_relu(x, negative_slope=0.2)
     x = nn.Dropout(
-        self.drop_prob, broadcast_dims=(1, 2), deterministic=not train)(
-            x)
+        self.drop_prob, broadcast_dims=(1, 2), deterministic=not train)(x)
 
     return x
 
