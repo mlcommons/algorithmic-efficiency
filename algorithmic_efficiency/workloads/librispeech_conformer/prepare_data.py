@@ -170,7 +170,7 @@ def main():
   save_dir = 'data/'
   os.makedirs(save_dir, exist_ok=True)
 
-  subset_list = ['train-clean-360', 'train-clean-500']
+  subset_list = ['train-clean-100', 'test-clean', 'dev-clean', 'dev-other']
   for subset in subset_list:
     print('processing split = ', subset)
     os.makedirs(save_dir + '/' + subset, exist_ok=True)
