@@ -29,7 +29,7 @@
 
    ```bash
     sudo apt-get install python3-venv
-    python3 -m venv env
+    python3.9 -m venv env
     source env/bin/activate
    ```
 
@@ -44,15 +44,15 @@
 
   *TL;DR to install the Jax version for GPU run:*
    ```bash
-   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-   pip3 install -e '.[full_jax]'
    pip3 install -e '.[pytorch_cpu]'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+   pip3 install -e '.[full]'
    ```
   *TL;DR to install the PyTorch version for GPU run:*
    ```bash
+   pip3 install -e '.[jax_cpu]'
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
-   pip install torch-scatter -f 'https://data.pyg.org/whl/torch-1.12.0+cu113.html'
-   pip3 install -e '.[full_pytorch]'
+   pip3 install -e '.[full]'
    ```
 
   #### Additional Details
@@ -70,12 +70,6 @@
 
    ```bash
    pip3 install -e '.[full]'
-   ```
-
-   For the PyTorch version of the ogbg workload, you need to install
-   `torch-scatter` manually via
-   ```bash
-   pip install torch-scatter -f 'https://data.pyg.org/whl/torch-1.12.0+cu113.html'
    ```
 
    Depending on the framework you want to use (e.g. `JAX` or `PyTorch`) you need to install them as well. You could either do this manually or by adding the corresponding options:

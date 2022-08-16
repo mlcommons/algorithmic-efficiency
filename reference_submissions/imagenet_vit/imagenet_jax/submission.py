@@ -15,14 +15,14 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 512
+  return 2048
 
 
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
   base_learning_rate = hparams.learning_rate * \
-                       get_batch_size('imagenet_vit') / 256.
+                       get_batch_size('imagenet_vit') / 1024.
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=base_learning_rate,
@@ -40,9 +40,10 @@ def create_learning_rate_fn(hparams: spec.Hyperparameters,
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
   steps_per_epoch = num_train_examples // get_batch_size('imagenet_vit')
   learning_rate_fn = create_learning_rate_fn(hyperparameters, steps_per_epoch)
-  opt_init_fn, opt_update_fn = optax.sgd(
-      nesterov=True,
-      momentum=hyperparameters.momentum,
+  opt_init_fn, opt_update_fn = optax.adam(
+      b1=hyperparameters.beta1,
+      b2=hyperparameters.beta2,
+      eps=hyperparameters.epsilon,
       learning_rate=learning_rate_fn)
   return opt_init_fn, opt_update_fn
 
@@ -79,7 +80,6 @@ def pmapped_train_step(workload,
 
   def _loss_fn(params):
     """loss function used for training."""
-    variables = {'params': params, **model_state}
     logits, new_model_state = workload.model_fn(
         params,
         batch,
@@ -88,7 +88,7 @@ def pmapped_train_step(workload,
         rng,
         update_batch_norm=True)
     loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
-    weight_penalty_params = jax.tree_leaves(variables['params'])
+    weight_penalty_params = jax.tree_leaves(params)
     weight_l2 = sum(jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1)
     weight_penalty = hyperparameters.l2 * 0.5 * weight_l2
     loss = loss + weight_penalty
