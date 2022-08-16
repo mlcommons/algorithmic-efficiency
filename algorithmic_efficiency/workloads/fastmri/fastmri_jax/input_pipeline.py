@@ -1,15 +1,15 @@
 """FastMRI knee singlecoil input pipeline."""
 
 import datetime
-import itertools
+import functools
 import os
 
-from algorithmic_efficiency import data_utils
-import functools
 import h5py
 import jax
 import numpy as np
 import tensorflow as tf
+
+from algorithmic_efficiency import data_utils
 
 gfile = tf.io.gfile
 listdir = tf.io.gfile.listdir
