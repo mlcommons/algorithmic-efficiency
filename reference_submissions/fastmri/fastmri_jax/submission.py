@@ -23,8 +23,9 @@ def create_learning_rate_fn(hparams: spec.Hyperparameters,
   """Create learning rate schedule."""
   max_num_train_steps = 500 * steps_per_epoch
   decay_epoch_period = hparams.lr_step_size * steps_per_epoch
-  decay_events = range(
-      decay_epoch_period, max_num_train_steps, decay_epoch_period)
+  decay_events = range(decay_epoch_period,
+                       max_num_train_steps,
+                       decay_epoch_period)
   schedule_fn = optax.piecewise_constant_schedule(
       init_value=hparams.learning_rate,
       boundaries_and_scales={t: hparams.lr_gamma for t in decay_events})

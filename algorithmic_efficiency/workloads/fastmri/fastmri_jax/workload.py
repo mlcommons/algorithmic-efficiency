@@ -18,11 +18,13 @@ from algorithmic_efficiency.workloads.fastmri.workload import \
 
 
 def _uniform_filter(im, size=7):
+
   def conv(im):
     return jnp.convolve(
         jnp.pad(im, pad_width=size // 2, mode='symmetric'),
         jnp.ones(size),
         mode='valid') / size
+
   im = jax.vmap(conv, (0,))(im)
   im = jax.vmap(conv, (1,))(im)
   return im.T
@@ -64,7 +66,7 @@ def structural_similarity(im1,
   """
   filter_func = functools.partial(_uniform_filter, size=win_size)
 
-  num_points = win_size ** len(im1.shape)
+  num_points = win_size**len(im1.shape)
 
   # filter has already normalized by num_points
   cov_norm = num_points / (num_points - 1)  # sample covariance
@@ -81,12 +83,12 @@ def structural_similarity(im1,
   vy = cov_norm * (uyy - uy * uy)
   vxy = cov_norm * (uxy - ux * uy)
 
-  c1 = (k1 * data_range) ** 2
-  c2 = (k2 * data_range) ** 2
+  c1 = (k1 * data_range)**2
+  c2 = (k2 * data_range)**2
 
   a1 = 2 * ux * uy + c1
   a2 = 2 * vxy + c2
-  b1 = ux ** 2 + uy ** 2 + c1
+  b1 = ux**2 + uy**2 + c1
   b2 = vx + vy + c2
 
   d = b1 * b2
@@ -170,9 +172,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                         num_batches: Optional[int] = None):
     del cache
     per_host_batch_size = global_batch_size // jax.num_local_devices()
-    return input_pipeline.load_fastmri_split(
-        per_host_batch_size, split, data_dir, data_rng, num_batches,
-        repeat_final_dataset)
+    return input_pipeline.load_fastmri_split(per_host_batch_size,
+                                             split,
+                                             data_dir,
+                                             data_rng,
+                                             num_batches,
+                                             repeat_final_dataset)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     fake_batch = jnp.zeros((13, 320, 320))
@@ -242,7 +247,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     ssim_sum = jnp.sum(ssim_vals)
     loss = jnp.sum(self.loss_fn(outputs, batch['targets']))
     metrics = {
-        'ssim': ssim_sum, 'loss': loss, 'weight': jnp.sum(batch['weights']),
+        'ssim': ssim_sum,
+        'loss': loss,
+        'weight': jnp.sum(batch['weights']),
     }
     metrics = jax.lax.psum(metrics, axis_name='batch')
     return metrics
@@ -261,7 +268,10 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size,
+          data_rng,
+          split,
+          data_dir,
+          global_batch_size=global_batch_size,
           repeat_final_dataset=True)
 
     total_metrics = {'ssim': 0., 'loss': 0., 'weight': 0.}

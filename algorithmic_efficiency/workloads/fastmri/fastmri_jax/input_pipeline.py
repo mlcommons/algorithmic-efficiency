@@ -21,7 +21,11 @@ _VAL_DIR = 'knee_singlecoil_val'
 _EVAL_SEED = 0
 
 
-def _process_example(kspace, kspace_shape, target, target_shape, volume_max,
+def _process_example(kspace,
+                     kspace_shape,
+                     target,
+                     target_shape,
+                     volume_max,
                      seed):
   """Generate a single example (slice from mri image).
 
@@ -52,7 +56,8 @@ def _process_example(kspace, kspace_shape, target, target_shape, volume_max,
   mask = tf.zeros(num_cols, dtype=tf.float32)
   pad = (num_cols - num_low_frequencies + 1) // 2
   mask = tf.tensor_scatter_nd_update(
-      mask, tf.reshape(tf.range(pad, pad + num_low_frequencies), (-1, 1)),
+      mask,
+      tf.reshape(tf.range(pad, pad + num_low_frequencies), (-1, 1)),
       tf.ones(num_low_frequencies))
 
   # reshape_mask
@@ -61,12 +66,10 @@ def _process_example(kspace, kspace_shape, target, target_shape, volume_max,
   # calculate_acceleration_mask
   num_low_frequencies_float = tf.cast(num_low_frequencies, dtype=tf.float32)
   prob = (num_cols_float / acceleration - num_low_frequencies_float) / (
-      num_cols_float - num_low_frequencies_float
-  )
+      num_cols_float - num_low_frequencies_float)
 
   mask = tf.cast(
-      tf.random.stateless_uniform((num_cols,), seed) < prob,
-      dtype=tf.float32)
+      tf.random.stateless_uniform((num_cols,), seed) < prob, dtype=tf.float32)
   acceleration_mask = tf.reshape(mask, (1, num_cols))
 
   mask = tf.math.maximum(center_mask, acceleration_mask)
@@ -95,7 +98,7 @@ def _process_example(kspace, kspace_shape, target, target_shape, volume_max,
   image = image[..., w_from:w_to, h_from:h_to, :]
 
   # complex_abs
-  abs_image = tf.math.sqrt(tf.math.reduce_sum(image ** 2, axis=-1))
+  abs_image = tf.math.sqrt(tf.math.reduce_sum(image**2, axis=-1))
 
   # normalize_instance
   mean = tf.math.reduce_mean(abs_image)
@@ -121,7 +124,8 @@ def _process_example(kspace, kspace_shape, target, target_shape, volume_max,
 
 def _h5_to_examples(path):
   """Yield MRI slices from an hdf5 file containing a single MRI volume."""
-  tf.print('fastmri_dataset._h5_to_examples call:', path,
+  tf.print('fastmri_dataset._h5_to_examples call:',
+           path,
            datetime.datetime.now().strftime('%H:%M:%S:%f'))
   with gfile.GFile(path, 'rb') as gf:
     with h5py.File(gf, 'r') as hf:
@@ -151,13 +155,12 @@ def _pad_zeros_like(per_host_batch_size, x):
   return tf.zeros((pad_size, *shape), x.dtype)
 
 
-def load_fastmri_split(
-    per_host_batch_size,
-    split,
-    data_dir,
-    shuffle_rng,
-    num_batches,
-    repeat_final_eval_dataset):
+def load_fastmri_split(per_host_batch_size,
+                       split,
+                       data_dir,
+                       shuffle_rng,
+                       num_batches,
+                       repeat_final_eval_dataset):
   """Creates a split from the FastMRI dataset using tfds.
 
   NOTE: only creates knee singlecoil datasets.
@@ -195,9 +198,8 @@ def load_fastmri_split(
   else:  # split == 'val'
     data_dir = os.path.join(data_dir, _VAL_DIR)
 
-  h5_paths = [
-      os.path.join(data_dir, path) for path in listdir(data_dir)
-  ][start:end]
+  h5_paths = [os.path.join(data_dir, path) for path in listdir(data_dir)
+             ][start:end]
 
   ds = tf.data.Dataset.from_tensor_slices(h5_paths)
   ds = ds.interleave(
@@ -246,8 +248,8 @@ def load_fastmri_split(
       batch = jax.tree_map(
           functools.partial(_pad_zeros_like, per_host_batch_size), batch)
       batch['weights'] = np.concatenate(
-        (np.ones((actual_batch_size,)),
-         np.zeros((per_host_batch_size - actual_batch_size,))))
+          (np.ones((actual_batch_size,)),
+           np.zeros((per_host_batch_size - actual_batch_size,))))
     else:
       batch['weights'] = np.ones((per_host_batch_size,))
     batch = data_utils.shard_numpy_ds(batch)
