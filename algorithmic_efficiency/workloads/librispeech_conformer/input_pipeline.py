@@ -15,11 +15,8 @@ def get_librispeech_dataset(split: str,
                           num_batches: Optional[int] = None,
                           repeat_final_dataset: bool = False):
   """Get the Librispeech  dataset for a given split."""
-  num_devices = jax.local_device_count()
-  per_device_batch_size = global_batch_size // num_devices
-
   feat_csv = '{}/{}.csv'.format(data_dir, split)
-  print('data_dir = ', data_dir)
+  print('feat_csv = ', feat_csv)
   print('path = ', os.getcwd())
 
   with open(feat_csv, newline='') as csvfile:
@@ -35,8 +32,8 @@ def get_librispeech_dataset(split: str,
       targets = np.load('{}/{}/{}_targets.npy'.format(data_dir, split, example[1]))
 
       audio_paddings = np.zeros_like(audio)
-      audio_paddings = np.pad(audio_paddings, (0, 3200000 - audio.shape[0]), constant_values=1.0)
-      audio = np.pad(audio, (0, 3200000 - audio.shape[0]), constant_values=0.0)
+      audio_paddings = np.pad(audio_paddings, (0, 320000 - audio.shape[0]), constant_values=1.0)
+      audio = np.pad(audio, (0, 320000 - audio.shape[0]), constant_values=0.0)
       
       target_paddings = np.zeros_like(targets)
       target_paddings = np.pad(target_paddings, (0, 256 - target_paddings.shape[0]), constant_values=1.0)
@@ -59,12 +56,11 @@ def get_librispeech_dataset(split: str,
 
   # TODO(sourabh2k15): we will need to select a validation split size that is evenly
   # divisible by the batch size.
-  ds = ds.batch(per_device_batch_size, drop_remainder=True)
+  ds = ds.batch(global_batch_size, drop_remainder=False)
   if num_batches is not None:
     ds = ds.take(num_batches)
   if repeat_final_dataset:
     ds = ds.repeat()
   ds = ds.prefetch(tf.data.AUTOTUNE)
-  ds = ds.batch(num_devices)
   
   return ds

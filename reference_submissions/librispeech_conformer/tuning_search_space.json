@@ -1,10 +1,11 @@
 {
-    "base_lr": {"feasible_points": [0.3]},
+    "base_lr": {"feasible_points": [5.0]},
     "beta1": {"feasible_points": [0.9]},
     "beta2": {"feasible_points": [0.99]},
     "epsilon": {"feasible_points": [1e-8]},
-    "weight_decay": {"feasible_points": [0.0]},
-    "warmup_epochs" : {"feasible_points": [3]},
-    "num_epochs" : {"feasible_points": [5]}
+    "grad_clip": {"feasible_points": [5.0]},
+    "warmup_steps" : {"feasible_points": [10000]},
+    "num_training_steps" : {"feasible_points": [150000]},
+    "encoder_dim": {"feasible_points": [256]}
 }
 

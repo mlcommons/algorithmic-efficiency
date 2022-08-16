@@ -6,6 +6,10 @@ Modified from https://github.com/lsari/librispeech_100.
 import argparse
 import os
 from os.path import exists
+import sys
+import time
+import multiprocessing.dummy
+import threading
 
 import librosa
 import numpy as np
@@ -30,49 +34,104 @@ parser.add_argument(
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 
+# taken from TFDS page for librispeech dataset : https://www.tensorflow.org/datasets/catalog/librispeech
+librispeech_example_counts = {
+  'train-clean-100' : 28539,
+  'train-clean-360' : 104014,
+  'train-clean-500' : 148688,
+  'test-clean' : 2620,
+  'dev-clean' : 2703,
+  'dev-other' : 2864
+}
+
+class Counter:
+  """A threadsafe counter."""
+  lock = threading.Lock()
+  value = 0
+
+  def inc(self):
+    with self.lock:
+      self.value += 1
+
+  def val(self):
+    with self.lock:
+      return self.value
+
+def report_progress(count, total, start_time):
+  """Print a progress bar to stdout."""
+  now = time.time()
+  size = 50
+  filled = int(round(size * count / float(total)))
+  percent = round(100. * count / float(total), 1)
+  bar = "-" * filled + "." * (size - filled)
+  sys.stdout.write("[%s] %d%% (%d of %d) %.2f sample/sec\r" %
+                   (bar, percent, count, total, count / (now - start_time)))
+  sys.stdout.flush()
 
 def preprocess_data(data_folder, tokenizer, split):
-  file_trans = []
-  num_entries = 0
-  for j, speaker_folder in enumerate(os.listdir(data_folder)):
-    if not speaker_folder.isdigit():
-      continue
-    for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
-      trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
+  finished = Counter()
+  skipped = Counter()
+  start_time = time.time()
+
+  def process(index):
+    data_folder, speaker_folder, chapter_folder = index
+    utterance_ids = []
+
+    trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
                     f'{speaker_folder}-{chapter_folder}.trans.txt')
-      if not exists(trans_file):
-        print('path does not exist -> {}'.format(trans_file))
-        continue
-
-      with open(trans_file, 'r', encoding='UTF-8') as f:
-        for l in f:
-          utt, trans = l.strip().split(' ', maxsplit=1)
-          audio_path = (
-              f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
-          assert os.path.isfile(audio_path)
-          if len(trans) > TRANSCRIPTION_MAX_LENGTH:
-            continue
-
-          sound, _ = librosa.load(audio_path, sr=16000)
-          sound = np.array(sound, dtype=np.float32)
-          if sound.shape[0] > AUDIO_MAX_LENGTH:
-            continue
-
-          targets = tokenizer.tokenize(trans).numpy().astype(np.int32)
-          num_entries = num_entries + 1
-
-          print('{}) transcription = {}, audio = {}'.format(utt, len(trans), len(sound)))
-
-          np.save('data/{}/{}_audio.npy'.format(split, utt), sound)
-          np.save('data/{}/{}_targets.npy'.format(split, utt), targets)
-
-
-          if num_entries > 10:
-            return pd.DataFrame(file_trans, columns=['id'])
+    if not exists(trans_file):
+      skipped.inc()
+      return utterance_ids
+    
+    with open(trans_file, 'r', encoding='UTF-8') as f:
+      for l in f:
+        utt, trans = l.strip().split(' ', maxsplit=1)
+        audio_path = (
+            f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
         
-          file_trans.append([utt])
+        if not os.path.isfile(audio_path):
+          skipped.inc()
+          continue
+      
+        if len(trans) > TRANSCRIPTION_MAX_LENGTH:
+          skipped.inc()
+          continue
 
-    return pd.DataFrame(file_trans, columns=['id'])
+        sound, _ = librosa.load(audio_path, sr=16000)
+        sound = np.array(sound, dtype=np.float32)
+    
+        if sound.shape[0] > AUDIO_MAX_LENGTH:
+          skipped.inc()
+          continue
+
+        targets = tokenizer.tokenize(trans).numpy().astype(np.int32)
+        
+        np.save('data/{}/{}_audio.npy'.format(split, utt), sound)
+        np.save('data/{}/{}_targets.npy'.format(split, utt), targets)
+        
+        finished.inc()
+        report_progress(finished.val() + skipped.val(), librispeech_example_counts[split], start_time)
+
+        utterance_ids.append(utt)
+    return utterance_ids
+  
+  paths = []
+  for j, speaker_folder in enumerate(os.listdir(data_folder)):
+    for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
+      paths.append((data_folder, speaker_folder, chapter_folder))
+
+  sys.stdout.write('\r')
+  pool = multiprocessing.dummy.Pool(32)
+  file_trans = pool.map(process, paths)
+
+  file_trans = list(np.concatenate(file_trans).flat)
+  print(len(file_trans))
+
+  end_time = time.time()
+  elapsed_time = end_time - start_time
+  
+  print(' \n time taken to preprocess split : ', split, ' = ', time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+  return pd.DataFrame(file_trans, columns=['id']), finished.val() + skipped.val()
 
 
 def load_audio(audio_path):
@@ -111,14 +170,15 @@ def main():
   save_dir = 'data/'
   os.makedirs(save_dir, exist_ok=True)
 
-  subset_list = ['train-clean-100',] #'test-clean']
+  subset_list = ['train-clean-360', 'train-clean-500']
   for subset in subset_list:
-    print(subset)
+    print('processing split = ', subset)
     os.makedirs(save_dir + '/' + subset, exist_ok=True)
-    df = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)
-    print(df)
+    df, num_entries = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)
     
-    df.to_csv('data/{}3.csv'.format(subset))
+    if num_entries != librispeech_example_counts[subset]:
+      raise ValueError('preprocessed dataframe final count not equal to expected count: {} vs expected {}'.format(num_entries, librispeech_example_counts[subset]))
+    df.to_csv('data/{}.csv'.format(subset))
 
 
 if __name__ == '__main__':

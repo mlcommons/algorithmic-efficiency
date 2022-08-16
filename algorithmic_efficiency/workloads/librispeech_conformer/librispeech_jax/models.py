@@ -14,6 +14,7 @@ high-level overview of Conformer encoder layer.
 
 import math
 from typing import Any, List
+import optax
 
 from flax import linen as nn
 from flax import struct
@@ -581,9 +582,6 @@ class Conformer(nn.Module):
 
     outputs = inputs
     output_paddings = input_paddings
-
-    print('inputs.shape in Conformer = ', outputs.shape)
-    print('input_paddings.shape in Conformer = ', output_paddings.shape)
 
     # Compute normalized log mel spectrograms from input audio signal.
     preprocessing_config = preprocessor.LibrispeechPreprocessingConfig()

@@ -353,12 +353,7 @@ class SpectrogramFrontend(nn.Module):
       inputs = jnp.expand_dims(inputs, -1)
     output_paddings = None
     if input_paddings is not None:
-      # print('inputs.shape in Spectrogram = ', inputs.shape)
-      # print('input_paddings.shape in Spectrogram = ', input_paddings.shape)
-      # paddings = jnp.expand_dims(1.0 - input_paddings, -1)
-      # print('paddings.shape in Spectrogram = ', paddings.shape)
-
-      # inputs = inputs * paddings
+      inputs = inputs * jnp.expand_dims(1.0 - input_paddings, -1)
       output_paddings = self.fprop_paddings(input_paddings)
     else:
       output_paddings = None

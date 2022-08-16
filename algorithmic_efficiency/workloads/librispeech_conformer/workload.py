@@ -11,6 +11,7 @@ from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import input_pipeline
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
+import numpy as np 
 
 import tensorflow_datasets as tfds
 FLAGS = flags.FLAGS
@@ -25,7 +26,7 @@ class BaseLibrispeechWorkload(spec.Workload):
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/wer'] > self.target_value
+    return eval_result['validation/ctc_loss'] < 0.5
 
   @property
   def target_value(self):
@@ -37,15 +38,15 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_train_examples(self):
-    return 281241
+    return 28539
 
   @property
   def num_eval_train_examples(self):
-    return 2048
+    return 64
 
   @property
   def num_validation_examples(self):
-    return 5567
+    return 2703
 
   @property
   def num_test_examples(self):
@@ -65,7 +66,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 500
+    return 200
 
   @property
   def param_shapes(self):
@@ -80,8 +81,8 @@ class BaseLibrispeechWorkload(spec.Workload):
                         split: str,
                         data_dir: str,
                         global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
+                        cache: Optional[bool] = False,
+                        repeat_final_dataset: Optional[bool] = False,
                         num_batches: Optional[int] = None):
     return self._build_dataset(data_rng,
                                split,
@@ -91,18 +92,42 @@ class BaseLibrispeechWorkload(spec.Workload):
                                repeat_final_dataset,
                                num_batches)
 
+  def shard(self, batch, n_devices=None):    
+    if n_devices is None:
+      n_devices = jax.local_device_count()
+
+    # Otherwise, the entries are arrays, so just reshape them.
+    def _shard_array(array):
+      return array.reshape((n_devices, -1) + array.shape[1:])
+
+    return jax.tree_map(_shard_array, batch)
+
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
                      batch_size: int,
-                     cache: Optional[bool] = None,
-                     repeat_final_dataset: Optional[bool] = None,
+                     cache: Optional[bool] = False,
+                     repeat_final_dataset: Optional[bool] = False,
                      num_batches: Optional[int] = None):
     if batch_size % jax.local_device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     
-    train = split == 'train'
+    train = False
+
+    if split == 'train':
+      split = 'train-clean-100'
+      train = True
+    elif split == 'eval_train':
+      split = 'train-clean-100'
+    elif split=='validation':
+      split = 'dev-clean'
+    elif split == 'test':
+      split = 'test-clean'
+    
+    if split is None:
+      return None
+
     ds = input_pipeline.get_librispeech_dataset(
         split,
         data_dir,
@@ -112,8 +137,9 @@ class BaseLibrispeechWorkload(spec.Workload):
         repeat_final_dataset=repeat_final_dataset)
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
+      batch = self.shard(batch)
+
       yield batch
-    return ds
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
@@ -124,7 +150,7 @@ class BaseLibrispeechWorkload(spec.Workload):
       targets: spec.Tensor,
       target_paddings: spec.Tensor) -> spec.Tensor:  # differentiable
     logprobs = nn.log_softmax(logits)
-    per_seq_loss = self._ctc_loss(logprobs, logit_paddings, targets,
+    per_seq_loss = self.ctc_loss(logprobs, logit_paddings, targets,
                                   target_paddings)
     normalizer = jnp.sum(1 - target_paddings)
 
@@ -159,34 +185,3 @@ class BaseLibrispeechWorkload(spec.Workload):
         update_batch_norm=False)
     return self._eval_metric(logits, logit_paddings, batch['targets'],
                              batch['target_paddings'])
-
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str) -> Dict[str, float]:
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
-      # Note that this stores the entire val dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
-
-    total_metrics = None
-    num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
-    # Loop over graph batches in eval dataset.
-    for _ in range(num_eval_steps):
-      batch = next(self._eval_iters[split])
-      batch_metrics = self._eval_batch(params, batch, model_state, model_rng)
-      total_metrics = (
-          batch_metrics
-          if total_metrics is None else total_metrics.merge(batch_metrics))
-    if total_metrics is None:
-      return {}
-    if FLAGS.framework == 'jax':
-      total_metrics = total_metrics.reduce()
-    return {k: float(v) for k, v in total_metrics.compute().items()}
