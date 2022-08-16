@@ -53,8 +53,8 @@ class WmtWorkload(BaseWmtWorkload):
   def compute_weighted_cross_entropy(self,
                                      logits,
                                      targets,
-                                     weights,
-                                     label_smoothing=0.0):
+                                     weights=None,
+                                     label_smoothing=0.1):
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
