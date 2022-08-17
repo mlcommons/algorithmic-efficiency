@@ -2,7 +2,7 @@
 
 <br />
 <p align="center">
-<a href="#"><img width="600" img src="https://nextcloud.tuebingen.mpg.de/index.php/s/oKEeMfksqdyc6Wf/preview" alt="MLCommons Logo"/></a>
+<a href="#"><img width="600" img src=".assets/mlc_logo.png" alt="MLCommons Logo"/></a>
 </p>
 
 <p align="center">
@@ -43,19 +43,23 @@
 3. We use pip to install the `algorithmic_efficiency`.
 
   *TL;DR to install the Jax version for GPU run:*
+
    ```bash
    pip3 install -e '.[pytorch_cpu]'
    pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
    pip3 install -e '.[full]'
    ```
+
   *TL;DR to install the PyTorch version for GPU run:*
+
    ```bash
    pip3 install -e '.[jax_cpu]'
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    pip3 install -e '.[full]'
    ```
 
-  #### Additional Details
+#### Additional Details
+
    ```bash
    pip3 install -e .
    ```
@@ -168,9 +172,11 @@ python3 submission_runner.py \
 When using multiple GPUs on a single node it is recommended to use PyTorch's
 [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
 To do so, simply replace `python3` by
+
 ```bash
 torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
 ```
+
 where `N_GPUS` is the number of available GPUs on the node.
 
 ## Rules
