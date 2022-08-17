@@ -1,0 +1,5 @@
+data_dir/
+work_dir/
+*.flac
+*.npy
+*.csv

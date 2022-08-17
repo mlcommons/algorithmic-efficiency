@@ -84,6 +84,9 @@ class BaseOgbgWorkload(spec.Workload):
                                                    data_rng,
                                                    data_dir,
                                                    global_batch_size)
+    if split != 'train':
+      # Note that this stores the entire val dataset in memory.
+      dataset_iter = itertools.cycle(dataset_iter)
     return dataset_iter
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -130,10 +133,8 @@ class BaseOgbgWorkload(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
-      eval_iter = self.build_input_queue(
+      self._eval_iters[split] = self.build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
-      # Note that this stores the entire val dataset in memory.
-      self._eval_iters[split] = itertools.cycle(eval_iter)
 
     total_metrics = None
     num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
