@@ -21,7 +21,7 @@
   - [Scoring](#scoring)
     - [Competition hardware](#competition-hardware)
     - [Defining target performance](#defining-target-performance)
-    - [Summary score using performance profiles](#summary-score-using-performance-profiles)
+    - [Competition score using performance profiles](#competition-score-using-performance-profiles)
     - [Awards and prize money](#awards-and-prize-money)
 - [Model Track](#model-track)
 
@@ -388,41 +388,56 @@ All scored runs have to be performed on the competition hardware to allow for a 
 
 #### Defining target performance
 
-A target performance for the validation dataset will be defined for each [workload](#workloads) separately by taking the best performance achievable by a standard baseline algorithm (e.g. Adam, SGD with momentum, etc.). This baseline algorithm will follow the general process of the external tuning ruleset, with a slightly larger tuning budget to guarantee competitive performance. Both [tuning rulesets](#tuning) will then use the same target performance. The runtime of the baseline algorithm on each workload will be chosen to match published results and is constrained by the overall time budget of a single week for all public workloads.
+A target performance on the validation dataset will be defined for each [workload](#workloads) separately by taking the best performance achievable by one of four standard algorithms (Adam, Nadam, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a slightly larger tuning budget of $100$ trials to guarantee competitive performance. Once the best hyperparameters are determined, they are repeated $20$ times, with the target performance being the median over those $20$ runs.
 
-#### Summary score using performance profiles
+Both [tuning rulesets](#tuning) will use the same target performance. The runtime of the target-setting algorithms on each workload will be chosen to match published results and is constrained by the overall time budget of roughly a single week for all public workloads. The `max_runtime` for submissions on each workload is $\frac{1}{3}$ longer than the runtime of the target-setting algorithms.
 
-We will score submissions using the following algorithm described in [Benchmarking Machine Learning with Performance Profiles](http://www.argmin.net/2018/03/26/performance-profiles/), originally from [Dolan and Moré](https://arxiv.org/abs/cs/0102001). Below we surface several relevant definitions from their work for easier readability, where we have $n_p$ benchmark problems we are evaluating on, and the user submission is abbreviated by $s$:
+#### Competition score using performance profiles
 
-- $r(p,s)$  =  Time spent on problem $p$ by submission $s$ / Time spent on problem $p$ by best submission
+We will aggregate the training times of a submission on all workloads using [Performance Profiles](http://www.argmin.net/2018/03/26/performance-profiles/) (originally from [Dolan and Moré](https://arxiv.org/abs/cs/0102001)). Below we surface several relevant definitions from their work for easier readability, before explaining how we integrate the performance profiles to reach a scalar competition score that will be used for ranking submissions.
 
-  - a.k.a. "performance ratio of submission $s$ on problem $p$"
-  
-  - Can take on values between $[1, \infty)$, lower is better.
+*Notation:* We have a set $\mathcal{S} = \{s_1, s_2, \dots, s_k\}$ of in total $k$ submissions that we evaluate on a set of $n$ workloads: $\mathcal{W} = \{w_1, w_2, \dots, w_n\}$. For each submission $s$ and each workload $w$ we have a training time score $t_{s,w} \in [0,\infty)$. This is the time it took the submission to reach the target performance on this particular workload.
 
-$$r_{p,s}=\frac{t_{p,s}}{\min\\{t_{p,s}:s \in \mathcal{S}\\}}$$
+##### Computing performance ratios
 
-- $\rho_s(\tau) = (\frac{1}{n_p}) \cdot [\text{number of problems where}\, r(p,s)\leq \tau]$
+For all workloads and submissions, we first compute their performance ratio $r$, which is defined for a particular submission $\bar{s}$ and a particular workload $\bar{w}$ to be:
 
-  - Need to be careful about weighting tasks to not favor any data modality. We might need to weigh the problems somehow to handle different numbers of models on a given dataset
+$$r_{\bar{s},\bar{w}} = \frac{t_{\bar{s},\bar{w}}}{\min_{s \in \mathcal{S}} t_{s,\bar{w}}} \in [1,\infty)$$
 
-**The area between a submitted performance profile  $\rho_s(\tau) $ and the performance profile of the baseline submission will be used as a score to compare submissions, where the area is computed by integrating  $\log\tau $ from  $[0, \infty) $ OR  $\tau $ from $[1, \infty) $, whether or not to log scale is a decision to be made after further investigation.**
+This performance ratio $r(s,w)$ expresses the "time spent by submission $s$ on workload $w$" relative to the "time spent by the best submission on this workload". E.g. If a submission takes twice as long on a particular workload compared to the best submission on this workload it will have a performance ratio of $2$. Lower performance ratios are therefore better, with an optimal ratio of $1$ if the given submission is the fastest on this workload.
 
-$$\rho_s(\tau)=\frac{1}{n_p} \text{size} \\{ p \in \mathcal{P}: r_{p,s} \leq \tau \\}$$
+##### Building performance profiles
 
-For a given problem, we define the "speedup over the reference" as $\frac{t_{p, \text{ref}}}{t_{p,s}}$. For example, if a submission was 2x faster than the reference implementation, this would be equal to 2.
+Next, we compute how often a submission is within a factor $\tau \in [1,\infty)$ of the optimal submission. For this, we determine the following function for every submission $\bar{s}$:
 
-To have a simpler to interpret number for press releases, we will also release (in addition to the raw  $t(p,s) $ values) the geometric mean of  $\frac{t_{p, \text{ref}}}{t_{p,s}} $.
+$$\rho_{\bar{s}}(\tau) = \left(\frac{1}{n}\right) \cdot \left[\text{number of workloads where}\, r_{\bar{s},w}\leq \tau\right]$$
 
-- Once we fix a reference we can rerun the reference on the new set of problems for each iteration of the contest (using the new competition hardware), and then report our year over year progress as a community in speeding up training
+In other words, we compute the fraction of workloads where a submission $\bar{s}$ is less than $\tau$ away from the optimal submission. The function $\rho_{\bar{s}}(\tau)$ is monotonically increasing with $\tau$ and bounded between $0$ and $1$.
 
-While performance profiles take a bit of effort to explain, we believe they are fairer and well-supported by research in the machine learning and optimization community.
+An example of a performance profiles plot is shown below, where we plot $\rho_{\bar{s}}(\tau)$ for seven "submissions":
+
+![Example performance profile](.assets/performance_profiles.png)
+
+##### Integrating performance profiles for the competition score
+
+To get a scalar score that is usable for ranking submissions, we will integrate the performance profiles $\rho_{\bar{s}}(\tau)$ of all submissions to get their competition score $C_{\bar{s}}$, with
+
+$$C_{\bar{s}} = \frac{1}{r_{\text{max}}} \int_{1}^{r_{\text{max}}} \rho_{\bar{s}}(\tau) \,d\tau \in [0, 1].$$
+
+The upper limit of the integral is given by the largest $r(s,w)$ in the competition, i.e. $r_{\text{max}} = \max_{s \in \mathcal{S}} \left(\max_{w \in \mathcal{W}} \left( r_{s,w} \right) \right)$. The integral is normalized by the total integration area, with higher competition scores being better.
+
+##### Alternative scores
+
+Performance profiles and the competition score derived from them, take a bit of effort to explain.
+However, we believe that they are fairer and well-supported by research in machine learning and the optimization community. To have some simpler to interpret numbers, e.g. for press releases, we will also release a series of alternative scores.
+
+For a given workload $\bar{w}$, we define the "speedup of a submission $\bar{s}$ over the target-setting reference" as $\frac{t_{\text{ref}, \bar{w}}}{t_{\bar{s}, \bar{w}}}$. For example, if a submission was 2x faster than the target-setting reference, this would be equal to 2. In addition to the raw  $t_{s,w}$ values, we will release the geometric mean of the speedups across all workloads, i.e. $\left(\prod_{w \in \mathcal{W}} \frac{t_{\text{ref}, w}}{t_{\bar{s}, w}}\right)^{\frac{1}{n}}$.
 
 #### Awards and prize money
 
-An awards committee will award a prize for the "*Best Performance*" in each ruleset and an award for the "*Most Innovative*" submission. The prize for the best-performing submission will be awarded based on the [summary score](#summary-score-using-performance-profiles) on the full benchmark including [held-out workloads](#held-out-workloads). The most innovative submission will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
+An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will be awarded based on the [competition score](#summary-score-using-performance-profiles) on the full benchmark including [held-out workloads](#held-out-workloads). The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
 
-The prize money for "*Best Performance*" in a ruleset is 20.000$ each. The  "*Most Innovative*" submission will be awarded 10.000$. We reserve the right to split the prize money and distribute it among multiple submissions.
+The prize money for "*Best Performance*" in a ruleset is 20.000$ each. The winner of the "*Jury Award*" will be awarded 10.000$. We reserve the right to split the prize money and distribute it among multiple submissions.
 
 The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money (regular attendance at the working group's meetings is a prerequisite for joining the awards committee). A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
 
