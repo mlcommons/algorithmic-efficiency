@@ -46,7 +46,7 @@ The intention is that a training algorithm submission will be broadly applicable
 
 ### Submissions
 
-A valid submission is a piece of code with the same high-level structure as a reference implementation that can train all benchmark workloads on the [competition hardware](#competition-hardware) (defined in the [Scoring](#scoring) Section but ultimately in the call for submissions). The validation set performance will be checked regularly during training (see the [Evaluation during training](#evaluation-during-training) Section) and training halts when a workload-specific target error has been reached. For each workload, the training time to reach this (validation set) target error will be used as an input to the [scoring process](#scoring) for the submission. Additionally, the test set performance will be probed using the final model parameters to confirm that it also reaches a slightly more generous target performance on this unseen data. Submissions using [external tuning](#external-tuning-ruleset) will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. Submissions under either tuning ruleset may always self-tune while on the clock.
+A valid submission is a piece of code with the same high-level structure as a reference implementation that can train all benchmark workloads on the [competition hardware](#competition-hardware) (defined in the [Scoring](#scoring) section but ultimately in the call for submissions). The validation set performance will be checked regularly during training (see the [Evaluation during training](#evaluation-during-training) section) and training halts when a workload-specific [target error](#defining-target-performance) has been reached. For each workload, the training time to reach this (validation set) target error will be used as an input to the [scoring process](#scoring) for the submission. Additionally, the test set performance will be probed using the final model parameters to confirm that it also reaches a slightly more generous target performance on this unseen data (see the [scoring](#scoring)] section for details). Submissions using [external tuning](#external-tuning-ruleset) will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. Submissions under either tuning ruleset may always self-tune while on the clock.
 
 #### Specification
 
@@ -168,7 +168,7 @@ def update_params(
 - The submission can access the target evaluation metric via the `workload` variable.
 - **A call to this function will be considered a step**
   - The time between a call to this function and the next call to this function will be considered the per-step time
-- Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid Submission](#valid-submissions) Section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
+- Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid Submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
   - This will be checked by the spirit jury
 - The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
 - Cannot replace the model parameters with pre-trained ones.
@@ -260,7 +260,7 @@ Submissions can also be based on learned training algorithms.
 </details>
 <br>
 
-Submissions can use additional software dependencies provided they have the intention of supporting new algorithmic and mathematical ideas. The procedure for adding dependencies is described in more detail in the [Software Dependencies](#software-dependencies) Section.
+Submissions can use additional software dependencies provided they have the intention of supporting new algorithmic and mathematical ideas. The procedure for adding dependencies is described in more detail in the [Software Dependencies](#software-dependencies) section.
 
 <details>
 <summary>Examples:</summary>
@@ -321,7 +321,7 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 ##### Software dependencies
 
-We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) Section. In case of doubts, these additional dependencies will be judged by the spirit jury.
+We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section. In case of doubts, these additional dependencies will be judged by the spirit jury.
 
 ### Tuning
 
@@ -331,7 +331,7 @@ Tuning will be substantially different for the [external](#external-tuning-rules
 
 For each workload, the hyperparameters are tuned using $O=20$ tuning **trials**. To estimate the variance of the results, this tuning will be repeated for $S=5$ **studies**, for a total of $S\cdot O = 100$ different hyperparameter settings. The submitters will provide a workload-agnostic search space and the working group will then return $100$ hyperparameters settings obtained using [(quasi)random search](https://arxiv.org/abs/1706.03200). The working group will also randomly partition these $100$ trials into $5$ studies of $20$ trials each.
 
-In each study, the fastest training time across the $O=20$ settings will be taken into account and the median of these $5$ per-study training times will be the final training time for the submission on this workload (see [Scoring submissions](#scoring) Section). Runs that do not reach the target performance of the evaluation metric have an infinite time. Submissions are always free to perform additional self-tuning while being timed.
+In each study, the fastest training time across the $O=20$ settings will be taken into account and the median of these $5$ per-study training times will be the final training time for the submission on this workload (see [Scoring submissions](#scoring) section). Runs that do not reach the target performance of the evaluation metric have an infinite time. Submissions are always free to perform additional self-tuning while being timed.
 
 #### Self-tuning ruleset
 
@@ -380,7 +380,9 @@ For the [external tuning ruleset](#external-tuning-ruleset), we will only use $1
 
 ### Scoring
 
-Submissions will be scored based on their required training time to reach the target performance of each workload. The target performance metric can be the same as the loss function but might also be a different workload-specific metric such as the accuracy or BLEU score. The training time includes compilation times for computation graphs and ops that could happen just-in-time during training; all our benchmarks should be fast enough to compile so as not to dramatically impact overall performance. The overall ranking is then determined by summarizing the performances across all [workloads](#workloads), both public and held-out, using [performance profiles](http://www.argmin.net/2018/03/26/performance-profiles/), as explained below.
+Submissions will be scored based on their required training time to reach the target performance on the validation set of each workload. This target performance metric can be the same as the loss function but might also be a different workload-specific metric such as the accuracy or BLEU score. The target performance was defined using four standard training algorithms, see the [Defining target performance](#defining-target-performance) section for more details. The training time of a submission includes the compilation times for computation graphs and ops that could happen just-in-time during training; all our benchmarks should be fast enough to compile so as not to dramatically impact overall performance. The overall ranking is then determined by summarizing the performances across all [workloads](#workloads), both public and held-out, using [performance profiles](#competition-score-using-performance-profiles), as explained below.
+
+In addition to the validation performance, the test set performance will be probed using the final model parameters to confirm that it also reaches a slightly more generous target performance on this unseen data. This target on the test set is determined by the target-setting reference run, see the [target performance](#defining-target-performance) section.
 
 #### Competition hardware
 
@@ -388,9 +390,13 @@ All scored runs have to be performed on the competition hardware to allow for a 
 
 #### Defining target performance
 
-A target performance on the validation dataset will be defined for each [workload](#workloads) separately by taking the best performance achievable by one of four standard algorithms (Adam, Nadam, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a slightly larger tuning budget of $100$ trials to guarantee competitive performance. Once the best hyperparameters are determined, they are repeated $20$ times, with the target performance being the median over those $20$ runs.
+A target performance on the validation dataset will be defined for each [workload](#workloads) separately by taking the best performance achievable by one of four standard algorithms (Adam, Nadam, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a slightly larger tuning budget of $100$ trials to guarantee competitive performance. Once the best algorithm and its hyperparameters are determined, training is repeated $20$ times, with the target validation performance being the median validation metric over those $20$ runs.
 
-Both [tuning rulesets](#tuning) will use the same target performance. The runtime of the target-setting algorithms on each workload will be chosen to match published results and is constrained by the overall time budget of roughly a single week for all public workloads. The `max_runtime` for submissions on each workload is $\frac{1}{3}$ longer than the runtime of the target-setting algorithms.
+To set the target for the test set, we will investigate the $20$ repeated runs of the target-setting reference algorithm. The worst test set performance across these $20$ runs will be the target test set performance for this workload. This test target is only used to verify that the submission also achieves a reasonable performance on the unseen test dataset.
+
+*Note: Following the general protocol of published results, we will not use a test set for workloads using the ImageNet dataset. The official test set of ImageNet requires uploading predictions to the ImageNet test server. For future iterations of the competition, we plan to replace the ImageNet dataset.*
+
+Both [tuning rulesets](#tuning) will use the same target performances. The runtime of the target-setting algorithms on each workload will be chosen to match published results and is constrained by the overall time budget of roughly a single week for all public workloads. The `max_runtime` for submissions on each workload is $\frac{1}{3}$ longer than the runtime of the target-setting algorithms.
 
 #### Competition score using performance profiles
 
