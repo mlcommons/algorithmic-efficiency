@@ -430,7 +430,7 @@ To get a scalar score that is usable for ranking submissions, we will integrate 
 
 $$C_{\bar{s}} = \frac{1}{r_{\text{max}}} \int_{1}^{r_{\text{max}}} \rho_{\bar{s}}(\tau) \,d\tau \in [0, 1].$$
 
-The upper limit of the integral is given by the largest $r(s,w)$ in the competition, i.e. $r_{\text{max}} = \max_{s \in \mathcal{S}} \left(\max_{w \in \mathcal{W}} \left( r_{s,w} \right) \right)$. The integral is normalized by the total integration area, with higher competition scores being better.
+The upper limit of the integral is given by the largest finite $r(s,w)$ in the competition, i.e. $r_{\text{max}} = \max_{s \in \mathcal{S}} \left(\max_{w \in \mathcal{W}} \left( \{ r_{s,w} : r_{s,w} < \infty \} \right) \right)$. The integral is normalized by the total integration area, with higher competition scores being better.
 
 ##### Alternative scores
 
