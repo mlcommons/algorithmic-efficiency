@@ -8,6 +8,7 @@ import optax
 from flax import jax_utils
 import functools
 import jax.lax as lax
+import numpy as np
 
 from algorithmic_efficiency import spec
 
@@ -16,34 +17,27 @@ _GRAD_CLIP_EPS = 1e-6
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 256
+  return 16
 
 
-def transformer_schedule(hparams: spec.Hyperparameters):
-  """Computes a reverse sqrt style decay schedule scaled by sqrt of model's encoder dimension.
-
-  lr = base_lr * min((step + 1) / sqrt(warmup_steps**3) , 1/sqrt(step + 1)) *
-  (1/sqrt(enocder_dim))
-  Args:
-    schedule_hparams: Relevant hparams are base_lr, encoder_dim, warmup_steps.
-    max_training_updates: This is ignored (needed to match API of other lr
-      functions).
-
-  Returns:
-    lr_fn: A function mapping global_step to lr.
-  """
-  def lr_fn(t):
-    warmup_steps = hparams.warmup_steps
-    model_dim = hparams.encoder_dim
-    decay_factor = model_dim**-0.5 * np.minimum((t + 1) * warmup_steps**-1.5,
-                                                (t + 1)**-0.5)
-
-    return hparams.base_lr * decay_factor
-
-  return lr_fn
+def create_learning_rate_fn(hparams: spec.Hyperparameters):
+  """Create learning rate schedule."""
+  base_learning_rate = hparams.base_lr
+  warmup_fn = optax.linear_schedule(
+      init_value=0.,
+      end_value=base_learning_rate,
+      transition_steps=hparams.warmup_steps)
+  cosine_steps = max(hparams.num_training_steps - hparams.warmup_steps, 1)
+  cosine_fn = optax.cosine_decay_schedule(
+      init_value=base_learning_rate,
+      decay_steps=cosine_steps)
+  schedule_fn = optax.join_schedules(
+      schedules=[warmup_fn, cosine_fn],
+      boundaries=[hparams.warmup_steps])
+  return schedule_fn
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
-  learning_rate_fn = transformer_schedule(hyperparameters)
+  learning_rate_fn = create_learning_rate_fn(hyperparameters)
   opt_init_fn, opt_update_fn = optax.adamw(
       b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
@@ -100,6 +94,11 @@ def pmapped_train_step(workload,
   (loss, new_model_state), grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
 
+  grad_clip = hyperparameters.grad_clip
+  grad_norm = jnp.sqrt(sum([
+      jnp.sum(x**2)
+      for x in jax.tree_leaves(current_param_container)
+  ]))
   scaled_grad = jax.tree_map(
       lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
   grad = jax.lax.cond(grad_norm > grad_clip, lambda _: scaled_grad,
@@ -136,16 +135,6 @@ def update_params(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
-
-
-  # (outputs, output_paddings), _ = workload.model_fn(
-  #     current_param_container, batch, model_state,
-  #     spec.ForwardPassMode.TRAIN, rng, False)
-
-  # train_ctc_loss = torch.mean(workload.loss_fn(batch, (log_y, output_lengths)))
-  # optimizer_state.step()
-
-  # return optimizer_state, current_param_container, None
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or

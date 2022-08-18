@@ -7,49 +7,66 @@ import tensorflow as tf
 import csv
 import numpy as np
 
-
-def get_librispeech_dataset(split: str,
+def get_librispeech_dataset(split_name: str,
                           data_dir: str,
                           is_training: bool,
                           global_batch_size: int,
                           num_batches: Optional[int] = None,
                           repeat_final_dataset: bool = False):
   """Get the Librispeech  dataset for a given split."""
-  feat_csv = '{}/{}.csv'.format(data_dir, split)
-  print('feat_csv = ', feat_csv)
-  print('path = ', os.getcwd())
+  splits = [split_name]
 
-  with open(feat_csv, newline='') as csvfile:
-    data = list(csv.reader(csvfile))
+  if split_name.find('+') != -1:
+    splits = split_name.split('+')
+
+  ids = []
   
-  audio_list = []
-  audio_paddings_list = []
-  target_list = []
-  target_paddings_list = []
+  for split in splits:
+    print('loading split = ', split)
+    feat_csv = '{}/{}.csv'.format(data_dir, split)
 
-  for example in data[1:]:
-      audio = np.load('{}/{}/{}_audio.npy'.format(data_dir, split, example[1]))
-      targets = np.load('{}/{}/{}_targets.npy'.format(data_dir, split, example[1]))
+    with open(feat_csv, newline='') as csvfile:
+      data = list(csv.reader(csvfile))
 
-      audio_paddings = np.zeros_like(audio)
-      audio_paddings = np.pad(audio_paddings, (0, 320000 - audio.shape[0]), constant_values=1.0)
-      audio = np.pad(audio, (0, 320000 - audio.shape[0]), constant_values=0.0)
+    for example in data[1:]:
+      ids.append('{}/{}'.format(split, example[1]))
+
+  def load_data(id):
+    id = id.decode("utf-8") 
+    audio = np.load('{}/{}_audio.npy'.format(data_dir, id))
+    targets = np.load('{}/{}_targets.npy'.format(data_dir, id))
+
+    audio_paddings = np.zeros_like(audio, dtype=np.float32)
+    audio_paddings = np.pad(audio_paddings, (0, 320000 - audio.shape[0]), constant_values=1.0)
+    audio = np.pad(audio, (0, 320000 - audio.shape[0]), constant_values=0.0)
       
-      target_paddings = np.zeros_like(targets)
-      target_paddings = np.pad(target_paddings, (0, 256 - target_paddings.shape[0]), constant_values=1.0)
-      targets = np.pad(targets, (0, 256 - targets.shape[0]), constant_values=0.0)
+    target_paddings = np.zeros_like(targets, dtype=np.float32)
+    target_paddings = np.pad(target_paddings, (0, 256 - target_paddings.shape[0]), constant_values=1.0)
+    targets = np.pad(targets, (0, 256 - targets.shape[0]), constant_values=0)
 
-      audio_list.append(tf.constant(audio))
-      audio_paddings_list.append(tf.constant(audio_paddings))
+    return audio, audio_paddings, targets, target_paddings
 
-      target_list.append(tf.constant(targets))
-      target_paddings_list.append(target_paddings)
+  def preprocess(example):
+    id = example['ids']
+
+    preprocessed_example = {}
+    audio, audio_paddings, targets, target_paddings = tf.numpy_function(
+        func=load_data,
+        inp=[id],
+        Tout=[tf.float32, tf.float32, tf.int32, tf.float32])
+    
+    preprocessed_example['inputs'] = audio
+    preprocessed_example['input_paddings'] = audio_paddings
+    preprocessed_example['targets'] = targets
+    preprocessed_example['target_paddings'] = target_paddings
+
+    return preprocessed_example
 
   ds = tf.data.Dataset.from_tensor_slices({
-      'inputs' : audio_list, 
-      'input_paddings': audio_paddings_list, 
-      'targets' : target_list, 
-      'target_paddings' : target_paddings_list})
+      'ids' : ids
+  })
+
+  ds = ds.map(preprocess)
 
   if is_training:
     ds = ds.repeat()

@@ -42,7 +42,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 64
+    return 256
 
   @property
   def num_validation_examples(self):
@@ -135,6 +135,7 @@ class BaseLibrispeechWorkload(spec.Workload):
         batch_size,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
+    print('done loading split = ', split)
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       batch = self.shard(batch)

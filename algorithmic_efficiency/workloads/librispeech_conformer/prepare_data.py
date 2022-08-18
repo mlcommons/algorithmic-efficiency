@@ -38,7 +38,7 @@ AUDIO_MAX_LENGTH = 320000
 librispeech_example_counts = {
   'train-clean-100' : 28539,
   'train-clean-360' : 104014,
-  'train-clean-500' : 148688,
+  'train-other-500' : 148688,
   'test-clean' : 2620,
   'dev-clean' : 2703,
   'dev-other' : 2864
@@ -170,11 +170,12 @@ def main():
   save_dir = 'data/'
   os.makedirs(save_dir, exist_ok=True)
 
-  subset_list = ['train-clean-100', 'test-clean', 'dev-clean', 'dev-other']
+  # put whatever splits required in this list below
+  subset_list = ['train-clean-100']
   for subset in subset_list:
     print('processing split = ', subset)
     os.makedirs(save_dir + '/' + subset, exist_ok=True)
-    df, num_entries = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)
+    example_ids, num_entries = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)
     
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('preprocessed dataframe final count not equal to expected count: {} vs expected {}'.format(num_entries, librispeech_example_counts[subset]))
