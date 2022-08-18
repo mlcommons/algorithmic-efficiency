@@ -133,7 +133,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._eval_metric(batch['targets'], logits, batch['weights'])
+    return self._eval_metric(batch['targets'], logits)
 
   def _eval_model_on_split(self,
                            split: str,

@@ -70,9 +70,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
   def _eval_metric(self, labels, logits):
     per_example_losses = self.loss_fn(label_batch=labels, logits_batch=logits)
-    loss = jnp.sum(per_example_losses)
     return metrics.EvalMetrics.single_from_model_output(
-        loss=loss, logits=logits, labels=labels)
+        loss=per_example_losses, logits=logits, labels=labels)
 
   @functools.partial(
       jax.pmap,
@@ -82,7 +81,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)
 
-  def loss_fn(self, label_batch: spec.Tensor,
+  def loss_fn(self,
+              label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)

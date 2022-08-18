@@ -55,20 +55,21 @@ def _check_jax_install():
 
 
 def fold_in(seed, data):
-  _check_jax_install()
-  return jax_rng.fold_in(seed, data)
+  if FLAGS.framework == 'jax':
+    _check_jax_install()
+    return jax_rng.fold_in(seed, data)
   return _fold_in(seed, data)
 
 
 def split(seed, num=2):
-  # if FLAGS.framework == 'jax':
-  _check_jax_install()
-  return jax_rng.split(seed, num)
+  if FLAGS.framework == 'jax':
+    _check_jax_install()
+    return jax_rng.split(seed, num)
   return _split(seed, num)
 
 
 def PRNGKey(seed):  # pylint: disable=invalid-name
-  # if FLAGS.framework == 'jax':
-  _check_jax_install()
-  return jax_rng.PRNGKey(seed)
+  if FLAGS.framework == 'jax':
+    _check_jax_install()
+    return jax_rng.PRNGKey(seed)
   return _PRNGKey(seed)
