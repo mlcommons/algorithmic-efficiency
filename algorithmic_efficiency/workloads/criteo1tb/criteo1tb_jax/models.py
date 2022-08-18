@@ -37,28 +37,17 @@ def dot_interact(concat_features):
 
 
 class DlrmSmall(nn.Module):
-  """Define a DLRM-Small model.
-
-  Parameters:
-    vocab_sizes: list of vocab sizes of embedding tables.
-    total_vocab_sizes: sum of embedding table sizes (for jit compilation).
-    mlp_bottom_dims: dimensions of dense layers of the bottom mlp.
-    mlp_top_dims: dimensions of dense layers of the top mlp.
-    num_dense_features: number of dense features as the bottom mlp input.
-    embed_dim: embedding dimension.
-    keep_diags: whether to keep the diagonal terms in x @ x.T.
-  """
 
   vocab_sizes: Sequence[int]
   total_vocab_sizes: int
   num_dense_features: int
   mlp_bottom_dims: Sequence[int] = (512, 256, 128)
   mlp_top_dims: Sequence[int] = (1024, 1024, 512, 256, 1)
+  embed_dim: int = 128
 
   @nn.compact
   def __call__(self, x, train):
     del train
-    embed_dim = 128
 
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
@@ -74,7 +63,8 @@ class DlrmSmall(nn.Module):
       bot_mlp_input = nn.relu(bot_mlp_input)
     bot_mlp_output = bot_mlp_input
     batch_size = bot_mlp_output.shape[0]
-    feature_stack = jnp.reshape(bot_mlp_output, [batch_size, -1, embed_dim])
+    feature_stack = jnp.reshape(bot_mlp_output,
+                                [batch_size, -1, self.embed_dim])
 
     # Embedding table look-up.
     vocab_sizes = jnp.asarray(self.vocab_sizes, dtype=jnp.int32)
@@ -96,11 +86,12 @@ class DlrmSmall(nn.Module):
         scaled_init, scale=scale, init=jnn.initializers.uniform(scale=1.0))
     embedding_table = self.param('embedding_table',
                                  scaled_variance_scaling_init,
-                                 [self.total_vocab_sizes, embed_dim])
+                                 [self.total_vocab_sizes, self.embed_dim])
 
     idx_lookup = jnp.reshape(idx_lookup, [-1])
     embed_features = embedding_table[idx_lookup]
-    embed_features = jnp.reshape(embed_features, [batch_size, -1, embed_dim])
+    embed_features = jnp.reshape(embed_features,
+                                 [batch_size, -1, self.embed_dim])
     feature_stack = jnp.concatenate([feature_stack, embed_features], axis=1)
     dot_interact_output = dot_interact(concat_features=feature_stack)
     top_mlp_input = jnp.concatenate([bot_mlp_output, dot_interact_output],
@@ -115,7 +106,7 @@ class DlrmSmall(nn.Module):
           kernel_init=jnn.initializers.normal(
               stddev=jnp.sqrt(2.0 / (fan_in + fan_out))),
           bias_init=jnn.initializers.normal(
-              stddev=jnp.sqrt(1.0 / mlp_top_dims[layer_idx])))(
+              stddev=jnp.sqrt(1.0 / fan_out)))(
                   top_mlp_input)
       if layer_idx < (num_layers_top - 1):
         top_mlp_input = nn.relu(top_mlp_input)
