@@ -105,9 +105,8 @@ class DlrmSmall(nn.Module):
           fan_out,
           kernel_init=jnn.initializers.normal(
               stddev=jnp.sqrt(2.0 / (fan_in + fan_out))),
-          bias_init=jnn.initializers.normal(
-              stddev=jnp.sqrt(1.0 / fan_out)))(
-                  top_mlp_input)
+          bias_init=jnn.initializers.normal(stddev=jnp.sqrt(1.0 / fan_out)))(
+              top_mlp_input)
       if layer_idx < (num_layers_top - 1):
         top_mlp_input = nn.relu(top_mlp_input)
     logits = top_mlp_input

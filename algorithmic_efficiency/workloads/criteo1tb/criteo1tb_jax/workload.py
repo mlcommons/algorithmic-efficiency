@@ -4,11 +4,11 @@ from typing import Dict, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import \
-    models
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import metrics
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import models
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
 
@@ -81,8 +81,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)
 
-  def loss_fn(self,
-              label_batch: spec.Tensor,
+  def loss_fn(self, label_batch: spec.Tensor,
               logits_batch: spec.Tensor) -> spec.Tensor:
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)

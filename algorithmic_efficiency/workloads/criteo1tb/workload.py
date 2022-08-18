@@ -1,8 +1,8 @@
 import math
 from typing import Dict, Optional
 
-import jax
 from absl import flags
+import jax
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
