@@ -17,6 +17,7 @@ from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
+
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import models
 from algorithmic_efficiency import param_utils
 
@@ -41,6 +42,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                         params)
         model_state = jax_utils.replicate(model_state)
         params = jax_utils.replicate(params)
+        self.metrics_bundle = metrics.get_metrics_bundle()
         return params, model_state
 
 
@@ -85,24 +87,26 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                 self._param_shapes.unfreeze())
         return self._param_types
 
+    def loss_fn(self, logits, logit_paddings, targets, target_paddings):  # differentiable
+        logprobs = nn.log_softmax(logits)
+        per_seq_loss = self.ctc_loss(logprobs, logit_paddings, targets,
+                                    target_paddings)
+        normalizer = jnp.sum(1 - target_paddings)
+
+        normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
+        return normalized_loss
+
     def ctc_loss(self, logits, logit_paddings, labels, label_paddings, blank_id=0):
         return optax.ctc_loss(logits, logit_paddings, labels, label_paddings,
             blank_id)
 
-    def _compute_metrics(self, logits, logit_paddings, labels, label_paddings):
-        loss = jnp.mean(self.loss_fn(logits, logit_paddings, labels, label_paddings))
-        metrics = {
-            'ctc_loss': loss,
-        }
-        metrics = lax.psum(metrics, axis_name='batch')
-        return metrics
 
     @functools.partial(
       jax.pmap,
       axis_name='batch',
       in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
-    def _eval_model(
+    def eval_step_pmapped(
         self,
         params: spec.ParameterContainer,
         batch: Dict[str, spec.Tensor],
@@ -115,45 +119,45 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             spec.ForwardPassMode.EVAL,
             rng,
             update_batch_norm=False)
-        return self._compute_metrics(logits, logit_paddings, batch['targets'], batch['target_paddings'])
-
+        normalized_loss = self.loss_fn(logits, logit_paddings, batch['targets'], batch['target_paddings'])
+        return self.metrics_bundle.gather_from_model_output(normalized_loss=normalized_loss)        
+    
     def _eval_model_on_split(self,
-        split: str,
-        num_examples: int,
-        global_batch_size: int,
-        params: spec.ParameterContainer,
-        model_state: spec.ModelAuxiliaryState,
-        rng: spec.RandomState,
-        data_dir: str):
-        data_rng, model_rng = jax.random.split(rng, 2)
-        # Sync batch statistics across replicas before evaluating.
-        model_state = self.sync_batch_stats(model_state)
+                           split: str,
+                           num_examples: int,
+                           global_batch_size: int,
+                           params: spec.ParameterContainer,
+                           model_state: spec.ModelAuxiliaryState,
+                           rng: spec.RandomState,
+                           data_dir: str) -> Dict[str, float]:
+        """Run a full evaluation of the model."""
+        if model_state is not None:
+            # Sync batch statistics across replicas before evaluating.
+            model_state = self.sync_batch_stats(model_state)
+
         num_batches = int(math.ceil(num_examples / global_batch_size))
-        # We already repeat the dataset indefinitely in tf.data.
         if split not in self._eval_iters:
+            # These iterators will repeat indefinitely.
             self._eval_iters[split] = self.build_input_queue(
-                data_rng,
-                split=split,
-                global_batch_size=global_batch_size,
-                data_dir=data_dir,
-                cache=True,
-                repeat_final_dataset=True,
-                num_batches=num_batches)
+                rng,
+                split,
+                data_dir,
+                global_batch_size,
+                num_batches,
+                repeat_final_dataset=True)
 
-        eval_metrics = {}
-        
+        metrics_report = None
         for _ in range(num_batches):
-            batch = next(self._eval_iters[split])
-            # We already average these metrics across devices inside _compute_metrics.
-            synced_metrics = self._eval_model(params, batch, model_state, model_rng)
-            for metric_name, metric_value in synced_metrics.items():
-                if metric_name not in eval_metrics:
-                    eval_metrics[metric_name] = 0.0
-                    eval_metrics[metric_name] += metric_value
+            eval_batch = next(self._eval_iters[split])
+            computed_metrics = self.eval_step_pmapped(params, eval_batch, model_state, rng).unreplicate()
+            
+            if metrics_report is None:
+                metrics_report = computed_metrics
+            else:
+                # `merge` aggregates the metrics across batches.
+                metrics_report = metrics_report.merge(computed_metrics)
 
-        eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
-                                    eval_metrics)
-        return eval_metrics
+        return metrics_report.compute()
 
     def sync_batch_stats(self, model_state):
         # An axis_name is passed to pmap which can then be used by pmean.

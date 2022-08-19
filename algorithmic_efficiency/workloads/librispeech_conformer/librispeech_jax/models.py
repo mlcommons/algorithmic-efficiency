@@ -31,8 +31,8 @@ class ConformerConfig:
   vocab_size: int = 1024
   dtype: Any = jnp.float32
   encoder_dim: int = 256
-  num_attention_heads: int = 4
-  num_encoder_layers: int = 2
+  num_attention_heads: int = 8
+  num_encoder_layers: int = 4
   attention_dropout_rate: float = 0.0
   attention_residual_dropout_rate: float = 0.1
   input_dropout_rate: float = 0.0
@@ -44,8 +44,7 @@ class ConformerConfig:
   conv_expansion_factor: int = 2
   conv_subsampling_factor: int = 2
   conv_subsampling_layers: int = 2
-  train: bool = False
-  use_specaug: bool = False
+  use_specaug: bool = True
   freq_mask_count: int = 1
   freq_mask_max_bins: int = 15
   time_mask_count: int = 1

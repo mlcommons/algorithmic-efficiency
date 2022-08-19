@@ -6,6 +6,7 @@ from absl import flags
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
+from absl import logging
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
@@ -26,7 +27,7 @@ class BaseLibrispeechWorkload(spec.Workload):
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/ctc_loss'] < 0.5
+    return eval_result['train/ctc_loss'] < 0.5
 
   @property
   def target_value(self):
@@ -66,7 +67,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 200
+    return 3000
 
   @property
   def param_shapes(self):
@@ -131,38 +132,20 @@ class BaseLibrispeechWorkload(spec.Workload):
     ds = input_pipeline.get_librispeech_dataset(
         split,
         data_dir,
+        data_rng,
         train,
         batch_size,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
-    print('done loading split = ', split)
+
+    logging.info('done loading split = {}'.format(split))
+    
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       batch = self.shard(batch)
 
       yield batch
 
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
-  def loss_fn(
-      self,
-      logits: spec.Tensor,
-      logit_paddings: spec.Tensor,
-      targets: spec.Tensor,
-      target_paddings: spec.Tensor) -> spec.Tensor:  # differentiable
-    logprobs = nn.log_softmax(logits)
-    per_seq_loss = self.ctc_loss(logprobs, logit_paddings, targets,
-                                  target_paddings)
-    normalizer = jnp.sum(1 - target_paddings)
-
-    normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
-    return normalized_loss
-
-  def _eval_metric(self, logits, logit_paddings, targets, target_paddings):
-    normalized_loss = self.loss_fn(logits, logit_paddings, targets,
-                                   target_paddings)
-    return metrics.EvalMetrics.single_from_model_output(
-        normalized_loss=normalized_loss)
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
@@ -175,14 +158,3 @@ class BaseLibrispeechWorkload(spec.Workload):
                            logits: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
     pass
-
-  def _eval_batch(self, params, batch, model_state, rng):
-    (logits, logit_paddings), _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
-    return self._eval_metric(logits, logit_paddings, batch['targets'],
-                             batch['target_paddings'])

@@ -27,6 +27,5 @@ def average_ctc_loss():
   return _Metric
 
 
-@flax.struct.dataclass
-class EvalMetrics(metrics.Collection):
-  ctc_loss: average_ctc_loss()
+def get_metrics_bundle():
+  return metrics.Collection.create(ctc_loss=average_ctc_loss())

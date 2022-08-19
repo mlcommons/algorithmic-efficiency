@@ -3,12 +3,17 @@ import os
 from typing import Optional, Sequence
 
 import jax
+from flax import jax_utils
 import tensorflow as tf
 import csv
 import numpy as np
+from absl import logging
+from algorithmic_efficiency import spec
+from algorithmic_efficiency import data_utils
 
 def get_librispeech_dataset(split_name: str,
                           data_dir: str,
+                          shuffle_rng: spec.RandomState,
                           is_training: bool,
                           global_batch_size: int,
                           num_batches: Optional[int] = None,
@@ -22,7 +27,7 @@ def get_librispeech_dataset(split_name: str,
   ids = []
   
   for split in splits:
-    print('loading split = ', split)
+    logging.info('loading split = {}'.format(split))
     feat_csv = '{}/{}.csv'.format(data_dir, split)
 
     with open(feat_csv, newline='') as csvfile:
@@ -66,18 +71,25 @@ def get_librispeech_dataset(split_name: str,
       'ids' : ids
   })
 
+  options = tf.data.Options()
+  options.threading.private_threadpool_size = 48
+
+  ds = ds.with_options(options)  
   ds = ds.map(preprocess)
 
   if is_training:
     ds = ds.repeat()
+    ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
   # TODO(sourabh2k15): we will need to select a validation split size that is evenly
   # divisible by the batch size.
-  ds = ds.batch(global_batch_size, drop_remainder=False)
+  ds = ds.batch(global_batch_size, drop_remainder=is_training)
+
   if num_batches is not None:
     ds = ds.take(num_batches)
+
   if repeat_final_dataset:
     ds = ds.repeat()
-  ds = ds.prefetch(tf.data.AUTOTUNE)
-  
+
+  ds = ds.prefetch(10)
   return ds

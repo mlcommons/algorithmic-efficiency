@@ -9,6 +9,7 @@ from flax import jax_utils
 import functools
 import jax.lax as lax
 import numpy as np
+from absl import logging
 
 from algorithmic_efficiency import spec
 
@@ -107,7 +108,7 @@ def pmapped_train_step(workload,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
 
-  return new_model_state, new_optimizer_state, updated_params
+  return new_model_state, new_optimizer_state, updated_params, loss
 
 
 def update_params(
@@ -131,9 +132,10 @@ def update_params(
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params = pmapped_train_step(
+  new_model_state, new_optimizer_state, new_params, loss = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs)
+  logging.info('loss = {}'.format(loss))
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

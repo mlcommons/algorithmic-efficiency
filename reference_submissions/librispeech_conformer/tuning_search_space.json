@@ -6,7 +6,6 @@
     "weight_decay": {"feasible_points":[0.026595371563300656]},
     "grad_clip": {"feasible_points": [5.0]},
     "warmup_steps" : {"feasible_points": [11500]},
-    "num_training_steps" : {"feasible_points": [150000]},
-    "encoder_dim": {"feasible_points": [256]}
+    "num_training_steps" : {"feasible_points": [150000]}
 }
 
