@@ -119,7 +119,7 @@ def data_selection(workload: spec.Workload,
                    global_step: int,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
-  
+
   Each element of the queue is a batch of training examples and labels.
   """
   del workload
