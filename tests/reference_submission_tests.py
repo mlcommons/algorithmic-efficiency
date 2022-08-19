@@ -35,9 +35,7 @@ PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
-    'criteo1tb': [
-        'train/loss', 'validation/loss'
-    ],
+    'criteo1tb': ['train/loss', 'validation/loss'],
     'fastmri': ['train/ssim', 'validation/ssim'],
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
     'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
