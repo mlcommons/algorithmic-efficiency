@@ -18,13 +18,15 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
+  epsilon = (
+      hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
   optimizer_state = {
       'optimizer':
           torch.optim.AdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
               betas=(hyperparameters.beta1, hyperparameters.beta2),
-              eps=hyperparameters.epsilon,
+              eps=epsilon,
               weight_decay=hyperparameters.l2)
   }
 

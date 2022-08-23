@@ -34,11 +34,13 @@ def init_optimizer_state(workload: spec.Workload,
   # Create optimizer.
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
+  epsilon = (
+      hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
   opt_init_fn, opt_update_fn = opt_init_fn, opt_update_fn = optax.adamw(
       learning_rate=schedule_fn,
       b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
-      eps=hyperparameters.epsilon,
+      eps=epsilon,
       weight_decay=hyperparameters.l2)
   optimizer_state = opt_init_fn(params_zeros_like)
 

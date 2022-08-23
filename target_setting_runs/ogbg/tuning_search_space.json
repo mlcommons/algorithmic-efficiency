@@ -14,11 +14,6 @@
             0.9803
         ]
     },
-    "epsilon": {
-        "feasible_points": [
-            1e-8
-        ]
-    },
     "warmup_steps": {
         "feasible_points": [
             1200
