@@ -6,7 +6,6 @@ import jax.tree_util as tree
 from jraph import GraphsTuple
 import torch
 from torch import nn
-from torch_scatter import scatter
 
 
 def _make_mlp(in_dim, hidden_dims, dropout_rate):
@@ -153,9 +152,10 @@ class GraphNetwork(nn.Module):
 
     if self.update_node_fn:
       sent_attributes = tree.tree_map(
-          lambda e: scatter(e, senders, dim=0, dim_size=sum_n_node), edges)
+          lambda e: scatter_sum(e, senders, dim=0, dim_size=sum_n_node), edges)
       received_attributes = tree.tree_map(
-          lambda e: scatter(e, receivers, dim=0, dim_size=sum_n_node), edges)
+          lambda e: scatter_sum(e, receivers, dim=0, dim_size=sum_n_node),
+          edges)
       # Here we scatter the global features to the corresponding nodes,
       # giving us tensors of shape [num_nodes, global_feat].
       global_attributes = tree.tree_map(
@@ -176,9 +176,9 @@ class GraphNetwork(nn.Module):
       edge_gr_idx = torch.repeat_interleave(graph_idx, n_edge, dim=0)
       # We use the aggregation function to pool the nodes/edges per graph.
       node_attributes = tree.tree_map(
-          lambda n: scatter(n, node_gr_idx, dim=0, dim_size=n_graph), nodes)
+          lambda n: scatter_sum(n, node_gr_idx, dim=0, dim_size=n_graph), nodes)
       edge_attributes = tree.tree_map(
-          lambda e: scatter(e, edge_gr_idx, dim=0, dim_size=n_graph), edges)
+          lambda e: scatter_sum(e, edge_gr_idx, dim=0, dim_size=n_graph), edges)
       # These pooled nodes are the inputs to the global update fn.
       global_fn_inputs = torch.cat([node_attributes, edge_attributes, globals_],
                                    dim=-1)
@@ -192,3 +192,90 @@ class GraphNetwork(nn.Module):
         globals=globals_,
         n_node=n_node,
         n_edge=n_edge)
+
+
+# Forked from
+# github.com/rusty1s/pytorch_scatter/blob/master/torch_scatter/scatter.py.
+def scatter_sum(src: torch.Tensor,
+                index: torch.Tensor,
+                dim: int = -1,
+                out: Optional[torch.Tensor] = None,
+                dim_size: Optional[int] = None) -> torch.Tensor:
+  r"""
+  |
+  .. image:: https://raw.githubusercontent.com/rusty1s/pytorch_scatter/
+          master/docs/source/_figures/add.svg?sanitize=true
+      :align: center
+      :width: 400px
+  |
+  Reduces all values from the :attr:`src` tensor into :attr:`out` at the
+  indices specified in the :attr:`index` tensor along a given axis
+  :attr:`dim`.
+  For each value in :attr:`src`, its output index is specified by its index
+  in :attr:`src` for dimensions outside of :attr:`dim` and by the
+  corresponding value in :attr:`index` for dimension :attr:`dim`.
+  The applied reduction is here defined as a sum.
+  Formally, if :attr:`src` and :attr:`index` are :math:`n`-dimensional
+  tensors with size :math:`(x_0, ..., x_{i-1}, x_i, x_{i+1}, ..., x_{n-1})`
+  and :attr:`dim` = `i`, then :attr:`out` must be an :math:`n`-dimensional
+  tensor with size :math:`(x_0, ..., x_{i-1}, y, x_{i+1}, ..., x_{n-1})`.
+  Moreover, the values of :attr:`index` must be between :math:`0` and
+  :math:`y - 1`, although no specific ordering of indices is required.
+  The :attr:`index` tensor supports broadcasting in case its dimensions do
+  not match with :attr:`src`.
+  For one-dimensional tensors, the operation computes
+  .. math::
+      \mathrm{out}_i = \mathrm{out}_i + \sum_j~\mathrm{src}_j
+  where :math:`\sum_j` is over :math:`j` such that
+  :math:`\mathrm{index}_j = i`.
+  .. note::
+      This operation is implemented via atomic operations on the GPU and is
+      therefore **non-deterministic** since the order of parallel operations
+      to the same value is undetermined.
+      For floating-point variables, this results in a source of variance in
+      the result.
+  :param src: The source tensor.
+  :param index: The indices of elements to scatter.
+  :param dim: The axis along which to index. (default: :obj:`-1`)
+  :param out: The destination tensor.
+  :param dim_size: If :attr:`out` is not given, automatically create output
+      with size :attr:`dim_size` at dimension :attr:`dim`.
+      If :attr:`dim_size` is not given, a minimal sized output tensor
+      according to :obj:`index.max() + 1` is returned.
+  :rtype: :class:`Tensor`
+  .. code-block:: python
+      src = torch.randn(10, 6, 64)
+      index = torch.tensor([0, 1, 0, 1, 2, 1])
+      # Broadcasting in the first and last dim.
+      out = scatter_sum(src, index, dim=1)
+      print(out.size())
+  .. code-block::
+      torch.Size([10, 3, 64])
+  """
+  index = broadcast(index, src, dim)
+  if out is None:
+    size = list(src.size())
+    if dim_size is not None:
+      size[dim] = dim_size
+    elif index.numel() == 0:
+      size[dim] = 0
+    else:
+      size[dim] = int(index.max()) + 1
+    out = torch.zeros(size, dtype=src.dtype, device=src.device)
+    return out.scatter_add_(dim, index, src)
+  else:
+    return out.scatter_add_(dim, index, src)
+
+
+# Forked from
+# github.com/rusty1s/pytorch_scatter/blob/master/torch_scatter/utils.py.
+def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
+  if dim < 0:
+    dim = other.dim() + dim
+  if src.dim() == 1:
+    for _ in range(0, dim):
+      src = src.unsqueeze(0)
+  for _ in range(src.dim(), other.dim()):
+    src = src.unsqueeze(-1)
+  src = src.expand(other.size())
+  return src
