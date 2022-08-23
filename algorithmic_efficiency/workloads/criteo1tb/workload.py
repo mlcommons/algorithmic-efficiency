@@ -106,14 +106,9 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
         vocab_sizes=self.vocab_sizes,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
-
-    # Separate function is necessary because the code above has to be executed
-    # when build_input_queue is called (not when next() is first called on it).
-    def _input_queue_generator():
-      for batch in iter(ds):
-        yield batch
-
-    return _input_queue_generator()
+    for batch in iter(ds):
+      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
+      yield batch
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
