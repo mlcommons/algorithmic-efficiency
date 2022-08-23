@@ -127,7 +127,6 @@ def update_params(
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
   del eval_results
-  del global_step
   del loss_type
 
   optimizer_state, opt_update_fn = optimizer_state
@@ -135,7 +134,7 @@ def update_params(
   new_model_state, new_optimizer_state, new_params, loss = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs)
-  logging.info('loss = {}'.format(loss))
+  logging.info('{}) loss = {}'.format(global_step, loss))
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
