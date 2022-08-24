@@ -7,7 +7,7 @@ import torch
 from algorithmic_efficiency import spec
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
-from target_setting_runs.pytorch_adamw import \
+from target_setting_runs.pytorch_nadamw import \
     init_optimizer_state  # pylint: disable=unused-import
 
 

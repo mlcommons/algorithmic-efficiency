@@ -10,7 +10,7 @@ import optax
 from algorithmic_efficiency import spec
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
-from target_setting_runs.jax_adamw import \
+from target_setting_runs.jax_nadamw import \
     init_optimizer_state  # pylint: disable=unused-import
 
 
