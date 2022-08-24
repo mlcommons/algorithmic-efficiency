@@ -36,7 +36,7 @@ def init_optimizer_state(workload: spec.Workload,
                                    workload.param_shapes)
   epsilon = (
       hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
-  opt_init_fn, opt_update_fn = opt_init_fn, opt_update_fn = optax.adamw(
+  opt_init_fn, opt_update_fn = optax.adamw(
       learning_rate=schedule_fn,
       b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
