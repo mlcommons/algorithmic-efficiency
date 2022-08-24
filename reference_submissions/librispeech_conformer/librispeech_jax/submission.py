@@ -10,7 +10,6 @@ import functools
 import jax.lax as lax
 import numpy as np
 from absl import logging
-
 from algorithmic_efficiency import spec
 
 _GRAD_CLIP_EPS = 1e-6
@@ -18,7 +17,7 @@ _GRAD_CLIP_EPS = 1e-6
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 16
+  return 256
 
 
 def create_learning_rate_fn(hparams: spec.Hyperparameters):
@@ -51,10 +50,11 @@ def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
-                         rng: spec.RandomState) -> spec.OptimizerState:
+                         rng: spec.RandomState, log_dir = None) -> spec.OptimizerState:
   del model_params
   del model_state
   del rng
+  workload.create_summary_writer(log_dir)
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   opt_init_fn, opt_update_fn = optimizer(hyperparameters,
@@ -98,7 +98,7 @@ def pmapped_train_step(workload,
   grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(sum([
       jnp.sum(x**2)
-      for x in jax.tree_leaves(current_param_container)
+      for x in jax.tree_leaves(grad)
   ]))
   scaled_grad = jax.tree_map(
       lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
@@ -108,7 +108,7 @@ def pmapped_train_step(workload,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
 
-  return new_model_state, new_optimizer_state, updated_params, loss
+  return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
 
 
 def update_params(
@@ -131,10 +131,13 @@ def update_params(
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params, loss = pmapped_train_step(
+  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs)
-  logging.info('{}) loss = {}'.format(global_step, loss))
+  logging.info('{}) loss = {}, grad_norm = {}'.format(global_step, loss.mean(), grad_norm.mean()))
+  workload.summary_writer.scalar('loss', loss.mean(), global_step)
+  workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
+
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

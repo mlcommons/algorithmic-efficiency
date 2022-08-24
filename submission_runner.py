@@ -107,6 +107,7 @@ flags.DEFINE_enum(
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
+flags.DEFINE_string('summary_log_dir', '', 'Location to dump tensorboard summaries.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
@@ -172,7 +173,7 @@ def train_once(workload: spec.Workload,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparameters],
                rng: spec.RandomState,
-               profiler: Profiler) -> Tuple[spec.Timing, spec.Steps]:
+               profiler: Profiler, log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -192,7 +193,7 @@ def train_once(workload: spec.Workload,
                                            model_params,
                                            model_state,
                                            hyperparameters,
-                                           opt_init_rng)
+                                           opt_init_rng, log_dir)
 
   # Bookkeeping.
   goal_reached = False
@@ -273,7 +274,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None):
+                                 num_tuning_trials: Optional[int] = None,
+                                 log_dir: Optional[str] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -312,7 +314,7 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler)
+                                     hyperparameters, rng, profiler, log_dir)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -383,7 +385,8 @@ def main(_):
                                        profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials)
+                                       FLAGS.num_tuning_trials,
+                                       FLAGS.summary_log_dir)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.profile:

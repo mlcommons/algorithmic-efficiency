@@ -179,7 +179,7 @@ def main():
     
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('preprocessed dataframe final count not equal to expected count: {} vs expected {}'.format(num_entries, librispeech_example_counts[subset]))
-    df.to_csv('data/{}.csv'.format(subset))
+    example_ids.to_csv('data/{}.csv'.format(subset))
 
 
 if __name__ == '__main__':

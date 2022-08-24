@@ -117,12 +117,12 @@ class BaseLibrispeechWorkload(spec.Workload):
     train = False
 
     if split == 'train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
+      split = 'train-clean-100'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
     elif split=='validation':
-      split = 'dev-clean+dev-other'
+      split = 'dev-clean'
     elif split == 'test':
       split = 'test-clean'
     
@@ -143,7 +143,7 @@ class BaseLibrispeechWorkload(spec.Workload):
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       batch = self.shard(batch)
-
+      
       yield batch
 
 
