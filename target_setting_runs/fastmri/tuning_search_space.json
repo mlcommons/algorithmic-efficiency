@@ -14,9 +14,14 @@
             0.9803
         ]
     },
-    "warmup_epochs": {
+    "warmup_steps": {
         "feasible_points": [
-            0.02
+            2171
+        ]
+    },
+    "num_steps": {
+        "feasible_points": [
+            108568
         ]
     },
     "l2": {
