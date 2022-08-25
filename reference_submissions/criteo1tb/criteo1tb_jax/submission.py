@@ -15,7 +15,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 131072
+  return 128
 
 
 def create_learning_rate_fn(workload: spec.Workload,
