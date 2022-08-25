@@ -189,7 +189,7 @@ To run the below commands, use the versions installed via `pip install -e '.[dev
 
 To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
 ```bash
-yapf -i -r -vv -p algorithmic_efficiency baselines reference_submissions tests *.py
+yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs reference_submissions tests *.py
 ```
 
 To print out all offending import orderings, run the following (you will need to manually make the edits, because reordering Python imports can cause side-effects):
@@ -201,6 +201,7 @@ To print out all offending pylint issues, run the following:
 ```bash
 pylint algorithmic_efficiency
 pylint baselines
+pylint target_setting_runs
 pylint reference_submissions
 pylint submission_runner.py
 pylint tests
