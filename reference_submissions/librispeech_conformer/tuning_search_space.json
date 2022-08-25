@@ -2,7 +2,7 @@
     "base_lr": {"feasible_points": [0.002]},
     "beta1": {"feasible_points": [0.9]},
     "beta2": {"feasible_points": [0.98]},
-    "epsilon": {"feasible_points": [1e-8]},
+    "epsilon": {"feasible_points": [1e-9]},
     "weight_decay": {"feasible_points":[0.026595371563300656]},
     "grad_clip": {"feasible_points": [5.0]},
     "warmup_steps" : {"feasible_points": [11500]},

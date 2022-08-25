@@ -10,6 +10,7 @@ import functools
 import jax.lax as lax
 import numpy as np
 from absl import logging
+import operator
 from algorithmic_efficiency import spec
 
 _GRAD_CLIP_EPS = 1e-6
@@ -17,7 +18,7 @@ _GRAD_CLIP_EPS = 1e-6
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 256
+  return 128
 
 
 def create_learning_rate_fn(hparams: spec.Hyperparameters):
@@ -51,7 +52,7 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState, log_dir = None) -> spec.OptimizerState:
-  del model_params
+  model_params
   del model_state
   del rng
   workload.create_summary_writer(log_dir)
@@ -60,6 +61,7 @@ def init_optimizer_state(workload: spec.Workload,
   opt_init_fn, opt_update_fn = optimizer(hyperparameters,
                                          workload.num_train_examples)
   optimizer_state = opt_init_fn(params_zeros_like)
+  log_pytree_shape_and_statistics(model_params, workload.summary_writer)
   return jax_utils.replicate(optimizer_state), opt_update_fn
 
 @functools.partial(
@@ -110,6 +112,25 @@ def pmapped_train_step(workload,
 
   return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
 
+def _summary_str(param):
+  total_norm = jnp.linalg.norm(param.reshape(-1))
+  return '{} - {} - {}'.format(str(param.shape), param.size, total_norm)
+
+
+def log_pytree_shape_and_statistics(pytree, writer):
+  """Logs the shape and norm of every array in the pytree."""
+  if not pytree:
+    logging.info('Empty pytree')
+    return
+  logging.info('Printing model param shapes.')
+  shape_dict = jax.tree_map(_summary_str, pytree)
+  
+  logging.info(shape_dict.pretty_repr())
+  writer.text('model', '{}'.format(shape_dict.pretty_repr()), 0)
+                                            
+  total_params = jax.tree_util.tree_reduce(operator.add, jax.tree_map(lambda x: x.size, pytree))
+  writer.text('num_params', '{}'.format(total_params), 0)
+
 
 def update_params(
     workload: spec.Workload,
@@ -128,6 +149,8 @@ def update_params(
   del current_params_types
   del eval_results
   del loss_type
+
+  #log_pytree_and_statistics(jax_utils.unreplicate(current_param_container))
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
