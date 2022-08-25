@@ -62,7 +62,7 @@ def get_criteo1tb_dataset(split: str,
       block_length=per_device_batch_size // 8,
       num_parallel_calls=128,
       deterministic=False)
-  ds = ds.batch(per_device_batch_size, drop_remainder=False)
+  ds = ds.batch(per_device_batch_size, drop_remainder=is_training)
   ds = ds.map(_parse_example_fn, num_parallel_calls=16)
   if num_batches is not None:
     ds = ds.take(num_batches)
