@@ -20,30 +20,13 @@ def get_batch_size(workload_name):
   del workload_name
   return 128
 
-
-def create_learning_rate_fn(hparams: spec.Hyperparameters):
-  """Create learning rate schedule."""
-  base_learning_rate = hparams.base_lr
-  warmup_fn = optax.linear_schedule(
-      init_value=0.,
-      end_value=base_learning_rate,
-      transition_steps=hparams.warmup_steps)
-  cosine_steps = max(hparams.num_training_steps - hparams.warmup_steps, 1)
-  cosine_fn = optax.cosine_decay_schedule(
-      init_value=base_learning_rate,
-      decay_steps=cosine_steps)
-  schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, cosine_fn],
-      boundaries=[hparams.warmup_steps])
-  return schedule_fn
-
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
-  learning_rate_fn = create_learning_rate_fn(hyperparameters)
-  opt_init_fn, opt_update_fn = optax.adamw(
+  opt_init_fn, opt_update_fn = optax.inject_hyperparams(optax.adamw)(
       b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
       eps=hyperparameters.epsilon,
-      learning_rate=learning_rate_fn)
+      weight_decay=hyperparameters.weight_decay,
+      learning_rate=0.0)
   return opt_init_fn, opt_update_fn
 
 
@@ -64,10 +47,36 @@ def init_optimizer_state(workload: spec.Workload,
   log_pytree_shape_and_statistics(model_params, workload.summary_writer)
   return jax_utils.replicate(optimizer_state), opt_update_fn
 
+def l2_regularization(params, l2_decay_rank_threshold):
+  """Computes the squared l2 norm of the given parameters.
+
+  This function will only filter for parameters with
+  rank >= l2_decay_rank_threshold. So if this threshold is set to 2, then all
+  1d (and lower) parameter arrays, including all bias and batch norm params,
+  will be ignored in this computation.
+
+
+  Args:
+    params: Pytree containing parameters.
+    l2_decay_rank_threshold: The calculation will only include parameters with
+       param.ndim >= l2_decay_rank_threshold. Set to 2 to ignore all bias and
+       batch_norm params in the model.
+
+  Returns:
+    weight_l2: the squared l2 norm of all params matching the threshold.
+  """
+  weight_penalty_params = jax.tree_leaves(params)
+  weight_l2 = sum([
+      jnp.sum(x**2)
+      for x in weight_penalty_params
+      if x.ndim >= l2_decay_rank_threshold
+  ])
+  return weight_l2
+
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, 0),
+    in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
     static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
@@ -76,7 +85,8 @@ def pmapped_train_step(workload,
                        current_param_container,
                        hyperparameters,
                        batch,
-                       rng):
+                       rng, lr):
+  optimizer_state.hyperparams['learning_rate'] = lr
 
   def _loss_fn(params):
     """loss function used for training."""
@@ -90,22 +100,20 @@ def pmapped_train_step(workload,
         {'params' : params_rng, 'dropout' : dropout_rng},
         update_batch_norm=True)
 
-    loss = jnp.mean(workload.loss_fn(logits, logit_paddings, batch['targets'], batch['target_paddings']))
+    loss = workload.loss_fn(logits, logit_paddings, batch['targets'], batch['target_paddings'])
     return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(current_param_container)
-  grad = lax.pmean(grad, axis_name='batch')
+  loss, grad = lax.pmean((loss, grad), axis_name='batch')
 
   grad_clip = hyperparameters.grad_clip
-  grad_norm = jnp.sqrt(sum([
-      jnp.sum(x**2)
-      for x in jax.tree_leaves(grad)
-  ]))
+  grad_norm = jnp.sqrt(l2_regularization(grad, 0))
   scaled_grad = jax.tree_map(
       lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
   grad = jax.lax.cond(grad_norm > grad_clip, lambda _: scaled_grad,
                       lambda _: grad, None)
+
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
@@ -151,15 +159,16 @@ def update_params(
   del loss_type
 
   #log_pytree_and_statistics(jax_utils.unreplicate(current_param_container))
-
+  lr = workload.get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, per_device_rngs)
-  logging.info('{}) loss = {}, grad_norm = {}'.format(global_step, loss.mean(), grad_norm.mean()))
+      current_param_container, hyperparameters, batch, per_device_rngs, lr)
+  logging.info('{}) loss = {}, grad_norm = {} lr = {}'.format(global_step, loss.mean(), grad_norm.mean(), lr))
   workload.summary_writer.scalar('loss', loss.mean(), global_step)
   workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
+  workload.summary_writer.scalar('learning_rate', lr, global_step)
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

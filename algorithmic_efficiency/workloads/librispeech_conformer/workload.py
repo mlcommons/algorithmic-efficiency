@@ -92,7 +92,18 @@ class BaseLibrispeechWorkload(spec.Workload):
                                cache,
                                repeat_final_dataset,
                                num_batches)
-
+   
+  def get_learning_rate(self, step, hyperparams):
+    warmup_steps = hyperparams.warmup_steps
+    current_lr = 0.0
+    if step < warmup_steps:
+      current_lr = (step * hyperparams.base_lr)/warmup_steps
+    else:
+      decay_factor = (1 + np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+      current_lr = hyperparams.base_lr * decay_factor
+    
+    return current_lr
+  
   def shard(self, batch, n_devices=None):    
     if n_devices is None:
       n_devices = jax.local_device_count()

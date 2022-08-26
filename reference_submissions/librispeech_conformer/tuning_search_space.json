@@ -3,9 +3,9 @@
     "beta1": {"feasible_points": [0.9]},
     "beta2": {"feasible_points": [0.98]},
     "epsilon": {"feasible_points": [1e-9]},
-    "weight_decay": {"feasible_points":[0.026595371563300656]},
+    "weight_decay": {"feasible_points":[0.0]},
     "grad_clip": {"feasible_points": [5.0]},
-    "warmup_steps" : {"feasible_points": [11500]},
-    "num_training_steps" : {"feasible_points": [150000]}
+    "warmup_steps" : {"feasible_points": [10000]},
+    "training_steps" : {"feasible_points": [100000]}
 }
 
