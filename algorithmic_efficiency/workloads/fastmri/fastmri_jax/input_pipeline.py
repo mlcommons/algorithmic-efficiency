@@ -149,13 +149,13 @@ def _create_generator(filename):
       _h5_to_examples, args=(filename,), output_signature=signature)
 
 
-def _pad_zeros_like(per_host_batch_size, x):
+def _pad_zeros_like(global_batch_size, x):
   shape = x.shape[1:]
-  pad_size = per_host_batch_size - x.shape[0]
+  pad_size = global_batch_size - x.shape[0]
   return tf.zeros((pad_size, *shape), x.dtype)
 
 
-def load_fastmri_split(per_host_batch_size,
+def load_fastmri_split(global_batch_size,
                        split,
                        data_dir,
                        shuffle_rng,
@@ -167,15 +167,15 @@ def load_fastmri_split(per_host_batch_size,
   NOTE: fastMRI has fixed randomness for eval.
 
   Args:
-    per_host_batch_size: The batch size returned by the data pipeline.
-    split: One of ['train', 'eval_train', 'val'].
+    global_batch_size: The global batch size returned by the data pipeline.
+    split: One of ['train', 'eval_train', 'validation'].
     data_dir: The location of the data on disk.
     shuffle_rng: The RNG used to shuffle the split.
     num_batches: Number of batches to iterate over.
   Returns:
     A `tf.data.Dataset`.
   """
-  if split not in ['train', 'eval_train', 'val']:
+  if split not in ['train', 'eval_train', 'validation']:
     raise ValueError('Unrecognized split {}'.format(split))
 
   # NOTE(dsuo): we split on h5 files, but each h5 file has some number of slices
@@ -195,7 +195,7 @@ def load_fastmri_split(per_host_batch_size,
 
   if split in ['train', 'eval_train']:
     data_dir = os.path.join(data_dir, _TRAIN_DIR)
-  else:  # split == 'val'
+  else:  # split == 'validation'
     data_dir = os.path.join(data_dir, _VAL_DIR)
 
   h5_paths = [os.path.join(data_dir, path) for path in listdir(data_dir)
@@ -223,12 +223,12 @@ def load_fastmri_split(per_host_batch_size,
 
   if split == 'train':
     ds = ds.shuffle(
-        16 * per_host_batch_size,
+        16 * global_batch_size,
         seed=shuffle_rng[0],
         reshuffle_each_iteration=True)
     ds = ds.repeat()
 
-  ds = ds.batch(per_host_batch_size, drop_remainder=False)
+  ds = ds.batch(global_batch_size, drop_remainder=False)
 
   if split != 'train':
     ds = ds.cache()
@@ -244,13 +244,13 @@ def load_fastmri_split(per_host_batch_size,
 
   for batch in iter(ds):
     actual_batch_size = batch['inputs'].shape[0]
-    if actual_batch_size != per_host_batch_size:
+    if actual_batch_size != global_batch_size:
       batch = jax.tree_map(
-          functools.partial(_pad_zeros_like, per_host_batch_size), batch)
+          functools.partial(_pad_zeros_like, global_batch_size), batch)
       batch['weights'] = np.concatenate(
           (np.ones((actual_batch_size,)),
-           np.zeros((per_host_batch_size - actual_batch_size,))))
+           np.zeros((global_batch_size - actual_batch_size,))))
     else:
-      batch['weights'] = np.ones((per_host_batch_size,))
+      batch['weights'] = np.ones((global_batch_size,))
     batch = data_utils.shard_numpy_ds(batch)
     yield batch

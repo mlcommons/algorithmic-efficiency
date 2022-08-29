@@ -148,18 +148,10 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     self._model = models.UNet()
 
   @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
   def model_params_types(self):
     """The shapes of the parameters in the workload model."""
     if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
+      self._param_types = param_utils.jax_param_types(self._param_shapes)
     return self._param_types
 
   def build_input_queue(self,
@@ -171,8 +163,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                         repeat_final_dataset: Optional[bool] = None,
                         num_batches: Optional[int] = None):
     del cache
-    per_host_batch_size = global_batch_size // jax.num_local_devices()
-    return input_pipeline.load_fastmri_split(per_host_batch_size,
+    return input_pipeline.load_fastmri_split(global_batch_size,
                                              split,
                                              data_dir,
                                              data_rng,

@@ -61,7 +61,7 @@ def init_optimizer_state(workload: spec.Workload,
     jax.pmap,
     axis_name='batch',
     in_axes=(None, None, 0, 0, None, 0, 0),
-    static_broadcasted_argnums=(0, 1))
+    static_broadcasted_argnums=(0, 1, 4))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        optimizer_state,
