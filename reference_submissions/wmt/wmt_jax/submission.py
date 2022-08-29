@@ -4,8 +4,6 @@ import functools
 from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
-from flax import linen as nn
-from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import optax
@@ -98,49 +96,32 @@ def init_optimizer_state(workload: spec.Workload,
 
 @functools.partial(
     jax.pmap,
-    in_axes=(None, None, 0, 0, 0, None, 0),
+    in_axes=(None, None, 0, 0, 0, 0),
     axis_name='batch',
-    static_broadcasted_argnums=(0, 1, 5))
+    static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        optimizer_state,
                        current_param_container,
                        batch,
-                       hyperparameters,
                        dropout_rng):
   """Perform a single training step."""
 
-  def loss_fn(params):
+  def _loss_fn(params):
     """Loss function used for training."""
     logits, _ = workload.model_fn(
-      params,
-      batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.TRAIN,
-      rng=dropout_rng,
-      update_batch_norm=False)
-    vocab_size = logits.shape[-1]
-    if hasattr(hyperparameters, 'label_smoothing'):
-      label_smoothing = hyperparameters.label_smoothing
-    else:
-      label_smoothing = 0.1
-    confidence = 1.0 - label_smoothing
-    low_confidence = (1.0 - confidence) / (vocab_size - 1)
-    normalizing_constant = -(
-        confidence * jnp.log(confidence) +
-        (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
+        params,
+        batch,
+        model_state=None,
+        mode=spec.ForwardPassMode.TRAIN,
+        rng=dropout_rng,
+        update_batch_norm=False)
     targets = batch['targets']
-    weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
-    soft_targets = common_utils.onehot(
-        targets, vocab_size, on_value=confidence, off_value=low_confidence)
-    loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
-    loss = loss - normalizing_constant
-    loss = loss * weights
-    normalizing_factor = weights.sum()
-    mean_loss = loss.sum() / normalizing_factor
-    return mean_loss
+    weights = jnp.where(targets > 0, 1.0, 0.0)
+    loss = (workload.loss_fn(targets, logits) * weights).sum() / weights.sum()
+    return loss
 
-  grad_fn = jax.value_and_grad(loss_fn)
+  grad_fn = jax.value_and_grad(_loss_fn)
   _, grad = grad_fn(current_param_container)
   grad = jax.lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(
@@ -167,6 +148,7 @@ def update_params(
   del eval_results
   del global_step
   del model_state
+  del hyperparameters
   del loss_type
 
   optimizer_state, opt_update_fn = optimizer_state
@@ -177,7 +159,6 @@ def update_params(
       optimizer_state,
       current_param_container,
       batch,
-      hyperparameters,
       dropout_rngs)
   return (new_optimizer_state, opt_update_fn), updated_params, None
 
