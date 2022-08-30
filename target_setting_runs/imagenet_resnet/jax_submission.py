@@ -26,13 +26,12 @@ def get_batch_size(workload_name):
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    in_axes=(None, None, 0, 0, None, 0, 0, 0),
+    in_axes=(None, None, 0, 0, 0, 0, 0),
     static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        model_state,
                        optimizer_state,
-                       lr,
                        current_param_container,
                        batch,
                        rng):
@@ -53,8 +52,6 @@ def pmapped_train_step(workload,
   aux, grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
   new_model_state, _ = aux[1]
-  # Inject learning rate into optimizer state.
-  optimizer_state.hyperparams['learning_rate'] = lr
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
@@ -78,19 +75,13 @@ def update_params(workload: spec.Workload,
   del hyperparameters
   del loss_type
   del eval_results
+  del global_step
 
   optimizer_state, opt_update_fn = optimizer_state
-  lr_schedule_fn = optimizer_state['lr_schedule_fn']
-  optimizer_state = optimizer_state['optimizer_state']
 
-  lr = lr_schedule_fn(global_step)
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
-      workload, opt_update_fn, model_state, optimizer_state, lr,
+      workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, per_device_rngs)
-
-  new_optimizer_state = {
-      'optimizer_state': new_optimizer_state, 'lr_schedule_fn': lr_schedule_fn
-  }
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state

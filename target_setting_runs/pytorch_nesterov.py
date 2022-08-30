@@ -34,7 +34,7 @@ def init_optimizer_state(workload: spec.Workload,
   # PyTorch's LambdaLR expects the lr_lambda fn to return a factor which will
   # be multiplied with the base lr, so we have to divide by it here.
   def _lr_lambda(step: int) -> float:
-    return lr_schedule_fn(step) / hyperparameters.learning_rate
+    return lr_schedule_fn(step).item() / hyperparameters.learning_rate
 
   optimizer_state['scheduler'] = LambdaLR(
       optimizer_state['optimizer'], lr_lambda=_lr_lambda)
