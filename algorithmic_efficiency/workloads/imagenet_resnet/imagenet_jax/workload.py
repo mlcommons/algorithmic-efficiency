@@ -22,13 +22,6 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def __init__(self):
-    super().__init__()
-    self._param_shapes = None
-    self._param_types = None
-    self.epoch_metrics = []
-    self._eval_iters = {}
-
   def build_input_queue(self,
                         data_rng: spec.RandomState,
                         split: str,

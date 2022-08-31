@@ -28,10 +28,6 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def __init__(self):
-    self._param_types = None
-    self._eval_iters = {}
-
   @property
   def param_shapes(self):
     if self._param_shapes is None:
