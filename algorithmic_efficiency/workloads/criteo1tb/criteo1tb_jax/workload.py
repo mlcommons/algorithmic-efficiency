@@ -8,6 +8,7 @@ import flax
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+import optax
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -24,7 +25,7 @@ _VOCAB_SIZES = tuple([1024 * 128] * 26)
 # we can compute AUC metrics.
 @flax.struct.dataclass
 class EvalMetrics(clu_metrics.Collection):
-  loss: clu_metrics.Average.from_output("loss")
+  loss: clu_metrics.Average.from_output('loss')
 
 
 class Criteo1TbDlrmSmallWorkload(spec.Workload):
@@ -177,9 +178,11 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
+      label_smoothing: float = 0.0,
       mask_batch: Optional[spec.Tensor] = None) -> spec.Tensor:
+    smoothed_targets = optax.smooth_labels(label_batch, label_smoothing)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits=logits_batch, targets=label_batch)
+        logits=logits_batch, targets=smoothed_targets)
     if mask_batch is not None:
       weighted_losses = per_example_losses * mask_batch
       normalization = mask_batch.sum()
