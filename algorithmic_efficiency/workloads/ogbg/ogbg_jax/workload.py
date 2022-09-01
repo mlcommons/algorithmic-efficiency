@@ -6,6 +6,7 @@ from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import jraph
+import optax
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -68,10 +69,12 @@ class OgbgWorkload(BaseOgbgWorkload):
                                train=train)
     return logits, None
 
-  def _binary_cross_entropy_with_mask(self,
-                                      labels: jnp.ndarray,
-                                      logits: jnp.ndarray,
-                                      mask: jnp.ndarray) -> jnp.ndarray:
+  def _binary_cross_entropy_with_mask(
+      self,
+      labels: jnp.ndarray,
+      logits: jnp.ndarray,
+      mask: jnp.ndarray,
+      label_smoothing: float = 0.0) -> jnp.ndarray:
     """Binary cross entropy loss for logits, with masked elements."""
     if not (logits.shape == labels.shape == mask.shape):  # pylint: disable=superfluous-parens
       raise ValueError(
@@ -84,12 +87,16 @@ class OgbgWorkload(BaseOgbgWorkload):
     # We mask over the loss for invalid targets later.
     labels = jnp.where(mask, labels, -1)
 
+    # Apply label smoothing.
+    smoothed_labels = optax.smooth_labels(labels, label_smoothing)
+
     # Numerically stable implementation of BCE loss.
     # This mimics TensorFlow's tf.nn.sigmoid_cross_entropy_with_logits().
     positive_logits = (logits >= 0)
     relu_logits = jnp.where(positive_logits, logits, 0)
     abs_logits = jnp.where(positive_logits, logits, -logits)
-    return relu_logits - (logits * labels) + (jnp.log(1 + jnp.exp(-abs_logits)))
+    return relu_logits - (logits * smoothed_labels) + (
+        jnp.log(1 + jnp.exp(-abs_logits)))
 
   def _eval_metric(self, labels, logits, masks):
     per_example_losses = self.loss_fn(labels, logits, masks)

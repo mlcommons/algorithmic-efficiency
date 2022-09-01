@@ -1,6 +1,6 @@
 import itertools
 import math
-from typing import Dict, Optional
+from typing import Dict
 
 from absl import flags
 import jax
@@ -91,13 +91,16 @@ class BaseOgbgWorkload(spec.Workload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor]) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     per_example_losses = self._binary_cross_entropy_with_mask(
-        labels=label_batch, logits=logits_batch, mask=mask_batch)
+        labels=label_batch,
+        logits=logits_batch,
+        mask=mask_batch,
+        label_smoothing=label_smoothing)
     return per_example_losses
 
   # Return whether or not a key in spec.ParameterContainer is the output layer

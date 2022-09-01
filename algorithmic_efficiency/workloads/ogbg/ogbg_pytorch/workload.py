@@ -169,10 +169,12 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     return logits, None
 
-  def _binary_cross_entropy_with_mask(self,
-                                      labels: torch.Tensor,
-                                      logits: torch.Tensor,
-                                      mask: torch.Tensor) -> torch.Tensor:
+  def _binary_cross_entropy_with_mask(
+      self,
+      labels: torch.Tensor,
+      logits: torch.Tensor,
+      mask: torch.Tensor,
+      label_smoothing: float = 0.0) -> torch.Tensor:
     """Binary cross entropy loss for logits, with masked elements."""
     if not (logits.shape == labels.shape == mask.shape):  # pylint: disable=superfluous-parens
       raise ValueError(
@@ -185,12 +187,17 @@ class OgbgWorkload(BaseOgbgWorkload):
     # We mask over the loss for invalid targets later.
     labels = torch.where(mask, labels, -1)
 
+    # Apply label_smoothing.
+    num_classes = labels.shape[-1]
+    smoothed_labels = ((1.0 - label_smoothing) * labels +
+                       label_smoothing / num_classes)
+
     # Numerically stable implementation of BCE loss.
     # This mimics TensorFlow's tf.nn.sigmoid_cross_entropy_with_logits().
     positive_logits = (logits >= 0)
     relu_logits = torch.where(positive_logits, logits, 0)
     abs_logits = torch.where(positive_logits, logits, -logits)
-    return relu_logits - (logits * labels) + (
+    return relu_logits - (logits * smoothed_labels) + (
         torch.log(1 + torch.exp(-abs_logits)))
 
   def _eval_metric(self, labels, logits, masks):
