@@ -224,7 +224,8 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       label_batch: Tensor,  # Dense (not one-hot) labels.
       logits_batch: Tensor,
-      mask_batch: Optional[Tensor] = None) -> Tensor:  # differentiable
+      mask_batch: Optional[Tensor] = None,
+      label_smoothing: float = 0.0) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
