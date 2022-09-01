@@ -3,12 +3,10 @@ import contextlib
 from typing import Dict, Optional, Tuple
 
 from absl import logging
-import jax.dlpack
-import numpy as np
+import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
@@ -22,22 +20,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
-
-class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
-
-  def forward(self, input, target, label_smoothing=0.1):  # pylint: disable=redefined-builtin
-    vocab_size = input.shape[-1]
-    confidence = 1.0 - label_smoothing
-    low_confidence = (1.0 - confidence) / (vocab_size - 1)
-    normalizing_constant = -(
-        confidence * np.log(confidence) +
-        (vocab_size - 1) * low_confidence * np.log(low_confidence + 1e-20))
-    one_hot_targets = F.one_hot(target, num_classes=vocab_size)
-    soft_targets = torch.where(one_hot_targets == 1, confidence, low_confidence)
-    loss = super().forward(
-        input=input.transpose(-2, -1), target=soft_targets.transpose(-2, -1))
-    return loss - normalizing_constant
 
 
 class WmtWorkload(BaseWmtWorkload):
@@ -64,11 +46,12 @@ class WmtWorkload(BaseWmtWorkload):
       raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
                        (str(logits.shape), str(targets.shape)))
 
-    loss_fn = CrossEntropyLoss(reduction='none')
+    loss_fn = torch.nn.CrossEntropyLoss(
+        reduction='none', label_smoothing=label_smoothing)
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
       loss_fn = torch.nn.DataParallel(loss_fn)
 
-    loss = loss_fn(logits, targets, label_smoothing=label_smoothing)
+    loss = loss_fn(logits, targets)
     if weights is not None:
       loss = loss * weights
     return loss
