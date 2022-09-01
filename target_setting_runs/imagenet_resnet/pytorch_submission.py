@@ -30,7 +30,6 @@ def update_params(workload: spec.Workload,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
-  del hyperparameters
   del loss_type
   del eval_results
   del global_step
@@ -48,7 +47,9 @@ def update_params(workload: spec.Workload,
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      label_batch=batch['targets'], logits_batch=logits_batch).mean()
+      label_batch=batch['targets'],
+      logits_batch=logits_batch,
+      label_smoothing=hyperparameters.label_smoothing).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()

@@ -32,7 +32,6 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del eval_results
   del loss_type
-  del hyperparameters
   del global_step
 
   current_model = current_param_container
@@ -49,7 +48,9 @@ def update_params(workload: spec.Workload,
 
   targets = batch['targets']
   weights = torch.where(targets > 0, 1.0, 0.0)
-  loss = (workload.loss_fn(targets, logits) * weights).sum() / weights.sum()
+  loss = (workload.loss_fn(
+      targets, logits, label_smoothing=hyperparameters.label_smoothing) *
+          weights).sum() / weights.sum()
   loss.backward()
 
   optimizer_state['optimizer'].step()
