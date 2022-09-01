@@ -32,8 +32,7 @@ class _Model(nn.Module):
                       torch.nn.Linear(input_size, num_hidden, bias=True)),
                      ('layer1_sig', torch.nn.Sigmoid()),
                      ('layer2',
-                      torch.nn.Linear(num_hidden, num_classes, bias=True)),
-                     ('output', torch.nn.LogSoftmax(dim=1))]))
+                      torch.nn.Linear(num_hidden, num_classes, bias=True))]))
 
   def forward(self, x: spec.Tensor):
     x = x.view(x.size()[0], -1)
@@ -170,10 +169,15 @@ class MnistWorkload(BaseMnistWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-
-    return F.nll_loss(logits_batch, label_batch, reduction='none')
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    return F.cross_entropy(
+        logits_batch,
+        label_batch,
+        reduction='none',
+        label_smoothing=label_smoothing)
 
   def _eval_model(
       self,

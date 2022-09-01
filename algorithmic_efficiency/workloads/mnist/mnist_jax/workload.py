@@ -8,6 +8,7 @@ from flax import linen as nn
 import jax
 from jax import lax
 import jax.numpy as jnp
+import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -29,7 +30,6 @@ class _Model(nn.Module):
     x = nn.Dense(features=num_hidden, use_bias=True)(x)
     x = nn.sigmoid(x)
     x = nn.Dense(features=num_classes, use_bias=True)(x)
-    x = nn.log_softmax(x)
     return x
 
 
@@ -149,10 +149,13 @@ class MnistWorkload(BaseMnistWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
-    return -jnp.sum(one_hot_targets * nn.log_softmax(logits_batch), axis=-1)
+    smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
+    return -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
 
   @functools.partial(
       jax.pmap,
