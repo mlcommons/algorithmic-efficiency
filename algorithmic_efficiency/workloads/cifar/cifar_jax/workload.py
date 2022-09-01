@@ -8,6 +8,7 @@ from flax import linen as nn
 import jax
 from jax import lax
 import jax.numpy as jnp
+import optax
 import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import param_utils
@@ -153,6 +154,8 @@ class CifarWorkload(BaseCifarWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    del mode
+    del rng
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
@@ -171,10 +174,13 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
-    return -jnp.sum(one_hot_targets * nn.log_softmax(logits_batch), axis=-1)
+    smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
+    return -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))
