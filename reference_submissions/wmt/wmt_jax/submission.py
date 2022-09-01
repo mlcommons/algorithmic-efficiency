@@ -118,7 +118,8 @@ def pmapped_train_step(workload,
         update_batch_norm=False)
     targets = batch['targets']
     weights = jnp.where(targets > 0, 1.0, 0.0)
-    loss = (workload.loss_fn(targets, logits) * weights).sum() / weights.sum()
+    loss = (workload.loss_fn(targets, logits, label_smoothing=0.1) *
+            weights).sum() / weights.sum()
     return loss
 
   grad_fn = jax.value_and_grad(_loss_fn)
