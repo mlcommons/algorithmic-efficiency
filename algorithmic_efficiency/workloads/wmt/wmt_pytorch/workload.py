@@ -51,7 +51,8 @@ class WmtWorkload(BaseWmtWorkload):
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
       loss_fn = torch.nn.DataParallel(loss_fn)
 
-    loss = loss_fn(logits, targets)
+    # PyTorch loss functions expect the class dim directly after the batch dim.
+    loss = loss_fn(logits.transpose(-2, -1), targets)
     if weights is not None:
       loss = loss * weights
     return loss
