@@ -442,8 +442,6 @@ class TransformerDecoder(nn.Module):
               memory: Tensor,
               tgt_mask: Optional[Tensor] = None,
               memory_mask: Optional[Tensor] = None,
-              tgt_key_padding_mask: Optional[Tensor] = None,
-              memory_key_padding_mask: Optional[Tensor] = None,
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None) -> Tensor:
@@ -453,8 +451,6 @@ class TransformerDecoder(nn.Module):
       memory: the sequence from the last layer of the encoder (required).
       tgt_mask: the mask for the tgt sequence (optional).
       memory_mask: the mask for the memory sequence (optional).
-      tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
-      memory_key_padding_mask: the mask for the memory keys per batch (optional)
       decode: wether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
     Shape:
@@ -468,8 +464,6 @@ class TransformerDecoder(nn.Module):
           memory,
           tgt_mask=tgt_mask,
           memory_mask=memory_mask,
-          tgt_key_padding_mask=tgt_key_padding_mask,
-          memory_key_padding_mask=memory_key_padding_mask,
           decode=decode,
           max_len=max_len,
           cache=cache,
@@ -565,8 +559,6 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
               memory: Tensor,
               tgt_mask: Optional[Tensor] = None,
               memory_mask: Optional[Tensor] = None,
-              tgt_key_padding_mask: Optional[Tensor] = None,
-              memory_key_padding_mask: Optional[Tensor] = None,
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
@@ -577,8 +569,6 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
       memory: the sequence from the last layer of the encoder (required).
       tgt_mask: the mask for the tgt sequence (optional).
       memory_mask: the mask for the memory sequence (optional).
-      tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
-      memory_key_padding_mask: the mask for the memory keys per batch (optional)
       decode: wether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
     Shape:
@@ -591,27 +581,25 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
       sa_out, cache = self._sa_block(
           self.norm1(x),
           tgt_mask,
-          tgt_key_padding_mask,
           decode=decode,
           max_len=max_len,
           cache=cache,
           index=index)
       x = x + sa_out
       x = x + self._mha_block(
-          self.norm2(x), memory, memory_mask, memory_key_padding_mask)
+          self.norm2(x), memory, memory_mask, None)
       x = x + self._ff_block(self.norm3(x))
     else:
       sa_out, cache = self._sa_block(
           x,
           tgt_mask,
-          tgt_key_padding_mask,
           decode=decode,
           max_len=max_len,
           cache=cache,
           index=index)
       x = self.norm1(x + sa_out)
       x = self.norm2(
-          x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
+          x + self._mha_block(x, memory, memory_mask, None))
       x = self.norm3(x + self._ff_block(x))
 
     return x, cache
@@ -620,7 +608,6 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
   def _sa_block(self,
                 x: Tensor,
                 attn_mask: Optional[Tensor],
-                key_padding_mask: Optional[Tensor],
                 decode: bool = False,
                 max_len: Optional[int] = None,
                 cache: Optional[dict] = None,
@@ -630,7 +617,6 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         x,
         x,
         attn_mask=attn_mask,
-        key_padding_mask=key_padding_mask,
         need_weights=False,
         decode=decode,
         max_len=max_len,
@@ -745,14 +731,8 @@ class MultiheadAttention(nn.MultiheadAttention):
           sequence length, :math:`N` is the batch size, and :math:`E_v` is the
           value embedding dimension ``vdim``.
           See "Attention Is All You Need" for more details.
-      key_padding_mask: If specified, a mask of shape :math:`(N, S)` indicating
-          which elements within ``key`` to ignore for the purpose of attention
-          (i.e. treat as "padding"). For unbatched `query`, shape should be
-          :math:`(S)`. Binary and byte masks are supported.
-          For a binary mask, a ``True`` value indicates that the corresponding
-          ``key`` value will be ignored for the purpose of attention.
-          For a byte mask, a non-zero value indicates that the corresponding
-          ``key`` value will be ignored.
+      key_padding_mask: Dummy argument to make MultiheadAttention compatible
+          with standard PyTorch TransformerEncoder implementation.
       need_weights: If specified, returns ``attn_output_weights`` in addition
           to ``attn_outputs``.Default: ``True``.
       attn_mask: If specified, a 2D or 3D mask preventing attention to certain
@@ -791,6 +771,7 @@ class MultiheadAttention(nn.MultiheadAttention):
       .. note::
           `batch_first` argument is ignored for unbatched inputs.
     """
+    del key_padding_mask
     is_batched = query.dim() == 3
     if self.batch_first and is_batched:
       # make sure that the transpose op does not affect the "is" property
