@@ -36,7 +36,7 @@ def get_librispeech_dataset(split_name: str,
       ids.append('{}/{}'.format(split, example[1]))
 
   def load_data(id):
-    id = id.decode("utf-8") 
+    id = id.decode('utf-8') 
     audio = np.load('{}/{}_audio.npy'.format(data_dir, id))
     targets = np.load('{}/{}_targets.npy'.format(data_dir, id))
 

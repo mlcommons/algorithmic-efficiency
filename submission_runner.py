@@ -62,11 +62,11 @@ WORKLOADS = {
     },
     'librispeech_conformer': {
         'workload_path': 'librispeech_conformer/librispeech',
-        'workload_class_name': 'LibriSpeechConformerWorkload'
+        'workload_class_name': 'LibriSpeechConformerWorkload',
     },
     'librispeech_deepspeech': {
         'workload_path': 'librispeech_deepspeech/librispeech',
-        'workload_class_name': 'LibriSpeechDeepSpeechWorkload'
+        'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
     },
     'mnist': {
         'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
@@ -196,9 +196,14 @@ def train_once(workload: spec.Workload,
                                            model_params,
                                            model_state,
                                            hyperparameters,
-                                           opt_init_rng, 
-                                           log_dir,
-                                           tokenizer_vocab_path)
+                                           opt_init_rng,)
+  
+  if log_dir:
+    logging.info('Initializing tensorboard summary writer')
+    workload.create_summary_writer(log_dir)
+  
+  logging.info('Initializing metrics bundle')
+  workload.init_metrics_bundle(tokenizer_vocab_path)
 
   # Bookkeeping.
   goal_reached = False

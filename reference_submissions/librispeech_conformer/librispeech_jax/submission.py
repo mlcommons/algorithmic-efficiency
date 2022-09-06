@@ -33,12 +33,9 @@ def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
-                         rng: spec.RandomState, log_dir = None, tokenizer_vocab_path = None) -> spec.OptimizerState:
+                         rng: spec.RandomState) -> spec.OptimizerState:
   del model_state
   del rng
-  
-  workload.create_summary_writer(log_dir)
-  workload.init_metrics_bundle(tokenizer_vocab_path)
 
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
