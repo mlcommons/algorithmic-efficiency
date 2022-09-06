@@ -29,22 +29,23 @@ def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
       learning_rate=0.0)
   return opt_init_fn, opt_update_fn
 
-
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
-                         rng: spec.RandomState, log_dir = None) -> spec.OptimizerState:
-  model_params
+                         rng: spec.RandomState, log_dir = None, tokenizer_vocab_path = None) -> spec.OptimizerState:
   del model_state
   del rng
+  
   workload.create_summary_writer(log_dir)
+  workload.init_metrics_bundle(tokenizer_vocab_path)
+
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   opt_init_fn, opt_update_fn = optimizer(hyperparameters,
                                          workload.num_train_examples)
   optimizer_state = opt_init_fn(params_zeros_like)
-  log_pytree_shape_and_statistics(model_params, workload.summary_writer)
+  log_pytree_shape_and_statistics(flax.jax_utils.unreplicate(model_params), workload.summary_writer)
   return jax_utils.replicate(optimizer_state), opt_update_fn
 
 def l2_regularization(params, l2_decay_rank_threshold):
@@ -97,8 +98,7 @@ def pmapped_train_step(workload,
         batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
-        {'params' : params_rng, 'dropout' : dropout_rng},
-        update_batch_norm=True)
+        {'params' : params_rng, 'dropout' : dropout_rng})
 
     loss = workload.loss_fn(logits, logit_paddings, batch['targets'], batch['target_paddings'])
     return loss, new_model_state
@@ -134,10 +134,9 @@ def log_pytree_shape_and_statistics(pytree, writer):
   shape_dict = jax.tree_map(_summary_str, pytree)
   
   logging.info(shape_dict.pretty_repr())
-  writer.text('model', '{}'.format(shape_dict.pretty_repr()), 0)
                                             
   total_params = jax.tree_util.tree_reduce(operator.add, jax.tree_map(lambda x: x.size, pytree))
-  writer.text('num_params', '{}'.format(total_params), 0)
+  print('num params = ', total_params)
 
 
 def update_params(
@@ -166,7 +165,7 @@ def update_params(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs, lr)
   logging.info('{}) loss = {}, grad_norm = {} lr = {}'.format(global_step, loss.mean(), grad_norm.mean(), lr))
-  workload.summary_writer.scalar('loss', loss.mean(), global_step)
+  workload.summary_writer.scalar('train_step_ctc_loss', loss.mean(), global_step)
   workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
   workload.summary_writer.scalar('learning_rate', lr, global_step)
 

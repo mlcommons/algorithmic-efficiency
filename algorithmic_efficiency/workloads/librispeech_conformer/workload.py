@@ -11,7 +11,6 @@ from absl import logging
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import input_pipeline
-from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 import numpy as np 
 
 import tensorflow_datasets as tfds
@@ -27,7 +26,7 @@ class BaseLibrispeechWorkload(spec.Workload):
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['train/ctc_loss'] < 0.5
+    return eval_result['test/wer'] < 0.10
 
   @property
   def target_value(self):
@@ -39,7 +38,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_train_examples(self):
-    return 28539
+    return 26594
 
   @property
   def num_eval_train_examples(self):
@@ -47,11 +46,11 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 2703
+    return 2566
 
   @property
   def num_test_examples(self):
-    return 2620
+    return 2472
 
   @property
   def train_mean(self):
@@ -67,7 +66,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 3000
+    return 60
 
   @property
   def param_shapes(self):
@@ -89,8 +88,6 @@ class BaseLibrispeechWorkload(spec.Workload):
                                split,
                                data_dir,
                                global_batch_size,
-                               cache,
-                               repeat_final_dataset,
                                num_batches)
    
   def get_learning_rate(self, step, hyperparams):
@@ -114,13 +111,51 @@ class BaseLibrispeechWorkload(spec.Workload):
 
     return jax.tree_map(_shard_array, batch)
 
+  def maybe_pad_batch(self, batch,
+                    desired_batch_size,
+                    padding_value=0.0):
+    """Zero pad the batch on the right to desired_batch_size.
+
+    All keys in the batch dictionary will have their corresponding arrays padded.
+    Will return a dictionary with the same keys.
+
+    Args:
+      batch: A dictionary mapping keys to arrays. We assume that inputs is one of
+        the keys.
+      desired_batch_size: All arrays in the dict will be padded to have first
+        dimension equal to desired_batch_size.
+      padding_value: value to be used as padding.
+
+    Returns:
+      A dictionary mapping the same keys to the padded batches. Additionally we
+      add a key representing weights, to indicate how the batch was padded.
+    """
+    batch_axis = 0
+    batch_size = batch['inputs'].shape[batch_axis]
+    batch_pad = desired_batch_size - batch_size
+
+    # Most batches will not need padding so we quickly return to avoid slowdown.
+    if batch_pad == 0:
+      new_batch = jax.tree_map(lambda x: x, batch)
+      return new_batch
+
+    def zero_pad(ar, pad_axis):
+      pw = [(0, 0)] * ar.ndim
+      pw[pad_axis] = (0, batch_pad)
+      return np.pad(ar, pw, mode='constant', constant_values=padding_value)
+
+    padded_batch = {'inputs': zero_pad(batch['inputs'], batch_axis)}
+    batch_keys = list(batch.keys())
+    batch_keys.remove('inputs')
+    for key in batch_keys:
+      padded_batch[key] = zero_pad(batch[key], 0)
+    return padded_batch
+
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
                      batch_size: int,
-                     cache: Optional[bool] = False,
-                     repeat_final_dataset: Optional[bool] = False,
                      num_batches: Optional[int] = None):
     if batch_size % jax.local_device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
@@ -128,7 +163,7 @@ class BaseLibrispeechWorkload(spec.Workload):
     train = False
 
     if split == 'train':
-      split = 'train-clean-100'
+      split = 'train-clean-100'#+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
@@ -146,13 +181,13 @@ class BaseLibrispeechWorkload(spec.Workload):
         data_rng,
         train,
         batch_size,
-        num_batches=num_batches,
-        repeat_final_dataset=repeat_final_dataset)
+        num_batches)
 
     logging.info('done loading split = {}'.format(split))
     
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
+      batch = self.maybe_pad_batch(batch, batch_size, padding_value=1.0)
       batch = self.shard(batch)
       
       yield batch

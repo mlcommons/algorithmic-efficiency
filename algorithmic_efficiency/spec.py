@@ -240,14 +240,14 @@ class Workload(metaclass=abc.ABCMeta):
   
   def create_summary_writer(self, log_dir):
       print('tensorboard summaries at {}'.format(log_dir))
-      self.summary_writer = tensorboard.SummaryWriter(log_dir)
+      self.summary_writer = tensorboard.SummaryWriter(log_dir)    
       
   def eval_model(self,
                  global_batch_size: int,
                  params: ParameterContainer,
                  model_state: ModelAuxiliaryState,
                  rng: RandomState,
-                 data_dir: str) -> Dict[str, float]:
+                 data_dir: str, global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')
     train_metrics = self._eval_model_on_split(
@@ -257,36 +257,39 @@ class Workload(metaclass=abc.ABCMeta):
         params=params,
         model_state=model_state,
         rng=rng,
-        data_dir=data_dir)
+        data_dir=data_dir,
+        global_step=global_step)
     eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     # We always require a validation set.
-    #logging.info('Evaluating on the validation split.')
-    #validation_metrics = self._eval_model_on_split(
-    #    'validation',
-    #    num_examples=self.num_validation_examples,
-    #    global_batch_size=global_batch_size,
-    #    params=params,
-    #    model_state=model_state,
-    #    rng=rng,
-    #    data_dir=data_dir)
-    #for k, v in validation_metrics.items():
-    #  eval_metrics['validation/' + k] = v
+    logging.info('Evaluating on the validation split.')
+    validation_metrics = self._eval_model_on_split(
+      'validation',
+      num_examples=self.num_validation_examples,
+      global_batch_size=global_batch_size,
+      params=params,
+      model_state=model_state,
+      rng=rng,
+      data_dir=data_dir,
+      global_step=global_step)
+    for k, v in validation_metrics.items():
+      eval_metrics['validation/' + k] = v
     # Evaluate on the test set if we have one.
-    #try:
-    #  if self.num_test_examples is not None:
-    #    logging.info('Evaluating on the test split.')
-    #    test_metrics = self._eval_model_on_split(
-    #        'test',
-    #        num_examples=self.num_test_examples,
-    #        global_batch_size=global_batch_size,
-    #        params=params,
-    #        model_state=model_state,
-    #        rng=rng,
-    #        data_dir=data_dir)
-    #    for k, v in test_metrics.items():
-    #      eval_metrics['test/' + k] = v
-    #except NotImplementedError:
-    # pass
+    try:
+      if self.num_test_examples is not None:
+        logging.info('Evaluating on the test split.')
+        test_metrics = self._eval_model_on_split(
+          'test',
+          num_examples=self.num_test_examples,
+          global_batch_size=global_batch_size,
+          params=params,
+          model_state=model_state,
+          rng=rng,
+          data_dir=data_dir,
+          global_step=global_step)
+        for k, v in test_metrics.items():
+          eval_metrics['test/' + k] = v
+    except NotImplementedError:
+      pass
     return eval_metrics
 
 

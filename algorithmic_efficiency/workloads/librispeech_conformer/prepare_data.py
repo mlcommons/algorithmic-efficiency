@@ -1,5 +1,4 @@
 """Data preprocessing for LibriSpeech.
-
 Modified from https://github.com/lsari/librispeech_100.
 """
 
@@ -11,7 +10,7 @@ import time
 import multiprocessing.dummy
 import threading
 
-import librosa
+from pydub import AudioSegment
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -97,8 +96,8 @@ def preprocess_data(data_folder, tokenizer, split):
           skipped.inc()
           continue
 
-        sound, _ = librosa.load(audio_path, sr=16000)
-        sound = np.array(sound, dtype=np.float32)
+        sound = load_audio(audio_path)
+        sound = np.array(sound, dtype=np.int64)
     
         if sound.shape[0] > AUDIO_MAX_LENGTH:
           skipped.inc()
@@ -125,7 +124,6 @@ def preprocess_data(data_folder, tokenizer, split):
   file_trans = pool.map(process, paths)
 
   file_trans = list(np.concatenate(file_trans).flat)
-  print(len(file_trans))
 
   end_time = time.time()
   elapsed_time = end_time - start_time
@@ -135,16 +133,10 @@ def preprocess_data(data_folder, tokenizer, split):
 
 
 def load_audio(audio_path):
-  sound, _ = librosa.load(audio_path, sr=16000)
-  audio_duration = librosa.get_duration(filename=f'{audio_path}')
+  audio_segment = AudioSegment.from_file(audio_path, 'flac')
+  audio = np.array(audio_segment.get_array_of_samples(), dtype=np.int64)
 
-  if len(sound.shape) > 1:
-    if sound.shape[1] == 1:
-      sound = sound.squeeze()
-    else:
-      sound = sound.mean(axis=1)  # multiple channels, average
-
-  return sound, audio_duration
+  return audio
 
 
 def load_tokenizer(model_path: str = 'spm_model.vocab',

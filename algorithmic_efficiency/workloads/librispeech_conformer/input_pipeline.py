@@ -16,8 +16,7 @@ def get_librispeech_dataset(split_name: str,
                           shuffle_rng: spec.RandomState,
                           is_training: bool,
                           global_batch_size: int,
-                          num_batches: Optional[int] = None,
-                          repeat_final_dataset: bool = False):
+                          num_batches: Optional[int] = None):
   """Get the Librispeech  dataset for a given split."""
   splits = [split_name]
 
@@ -58,7 +57,7 @@ def get_librispeech_dataset(split_name: str,
     audio, audio_paddings, targets, target_paddings = tf.numpy_function(
         func=load_data,
         inp=[id],
-        Tout=[tf.float32, tf.float32, tf.int32, tf.float32])
+        Tout=[tf.int64, tf.float32, tf.int32, tf.float32])
     
     preprocessed_example['inputs'] = audio
     preprocessed_example['input_paddings'] = audio_paddings
@@ -85,11 +84,11 @@ def get_librispeech_dataset(split_name: str,
   # divisible by the batch size.
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
 
+  if is_training:
+    ds = ds.repeat()
+  
   if num_batches is not None:
     ds = ds.take(num_batches)
-
-  if repeat_final_dataset:
-    ds = ds.repeat()
 
   ds = ds.prefetch(10)
   return ds

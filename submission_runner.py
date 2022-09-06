@@ -108,6 +108,7 @@ flags.DEFINE_enum(
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_string('summary_log_dir', '', 'Location to dump tensorboard summaries.')
+flags.DEFINE_string('tokenizer_vocab_path', '', 'Location to read tokenizer from.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
@@ -173,7 +174,9 @@ def train_once(workload: spec.Workload,
                data_selection: spec.DataSelectionFn,
                hyperparameters: Optional[spec.Hyperparameters],
                rng: spec.RandomState,
-               profiler: Profiler, log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
+               profiler: Profiler, 
+               log_dir: Optional[str] = None, 
+               tokenizer_vocab_path: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -193,7 +196,9 @@ def train_once(workload: spec.Workload,
                                            model_params,
                                            model_state,
                                            hyperparameters,
-                                           opt_init_rng, log_dir)
+                                           opt_init_rng, 
+                                           log_dir,
+                                           tokenizer_vocab_path)
 
   # Bookkeeping.
   goal_reached = False
@@ -250,7 +255,8 @@ def train_once(workload: spec.Workload,
                                                  model_params,
                                                  model_state,
                                                  eval_rng,
-                                                 data_dir)
+                                                 data_dir,
+                                                 global_step)
       logging.info('%.2fs \t%d \t%s',
                    current_time - global_start_time,
                    global_step,
@@ -275,7 +281,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None):
+                                 log_dir: Optional[str] = None, 
+                                 tokenizer_vocab_path: Optional[str]= None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -314,7 +321,7 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir)
+                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -386,7 +393,8 @@ def main(_):
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       FLAGS.summary_log_dir)
+                                       FLAGS.summary_log_dir, 
+                                       FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.profile:

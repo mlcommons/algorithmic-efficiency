@@ -3,6 +3,7 @@ import math
 from typing import Dict, Optional, Tuple
 
 from absl import flags
+from absl import logging
 import jax
 import jax.numpy as jnp
 import flax.linen as nn
@@ -10,6 +11,7 @@ from flax import jax_utils
 import numpy as np
 import functools 
 import jax.lax as lax
+import itertools
 
 import optax
 
@@ -42,9 +44,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                         params)
         model_state = jax_utils.replicate(model_state)
         params = jax_utils.replicate(params)
-        self.metrics_bundle = metrics.get_metrics_bundle()
         return params, model_state
 
+    def init_metrics_bundle(self, tokenizer_vocab_path):
+        logging.info('Initializing metrics bundle.')
+        self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
 
     def model_fn(
       self,
@@ -52,18 +56,17 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      rng: spec.RandomState = None) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
         variables = {'params': params, **model_state}
         
-        train = (mode == spec.ForwardPassMode.TRAIN)
+        is_train_mode = (mode == spec.ForwardPassMode.TRAIN)
 
-        if train:
+        if is_train_mode:
             (logits, logit_paddings), new_model_state = self._model.apply(
                 variables,
                 augmented_and_preprocessed_input_batch['inputs'],
                 augmented_and_preprocessed_input_batch['input_paddings'],
-                train,
+                is_train_mode,
                 rngs=rng, 
                 mutable=['batch_stats'])
             return (logits, logit_paddings), new_model_state
@@ -72,7 +75,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                 variables,
                 augmented_and_preprocessed_input_batch['inputs'],
                 augmented_and_preprocessed_input_batch['input_paddings'],
-                train,
+                is_train_mode,
                 mutable=False)
             return logits, logit_paddings
 
@@ -100,6 +103,70 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         return optax.ctc_loss(logits, logit_paddings, labels, label_paddings,
             blank_id)
 
+    # Adapted from lingvo's greedy decoding logic here:
+    # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138
+    def sequence_mask(self, lengths, maxlen):
+        batch_size = lengths.shape[0]
+        a = jnp.ones([batch_size, maxlen])
+        b = jnp.cumsum(a, axis=-1)
+        c = jnp.less_equal(b, lengths[:, jnp.newaxis]).astype(lengths.dtype)
+        return c
+
+    def collapse_and_remove_blanks(self, labels, seq_length, blank_id: int = 0):
+        b, t = labels.shape
+        # Zap out blank
+        blank_mask = 1 - jnp.equal(labels, blank_id)
+        labels = (labels * blank_mask).astype(labels.dtype)
+
+        # Mask labels that don't equal previous label.
+        label_mask = jnp.concatenate([
+            jnp.ones_like(labels[:, :1], dtype=jnp.int32),
+            jnp.not_equal(labels[:, 1:], labels[:, :-1])
+        ], axis=1)
+
+        # Filter labels that aren't in the original sequence.
+        maxlen = labels.shape[1]
+        seq_mask = self.sequence_mask(seq_length, maxlen=maxlen)
+        label_mask = label_mask * seq_mask
+
+        # remove repetitions from the labels
+        ulabels = label_mask * labels
+
+        # Count masks for new sequence lengths.
+        label_mask = jnp.not_equal(ulabels, 0).astype(labels.dtype)
+        new_seq_len = jnp.sum(label_mask, axis=1)
+
+        # Mask indexes based on sequence length mask.
+        new_maxlen = maxlen
+        idx_mask = self.sequence_mask(new_seq_len, maxlen=new_maxlen)
+
+        # Flatten everything and mask out labels to keep and sparse indices.
+        flat_labels = jnp.reshape(ulabels, [-1])
+        flat_idx_mask = jnp.reshape(idx_mask, [-1])
+
+        indices = jnp.nonzero(flat_idx_mask, size=b * t)[0]
+        values = jnp.nonzero(flat_labels, size=b * t)[0]
+        updates = jnp.take_along_axis(flat_labels, values, axis=-1)
+
+        # Scatter to flat shape.
+        flat = jnp.zeros(flat_idx_mask.shape).astype(labels.dtype)
+        flat = flat.at[indices].set(updates)
+        # 0'th position in the flat array gets clobbered by later padded updates,
+        # so reset it here to its original value
+        flat = flat.at[0].set(updates[0])
+
+        # Reshape back to square batch.
+        batch_size = labels.shape[0]
+        new_shape = [batch_size, new_maxlen]
+        return (jnp.reshape(flat, new_shape).astype(labels.dtype),
+                new_seq_len.astype(seq_length.dtype))
+
+    def greedy_decode(self, logits, logit_paddings):
+        per_frame_max = jnp.argmax(logits, axis=-1)
+        seqlen = jnp.sum(1.0 - logit_paddings, axis=-1)
+        hyp, _ = self.collapse_and_remove_blanks(per_frame_max, seqlen, blank_id=0)
+        hyp_paddings = jnp.equal(hyp, 0).astype(jnp.int32)
+        return hyp, hyp_paddings
 
     @functools.partial(
       jax.pmap,
@@ -116,11 +183,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             params,
             batch,
             model_state,
-            spec.ForwardPassMode.EVAL,
-            rng,
-            update_batch_norm=False)
+            spec.ForwardPassMode.EVAL)
+        
+        decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
         normalized_loss = self.loss_fn(logits, logit_paddings, batch['targets'], batch['target_paddings'])
-        return self.metrics_bundle.gather_from_model_output(normalized_loss=normalized_loss)        
+        
+        return self.metrics_bundle.gather_from_model_output(
+            normalized_loss=normalized_loss, 
+            decoded=decoded, 
+            decoded_paddings=decoded_paddings, 
+            targets=batch['targets'], 
+            target_paddings=batch['target_paddings'],
+            axis_name='batch')        
     
     def _eval_model_on_split(self,
                            split: str,
@@ -129,22 +203,24 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str) -> Dict[str, float]:
+                           data_dir: str,
+                           global_step: int) -> Dict[str, float]:
         """Run a full evaluation of the model."""
         if model_state is not None:
             # Sync batch statistics across replicas before evaluating.
+            logging.info('syncing batch_stats across replicas before eval.')
             model_state = self.sync_batch_stats(model_state)
-
+        
         num_batches = int(math.ceil(num_examples / global_batch_size))
+        logging.info('split = {}, num_examples = {}, num_batches = {}'.format(split, num_examples, num_batches))
+
         if split not in self._eval_iters:
-            # These iterators will repeat indefinitely.
-            self._eval_iters[split] = self.build_input_queue(
+            self._eval_iters[split] = itertools.cycle(self.build_input_queue(
                 rng,
                 split,
                 data_dir,
-                global_batch_size,
-                num_batches,
-                repeat_final_dataset=True)
+                global_batch_size, 
+                num_batches))
 
         metrics_report = None
         for _ in range(num_batches):
@@ -157,7 +233,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                 # `merge` aggregates the metrics across batches.
                 metrics_report = metrics_report.merge(computed_metrics)
 
-        return metrics_report.compute()
+        computed_metrics = metrics_report.compute()
+
+        self.summary_writer.scalar('{}/WER'.format(split), computed_metrics['wer'], global_step)
+        self.summary_writer.scalar('{}/ctc_loss'.format(split), computed_metrics['ctc_loss'], global_step)
+
+        return computed_metrics
 
     def sync_batch_stats(self, model_state):
         # An axis_name is passed to pmap which can then be used by pmean.
