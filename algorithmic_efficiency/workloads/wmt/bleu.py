@@ -23,7 +23,7 @@ Usage:
     blee bloo dog sit
     please do take me out
     '''
-    bleu_local(refs.split("\n"), hyps.split("\n"))  # 39.65
+    bleu_local(refs.split('\n'), hyps.split('\n'))  # 39.65
 """
 
 import collections
@@ -40,13 +40,13 @@ class UnicodeRegex(object):
   """Ad-hoc hack to recognize all punctuation and symbols."""
 
   def __init__(self):
-    punctuation = self.property_chars("P")
-    self.nondigit_punct_re = re.compile(r"([^\d])([" + punctuation + r"])")
-    self.punct_nondigit_re = re.compile(r"([" + punctuation + r"])([^\d])")
-    self.symbol_re = re.compile("([" + self.property_chars("S") + "])")
+    punctuation = self.property_chars('P')
+    self.nondigit_punct_re = re.compile(r'([^\d])([' + punctuation + r'])')
+    self.punct_nondigit_re = re.compile(r'([' + punctuation + r'])([^\d])')
+    self.symbol_re = re.compile('([' + self.property_chars('S') + '])')
 
   def property_chars(self, prefix):
-    return "".join(
+    return ''.join(
         six.unichr(x)
         for x in range(sys.maxunicode)
         if unicodedata.category(six.unichr(x)).startswith(prefix))
@@ -78,9 +78,9 @@ def bleu_tokenize(string):
   Returns:
     a list of tokens
   """
-  string = uregex.nondigit_punct_re.sub(r"\1 \2 ", string)
-  string = uregex.punct_nondigit_re.sub(r" \1 \2", string)
-  string = uregex.symbol_re.sub(r" \1 ", string)
+  string = uregex.nondigit_punct_re.sub(r'\1 \2 ', string)
+  string = uregex.punct_nondigit_re.sub(r' \1 \2', string)
+  string = uregex.symbol_re.sub(r' \1 ', string)
   return string.split()
 
 
@@ -149,8 +149,8 @@ def compute_bleu_matches(reference_corpus, translation_corpus, max_order=4):
 def bleu_partial(ref_lines, hyp_lines, case_sensitive=False):
   """Compute n-gram statistics for two lists of references and translations."""
   if len(ref_lines) != len(hyp_lines):
-    raise ValueError("Reference and translation lists have different "
-                     "numbers of lines.")
+    raise ValueError('Reference and translation lists have different '
+                     'numbers of lines.')
   if not case_sensitive:
     ref_lines = [x.lower() for x in ref_lines]
     hyp_lines = [x.lower() for x in hyp_lines]
