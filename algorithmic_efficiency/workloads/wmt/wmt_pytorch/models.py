@@ -560,15 +560,16 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         bias=False,
         **factory_kwargs)
 
-  def forward(self,
-              tgt: Tensor,
-              memory: Tensor,
-              tgt_mask: Optional[Tensor] = None,
-              memory_mask: Optional[Tensor] = None,
-              decode: bool = False,
-              max_len: Optional[int] = None,
-              cache: Optional[dict] = None,
-              index: Optional[int] = None) -> Tensor:
+  def forward(  # pylint: disable=arguments-renamed
+      self,
+      tgt: Tensor,
+      memory: Tensor,
+      tgt_mask: Optional[Tensor] = None,
+      memory_mask: Optional[Tensor] = None,
+      decode: bool = False,
+      max_len: Optional[int] = None,
+      cache: Optional[dict] = None,
+      index: Optional[int] = None) -> Tensor:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -609,13 +610,14 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
     return x, cache
 
   # self-attention block
-  def _sa_block(self,
-                x: Tensor,
-                attn_mask: Optional[Tensor],
-                decode: bool = False,
-                max_len: Optional[int] = None,
-                cache: Optional[dict] = None,
-                index: Optional[int] = None) -> Tensor:
+  def _sa_block(  # pylint: disable=arguments-renamed
+      self,
+      x: Tensor,
+      attn_mask: Optional[Tensor],
+      decode: bool = False,
+      max_len: Optional[int] = None,
+      cache: Optional[dict] = None,
+      index: Optional[int] = None) -> Tensor:
     x, _, cache = self.self_attn(
         x,
         x,

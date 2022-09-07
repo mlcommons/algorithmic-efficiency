@@ -79,6 +79,7 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
+  del model_params
   del model_state
   del rng
   learning_rate_fn = create_learning_rate_scheduler(
@@ -183,5 +184,4 @@ def data_selection(workload: spec.Workload,
   del rng
   del hyperparameters
   del workload
-
   return next(input_queue)
