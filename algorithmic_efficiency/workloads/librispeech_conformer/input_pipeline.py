@@ -70,11 +70,7 @@ def get_librispeech_dataset(split_name: str,
       'ids' : ids
   })
 
-  options = tf.data.Options()
-  options.threading.private_threadpool_size = 48
-
-  ds = ds.with_options(options)  
-  ds = ds.map(preprocess)
+  ds = ds.map(preprocess, num_parallel_calls=10)
 
   if is_training:
     ds = ds.repeat()

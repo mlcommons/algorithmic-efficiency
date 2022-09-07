@@ -191,16 +191,15 @@ def train_once(workload: spec.Workload,
   with profiler.profile('Initializing model'):
     model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
+  if log_dir:
+    logging.info('Initializing tensorboard summary writer')
+    workload.create_summary_writer(log_dir)
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
                                            model_params,
                                            model_state,
                                            hyperparameters,
                                            opt_init_rng,)
-  
-  if log_dir:
-    logging.info('Initializing tensorboard summary writer')
-    workload.create_summary_writer(log_dir)
   
   logging.info('Initializing metrics bundle')
   workload.init_metrics_bundle(tokenizer_vocab_path)
