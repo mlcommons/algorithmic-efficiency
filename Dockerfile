@@ -33,7 +33,7 @@ RUN git clone https://github.com/mlcommons/algorithmic-efficiency.git
 # Install python packages.
 # We need all of these in the same RUN command so we are in the same dir.
 RUN cd /home/mlcommons/algorithmic-efficiency && \
-    pip3 install -e ".[pytorch_gpu]" && \
+    pip3 install -e ".[pytorch_gpu]" -f "https://download.pytorch.org/whl/torch_stable.html" && \
     pip3 install -e ".[jax_gpu]" -f "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html" && \
     pip3 install -e ".[full]"
 
