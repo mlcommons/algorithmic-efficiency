@@ -17,6 +17,9 @@ import os
 import struct
 import time
 from typing import Optional, Tuple
+from pynvml import *
+import math
+import os
 
 from absl import app
 from absl import flags
@@ -35,6 +38,9 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
+
+# Setup JAX so it preallocates less GPU memory by default.
+os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -163,6 +169,22 @@ def import_workload(workload_path: str,
     return workload_class
   return workload_class()
 
+def convert_to_gb(size_bytes):
+   i = int(math.floor(math.log(size_bytes, 1024)))
+   p = math.pow(1024, i)
+   s = round(size_bytes / p, 2)
+   return s
+
+def snapshot_gpu_memory_usage(workload, step):
+  num_local_devices = torch.cuda.device_count()
+  workload.summary_writer.scalar(f'gpu/total_device_count', num_local_devices, step)
+
+  for i in range(num_local_devices):
+    handle = nvmlDeviceGetHandleByIndex(i)
+    info = nvmlDeviceGetMemoryInfo(handle)
+    fraction_used = (info.used / info.total) * 100
+    workload.summary_writer.scalar(f'gpu/fraction_used/{i}', round(fraction_used, 3), step)
+    workload.summary_writer.scalar(f'gpu/total_in_GB/{i}', convert_to_gb(info.total), step)
 
 # Example reference implementation showing how to use the above functions
 # together.
@@ -194,6 +216,7 @@ def train_once(workload: spec.Workload,
   if log_dir:
     logging.info('Initializing tensorboard summary writer')
     workload.create_summary_writer(log_dir)
+
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
                                            model_params,
@@ -219,6 +242,7 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
+    snapshot_gpu_memory_usage(workload, global_step)
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -243,6 +267,11 @@ def train_once(workload: spec.Workload,
           rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
+    except RuntimeError as e:
+      if "out of memory" in str(e):
+        logging.warning(f'error: GPU out of memory during training during step {global_step}, error: {str(e)}')  
+        if torch.cuda.is_available():
+          torch.cuda.empty_cache()
     global_step += 1
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
@@ -255,19 +284,26 @@ def train_once(workload: spec.Workload,
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
       with profiler.profile('Evaluation'):
-        latest_eval_result = workload.eval_model(global_batch_size,
-                                                 model_params,
-                                                 model_state,
-                                                 eval_rng,
-                                                 data_dir,
-                                                 global_step)
-      logging.info('%.2fs \t%d \t%s',
+        try:
+          latest_eval_result = workload.eval_model(global_batch_size,
+                                                  model_params,
+                                                  model_state,
+                                                  eval_rng,
+                                                  data_dir,
+                                                  global_step)
+          logging.info('%.2fs \t%d \t%s',
                    current_time - global_start_time,
                    global_step,
                    latest_eval_result)
-      last_eval_time = current_time
-      eval_results.append((global_step, latest_eval_result))
-      goal_reached = workload.has_reached_goal(latest_eval_result)
+          last_eval_time = current_time
+          eval_results.append((global_step, latest_eval_result))
+          goal_reached = workload.has_reached_goal(latest_eval_result)
+        except RuntimeError as e:
+          if "out of memory" in str(e):
+            logging.warning(f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}')
+            if torch.cuda.is_available():
+              torch.cuda.empty_cache()  
+      
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
@@ -389,6 +425,7 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
+  nvmlInit()
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
