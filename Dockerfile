@@ -28,7 +28,6 @@ WORKDIR /home/mlcommons
 ENV PATH="/home/mlcommons/.local/bin:${PATH}"
 
 # Grab the code.
-RUN cd /home/mlcommons
 RUN git clone https://github.com/mlcommons/algorithmic-efficiency.git
 
 # Install python packages.
