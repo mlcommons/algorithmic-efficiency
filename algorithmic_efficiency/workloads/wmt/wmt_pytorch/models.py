@@ -1,5 +1,5 @@
 import math
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 import warnings
 
 import torch
@@ -304,17 +304,23 @@ class PositionalEncoding(nn.Module):
     pe[0, :, d_model // 2:2 * (d_model // 2)] = torch.cos(position * div_term)
     self.register_buffer('pe', pe)
 
-  def forward(self,
-              x: Tensor,
-              inputs_positions: Tensor,
-              decode: bool = False,
-              cache: Optional[dict] = None) -> Tensor:
+  def forward(
+      self,
+      x: Tensor,
+      inputs_positions: Optional[Tensor] = None,
+      decode: bool = False,
+      cache: Optional[Dict[str, Dict[str, Tensor]]] = None
+  ) -> Union[Tensor, Tuple[Tensor, Dict[str, Dict[str, Tensor]]]]:
     """
     Args:
-      x: Tensor, shape [batch_size, seq_len, embedding_dim]
-      inputs_positions: Optional[Tensor], shape [batch_size, seq_len]
+      x: Tensor (shape [batch_size, seq_len, embedding_dim])
+      inputs_positions: Tensor (shape [batch_size, seq_len]) or None
       decode: bool
+      cache: Dict[str, Dict[str, Tensor]] or None
+    Returns:
+      Tensor or Tuple[Tensor, Dict[str, Dict[str, Tensor]]]
     """
+    pe = self.pe[:, :x.size(1), :]
     # We use a cache position index for tracking decoding position.
     if decode:
       name = self._get_name()
@@ -323,14 +329,14 @@ class PositionalEncoding(nn.Module):
         cache[name] = {}
         cache[name]['cache_index'] = torch.tensor(
             0, dtype=torch.long, device=self.pe.device)
-      x = x + self.pe[0, cache[name]['cache_index'], :]
-      cache[name]['cache_index'] += 1
-      return self.dropout(x), cache
+      else:
+        pe = self.pe[0, cache[name]['cache_index'], :]
+        cache[name]['cache_index'] += 1
+      return self.dropout(x + pe), cache
     if inputs_positions is not None:
-      x = x + self.pe[0, inputs_positions, :]
-    else:
-      x = x + self.pe[:, :x.size(1), :]
-    return self.dropout(x)
+      # for packed data we need to use known position indices:
+      pe = self.pe[0, inputs_positions, :]
+    return self.dropout(x + pe)
 
 
 # TransformerEncoderLayer and TransformerDecoderLayer are taken from:
@@ -586,8 +592,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
           cache=cache,
           index=index)
       x = x + sa_out
-      x = x + self._mha_block(
-          self.norm2(x), memory, memory_mask, None)
+      x = x + self._mha_block(self.norm2(x), memory, memory_mask, None)
       x = x + self._ff_block(self.norm3(x))
     else:
       sa_out, cache = self._sa_block(
@@ -598,8 +603,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
           cache=cache,
           index=index)
       x = self.norm1(x + sa_out)
-      x = self.norm2(
-          x + self._mha_block(x, memory, memory_mask, None))
+      x = self.norm2(x + self._mha_block(x, memory, memory_mask, None))
       x = self.norm3(x + self._ff_block(x))
 
     return x, cache
