@@ -37,4 +37,5 @@ RUN cd /home/mlcommons/algorithmic-efficiency && \
     pip3 install -e ".[jax_gpu]" -f "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html" && \
     pip3 install -e ".[full]"
 
+# ENTRYPOINT ["python3" "submission_runner.py"]
 CMD ["/bin/bash"]
