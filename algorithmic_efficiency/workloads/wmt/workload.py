@@ -72,7 +72,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 800
+    return 2400
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
