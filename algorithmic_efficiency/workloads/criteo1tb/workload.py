@@ -74,6 +74,10 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return tuple([1024] * 26)
 
   @property
+  def step_hint(self):
+    return 64_000  # TODO(znado): finalize.
+
+  @property
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
     if self._param_shapes is None:

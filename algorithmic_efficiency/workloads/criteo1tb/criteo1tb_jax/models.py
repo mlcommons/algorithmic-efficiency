@@ -37,6 +37,16 @@ def dot_interact(concat_features):
 
 
 class DlrmSmall(nn.Module):
+  """Define a DLRM-Small model.
+
+  Parameters:
+    vocab_sizes: list of vocab sizes of embedding tables.
+    total_vocab_sizes: sum of embedding table sizes (for jit compilation).
+    num_dense_features: number of dense features as the bottom mlp input.
+    mlp_bottom_dims: dimensions of dense layers of the bottom mlp.
+    mlp_top_dims: dimensions of dense layers of the top mlp.
+    embed_dim: embedding dimension.
+  """
 
   vocab_sizes: Sequence[int]
   total_vocab_sizes: int
