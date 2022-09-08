@@ -320,20 +320,23 @@ class PositionalEncoding(nn.Module):
     Returns:
       Tensor or Tuple[Tensor, Dict[str, Dict[str, Tensor]]]
     """
-    pe = self.pe[:, :x.size(1), :]
     # We use a cache position index for tracking decoding position.
     if decode:
       name = self._get_name()
       if cache is None:
-        cache = {}
-        cache[name] = {}
-        cache[name]['cache_index'] = torch.tensor(
-            0, dtype=torch.long, device=self.pe.device)
-      else:
-        pe = self.pe[0, cache[name]['cache_index'], :]
-        cache[name]['cache_index'] += 1
+        cache = {
+            name: {
+                'cache_index':
+                    torch.tensor(0, dtype=torch.long, device=self.pe.device)
+            }
+        }
+      pe = self.pe[0, cache[name]['cache_index'], :]
+      cache[name]['cache_index'] += 1
       return self.dropout(x + pe), cache
-    if inputs_positions is not None:
+    if inputs_positions is None:
+      # normal unpacked case:
+      pe = self.pe[:, :x.size(1), :]
+    else:
       # for packed data we need to use known position indices:
       pe = self.pe[0, inputs_positions, :]
     return self.dropout(x + pe)
@@ -928,45 +931,46 @@ def multi_head_attention_forward(
   # During fast autoregressive decoding, we feed one position at a time,
   # and cache the keys and values step by step.
   if decode:
-    if cache is not None:
-      cached_key = cache['cached_key']
-      cached_value = cache['cached_value']
-      cache_index = cache['cache_index']
-      batch_size, max_length, num_features = cached_key.shape
-      assert batch_size == bsz, f'{batch_size} != {bsz}'
-      assert max_length == max_len, f'{max_length} != {max_len}'
-      assert num_features == embed_dim, f'{num_features} != {embed_dim}'
-      # shape check of cached keys against query input
-      expected_shape = (1, batch_size, num_features)
-      if expected_shape != query.shape:
-        raise ValueError('Autoregressive cache shape error, '
-                         'expected query shape %s instead got %s.' %
-                         (expected_shape, query.shape))
-      # update key, value caches with our new 1d spatial slices
-      cached_key[:, cache_index:cache_index + 1, :] = k.transpose(
-          dim0=0, dim1=1)
-      cached_value[:, cache_index:cache_index + 1, :] = v.transpose(
-          dim0=0, dim1=1)
-      k = cached_key.transpose(dim0=0, dim1=1)
-      v = cached_value.transpose(dim0=0, dim1=1)
-      cache_index += 1
-      # causal mask for cached decoder self-attention:
-      # our single query position should only attend to those key
-      # positions that have already been generated and cached,
-      # not the remaining zero elements.
-      if attn_mask is not None:
-        raise ValueError('Attention mask has to be None for decode == True.')
-      attn_mask = (torch.arange(max_length, device=k.device) >=
-                   cache_index).reshape(1, max_length)
-    else:
-      cache = {}
-      cache['cached_key'] = torch.zeros((bsz, max_len, embed_dim),
-                                        dtype=k.dtype,
-                                        device=k.device)
-      cache['cached_value'] = torch.zeros((bsz, max_len, embed_dim),
-                                          dtype=v.dtype,
-                                          device=v.device)
-      cache['cache_index'] = torch.tensor(0, dtype=torch.long, device=k.device)
+    if cache is None:
+      cache = {
+          'cached_key':
+              torch.zeros((bsz, max_len, embed_dim),
+                          dtype=k.dtype,
+                          device=k.device),
+          'cached_value':
+              torch.zeros((bsz, max_len, embed_dim),
+                          dtype=v.dtype,
+                          device=v.device),
+          'cache_index':
+              torch.tensor(0, dtype=torch.long, device=k.device)
+      }
+    cached_key = cache['cached_key']
+    cached_value = cache['cached_value']
+    cache_index = cache['cache_index']
+    batch_size, max_length, num_features = cached_key.shape
+    assert batch_size == bsz, f'{batch_size} != {bsz}'
+    assert max_length == max_len, f'{max_length} != {max_len}'
+    assert num_features == embed_dim, f'{num_features} != {embed_dim}'
+    # shape check of cached keys against query input
+    expected_shape = (1, batch_size, num_features)
+    if expected_shape != query.shape:
+      raise ValueError('Autoregressive cache shape error, expected query shape '
+                       f'{expected_shape} instead got {query.shape}.')
+    # update key, value caches with our new 1d spatial slices
+    cached_key[:, cache_index:cache_index + 1, :] = k.transpose(dim0=0, dim1=1)
+    cached_value[:, cache_index:cache_index + 1, :] = v.transpose(
+        dim0=0, dim1=1)
+    k = cached_key.transpose(dim0=0, dim1=1)
+    v = cached_value.transpose(dim0=0, dim1=1)
+    cache_index += 1
+    # causal mask for cached decoder self-attention:
+    # our single query position should only attend to those key
+    # positions that have already been generated and cached,
+    # not the remaining zero elements.
+    if attn_mask is not None:
+      raise ValueError('Attention mask has to be None for decode == True.')
+    attn_mask = (torch.arange(max_length, device=k.device) >=
+                 cache_index).reshape(1, max_length)
 
   # prep attention mask
   if not decode and attn_mask is not None:
