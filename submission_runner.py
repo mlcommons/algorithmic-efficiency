@@ -17,7 +17,7 @@ import os
 import struct
 import time
 from typing import Optional, Tuple
-from pynvml import *
+import wandb
 import math
 import os
 
@@ -40,7 +40,7 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 tf.config.set_visible_devices([], 'GPU')
 
 # Setup JAX so it preallocates less GPU memory by default.
-os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
+# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -169,23 +169,6 @@ def import_workload(workload_path: str,
     return workload_class
   return workload_class()
 
-def convert_to_gb(size_bytes):
-   i = int(math.floor(math.log(size_bytes, 1024)))
-   p = math.pow(1024, i)
-   s = round(size_bytes / p, 2)
-   return s
-
-def snapshot_gpu_memory_usage(workload, step):
-  num_local_devices = torch.cuda.device_count()
-  workload.summary_writer.scalar(f'gpu/total_device_count', num_local_devices, step)
-
-  for i in range(num_local_devices):
-    handle = nvmlDeviceGetHandleByIndex(i)
-    info = nvmlDeviceGetMemoryInfo(handle)
-    fraction_used = (info.used / info.total) * 100
-    workload.summary_writer.scalar(f'gpu/fraction_used/{i}', round(fraction_used, 3), step)
-    workload.summary_writer.scalar(f'gpu/total_in_GB/{i}', convert_to_gb(info.total), step)
-
 # Example reference implementation showing how to use the above functions
 # together.
 def train_once(workload: spec.Workload,
@@ -226,6 +209,7 @@ def train_once(workload: spec.Workload,
   
   logging.info('Initializing metrics bundle')
   workload.init_metrics_bundle(tokenizer_vocab_path)
+  wandb.init()
 
   # Bookkeeping.
   goal_reached = False
@@ -242,7 +226,7 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    snapshot_gpu_memory_usage(workload, global_step)
+    
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -425,7 +409,7 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  nvmlInit()
+  # nvidia_smi.nvmlInit()
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,

@@ -18,3 +18,4 @@ algorithmic_efficiency/workloads/librispeech_conformer/work_dir
 *.npy
 *.csv
 *.vocab
+wandb/

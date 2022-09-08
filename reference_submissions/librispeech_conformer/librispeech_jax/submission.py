@@ -18,7 +18,7 @@ _GRAD_CLIP_EPS = 1e-6
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 128
+  return 256
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
   opt_init_fn, opt_update_fn = optax.inject_hyperparams(optax.adamw)(
@@ -154,17 +154,18 @@ def update_params(
   del eval_results
   del loss_type
 
-  #log_pytree_and_statistics(jax_utils.unreplicate(current_param_container))
   lr = workload.get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs, lr)
-  logging.info('{}) loss = {}, grad_norm = {} lr = {}'.format(global_step, loss.mean(), grad_norm.mean(), lr))
-  workload.summary_writer.scalar('train_step_ctc_loss', loss.mean(), global_step)
-  workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
-  workload.summary_writer.scalar('learning_rate', lr, global_step)
+
+  if global_step <= 1000 or global_step%100 == 0:
+    logging.info('{}) loss = {}, grad_norm = {} lr = {}'.format(global_step, loss.mean(), grad_norm.mean(), lr))
+    workload.summary_writer.scalar('train_step_ctc_loss', loss.mean(), global_step)
+    workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
+    workload.summary_writer.scalar('learning_rate', lr, global_step)
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

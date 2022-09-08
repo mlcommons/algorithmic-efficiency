@@ -96,7 +96,7 @@ def preprocess_data(data_folder, tokenizer, split):
           skipped.inc()
           continue
 
-        sound = load_audio(audio_path)
+        sound = load_audio(audio_path")
         sound = np.array(sound, dtype=np.int64)
     
         if sound.shape[0] > AUDIO_MAX_LENGTH:

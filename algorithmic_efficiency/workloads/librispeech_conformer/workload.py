@@ -42,7 +42,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 256
+    return 512
 
   @property
   def num_validation_examples(self):
@@ -62,11 +62,11 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 36000  # 10h
+    return 72000  # 20h
 
   @property
   def eval_period_time_sec(self):
-    return 60
+    return 2500
 
   @property
   def param_shapes(self):
