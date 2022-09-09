@@ -30,7 +30,6 @@ def update_params(workload: spec.Workload,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
-  del hyperparameters
   del loss_type
   del eval_results
   del global_step
@@ -48,7 +47,11 @@ def update_params(workload: spec.Workload,
       update_batch_norm=True)
 
   mask = batch['weights']
-  per_example_losses = workload.loss_fn(batch['targets'], logits, mask)
+  label_smoothing = (
+      hyperparameters.label_smoothing if hasattr(hyperparameters,
+                                                 'label_smoothing') else 0.0)
+  per_example_losses = workload.loss_fn(
+      batch['targets'], logits, mask, label_smoothing=label_smoothing)
   loss = torch.where(mask, per_example_losses, 0).sum() / mask.sum()
 
   loss.backward()

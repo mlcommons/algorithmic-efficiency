@@ -24,7 +24,7 @@ def get_batch_size(workload_name):
     jax.pmap,
     in_axes=(None, None, 0, 0, 0, 0, None),
     axis_name='batch',
-    static_broadcasted_argnums=(0, 1, 6))
+    static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        optimizer_state,
@@ -78,6 +78,9 @@ def update_params(workload: spec.Workload,
 
   optimizer_state, opt_update_fn = optimizer_state
   dropout_rngs = jax.random.split(rng, jax.local_device_count())
+  label_smoothing = (
+      hyperparameters.label_smoothing if hasattr(hyperparameters,
+                                                 'label_smoothing') else 0.0)
   new_optimizer_state, updated_params = pmapped_train_step(
       workload,
       opt_update_fn,
@@ -85,5 +88,5 @@ def update_params(workload: spec.Workload,
       current_param_container,
       batch,
       dropout_rngs,
-      hyperparameters.label_smoothing)
+      label_smoothing)
   return (new_optimizer_state, opt_update_fn), updated_params, None

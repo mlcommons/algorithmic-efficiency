@@ -25,10 +25,9 @@ def train_step(workload,
                model_state,
                optimizer_state,
                current_param_container,
-               hyperparameters,
                batch,
-               rng):
-  del hyperparameters
+               rng,
+               label_smoothing):
 
   def loss_fn(params):
     logits_batch, new_model_state  = workload.model_fn(
@@ -39,9 +38,11 @@ def train_step(workload,
         rng,
         update_batch_norm=True)
     mask_batch = batch['weights']
-    per_example_losses = workload.loss_fn(batch['targets'],
-                                          logits_batch,
-                                          mask_batch)
+    per_example_losses = workload.loss_fn(
+        batch['targets'],
+        logits_batch,
+        mask_batch,
+        label_smoothing=label_smoothing)
     mean_loss = (
         jnp.sum(jnp.where(mask_batch, per_example_losses, 0)) /
         jnp.sum(mask_batch))
@@ -77,10 +78,13 @@ def update_params(workload: spec.Workload,
   pmapped_train_step = jax.pmap(
       train_step,
       axis_name='batch',
-      in_axes=(None, None, 0, 0, 0, None, 0, 0),
+      in_axes=(None, None, 0, 0, 0, 0, 0, None),
       static_broadcasted_argnums=(0, 1))
   dropout_rngs = jax.random.split(rng, jax.local_device_count())
+  label_smoothing = (
+      hyperparameters.label_smoothing if hasattr(hyperparameters,
+                                                 'label_smoothing') else 0.0)
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, dropout_rngs)
+      current_param_container, batch, dropout_rngs, label_smoothing)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state

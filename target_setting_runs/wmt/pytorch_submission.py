@@ -48,8 +48,10 @@ def update_params(workload: spec.Workload,
 
   targets = batch['targets']
   weights = torch.where(targets > 0, 1.0, 0.0)
-  loss = (workload.loss_fn(
-      targets, logits, label_smoothing=hyperparameters.label_smoothing) *
+  label_smoothing = (
+      hyperparameters.label_smoothing if hasattr(hyperparameters,
+                                                 'label_smoothing') else 0.0)
+  loss = (workload.loss_fn(targets, logits, label_smoothing=label_smoothing) *
           weights).sum() / weights.sum()
   loss.backward()
 
