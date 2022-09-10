@@ -7,6 +7,8 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   def __init__(self):
     self._param_shapes = None
+    self._param_types = None
+    self._eval_iters = {}
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
@@ -77,13 +79,6 @@ class BaseImagenetResNetWorkload(spec.Workload):
           'This should not happen, workload.init_model_fn() should be called '
           'before workload.param_shapes!')
     return self._param_shapes
-
-  @property
-  def model_params_types(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.

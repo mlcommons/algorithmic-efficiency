@@ -30,7 +30,7 @@ class ParameterType(enum.Enum):
 
 
 # Of course, Tensor knows its shape and dtype.
-# Tensor = Union[jnp.array, np.array, tf.Tensor, ...]
+# Tensor = Union[jnp.array, np.array, tf.Tensor, torch.Tensor, ...]
 Tensor = Any
 
 
