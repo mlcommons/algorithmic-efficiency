@@ -115,7 +115,7 @@ class WmtWorkload(BaseWmtWorkload):
                                    max_predict_length: int):
     """Translates the `ds_iter` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
-    sources, references, predictions = [], [], []
+    references, predictions = [], []
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       inputs = pred_batch['inputs']
@@ -126,10 +126,10 @@ class WmtWorkload(BaseWmtWorkload):
                                     max_predict_length)
 
       # Iterate through non-padding examples of batch.
-      for i, s in enumerate(predicted):
-        sources.append(self._decode_tokens(inputs[i]))
-        references.append(self._decode_tokens(targets[i]))
-        predictions.append(self._decode_tokens(s))
+      assert len(predicted) == len(targets)
+      for tar, pred in zip(targets, predicted):
+        references.append(self._decode_tokens(tar))
+        predictions.append(self._decode_tokens(pred))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)

@@ -1,5 +1,4 @@
 """WMT workload implemented in Jax."""
-import collections
 import functools
 from typing import Dict, Tuple
 
@@ -18,23 +17,6 @@ from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
-
-
-def _per_host_sum_pmap(in_tree):
-  """Execute psum on in_tree's leaves over one device per host."""
-  host2devices = collections.defaultdict(list)
-  for d in jax.devices():
-    host2devices[d.host_id].append(d)
-  devices = [host2devices[k][0] for k in host2devices]
-  host_psum = jax.pmap(lambda x: jax.lax.psum(x, 'i'), 'i', devices=devices)
-
-  def pre_pmap(xs):
-    return jax.tree_map(lambda x: jnp.broadcast_to(x, (1,) + x.shape), xs)
-
-  def post_pmap(xs):
-    return jax.tree_map(lambda x: x[0], xs)
-
-  return post_pmap(host_psum(pre_pmap(in_tree)))
 
 
 def _to_host(x):
@@ -178,7 +160,7 @@ class WmtWorkload(BaseWmtWorkload):
                                    max_predict_length: int):
     """Translates the `predict_ds` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
-    sources, references, predictions = [], [], []
+    references, predictions = [], []
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       cache = self.initialize_cache(pred_batch['inputs'])
@@ -188,18 +170,16 @@ class WmtWorkload(BaseWmtWorkload):
                                     decode.EOS_ID,
                                     max_predict_length)
       predicted = _to_host(predicted)
-      inputs = _to_host(pred_batch['inputs'])
       targets = _to_host(pred_batch['targets'])
       # Iterate through non-padding examples of batch.
-      for i, s in enumerate(predicted):
-        sources.append(self._decode_tokens(inputs[i]))
-        references.append(self._decode_tokens(targets[i]))
-        predictions.append(self._decode_tokens(s))
+      assert len(predicted) == len(targets)
+      for tar, pred in zip(targets, predicted):
+        references.append(self._decode_tokens(tar))
+        predictions.append(self._decode_tokens(pred))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)
-    all_bleu_matches = _per_host_sum_pmap(bleu_matches)
-    bleu_score = bleu.complete_bleu(*all_bleu_matches)
+    bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
