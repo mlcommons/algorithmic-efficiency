@@ -29,7 +29,7 @@
 
    ```bash
     sudo apt-get install python3-venv
-    python3 -m venv env
+    python3.9 -m venv env
     source env/bin/activate
    ```
 
@@ -40,8 +40,22 @@
    cd algorithmic-efficiency
    ```
 
-3. Install the `algorithmic_efficiency` package:
+3. We use pip to install the `algorithmic_efficiency`.
 
+  *TL;DR to install the Jax version for GPU run:*
+   ```bash
+   pip3 install -e '.[pytorch_cpu]'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+   pip3 install -e '.[full]'
+   ```
+  *TL;DR to install the PyTorch version for GPU run:*
+   ```bash
+   pip3 install -e '.[jax_cpu]'
+   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+   pip3 install -e '.[full]'
+   ```
+
+  #### Additional Details
    ```bash
    pip3 install -e .
    ```
@@ -56,12 +70,6 @@
 
    ```bash
    pip3 install -e '.[full]'
-   ```
-
-   For the PyTorch version of the ogbg workload, you need to install
-   `torch-scatter` manually via
-   ```bash
-   pip install torch-scatter -f 'https://data.pyg.org/whl/torch-1.12.0+cu113.html'
    ```
 
    Depending on the framework you want to use (e.g. `JAX` or `PyTorch`) you need to install them as well. You could either do this manually or by adding the corresponding options:
@@ -159,7 +167,7 @@ python3 submission_runner.py \
 
 When using multiple GPUs on a single node it is recommended to use PyTorch's
 [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
-To do so, simply replace `python3` by 
+To do so, simply replace `python3` by
 ```bash
 torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
 ```
@@ -172,3 +180,29 @@ The rules for the MLCommons Algorithmic Efficency benchmark can be found in the 
 ## Contributing
 
 If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues, and see the [MLCommons contributing guidelines](CONTRIBUTING.md).
+
+### Presubmit testing
+
+We run basic presubmit checks with GitHub Actions, configured in the [.github/workflows](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows) folder.
+
+To run the below commands, use the versions installed via `pip install -e '.[dev]'`.
+
+To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
+```bash
+yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs reference_submissions tests *.py
+```
+
+To print out all offending import orderings, run the following (you will need to manually make the edits, because reordering Python imports can cause side-effects):
+```bash
+isort . --check --diff
+```
+
+To print out all offending pylint issues, run the following:
+```bash
+pylint algorithmic_efficiency
+pylint baselines
+pylint target_setting_runs
+pylint reference_submissions
+pylint submission_runner.py
+pylint tests
+```

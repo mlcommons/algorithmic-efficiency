@@ -53,8 +53,8 @@ class WmtWorkload(BaseWmtWorkload):
   def compute_weighted_cross_entropy(self,
                                      logits,
                                      targets,
-                                     weights,
-                                     label_smoothing=0.0):
+                                     weights=None,
+                                     label_smoothing=0.1):
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -245,13 +245,13 @@ class WmtWorkload(BaseWmtWorkload):
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)
     targets = augmented_and_preprocessed_input_batch.get('targets', None)
     inputs_positions = augmented_and_preprocessed_input_batch.get(
-        'inputs_positions', None)
+        'inputs_position', None)
     targets_positions = augmented_and_preprocessed_input_batch.get(
-        'targets_positions', None)
+        'targets_position', None)
     inputs_segmentations = augmented_and_preprocessed_input_batch.get(
-        'inputs_segmentations', None)
+        'inputs_segmentation', None)
     targets_segmentations = augmented_and_preprocessed_input_batch.get(
-        'targets_segmentations', None)
+        'targets_segmentation', None)
     logits_batch = models.Transformer(model_config).apply(
         {'params': params},
         inputs,
