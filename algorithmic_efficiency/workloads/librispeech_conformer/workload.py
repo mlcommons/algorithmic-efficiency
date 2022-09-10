@@ -38,7 +38,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_train_examples(self):
-    return 26594
+    return 263840
 
   @property
   def num_eval_train_examples(self):
@@ -163,12 +163,12 @@ class BaseLibrispeechWorkload(spec.Workload):
     train = False
 
     if split == 'train':
-      split = 'train-clean-100'#+train-clean-360+train-other-500'
+      split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
     elif split=='validation':
-      split = 'dev-clean'
+      split = 'dev-clean+dev-other'
     elif split == 'test':
       split = 'test-clean'
     

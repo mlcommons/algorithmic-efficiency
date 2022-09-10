@@ -96,7 +96,7 @@ def preprocess_data(data_folder, tokenizer, split):
           skipped.inc()
           continue
 
-        sound = load_audio(audio_path")
+        sound = load_audio(audio_path)
         sound = np.array(sound, dtype=np.int64)
     
         if sound.shape[0] > AUDIO_MAX_LENGTH:
@@ -163,7 +163,7 @@ def main():
   os.makedirs(save_dir, exist_ok=True)
 
   # put whatever splits required in this list below
-  subset_list = ['train-clean-360', 'train-other-500']
+  subset_list = ['train-clean-100', 'train-clean-360', 'train-other-500', 'dev-clean', 'dev-other', 'test-clean', 'test-other']
   for subset in subset_list:
     print('processing split = ', subset)
     os.makedirs(save_dir + '/' + subset, exist_ok=True)
