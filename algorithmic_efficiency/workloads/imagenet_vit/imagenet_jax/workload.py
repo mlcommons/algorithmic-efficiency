@@ -45,6 +45,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
+    del mode
+    del rng
     logits = self._model.apply({'params': params},
                                augmented_and_preprocessed_input_batch['inputs'])
     return logits, None

@@ -10,6 +10,7 @@ from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -71,20 +72,10 @@ class WmtWorkload(BaseWmtWorkload):
       raise ValueError(
           f'Incorrect shapes. Got shape {str(logits.shape)} logits '
           f'and {str(targets.shape)} targets')
-    confidence = 1.0 - label_smoothing
-    low_confidence = (1.0 - confidence) / (self._vocab_size - 1)
-    normalizing_constant = -(
-        confidence * jnp.log(confidence) +
-        ((self._vocab_size - 1) * low_confidence *
-         jnp.log(low_confidence + 1e-20)))
-    soft_targets = common_utils.onehot(
-        targets,
-        self._vocab_size,
-        on_value=confidence,
-        off_value=low_confidence)
+    smoothed_targets = optax.smooth_labels(
+        common_utils.onehot(targets, self._vocab_size), label_smoothing)
 
-    loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
-    loss = loss - normalizing_constant
+    loss = -jnp.sum(smoothed_targets * nn.log_softmax(logits), axis=-1)
 
     if weights is not None:
       loss = loss * weights

@@ -81,14 +81,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     return new_model_state
 
   @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
   def model_params_types(self):
     if self._param_shapes is None:
       raise ValueError(
@@ -168,13 +160,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
     one_hot_labels = jax.nn.one_hot(label_batch, num_classes=1000)
-    xentropy = optax.softmax_cross_entropy(
-        logits=logits_batch, labels=one_hot_labels)
-    return xentropy
+    smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
+    return optax.softmax_cross_entropy(
+        logits=logits_batch, labels=smoothed_labels)
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))

@@ -120,7 +120,8 @@ def update_params(workload: spec.Workload,
 
   targets = batch['targets']
   weights = torch.where(targets > 0, 1.0, 0.0)
-  loss = (workload.loss_fn(targets, logits) * weights).sum() / weights.sum()
+  loss = (workload.loss_fn(targets, logits, label_smoothing=0.1) *
+          weights).sum() / weights.sum()
   loss.backward()
 
   lr = optimizer_state['scheduler'](global_step).item()

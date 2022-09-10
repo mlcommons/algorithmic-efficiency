@@ -24,16 +24,16 @@ def get_batch_size(workload_name):
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, 0),
+    in_axes=(None, None, 0, 0, 0, 0, 0, None),
     static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        model_state,
                        optimizer_state,
                        current_param_container,
-                       hyperparameters,
                        batch,
-                       rng):
+                       rng,
+                       label_smoothing):
 
   def _loss_fn(params):
     """loss function used for training."""
@@ -44,7 +44,9 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
+    loss = jnp.mean(
+        workload.loss_fn(
+            batch['targets'], logits, label_smoothing=label_smoothing))
     return loss, (new_model_state, logits)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
@@ -77,7 +79,10 @@ def update_params(workload: spec.Workload,
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
+  label_smoothing = (
+      hyperparameters.label_smoothing if hasattr(hyperparameters,
+                                                 'label_smoothing') else 0.0)
   new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, per_device_rngs)
+      current_param_container, batch, per_device_rngs, label_smoothing)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
