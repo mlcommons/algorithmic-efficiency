@@ -25,6 +25,7 @@ from absl import logging
 import tensorflow as tf
 import torch
 import torch.distributed as dist
+import wandb
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -32,7 +33,6 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-import wandb
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
