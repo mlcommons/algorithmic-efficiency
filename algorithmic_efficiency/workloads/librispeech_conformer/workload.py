@@ -3,17 +3,18 @@ import math
 from typing import Dict, Optional
 
 from absl import flags
+from absl import logging
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
-import flax.linen as nn
-from absl import logging
+import numpy as np
+import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.librispeech_conformer import input_pipeline
-import numpy as np 
+from algorithmic_efficiency.workloads.librispeech_conformer import \
+    input_pipeline
 
-import tensorflow_datasets as tfds
 FLAGS = flags.FLAGS
 
 
@@ -26,11 +27,11 @@ class BaseLibrispeechWorkload(spec.Workload):
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['test/wer'] < 0.10
+    return eval_result['validation/wer'] < self.target_value
 
   @property
   def target_value(self):
-    return 0.10
+    return 0.109
 
   @property
   def loss_type(self):
@@ -89,19 +90,20 @@ class BaseLibrispeechWorkload(spec.Workload):
                                data_dir,
                                global_batch_size,
                                num_batches)
-   
+
   def get_learning_rate(self, step, hyperparams):
     warmup_steps = hyperparams.warmup_steps
     current_lr = 0.0
     if step < warmup_steps:
-      current_lr = (step * hyperparams.base_lr)/warmup_steps
+      current_lr = (step * hyperparams.base_lr) / warmup_steps
     else:
-      decay_factor = (1 + np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+      decay_factor = (1 +
+                      np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
       current_lr = hyperparams.base_lr * decay_factor
-    
+
     return current_lr
-  
-  def shard(self, batch, n_devices=None):    
+
+  def shard(self, batch, n_devices=None):
     if n_devices is None:
       n_devices = jax.local_device_count()
 
@@ -111,9 +113,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
     return jax.tree_map(_shard_array, batch)
 
-  def maybe_pad_batch(self, batch,
-                    desired_batch_size,
-                    padding_value=0.0):
+  def maybe_pad_batch(self, batch, desired_batch_size, padding_value=0.0):
     """Zero pad the batch on the right to desired_batch_size.
 
     All keys in the batch dictionary will have their corresponding arrays padded.
@@ -159,7 +159,7 @@ class BaseLibrispeechWorkload(spec.Workload):
                      num_batches: Optional[int] = None):
     if batch_size % jax.local_device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    
+
     train = False
 
     if split == 'train':
@@ -167,31 +167,26 @@ class BaseLibrispeechWorkload(spec.Workload):
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
-    elif split=='validation':
+    elif split == 'validation':
       split = 'dev-clean+dev-other'
     elif split == 'test':
       split = 'test-clean'
-    
-    if split is None:
-      return None
 
-    ds = input_pipeline.get_librispeech_dataset(
-        split,
-        data_dir,
-        data_rng,
-        train,
-        batch_size,
-        num_batches)
+    ds = input_pipeline.get_librispeech_dataset(split,
+                                                data_dir,
+                                                data_rng,
+                                                train,
+                                                batch_size,
+                                                num_batches)
 
     logging.info('done loading split = {}'.format(split))
-    
+
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       batch = self.maybe_pad_batch(batch, batch_size, padding_value=1.0)
       batch = self.shard(batch)
-      
-      yield batch
 
+      yield batch
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
@@ -200,7 +195,6 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
-  def output_activation_fn(self,
-                           logits: spec.Tensor,
+  def output_activation_fn(self, logits: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
     pass

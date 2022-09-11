@@ -13,13 +13,11 @@ python3 submission_runner.py \
 import importlib
 import inspect
 import json
+import math
 import os
 import struct
 import time
 from typing import Optional, Tuple
-import wandb
-import math
-import os
 
 from absl import app
 from absl import flags
@@ -34,6 +32,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
+import wandb
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -113,8 +112,12 @@ flags.DEFINE_enum(
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-flags.DEFINE_string('summary_log_dir', '', 'Location to dump tensorboard summaries.')
-flags.DEFINE_string('tokenizer_vocab_path', '', 'Location to read tokenizer from.')
+flags.DEFINE_string('summary_log_dir',
+                    '',
+                    'Location to dump tensorboard summaries.')
+flags.DEFINE_string('tokenizer_vocab_path',
+                    '',
+                    'Location to read tokenizer from.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
@@ -169,19 +172,22 @@ def import_workload(workload_path: str,
     return workload_class
   return workload_class()
 
+
 # Example reference implementation showing how to use the above functions
 # together.
-def train_once(workload: spec.Workload,
-               global_batch_size: int,
-               data_dir: str,
-               init_optimizer_state: spec.InitOptimizerFn,
-               update_params: spec.UpdateParamsFn,
-               data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparameters],
-               rng: spec.RandomState,
-               profiler: Profiler, 
-               log_dir: Optional[str] = None, 
-               tokenizer_vocab_path: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(
+    workload: spec.Workload,
+    global_batch_size: int,
+    data_dir: str,
+    init_optimizer_state: spec.InitOptimizerFn,
+    update_params: spec.UpdateParamsFn,
+    data_selection: spec.DataSelectionFn,
+    hyperparameters: Optional[spec.Hyperparameters],
+    rng: spec.RandomState,
+    profiler: Profiler,
+    log_dir: Optional[str] = None,
+    tokenizer_vocab_path: Optional[str] = None
+) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -201,12 +207,14 @@ def train_once(workload: spec.Workload,
     workload.create_summary_writer(log_dir)
 
   with profiler.profile('Initializing optimizer'):
-    optimizer_state = init_optimizer_state(workload,
-                                           model_params,
-                                           model_state,
-                                           hyperparameters,
-                                           opt_init_rng,)
-  
+    optimizer_state = init_optimizer_state(
+        workload,
+        model_params,
+        model_state,
+        hyperparameters,
+        opt_init_rng,
+    )
+
   logging.info('Initializing metrics bundle')
   workload.init_metrics_bundle(tokenizer_vocab_path)
   wandb.init()
@@ -226,7 +234,7 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
-    
+
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -253,7 +261,9 @@ def train_once(workload: spec.Workload,
       training_complete = True
     except RuntimeError as e:
       if "out of memory" in str(e):
-        logging.warning(f'error: GPU out of memory during training during step {global_step}, error: {str(e)}')  
+        logging.warning(
+            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'
+        )
         if torch.cuda.is_available():
           torch.cuda.empty_cache()
     global_step += 1
@@ -270,24 +280,26 @@ def train_once(workload: spec.Workload,
       with profiler.profile('Evaluation'):
         try:
           latest_eval_result = workload.eval_model(global_batch_size,
-                                                  model_params,
-                                                  model_state,
-                                                  eval_rng,
-                                                  data_dir,
-                                                  global_step)
+                                                   model_params,
+                                                   model_state,
+                                                   eval_rng,
+                                                   data_dir,
+                                                   global_step)
           logging.info('%.2fs \t%d \t%s',
-                   current_time - global_start_time,
-                   global_step,
-                   latest_eval_result)
+                       current_time - global_start_time,
+                       global_step,
+                       latest_eval_result)
           last_eval_time = current_time
           eval_results.append((global_step, latest_eval_result))
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
           if "out of memory" in str(e):
-            logging.warning(f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}')
+            logging.warning(
+                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'
+            )
             if torch.cuda.is_available():
-              torch.cuda.empty_cache()  
-      
+              torch.cuda.empty_cache()
+
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
@@ -305,8 +317,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None, 
-                                 tokenizer_vocab_path: Optional[str]= None):
+                                 log_dir: Optional[str] = None,
+                                 tokenizer_vocab_path: Optional[str] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -418,7 +430,7 @@ def main(_):
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       FLAGS.summary_log_dir, 
+                                       FLAGS.summary_log_dir,
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 

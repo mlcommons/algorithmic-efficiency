@@ -1,11 +1,11 @@
 from clu import metrics
 import flax
 import numpy as np
-
-import tensorflow_text as tftxt
 import tensorflow as tf
+import tensorflow_text as tftxt
 
 gfile = tf.io.gfile
+
 
 def average_ctc_loss():
   """Returns a clu.Metric that computes average CTC loss taking padding into account.
@@ -29,6 +29,7 @@ def average_ctc_loss():
       return self.total / self.weight
 
   return _Metric
+
 
 def edit_distance(source, target):
   """Computes edit distance between source string and target string.
@@ -104,6 +105,7 @@ def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):
 
   return word_errors, num_words
 
+
 def load_tokenizer(model_path: str,
                    add_bos: bool = False,
                    add_eos: bool = True,
@@ -114,6 +116,7 @@ def load_tokenizer(model_path: str,
   sp_tokenizer = tftxt.SentencepieceTokenizer(
       model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse)
   return sp_tokenizer
+
 
 def wer(tokenizer_vocab_path):
   tokenizer = load_tokenizer(tokenizer_vocab_path)
@@ -136,8 +139,11 @@ def wer(tokenizer_vocab_path):
         values['target_paddings'],
         tokenizer)
 
-      return (word_errors/ num_words)
+      return (word_errors / num_words)
+
   return WER
 
+
 def get_metrics_bundle(tokenizer_vocab_path):
-  return metrics.Collection.create(ctc_loss=average_ctc_loss(), wer=wer(tokenizer_vocab_path))
+  return metrics.Collection.create(
+      ctc_loss=average_ctc_loss(), wer=wer(tokenizer_vocab_path))

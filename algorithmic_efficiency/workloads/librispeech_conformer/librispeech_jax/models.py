@@ -14,16 +14,20 @@ high-level overview of Conformer encoder layer.
 
 import math
 from typing import Any, List
-import optax
 
 from flax import linen as nn
 from flax import struct
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import  librispeech_preprocessor as preprocessor
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import  spectrum_augmenter
 import jax
 import jax.numpy as jnp
 from ml_collections.config_dict import config_dict
 import numpy as np
+import optax
+
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
+    librispeech_preprocessor as preprocessor
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
+    spectrum_augmenter
+
 
 @struct.dataclass
 class ConformerConfig:
@@ -42,13 +46,13 @@ class ConformerConfig:
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
   freq_mask_max_bins: int = 27
-  time_mask_count:int = 10
-  time_mask_max_frames:int = 40
-  time_mask_max_ratio:float = 0.05
-  time_masks_per_frame:float = 0.0
-  use_dynamic_time_mask_max_frames:bool = True
-  residual_dropout_rate:float = 0.1
-  input_dropout_rate:float = 0.1
+  time_mask_count: int = 10
+  time_mask_max_frames: int = 40
+  time_mask_max_ratio: float = 0.05
+  time_masks_per_frame: float = 0.0
+  use_dynamic_time_mask_max_frames: bool = True
+  residual_dropout_rate: float = 0.1
+  input_dropout_rate: float = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
 
@@ -113,7 +117,8 @@ class Subsample(nn.Module):
     outputs = nn.Dense(
         self.encoder_dim,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(outputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            outputs)
 
     outputs = outputs + AddPositionalEmbedding(embedding_dim=self.encoder_dim)(
         seq_length=outputs.shape[1])
@@ -139,10 +144,11 @@ class Conv2dSubsampling(nn.Module):
 
   def setup(self):
     self.filter_shape = (3, 3, self.input_channels, self.output_channels)
-    self.kernel = self.param('kernel', nn.initializers.xavier_uniform(),
+    self.kernel = self.param('kernel',
+                             nn.initializers.xavier_uniform(),
                              self.filter_shape)
-    self.bias = self.param('bias', lambda rng, s: jnp.zeros(s, jnp.float32),
-                           self.output_channels)
+    self.bias = self.param(
+        'bias', lambda rng, s: jnp.zeros(s, jnp.float32), self.output_channels)
 
   @nn.compact
   def __call__(self, inputs, paddings):
@@ -239,9 +245,8 @@ class AddPositionalEmbedding(nn.Module):
     scaled_time = (
         position[:, :, jnp.newaxis] *
         inv_timescales[jnp.newaxis, jnp.newaxis, :])
-    signal = jnp.concatenate(
-        [jnp.sin(scaled_time), jnp.cos(scaled_time)],
-        axis=2).astype(jnp.float32)
+    signal = jnp.concatenate([jnp.sin(scaled_time), jnp.cos(scaled_time)],
+                             axis=2).astype(jnp.float32)
     # Force usage of `np` rather than `jnp` to compute static values at trace
     # time.
     signal = jnp.pad(signal,
@@ -334,15 +339,21 @@ def dot_product_attention(query,
 
   # compute attention weights
   query = QueryScaler(dim=query.shape[-1])(query)
-  attn_weights = nn.attention.dot_product_attention_weights(query, key, bias, mask,
-                                                  broadcast_dropout,
-                                                  dropout_rng, dropout_rate,
-                                                  deterministic, dtype,
-                                                  precision)
+  attn_weights = nn.attention.dot_product_attention_weights(
+      query,
+      key,
+      bias,
+      mask,
+      broadcast_dropout,
+      dropout_rng,
+      dropout_rate,
+      deterministic,
+      dtype,
+      precision)
 
   # return weighted sum over values for each query position
-  return jnp.einsum('...hqk,...khd->...qhd', attn_weights, value,
-                    precision=precision)
+  return jnp.einsum(
+      '...hqk,...khd->...qhd', attn_weights, value, precision=precision)
 
 
 class MultiHeadedSelfAttention(nn.Module):
@@ -406,10 +417,14 @@ class BatchNorm(nn.Module):
     dim = self.config.encoder_dim
     dtype = self.config.dtype
 
-    self.ra_mean = self.variable('batch_stats', 'mean',
-                                 lambda s: jnp.zeros(s, dtype), dim)
-    self.ra_var = self.variable('batch_stats', 'var',
-                                lambda s: jnp.ones(s, dtype), dim)
+    self.ra_mean = self.variable('batch_stats',
+                                 'mean',
+                                 lambda s: jnp.zeros(s, dtype),
+                                 dim)
+    self.ra_var = self.variable('batch_stats',
+                                'var',
+                                lambda s: jnp.ones(s, dtype),
+                                dim)
 
     self.gamma = self.param('scale', nn.initializers.zeros, dim, dtype)
     self.beta = self.param('bias', nn.initializers.zeros, dim, dtype)
@@ -439,10 +454,8 @@ class BatchNorm(nn.Module):
 
       var = sum_vv / count_v
 
-      self.ra_mean.value = momentum * self.ra_mean.value + (
-          1 - momentum) * mean
-      self.ra_var.value = momentum * self.ra_var.value + (
-          1 - momentum) * var
+      self.ra_mean.value = momentum * self.ra_mean.value + (1 - momentum) * mean
+      self.ra_var.value = momentum * self.ra_var.value + (1 - momentum) * var
     else:
       mean = self.ra_mean.value
       var = self.ra_var.value
@@ -485,12 +498,14 @@ class ConvolutionBlock(nn.Module):
     input_gated1 = nn.Dense(
         config.encoder_dim,
         kernel_init=nn.initializers.xavier_uniform(),
-        use_bias=True)(inputs)
+        use_bias=True)(
+            inputs)
 
     input_gated2 = nn.Dense(
         config.encoder_dim,
         kernel_init=nn.initializers.xavier_uniform(),
-        use_bias=True)(inputs)
+        use_bias=True)(
+            inputs)
 
     inputs = input_gated1 * jax.nn.sigmoid(input_gated2)
     inputs = inputs * (1 - jnp.expand_dims(input_paddings, -1))
@@ -502,17 +517,19 @@ class ConvolutionBlock(nn.Module):
         padding='SAME',
         feature_group_count=config.encoder_dim,
         use_bias=False,
-        kernel_init=nn.initializers.xavier_uniform())(inputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            inputs)
 
     inputs = BatchNorm(config)(inputs, input_paddings, train)
 
     inputs = nn.swish(inputs)
     inputs = nn.Dense(
-        config.encoder_dim,
-        kernel_init=nn.initializers.xavier_uniform())(inputs)
+        config.encoder_dim, kernel_init=nn.initializers.xavier_uniform())(
+            inputs)
 
     inputs = nn.Dropout(
-        rate=config.conv_residual_dropout_rate, deterministic=not train)(inputs)
+        rate=config.conv_residual_dropout_rate, deterministic=not train)(
+            inputs)
     return inputs
 
 
@@ -588,7 +605,7 @@ class Conformer(nn.Module):
             outputs, output_paddings)
 
     # Ablate random parts of input along temporal and frequency dimension
-    # following the specaug procedure in https://arxiv.org/abs/1904.08779.    
+    # following the specaug procedure in https://arxiv.org/abs/1904.08779.
     if train:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
 
@@ -606,6 +623,7 @@ class Conformer(nn.Module):
     outputs = nn.Dense(
         config.vocab_size,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(outputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            outputs)
 
-    return outputs, output_paddings  
+    return outputs, output_paddings
