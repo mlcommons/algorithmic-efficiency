@@ -33,7 +33,7 @@ parser.add_argument(
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 
-# taken from TFDS page for librispeech dataset : 
+# taken from TFDS page for librispeech dataset :
 # https://www.tensorflow.org/datasets/catalog/librispeech
 librispeech_example_counts = {
     'train-clean-100': 28539,
@@ -138,7 +138,7 @@ def preprocess_data(data_folder, tokenizer, split):
         split,
         ' = ',
         time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
-  
+
   final_count = finished.val() + skipped.val()
   return pd.DataFrame(file_trans, columns=['id']), final_count
 
@@ -189,10 +189,9 @@ def main():
     example_ids, num_entries = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)  # pylint: disable=line-too-long
 
     if num_entries != librispeech_example_counts[subset]:
-      raise ValueError(
-          'preprocessed dataframe final count not equal to '
-          'expected count: {} vs expected {}'
-          .format(num_entries, librispeech_example_counts[subset]))
+      raise ValueError('preprocessed dataframe final count not equal to '
+                       'expected count: {} vs expected {}'.format(
+                           num_entries, librispeech_example_counts[subset]))
     example_ids.to_csv('data/{}.csv'.format(subset))
 
 
