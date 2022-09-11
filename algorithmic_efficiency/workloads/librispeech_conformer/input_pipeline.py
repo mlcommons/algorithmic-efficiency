@@ -1,15 +1,11 @@
 """Data loader for pre-processed librispeech data."""
 import csv
-import os
-from typing import Optional, Sequence
+from typing import Optional
 
 from absl import logging
-from flax import jax_utils
-import jax
 import numpy as np
 import tensorflow as tf
 
-from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
 
 
@@ -28,7 +24,7 @@ def get_librispeech_dataset(split_name: str,
   ids = []
 
   for split in splits:
-    logging.info('loading split = {}'.format(split))
+    logging.info('loading split = %s', split)
     feat_csv = '{}/{}.csv'.format(data_dir, split)
 
     with open(feat_csv, newline='') as csvfile:
@@ -37,10 +33,10 @@ def get_librispeech_dataset(split_name: str,
     for example in data[1:]:
       ids.append('{}/{}'.format(split, example[1]))
 
-  def load_data(id):
-    id = id.decode('utf-8')
-    audio = np.load('{}/{}_audio.npy'.format(data_dir, id))
-    targets = np.load('{}/{}_targets.npy'.format(data_dir, id))
+  def load_data(example_id):
+    example_id = example_id.decode('utf-8')
+    audio = np.load('{}/{}_audio.npy'.format(data_dir, example_id))
+    targets = np.load('{}/{}_targets.npy'.format(data_dir, example_id))
 
     audio_paddings = np.zeros_like(audio, dtype=np.float32)
     audio_paddings = np.pad(
@@ -56,12 +52,12 @@ def get_librispeech_dataset(split_name: str,
     return audio, audio_paddings, targets, target_paddings
 
   def preprocess(example):
-    id = example['ids']
+    example_id = example['ids']
 
     preprocessed_example = {}
     audio, audio_paddings, targets, target_paddings = tf.numpy_function(
         func=load_data,
-        inp=[id],
+        inp=[example_id],
         Tout=[tf.int64, tf.float32, tf.int32, tf.float32])
 
     preprocessed_example['inputs'] = audio
@@ -79,8 +75,6 @@ def get_librispeech_dataset(split_name: str,
     ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
-  # TODO(sourabh2k15): we will need to select a validation split size that is evenly
-  # divisible by the batch size.
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
 
   if is_training:

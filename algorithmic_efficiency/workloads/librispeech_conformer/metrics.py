@@ -8,7 +8,8 @@ gfile = tf.io.gfile
 
 
 def average_ctc_loss():
-  """Returns a clu.Metric that computes average CTC loss taking padding into account.
+  """Returns a clu.Metric that computes average CTC loss
+  taking padding into account.
   """
 
   @flax.struct.dataclass
@@ -23,7 +24,8 @@ def average_ctc_loss():
 
     def merge(self, other):
       return type(self)(
-          total=self.total + other.total, weight=self.weight + other.weight)
+        total=self.total + other.total,
+        weight=self.weight + other.weight)
 
     def compute(self):
       return self.total / self.weight
@@ -79,7 +81,7 @@ def edit_distance(source, target):
   return distance[num_source_words][num_target_words]
 
 
-def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):
+def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):   # pylint: disable=line-too-long
   word_errors = 0.0
   num_words = 0.0
 
@@ -139,7 +141,7 @@ def wer(tokenizer_vocab_path):
         values['target_paddings'],
         tokenizer)
 
-      return (word_errors / num_words)
+      return word_errors / num_words
 
   return WER
 

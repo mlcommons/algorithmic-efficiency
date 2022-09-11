@@ -1,7 +1,8 @@
-"""A flax layer to do data augmentation for audio signals as described in https://arxiv.org/abs/1904.08779.
+"""A flax layer to do data augmentation for audio signals as
+described in https://arxiv.org/abs/1904.08779.
 
 code based on
-https://github.com/tensorflow/lingvo/blob/master/lingvo/jax/layers/spectrum_augmenter.py
+https://github.com/tensorflow/lingvo/blob/master/lingvo/jax/layers/spectrum_augmenter.py.  # pylint: disable=line-too-long
 """
 
 import flax.linen as nn
@@ -13,7 +14,7 @@ class SpecAug(nn.Module):
   """Layer performs masking prodecure along time and frequency axis.
 
   The procedure is detailed in https://arxiv.org/abs/1904.08779.
-  This is an essential component in speech recognition models that helps achieve
+  This is an essential component in speech recognition models that helps achieve  # pylint: disable=line-too-long
   better word error rates.
   """
   freq_mask_count: int = 1
@@ -47,7 +48,7 @@ class SpecAug(nn.Module):
         minval=0.0,
         maxval=1.0)
     masked_frame_size = jnp.einsum('b,bm->bm', max_length,
-                                   masked_portion).astype(jnp.int32)
+                                    masked_portion).astype(jnp.int32)
     # Make sure the sampled length was smaller than max_ratio * length_bound.
     # Note that sampling in this way was biased
     # (shorter sequence may over-masked.)
@@ -70,7 +71,9 @@ class SpecAug(nn.Module):
     end = jnp.tile(end, [1, 1, mask_size])
 
     # Construct pre-mask of shape (batch_size, multiplicity, mask_size).
-    diagonal = jnp.expand_dims(jnp.expand_dims(jnp.arange(mask_size), 0), 0)
+    diagonal = jnp.expand_dims(
+        jnp.expand_dims(
+            jnp.arange(mask_size), 0), 0)
     diagonal = jnp.tile(diagonal, [batch_size, multiplicity, 1])
     pre_mask = jnp.minimum(diagonal < end, diagonal > start)
 
@@ -97,8 +100,8 @@ class SpecAug(nn.Module):
     max_ratio = self.time_mask_max_ratio
 
     # If maximum mask length is zero, do nothing.
-    if ((time_mask_max_frames == 0 and not use_dynamic_time_mask_max_frames) or
-        max_ratio <= 0.0):
+    if ((time_mask_max_frames ==
+            0 and not use_dynamic_time_mask_max_frames) or max_ratio <= 0.0):
       return inputs
     if multiplicity == 0:
       return inputs

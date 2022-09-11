@@ -1,16 +1,10 @@
-import itertools
-import math
-from typing import Dict, Optional
+from typing import Optional
 
 from absl import flags
 from absl import logging
-import flax.linen as nn
 import jax
-import jax.numpy as jnp
 import numpy as np
-import tensorflow_datasets as tfds
 
-from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import \
     input_pipeline
@@ -179,7 +173,7 @@ class BaseLibrispeechWorkload(spec.Workload):
                                                 batch_size,
                                                 num_batches)
 
-    logging.info('done loading split = {}'.format(split))
+    logging.info('done loading split = %', split)
 
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access

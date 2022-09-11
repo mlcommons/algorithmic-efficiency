@@ -31,13 +31,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model = model_cls(models.ConformerConfig())
     self._model = model
     input_shape = [(320000,), (320000,)]
-    fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
+    fake_input_batch = [np.zeros((2, *x), jnp.float32)
+                        for x in input_shape]
 
     model_init_fn = jax.jit(functools.partial(model.init, train=False))
 
     params_rng, dropout_rng = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
-                              *fake_input_batch)
+    variables = model_init_fn(
+        {'params': params_rng, 'dropout': dropout_rng}, *fake_input_batch)
 
     model_state, params = variables.pop('params')
 
@@ -96,20 +97,20 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
               target_paddings):  # differentiable
     logprobs = nn.log_softmax(logits)
     per_seq_loss = self.ctc_loss(logprobs,
-                                 logit_paddings,
-                                 targets,
-                                 target_paddings)
+                                  logit_paddings,
+                                  targets,
+                                  target_paddings)
     normalizer = jnp.sum(1 - target_paddings)
 
     normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
     return normalized_loss
 
   def ctc_loss(self,
-               logits,
-               logit_paddings,
-               labels,
-               label_paddings,
-               blank_id=0):
+                logits,
+                logit_paddings,
+                labels,
+                label_paddings,
+                blank_id=0):
     return optax.ctc_loss(logits,
                           logit_paddings,
                           labels,
@@ -125,7 +126,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     c = jnp.less_equal(b, lengths[:, jnp.newaxis]).astype(lengths.dtype)
     return c
 
-  def collapse_and_remove_blanks(self, labels, seq_length, blank_id: int = 0):
+  def collapse_and_remove_blanks(
+          self,
+          labels,
+          seq_length,
+          blank_id: int = 0):
     b, t = labels.shape
     # Zap out blank
     blank_mask = 1 - jnp.equal(labels, blank_id)
@@ -135,8 +140,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     label_mask = jnp.concatenate([
         jnp.ones_like(labels[:, :1], dtype=jnp.int32),
         jnp.not_equal(labels[:, 1:], labels[:, :-1])
-    ],
-                                 axis=1)
+    ], axis=1)
 
     # Filter labels that aren't in the original sequence.
     maxlen = labels.shape[1]
@@ -178,7 +182,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def greedy_decode(self, logits, logit_paddings):
     per_frame_max = jnp.argmax(logits, axis=-1)
     seqlen = jnp.sum(1.0 - logit_paddings, axis=-1)
-    hyp, _ = self.collapse_and_remove_blanks(per_frame_max, seqlen, blank_id=0)
+    hyp, _ = self.collapse_and_remove_blanks(
+        per_frame_max, seqlen, blank_id=0)
     hyp_paddings = jnp.equal(hyp, 0).astype(jnp.int32)
     return hyp, hyp_paddings
 
@@ -188,11 +193,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       in_axes=(None, 0, 0, 0, None),
       static_broadcasted_argnums=(0,))
   def eval_step_pmapped(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+          self,
+          params: spec.ParameterContainer,
+          batch: Dict[str, spec.Tensor],
+          model_state: spec.ModelAuxiliaryState,
+          rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     logits, logit_paddings = self.model_fn(
         params,
         batch,
@@ -201,9 +206,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
     normalized_loss = self.loss_fn(logits,
-                                   logit_paddings,
-                                   batch['targets'],
-                                   batch['target_paddings'])
+                                    logit_paddings,
+                                    batch['targets'],
+                                    batch['target_paddings'])
 
     return self.metrics_bundle.gather_from_model_output(
         normalized_loss=normalized_loss,
@@ -214,15 +219,15 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         axis_name='batch')
 
   def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int) -> Dict[str, float]:
-    """Run a full evaluation of the model."""
+                            split: str,
+                            num_examples: int,
+                            global_batch_size: int,
+                            params: spec.ParameterContainer,
+                            model_state: spec.ModelAuxiliaryState,
+                            rng: spec.RandomState,
+                            data_dir: str,
+                            global_step: int) -> Dict[str, float]:
+      """Run a full evaluation of the model."""
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
       logging.info('syncing batch_stats across replicas before eval.')
@@ -234,11 +239,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(
-          self.build_input_queue(rng,
-                                 split,
-                                 data_dir,
-                                 global_batch_size,
-                                 num_batches))
+        self.build_input_queue(rng,
+                              split,
+                              data_dir,
+                              global_batch_size,
+                              num_batches))
 
     metrics_report = None
     for _ in range(num_batches):
@@ -249,26 +254,26 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                                 rng).unreplicate()
 
       if metrics_report is None:
-        metrics_report = computed_metrics
+          metrics_report = computed_metrics
       else:
-        # `merge` aggregates the metrics across batches.
-        metrics_report = metrics_report.merge(computed_metrics)
+          # `merge` aggregates the metrics across batches.
+          metrics_report = metrics_report.merge(computed_metrics)
 
     computed_metrics = metrics_report.compute()
 
     self.summary_writer.scalar('{}/WER'.format(split),
-                               computed_metrics['wer'],
-                               global_step)
+                                computed_metrics['wer'],
+                                global_step)
     self.summary_writer.scalar('{}/ctc_loss'.format(split),
-                               computed_metrics['ctc_loss'],
-                               global_step)
+                                computed_metrics['ctc_loss'],
+                                global_step)
 
     return computed_metrics
 
   def sync_batch_stats(self, model_state):
-    # An axis_name is passed to pmap which can then be used by pmean.
-    # In this case each device has its own version of the batch statistics and
-    # we average them.
+      # An axis_name is passed to pmap which can then be used by pmean.
+      # In this case each device has its own version of the batch statistics and
+      # we average them.
     avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
     new_model_state = model_state.copy(
         {'batch_stats': avg_fn(model_state['batch_stats'])})
