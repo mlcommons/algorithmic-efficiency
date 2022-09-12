@@ -8,62 +8,65 @@ import jraph
 
 
 def _make_embed(latent_dim):
+    def make_fn(inputs):
+        return nn.Dense(features=latent_dim)(inputs)
 
-  def make_fn(inputs):
-    return nn.Dense(features=latent_dim)(inputs)
-
-  return make_fn
+    return make_fn
 
 
 def _make_mlp(hidden_dims, dropout):
-  """Creates a MLP with specified dimensions."""
+    """Creates a MLP with specified dimensions."""
 
-  @jraph.concatenated_args
-  def make_fn(inputs):
-    x = inputs
-    for dim in hidden_dims:
-      x = nn.Dense(features=dim)(x)
-      x = nn.LayerNorm()(x)
-      x = nn.relu(x)
-      x = dropout(x)
-    return x
+    @jraph.concatenated_args
+    def make_fn(inputs):
+        x = inputs
+        for dim in hidden_dims:
+            x = nn.Dense(features=dim)(x)
+            x = nn.LayerNorm()(x)
+            x = nn.relu(x)
+            x = dropout(x)
+        return x
 
-  return make_fn
+    return make_fn
 
 
 class GNN(nn.Module):
-  """Defines a graph network.
-  The model assumes the input data is a jraph.GraphsTuple without global
-  variables. The final prediction will be encoded in the globals.
-  """
-  num_outputs: int
-  latent_dim: int = 256
-  hidden_dims: Tuple[int] = (256,)
-  dropout_rate: float = 0.1
-  num_message_passing_steps: int = 5
+    """Defines a graph network.
+    The model assumes the input data is a jraph.GraphsTuple without global
+    variables. The final prediction will be encoded in the globals.
+    """
 
-  @nn.compact
-  def __call__(self, graph, train):
-    dropout = nn.Dropout(rate=self.dropout_rate, deterministic=not train)
+    num_outputs: int
+    latent_dim: int = 256
+    hidden_dims: Tuple[int] = (256,)
+    dropout_rate: float = 0.1
+    num_message_passing_steps: int = 5
 
-    graph = graph._replace(
-        globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))
+    @nn.compact
+    def __call__(self, graph, train):
+        dropout = nn.Dropout(rate=self.dropout_rate, deterministic=not train)
 
-    embedder = jraph.GraphMapFeatures(
-        embed_node_fn=_make_embed(self.latent_dim),
-        embed_edge_fn=_make_embed(self.latent_dim))
-    graph = embedder(graph)
+        graph = graph._replace(
+            globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs])
+        )
 
-    for _ in range(self.num_message_passing_steps):
-      net = jraph.GraphNetwork(
-          update_edge_fn=_make_mlp(self.hidden_dims, dropout=dropout),
-          update_node_fn=_make_mlp(self.hidden_dims, dropout=dropout),
-          update_global_fn=_make_mlp(self.hidden_dims, dropout=dropout))
+        embedder = jraph.GraphMapFeatures(
+            embed_node_fn=_make_embed(self.latent_dim),
+            embed_edge_fn=_make_embed(self.latent_dim),
+        )
+        graph = embedder(graph)
 
-      graph = net(graph)
+        for _ in range(self.num_message_passing_steps):
+            net = jraph.GraphNetwork(
+                update_edge_fn=_make_mlp(self.hidden_dims, dropout=dropout),
+                update_node_fn=_make_mlp(self.hidden_dims, dropout=dropout),
+                update_global_fn=_make_mlp(self.hidden_dims, dropout=dropout),
+            )
 
-    # Map globals to represent the final result
-    decoder = jraph.GraphMapFeatures(embed_global_fn=nn.Dense(self.num_outputs))
-    graph = decoder(graph)
+            graph = net(graph)
 
-    return graph.globals
+        # Map globals to represent the final result
+        decoder = jraph.GraphMapFeatures(embed_global_fn=nn.Dense(self.num_outputs))
+        graph = decoder(graph)
+
+        return graph.globals
