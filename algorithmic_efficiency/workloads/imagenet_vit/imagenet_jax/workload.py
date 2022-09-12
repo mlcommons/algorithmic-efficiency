@@ -68,4 +68,4 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                                         model_state,
                                         rng,
                                         data_dir,
-                                        global_step: int = 0)
+                                        global_step)
