@@ -1,4 +1,3 @@
-"""Utilities to compute eval and loss metrics."""
 from clu import metrics
 import flax
 import numpy as np
@@ -9,9 +8,8 @@ gfile = tf.io.gfile
 
 
 def average_ctc_loss():
-  """Returns a clu.Metric that computes average CTC loss.
-
-  This metric takes padding into account.
+  """Returns a clu.Metric that computes average CTC loss
+  taking padding into account.
   """
 
   @flax.struct.dataclass
@@ -26,7 +24,8 @@ def average_ctc_loss():
 
     def merge(self, other):
       return type(self)(
-          total=self.total + other.total, weight=self.weight + other.weight)
+        total=self.total + other.total,
+        weight=self.weight + other.weight)
 
     def compute(self):
       return self.total / self.weight
@@ -82,8 +81,7 @@ def edit_distance(source, target):
   return distance[num_source_words][num_target_words]
 
 
-def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):  # pylint: disable=line-too-long
-  """Computes WER."""
+def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):   # pylint: disable=line-too-long
   word_errors = 0.0
   num_words = 0.0
 
@@ -123,7 +121,6 @@ def load_tokenizer(model_path: str,
 
 
 def wer(tokenizer_vocab_path):
-  """Computes WER."""
   tokenizer = load_tokenizer(tokenizer_vocab_path)
 
   @flax.struct.dataclass
@@ -137,10 +134,12 @@ def wer(tokenizer_vocab_path):
       # Ensure the arrays are numpy and not jax.numpy.
       values = {k: np.array(v) for k, v in values.items()}
 
-      word_errors, num_words = compute_wer(values['decoded'],
-                                           values['decoded_paddings'],
-                                           values['targets'].astype(np.int32),
-                                           values['target_paddings'], tokenizer)
+      word_errors, num_words = compute_wer(
+        values['decoded'],
+        values['decoded_paddings'],
+        values['targets'].astype(np.int32),
+        values['target_paddings'],
+        tokenizer)
 
       return word_errors / num_words
 

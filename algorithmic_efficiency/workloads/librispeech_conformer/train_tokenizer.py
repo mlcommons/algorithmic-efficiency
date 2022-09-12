@@ -82,14 +82,14 @@ def train_tokenizer(data_dir: str,
 
   Args:
     data_dir: string path to data
-    splits: string referring to which data split is used in this training.
     vocab_size: int: size of vocab tokens to train.
-    model_path: str: path of model file to save vocab model to.
     maxchars: int: number of characters to use for sentencepiece training.
+    model_path: str: path of model file to save vocab model to.
     model_type: str: type of sentencepiece vocab to train.
     character_coverage: amount of characters covered by the model, good defaults
       are 0.9995 for languages with rich character set like Japanese or Chinese
       and 1.0 for other languages with small character set.
+    data_keys: Tuple[str]: keys of dataset to use for training.
 
   Returns:
     path to the trained sentencepiece vocabulary model.
@@ -101,9 +101,11 @@ def train_tokenizer(data_dir: str,
       delete=False, prefix='/tmp/sp_tmp') as model_fp:
     pass  # we just want a prefix'd tmp-filename
   argstr = ' '.join([
-      f'--input={charfile.name}', f'--vocab_size={vocab_size}',
+      f'--input={charfile.name}',
+      f'--vocab_size={vocab_size}',
       f'--character_coverage={character_coverage}',
-      f'--model_prefix={model_fp.name}', f'--model_type={model_type}'
+      f'--model_prefix={model_fp.name}',
+      f'--model_type={model_type}'
   ])
   spm.SentencePieceTrainer.Train(argstr)
 

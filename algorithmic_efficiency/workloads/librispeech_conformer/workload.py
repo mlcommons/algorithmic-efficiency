@@ -1,18 +1,18 @@
-"""Librispeech base workload definition."""
 from typing import Optional
 
 from absl import flags
 from absl import logging
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.librispeech_conformer import input_pipeline
 import jax
 import numpy as np
+
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.librispeech_conformer import \
+    input_pipeline
 
 FLAGS = flags.FLAGS
 
 
 class BaseLibrispeechWorkload(spec.Workload):
-  """Librispeech base workload definition."""
 
   def __init__(self) -> None:
     self._eval_iters = {}
@@ -79,7 +79,10 @@ class BaseLibrispeechWorkload(spec.Workload):
                         cache: Optional[bool] = False,
                         repeat_final_dataset: Optional[bool] = False,
                         num_batches: Optional[int] = None):
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size,
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
                                num_batches)
 
   def get_learning_rate(self, step, hyperparams):
@@ -111,10 +114,10 @@ class BaseLibrispeechWorkload(spec.Workload):
     padded. Will return a dictionary with the same keys.
 
     Args:
-      batch: A dictionary mapping keys to arrays. We assume that inputs is one
-        of the keys.
-      desired_batch_size: All arrays in the dict will be padded to have first
-        dimension equal to desired_batch_size.
+      batch: A dictionary mapping keys to arrays. We assume that inputs is
+      one of the keys.
+      desired_batch_size: All arrays in the dict will be padded to have
+      first dimension equal to desired_batch_size.
       padding_value: value to be used as padding.
 
     Returns:
@@ -163,8 +166,12 @@ class BaseLibrispeechWorkload(spec.Workload):
     elif split == 'test':
       split = 'test-clean'
 
-    ds = input_pipeline.get_librispeech_dataset(split, data_dir, data_rng,
-                                                train, batch_size, num_batches)
+    ds = input_pipeline.get_librispeech_dataset(split,
+                                                data_dir,
+                                                data_rng,
+                                                train,
+                                                batch_size,
+                                                num_batches)
 
     logging.info('done loading split = %s', split)
 
