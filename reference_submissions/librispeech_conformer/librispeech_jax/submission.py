@@ -72,7 +72,8 @@ def l2_regularization(params, l2_decay_rank_threshold):
   weight_l2 = sum(
       jnp.sum(x**2)
       for x in weight_penalty_params
-      if x.ndim >= l2_decay_rank_threshold)
+      if x.ndim >= l2_decay_rank_threshold
+  )
   return weight_l2
 
 
@@ -175,10 +176,7 @@ def update_params(
 
   if global_step <= 1000 or global_step % 100 == 0:
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
-        global_step, 
-        loss.mean(), 
-        grad_norm.mean(), 
-        lr)
+        global_step, loss.mean(), grad_norm.mean(), lr)
     workload.summary_writer.scalar('train_step_ctc_loss',
                                    loss.mean(),
                                    global_step)
