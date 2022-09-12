@@ -13,7 +13,6 @@ python3 submission_runner.py \
 import importlib
 import inspect
 import json
-import math
 import os
 import struct
 import time
@@ -25,7 +24,6 @@ from absl import logging
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-import wandb
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -33,6 +31,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
+import wandb
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -262,7 +261,7 @@ def train_once(
     except RuntimeError as e:
       if "out of memory" in str(e):
         logging.warning(
-            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'
+            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
         )
         if torch.cuda.is_available():
           torch.cuda.empty_cache()
@@ -295,7 +294,7 @@ def train_once(
         except RuntimeError as e:
           if "out of memory" in str(e):
             logging.warning(
-                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'
+                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
             )
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
@@ -357,7 +356,7 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)
+                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)  # pylint: disable=line-too-long
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)

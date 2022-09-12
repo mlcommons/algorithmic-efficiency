@@ -36,12 +36,12 @@ AUDIO_MAX_LENGTH = 320000
 # taken from TFDS page for librispeech dataset :
 # https://www.tensorflow.org/datasets/catalog/librispeech
 librispeech_example_counts = {
-    'train-clean-100': 28539,
-    'train-clean-360': 104014,
-    'train-other-500': 148688,
-    'test-clean': 2620,
-    'dev-clean': 2703,
-    'dev-other': 2864
+  'train-clean-100': 28539,
+  'train-clean-360': 104014,
+  'train-other-500': 148688,
+  'test-clean': 2620,
+  'dev-clean': 2703,
+  'dev-other': 2864
 }
 
 
@@ -90,7 +90,7 @@ def preprocess_data(data_folder, tokenizer, split):
       for l in f:
         utt, trans = l.strip().split(' ', maxsplit=1)
         audio_path = (
-            f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
+          f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
 
         if not os.path.isfile(audio_path):
           skipped.inc()
@@ -121,7 +121,7 @@ def preprocess_data(data_folder, tokenizer, split):
     return utterance_ids
 
   paths = []
-  for j, speaker_folder in enumerate(os.listdir(data_folder)):
+  for _, speaker_folder in enumerate(os.listdir(data_folder)):
     for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
       paths.append((data_folder, speaker_folder, chapter_folder))
 
@@ -175,13 +175,13 @@ def main():
 
   # put whatever splits required in this list below
   subset_list = [
-      'train-clean-100',
-      'train-clean-360',
-      'train-other-500',
-      'dev-clean',
-      'dev-other',
-      'test-clean',
-      'test-other'
+    'train-clean-100',
+    'train-clean-360',
+    'train-other-500',
+    'dev-clean',
+    'dev-other',
+    'test-clean',
+    'test-other'
   ]
   for subset in subset_list:
     print('processing split = ', subset)

@@ -110,19 +110,19 @@ class BaseLibrispeechWorkload(spec.Workload):
   def maybe_pad_batch(self, batch, desired_batch_size, padding_value=0.0):
     """Zero pad the batch on the right to desired_batch_size.
 
-    All keys in the batch dictionary will have their corresponding arrays padded.
-    Will return a dictionary with the same keys.
+    All keys in the batch dictionary will have their corresponding arrays
+    padded. Will return a dictionary with the same keys.
 
     Args:
-      batch: A dictionary mapping keys to arrays. We assume that inputs is one of
-        the keys.
-      desired_batch_size: All arrays in the dict will be padded to have first
-        dimension equal to desired_batch_size.
+      batch: A dictionary mapping keys to arrays. We assume that inputs is
+      one of the keys.
+      desired_batch_size: All arrays in the dict will be padded to have
+      first dimension equal to desired_batch_size.
       padding_value: value to be used as padding.
 
     Returns:
-      A dictionary mapping the same keys to the padded batches. Additionally we
-      add a key representing weights, to indicate how the batch was padded.
+      A dictionary mapping the same keys to the padded batches. Additionally
+      we add a key representing weights, to indicate how the batch was padded.
     """
     batch_axis = 0
     batch_size = batch['inputs'].shape[batch_axis]
@@ -173,7 +173,7 @@ class BaseLibrispeechWorkload(spec.Workload):
                                                 batch_size,
                                                 num_batches)
 
-    logging.info('done loading split = %', split)
+    logging.info('done loading split = %s', split)
 
     for batch in iter(ds):
       batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access

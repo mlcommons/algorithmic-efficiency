@@ -7,9 +7,8 @@ from absl import logging
 import flax
 from flax import jax_utils
 import jax
-import jax.lax as lax
+from jax import lax
 import jax.numpy as jnp
-import numpy as np
 import optax
 
 from algorithmic_efficiency import spec
@@ -70,11 +69,11 @@ def l2_regularization(params, l2_decay_rank_threshold):
     weight_l2: the squared l2 norm of all params matching the threshold.
   """
   weight_penalty_params = jax.tree_leaves(params)
-  weight_l2 = sum([
+  weight_l2 = sum(
       jnp.sum(x**2)
       for x in weight_penalty_params
       if x.ndim >= l2_decay_rank_threshold
-  ])
+  )
   return weight_l2
 
 
@@ -96,7 +95,6 @@ def pmapped_train_step(workload,
 
   def _loss_fn(params):
     """loss function used for training."""
-    variables = {'params': params, **model_state}
     params_rng, dropout_rng = jax.random.split(rng, 2)
     (logits, logit_paddings), new_model_state = workload.model_fn(
         params,
@@ -172,13 +170,13 @@ def update_params(
   lr = workload.get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(
+  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(  # pylint: disable=line-too-long
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, hyperparameters, batch, per_device_rngs, lr)
 
   if global_step <= 1000 or global_step % 100 == 0:
-    logging.info('{}) loss = {}, grad_norm = {} lr = {}'.format(
-        global_step, loss.mean(), grad_norm.mean(), lr))
+    logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
+        global_step, loss.mean(), grad_norm.mean(), lr)
     workload.summary_writer.scalar('train_step_ctc_loss',
                                    loss.mean(),
                                    global_step)

@@ -1,20 +1,19 @@
 import functools
 import itertools
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from absl import flags
 from absl import logging
 from flax import jax_utils
 import flax.linen as nn
 import jax
-import jax.lax as lax
+from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import optax
 
 from algorithmic_efficiency import param_utils
-from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
@@ -197,7 +196,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           params: spec.ParameterContainer,
           batch: Dict[str, spec.Tensor],
           model_state: spec.ModelAuxiliaryState,
-          rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+          rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:  # pylint: disable=line-too-long
     logits, logit_paddings = self.model_fn(
         params,
         batch,
@@ -227,15 +226,15 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                             rng: spec.RandomState,
                             data_dir: str,
                             global_step: int) -> Dict[str, float]:
-      """Run a full evaluation of the model."""
+    """Run a full evaluation of the model."""
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
       logging.info('syncing batch_stats across replicas before eval.')
       model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
-    logging.info('split = {}, num_examples = {}, num_batches = {}'.format(
-        split, num_examples, num_batches))
+    logging.info('split = %s, num_examples = %d, num_batches = %d',
+        split, num_examples, num_batches)
 
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(
@@ -254,10 +253,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                                 rng).unreplicate()
 
       if metrics_report is None:
-          metrics_report = computed_metrics
+        metrics_report = computed_metrics
       else:
-          # `merge` aggregates the metrics across batches.
-          metrics_report = metrics_report.merge(computed_metrics)
+        # `merge` aggregates the metrics across batches.
+        metrics_report = metrics_report.merge(computed_metrics)
 
     computed_metrics = metrics_report.compute()
 
