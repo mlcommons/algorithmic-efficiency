@@ -24,8 +24,7 @@ def average_ctc_loss():
 
     def merge(self, other):
       return type(self)(
-        total=self.total + other.total,
-        weight=self.weight + other.weight)
+          total=self.total + other.total, weight=self.weight + other.weight)
 
     def compute(self):
       return self.total / self.weight
@@ -81,7 +80,7 @@ def edit_distance(source, target):
   return distance[num_source_words][num_target_words]
 
 
-def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):   # pylint: disable=line-too-long
+def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):  # pylint: disable=line-too-long
   word_errors = 0.0
   num_words = 0.0
 
