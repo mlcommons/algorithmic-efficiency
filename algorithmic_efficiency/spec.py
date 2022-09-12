@@ -237,7 +237,8 @@ class Workload(metaclass=abc.ABCMeta):
                            params: ParameterContainer,
                            model_state: ModelAuxiliaryState,
                            rng: RandomState,
-                           data_dir: str) -> Dict[str, float]:
+                           data_dir: str,
+                           global_step: int = 0) -> Dict[str, float]:
     """Evaluate the model on a given dataset split, return final scalars."""
 
   def create_summary_writer(self, log_dir):
