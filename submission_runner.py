@@ -24,6 +24,7 @@ from absl import logging
 import tensorflow as tf
 import torch
 import torch.distributed as dist
+import wandb
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -35,6 +36,9 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
+
+# Setup JAX so it preallocates less GPU memory by default.
+# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -60,9 +64,13 @@ WORKLOADS = {
         'workload_path': 'imagenet_vit/imagenet',
         'workload_class_name': 'ImagenetVitWorkload'
     },
-    'librispeech': {
-        'workload_path': 'librispeech/librispeech',
-        'workload_class_name': 'LibriSpeechWorkload'
+    'librispeech_conformer': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerWorkload',
+    },
+    'librispeech_deepspeech': {
+        'workload_path': 'librispeech_deepspeech/librispeech',
+        'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
     },
     'mnist': {
         'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
@@ -103,6 +111,12 @@ flags.DEFINE_enum(
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
+flags.DEFINE_string('summary_log_dir',
+                    '',
+                    'Location to dump tensorboard summaries.')
+flags.DEFINE_string('tokenizer_vocab_path',
+                    '',
+                    'Location to read tokenizer from.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
@@ -160,15 +174,19 @@ def import_workload(workload_path: str,
 
 # Example reference implementation showing how to use the above functions
 # together.
-def train_once(workload: spec.Workload,
-               global_batch_size: int,
-               data_dir: str,
-               init_optimizer_state: spec.InitOptimizerFn,
-               update_params: spec.UpdateParamsFn,
-               data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparameters],
-               rng: spec.RandomState,
-               profiler: Profiler) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(
+    workload: spec.Workload,
+    global_batch_size: int,
+    data_dir: str,
+    init_optimizer_state: spec.InitOptimizerFn,
+    update_params: spec.UpdateParamsFn,
+    data_selection: spec.DataSelectionFn,
+    hyperparameters: Optional[spec.Hyperparameters],
+    rng: spec.RandomState,
+    profiler: Profiler,
+    log_dir: Optional[str] = None,
+    tokenizer_vocab_path: Optional[str] = None
+) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -183,12 +201,22 @@ def train_once(workload: spec.Workload,
   with profiler.profile('Initializing model'):
     model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
+  if log_dir:
+    logging.info('Initializing tensorboard summary writer')
+    workload.create_summary_writer(log_dir)
+
   with profiler.profile('Initializing optimizer'):
-    optimizer_state = init_optimizer_state(workload,
-                                           model_params,
-                                           model_state,
-                                           hyperparameters,
-                                           opt_init_rng)
+    optimizer_state = init_optimizer_state(
+        workload,
+        model_params,
+        model_state,
+        hyperparameters,
+        opt_init_rng,
+    )
+
+  logging.info('Initializing metrics bundle')
+  workload.init_metrics_bundle(tokenizer_vocab_path)
+  wandb.init()
 
   # Bookkeeping.
   goal_reached = False
@@ -205,6 +233,7 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
+
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -229,6 +258,13 @@ def train_once(workload: spec.Workload,
           rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
+    except RuntimeError as e:
+      if "out of memory" in str(e):
+        logging.warning(
+            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
+        )
+        if torch.cuda.is_available():
+          torch.cuda.empty_cache()
     global_step += 1
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
@@ -241,18 +277,28 @@ def train_once(workload: spec.Workload,
     if (current_time - last_eval_time >= workload.eval_period_time_sec or
         training_complete):
       with profiler.profile('Evaluation'):
-        latest_eval_result = workload.eval_model(global_batch_size,
-                                                 model_params,
-                                                 model_state,
-                                                 eval_rng,
-                                                 data_dir)
-      logging.info('%.2fs \t%d \t%s',
-                   current_time - global_start_time,
-                   global_step,
-                   latest_eval_result)
-      last_eval_time = current_time
-      eval_results.append((global_step, latest_eval_result))
-      goal_reached = workload.has_reached_goal(latest_eval_result)
+        try:
+          latest_eval_result = workload.eval_model(global_batch_size,
+                                                   model_params,
+                                                   model_state,
+                                                   eval_rng,
+                                                   data_dir,
+                                                   global_step)
+          logging.info('%.2fs \t%d \t%s',
+                       current_time - global_start_time,
+                       global_step,
+                       latest_eval_result)
+          last_eval_time = current_time
+          eval_results.append((global_step, latest_eval_result))
+          goal_reached = workload.has_reached_goal(latest_eval_result)
+        except RuntimeError as e:
+          if "out of memory" in str(e):
+            logging.warning(
+                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
+            )
+            if torch.cuda.is_available():
+              torch.cuda.empty_cache()
+
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
@@ -269,7 +315,9 @@ def score_submission_on_workload(workload: spec.Workload,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None):
+                                 num_tuning_trials: Optional[int] = None,
+                                 log_dir: Optional[str] = None,
+                                 tokenizer_vocab_path: Optional[str] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -308,7 +356,7 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler)
+                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)  # pylint: disable=line-too-long
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -372,6 +420,7 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
+  # nvidia_smi.nvmlInit()
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
@@ -379,7 +428,9 @@ def main(_):
                                        profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials)
+                                       FLAGS.num_tuning_trials,
+                                       FLAGS.summary_log_dir,
+                                       FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.profile:

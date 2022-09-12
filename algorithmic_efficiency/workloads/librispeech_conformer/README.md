@@ -16,7 +16,7 @@ load audio for our preprocessing script.
 this step trains a simple sentence piece tokenizer over librispeech training data.
 this tokenizer is then used in later preprocessing step to tokenize transcripts.
 
-> train_tokenizer.py --train=True --data_dir=data_dir/LibriSpeech
+> python3 train_tokenizer.py --train=True --data_dir=data_dir/LibriSpeech
 
 the trained tokenizer can be loaded back to do sanity check by tokenizing + de-tokenizing a constant string.
 
