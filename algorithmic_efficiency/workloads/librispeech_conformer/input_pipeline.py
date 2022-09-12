@@ -3,10 +3,9 @@ import csv
 from typing import Optional
 
 from absl import logging
+from algorithmic_efficiency import spec
 import numpy as np
 import tensorflow as tf
-
-from algorithmic_efficiency import spec
 
 
 def get_librispeech_dataset(split_name: str,

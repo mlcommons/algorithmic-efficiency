@@ -43,11 +43,8 @@ class ShapeTuple:
     self.shape_tuple = shape_tuple
 
 
-Shape = Union[Tuple[int],
-              Tuple[int, int],
-              Tuple[int, int, int],
-              Tuple[int, int, int, int],
-              ShapeTuple]
+Shape = Union[Tuple[int], Tuple[int, int], Tuple[int, int, int],
+              Tuple[int, int, int, int], ShapeTuple]
 ParameterShapeTree = Dict[str, Dict[str, Shape]]
 
 # If necessary, these can be izipped together easily given they have the same
@@ -72,29 +69,14 @@ UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparameters, RandomState],
                            OptimizerState]
 UpdateParamsFn = Callable[[
-    ParameterContainer,
-    ParameterTypeTree,
-    ModelAuxiliaryState,
-    Hyperparameters,
-    Tensor,
-    Tensor,
-    LossType,
-    OptimizerState,
-    List[Tuple[int, float]],
-    int,
-    RandomState
-],
-                          UpdateReturn]
+    ParameterContainer, ParameterTypeTree, ModelAuxiliaryState, Hyperparameters,
+    Tensor, Tensor, LossType, OptimizerState, List[Tuple[
+        int, float]], int, RandomState
+], UpdateReturn]
 DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]],
-    OptimizerState,
-    ParameterContainer,
-    LossType,
-    Hyperparameters,
-    int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
+    Iterator[Tuple[Tensor, Tensor]], OptimizerState, ParameterContainer,
+    LossType, Hyperparameters, int, RandomState
+], Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -200,11 +182,9 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
   #     Tensor]
   @abc.abstractmethod
-  def model_fn(self,
-               params: ParameterContainer,
+  def model_fn(self, params: ParameterContainer,
                augmented_and_preprocessed_input_batch: Dict[str, Tensor],
-               model_state: ModelAuxiliaryState,
-               mode: ForwardPassMode,
+               model_state: ModelAuxiliaryState, mode: ForwardPassMode,
                rng: RandomState,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
@@ -236,20 +216,17 @@ class Workload(metaclass=abc.ABCMeta):
                            params: ParameterContainer,
                            model_state: ModelAuxiliaryState,
                            rng: RandomState,
-                           data_dir: str) -> Dict[str, float]:
+                           data_dir: str,
+                           global_step: int = 0) -> Dict[str, float]:
     """Evaluate the model on a given dataset split, return final scalars."""
 
   def create_summary_writer(self, log_dir):
     logging.info('tensorboard summaries at %s', log_dir)
     self.summary_writer = tensorboard.SummaryWriter(log_dir)
 
-  def eval_model(self,
-                 global_batch_size: int,
-                 params: ParameterContainer,
-                 model_state: ModelAuxiliaryState,
-                 rng: RandomState,
-                 data_dir: str,
-                 global_step: int) -> Dict[str, float]:
+  def eval_model(self, global_batch_size: int, params: ParameterContainer,
+                 model_state: ModelAuxiliaryState, rng: RandomState,
+                 data_dir: str, global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')
     train_metrics = self._eval_model_on_split(
@@ -303,8 +280,7 @@ class TrainingCompleteError(Exception):
 # submitter.
 
 
-def init_optimizer_state(workload: Workload,
-                         model_params: ParameterContainer,
+def init_optimizer_state(workload: Workload, model_params: ParameterContainer,
                          model_state: ModelAuxiliaryState,
                          hyperparameters: Hyperparameters,
                          rng: RandomState) -> OptimizerState:
@@ -340,12 +316,10 @@ def update_params(
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
-def data_selection(workload: Workload,
-                   input_queue: Iterator[Dict[str, Tensor]],
+def data_selection(workload: Workload, input_queue: Iterator[Dict[str, Tensor]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
-                   hyperparameters: Hyperparameters,
-                   global_step: int,
+                   hyperparameters: Hyperparameters, global_step: int,
                    rng: RandomState) -> Dict[str, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
