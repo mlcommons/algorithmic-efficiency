@@ -246,7 +246,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:

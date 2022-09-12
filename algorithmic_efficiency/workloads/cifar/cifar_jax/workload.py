@@ -200,7 +200,8 @@ class CifarWorkload(BaseCifarWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     data_rng, model_rng = jax.random.split(rng, 2)
     # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)

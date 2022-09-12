@@ -188,7 +188,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
       model_state = self.sync_batch_stats(model_state)

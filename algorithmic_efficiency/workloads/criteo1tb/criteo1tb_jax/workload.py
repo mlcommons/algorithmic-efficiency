@@ -124,7 +124,8 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str) -> Dict[str, float]:
+                           data_dir: str,
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
     num_batches = int(math.ceil(num_examples / global_batch_size))

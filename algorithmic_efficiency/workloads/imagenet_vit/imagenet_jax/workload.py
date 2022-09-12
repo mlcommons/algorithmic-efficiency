@@ -58,7 +58,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     model_state = None
     return super()._eval_model_on_split(split,
                                         num_examples,
@@ -66,4 +67,5 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                                         params,
                                         model_state,
                                         rng,
-                                        data_dir)
+                                        data_dir,
+                                        global_step: int = 0)
