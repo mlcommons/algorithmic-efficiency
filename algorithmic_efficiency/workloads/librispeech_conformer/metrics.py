@@ -99,6 +99,7 @@ def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):
     decoded_i = str(tokenizer.detokenize(decoded_i.astype(np.int32)))
     target_i = str(tokenizer.detokenize(target_i.astype(np.int32)))
 
+    target_i = ' '.join(target_i.split())
     target_num_words = len(target_i.split(' '))
 
     word_errors += edit_distance(decoded_i, target_i)
