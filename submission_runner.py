@@ -24,7 +24,11 @@ from absl import logging
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-import wandb
+try:
+  import wandb
+except ModuleNotFoundError:
+  logging.exception('Unable to import wandb.')
+  wandb = None
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -217,7 +221,8 @@ def train_once(
   logging.info('Initializing metrics bundle')
   if tokenizer_vocab_path:
     workload.init_metrics_bundle(tokenizer_vocab_path)
-  wandb.init()
+  if wandb is not None:
+    wandb.init()
 
   # Bookkeeping.
   goal_reached = False
