@@ -100,7 +100,7 @@ def _make_one_batch_workload(workload_class,
 
       np.random.seed(42)
       if framework == 'jax':
-        batch_shape = (1, global_batch_size)
+        batch_shape = (jax.local_device_count(), global_batch_size)
       else:
         batch_shape = (global_batch_size,)
 
