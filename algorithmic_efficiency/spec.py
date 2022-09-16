@@ -5,6 +5,7 @@ import enum
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
+from flax.metrics import tensorboard
 
 
 class LossType(enum.Enum):
@@ -224,7 +225,8 @@ class Workload(metaclass=abc.ABCMeta):
       self,
       label_batch: Tensor,  # Dense (not one-hot) labels.
       logits_batch: Tensor,
-      mask_batch: Optional[Tensor] = None) -> Tensor:  # differentiable
+      mask_batch: Optional[Tensor] = None,
+      label_smoothing: float = 0.0) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
 
   @abc.abstractmethod
@@ -235,15 +237,21 @@ class Workload(metaclass=abc.ABCMeta):
                            params: ParameterContainer,
                            model_state: ModelAuxiliaryState,
                            rng: RandomState,
-                           data_dir: str) -> Dict[str, float]:
+                           data_dir: str,
+                           global_step: int = 0) -> Dict[str, float]:
     """Evaluate the model on a given dataset split, return final scalars."""
+
+  def create_summary_writer(self, log_dir):
+    logging.info('tensorboard summaries at %s', log_dir)
+    self.summary_writer = tensorboard.SummaryWriter(log_dir)
 
   def eval_model(self,
                  global_batch_size: int,
                  params: ParameterContainer,
                  model_state: ModelAuxiliaryState,
                  rng: RandomState,
-                 data_dir: str) -> Dict[str, float]:
+                 data_dir: str,
+                 global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')
     train_metrics = self._eval_model_on_split(
@@ -253,7 +261,8 @@ class Workload(metaclass=abc.ABCMeta):
         params=params,
         model_state=model_state,
         rng=rng,
-        data_dir=data_dir)
+        data_dir=data_dir,
+        global_step=global_step)
     eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     # We always require a validation set.
     logging.info('Evaluating on the validation split.')
@@ -264,7 +273,8 @@ class Workload(metaclass=abc.ABCMeta):
         params=params,
         model_state=model_state,
         rng=rng,
-        data_dir=data_dir)
+        data_dir=data_dir,
+        global_step=global_step)
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
     # Evaluate on the test set if we have one.
@@ -278,7 +288,8 @@ class Workload(metaclass=abc.ABCMeta):
             params=params,
             model_state=model_state,
             rng=rng,
-            data_dir=data_dir)
+            data_dir=data_dir,
+            global_step=global_step)
         for k, v in test_metrics.items():
           eval_metrics['test/' + k] = v
     except NotImplementedError:

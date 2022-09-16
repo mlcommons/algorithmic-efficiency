@@ -3,12 +3,10 @@ import contextlib
 from typing import Dict, Optional, Tuple
 
 from absl import logging
-import jax.dlpack
-import numpy as np
+import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
@@ -22,22 +20,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
-
-class CrossEntropyLoss(torch.nn.CrossEntropyLoss):
-
-  def forward(self, input, target, label_smoothing=0.1):  # pylint: disable=redefined-builtin
-    vocab_size = input.shape[-1]
-    confidence = 1.0 - label_smoothing
-    low_confidence = (1.0 - confidence) / (vocab_size - 1)
-    normalizing_constant = -(
-        confidence * np.log(confidence) +
-        (vocab_size - 1) * low_confidence * np.log(low_confidence + 1e-20))
-    one_hot_targets = F.one_hot(target, num_classes=vocab_size)
-    soft_targets = torch.where(one_hot_targets == 1, confidence, low_confidence)
-    loss = super().forward(
-        input=input.transpose(-2, -1), target=soft_targets.transpose(-2, -1))
-    return loss - normalizing_constant
 
 
 class WmtWorkload(BaseWmtWorkload):
@@ -64,11 +46,13 @@ class WmtWorkload(BaseWmtWorkload):
       raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
                        (str(logits.shape), str(targets.shape)))
 
-    loss_fn = CrossEntropyLoss(reduction='none')
+    loss_fn = torch.nn.CrossEntropyLoss(
+        reduction='none', label_smoothing=label_smoothing)
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
       loss_fn = torch.nn.DataParallel(loss_fn)
 
-    loss = loss_fn(logits, targets, label_smoothing=label_smoothing)
+    # PyTorch loss functions expect the class dim directly after the batch dim.
+    loss = loss_fn(logits.transpose(-2, -1), targets)
     if weights is not None:
       loss = loss * weights
     return loss
@@ -131,7 +115,7 @@ class WmtWorkload(BaseWmtWorkload):
                                    max_predict_length: int):
     """Translates the `ds_iter` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
-    sources, references, predictions = [], [], []
+    references, predictions = [], []
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       inputs = pred_batch['inputs']
@@ -142,10 +126,10 @@ class WmtWorkload(BaseWmtWorkload):
                                     max_predict_length)
 
       # Iterate through non-padding examples of batch.
-      for i, s in enumerate(predicted):
-        sources.append(self._decode_tokens(inputs[i]))
-        references.append(self._decode_tokens(targets[i]))
-        predictions.append(self._decode_tokens(s))
+      assert len(predicted) == len(targets)
+      for tar, pred in zip(targets, predicted):
+        references.append(self._decode_tokens(tar))
+        predictions.append(self._decode_tokens(pred))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)

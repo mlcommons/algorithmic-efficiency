@@ -12,7 +12,7 @@ def get_batch_size(workload_name):
 
 
 def create_learning_rate_scheduler(
-    factors="constant * linear_warmup * rsqrt_decay",
+    factors='constant * linear_warmup * rsqrt_decay',
     base_learning_rate=0.5,
     warmup_steps=1000,
     decay_factor=0.5,
@@ -37,29 +37,29 @@ def create_learning_rate_scheduler(
     a function learning_rate(step): float -> {"learning_rate": float}, the
     step-dependent lr.
   """
-  factors = [n.strip() for n in factors.split("*")]
+  factors = [n.strip() for n in factors.split('*')]
 
   def step_fn(step):
     """Step to learning rate function."""
     ret = 1.0
     for name in factors:
-      if name == "constant":
+      if name == 'constant':
         ret *= base_learning_rate
-      elif name == "linear_warmup":
+      elif name == 'linear_warmup':
         ret *= np.minimum(1.0, step / warmup_steps)
-      elif name == "rsqrt_decay":
+      elif name == 'rsqrt_decay':
         ret /= np.sqrt(np.maximum(step, warmup_steps))
-      elif name == "rsqrt_normalized_decay":
+      elif name == 'rsqrt_normalized_decay':
         ret *= np.sqrt(warmup_steps)
         ret /= np.sqrt(np.maximum(step, warmup_steps))
-      elif name == "decay_every":
+      elif name == 'decay_every':
         ret *= (decay_factor**(step // steps_per_decay))
-      elif name == "cosine_decay":
+      elif name == 'cosine_decay':
         progress = np.maximum(0.0,
                               (step - warmup_steps) / float(steps_per_cycle))
         ret *= np.maximum(0.0, 0.5 * (1.0 + np.cos(np.pi * (progress % 1.0))))
       else:
-        raise ValueError("Unknown factor %s." % name)
+        raise ValueError(f'Unknown factor {name}.')
     return ret
 
   return step_fn
@@ -120,7 +120,8 @@ def update_params(workload: spec.Workload,
 
   targets = batch['targets']
   weights = torch.where(targets > 0, 1.0, 0.0)
-  loss = (workload.loss_fn(targets, logits) * weights).sum() / weights.sum()
+  loss = (workload.loss_fn(targets, logits, label_smoothing=0.1) *
+          weights).sum() / weights.sum()
   loss.backward()
 
   lr = optimizer_state['scheduler'](global_step).item()

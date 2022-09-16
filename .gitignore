@@ -9,3 +9,13 @@ workdir/
 makefile
 *.out
 *.sh
+*.swp
+*/data/
+*events.out.tfevents*
+algorithmic_efficiency/workloads/librispeech_conformer/data_dir
+algorithmic_efficiency/workloads/librispeech_conformer/work_dir
+*.flac
+*.npy
+*.csv
+*.vocab
+wandb/

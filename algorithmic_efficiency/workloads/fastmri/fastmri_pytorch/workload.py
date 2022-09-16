@@ -85,14 +85,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     self._eval_iters = {}
 
   @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
   def model_params_types(self):
     """The shapes of the parameters in the workload model."""
     if self._param_types is None:
@@ -254,7 +246,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:

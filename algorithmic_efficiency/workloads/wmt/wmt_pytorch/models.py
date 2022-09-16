@@ -1,5 +1,5 @@
 import math
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 import warnings
 
 import torch
@@ -304,33 +304,42 @@ class PositionalEncoding(nn.Module):
     pe[0, :, d_model // 2:2 * (d_model // 2)] = torch.cos(position * div_term)
     self.register_buffer('pe', pe)
 
-  def forward(self,
-              x: Tensor,
-              inputs_positions: Tensor,
-              decode: bool = False,
-              cache: Optional[dict] = None) -> Tensor:
+  def forward(
+      self,
+      x: Tensor,
+      inputs_positions: Optional[Tensor] = None,
+      decode: bool = False,
+      cache: Optional[Dict[str, Dict[str, Tensor]]] = None
+  ) -> Union[Tensor, Tuple[Tensor, Dict[str, Dict[str, Tensor]]]]:
     """
     Args:
-      x: Tensor, shape [batch_size, seq_len, embedding_dim]
-      inputs_positions: Optional[Tensor], shape [batch_size, seq_len]
+      x: Tensor (shape [batch_size, seq_len, embedding_dim])
+      inputs_positions: Tensor (shape [batch_size, seq_len]) or None
       decode: bool
+      cache: Dict[str, Dict[str, Tensor]] or None
+    Returns:
+      Tensor or Tuple[Tensor, Dict[str, Dict[str, Tensor]]]
     """
     # We use a cache position index for tracking decoding position.
     if decode:
       name = self._get_name()
       if cache is None:
-        cache = {}
-        cache[name] = {}
-        cache[name]['cache_index'] = torch.tensor(
-            0, dtype=torch.long, device=self.pe.device)
-      x = x + self.pe[0, cache[name]['cache_index'], :]
+        cache = {
+            name: {
+                'cache_index':
+                    torch.tensor(0, dtype=torch.long, device=self.pe.device)
+            }
+        }
+      pe = self.pe[0, cache[name]['cache_index'], :]
       cache[name]['cache_index'] += 1
-      return self.dropout(x), cache
-    if inputs_positions is not None:
-      x = x + self.pe[0, inputs_positions, :]
+      return self.dropout(x + pe), cache
+    if inputs_positions is None:
+      # normal unpacked case:
+      pe = self.pe[:, :x.size(1), :]
     else:
-      x = x + self.pe[:, :x.size(1), :]
-    return self.dropout(x)
+      # for packed data we need to use known position indices:
+      pe = self.pe[0, inputs_positions, :]
+    return self.dropout(x + pe)
 
 
 # TransformerEncoderLayer and TransformerDecoderLayer are taken from:
@@ -442,8 +451,6 @@ class TransformerDecoder(nn.Module):
               memory: Tensor,
               tgt_mask: Optional[Tensor] = None,
               memory_mask: Optional[Tensor] = None,
-              tgt_key_padding_mask: Optional[Tensor] = None,
-              memory_key_padding_mask: Optional[Tensor] = None,
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None) -> Tensor:
@@ -453,8 +460,6 @@ class TransformerDecoder(nn.Module):
       memory: the sequence from the last layer of the encoder (required).
       tgt_mask: the mask for the tgt sequence (optional).
       memory_mask: the mask for the memory sequence (optional).
-      tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
-      memory_key_padding_mask: the mask for the memory keys per batch (optional)
       decode: wether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
     Shape:
@@ -468,8 +473,6 @@ class TransformerDecoder(nn.Module):
           memory,
           tgt_mask=tgt_mask,
           memory_mask=memory_mask,
-          tgt_key_padding_mask=tgt_key_padding_mask,
-          memory_key_padding_mask=memory_key_padding_mask,
           decode=decode,
           max_len=max_len,
           cache=cache,
@@ -560,25 +563,22 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         bias=False,
         **factory_kwargs)
 
-  def forward(self,
-              tgt: Tensor,
-              memory: Tensor,
-              tgt_mask: Optional[Tensor] = None,
-              memory_mask: Optional[Tensor] = None,
-              tgt_key_padding_mask: Optional[Tensor] = None,
-              memory_key_padding_mask: Optional[Tensor] = None,
-              decode: bool = False,
-              max_len: Optional[int] = None,
-              cache: Optional[dict] = None,
-              index: Optional[int] = None) -> Tensor:
+  def forward(  # pylint: disable=arguments-renamed
+      self,
+      tgt: Tensor,
+      memory: Tensor,
+      tgt_mask: Optional[Tensor] = None,
+      memory_mask: Optional[Tensor] = None,
+      decode: bool = False,
+      max_len: Optional[int] = None,
+      cache: Optional[dict] = None,
+      index: Optional[int] = None) -> Tensor:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
       memory: the sequence from the last layer of the encoder (required).
       tgt_mask: the mask for the tgt sequence (optional).
       memory_mask: the mask for the memory sequence (optional).
-      tgt_key_padding_mask: the mask for the tgt keys per batch (optional).
-      memory_key_padding_mask: the mask for the memory keys per batch (optional)
       decode: wether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
     Shape:
@@ -591,46 +591,41 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
       sa_out, cache = self._sa_block(
           self.norm1(x),
           tgt_mask,
-          tgt_key_padding_mask,
           decode=decode,
           max_len=max_len,
           cache=cache,
           index=index)
       x = x + sa_out
-      x = x + self._mha_block(
-          self.norm2(x), memory, memory_mask, memory_key_padding_mask)
+      x = x + self._mha_block(self.norm2(x), memory, memory_mask, None)
       x = x + self._ff_block(self.norm3(x))
     else:
       sa_out, cache = self._sa_block(
           x,
           tgt_mask,
-          tgt_key_padding_mask,
           decode=decode,
           max_len=max_len,
           cache=cache,
           index=index)
       x = self.norm1(x + sa_out)
-      x = self.norm2(
-          x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
+      x = self.norm2(x + self._mha_block(x, memory, memory_mask, None))
       x = self.norm3(x + self._ff_block(x))
 
     return x, cache
 
   # self-attention block
-  def _sa_block(self,
-                x: Tensor,
-                attn_mask: Optional[Tensor],
-                key_padding_mask: Optional[Tensor],
-                decode: bool = False,
-                max_len: Optional[int] = None,
-                cache: Optional[dict] = None,
-                index: Optional[int] = None) -> Tensor:
+  def _sa_block(  # pylint: disable=arguments-renamed
+      self,
+      x: Tensor,
+      attn_mask: Optional[Tensor],
+      decode: bool = False,
+      max_len: Optional[int] = None,
+      cache: Optional[dict] = None,
+      index: Optional[int] = None) -> Tensor:
     x, _, cache = self.self_attn(
         x,
         x,
         x,
         attn_mask=attn_mask,
-        key_padding_mask=key_padding_mask,
         need_weights=False,
         decode=decode,
         max_len=max_len,
@@ -745,14 +740,8 @@ class MultiheadAttention(nn.MultiheadAttention):
           sequence length, :math:`N` is the batch size, and :math:`E_v` is the
           value embedding dimension ``vdim``.
           See "Attention Is All You Need" for more details.
-      key_padding_mask: If specified, a mask of shape :math:`(N, S)` indicating
-          which elements within ``key`` to ignore for the purpose of attention
-          (i.e. treat as "padding"). For unbatched `query`, shape should be
-          :math:`(S)`. Binary and byte masks are supported.
-          For a binary mask, a ``True`` value indicates that the corresponding
-          ``key`` value will be ignored for the purpose of attention.
-          For a byte mask, a non-zero value indicates that the corresponding
-          ``key`` value will be ignored.
+      key_padding_mask: Dummy argument to make MultiheadAttention compatible
+          with standard PyTorch TransformerEncoder implementation.
       need_weights: If specified, returns ``attn_output_weights`` in addition
           to ``attn_outputs``.Default: ``True``.
       attn_mask: If specified, a 2D or 3D mask preventing attention to certain
@@ -791,6 +780,7 @@ class MultiheadAttention(nn.MultiheadAttention):
       .. note::
           `batch_first` argument is ignored for unbatched inputs.
     """
+    del key_padding_mask
     is_batched = query.dim() == 3
     if self.batch_first and is_batched:
       # make sure that the transpose op does not affect the "is" property
@@ -941,45 +931,46 @@ def multi_head_attention_forward(
   # During fast autoregressive decoding, we feed one position at a time,
   # and cache the keys and values step by step.
   if decode:
-    if cache is not None:
-      cached_key = cache['cached_key']
-      cached_value = cache['cached_value']
-      cache_index = cache['cache_index']
-      batch_size, max_length, num_features = cached_key.shape
-      assert batch_size == bsz, f'{batch_size} != {bsz}'
-      assert max_length == max_len, f'{max_length} != {max_len}'
-      assert num_features == embed_dim, f'{num_features} != {embed_dim}'
-      # shape check of cached keys against query input
-      expected_shape = (1, batch_size, num_features)
-      if expected_shape != query.shape:
-        raise ValueError('Autoregressive cache shape error, '
-                         'expected query shape %s instead got %s.' %
-                         (expected_shape, query.shape))
-      # update key, value caches with our new 1d spatial slices
-      cached_key[:, cache_index:cache_index + 1, :] = k.transpose(
-          dim0=0, dim1=1)
-      cached_value[:, cache_index:cache_index + 1, :] = v.transpose(
-          dim0=0, dim1=1)
-      k = cached_key.transpose(dim0=0, dim1=1)
-      v = cached_value.transpose(dim0=0, dim1=1)
-      cache_index += 1
-      # causal mask for cached decoder self-attention:
-      # our single query position should only attend to those key
-      # positions that have already been generated and cached,
-      # not the remaining zero elements.
-      if attn_mask is not None:
-        raise ValueError('Attention mask has to be None for decode == True.')
-      attn_mask = (torch.arange(max_length, device=k.device) >=
-                   cache_index).reshape(1, max_length)
-    else:
-      cache = {}
-      cache['cached_key'] = torch.zeros((bsz, max_len, embed_dim),
-                                        dtype=k.dtype,
-                                        device=k.device)
-      cache['cached_value'] = torch.zeros((bsz, max_len, embed_dim),
-                                          dtype=v.dtype,
-                                          device=v.device)
-      cache['cache_index'] = torch.tensor(0, dtype=torch.long, device=k.device)
+    if cache is None:
+      cache = {
+          'cached_key':
+              torch.zeros((bsz, max_len, embed_dim),
+                          dtype=k.dtype,
+                          device=k.device),
+          'cached_value':
+              torch.zeros((bsz, max_len, embed_dim),
+                          dtype=v.dtype,
+                          device=v.device),
+          'cache_index':
+              torch.tensor(0, dtype=torch.long, device=k.device)
+      }
+    cached_key = cache['cached_key']
+    cached_value = cache['cached_value']
+    cache_index = cache['cache_index']
+    batch_size, max_length, num_features = cached_key.shape
+    assert batch_size == bsz, f'{batch_size} != {bsz}'
+    assert max_length == max_len, f'{max_length} != {max_len}'
+    assert num_features == embed_dim, f'{num_features} != {embed_dim}'
+    # shape check of cached keys against query input
+    expected_shape = (1, batch_size, num_features)
+    if expected_shape != query.shape:
+      raise ValueError('Autoregressive cache shape error, expected query shape '
+                       f'{expected_shape} instead got {query.shape}.')
+    # update key, value caches with our new 1d spatial slices
+    cached_key[:, cache_index:cache_index + 1, :] = k.transpose(dim0=0, dim1=1)
+    cached_value[:, cache_index:cache_index + 1, :] = v.transpose(
+        dim0=0, dim1=1)
+    k = cached_key.transpose(dim0=0, dim1=1)
+    v = cached_value.transpose(dim0=0, dim1=1)
+    cache_index += 1
+    # causal mask for cached decoder self-attention:
+    # our single query position should only attend to those key
+    # positions that have already been generated and cached,
+    # not the remaining zero elements.
+    if attn_mask is not None:
+      raise ValueError('Attention mask has to be None for decode == True.')
+    attn_mask = (torch.arange(max_length, device=k.device) >=
+                 cache_index).reshape(1, max_length)
 
   # prep attention mask
   if not decode and attn_mask is not None:
