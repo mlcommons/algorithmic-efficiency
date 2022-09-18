@@ -2,44 +2,46 @@
 This is a pytorch implementation mirroring:
 https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.py
 """
-from collections import namedtuple
+from dataclasses import dataclass
 import math
 from typing import Tuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
+
 from . import preprocessor
 from .spectrum_augmenter import SpecAug
-from dataclasses import dataclass
+
 
 @dataclass
 class ConformerConfig:
-    """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
-    vocab_size: int = 1024
-    encoder_dim: int = 512
-    num_attention_heads: int = 8
-    num_encoder_layers: int = 4
-    attention_dropout_rate: float = 0.0
-    attention_residual_dropout_rate: float = 0.1
-    conv_residual_dropout_rate: float = 0.0
-    feed_forward_dropout_rate: float = 0.0
-    feed_forward_residual_dropout_rate: float = 0.1
-    convolution_kernel_size: int = 5
-    feed_forward_expansion_factor: int = 4
-    conv_expansion_factor: int = 2
-    conv_subsampling_factor: int = 2
-    conv_subsampling_layers: int = 2
-    freq_mask_count: int = 2
-    freq_mask_max_bins: int = 27
-    time_mask_count:int = 10
-    time_mask_max_frames:int = 40
-    time_mask_max_ratio:float = 0.05
-    time_masks_per_frame:float = 0.0
-    use_dynamic_time_mask_max_frames:bool = True
-    input_dropout_rate:float = 0.1
-    batch_norm_momentum: float = 0.999
-    batch_norm_epsilon: float = 0.001
+  """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
+  vocab_size: int = 1024
+  encoder_dim: int = 512
+  num_attention_heads: int = 8
+  num_encoder_layers: int = 4
+  attention_dropout_rate: float = 0.0
+  attention_residual_dropout_rate: float = 0.1
+  conv_residual_dropout_rate: float = 0.0
+  feed_forward_dropout_rate: float = 0.0
+  feed_forward_residual_dropout_rate: float = 0.1
+  convolution_kernel_size: int = 5
+  feed_forward_expansion_factor: int = 4
+  conv_expansion_factor: int = 2
+  conv_subsampling_factor: int = 2
+  conv_subsampling_layers: int = 2
+  freq_mask_count: int = 2
+  freq_mask_max_bins: int = 27
+  time_mask_count: int = 10
+  time_mask_max_frames: int = 40
+  time_mask_max_ratio: float = 0.05
+  time_masks_per_frame: float = 0.0
+  use_dynamic_time_mask_max_frames: bool = True
+  input_dropout_rate: float = 0.1
+  batch_norm_momentum: float = 0.999
+  batch_norm_epsilon: float = 0.001
+
 
 def initialize(m):
   if isinstance(m, nn.Linear) or isinstance(m, nn.Conv1d):
@@ -165,10 +167,11 @@ class Conv2dSubsampling(nn.Module):
     out_padding = F.conv1d(
         input=torch.cat([
             paddings[:, None, :],
-            torch.zeros(size=(paddings.shape[0], 1, pad_len),device=paddings.device)
+            torch.zeros(
+                size=(paddings.shape[0], 1, pad_len), device=paddings.device)
         ],
                         dim=2),
-        weight=torch.ones([1, 1, 1],device=paddings.device),
+        weight=torch.ones([1, 1, 1], device=paddings.device),
         stride=self.filter_stride[:1])
     out_padding = out_padding.squeeze(dim=1)
     outputs = outputs * (1 - out_padding[:, None, :, None])
@@ -219,7 +222,7 @@ class AddPositionalEmbedding(nn.Module):
     inv_timescales = self.min_timescale * \
         torch.exp(torch.arange(num_timescales, dtype=torch.float32)
                   * -log_timescale_increment)
-    self.register_buffer("inv_timescales",inv_timescales[None,None,:])
+    self.register_buffer("inv_timescales", inv_timescales[None, None, :])
 
   def forward(self, seq_length):
     position = torch.arange(
@@ -365,54 +368,57 @@ class ConformerBlock(nn.Module):
 
 
 class ConformerEncoderDecoder(nn.Module):
-    def __init__(self, config: ConformerConfig):
-        super().__init__()
-        self.config = config
-        preprocessing_config = preprocessor.PreprocessorConfig(
-            sample_rate=16000,
-            frame_size_ms=25,
-            frame_step_ms=10,
-            compute_energy=True,
-            window_fn="HANNING",
-            output_log_floor=1,
-            pad_end=True,
-            preemph=0.97,
-            preemph_htk_flavor=True,
-            noise_scale=0,
-            num_bins=80,
-            lower_edge_hertz=125,
-            upper_edge_hertz=7600,
-            fft_overdrive=False,
-            output_floor=0.00001
-        )
-        self.preprocessor = preprocessor.MelFilterbankFrontend(
-            preprocessing_config,
-            per_bin_mean=preprocessor.LIBRISPEECH_MEAN_VECTOR,
-            per_bin_stddev=preprocessor.LIBRISPEECH_STD_VECTOR)
-        self.specaug = SpecAug(freq_mask_count=config.freq_mask_count,
-                               freq_mask_max_bins=config.freq_mask_max_bins,
-                               time_mask_count=config.time_mask_count,
-                               time_mask_max_frames=config.time_mask_max_frames,
-                               time_mask_max_ratio=config.time_mask_max_ratio,
-                               time_masks_per_frame=config.time_masks_per_frame,
-                               use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames)
-        self.subsample = Subsample(
-            encoder_dim=config.encoder_dim, input_dropout_rate=config.input_dropout_rate)
-        self.conformers = nn.ModuleList(
-            [ConformerBlock(config) for _ in range(config.num_encoder_layers)])
-        
-        self.ln = LayerNorm(config.encoder_dim)
-        self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
 
-    def forward(self, inputs, input_paddings):
-        outputs = inputs
-        output_paddings = input_paddings
-        outputs, output_paddings = self.preprocessor(outputs, output_paddings)
-        if self.training:
-            outputs, output_paddings = self.specaug(outputs,output_paddings)
-        outputs, output_paddings = self.subsample(outputs, output_paddings)
-        for conformer in self.conformers:
-            outputs = conformer(outputs, output_paddings)
-        outputs = self.ln(outputs)
-        outputs = self.lin(outputs)
-        return outputs, output_paddings 
+  def __init__(self, config: ConformerConfig):
+    super().__init__()
+    self.config = config
+    preprocessing_config = preprocessor.PreprocessorConfig(
+        sample_rate=16000,
+        frame_size_ms=25,
+        frame_step_ms=10,
+        compute_energy=True,
+        window_fn="HANNING",
+        output_log_floor=1,
+        pad_end=True,
+        preemph=0.97,
+        preemph_htk_flavor=True,
+        noise_scale=0,
+        num_bins=80,
+        lower_edge_hertz=125,
+        upper_edge_hertz=7600,
+        fft_overdrive=False,
+        output_floor=0.00001)
+    self.preprocessor = preprocessor.MelFilterbankFrontend(
+        preprocessing_config,
+        per_bin_mean=preprocessor.LIBRISPEECH_MEAN_VECTOR,
+        per_bin_stddev=preprocessor.LIBRISPEECH_STD_VECTOR)
+    self.specaug = SpecAug(
+        freq_mask_count=config.freq_mask_count,
+        freq_mask_max_bins=config.freq_mask_max_bins,
+        time_mask_count=config.time_mask_count,
+        time_mask_max_frames=config.time_mask_max_frames,
+        time_mask_max_ratio=config.time_mask_max_ratio,
+        time_masks_per_frame=config.time_masks_per_frame,
+        use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames
+    )
+    self.subsample = Subsample(
+        encoder_dim=config.encoder_dim,
+        input_dropout_rate=config.input_dropout_rate)
+    self.conformers = nn.ModuleList(
+        [ConformerBlock(config) for _ in range(config.num_encoder_layers)])
+
+    self.ln = LayerNorm(config.encoder_dim)
+    self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
+
+  def forward(self, inputs, input_paddings):
+    outputs = inputs
+    output_paddings = input_paddings
+    outputs, output_paddings = self.preprocessor(outputs, output_paddings)
+    if self.training:
+      outputs, output_paddings = self.specaug(outputs, output_paddings)
+    outputs, output_paddings = self.subsample(outputs, output_paddings)
+    for conformer in self.conformers:
+      outputs = conformer(outputs, output_paddings)
+    outputs = self.ln(outputs)
+    outputs = self.lin(outputs)
+    return outputs, output_paddings

@@ -1,9 +1,9 @@
 import jax
-import torch
 import jax.numpy as jnp
 import jax.random as jax_rng
 import jraph
 import pytest
+import torch
 
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet18 as JaxResNet_c10
@@ -39,7 +39,15 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg', 'librispeech_conformer']
+WORKLOADS = [
+    'mnist',
+    'cifar',
+    'imagenet_resnet',
+    'imagenet_vit',
+    'wmt',
+    'ogbg',
+    'librispeech_conformer'
+]
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -86,19 +94,20 @@ def get_models(workload):
     pytorch_model = PyTorchViT()
   elif workload == 'librispeech_conformer':
     jax_model = JaxConformer(JaxConformerConfig(num_attention_heads=1))
-    pytorch_model = PytorchConformer(PytorchConformerConfig(num_attention_heads))
-    
+    pytorch_model = PytorchConformer(
+        PytorchConformerConfig(num_attention_heads=1))
+
     # Init Jax model
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [jnp.zeros((2, *x), jnp.float32) for x in input_shape]
-    jax_model = jax_model.init(init_rngs,train=False,
-                              *fake_input_batch)["params"]
+    jax_model = jax_model.init(
+        init_rngs, train=False, *fake_input_batch)["params"]
 
     # Run model once to initialize lazy layers
     wave = torch.randn(2, 320000)
     pad = torch.zeros_like(wave)
     pytorch_model(wave, pad)
-    
+
   elif workload == 'wmt':
     # Init Jax model.
     input_shape = (16, 256)

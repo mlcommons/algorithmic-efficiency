@@ -1,19 +1,19 @@
 """Training algorithm track submission functions for LibriSpeech."""
 from typing import Dict, Iterator, List, Tuple
 
+from absl import logging
 import torch
 
 from algorithmic_efficiency import spec
-from absl import logging
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
 
 
 def get_batch_size(workload_name):
-    # Return the global batch size.
-    batch_sizes = {"librispeech_conformer": 8}
-    return batch_sizes[workload_name]
+  # Return the global batch size.
+  batch_sizes = {"librispeech_conformer": 8}
+  return batch_sizes[workload_name]
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -21,17 +21,17 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-    del workload
-    del model_state
-    del rng
+  del workload
+  del model_state
+  del rng
 
-    optimizer = torch.optim.AdamW(params=model_params.parameters(),
-                                  lr=2e-4,
-                                  betas=(hyperparameters.beta1,
-                                         hyperparameters.beta2),
-                                  eps=hyperparameters.epsilon,
-                                  weight_decay=hyperparameters.weight_decay)
-    return optimizer
+  optimizer = torch.optim.AdamW(
+      params=model_params.parameters(),
+      lr=2e-4,
+      betas=(hyperparameters.beta1, hyperparameters.beta2),
+      eps=hyperparameters.epsilon,
+      weight_decay=hyperparameters.weight_decay)
+  return optimizer
 
 
 def update_params(
@@ -46,34 +46,37 @@ def update_params(
     optimizer_state: spec.OptimizerState,
     eval_results: List[Tuple[int, float]],
     global_step: int,
-        rng: spec.RandomState) -> spec.UpdateReturn:
-    """Return (updated_optimizer_state, updated_params)."""
-    del current_params_types
-    del eval_results
-    del model_state
-    del loss_type
+    rng: spec.RandomState) -> spec.UpdateReturn:
+  """Return (updated_optimizer_state, updated_params)."""
+  del current_params_types
+  del eval_results
+  del model_state
+  del loss_type
 
-    optimizer_state.zero_grad()
-    current_model = current_param_container
-    (logits, logits_padding), _ = workload.model_fn(
-        current_model,
-        batch,
-        None,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        update_batch_norm=True)
-    
-    train_ctc_loss = torch.mean(workload.loss_fn(
-        logits, logits_padding, batch['targets'], batch["target_paddings"]))
-    train_ctc_loss.backward()
-    grad_clip = hyperparameters.grad_clip
-    for g in optimizer_state.param_groups:
-      g['lr'] = workload.get_learning_rate(global_step, hyperparameters)
-    torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
-    optimizer_state.step()
-    logging.info('{}) loss = {}'.format(global_step, train_ctc_loss))
-    
-    return optimizer_state, current_param_container, None
+  optimizer_state.zero_grad()
+  current_model = current_param_container
+  (logits, logits_padding), _ = workload.model_fn(
+      current_model,
+      batch,
+      None,
+      spec.ForwardPassMode.TRAIN,
+      rng,
+      update_batch_norm=True)
+
+  train_ctc_loss = torch.mean(
+      workload.compute_loss(logits,
+                            logits_padding,
+                            batch['targets'],
+                            batch["target_paddings"]))
+  train_ctc_loss.backward()
+  grad_clip = hyperparameters.grad_clip
+  for g in optimizer_state.param_groups:
+    g['lr'] = workload.get_learning_rate(global_step, hyperparameters)
+  torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
+  optimizer_state.step()
+  logging.info('{}) loss = {}'.format(global_step, train_ctc_loss))
+
+  return optimizer_state, current_param_container, None
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
@@ -85,14 +88,14 @@ def data_selection(workload: spec.Workload,
                    hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
-    """Select data from the infinitely repeating, pre-shuffled input queue.
+  """Select data from the infinitely repeating, pre-shuffled input queue.
 
     Each element of the queue is a batch of training examples and labels.
     """
-    del optimizer_state
-    del current_param_container
-    del global_step
-    del rng
-    del hyperparameters
-    del workload
-    return next(input_queue)
+  del optimizer_state
+  del current_param_container
+  del global_step
+  del rng
+  del hyperparameters
+  del workload
+  return next(input_queue)
