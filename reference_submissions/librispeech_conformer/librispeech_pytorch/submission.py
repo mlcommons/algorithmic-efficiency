@@ -1,7 +1,6 @@
 """Training algorithm track submission functions for LibriSpeech."""
 from typing import Dict, Iterator, List, Tuple
 
-from absl import logging
 import torch
 
 from algorithmic_efficiency import spec
