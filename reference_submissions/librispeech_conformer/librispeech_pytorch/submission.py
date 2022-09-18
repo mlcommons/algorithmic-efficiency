@@ -74,8 +74,6 @@ def update_params(
     g['lr'] = workload.get_learning_rate(global_step, hyperparameters)
   torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
   optimizer_state.step()
-  logging.info('{}) loss = {}'.format(global_step, train_ctc_loss))
-
   return optimizer_state, current_param_container, None
 
 
