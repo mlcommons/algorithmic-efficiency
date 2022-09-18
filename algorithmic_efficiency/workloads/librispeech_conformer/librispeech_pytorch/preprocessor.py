@@ -225,14 +225,12 @@ def frame(x,
           pad_end: bool = False,
           pad_value: Union[int, float] = 0.0):
   """Slides a window and extract values.
-
     This function extracts `x[:, n:n+frame_length, :]` with sliding `n` with
     stride of `frame_step`, and returns an array `y` with the shape
     `(batch_size, num_frames, frame_length, num_channels)`. Unlike the
     counterpart in Tensorflow (`tf.signal.frame`), this function currently does
     not take `axis` argument, and the input tensor `x` is expected to have a
     shape of `(batch_size, timesteps, channels)`.
-
     Args:
       x: An input array with `(batch_size, timesteps, channels)`-shape.
       frame_length: The frame length.
@@ -240,7 +238,6 @@ def frame(x,
       pad_end: If True, the end of signal is padded so the window can continue
         sliding while the starting point of the window is in the valid range.
       pad_value: A scalar used as a padding value when `pad_end` is True.
-
     Returns:
       A tensor with shape `(*, num_frames, frame_length, num_channels)`.
     """
@@ -262,7 +259,6 @@ def linear_to_mel_weight_matrix(num_mel_bins: int = 20,
                                 dtype: Any = torch.float32,
                                 device="cpu"):
   r"""Pytorch-port of `tf.signal.linear_to_mel_weight_matrix`.
-
     Args:
       num_mel_bins: Python int. How many bands in the resulting mel spectrum.
       num_spectrogram_bins: An integer `Tensor`. How many bins there are in the
@@ -278,7 +274,6 @@ def linear_to_mel_weight_matrix(num_mel_bins: int = 20,
       upper_edge_hertz: Python float. The desired top edge of the highest
         frequency band.
       dtype: The `DType` of the result matrix. Must be a floating point type.
-
     Returns:
       An array of shape `[num_spectrogram_bins, num_mel_bins]`.
     Raises:
@@ -345,17 +340,14 @@ def linear_to_mel_weight_matrix(num_mel_bins: int = 20,
 
 def _hanning_greco(win_support, frame_size, dtype, device="cpu"):
   """Add a greco-style hanning window to the graph.
-
     Note that the Hanning window in Wikipedia is not the same as the Hanning
     window in Greco.  The Greco3 Hanning window at 0 is NOT 0, as the wikipedia
     page would indicate. Talkin's explanation was that it was like wasting two
     samples to have the values at the edge of the window to be 0.0 exactly.
-
     Args:
       win_support: Number of samples for non-zero support in the window
       frame_size: Total size of the window (frame_size >= win_support)
       dtype: TF data type
-
     Returns:
       Tensor of size frame_size with the window to apply.
     """
