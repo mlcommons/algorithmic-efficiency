@@ -34,7 +34,7 @@ import submission_runner
 
 flags.DEFINE_integer(
     'global_batch_size',
-     -1,
+    -1,
     ('Global Batch size to use when running an individual workload. Otherwise a '
      'per-device batch size of 2 is used.'))
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
@@ -206,9 +206,11 @@ def _make_one_batch_workload(workload_class,
             'labels': tf.ones((1,)),
             'num_nodes': tf.ones((1,)),
         }
+
         def _fake_iter():
           while True:
             yield fake_batch
+
         fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
             _fake_iter(), global_batch_size)
         fake_batch = next(fake_batch_iter)

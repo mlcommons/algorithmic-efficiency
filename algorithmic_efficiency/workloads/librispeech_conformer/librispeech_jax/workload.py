@@ -92,12 +92,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           self._param_shapes.unfreeze())
     return self._param_types
 
-  def loss_fn(
-      self,
-      label_batch: Tuple[spec.Tensor, spec.Tensor],
-      logits_batch: Tuple[spec.Tensor, spec.Tensor],
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: Tuple[spec.Tensor, spec.Tensor],
+              logits_batch: Tuple[spec.Tensor, spec.Tensor],
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     del mask_batch
     del label_smoothing
     logits, logit_paddings = logits_batch
