@@ -212,8 +212,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   # `update_params`.
   def loss_fn(self, label_batch: spec.Tensor,
               outputs_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-    return jnp.abs(outputs_batch - label_batch).mean(
-        axis=tuple(range(1, outputs_batch.ndim)))
+    return jnp.abs(outputs_batch -
+                   label_batch).mean(axis=tuple(range(1, outputs_batch.ndim)))
 
   @functools.partial(
       jax.pmap,
