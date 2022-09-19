@@ -12,13 +12,11 @@ from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import metrics
 FLAGS = flags.FLAGS
 
 
-_NUM_DENSE_FEATURES = 13
-_VOCAB_SIZES = tuple([1024 * 128] * 26)
-
-
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
   def __init__(self):
+    self.vocab_sizes = tuple([1024 * 128] * 26)
+    self.num_dense_features = 13
     self._eval_iters = {}
     self._param_shapes = None
     self._param_types = None
@@ -107,21 +105,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           'before workload.param_shapes!')
     return self._param_shapes
 
-  def _eval_metric(self, labels, logits, weights):
-    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits, labels)
-    return jax.lax.psum(per_example_losses), jax.lax.psum(weights)
-
-  def _eval_batch(self, params, batch, model_state, rng):
-    logits, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
-    return self._eval_metric(batch['targets'], logits, batch['weights'])
-
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
@@ -147,9 +130,9 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     total_loss_denominator = 0.
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
-      batch_loss_numerator, batch_loss_denominator = (
-          self.eval_step_pmapped(params, eval_batch).unreplicate())
+      batch_loss_numerator, batch_loss_denominator = self._eval_batch(
+          params, eval_batch)
       total_loss_numerator += batch_loss_numerator
       total_loss_denominator += batch_loss_denominator
     mean_loss = total_loss_numerator / total_loss_denominator
-    return mean_loss.numpy()
+    return {'loss': mean_loss}

@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -88,7 +89,26 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
+      in_axes=(None, 0, 0),
       static_broadcasted_argnums=(0,))
-  def _eval_batch(self, params, batch, model_state, rng):
-    return super()._eval_batch(params, batch, model_state, rng)
+  def _eval_batch_pmapped(self, params, batch):
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        model_state=None,
+        mode=spec.ForwardPassMode.EVAL,
+        rng=None,
+        update_batch_norm=False)
+    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
+        logits, batch['targets'])
+    return (jax.lax.psum(per_example_losses, axis_name='batch'),
+            jax.lax.psum(batch['weights'], axis_name='batch'))
+
+  def _eval_batch(self, params, batch):
+    # We pmap inside of _eval_batch_pmapped, so each of these should be all the
+    # same value, but with a leading dim of size jax.local_device_count().
+    batch_loss_numerator, batch_loss_denominator = self._eval_batch_pmapped(
+        params, batch)
+    batch_loss_numerator = jax_utils.unreplicate(batch_loss_numerator)
+    batch_loss_denominator = jax_utils.unreplicate(batch_loss_denominator)
+    return np.asarray(batch_loss_numerator), np.asarray(batch_loss_denominator)

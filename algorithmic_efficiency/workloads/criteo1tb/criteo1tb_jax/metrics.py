@@ -17,8 +17,3 @@ def per_example_sigmoid_binary_cross_entropy(logits, targets):
   log_not_p = jax.nn.log_sigmoid(-logits)
   losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
   return jnp.sum(losses.reshape(losses.shape[0], -1), axis=-1)
-
-
-@flax.struct.dataclass
-class EvalMetrics(metrics.Collection):
-  loss: metrics.Average.from_output('loss')
