@@ -220,7 +220,7 @@ def train_once(
   logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
     workload.init_metrics_bundle(tokenizer_vocab_path)
-  if wandb is not None:
+  if wandb is not None and RANK == 0:
     wandb.init()
 
   # Bookkeeping.
