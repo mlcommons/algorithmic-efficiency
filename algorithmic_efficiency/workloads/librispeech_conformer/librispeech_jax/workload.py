@@ -1,7 +1,7 @@
 import functools
 import itertools
 import math
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from absl import flags
 from absl import logging
@@ -62,11 +62,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     is_train_mode = (mode == spec.ForwardPassMode.TRAIN)
 
+    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     if is_train_mode:
       (logits, logit_paddings), new_model_state = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch['inputs'],
-          augmented_and_preprocessed_input_batch['input_paddings'],
+          inputs,
+          input_paddings,
           is_train_mode,
           rngs=rng,
           mutable=['batch_stats'])
@@ -74,11 +75,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     else:
       logits, logit_paddings = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch['inputs'],
-          augmented_and_preprocessed_input_batch['input_paddings'],
+          inputs,
+          input_paddings,
           is_train_mode,
           mutable=False)
-      return logits, logit_paddings
+      return (logits, logit_paddings), None
 
   @property
   def model_params_types(self):
@@ -91,15 +92,22 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           self._param_shapes.unfreeze())
     return self._param_types
 
-  def loss_fn(self, logits, logit_paddings, targets,
-              target_paddings):  # differentiable
+  def loss_fn(
+      self,
+      label_batch: Tuple[spec.Tensor, spec.Tensor],
+      logits_batch: Tuple[spec.Tensor, spec.Tensor],
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    del mask_batch
+    del label_smoothing
+    logits, logit_paddings = logits_batch
+    targets, target_paddings = label_batch
     logprobs = nn.log_softmax(logits)
     per_seq_loss = self.ctc_loss(logprobs,
                                  logit_paddings,
                                  targets,
                                  target_paddings)
     normalizer = jnp.sum(1 - target_paddings)
-
     normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
     return normalized_loss
 
@@ -192,24 +200,22 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:  # pylint: disable=line-too-long
-    logits, logit_paddings = self.model_fn(
+    (logits, logit_paddings), _ = self.model_fn(
         params,
         batch,
         model_state,
         spec.ForwardPassMode.EVAL)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss = self.loss_fn(logits,
-                                   logit_paddings,
-                                   batch['targets'],
-                                   batch['target_paddings'])
+    normalized_loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
 
+    targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
         normalized_loss=normalized_loss,
         decoded=decoded,
         decoded_paddings=decoded_paddings,
-        targets=batch['targets'],
-        target_paddings=batch['target_paddings'],
+        targets=targets,
+        target_paddings=target_paddings,
         axis_name='batch')
 
   def _eval_model_on_split(self,
@@ -257,12 +263,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     computed_metrics = metrics_report.compute()
 
-    self.summary_writer.scalar('{}/WER'.format(split),
-                               computed_metrics['wer'],
-                               global_step)
-    self.summary_writer.scalar('{}/ctc_loss'.format(split),
-                               computed_metrics['ctc_loss'],
-                               global_step)
+    if self.summary_writer is not None:
+      self.summary_writer.scalar('{}/WER'.format(split),
+                                 computed_metrics['wer'],
+                                 global_step)
+      self.summary_writer.scalar('{}/ctc_loss'.format(split),
+                                 computed_metrics['ctc_loss'],
+                                 global_step)
 
     return computed_metrics
 

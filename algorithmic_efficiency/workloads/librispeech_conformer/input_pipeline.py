@@ -60,10 +60,9 @@ def get_librispeech_dataset(split_name: str,
         inp=[example_id],
         Tout=[tf.int64, tf.float32, tf.int32, tf.float32])
 
-    preprocessed_example['inputs'] = audio
-    preprocessed_example['input_paddings'] = audio_paddings
-    preprocessed_example['targets'] = targets
-    preprocessed_example['target_paddings'] = target_paddings
+    # Make batches of tuples of (tensor, padding)
+    preprocessed_example['inputs'] = (audio, audio_paddings)
+    preprocessed_example['targets'] = (targets, target_paddings)
 
     return preprocessed_example
 

@@ -16,9 +16,9 @@ def get_criteo1tb_dataset(split: str,
                           repeat_final_dataset: bool = False):
   """Get the Criteo 1TB dataset for a given split."""
   if split in ['train', 'eval_train']:
-    file_path = os.path.join(data_dir, 'train/train*')
+    file_path = os.path.join(data_dir, 'day_[0-22].csv')
   else:
-    file_path = os.path.join(data_dir, 'eval/eval*')
+    file_path = os.path.join(data_dir, 'day_23.csv')
   num_devices = jax.local_device_count()
   per_device_batch_size = global_batch_size // num_devices
 
@@ -35,7 +35,7 @@ def get_criteo1tb_dataset(split: str,
     num_labels = 1
     num_dense = len(int_defaults)
     features = {}
-    features['targets'] = tf.reshape(fields[0], [per_device_batch_size])
+    features['targets'] = tf.reshape(fields[0], (per_device_batch_size, 1))
 
     int_features = []
     for idx in range(num_dense):

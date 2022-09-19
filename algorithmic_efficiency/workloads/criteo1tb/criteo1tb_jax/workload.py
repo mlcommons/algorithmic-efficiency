@@ -21,13 +21,6 @@ _NUM_DENSE_FEATURES = 13
 _VOCAB_SIZES = tuple([1024 * 128] * 26)
 
 
-# We use CLU metrics to handle aggregating per-example outputs across batches so
-# we can compute AUC metrics.
-@flax.struct.dataclass
-class EvalMetrics(clu_metrics.Collection):
-  loss: clu_metrics.Average.from_output('loss')
-
-
 class Criteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1TB DLRM-Small Jax workload."""
 
@@ -114,8 +107,7 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
     logits = self._flax_module.apply({'params': params}, inputs, targets)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, targets)
-    return EvalMetrics.gather_from_model_output(
-        loss=per_example_losses, targets=targets, logits=logits, mask=weights)
+    return jax.lax.psum(per_example_losses), jax.lax.psum(weights)
 
   def _eval_model_on_split(self,
                            split: str,
@@ -138,12 +130,16 @@ class Criteo1TbDlrmSmallWorkload(spec.Workload):
           global_batch_size,
           num_batches,
           repeat_final_dataset=True)
-    metrics_bundle = EvalMetrics.empty()
+    total_loss_numerator = 0.
+    total_loss_denominator = 0.
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
-      metrics_bundle = metrics_bundle.merge(
+      batch_loss_numerator, batch_loss_denominator = (
           self.eval_step_pmapped(params, eval_batch).unreplicate())
-    return metrics_bundle.compute()
+      total_loss_numerator += batch_loss_numerator
+      total_loss_denominator += batch_loss_denominator
+    mean_loss = total_loss_numerator / total_loss_denominator
+    return mean_loss.numpy()
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.

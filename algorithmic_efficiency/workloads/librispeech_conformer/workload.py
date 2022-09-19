@@ -189,6 +189,8 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   # Keep this separate from the loss function in order to support optimizers
   # that use the logits.
-  def output_activation_fn(self, logits: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
+  def output_activation_fn(
+      self,
+      logits_batch: spec.Tensor,
+      loss_type: spec.LossType) -> spec.Tensor:
     pass
