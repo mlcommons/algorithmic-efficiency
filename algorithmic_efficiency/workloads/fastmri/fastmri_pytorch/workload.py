@@ -228,14 +228,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
-              targets_batch: spec.Tensor,
+              label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
               mask_batch: spec.Tensor = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     del mask_batch
     del label_smoothing
     return F.l1_loss(
-        logits_batch, targets_batch, reduction='none').mean(dim=(1, 2))
+        logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
 
   def _eval_metric(self, outputs, targets, mean, std, volume_max):
     """Return the SSIM and loss as a dict."""

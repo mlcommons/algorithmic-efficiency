@@ -20,7 +20,6 @@ from absl import flags
 from absl import logging
 from absl.testing import absltest
 import flax
-import functools
 import jax
 import jraph
 import numpy as np
@@ -29,14 +28,15 @@ import torch
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency.workloads.ogbg import input_pipeline as ogbg_input_pipeline
+from algorithmic_efficiency.workloads.ogbg import \
+    input_pipeline as ogbg_input_pipeline
 import submission_runner
 
 flags.DEFINE_integer(
     'global_batch_size',
     -1,
-    ('Global Batch size to use when running an individual workload. Otherwise a '
-     'per-device batch size of 2 is used.'))
+    ('Global Batch size to use when running an individual workload. Otherwise '
+     'a per-device batch size of 2 is used.'))
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 flags.DEFINE_boolean(
     'run_all',
@@ -137,7 +137,7 @@ def _make_one_batch_workload(workload_class,
   class _OneEvalBatchWorkload(workload_class):
 
     def __init__(self):
-      super(_OneEvalBatchWorkload, self).__init__()
+      super().__init__()
       self.summary_writer = None
       if 'librispeech' in workload_name:
         self.metrics_bundle = _FakeMetricsBundle()
@@ -199,6 +199,7 @@ def _make_one_batch_workload(workload_class,
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=(28, 28, 1), num_classes=10)
       elif workload_name == 'ogbg':
+        # TODO(znado): fix the memory usage of this for pytorch.
         fake_batch = {
             'edge_feat': tf.ones((1,)),
             'node_feat': tf.ones((1,)),
@@ -213,7 +214,7 @@ def _make_one_batch_workload(workload_class,
 
         fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
             _fake_iter(), global_batch_size)
-        fake_batch = next(fake_batch_iter)
+        fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
           fake_batch['inputs'] = _graph_tuple_to_device(fake_batch['inputs'])
       elif workload_name == 'wmt':

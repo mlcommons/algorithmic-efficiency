@@ -1,10 +1,8 @@
 """Training algorithm track submission functions for LibriSpeech."""
 import functools
-import operator
 from typing import Dict, Iterator, List, Tuple
 
 from absl import logging
-import flax
 from flax import jax_utils
 import jax
 from jax import lax
