@@ -223,8 +223,9 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def loss_fn(
       self,
-      label_batch: Tensor,  # Dense (not one-hot) labels.
-      logits_batch: Tensor,
+      # Dense (not one-hot) labels, or a tuple of (tensor, padding) for speech.
+      label_batch: Union[Tuple[Tensor, Tensor], Tensor],
+      logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
       label_smoothing: float = 0.0) -> Tensor:  # differentiable
     """return oned_array_of_losses_per_example"""
