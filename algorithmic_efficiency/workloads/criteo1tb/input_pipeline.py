@@ -39,7 +39,8 @@ def get_criteo1tb_dataset(split: str,
 
     int_features = []
     for idx in range(num_dense):
-      int_features.append(tf.math.log(fields[idx + num_labels] + 1))
+      positive_val = tf.nn.relu(fields[idx + num_labels])
+      int_features.append(tf.math.log(positive_val + 1))
     int_features = tf.stack(int_features, axis=1)
 
     cat_features = []
@@ -50,8 +51,6 @@ def get_criteo1tb_dataset(split: str,
     cat_features = tf.cast(
         tf.stack(cat_features, axis=1), dtype=int_features.dtype)
     features['inputs'] = tf.concat([int_features, cat_features], axis=1)
-    features['weights'] = tf.ones(
-        shape=(features['inputs'].shape[0],), dtype=features['inputs'].dtype)
     return features
 
   ds = tf.data.Dataset.list_files(file_path, shuffle=False)
@@ -63,9 +62,7 @@ def get_criteo1tb_dataset(split: str,
       block_length=per_device_batch_size // 8,
       num_parallel_calls=128,
       deterministic=False)
-  # TODO(znado): we will need to select a validation split size that is evenly
-  # divisible by the batch size.
-  ds = ds.batch(per_device_batch_size, drop_remainder=True)
+  ds = ds.batch(per_device_batch_size, drop_remainder=is_training)
   ds = ds.map(_parse_example_fn, num_parallel_calls=16)
   if num_batches is not None:
     ds = ds.take(num_batches)
