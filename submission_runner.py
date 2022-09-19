@@ -24,7 +24,12 @@ from absl import logging
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-import wandb
+
+try:
+  import wandb  # pylint: disable=g-import-not-at-top
+except ModuleNotFoundError:
+  logging.exception('Unable to import wandb.')
+  wandb = None
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -206,18 +211,17 @@ def train_once(
     workload.create_summary_writer(log_dir)
 
   with profiler.profile('Initializing optimizer'):
-    optimizer_state = init_optimizer_state(
-        workload,
-        model_params,
-        model_state,
-        hyperparameters,
-        opt_init_rng,
-    )
+    optimizer_state = init_optimizer_state(workload,
+                                           model_params,
+                                           model_state,
+                                           hyperparameters,
+                                           opt_init_rng)
 
-  logging.info('Initializing metrics bundle')
+  logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
     workload.init_metrics_bundle(tokenizer_vocab_path)
-  wandb.init()
+  if wandb is not None and RANK == 0:
+    wandb.init()
 
   # Bookkeeping.
   goal_reached = False
