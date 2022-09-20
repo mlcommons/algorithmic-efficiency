@@ -26,7 +26,7 @@ this command will generate `spm_model.vocab` file in the folder it's run
 
 ## Run Preprocessing Script
 
-> mkdir work_dirsudo mkdir -p /mnt/disks/librispeech_processed
+> mkdir work_dir
 > cd work_dir
 > python3 ../prepare_data.py --data_dir=../data_dir/LibriSpeech --tokenizer_vocab_path=../spm_model.vocab 
 
