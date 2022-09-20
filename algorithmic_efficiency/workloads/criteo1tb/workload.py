@@ -83,8 +83,8 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
         data_dir=data_dir,
         is_training=(split == 'train'),
         global_batch_size=global_batch_size,
-        num_dense_features=_NUM_DENSE_FEATURES,
-        vocab_sizes=_VOCAB_SIZES,
+        num_dense_features=self.num_dense_features,
+        vocab_sizes=self.vocab_sizes,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
     for batch in iter(ds):

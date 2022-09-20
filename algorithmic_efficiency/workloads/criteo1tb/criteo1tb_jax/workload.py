@@ -101,8 +101,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])
-    return (jax.lax.psum(per_example_losses, axis_name='batch'),
-            jax.lax.psum(batch['weights'], axis_name='batch'))
+    return (jax.lax.psum(jnp.sum(per_example_losses), axis_name='batch'),
+            jax.lax.psum(jnp.sum(batch['weights']), axis_name='batch'))
 
   def _eval_batch(self, params, batch):
     # We pmap inside of _eval_batch_pmapped, so each of these should be all the

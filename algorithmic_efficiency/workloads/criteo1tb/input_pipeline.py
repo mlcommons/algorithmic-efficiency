@@ -32,11 +32,14 @@ def get_criteo1tb_dataset(split: str,
     fields = tf.io.decode_csv(
         example, record_defaults, field_delim='\t', na_value='-1')
 
+    print(fields[0].shape)
+    features = {
+        'targets': tf.reshape(fields[0], (per_device_batch_size, 1)),
+        'weights': tf.ones(features['targets'].shape[:1]),
+    }
+
     num_labels = 1
     num_dense = len(int_defaults)
-    features = {}
-    features['targets'] = tf.reshape(fields[0], (per_device_batch_size, 1))
-
     int_features = []
     for idx in range(num_dense):
       positive_val = tf.nn.relu(fields[idx + num_labels])
