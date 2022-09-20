@@ -32,10 +32,12 @@ def get_criteo1tb_dataset(split: str,
     fields = tf.io.decode_csv(
         example, record_defaults, field_delim='\t', na_value='-1')
 
-    print(fields[0].shape)
+    # print(fields[0].shape)
+    targets = tf.expand_dims(fields[0], axis=1)  # (batch, 1)
     features = {
-        'targets': tf.reshape(fields[0], (per_device_batch_size, 1)),
-        'weights': tf.ones(features['targets'].shape[:1]),
+        # 'targets': tf.reshape(fields[0], (per_device_batch_size, 1)),
+        'targets': targets,
+        'weights': tf.ones_like(targets),
     }
 
     num_labels = 1

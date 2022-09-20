@@ -41,7 +41,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       normalization = mask_batch.sum()
     else:
       weighted_losses = per_example_losses
-    normalization = label_batch.shape[0]
+      normalization = label_batch.shape[0]
     return jnp.sum(weighted_losses, axis=-1) / normalization
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
@@ -101,6 +101,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])
+    print('per_example_losses shape:', per_example_losses.shape)
     return (jax.lax.psum(jnp.sum(per_example_losses), axis_name='batch'),
             jax.lax.psum(jnp.sum(batch['weights']), axis_name='batch'))
 
@@ -109,6 +110,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     # same value, but with a leading dim of size jax.local_device_count().
     batch_loss_numerator, batch_loss_denominator = self._eval_batch_pmapped(
         params, batch)
+    print('targets shape:', batch['targets'].shape)
+    print('weights shape:', batch['weights'].shape)
+    print('batch_loss_numerator shape:', batch_loss_numerator.shape)
     batch_loss_numerator = jax_utils.unreplicate(batch_loss_numerator)
     batch_loss_denominator = jax_utils.unreplicate(batch_loss_denominator)
     return np.asarray(batch_loss_numerator), np.asarray(batch_loss_denominator)

@@ -26,7 +26,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.12
+    return 0.1255
 
   @property
   def loss_type(self):
@@ -38,11 +38,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 100_000
+    return 524_288 * 2
 
   @property
   def num_validation_examples(self):
-    return 131072 * 8  # TODO(znado): finalize the validation split size.
+    return 89_137_318 // 2
 
   @property
   def num_test_examples(self):
