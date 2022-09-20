@@ -30,6 +30,8 @@ parser.add_argument(
     help='path to sentence piece tokenizer vocab file',
     type=str)
 
+tf.config.set_visible_devices([], 'GPU')
+
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 
@@ -175,13 +177,12 @@ def main():
 
   # put whatever splits required in this list below
   subset_list = [
-      'train-clean-100',
+      # 'train-clean-100',
+      # 'dev-clean',
+      # 'dev-other',
+      # 'test-clean',
       'train-clean-360',
       'train-other-500',
-      'dev-clean',
-      'dev-other',
-      'test-clean',
-      'test-other'
   ]
   for subset in subset_list:
     print('processing split = ', subset)
