@@ -8,8 +8,8 @@ from typing import Tuple
 
 import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.nn import init
+import torch.nn.functional as F
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     preprocessor
@@ -296,7 +296,7 @@ class CustomBatchNorm1d(nn.BatchNorm1d):
       init.zeros_(self.weight)
       init.zeros_(self.bias)
 
-  def forward(self, input): # pylint: disable=redefined-builtin
+  def forward(self, input):  # pylint: disable=redefined-builtin
     self._check_input_dim(input)
 
     # exponential_average_factor is set to self.momentum
