@@ -5,7 +5,6 @@ from absl import flags
 import jax
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
 
 FLAGS = flags.FLAGS
