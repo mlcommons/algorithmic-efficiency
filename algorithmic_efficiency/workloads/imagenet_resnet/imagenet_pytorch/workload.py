@@ -41,12 +41,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      data_dir: str,
                      batch_size: int,
                      cache,
-                     repeat_final_dataset,
-                     num_batches):
+                     repeat_final_dataset):
     del data_rng
     del cache
     del repeat_final_dataset
-    del num_batches
     is_train = split == 'train'
 
     eval_transform_config = transforms.Compose([

@@ -28,8 +28,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      data_dir: str,
                      batch_size: int,
                      cache: Optional[bool] = None,
-                     repeat_final_dataset: Optional[bool] = None,
-                     num_batches: Optional[int] = None):
+                     repeat_final_dataset: Optional[bool] = None):
     if batch_size % jax.local_device_count() != 0:
       raise ValueError('Batch size must be divisible by the number of devices')
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
@@ -50,8 +49,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         self.scale_ratio_range,
         train=train,
         cache=not train if cache is None else cache,
-        repeat_final_dataset=repeat_final_dataset,
-        num_batches=num_batches)
+        repeat_final_dataset=repeat_final_dataset)
     return ds
 
   def sync_batch_stats(self, model_state):

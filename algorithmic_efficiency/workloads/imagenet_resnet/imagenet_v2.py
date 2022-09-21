@@ -36,11 +36,12 @@ def shard_and_maybe_pad_batch(desired_batch_size, tf_batch):
   return jax.tree_map(zero_pad, batch)
 
 
-def get_imagenet_v2_iter(global_batch_size, mean_rgb, stddev_rgb):
+def get_imagenet_v2_iter(data_dir, global_batch_size, mean_rgb, stddev_rgb):
   """Always caches and repeats indefinitely."""
   ds = tfds.load(
       'imagenet_v2/matched-frequency',
       split='test',
+      data_dir=data_dir,
       decoders={
           'image': tfds.decode.SkipDecoding(),
       })

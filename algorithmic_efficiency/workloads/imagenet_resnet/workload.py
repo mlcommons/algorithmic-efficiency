@@ -1,4 +1,5 @@
 """ImageNet workload parent class."""
+from multiprocessing.sharedctypes import Value
 from typing import Optional
 
 from algorithmic_efficiency import spec
@@ -47,7 +48,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
   def train_stddev(self):
     return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-  # data augmentation settings
+  # Data augmentation settings.
 
   @property
   def scale_ratio_range(self):
@@ -95,13 +96,18 @@ class BaseImagenetResNetWorkload(spec.Workload):
                         cache: Optional[bool] = None,
                         repeat_final_dataset: Optional[bool] = None,
                         num_batches: Optional[int] = None):
+    del num_batches
     if split == 'test':
+      del data_rng
+      if not cache:
+        raise ValueError('cache must be True for split=test.')
+      if not repeat_final_dataset:
+        raise ValueError('repeat_final_dataset must be True for split=test.')
       return imagenet_v2.get_imagenet_v2_iter(
-          global_batch_size, self.train_mean, self.train_stddev)
+          data_dir, global_batch_size, self.train_mean, self.train_stddev)
     return self._build_dataset(data_rng,
                                split,
                                data_dir,
                                global_batch_size,
                                cache,
-                               repeat_final_dataset,
-                               num_batches)
+                               repeat_final_dataset)
