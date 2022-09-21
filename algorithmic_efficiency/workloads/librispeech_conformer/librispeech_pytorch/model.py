@@ -9,9 +9,12 @@ from typing import Tuple
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.nn.init as init
 
-from . import preprocessor
-from .spectrum_augmenter import SpecAug
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
+    preprocessor
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import \
+    SpecAug
 
 
 @dataclass
@@ -164,13 +167,14 @@ class Conv2dSubsampling(nn.Module):
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
     pad_len = (input_length + stride - 1) // stride * stride - input_length
+    padded_paddings = torch.cat([
+        paddings[:, None, :],
+        torch.zeros(
+            size=(paddings.shape[0], 1, pad_len), device=paddings.device)
+    ],
+                                dim=2)
     out_padding = F.conv1d(
-        input=torch.cat([
-            paddings[:, None, :],
-            torch.zeros(
-                size=(paddings.shape[0], 1, pad_len), device=paddings.device)
-        ],
-                        dim=2),
+        input=padded_paddings,
         weight=torch.ones([1, 1, 1], device=paddings.device),
         stride=self.filter_stride[:1])
     out_padding = out_padding.squeeze(dim=1)
@@ -222,7 +226,7 @@ class AddPositionalEmbedding(nn.Module):
     inv_timescales = self.min_timescale * \
         torch.exp(torch.arange(num_timescales, dtype=torch.float32)
                   * -log_timescale_increment)
-    self.register_buffer("inv_timescales", inv_timescales[None, None, :])
+    self.register_buffer('inv_timescales', inv_timescales[None, None, :])
 
   def forward(self, seq_length):
     position = torch.arange(
@@ -278,14 +282,73 @@ class MultiHeadedSelfAttention(nn.Module):
     return outputs
 
 
+class CustomBatchNorm1d(nn.BatchNorm1d):
+
+  def __init__(self, config: ConformerConfig):
+    super().__init__(
+        num_features=config.encoder_dim,
+        momentum=config.batch_norm_momentum,
+        eps=config.batch_norm_epsilon)
+
+  def reset_parameters(self) -> None:
+    self.reset_running_stats()
+    if self.affine:
+      init.zeros_(self.weight)
+      init.zeros_(self.bias)
+
+  def forward(self, input):
+    self._check_input_dim(input)
+
+    # exponential_average_factor is set to self.momentum
+    # (when it is available) only so that it gets updated
+    # in ONNX graph when this node is exported to ONNX.
+    if self.momentum is None:
+      exponential_average_factor = 0.0
+    else:
+      exponential_average_factor = self.momentum
+
+    if self.training and self.track_running_stats:
+      # TODO: if statement only here to tell the jit to skip emitting this when it is None
+      if self.num_batches_tracked is not None:  # type: ignore[has-type]
+        self.num_batches_tracked.add_(1)  # type: ignore[has-type]
+        if self.momentum is None:  # use cumulative moving average
+          exponential_average_factor = 1.0 / \
+              float(self.num_batches_tracked)
+        else:  # use exponential moving average
+          exponential_average_factor = self.momentum
+    r"""
+      Decide whether the mini-batch stats should be used for normalization rather than the buffers.
+      Mini-batch stats are used in training mode, and in eval mode when buffers are None.
+      """
+    if self.training:
+      bn_training = True
+    else:
+      bn_training = (self.running_mean is None) and (self.running_var is None)
+    r"""
+      Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
+      passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are
+      used for normalization (i.e. in eval mode when buffers are not None).
+      """
+    return F.batch_norm(
+        input,
+        # If buffers are not to be tracked, ensure that they won't be updated
+        self.running_mean
+        if not self.training or self.track_running_stats else None,
+        self.running_var
+        if not self.training or self.track_running_stats else None,
+        1 + self.weight,
+        self.bias,
+        bn_training,
+        exponential_average_factor,
+        self.eps,
+    )
+
+
 class BatchNorm(nn.Module):
 
   def __init__(self, config: ConformerConfig):
     super().__init__()
-    self.bn = nn.BatchNorm1d(
-        num_features=config.encoder_dim,
-        momentum=config.batch_norm_momentum,
-        eps=config.batch_norm_epsilon)
+    self.bn = CustomBatchNorm1d(config)
 
   def forward(self, inputs, input_paddings):
     #inputs: NHD
@@ -317,7 +380,7 @@ class ConvolutionBlock(nn.Module):
         out_channels=config.encoder_dim,
         kernel_size=(config.convolution_kernel_size,),
         stride=(1,),
-        padding="same",
+        padding='same',
         bias=False,
         groups=config.encoder_dim)
     self.bn = BatchNorm(config)
@@ -354,7 +417,6 @@ class ConformerBlock(nn.Module):
     self.mhsa = MultiHeadedSelfAttention(config)
     self.conv = ConvolutionBlock(config)
     self.ff2 = FeedForwardModule(config)
-
     self.ln = LayerNorm(dim=config.encoder_dim)
 
   def forward(self, inputs, input_paddings):
@@ -377,7 +439,7 @@ class ConformerEncoderDecoder(nn.Module):
         frame_size_ms=25,
         frame_step_ms=10,
         compute_energy=True,
-        window_fn="HANNING",
+        window_fn='HANNING',
         output_log_floor=1,
         pad_end=True,
         preemph=0.97,

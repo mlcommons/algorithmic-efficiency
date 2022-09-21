@@ -153,8 +153,6 @@ class SpecAug(nn.Module):
 
   def forward(self, inputs, paddings):
     lengths = torch.einsum('bh->b', 1 - paddings).long()
-
     inputs = self._time_mask(inputs, lengths)
     inputs = self._frequency_mask(inputs)
-
     return inputs, paddings

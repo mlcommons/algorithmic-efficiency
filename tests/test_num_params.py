@@ -46,7 +46,7 @@ WORKLOADS = [
     'imagenet_vit',
     'wmt',
     'ogbg',
-    'librispeech_conformer'
+    'librispeech_conformer',
 ]
 
 

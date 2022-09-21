@@ -181,33 +181,32 @@ LIBRISPEECH_STD_VECTOR = [
 ]
 
 PreprocessorConfig = namedtuple(
-    "PreprocessorConfig",
+    'PreprocessorConfig',
     field_names=[
-        "sample_rate",
-        "frame_size_ms",
-        "frame_step_ms",
-        "compute_energy",
-        "window_fn",
-        "output_log_floor",
-        "pad_end",
-        "preemph",
-        "preemph_htk_flavor",
-        "noise_scale",
-        "num_bins",
-        "lower_edge_hertz",
-        "upper_edge_hertz",
-        "fft_overdrive",
-        "output_floor"
+        'sample_rate',
+        'frame_size_ms',
+        'frame_step_ms',
+        'compute_energy',
+        'window_fn',
+        'output_log_floor',
+        'pad_end',
+        'preemph',
+        'preemph_htk_flavor',
+        'noise_scale',
+        'num_bins',
+        'lower_edge_hertz',
+        'upper_edge_hertz',
+        'fft_overdrive',
+        'output_floor'
     ])
 
 
 def _hertz_to_mel(frequencies_hertz):
   """Convert hertz to mel."""
-  if type(frequencies_hertz) in [type(0.0), type(0)]:
-    return _MEL_HIGH_FREQUENCY_Q * math.log(1.0 + (frequencies_hertz /
-                                                   _MEL_BREAK_FREQUENCY_HERTZ))
-  return _MEL_HIGH_FREQUENCY_Q * torch.log(1.0 + (frequencies_hertz /
-                                                  _MEL_BREAK_FREQUENCY_HERTZ))
+  log_fn = math.log if type(frequencies_hertz) in [type(0.0), type(0)
+                                                  ] else torch.log
+  return _MEL_HIGH_FREQUENCY_Q * log_fn(1.0 + (frequencies_hertz /
+                                               _MEL_BREAK_FREQUENCY_HERTZ))
 
 
 def _pad_end_length(num_timesteps, frame_step, frame_size):
@@ -225,22 +224,22 @@ def frame(x,
           pad_end: bool = False,
           pad_value: Union[int, float] = 0.0):
   """Slides a window and extract values.
-    This function extracts `x[:, n:n+frame_length, :]` with sliding `n` with
-    stride of `frame_step`, and returns an array `y` with the shape
-    `(batch_size, num_frames, frame_length, num_channels)`. Unlike the
-    counterpart in Tensorflow (`tf.signal.frame`), this function currently does
-    not take `axis` argument, and the input tensor `x` is expected to have a
-    shape of `(batch_size, timesteps, channels)`.
-    Args:
-      x: An input array with `(batch_size, timesteps, channels)`-shape.
-      frame_length: The frame length.
-      frame_step: The frame hop size.
-      pad_end: If True, the end of signal is padded so the window can continue
-        sliding while the starting point of the window is in the valid range.
-      pad_value: A scalar used as a padding value when `pad_end` is True.
-    Returns:
-      A tensor with shape `(*, num_frames, frame_length, num_channels)`.
-    """
+      This function extracts `x[:, n:n+frame_length, :]` with sliding `n` with
+      stride of `frame_step`, and returns an array `y` with the shape
+      `(batch_size, num_frames, frame_length, num_channels)`. Unlike the
+      counterpart in Tensorflow (`tf.signal.frame`), this function currently does
+      not take `axis` argument, and the input tensor `x` is expected to have a
+      shape of `(batch_size, timesteps, channels)`.
+      Args:
+        x: An input array with `(batch_size, timesteps, channels)`-shape.
+        frame_length: The frame length.
+        frame_step: The frame hop size.
+        pad_end: If True, the end of signal is padded so the window can continue
+          sliding while the starting point of the window is in the valid range.
+        pad_value: A scalar used as a padding value when `pad_end` is True.
+      Returns:
+        A tensor with shape `(*, num_frames, frame_length, num_channels)`.
+      """
   num_timesteps = x.shape[1]
 
   if pad_end:
@@ -257,31 +256,31 @@ def linear_to_mel_weight_matrix(num_mel_bins: int = 20,
                                 lower_edge_hertz: Union[int, float] = 125.0,
                                 upper_edge_hertz: Union[int, float] = 3800.0,
                                 dtype: Any = torch.float32,
-                                device="cpu"):
+                                device='cpu'):
   r"""Pytorch-port of `tf.signal.linear_to_mel_weight_matrix`.
-    Args:
-      num_mel_bins: Python int. How many bands in the resulting mel spectrum.
-      num_spectrogram_bins: An integer `Tensor`. How many bins there are in the
-        source spectrogram data, which is understood to be `fft_size // 2 + 1`,
-        i.e. the spectrogram only contains the nonredundant FFT bins.
-      sample_rate: An integer or float `Tensor`. Samples per second of the input
-       signal used to create the spectrogram. Used to figure out the frequencies
-       corresponding to each spectrogram bin, which dictates how they are mapped
-       into the mel scale.
-      lower_edge_hertz: Python float. Lower bound on the frequencies to be
-        included in the mel spectrum. This corresponds to the lower edge of the
-        lowest triangular band.
-      upper_edge_hertz: Python float. The desired top edge of the highest
-        frequency band.
-      dtype: The `DType` of the result matrix. Must be a floating point type.
-    Returns:
-      An array of shape `[num_spectrogram_bins, num_mel_bins]`.
-    Raises:
-      ValueError: If `num_mel_bins`/`num_spectrogram_bins`/`sample_rate` are not
-       positive, `lower_edge_hertz` is negative, frequency edges are incorrectly
-       ordered, `upper_edge_hertz` is larger than the Nyquist frequency.
-    [mel]: https://en.wikipedia.org/wiki/Mel_scale
-    """
+      Args:
+        num_mel_bins: Python int. How many bands in the resulting mel spectrum.
+        num_spectrogram_bins: An integer `Tensor`. How many bins there are in the
+          source spectrogram data, which is understood to be `fft_size // 2 + 1`,
+          i.e. the spectrogram only contains the nonredundant FFT bins.
+        sample_rate: An integer or float `Tensor`. Samples per second of the input
+         signal used to create the spectrogram. Used to figure out the frequencies
+         corresponding to each spectrogram bin, which dictates how they are mapped
+         into the mel scale.
+        lower_edge_hertz: Python float. Lower bound on the frequencies to be
+          included in the mel spectrum. This corresponds to the lower edge of the
+          lowest triangular band.
+        upper_edge_hertz: Python float. The desired top edge of the highest
+          frequency band.
+        dtype: The `DType` of the result matrix. Must be a floating point type.
+      Returns:
+        An array of shape `[num_spectrogram_bins, num_mel_bins]`.
+      Raises:
+        ValueError: If `num_mel_bins`/`num_spectrogram_bins`/`sample_rate` are not
+         positive, `lower_edge_hertz` is negative, frequency edges are incorrectly
+         ordered, `upper_edge_hertz` is larger than the Nyquist frequency.
+      [mel]: https://en.wikipedia.org/wiki/Mel_scale
+      """
 
   # Input validator from tensorflow/python/ops/signal/mel_ops.py#L71
   if num_mel_bins <= 0:
@@ -338,19 +337,19 @@ def linear_to_mel_weight_matrix(num_mel_bins: int = 20,
   return F.pad(mel_weights_matrix, (0, 0, bands_to_zero, 0))
 
 
-def _hanning_greco(win_support, frame_size, dtype, device="cpu"):
+def _hanning_greco(win_support, frame_size, dtype, device='cpu'):
   """Add a greco-style hanning window to the graph.
-    Note that the Hanning window in Wikipedia is not the same as the Hanning
-    window in Greco.  The Greco3 Hanning window at 0 is NOT 0, as the wikipedia
-    page would indicate. Talkin's explanation was that it was like wasting two
-    samples to have the values at the edge of the window to be 0.0 exactly.
-    Args:
-      win_support: Number of samples for non-zero support in the window
-      frame_size: Total size of the window (frame_size >= win_support)
-      dtype: TF data type
-    Returns:
-      Tensor of size frame_size with the window to apply.
-    """
+      Note that the Hanning window in Wikipedia is not the same as the Hanning
+      window in Greco.  The Greco3 Hanning window at 0 is NOT 0, as the wikipedia
+      page would indicate. Talkin's explanation was that it was like wasting two
+      samples to have the values at the edge of the window to be 0.0 exactly.
+      Args:
+        win_support: Number of samples for non-zero support in the window
+        frame_size: Total size of the window (frame_size >= win_support)
+        dtype: TF data type
+      Returns:
+        Tensor of size frame_size with the window to apply.
+      """
   if frame_size < win_support:
     raise ValueError(
         'Provided frame_size = {} is lower than win_support = {}'.format(
@@ -369,14 +368,14 @@ def _next_pow_of_two(x: Union[int, float]) -> int:
 
 class SpectrogramFrontend(nn.Module):
   """Layer to convert input audio signals from time domain to frequency domain.
-    """
+      """
 
   def __init__(self,
                config: PreprocessorConfig = None,
                input_scale_factor: float = 1.0,
                output_log: bool = False,
                dtype=torch.float32,
-               device="cpu"):
+               device='cpu'):
     super().__init__()
 
     self.config = config
@@ -426,7 +425,7 @@ class SpectrogramFrontend(nn.Module):
     else:
       window = self._window_fn(self._frame_size - 1, dtype)
       window = window.reshape((1, 1, self._frame_size - 1, 1))
-      self.register_buffer("window", window)
+      self.register_buffer('window', window)
 
   def _apply_preemphasis(self, framed_signal):
     p = self.config
@@ -497,14 +496,14 @@ class SpectrogramFrontend(nn.Module):
 
 class MelFilterbankFrontend(nn.Module):
   """Layer to compute log mel spectograms from input audio signals.
-    """
+      """
 
   def __init__(self,
                config: PreprocessorConfig = None,
                use_divide_stream: bool = True,
                per_bin_mean: Optional[float] = None,
                per_bin_stddev: Optional[float] = None,
-               device="cpu"):
+               device='cpu'):
     super().__init__()
 
     self.config = config
@@ -527,9 +526,9 @@ class MelFilterbankFrontend(nn.Module):
     else:
       per_bin_stddev = self.per_bin_stddev
 
-    self.register_buffer("_normalizer_mean",
+    self.register_buffer('_normalizer_mean',
                          torch.FloatTensor(per_bin_mean)[None, None, :, None])
-    self.register_buffer("_normalizer_stddev",
+    self.register_buffer('_normalizer_stddev',
                          torch.FloatTensor(per_bin_stddev)[None, None, :, None])
 
   def forward(self, inputs, input_paddings):

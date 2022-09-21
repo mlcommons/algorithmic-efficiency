@@ -15,12 +15,16 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-
-from .model import ConformerConfig
-from .model import ConformerEncoderDecoder
-from .model import initialize
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+    ConformerConfig
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+    ConformerEncoderDecoder
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+    initialize
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+
+MAX_INPUT_LENGTH = 320000
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -29,9 +33,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     torch.random.manual_seed(rng[0])
     model = ConformerEncoderDecoder(ConformerConfig())
     self._model = model
-    self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
+    self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers
-    t = 320000
+    t = MAX_INPUT_LENGTH
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
@@ -80,8 +84,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     with contexts[mode]():
       logits, logits_paddings = model(
-        augmented_and_preprocessed_input_batch['inputs'],
-        augmented_and_preprocessed_input_batch['input_paddings'])
+          augmented_and_preprocessed_input_batch['inputs'],
+          augmented_and_preprocessed_input_batch['input_paddings'])
 
     return (logits, logits_paddings), None
 
@@ -99,7 +103,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                         num_batches: Optional[int] = None,
                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
-    n_inputs = 4
     keys = ['inputs', 'input_paddings', 'targets', 'target_paddings']
     np_iter = super().build_input_queue(data_rng,
                                         split,
@@ -136,16 +139,25 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
         tensor = torch.empty(
-            (N_GPUS, per_device_batch_size, 320000 * 2 + 256 * 2),
+            (N_GPUS, per_device_batch_size, MAX_INPUT_LENGTH * 2 + 256 * 2),
             dtype=torch.float32,
             device=DEVICE)
         dist.broadcast(tensor, src=0)
         # Note that the order of the keys is important.
-        tensors = tensor.split([320000, 320000, 256, 256], dim=-1)
+        tensors = tensor.split([MAX_INPUT_LENGTH, MAX_INPUT_LENGTH, 256, 256],
+                               dim=-1)
         batch = {}
-        for key, n in zip(keys, range(n_inputs)):
+        for n, key in enumerate(keys):
           batch[key] = tensors[n][RANK]
       yield batch
+
+  def loss_fn(
+      self,
+      label_batch,  # Dense (not one-hot) labels.
+      logits_batch,
+      mask_batch=None,
+      label_smoothing: float = 0.0):
+    return None
 
   def compute_loss(self, logits, logit_paddings, targets, target_paddings):
     logprobs = torch.log_softmax(logits, dim=-1)
@@ -156,8 +168,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         targets.long(),
         input_lengths,
         target_lengths)
-    average_loss = per_seq_loss / target_lengths.sum()
-    return average_loss
+    average_loss = per_seq_loss.sum() / target_lengths.sum()
+    return {
+        'loss': per_seq_loss.sum(),
+        'lengths': target_lengths.sum(),
+        'average_loss': average_loss
+    }
 
   def greedy_decode(self, logits, logit_paddings):
     framewise_tokens = logits.max(dim=-1)[1]
@@ -206,9 +222,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
               data_rng, split, data_dir, global_batch_size=global_batch_size))
 
     total_metrics = {
-        'ctc_loss': torch.tensor(0., device=DEVICE),
-        "word_errors": torch.tensor(0., device=DEVICE),
-        "num_words": torch.tensor(0., device=DEVICE),
+        'loss': torch.tensor(0., device=DEVICE),
+        'lengths': torch.tensor(0., device=DEVICE),
+        'word_errors': torch.tensor(0., device=DEVICE),
+        'num_words': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
 
@@ -227,19 +244,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           decoded=decoded.detach().cpu().numpy(),
           decoded_paddings=decoded_paddings.detach().cpu().numpy(),
           targets=batch['targets'].detach().cpu().numpy(),
-          target_paddings=batch["target_paddings"].detach(
+          target_paddings=batch['target_paddings'].detach(
           ).cpu().numpy(),
           tokenizer=self.tokenizer)
+      loss = self.compute_loss(logits,
+                               logits_padding,
+                               batch['targets'],
+                               batch['target_paddings'])
       batch_metrics = {
-          "ctc_loss":
-              self.compute_loss(logits,
-                                logits_padding,
-                                batch['targets'],
-                                batch["target_paddings"]).sum(),
-          "word_errors":
-              word_errors,
-          "num_words":
-              num_words
+          'loss': loss['loss'],
+          'lengths': loss['lengths'],
+          'word_errors': word_errors,
+          'num_words': num_words,
       }
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
@@ -248,6 +264,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {
-        "ctc_loss": float(total_metrics["ctc_loss"].item() / num_examples),
-        "wer": total_metrics["word_errors"] / total_metrics["num_words"]
+        'ctc_loss':
+            float(total_metrics['loss'].item() /
+                  total_metrics['lengths'].item()),
+        'wer':
+            float(total_metrics['word_errors'].item() /
+                  total_metrics['num_words'].item()),
     }

@@ -62,11 +62,9 @@ def update_params(
       rng,
       update_batch_norm=True)
 
-  train_ctc_loss = torch.mean(
-      workload.compute_loss(logits,
-                            logits_padding,
-                            batch['targets'],
-                            batch["target_paddings"]))
+  train_ctc_loss = workload.compute_loss(
+      logits, logits_padding, batch['targets'],
+      batch["target_paddings"])['average_loss']
   train_ctc_loss.backward()
   grad_clip = hyperparameters.grad_clip
   for g in optimizer_state.param_groups:
