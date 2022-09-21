@@ -9,7 +9,7 @@ from typing import Tuple
 import torch
 from torch import nn
 import torch.nn.functional as F
-import torch.nn.init as init
+from torch.nn import init
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     preprocessor
@@ -48,7 +48,7 @@ class ConformerConfig:
 
 def initialize(m):
   if isinstance(m, nn.Linear) or isinstance(m, nn.Conv1d):
-    torch.nn.init.xavier_uniform_(m.weight)
+    init.xavier_uniform_(m.weight)
   for i in m.children():
     initialize(i)
 
@@ -296,7 +296,7 @@ class CustomBatchNorm1d(nn.BatchNorm1d):
       init.zeros_(self.weight)
       init.zeros_(self.bias)
 
-  def forward(self, input):
+  def forward(self, input): # pylint: disable=redefined-builtin
     self._check_input_dim(input)
 
     # exponential_average_factor is set to self.momentum
@@ -308,7 +308,8 @@ class CustomBatchNorm1d(nn.BatchNorm1d):
       exponential_average_factor = self.momentum
 
     if self.training and self.track_running_stats:
-      # TODO: if statement only here to tell the jit to skip emitting this when it is None
+      # TODO: if statement only here to tell the jit to skip emitting
+      # this when it is None
       if self.num_batches_tracked is not None:  # type: ignore[has-type]
         self.num_batches_tracked.add_(1)  # type: ignore[has-type]
         if self.momentum is None:  # use cumulative moving average
@@ -316,19 +317,18 @@ class CustomBatchNorm1d(nn.BatchNorm1d):
               float(self.num_batches_tracked)
         else:  # use exponential moving average
           exponential_average_factor = self.momentum
-    r"""
-      Decide whether the mini-batch stats should be used for normalization rather than the buffers.
-      Mini-batch stats are used in training mode, and in eval mode when buffers are None.
-      """
+
+    # Decide whether the mini-batch stats should be used for normalization
+    # rather than the buffers. Mini-batch stats are used in training mode,
+    # and in eval mode when buffers are None.
     if self.training:
       bn_training = True
     else:
       bn_training = (self.running_mean is None) and (self.running_var is None)
-    r"""
-      Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
-      passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are
-      used for normalization (i.e. in eval mode when buffers are not None).
-      """
+    # Buffers are only updated if they are to be tracked and we are in training
+    # mode. Thus they only need to be passed when the update should occur (i.e.
+    # in training mode when they are tracked), or when buffer stats are used
+    # for normalization (i.e. in eval mode when buffers are not None).
     return F.batch_norm(
         input,
         # If buffers are not to be tracked, ensure that they won't be updated
