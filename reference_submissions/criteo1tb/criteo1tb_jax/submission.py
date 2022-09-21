@@ -78,12 +78,12 @@ def pmapped_train_step(workload,
     return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (loss, new_model_state), grad = grad_fn(current_param_container)
+  (_, new_model_state), grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
-  return lax.pmean(loss, axis_name='batch'), new_model_state, new_optimizer_state, updated_params
+  return new_model_state, new_optimizer_state, updated_params
 
 
 def update_params(workload: spec.Workload,
@@ -105,10 +105,9 @@ def update_params(workload: spec.Workload,
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  loss, new_model_state, new_optimizer_state, new_params = pmapped_train_step(
+  new_model_state, new_optimizer_state, new_params = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, per_device_rngs)
-  print(f'Step {global_step} loss = {loss[0]}')
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
