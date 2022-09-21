@@ -145,7 +145,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     super().__init__()
     self._param_types = None
     self._eval_iters = {}
-    self._model = models.UNet()
+    self._model =
 
   @property
   def model_params_types(self):
@@ -172,7 +172,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     fake_batch = jnp.zeros((13, 320, 320))
-    variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
+    variables = jax.jit(models.UNet().init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
@@ -186,14 +186,18 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      attn_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
+    del attn_dropout_prob
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch['inputs'],
-                               rngs={'dropout': rng},
-                               train=train)
+    logits = models.UNet(dropout_prob=dropout_prob).apply(
+        {'params': params},
+        augmented_and_preprocessed_input_batch['inputs'],
+        rngs={'dropout': rng},
+        train=train)
     return logits, None
 
   def output_activation_fn(self,

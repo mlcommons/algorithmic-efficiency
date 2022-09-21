@@ -30,7 +30,6 @@ class WmtWorkload(BaseWmtWorkload):
 
   def __init__(self):
     super().__init__()
-    self._train_config = models.TransformerConfig()
     self._eval_config = models.TransformerConfig(deterministic=True)
 
   def compute_weighted_cross_entropy(self,
@@ -205,12 +204,15 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      attn_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
 
     if mode == spec.ForwardPassMode.TRAIN:
-      model_config = self._train_config
+      model_config = models.TransformerConfig(
+          dropout_prob=dropout_prob, attention_dropout_prob=attn_dropout_prob)
     else:
       model_config = self._eval_config
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)

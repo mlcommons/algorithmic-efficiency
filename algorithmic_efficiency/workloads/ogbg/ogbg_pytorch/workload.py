@@ -10,12 +10,12 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency.workloads.ogbg import metrics
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import GNN
 from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 def _pytorch_map(inputs: Any) -> Any:
@@ -145,14 +145,18 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      attn_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del rng
+    del attn_dropout_prob
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:
       raise ValueError(
           f'Expected model_state to be None, received {model_state}.')
     model = params
+    pytorch_utils.update_dropout(model, dropout_prob)
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()

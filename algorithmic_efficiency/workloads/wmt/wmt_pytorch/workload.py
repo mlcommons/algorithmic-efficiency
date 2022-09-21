@@ -11,15 +11,13 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import jax_to_pytorch
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.pytorch_utils import pytorch_to_jax
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 class WmtWorkload(BaseWmtWorkload):
@@ -78,7 +76,7 @@ class WmtWorkload(BaseWmtWorkload):
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
+      flat_ids = pytorch_utils.jax_to_pytorch(flat_ids).to(DEVICE)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
@@ -88,7 +86,7 @@ class WmtWorkload(BaseWmtWorkload):
           cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = pytorch_utils.pytorch_to_jax(flat_logits).squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
@@ -163,12 +161,18 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      attn_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
 
     model = params
+    # Update all Dropout layers with dropout_prob, then go over and only update
+    # Dropout layers inside MultiheadAttention with attn_dropout_prob.
+    pytorch_utils.update_dropout(model, dropout_prob)
+    pytorch_utils.update_attention_dropout(model, attn_dropout_prob)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

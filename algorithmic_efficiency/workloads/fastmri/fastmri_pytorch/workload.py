@@ -14,8 +14,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.input_pipeline import \
     RandomMask
@@ -28,7 +28,7 @@ from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 def ssim(gt: torch.Tensor,
@@ -188,12 +188,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      attn_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del attn_dropout_prob
     del update_batch_norm
 
     model = params
+    pytorch_utils.update_dropout(model, dropout_prob)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

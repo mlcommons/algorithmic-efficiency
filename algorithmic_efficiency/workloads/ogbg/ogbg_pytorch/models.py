@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 
-def _make_mlp(in_dim, hidden_dims, dropout_rate):
+def _make_mlp(in_dim, hidden_dims, dropout_prob):
   """Creates a MLP with specified dimensions."""
   layers = []
   for dim in hidden_dims:
@@ -16,7 +16,7 @@ def _make_mlp(in_dim, hidden_dims, dropout_rate):
         nn.Linear(in_features=in_dim, out_features=dim),
         nn.LayerNorm(dim),
         nn.ReLU(),
-        nn.Dropout(dropout_rate)
+        nn.Dropout(dropout_prob)
     ])
   return nn.Sequential(*layers)
 
@@ -28,7 +28,7 @@ class GNN(nn.Module):
   """
   latent_dim: int = 256
   hidden_dims: Tuple[int] = (256,)
-  dropout_rate: float = 0.1
+  dropout_prob: float = 0.1
   num_message_passing_steps: int = 5
 
   def __init__(self, num_outputs: int = 128) -> None:
@@ -52,13 +52,13 @@ class GNN(nn.Module):
           GraphNetwork(
               update_edge_fn=_make_mlp(in_dim,
                                        self.hidden_dims,
-                                       self.dropout_rate),
+                                       self.dropout_prob),
               update_node_fn=_make_mlp(in_dim,
                                        self.hidden_dims,
-                                       self.dropout_rate),
+                                       self.dropout_prob),
               update_global_fn=_make_mlp(last_in_dim,
                                          self.hidden_dims,
-                                         self.dropout_rate)))
+                                         self.dropout_prob)))
     self.graph_network = nn.Sequential(*graph_network_layers)
 
     self.decoder = nn.Linear(

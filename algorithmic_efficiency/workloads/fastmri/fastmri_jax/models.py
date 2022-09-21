@@ -58,32 +58,32 @@ class UNet(nn.Module):
     out_channels: Number of channels in the output to the U-Net model.
     channels: Number of output channels of the first convolution layer.
     num_pool_layers: Number of down-sampling and up-sampling layers.
-    drop_prob: Dropout probability.
+    dropout_prob: Dropout probability.
   """
   out_channels: int = 1
   channels: int = 32
   num_pool_layers: int = 4
-  drop_prob: float = 0.0
+  dropout_prob: float = 0.0
 
   @nn.compact
   def __call__(self, x, train=True):
-    down_sample_layers = [ConvBlock(self.channels, self.drop_prob)]
+    down_sample_layers = [ConvBlock(self.channels, self.dropout_prob)]
 
     ch = self.channels
     for _ in range(self.num_pool_layers - 1):
-      down_sample_layers.append(ConvBlock(ch * 2, self.drop_prob))
+      down_sample_layers.append(ConvBlock(ch * 2, self.dropout_prob))
       ch *= 2
-    conv = ConvBlock(ch * 2, self.drop_prob)
+    conv = ConvBlock(ch * 2, self.dropout_prob)
 
     up_conv = []
     up_transpose_conv = []
     for _ in range(self.num_pool_layers - 1):
       up_transpose_conv.append(TransposeConvBlock(ch))
-      up_conv.append(ConvBlock(ch, self.drop_prob))
+      up_conv.append(ConvBlock(ch, self.dropout_prob))
       ch //= 2
 
     up_transpose_conv.append(TransposeConvBlock(ch))
-    up_conv.append(ConvBlock(ch, self.drop_prob))
+    up_conv.append(ConvBlock(ch, self.dropout_prob))
 
     final_conv = nn.Conv(self.out_channels, kernel_size=(1, 1), strides=(1, 1))
 
@@ -126,10 +126,10 @@ class UNet(nn.Module):
 class ConvBlock(nn.Module):
   """A Convolutional Block.
   out_channels: Number of channels in the output.
-  drop_prob: Dropout probability.
+  dropout_prob: Dropout probability.
   """
   out_channels: int
-  drop_prob: float
+  dropout_prob: float
 
   @nn.compact
   def __call__(self, x, train=True):
@@ -154,7 +154,7 @@ class ConvBlock(nn.Module):
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
     x = nn.Dropout(
-        self.drop_prob, broadcast_dims=(1, 2), deterministic=not train)(
+        self.dropout_prob, broadcast_dims=(1, 2), deterministic=not train)(
             x)
     x = nn.Conv(
         features=self.out_channels,
@@ -165,7 +165,7 @@ class ConvBlock(nn.Module):
     x = _simple_instance_norm2d(x, (1, 2))
     x = jax.nn.leaky_relu(x, negative_slope=0.2)
     x = nn.Dropout(
-        self.drop_prob, broadcast_dims=(1, 2), deterministic=not train)(
+        self.dropout_prob, broadcast_dims=(1, 2), deterministic=not train)(
             x)
 
     return x

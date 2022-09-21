@@ -23,3 +23,22 @@ def jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
 def pytorch_to_jax(x: torch.Tensor):
   x = x.contiguous()  # https://github.com/google/jax/issues/8082
   return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
+
+
+# DO NOT SUBMIT make sure this works
+def update_dropout(model, dropout_prob):
+  for child in model.modules():
+    if isinstance(child, torch.nn.Dropout):
+      child.p = dropout_prob
+    update_dropout(child, dropout_prob)
+
+
+# DO NOT SUBMIT make sure this works
+def update_attention_dropout(model, attention_dropout_prob):
+  for child in model.modules():
+    if isinstance(child, torch.nn.TransformerDecoderLayer):
+      child.self_attn.dropout = attention_dropout_prob
+      child.multihead_attn.dropout = attention_dropout_prob
+    elif isinstance(child, torch.nn.TransformerEncoderLayer):
+      child.self_attn.dropout = attention_dropout_prob
+    update_dropout(child, attention_dropout_prob)
