@@ -22,22 +22,6 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
-    return self._build_dataset(data_rng,
-                               split,
-                               data_dir,
-                               global_batch_size,
-                               cache,
-                               repeat_final_dataset,
-                               num_batches)
-
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,

@@ -35,19 +35,18 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
-
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
-                     batch_size: int):
+                     batch_size: int,
+                     cache,
+                     repeat_final_dataset,
+                     num_batches):
     del data_rng
+    del cache
+    del repeat_final_dataset
+    del num_batches
     is_train = split == 'train'
 
     eval_transform_config = transforms.Compose([

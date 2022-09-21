@@ -1,6 +1,8 @@
 """ImageNet workload parent class."""
+from typing import Optional
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 
 
 class BaseImagenetResNetWorkload(spec.Workload):
@@ -35,7 +37,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def num_test_examples(self):
-    return None
+    return 10000  # ImageNet-v2
 
   @property
   def train_mean(self):
@@ -84,3 +86,22 @@ class BaseImagenetResNetWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
+
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    if split == 'test':
+      return imagenet_v2.get_imagenet_v2_iter(
+          global_batch_size, self.train_mean, self.train_stddev)
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset,
+                               num_batches)
