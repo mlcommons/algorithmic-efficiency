@@ -1,14 +1,22 @@
-"""Data loader for pre-processed Criteo data."""
+"""Data loader for pre-processed Criteo data.
+
+Similar to how the NVIDIA example works, we split data from the last day into a
+validation and test split (taking the first half for test and second half for
+validation). See here for the NVIDIA example:
+https://github.com/NVIDIA/DeepLearningExamples/blob/4e764dcd78732ebfe105fc05ea3dc359a54f6d5e/PyTorch/Recommendation/DLRM/preproc/run_spark_cpu.sh#L119.
+"""
+import math
 import os
 from typing import Optional, Sequence
 
 import jax
 import tensorflow as tf
 
+_CSV_LINES_PER_FILE = 5_000_000
+
 
 def get_criteo1tb_dataset(split: str,
                           data_dir: str,
-                          is_training: bool,
                           global_batch_size: int,
                           num_dense_features: int,
                           vocab_sizes: Sequence[int],
@@ -16,9 +24,9 @@ def get_criteo1tb_dataset(split: str,
                           repeat_final_dataset: bool = False):
   """Get the Criteo 1TB dataset for a given split."""
   if split in ['train', 'eval_train']:
-    file_path = os.path.join(data_dir, 'day_[0-22].csv')
+    file_path = os.path.join(data_dir, 'day_[0-22]_*.csv')
   else:
-    file_path = os.path.join(data_dir, 'day_23.csv')
+    file_path = os.path.join(data_dir, 'day_23_*.csv')
   num_devices = jax.local_device_count()
   per_device_batch_size = global_batch_size // num_devices
 
@@ -32,10 +40,8 @@ def get_criteo1tb_dataset(split: str,
     fields = tf.io.decode_csv(
         example, record_defaults, field_delim='\t', na_value='-1')
 
-    # print(fields[0].shape)
     targets = tf.expand_dims(fields[0], axis=1)  # (batch, 1)
     features = {
-        # 'targets': tf.reshape(fields[0], (per_device_batch_size, 1)),
         'targets': targets,
         'weights': tf.ones_like(targets),
     }
@@ -59,20 +65,37 @@ def get_criteo1tb_dataset(split: str,
     return features
 
   ds = tf.data.Dataset.list_files(file_path, shuffle=False)
+  # There should be 36 files for day_23.csv, sp we take the first half of them
+  # as the test split and the second half as the validation split.
+  if split == 'test':
+    ds = ds.take(18)
+  elif split == 'validation':
+    ds = ds.skip(18)
+
+  is_training = split == 'train'
+  # For evals, we only need a few files worth of data, so we only load those
+  # that we need.
+  if not is_training and num_batches is not None:
+    num_examples = num_batches * global_batch_size
+    num_files = math.ceil(num_examples / _CSV_LINES_PER_FILE)
+    ds = ds.take(num_files)
+
   if is_training:
     ds = ds.repeat()
   ds = ds.interleave(
       tf.data.TextLineDataset,
-      cycle_length=128,
-      block_length=per_device_batch_size // 8,
-      num_parallel_calls=128,
+      cycle_length=32,
+      block_length=per_device_batch_size,
+      num_parallel_calls=32,
       deterministic=False)
   ds = ds.batch(per_device_batch_size, drop_remainder=is_training)
   ds = ds.map(_parse_example_fn, num_parallel_calls=16)
   if num_batches is not None:
     ds = ds.take(num_batches)
+  # We do not need a ds.cache() because we will do this anyways with
+  # itertools.cycle in the base workload.
   if repeat_final_dataset:
     ds = ds.repeat()
-  ds = ds.prefetch(tf.data.AUTOTUNE)
   ds = ds.batch(num_devices)
+  ds = ds.prefetch(tf.data.AUTOTUNE)
   return ds

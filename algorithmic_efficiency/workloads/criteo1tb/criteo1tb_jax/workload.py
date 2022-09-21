@@ -31,8 +31,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
-      label_smoothing: float = 0.0,
-      mask_batch: Optional[spec.Tensor] = None) -> spec.Tensor:
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> spec.Tensor:
     del label_smoothing
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
@@ -101,18 +101,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])
-    print('per_example_losses shape:', per_example_losses.shape)
-    return (jax.lax.psum(jnp.sum(per_example_losses), axis_name='batch'),
-            jax.lax.psum(jnp.sum(batch['weights']), axis_name='batch'))
+    return jnp.sum(per_example_losses)
 
   def _eval_batch(self, params, batch):
-    # We pmap inside of _eval_batch_pmapped, so each of these should be all the
-    # same value, but with a leading dim of size jax.local_device_count().
-    batch_loss_numerator, batch_loss_denominator = self._eval_batch_pmapped(
-        params, batch)
-    print('targets shape:', batch['targets'].shape)
-    print('weights shape:', batch['weights'].shape)
-    print('batch_loss_numerator shape:', batch_loss_numerator.shape)
-    batch_loss_numerator = jax_utils.unreplicate(batch_loss_numerator)
-    batch_loss_denominator = jax_utils.unreplicate(batch_loss_denominator)
-    return np.asarray(batch_loss_numerator), np.asarray(batch_loss_denominator)
+    # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
+    # shape (local_device_count,) will all be different values.
+    batch_loss_numerator = np.sum(self._eval_batch_pmapped(params, batch))
+    batch_loss_denominator = np.sum(batch['weights'])
+    return np.asarray(batch_loss_numerator), batch_loss_denominator

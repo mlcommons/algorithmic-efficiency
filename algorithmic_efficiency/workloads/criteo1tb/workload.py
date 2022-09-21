@@ -7,13 +7,13 @@ import jax
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import metrics
 
 FLAGS = flags.FLAGS
 
 
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
+
   def __init__(self):
     self.vocab_sizes = tuple([1024 * 128] * 26)
     self.num_dense_features = 13
@@ -46,7 +46,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_test_examples(self):
-    return None
+    return 89_137_318 // 2
 
   @property
   def train_mean(self):
@@ -62,7 +62,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 20 * 60
+    return 10 * 60
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,
@@ -81,7 +81,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
         data_dir=data_dir,
-        is_training=(split == 'train'),
         global_batch_size=global_batch_size,
         num_dense_features=self.num_dense_features,
         vocab_sizes=self.vocab_sizes,
