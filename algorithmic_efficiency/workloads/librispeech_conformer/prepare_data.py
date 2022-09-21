@@ -30,8 +30,6 @@ parser.add_argument(
     help='path to sentence piece tokenizer vocab file',
     type=str)
 
-tf.config.set_visible_devices([], 'GPU')
-
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 
