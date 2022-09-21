@@ -708,7 +708,7 @@ class MultiheadAttention(nn.MultiheadAttention):
     super().__init__(
         embed_dim,
         num_heads,
-        dropout_prob=dropout_prob,
+        dropout=dropout_prob,
         bias=bias,
         add_bias_kv=add_bias_kv,
         add_zero_attn=add_zero_attn,

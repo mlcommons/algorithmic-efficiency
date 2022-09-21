@@ -161,7 +161,6 @@ def update_params(
   del eval_results
   del global_step
   del model_state
-  del hyperparameters
   del loss_type
 
   optimizer_state, opt_update_fn = optimizer_state
@@ -172,7 +171,8 @@ def update_params(
       optimizer_state,
       current_param_container,
       batch,
-      dropout_rngs)
+      dropout_rngs,
+      hyperparameters)
   return (new_optimizer_state, opt_update_fn), updated_params, None
 
 

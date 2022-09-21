@@ -195,7 +195,7 @@ class Encoder1DBlock(nn.Module):
         bias_init=cfg.bias_init,
         use_bias=False,
         broadcast_dropout=False,
-        dropout_prob=cfg.attention_dropout_prob,
+        dropout_rate=cfg.attention_dropout_prob,
         deterministic=cfg.deterministic)(x, encoder_mask)
 
     x = nn.Dropout(rate=cfg.dropout_prob)(x, deterministic=cfg.deterministic)
@@ -246,7 +246,7 @@ class EncoderDecoder1DBlock(nn.Module):
         bias_init=cfg.bias_init,
         use_bias=False,
         broadcast_dropout=False,
-        dropout_prob=cfg.attention_dropout_prob,
+        dropout_rate=cfg.attention_dropout_prob,
         deterministic=cfg.deterministic,
         decode=cfg.decode)(x, decoder_mask)
     x = nn.Dropout(rate=cfg.dropout_prob)(x, deterministic=cfg.deterministic)
@@ -262,7 +262,7 @@ class EncoderDecoder1DBlock(nn.Module):
         bias_init=cfg.bias_init,
         use_bias=False,
         broadcast_dropout=False,
-        dropout_prob=cfg.attention_dropout_prob,
+        dropout_rate=cfg.attention_dropout_prob,
         deterministic=cfg.deterministic)(y, encoded, encoder_decoder_mask)
 
     y = nn.Dropout(rate=cfg.dropout_prob)(y, deterministic=cfg.deterministic)
