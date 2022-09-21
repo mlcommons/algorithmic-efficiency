@@ -44,6 +44,7 @@ tf.config.set_visible_devices([], 'GPU')
 
 # Setup JAX so it preallocates less GPU memory by default.
 # os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
+os.environ['XLA_FLAGS']='--xla_dump_to=/home/smedapati/algorithmic-efficiency/deepspeech_xla_dump'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -108,6 +109,10 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      20,
                      'The number of external hyperparameter trials to run.')
+
+flags.DEFINE_integer('num_train_steps',
+                     -1,
+                     'The number of training steps to run.')
 flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
@@ -190,7 +195,8 @@ def train_once(
     rng: spec.RandomState,
     profiler: Profiler,
     log_dir: Optional[str] = None,
-    tokenizer_vocab_path: Optional[str] = None
+    tokenizer_vocab_path: Optional[str] = None,
+    num_train_steps: Optional[int] = None
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
@@ -235,6 +241,10 @@ def train_once(
 
   logging.info('Starting training loop.')
   while is_time_remaining and not goal_reached and not training_complete:
+    if num_train_steps is not None and global_step == num_train_steps:
+      training_complete = True
+      break
+    
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
@@ -321,6 +331,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
+                                 num_train_steps: Optional[int] = None,
                                  log_dir: Optional[str] = None,
                                  tokenizer_vocab_path: Optional[str] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
@@ -361,7 +372,7 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)  # pylint: disable=line-too-long
+                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path, num_train_steps)  # pylint: disable=line-too-long
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -434,6 +445,7 @@ def main(_):
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
+                                       FLAGS.num_train_steps,
                                        FLAGS.summary_log_dir,
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
