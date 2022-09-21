@@ -56,10 +56,6 @@
    ```
 
   #### Additional Details
-   ```bash
-   pip3 install -e .
-   ```
-
    You can also install the requirements for individual workloads, e.g. via
 
    ```bash
