@@ -46,11 +46,11 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       dropout_prob: float,
-      attn_dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del attn_dropout_prob
+    del aux_dropout_prob
     del update_batch_norm
 
     model = params

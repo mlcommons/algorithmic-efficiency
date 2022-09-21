@@ -138,9 +138,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del rng
+    del dropout_prob
+    del aux_dropout_prob
 
     model = params
 

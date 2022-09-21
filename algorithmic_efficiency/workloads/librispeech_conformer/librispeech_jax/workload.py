@@ -26,9 +26,7 @@ FLAGS = flags.FLAGS
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    model_cls = getattr(models, 'Conformer')
-    model = model_cls(models.ConformerConfig())
-    self._model = model
+    model = models.Conformer(models.ConformerConfig())
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
@@ -56,15 +54,28 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
-      rng: spec.RandomState = None
-  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      rng: spec.RandomState,
+      dropout_prob: float,
+      aux_dropout_prob: float,
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Conformer model function.
+
+    Here we use dropout_prob as residual_dropout_prob, and aux_dropout_prob as
+    input_dropout_prob.
+    """
+    del update_batch_norm
+
     variables = {'params': params, **model_state}
 
     is_train_mode = (mode == spec.ForwardPassMode.TRAIN)
 
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+    model_config = models.ConformerConfig()
+    model_config.residual_dropout_prob = dropout_prob
+    model_config.input_dropout_prob = aux_dropout_prob
+    model = models.Conformer(model_config)
     if is_train_mode:
-      (logits, logit_paddings), new_model_state = self._model.apply(
+      (logits, logit_paddings), new_model_state = model.apply(
           variables,
           inputs,
           input_paddings,
@@ -73,7 +84,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           mutable=['batch_stats'])
       return (logits, logit_paddings), new_model_state
     else:
-      logits, logit_paddings = self._model.apply(
+      logits, logit_paddings = model.apply(
           variables,
           inputs,
           input_paddings,

@@ -88,6 +88,15 @@ def pmapped_train_step(workload,
                        lr):
   optimizer_state.hyperparams['learning_rate'] = lr
 
+  if hasattr(hyperparameters, 'input_dropout_prob'):
+    input_dropout_prob = hyperparameters.input_dropout_prob
+  else:
+    input_dropout_prob = None
+  if hasattr(hyperparameters, 'residual_dropout_prob'):
+    residual_dropout_prob = hyperparameters.residual_dropout_prob
+  else:
+    residual_dropout_prob = None
+
   def _loss_fn(params):
     """loss function used for training."""
     params_rng, dropout_rng = jax.random.split(rng, 2)
@@ -95,8 +104,10 @@ def pmapped_train_step(workload,
         params,
         batch,
         model_state,
-        spec.ForwardPassMode.TRAIN,
-        {'params' : params_rng, 'dropout' : dropout_rng})
+        dropout_prob=residual_dropout_prob,
+        aux_dropout_prob=input_dropout_prob,
+        mode=spec.ForwardPassMode.TRAIN,
+        rng={'params' : params_rng, 'dropout' : dropout_rng})
 
     loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))
     return loss, new_model_state

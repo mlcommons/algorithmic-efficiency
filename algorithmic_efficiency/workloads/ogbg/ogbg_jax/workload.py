@@ -57,10 +57,13 @@ class OgbgWorkload(BaseOgbgWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       dropout_prob: float,
-      attn_dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Get predicted logits from the network for input graphs."""
-    del attn_dropout_prob
+    """Get predicted logits from the network for input graphs.
+
+    aux_dropout_prob is unused.
+    """
+    del aux_dropout_prob
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:
       raise ValueError(

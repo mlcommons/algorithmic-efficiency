@@ -43,14 +43,13 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       dropout_prob: float,
-      attn_dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del mode
-    del attn_dropout_prob
+    del aux_dropout_prob
     del update_batch_norm
     model_kwargs = copy.deepcopy(self._model_kwargs)
-    # DO NOT SUBMIT make sure set defaults properly for all models!
     model_kwargs['dropout_prob'] = dropout_prob
     model = models.ViT(**model_kwargs)
     train = mode == spec.ForwardPassMode.TRAIN

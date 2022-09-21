@@ -205,14 +205,15 @@ class WmtWorkload(BaseWmtWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       dropout_prob: float,
-      attn_dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """aux_dropout_prob is used as attention_dropout_prob."""
     del model_state
     del update_batch_norm
 
     if mode == spec.ForwardPassMode.TRAIN:
       model_config = models.TransformerConfig(
-          dropout_prob=dropout_prob, attention_dropout_prob=attn_dropout_prob)
+          dropout_prob=dropout_prob, attention_dropout_prob=aux_dropout_prob)
     else:
       model_config = self._eval_config
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)

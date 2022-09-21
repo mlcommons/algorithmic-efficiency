@@ -137,10 +137,13 @@ class MnistWorkload(BaseMnistWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       dropout_prob: float,
-      attn_dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del rng
+    del dropout_prob
+    del aux_dropout_prob
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply(

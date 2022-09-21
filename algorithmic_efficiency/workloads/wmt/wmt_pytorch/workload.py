@@ -162,17 +162,18 @@ class WmtWorkload(BaseWmtWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       dropout_prob: float,
-      attn_dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """aux_dropout_prob is used as attention_dropout_prob."""
     del model_state
     del rng
     del update_batch_norm
 
     model = params
     # Update all Dropout layers with dropout_prob, then go over and only update
-    # Dropout layers inside MultiheadAttention with attn_dropout_prob.
+    # Dropout layers inside MultiheadAttention with aux_dropout_prob.
     pytorch_utils.update_dropout(model, dropout_prob)
-    pytorch_utils.update_attention_dropout(model, attn_dropout_prob)
+    pytorch_utils.update_attention_dropout(model, aux_dropout_prob)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

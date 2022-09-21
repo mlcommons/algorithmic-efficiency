@@ -40,7 +40,10 @@ def train_step(workload,
                hyperparameters,
                batch,
                rng):
-  del hyperparameters
+  if hasattr(hyperparameters, 'dropout_prob'):
+    dropout_prob = hyperparameters.dropout_prob
+  else:
+    dropout_prob = 0.1
 
   def loss_fn(params):
     logits_batch, new_model_state  = workload.model_fn(
@@ -49,6 +52,8 @@ def train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
+        dropout_prob=dropout_prob,
+        aux_dropout_prob=None,
         update_batch_norm=True)
     mask_batch = batch['weights']
     per_example_losses = workload.loss_fn(batch['targets'],
