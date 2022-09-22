@@ -39,7 +39,7 @@ flags.DEFINE_integer(
      'a per-device batch size of 2 is used.'))
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 flags.DEFINE_boolean(
-    'run_all',
+    'all',
     False,
     'Run all workloads instead of using --workload and --framework.')
 FLAGS = flags.FLAGS
@@ -293,8 +293,8 @@ def _test_submission(workload_name,
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
   if FLAGS.run_all:
-    if FLAGS.global_batch_size < 0:
-      raise ValueError('Cannot set --batch_size and --run_all.')
+    if FLAGS.global_batch_size > 0:
+      raise ValueError('Cannot set --global_batch_size and --run_all.')
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size

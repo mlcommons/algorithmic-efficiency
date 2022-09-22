@@ -145,7 +145,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     super().__init__()
     self._param_types = None
     self._eval_iters = {}
-    self._model =
 
   @property
   def model_params_types(self):
