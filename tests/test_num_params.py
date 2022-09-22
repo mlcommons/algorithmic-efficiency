@@ -93,9 +93,8 @@ def get_models(workload):
     # Init PyTorch model.
     pytorch_model = PyTorchViT()
   elif workload == 'librispeech_conformer':
-    jax_model = JaxConformer(JaxConformerConfig(num_attention_heads=1))
-    pytorch_model = PytorchConformer(
-        PytorchConformerConfig(num_attention_heads=1))
+    jax_model = JaxConformer(JaxConformerConfig())
+    pytorch_model = PytorchConformer(PytorchConformerConfig())
 
     # Init Jax model
     input_shape = [(320000,), (320000,)]
