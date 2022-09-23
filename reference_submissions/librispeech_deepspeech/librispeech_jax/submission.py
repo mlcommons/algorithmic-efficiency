@@ -10,6 +10,8 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
+# import gc
+# import torch
 
 from algorithmic_efficiency import spec
 
@@ -19,7 +21,7 @@ _GRAD_CLIP_EPS = 1e-6
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 256
+  return 8
 
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
@@ -76,20 +78,7 @@ def l2_regularization(params, l2_decay_rank_threshold):
   return weight_l2
 
 
-@functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
-    static_broadcasted_argnums=(0, 1))
-def pmapped_train_step(workload,
-                       opt_update_fn,
-                       model_state,
-                       optimizer_state,
-                       current_param_container,
-                       hyperparameters,
-                       batch,
-                       rng,
-                       lr):
+def update_step(batch, params, batch_stats, optimizer_state, workload, opt_update_fn, hyperparameters, rng, lr):
   optimizer_state.hyperparams['learning_rate'] = lr
 
   def _loss_fn(params):
@@ -98,7 +87,7 @@ def pmapped_train_step(workload,
     logits_and_paddings, new_model_state = workload.model_fn(
         params,
         batch,
-        model_state,
+        batch_stats,
         spec.ForwardPassMode.TRAIN,
         {'params' : params_rng, 'dropout' : dropout_rng})
 
@@ -107,8 +96,9 @@ def pmapped_train_step(workload,
     return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (loss, new_model_state), grad = grad_fn(current_param_container)
+  (loss, new_model_state), grad = grad_fn(params)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
+  print('loss inside pmap = ', loss)
 
   grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
@@ -120,10 +110,13 @@ def pmapped_train_step(workload,
                       None)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-                                               current_param_container)
-  updated_params = optax.apply_updates(current_param_container, updates)
+                                               params)
+  
+  print('applying updates')
+  updated_params = optax.apply_updates(params, updates)
+  print('after applying updates')
 
-  return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
+  return updated_params, new_model_state, new_optimizer_state, loss, grad_norm
 
 
 def _summary_str(param):
@@ -164,19 +157,45 @@ def update_params(
   del eval_results
   del loss_type
 
+  print('in update params in submission')
   lr = workload.get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(  # pylint: disable=line-too-long
-      workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, per_device_rngs, lr)
+  print('before pmapped_update')
 
-  if global_step <= 1000 or global_step % 100 == 0:
-    logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
+  # @functools.partial(
+  #   jax.pmap,
+  #   axis_name='batch',
+  #   in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
+  #   static_broadcasted_argnums=(0, 1))
+
+  update_fn = functools.partial(
+    update_step, 
+    workload=workload, 
+    hyperparameters=hyperparameters,
+    opt_update_fn=opt_update_fn,
+    lr=lr,
+    rng=rng)
+
+  pmapped_update_step = jax.pmap(update_fn, axis_name='batch', in_axes=(0,0,0,0))
+  try:
+    # gc.collect()
+    # torch.cuda.empty_cache()
+    new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(  # pylint: disable=line-too-long
+        batch, current_param_container, model_state, optimizer_state)
+    print('sssssssssss')
+  except RuntimeError as e:
+    print(e)
+    raise ValueError('RuntimeError')
+  
+  print('after applying updates inside submission')
+  print('loss = ', loss.mean())
+  logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
                  global_step,
                  loss.mean(),
                  grad_norm.mean(),
                  lr)
+  if global_step <= 1000 or global_step % 100 == 0:
     workload.summary_writer.scalar('train_step_ctc_loss',
                                    loss.mean(),
                                    global_step)

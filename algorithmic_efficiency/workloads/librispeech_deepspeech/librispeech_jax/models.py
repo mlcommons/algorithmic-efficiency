@@ -36,8 +36,8 @@ class DeepspeechConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
   vocab_size: int = 1024
   dtype: Any = jnp.float32
-  encoder_dim: int = 512
-  num_lstm_layers: int = 6
+  encoder_dim: int = 256
+  num_lstm_layers: int = 4
   num_ffn_layers: int = 3
   conv_subsampling_factor: int = 2
   conv_subsampling_layers: int = 2
@@ -677,6 +677,7 @@ class Deepspeech(nn.Module):
     outputs = inputs
     output_paddings = input_paddings
 
+    #print('model : got inputs and paddings')
     # Compute normalized log mel spectrograms from input audio signal.
     preprocessing_config = preprocessor.LibrispeechPreprocessingConfig()
     outputs, output_paddings = preprocessor.MelFilterbankFrontend(
@@ -685,6 +686,7 @@ class Deepspeech(nn.Module):
         per_bin_stddev=preprocessor.LIBRISPEECH_STD_VECTOR)(outputs,
                                                             output_paddings)
 
+    #print('model : preprocessed inputs and paddings')
     # Ablate random parts of input along temporal and frequency dimension
     # following the specaug procedure in https://arxiv.org/abs/1904.08779.
     if config.use_specaug and train:
@@ -694,14 +696,17 @@ class Deepspeech(nn.Module):
     outputs, output_paddings = Subsample(
         config=config)(outputs, output_paddings, train)
 
+    #print('model : subsampled inputs and paddings')
     # Run the lstm layers.
-    for _ in range(config.num_lstm_layers):
+    for i in range(config.num_lstm_layers):
+      print('model : going through LSTM layer: {}'.format(i))
       if config.enable_residual_connections:
         outputs = outputs + BatchRNN(config)(outputs, output_paddings, train)
       else:
         outputs = BatchRNN(config)(outputs, output_paddings, train)
 
-    for _ in range(config.num_ffn_layers):
+    for j in range(config.num_ffn_layers):
+      print('model : going through FFN layer: {}'.format(j))
       if config.enable_residual_connections:
         outputs = outputs + FeedForwardModule(config=self.config)(
             outputs, output_paddings, train)
@@ -718,6 +723,7 @@ class Deepspeech(nn.Module):
         use_bias=True,
         kernel_init=nn.initializers.xavier_uniform())(outputs)
 
+    #print('model : got outputs successfully')
     return outputs, output_paddings
 
 

@@ -22,14 +22,9 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-import torch
-import torch.distributed as dist
 
-try:
-  import wandb  # pylint: disable=g-import-not-at-top
-except ModuleNotFoundError:
-  logging.exception('Unable to import wandb.')
-  wandb = None
+import wandb  # pylint: disable=g-import-not-at-top
+
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -44,7 +39,8 @@ tf.config.set_visible_devices([], 'GPU')
 
 # Setup JAX so it preallocates less GPU memory by default.
 # os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
-os.environ['XLA_FLAGS']='--xla_dump_to=/home/smedapati/algorithmic-efficiency/deepspeech_xla_dump'
+# os.environ['XLA_FLAGS']='--xla_dump_to=/home/smedapati/algorithmic-efficiency/deepspeech_xla_dump'
+
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -89,12 +85,12 @@ WORKLOADS = {
 
 flags.DEFINE_string(
     'submission_path',
-    'reference_submissions/mnist/mnist_jax/submission.py',
+    'reference_submissions/librispeech_deepspeech/librispeech_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
     'workload',
-    'mnist',
+    'librispeech_deepspeech',
     help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
 )
 flags.DEFINE_enum(
@@ -104,28 +100,28 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'reference_submissions/mnist/tuning_search_space.json',
+    'reference_submissions/librispeech_deepspeech/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
-                     20,
+                     1,
                      'The number of external hyperparameter trials to run.')
 
 flags.DEFINE_integer('num_train_steps',
-                     -1,
+                     10,
                      'The number of training steps to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
+flags.DEFINE_string('data_dir', 'algorithmic_efficiency/workloads/librispeech_conformer/work_dir/data', 'Dataset location')
 flags.DEFINE_enum(
     'framework',
-    None,
+    'jax',
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_string('summary_log_dir',
-                    '',
+                    'reference_submissions/librispeech_deepspeech/librispeech_jax/summaries',
                     'Location to dump tensorboard summaries.')
 flags.DEFINE_string('tokenizer_vocab_path',
-                    '',
+                    '/home/smedapati/algorithmic-efficiency/algorithmic_efficiency/workloads/librispeech_conformer/spm_model.vocab',
                     'Location to read tokenizer from.')
 
 FLAGS = flags.FLAGS
@@ -250,6 +246,7 @@ def train_once(
     start_time = time.time()
 
     with profiler.profile('Data selection'):
+      print('loading data batch')
       batch = data_selection(workload,
                              input_queue,
                              optimizer_state,
@@ -259,6 +256,7 @@ def train_once(
                              data_select_rng)
     try:
       with profiler.profile('Update parameters'):
+        print('before call to update parameters')
         optimizer_state, model_params, model_state = update_params(
           workload=workload,
           current_param_container=model_params,
@@ -271,55 +269,19 @@ def train_once(
           eval_results=eval_results,
           global_step=global_step,
           rng=update_rng)
+        print('after update_params in submission_runner.py')
     except spec.TrainingCompleteError:
       training_complete = True
     except RuntimeError as e:
-      if "out of memory" in str(e):
-        logging.warning(
-            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
-        )
-        if torch.cuda.is_available():
-          torch.cuda.empty_cache()
+      print('runtime error : ', e)
+      raise ValueError('Runtime Error')
     global_step += 1
-    if USE_PYTORCH_DDP:
-      # Make sure all processes run eval after the same step when using DDP.
-      dist.barrier()
     current_time = time.time()
     accumulated_submission_time += current_time - start_time
     is_time_remaining = (
         accumulated_submission_time < workload.max_allowed_runtime_sec)
-    # Check if submission is eligible for an untimed eval.
-    if (current_time - last_eval_time >= workload.eval_period_time_sec or
-        training_complete):
-      with profiler.profile('Evaluation'):
-        try:
-          latest_eval_result = workload.eval_model(global_batch_size,
-                                                   model_params,
-                                                   model_state,
-                                                   eval_rng,
-                                                   data_dir,
-                                                   global_step)
-          logging.info('%.2fs \t%d \t%s',
-                       current_time - global_start_time,
-                       global_step,
-                       latest_eval_result)
-          last_eval_time = current_time
-          eval_results.append((global_step, latest_eval_result))
-          goal_reached = workload.has_reached_goal(latest_eval_result)
-        except RuntimeError as e:
-          if "out of memory" in str(e):
-            logging.warning(
-                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
-            )
-            if torch.cuda.is_available():
-              torch.cuda.empty_cache()
-
+      
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  if USE_PYTORCH_DDP:
-    # Sync final score (accumulated training time); choose highest, i.e. worst.
-    score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
-    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
-    accumulated_submission_time = score_tensor.item()
   return accumulated_submission_time, metrics
 
 
