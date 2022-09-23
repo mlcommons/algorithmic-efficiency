@@ -22,13 +22,6 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def __init__(self):
-    super().__init__()
-    self._param_shapes = None
-    self._param_types = None
-    self.epoch_metrics = []
-    self._eval_iters = {}
-
   def build_input_queue(self,
                         data_rng: spec.RandomState,
                         split: str,
@@ -88,14 +81,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     return new_model_state
 
   @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
   def model_params_types(self):
     if self._param_shapes is None:
       raise ValueError(
@@ -135,15 +120,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
+      in_axes=(None, 0, 0, 0),
       static_broadcasted_argnums=(0,))
-  def _eval_model(self, params, batch, state, rng):
+  def _eval_model(self, params, batch, state):
     logits, _ = self.model_fn(
         params,
         batch,
         state,
         spec.ForwardPassMode.EVAL,
-        rng,
+        rng=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 
@@ -175,13 +160,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
     one_hot_labels = jax.nn.one_hot(label_batch, num_classes=1000)
-    xentropy = optax.softmax_cross_entropy(
-        logits=logits_batch, labels=one_hot_labels)
-    return xentropy
+    smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
+    return optax.softmax_cross_entropy(
+        logits=logits_batch, labels=smoothed_labels)
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))
@@ -201,8 +188,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
-    data_rng, model_rng = jax.random.split(rng, 2)
+                           data_dir: str,
+                           global_step: int = 0):
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
       model_state = self.sync_batch_stats(model_state)
@@ -210,7 +197,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
       self._eval_iters[split] = self.build_input_queue(
-          data_rng,
+          rng,
           split=split,
           global_batch_size=global_batch_size,
           data_dir=data_dir,
@@ -222,7 +209,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
+      synced_metrics = self._eval_model(params, batch, model_state)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

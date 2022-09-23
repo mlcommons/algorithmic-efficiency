@@ -72,7 +72,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 800
+    return 2400
 
   def build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
@@ -112,7 +112,8 @@ class BaseWmtWorkload(spec.Workload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str) -> Dict[str, float]:
+                           data_dir: str,
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
     num_batches = int(math.ceil(num_examples / global_batch_size))
@@ -210,6 +211,6 @@ class BaseWmtWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None) -> spec.Tensor:
-    del mask_batch
-    return self.compute_weighted_cross_entropy(logits_batch, label_batch)
+      label_smoothing: float = 0.0) -> spec.Tensor:
+    return self.compute_weighted_cross_entropy(
+        logits_batch, label_batch, label_smoothing=label_smoothing)

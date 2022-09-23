@@ -191,9 +191,15 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              logits_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-    return F.cross_entropy(logits_batch, label_batch, reduction='none')
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    return F.cross_entropy(
+        logits_batch,
+        label_batch,
+        reduction='none',
+        label_smoothing=label_smoothing)
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
@@ -210,7 +216,8 @@ class CifarWorkload(BaseCifarWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:

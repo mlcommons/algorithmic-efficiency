@@ -85,14 +85,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     self._eval_iters = {}
 
   @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
   def model_params_types(self):
     """The shapes of the parameters in the workload model."""
     if self._param_types is None:
@@ -235,16 +227,21 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, targets_batch: spec.Tensor,
-              outputs_batch: spec.Tensor) -> spec.Tensor:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: spec.Tensor = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    del mask_batch
+    del label_smoothing
     return F.l1_loss(
-        outputs_batch, targets_batch, reduction='none').mean(dim=(1, 2))
+        logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
 
   def _eval_metric(self, outputs, targets, mean, std, volume_max):
     """Return the SSIM and loss as a dict."""
     ssim_vals = ssim(
         targets, outputs, mean=mean, std=std, volume_max=volume_max)
-    loss = self.loss_fn(outputs, targets).sum()
+    loss = self.loss_fn(targets, outputs).sum()
     return {'ssim': ssim_vals, 'loss': loss}
 
   def _eval_model_on_split(self,
@@ -254,7 +251,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            params: spec.ParameterContainer,
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
-                           data_dir: str):
+                           data_dir: str,
+                           global_step: int = 0):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:

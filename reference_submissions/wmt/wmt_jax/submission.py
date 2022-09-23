@@ -4,8 +4,6 @@ import functools
 from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
-from flax import linen as nn
-from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import optax
@@ -14,12 +12,12 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {"wmt": 128}
+  batch_sizes = {'wmt': 128}
   return batch_sizes[workload_name]
 
 
 def create_learning_rate_scheduler(
-    factors="constant * linear_warmup * rsqrt_decay",
+    factors='constant * linear_warmup * rsqrt_decay',
     base_learning_rate=0.5,
     warmup_steps=1000,
     decay_factor=0.5,
@@ -47,30 +45,30 @@ def create_learning_rate_scheduler(
     a function learning_rate(step): float -> {"learning_rate": float}, the
     step-dependent lr.
   """
-  factors = [n.strip() for n in factors.split("*")]
+  factors = [n.strip() for n in factors.split('*')]
 
   def step_fn(step):
     """Step to learning rate function."""
     ret = 1.0
     for name in factors:
-      if name == "constant":
+      if name == 'constant':
         ret *= base_learning_rate
-      elif name == "linear_warmup":
+      elif name == 'linear_warmup':
         ret *= jnp.minimum(1.0, step / warmup_steps)
-      elif name == "rsqrt_decay":
+      elif name == 'rsqrt_decay':
         ret /= jnp.sqrt(jnp.maximum(step, warmup_steps))
-      elif name == "rsqrt_normalized_decay":
+      elif name == 'rsqrt_normalized_decay':
         ret *= jnp.sqrt(warmup_steps)
         ret /= jnp.sqrt(jnp.maximum(step, warmup_steps))
-      elif name == "decay_every":
+      elif name == 'decay_every':
         ret *= (decay_factor**(step // steps_per_decay))
-      elif name == "cosine_decay":
+      elif name == 'cosine_decay':
         progress = jnp.maximum(0.0,
                                (step - warmup_steps) / float(steps_per_cycle))
         ret *= jnp.maximum(0.0,
                            0.5 * (1.0 + jnp.cos(jnp.pi * (progress % 1.0))))
       else:
-        raise ValueError(f"Unknown factor {name}.")
+        raise ValueError(f'Unknown factor {name}.')
     return jnp.asarray(ret, dtype=jnp.float32)
 
   return step_fn
@@ -81,6 +79,7 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
+  del model_params
   del model_state
   del rng
   learning_rate_fn = create_learning_rate_scheduler(
@@ -98,49 +97,33 @@ def init_optimizer_state(workload: spec.Workload,
 
 @functools.partial(
     jax.pmap,
-    in_axes=(None, None, 0, 0, 0, None, 0),
+    in_axes=(None, None, 0, 0, 0, 0),
     axis_name='batch',
-    static_broadcasted_argnums=(0, 1, 5))
+    static_broadcasted_argnums=(0, 1))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        optimizer_state,
                        current_param_container,
                        batch,
-                       hyperparameters,
                        dropout_rng):
   """Perform a single training step."""
 
-  def loss_fn(params):
+  def _loss_fn(params):
     """Loss function used for training."""
     logits, _ = workload.model_fn(
-      params,
-      batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.TRAIN,
-      rng=dropout_rng,
-      update_batch_norm=False)
-    vocab_size = logits.shape[-1]
-    if hasattr(hyperparameters, 'label_smoothing'):
-      label_smoothing = hyperparameters.label_smoothing
-    else:
-      label_smoothing = 0.1
-    confidence = 1.0 - label_smoothing
-    low_confidence = (1.0 - confidence) / (vocab_size - 1)
-    normalizing_constant = -(
-        confidence * jnp.log(confidence) +
-        (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
+        params,
+        batch,
+        model_state=None,
+        mode=spec.ForwardPassMode.TRAIN,
+        rng=dropout_rng,
+        update_batch_norm=False)
     targets = batch['targets']
-    weights = jnp.where(targets > 0, 1, 0).astype(jnp.float32)
-    soft_targets = common_utils.onehot(
-        targets, vocab_size, on_value=confidence, off_value=low_confidence)
-    loss = -jnp.sum(soft_targets * nn.log_softmax(logits), axis=-1)
-    loss = loss - normalizing_constant
-    loss = loss * weights
-    normalizing_factor = weights.sum()
-    mean_loss = loss.sum() / normalizing_factor
-    return mean_loss
+    weights = jnp.where(targets > 0, 1.0, 0.0)
+    loss = (workload.loss_fn(targets, logits, label_smoothing=0.1) *
+            weights).sum() / weights.sum()
+    return loss
 
-  grad_fn = jax.value_and_grad(loss_fn)
+  grad_fn = jax.value_and_grad(_loss_fn)
   _, grad = grad_fn(current_param_container)
   grad = jax.lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(
@@ -167,6 +150,7 @@ def update_params(
   del eval_results
   del global_step
   del model_state
+  del hyperparameters
   del loss_type
 
   optimizer_state, opt_update_fn = optimizer_state
@@ -177,7 +161,6 @@ def update_params(
       optimizer_state,
       current_param_container,
       batch,
-      hyperparameters,
       dropout_rngs)
   return (new_optimizer_state, opt_update_fn), updated_params, None
 
@@ -201,5 +184,4 @@ def data_selection(workload: spec.Workload,
   del rng
   del hyperparameters
   del workload
-
   return next(input_queue)

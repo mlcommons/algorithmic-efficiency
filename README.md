@@ -29,7 +29,7 @@
 
    ```bash
     sudo apt-get install python3-venv
-    python3.9 -m venv env
+    python3 -m venv env
     source env/bin/activate
    ```
 
@@ -58,12 +58,9 @@
    pip3 install -e '.[full]'
    ```
 
-#### Additional Details
 
-   ```bash
-   pip3 install -e .
-   ```
-
+  #### Additional Details
+  
    You can also install the requirements for individual workloads, e.g. via
 
    ```bash
@@ -186,3 +183,29 @@ The rules for the MLCommons Algorithmic Efficency benchmark can be found in the 
 ## Contributing
 
 If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues, and see the [MLCommons contributing guidelines](CONTRIBUTING.md).
+
+### Presubmit testing
+
+We run basic presubmit checks with GitHub Actions, configured in the [.github/workflows](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows) folder.
+
+To run the below commands, use the versions installed via `pip install -e '.[dev]'`.
+
+To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
+```bash
+yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs reference_submissions tests *.py
+```
+
+To print out all offending import orderings, run the following (you will need to manually make the edits, because reordering Python imports can cause side-effects):
+```bash
+isort . --check --diff
+```
+
+To print out all offending pylint issues, run the following:
+```bash
+pylint algorithmic_efficiency
+pylint baselines
+pylint target_setting_runs
+pylint reference_submissions
+pylint submission_runner.py
+pylint tests
+```
