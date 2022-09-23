@@ -394,8 +394,6 @@ A target performance on the validation dataset will be defined for each [workloa
 
 To set the target for the test set, we will investigate the $20$ repeated runs of the target-setting reference algorithm. The worst test set performance across these $20$ runs will be the target test set performance for this workload. This test target is only used to verify that the submission also achieves a reasonable performance on the unseen test dataset.
 
-*Note: Following the general protocol of published results, we will not use a test set for workloads using the ImageNet dataset. The official test set of ImageNet requires uploading predictions to the ImageNet test server. For future iterations of the benchmark, we plan to replace the ImageNet dataset.*
-
 Both [tuning rulesets](#tuning) will use the same target performances. The runtime of the target-setting algorithms on each workload will be chosen to match published results and is constrained by the overall time budget of roughly a single week for all public workloads. The `max_runtime` for submissions on each workload is $\frac{1}{3}$ longer than the runtime of the target-setting algorithms.
 
 #### Benchmark score using performance profiles
