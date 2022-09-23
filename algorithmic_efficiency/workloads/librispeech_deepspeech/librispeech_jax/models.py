@@ -306,11 +306,6 @@ class BatchNorm(nn.Module):
 
     return bn_output
 
-# BEGIN GOOGLE-INTERNAL
-# TODO(b/238384487): remove this code and rely on LSTM API when it's
-# open sourced.
-# END GOOGLE-INTERNAL
-
 
 @jax.vmap
 def flip_sequences(inputs: Array, lengths: Array) -> Array:
