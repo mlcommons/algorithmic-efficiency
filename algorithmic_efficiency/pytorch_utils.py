@@ -1,10 +1,12 @@
 import os
 from typing import Tuple
 
-import jax
+from absl import logging
+import tensorflow as tf
 import torch
+import torch.distributed as dist
 
-from algorithmic_efficiency import spec
+from algorithmic_efficiency.profiler import Profiler
 
 
 def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
@@ -15,11 +17,27 @@ def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
   return use_pytorch_ddp, rank, device, n_gpus
 
 
-def jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False):
-  return torch.utils.dlpack.from_dlpack(
-      jax.dlpack.to_dlpack(x, take_ownership=take_ownership))
+def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
+  # Make sure no GPU memory is preallocated to Jax.
+  os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+  # From the docs: "(...) causes cuDNN to benchmark multiple convolution
+  # algorithms and select the fastest."
+  torch.backends.cudnn.benchmark = True
 
+  if use_pytorch_ddp:
+    # Avoid tf input pipeline creating too many threads.
+    if rank != 0:
+      tf.config.threading.set_intra_op_parallelism_threads(1)
+      tf.config.threading.set_inter_op_parallelism_threads(1)
 
-def pytorch_to_jax(x: torch.Tensor):
-  x = x.contiguous()  # https://github.com/google/jax/issues/8082
-  return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
+    torch.cuda.set_device(rank)
+    profiler.set_local_rank(rank)
+    # only log once (for local rank == 0)
+    if rank != 0:
+
+      def logging_pass(*args):
+        pass
+
+      logging.info = logging_pass
+    # initialize the process group
+    dist.init_process_group('nccl')

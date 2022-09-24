@@ -36,14 +36,12 @@ from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
+from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
-
-# Setup JAX so it preallocates less GPU memory by default.
-# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -361,7 +359,8 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)  # pylint: disable=line-too-long
+                                     hyperparameters, rng, profiler, log_dir,
+                                     tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -391,29 +390,7 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
-    # Make sure no GPU memory is preallocated to Jax.
-    os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-    # From the docs: "(...) causes cuDNN to benchmark multiple convolution
-    # algorithms and select the fastest."
-    torch.backends.cudnn.benchmark = True
-
-    if USE_PYTORCH_DDP:
-      # Avoid tf input pipeline creating too many threads.
-      if RANK != 0:
-        tf.config.threading.set_intra_op_parallelism_threads(1)
-        tf.config.threading.set_inter_op_parallelism_threads(1)
-
-      torch.cuda.set_device(RANK)
-      profiler.set_local_rank(RANK)
-      # only log once (for local rank == 0)
-      if RANK != 0:
-
-        def logging_pass(*args):
-          pass
-
-        logging.info = logging_pass
-      # initialize the process group
-      dist.init_process_group('nccl')
+    pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
