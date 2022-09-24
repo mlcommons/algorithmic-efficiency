@@ -118,15 +118,15 @@ def _process_example(kspace,
       'mean': mean,
       'std': std,
       'volume_max': volume_max,
-      'weights': tf.ones((image.shape[0],)),
   }
 
 
-def _h5_to_examples(path):
+def _h5_to_examples(path, log=False):
   """Yield MRI slices from an hdf5 file containing a single MRI volume."""
-  tf.print('fastmri_dataset._h5_to_examples call:',
-           path,
-           datetime.datetime.now().strftime('%H:%M:%S:%f'))
+  if log:
+    tf.print('fastmri_dataset._h5_to_examples call:',
+            path,
+            datetime.datetime.now().strftime('%H:%M:%S:%f'))
   with gfile.GFile(path, 'rb') as gf:
     with h5py.File(gf, 'r') as hf:
       # NOTE(dsuo): logic taken from reference code
@@ -152,7 +152,9 @@ def _create_generator(filename):
 def _pad_zeros_like(global_batch_size, x):
   shape = x.shape[1:]
   pad_size = global_batch_size - x.shape[0]
-  return tf.zeros((pad_size, *shape), x.dtype)
+  padding = tf.zeros((pad_size, *shape), x.dtype)
+  padded_x = tf.concat((x, padding), axis=0)
+  return padded_x
 
 
 def load_fastmri_split(global_batch_size,
@@ -232,25 +234,29 @@ def load_fastmri_split(global_batch_size,
 
   if split != 'train':
     ds = ds.cache()
+
+  def finite_iterator(ds, split):
+    for batch in iter(ds):
+      actual_batch_size = batch['inputs'].shape[0]
+      if actual_batch_size != global_batch_size:
+        batch = jax.tree_map(
+            functools.partial(_pad_zeros_like, global_batch_size), batch)
+        batch['weights'] = np.concatenate(
+            (np.ones((actual_batch_size,)),
+            np.zeros((global_batch_size - actual_batch_size,))))
+      else:
+        batch['weights'] = np.ones((global_batch_size,))
+      batch = data_utils.shard_numpy_ds(batch)
+      yield batch
+
   if split == 'train':
     ds = ds.prefetch(10)
     iterator = map(data_utils.shard_numpy_ds, ds)
     return iterator
-
-  ds = ds.take(num_batches)
-  if repeat_final_eval_dataset:
-    ds = ds.repeat()
-  ds = ds.prefetch(10)
-
-  for batch in iter(ds):
-    actual_batch_size = batch['inputs'].shape[0]
-    if actual_batch_size != global_batch_size:
-      batch = jax.tree_map(
-          functools.partial(_pad_zeros_like, global_batch_size), batch)
-      batch['weights'] = np.concatenate(
-          (np.ones((actual_batch_size,)),
-           np.zeros((global_batch_size - actual_batch_size,))))
-    else:
-      batch['weights'] = np.ones((global_batch_size,))
-    batch = data_utils.shard_numpy_ds(batch)
-    yield batch
+  else:
+    if num_batches:
+      ds = ds.take(num_batches)
+    if repeat_final_eval_dataset:
+      ds = ds.repeat()
+    ds = ds.prefetch(10)
+    return finite_iterator(ds, split)
