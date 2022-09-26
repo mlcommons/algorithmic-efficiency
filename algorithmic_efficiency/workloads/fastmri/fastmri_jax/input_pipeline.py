@@ -125,8 +125,8 @@ def _h5_to_examples(path, log=False):
   """Yield MRI slices from an hdf5 file containing a single MRI volume."""
   if log:
     tf.print('fastmri_dataset._h5_to_examples call:',
-            path,
-            datetime.datetime.now().strftime('%H:%M:%S:%f'))
+             path,
+             datetime.datetime.now().strftime('%H:%M:%S:%f'))
   with gfile.GFile(path, 'rb') as gf:
     with h5py.File(gf, 'r') as hf:
       # NOTE(dsuo): logic taken from reference code
@@ -243,7 +243,7 @@ def load_fastmri_split(global_batch_size,
             functools.partial(_pad_zeros_like, global_batch_size), batch)
         batch['weights'] = np.concatenate(
             (np.ones((actual_batch_size,)),
-            np.zeros((global_batch_size - actual_batch_size,))))
+             np.zeros((global_batch_size - actual_batch_size,))))
       else:
         batch['weights'] = np.ones((global_batch_size,))
       batch = data_utils.shard_numpy_ds(batch)
@@ -260,4 +260,3 @@ def load_fastmri_split(global_batch_size,
       ds = ds.repeat()
     ds = ds.prefetch(10)
     return finite_iterator(ds, split)
-    
