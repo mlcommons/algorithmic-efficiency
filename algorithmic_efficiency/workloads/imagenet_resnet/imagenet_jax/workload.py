@@ -32,10 +32,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      cache: Optional[bool] = None,
                      repeat_final_dataset: Optional[bool] = None):
     if split == 'test':
-      np_iter = imagenet_v2.get_imagenet_v2_iter(data_dir,
-                                                 global_batch_size,
-                                                 self.train_mean,
-                                                 self.train_stddev)
+      np_iter = imagenet_v2.get_imagenet_v2_iter(
+          data_dir,
+          global_batch_size,
+          shard_batch=True,
+          mean_rgb=self.train_mean,
+          stddev_rgb=self.train_stddev)
       return itertools.cycle(np_iter)
 
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)

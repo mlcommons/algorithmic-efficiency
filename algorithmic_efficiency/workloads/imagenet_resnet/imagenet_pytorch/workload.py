@@ -37,7 +37,8 @@ def imagenet_v2_to_torch(batch):
     new_v = v[RANK]
     if k == 'inputs':
       new_v = np.transpose(new_v, (0, 3, 1, 2))
-    new_batch[k] = torch.from_numpy(new_v).to(DEVICE)
+    dtype = torch.long if k == 'targets' else torch.float
+    new_batch[k] = torch.as_tensor(new_v, dtype=dtype, device=DEVICE)
   return new_batch
 
 
@@ -61,11 +62,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del cache
     del repeat_final_dataset
     if split == 'test':
-      np_iter = imagenet_v2.get_imagenet_v2_iter(data_dir,
-                                                 global_batch_size,
-                                                 self.train_mean,
-                                                 self.train_stddev)
-      return itertools.cycle(map(imagenet_v2_to_torch, np_iter))
+      np_iter = imagenet_v2.get_imagenet_v2_iter(
+          data_dir,
+          global_batch_size,
+          shard_batch=USE_PYTORCH_DDP,
+          mean_rgb=self.train_mean,
+          stddev_rgb=self.train_stddev)
+      return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
 
@@ -94,16 +97,20 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     sampler = None
     if USE_PYTORCH_DDP:
+      per_device_batch_size = global_batch_size // N_GPUS
+      ds_iter_batch_size = per_device_batch_size
+    else:
+      ds_iter_batch_size = global_batch_size
+    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
       else:
         sampler = data_utils.DistributedEvalSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
-      per_device_batch_size = global_batch_size // N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=per_device_batch_size,
+        batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,

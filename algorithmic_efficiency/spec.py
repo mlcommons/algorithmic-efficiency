@@ -252,7 +252,7 @@ class Workload(metaclass=abc.ABCMeta):
                  model_state: ModelAuxiliaryState,
                  rng: RandomState,
                  data_dir: str,
-                 imagenet_v2_data_dir: str,
+                 imagenet_v2_data_dir: Optional[str],
                  global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')

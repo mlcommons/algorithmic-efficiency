@@ -363,6 +363,8 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       with profiler.profile('Train'):
+        if 'imagenet' not in workload_name:
+          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
