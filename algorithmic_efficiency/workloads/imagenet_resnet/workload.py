@@ -1,9 +1,9 @@
 """ImageNet workload parent class."""
-from multiprocessing.sharedctypes import Value
 from typing import Optional
 
+import jax
+
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 
 
 class BaseImagenetResNetWorkload(spec.Workload):
@@ -97,14 +97,13 @@ class BaseImagenetResNetWorkload(spec.Workload):
                         repeat_final_dataset: Optional[bool] = None,
                         num_batches: Optional[int] = None):
     del num_batches
+    if global_batch_size % jax.local_device_count() != 0:
+      raise ValueError('Batch size must be divisible by the number of devices')
     if split == 'test':
-      del data_rng
       if not cache:
         raise ValueError('cache must be True for split=test.')
       if not repeat_final_dataset:
         raise ValueError('repeat_final_dataset must be True for split=test.')
-      return imagenet_v2.get_imagenet_v2_iter(
-          data_dir, global_batch_size, self.train_mean, self.train_stddev)
     return self._build_dataset(data_rng,
                                split,
                                data_dir,

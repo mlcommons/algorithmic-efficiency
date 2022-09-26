@@ -2,8 +2,8 @@
 
 Uses TFDS https://www.tensorflow.org/datasets/catalog/imagenet_v2.
 """
-from flax import jax_utils
-import itertools
+import functools
+
 import jax
 import numpy as np
 import tensorflow_datasets as tfds
@@ -47,8 +47,9 @@ def get_imagenet_v2_iter(data_dir, global_batch_size, mean_rgb, stddev_rgb):
       })
 
   def _decode_example(example):
-    image = input_pipeline.preprocess_for_eval(
-        example['image'], mean_rgb, stddev_rgb)
+    image = input_pipeline.preprocess_for_eval(example['image'],
+                                               mean_rgb,
+                                               stddev_rgb)
     return {
         'inputs': image,
         'targets': example['label'],
@@ -56,5 +57,6 @@ def get_imagenet_v2_iter(data_dir, global_batch_size, mean_rgb, stddev_rgb):
 
   ds = ds.map(_decode_example, num_parallel_calls=16)
   ds = ds.batch(global_batch_size)
-  it = map(shard_and_maybe_pad_batch, iter(ds))
-  return itertools.cycle(it)
+  it = map(
+      functools.partial(shard_and_maybe_pad_batch, global_batch_size), iter(ds))
+  return it

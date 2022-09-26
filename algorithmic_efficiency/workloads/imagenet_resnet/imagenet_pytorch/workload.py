@@ -1,10 +1,12 @@
 """ImageNet workload implemented in PyTorch."""
 
 import contextlib
+import itertools
 import math
 import os
 from typing import Dict, Tuple
 
+import numpy as np
 import torch
 from torch import nn
 import torch.distributed as dist
@@ -18,12 +20,25 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
+from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+
+
+def imagenet_v2_to_torch(batch):
+  # Slice off the part of the batch for this device and then transpose from
+  # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
+  new_batch = {}
+  for k, v in batch.items():
+    new_v = v[RANK]
+    if k == 'inputs':
+      new_v = np.transpose(new_v, (0, 3, 1, 2))
+    new_batch[k] = torch.from_numpy(new_v).to(DEVICE)
+  return new_batch
 
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
@@ -39,38 +54,38 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
-                     batch_size: int,
+                     global_batch_size: int,
                      cache,
                      repeat_final_dataset):
     del data_rng
     del cache
     del repeat_final_dataset
+    if split == 'test':
+      np_iter = imagenet_v2.get_imagenet_v2_iter(data_dir,
+                                                 global_batch_size,
+                                                 self.train_mean,
+                                                 self.train_stddev)
+      return itertools.cycle(map(imagenet_v2_to_torch, np_iter))
+
     is_train = split == 'train'
 
-    eval_transform_config = transforms.Compose([
-        transforms.Resize(self.resize_size),
-        transforms.CenterCrop(self.center_crop_size),
-    ])
-    transform_config = {
-        'train':
-            transforms.Compose([
-                transforms.RandomResizedCrop(
-                    self.center_crop_size,
-                    scale=self.scale_ratio_range,
-                    ratio=self.aspect_ratio_range),
-                transforms.RandomHorizontalFlip(),
-            ]),
-        'eval_train':
-            eval_transform_config,
-        'validation':
-            eval_transform_config,
-    }
+    if is_train:
+      transform_config = transforms.Compose([
+          transforms.RandomResizedCrop(
+              self.center_crop_size,
+              scale=self.scale_ratio_range,
+              ratio=self.aspect_ratio_range),
+          transforms.RandomHorizontalFlip(),
+      ])
+    else:
+      transform_config = transforms.Compose([
+          transforms.Resize(self.resize_size),
+          transforms.CenterCrop(self.center_crop_size),
+      ])
 
-    folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}
-
+    folder = 'train' if 'train' in split else 'val'
     dataset = ImageFolder(
-        os.path.join(data_dir, folder[split]),
-        transform=transform_config[split])
+        os.path.join(data_dir, folder), transform=transform_config)
 
     if split == 'eval_train':
       # We always use the same subset of the training data for evaluation.
@@ -85,10 +100,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       else:
         sampler = data_utils.DistributedEvalSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
-      batch_size //= N_GPUS
+      per_device_batch_size = global_batch_size // N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=batch_size,
+        batch_size=per_device_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,
@@ -100,7 +115,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                                               self.train_mean,
                                               self.train_stddev)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
-
     return dataloader
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
@@ -119,10 +133,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     return model, None
 
   def _update_batch_norm(self, model, update_batch_norm):
+    bn_layers = (nn.BatchNorm1d,
+                 nn.BatchNorm2d,
+                 nn.BatchNorm3d,
+                 nn.SyncBatchNorm)
     for m in model.modules():
-      if isinstance(
-          m,
-          (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)):
+      if isinstance(m, bn_layers):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)
@@ -204,9 +220,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
+      is_test = split == 'test'
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+          data_rng,
+          split,
+          data_dir,
+          global_batch_size=global_batch_size,
+          cache=is_test,
+          repeat_final_dataset=is_test)
 
     total_metrics = {
         'accuracy': torch.tensor(0., device=DEVICE),
