@@ -16,7 +16,7 @@ import tensorflow as tf
 
 
 print(jax.local_device_count())
-tf.config.set_visible_devices([], 'GPU')
+#tf.config.set_visible_devices([], 'GPU')
 
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 
@@ -109,7 +109,7 @@ fake_batch = {
 real_batch = {}
 
 ds = input_pipeline.get_librispeech_dataset(
-    'train-clean-100',
+    'train-clean-100+train-clean-360+train-other-500',
     '/mnt/disks/librispeech_processed/work_dir/data',
     data_rng,
     False,
