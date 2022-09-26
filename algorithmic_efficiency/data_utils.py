@@ -17,7 +17,7 @@ def shard_numpy_ds(xs):
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
-    if type(x) != np.ndarray:
+    if isinstance(x, np.ndarray):
       x = x._numpy()  # pylint: disable=protected-access
 
     # Reshape (global_batch_size, ...) to
