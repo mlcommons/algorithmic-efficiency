@@ -12,16 +12,18 @@ If mounting a GCS bucket with gcsfuse, --temp_dir should NOT be a path to the
 GCS bucket, as this can result in *orders of magnitude* slower download speeds
 due to write speed issues (--dataset_dir can include the GCS bucket though).
 
+Note that some of the disk usage number below may be underestimates if the temp
+and final data dir locations are on the same drive.
+
 Criteo download size: ~350GB
-Criteo temp disk size: ~
-Criteo final disk size:
+Criteo final disk size: ~1TB
 FastMRI download size:
 FastMRI final disk size:
 LibriSpeech download size:
 LibriSpeech final disk size:
 OGBG download size:
 OGBG final disk size:
-WMT download size:
+WMT download size: (1.58 GiB + ) =
 WMT final disk size:
 _______________________
 Total download size:
@@ -51,6 +53,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import subprocess
+import tensorflow_datasets as tfds
 
 flags.DEFINE_boolean(
     'all',
@@ -165,8 +168,13 @@ def download_fastmri(
 
 def download_imagenet(
     dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url):
-  pass
+  download_imagenet_v2(dataset_dir)
 
+
+def download_imagenet_v2(dataset_dir):
+  tfds.builder(
+      'imagenet_v2/matched-frequency:3.0.0',
+      data_dir=dataset_dir).download_and_prepare()
 
 def download_librispeech(dataset_dir, tmp_dir):
   pass
@@ -176,24 +184,10 @@ def download_ogbg(dataset_dir, tmp_dir):
   pass
 
 
-def _download_wmt_helper(dataset_dir, filename):
-  wmt_dir = os.path.join(dataset_dir, 'wmt')
-  wget_args = ['-b', f'--directory-prefix={wmt_dir}']
-  if filename.startswith('wmt13'):
-    subdomain = 'www'
-  else:
-    subdomain = 'data'
-  subprocess.run(
-      'wget', f'https://{subdomain}.statmt.org/{filename}', *wget_args, check=True)
-
-
 def download_wmt(dataset_dir):
-  """WMT17 de-en, from https://www.statmt.org/wmt17/translation-task.html."""
-  _download_wmt_helper(dataset_dir, 'wmt13/training-parallel-europarl-v7.tgz')
-  _download_wmt_helper(dataset_dir, 'wmt13/training-parallel-commoncrawl.tgz')
-  _download_wmt_helper(dataset_dir,
-                       'wmt17/translation-task/training-parallel-nc-v12.tgz')
-  _download_wmt_helper(dataset_dir, 'wmt17/translation-task/rapid2016.tgz')
+  """WMT14 and WMT17 de-en."""
+  for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
+    tfds.builder(ds_name, data_dir=dataset_dir).download_and_prepare()
 
 
 def main(_):

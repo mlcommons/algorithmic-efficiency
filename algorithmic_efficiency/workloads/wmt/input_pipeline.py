@@ -264,6 +264,7 @@ def get_wmt_dataset(data_rng,
   else:
     ds_name = 'wmt17_translate/de-en'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
+  dataset_builder.download_and_prepare()
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
 
   # Avoid creating too many threads when using PyTorch DDP.
