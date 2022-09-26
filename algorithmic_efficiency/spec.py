@@ -252,6 +252,7 @@ class Workload(metaclass=abc.ABCMeta):
                  model_state: ModelAuxiliaryState,
                  rng: RandomState,
                  data_dir: str,
+                 imagenet_v2_data_dir: Optional[str],
                  global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')
@@ -278,7 +279,7 @@ class Workload(metaclass=abc.ABCMeta):
         global_step=global_step)
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
-    # Evaluate on the test set if we have one.
+    # Evaluate on the test set. TODO(znado): always eval on the test set.
     try:
       if self.num_test_examples is not None:
         logging.info('Evaluating on the test split.')
@@ -289,7 +290,7 @@ class Workload(metaclass=abc.ABCMeta):
             params=params,
             model_state=model_state,
             rng=rng,
-            data_dir=data_dir,
+            data_dir=imagenet_v2_data_dir if imagenet_v2_data_dir else data_dir,
             global_step=global_step)
         for k, v in test_metrics.items():
           eval_metrics['test/' + k] = v
