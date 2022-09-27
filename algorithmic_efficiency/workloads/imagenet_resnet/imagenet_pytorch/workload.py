@@ -39,16 +39,27 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                         data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    return self._build_dataset(data_rng, split, data_dir, global_batch_size)
+                        global_batch_size: int,
+                        use_mixup: bool = False,
+                        mixup_alpha: float = 0.1):
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               use_mixup,
+                               mixup_alpha)
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
-                     batch_size: int):
+                     batch_size: int,
+                     use_mixup: bool = False,
+                     mixup_alpha: float = 0.1):
     del data_rng
     is_train = split == 'train'
+    if not is_train and use_mixup:
+      raise ValueError('Mixup can only be used for the training split.')
 
     eval_transform_config = transforms.Compose([
         transforms.Resize(self.resize_size),
@@ -102,7 +113,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                                               DEVICE,
                                               self.train_mean,
                                               self.train_stddev)
-    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
+    dataloader = data_utils.cycle(
+        dataloader,
+        custom_sampler=USE_PYTORCH_DDP,
+        use_mixup=use_mixup,
+        mixup_alpha=mixup_alpha)
 
     return dataloader
 
@@ -205,6 +220,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            data_dir: str,
                            global_step: int = 0):
     """Run a full evaluation of the model."""
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
