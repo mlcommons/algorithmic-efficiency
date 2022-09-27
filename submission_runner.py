@@ -194,12 +194,20 @@ def train_once(
 
   # Workload setup.
   logging.info('Initializing dataset.')
+  use_mixup = (
+      hyperparameters.use_mixup
+      if hasattr(hyperparameters, 'use_mixup') else False)
+  mixup_alpha = (
+      hyperparameters.mixup_alpha
+      if hasattr(hyperparameters, 'mixup_alpha') else 0.1)
   with profiler.profile('Initializing dataset'):
     input_queue = workload.build_input_queue(
         data_rng,
         'train',
         data_dir=data_dir,
-        global_batch_size=global_batch_size)
+        global_batch_size=global_batch_size,
+        use_mixup=use_mixup,
+        mixup_alpha=mixup_alpha)
   logging.info('Initializing model.')
   with profiler.profile('Initializing model'):
     model_params, model_state = workload.init_model_fn(model_init_rng)
