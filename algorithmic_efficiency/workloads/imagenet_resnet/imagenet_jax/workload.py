@@ -1,5 +1,6 @@
 """ImageNet workload implemented in Jax."""
 import functools
+import itertools
 import math
 from typing import Dict, Optional, Tuple
 
@@ -12,6 +13,7 @@ import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     input_pipeline
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
@@ -22,32 +24,22 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
-    return self._build_dataset(data_rng,
-                               split,
-                               data_dir,
-                               global_batch_size,
-                               cache,
-                               repeat_final_dataset,
-                               num_batches)
-
   def _build_dataset(self,
                      data_rng: spec.RandomState,
                      split: str,
                      data_dir: str,
-                     batch_size: int,
+                     global_batch_size: int,
                      cache: Optional[bool] = None,
-                     repeat_final_dataset: Optional[bool] = None,
-                     num_batches: Optional[int] = None):
-    if batch_size % jax.local_device_count() != 0:
-      raise ValueError('Batch size must be divisible by the number of devices')
+                     repeat_final_dataset: Optional[bool] = None):
+    if split == 'test':
+      np_iter = imagenet_v2.get_imagenet_v2_iter(
+          data_dir,
+          global_batch_size,
+          shard_batch=True,
+          mean_rgb=self.train_mean,
+          stddev_rgb=self.train_stddev)
+      return itertools.cycle(np_iter)
+
     ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
@@ -57,7 +49,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         split,
         ds_builder,
         data_rng,
-        batch_size,
+        global_batch_size,
         self.train_mean,
         self.train_stddev,
         self.center_crop_size,
@@ -66,8 +58,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         self.scale_ratio_range,
         train=train,
         cache=not train if cache is None else cache,
-        repeat_final_dataset=repeat_final_dataset,
-        num_batches=num_batches)
+        repeat_final_dataset=repeat_final_dataset)
     return ds
 
   def sync_batch_stats(self, model_state):

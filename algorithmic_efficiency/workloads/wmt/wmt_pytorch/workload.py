@@ -12,6 +12,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency import pytorch_utils
+from algorithmic_efficiency.interop_utils import jax_to_pytorch
+from algorithmic_efficiency.interop_utils import pytorch_to_jax
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
@@ -76,7 +78,7 @@ class WmtWorkload(BaseWmtWorkload):
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = pytorch_utils.jax_to_pytorch(flat_ids).to(DEVICE)
+      flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
@@ -86,7 +88,7 @@ class WmtWorkload(BaseWmtWorkload):
           cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = pytorch_utils.pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a

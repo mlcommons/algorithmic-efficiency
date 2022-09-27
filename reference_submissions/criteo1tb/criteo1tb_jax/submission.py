@@ -15,7 +15,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 131072
+  return 524_288
 
 
 def create_learning_rate_fn(workload: spec.Workload,
@@ -27,7 +27,7 @@ def create_learning_rate_fn(workload: spec.Workload,
       transition_steps=hparams.warmup_steps)
   cosine_fn = optax.cosine_decay_schedule(
       init_value=hparams.learning_rate,
-      decay_steps=(workload.step_hint - hparams.warmup_steps))
+      decay_steps=(hparams.step_hint - hparams.warmup_steps))
   schedule_fn = optax.join_schedules(
       schedules=[warmup_fn, cosine_fn], boundaries=[hparams.warmup_steps])
   return schedule_fn
@@ -43,9 +43,9 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
   learning_rate_fn = create_learning_rate_fn(workload, hyperparameters)
   opt_init_fn, opt_update_fn = optax.adamw(
-      b1=hyperparameters.beta1,
-      learning_rate=learning_rate_fn,
-      weight_decay=hyperparameters.weight_decay)
+    learning_rate=learning_rate_fn,
+    b1=hyperparameters.beta1,
+    weight_decay=hyperparameters.weight_decay)
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
@@ -75,12 +75,12 @@ def pmapped_train_step(workload,
         rng,
         dropout_prob=None,
         aux_dropout_prob=None,
-        update_batch_norm=True)
+        update_batch_norm=False)
     loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
-    return loss, (new_model_state, logits)
+    return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (new_model_state, _), grad = grad_fn(current_param_container)
+  (_, new_model_state), grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
@@ -103,7 +103,7 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del eval_results
-  del global_step
+  # del global_step
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
