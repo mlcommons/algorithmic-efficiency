@@ -106,7 +106,10 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      20,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
+flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
+flags.DEFINE_string('imagenet_v2_data_dir',
+                    '~/tensorflow_datasets/',
+                    'Dataset location for ImageNet-v2.')
 flags.DEFINE_enum(
     'framework',
     None,
@@ -175,12 +178,11 @@ def import_workload(workload_path: str,
   return workload_class()
 
 
-# Example reference implementation showing how to use the above functions
-# together.
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
     data_dir: str,
+    imagenet_v2_data_dir: str,
     init_optimizer_state: spec.InitOptimizerFn,
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
@@ -256,17 +258,17 @@ def train_once(
     try:
       with profiler.profile('Update parameters'):
         optimizer_state, model_params, model_state = update_params(
-          workload=workload,
-          current_param_container=model_params,
-          current_params_types=workload.model_params_types,
-          model_state=model_state,
-          hyperparameters=hyperparameters,
-          batch=batch,
-          loss_type=workload.loss_type,
-          optimizer_state=optimizer_state,
-          eval_results=eval_results,
-          global_step=global_step,
-          rng=update_rng)
+            workload=workload,
+            current_param_container=model_params,
+            current_params_types=workload.model_params_types,
+            model_state=model_state,
+            hyperparameters=hyperparameters,
+            batch=batch,
+            loss_type=workload.loss_type,
+            optimizer_state=optimizer_state,
+            eval_results=eval_results,
+            global_step=global_step,
+            rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
     except RuntimeError as e:
@@ -294,6 +296,7 @@ def train_once(
                                                    model_state,
                                                    eval_rng,
                                                    data_dir,
+                                                   imagenet_v2_data_dir,
                                                    global_step)
           logging.info('%.2fs \t%d \t%s',
                        current_time - global_start_time,
@@ -303,6 +306,7 @@ def train_once(
           eval_results.append((global_step, latest_eval_result))
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
+          logging.exception(f'Eval step {global_step} error.\n')
           if "out of memory" in str(e):
             logging.warning(
                 f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
@@ -323,6 +327,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
+                                 imagenet_v2_data_dir: str,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
@@ -364,8 +369,11 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       with profiler.profile('Train'):
+        if 'imagenet' not in workload_name:
+          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, global_batch_size,
-                                     data_dir, init_optimizer_state,
+                                     data_dir, imagenet_v2_data_dir,
+                                     init_optimizer_state,
                                      update_params, data_selection,
                                      hyperparameters, rng, profiler, log_dir,
                                      tokenizer_vocab_path)
@@ -384,9 +392,11 @@ def score_submission_on_workload(workload: spec.Workload,
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     with profiler.profile('Train'):
-      score, _ = train_once(workload, global_batch_size, data_dir,
-                            init_optimizer_state, update_params, data_selection,
-                            None, rng, profiler)
+      score, _ = train_once(
+          workload, global_batch_size, data_dir,
+          imagenet_v2_data_dir,
+          init_optimizer_state, update_params, data_selection,
+          None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -415,6 +425,7 @@ def main(_):
                                        FLAGS.workload,
                                        FLAGS.submission_path,
                                        FLAGS.data_dir,
+                                       FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,

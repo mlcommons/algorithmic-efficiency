@@ -236,13 +236,11 @@ def create_split(split,
                  stddev_rgb,
                  cache=False,
                  repeat_final_dataset=False,
-                 num_batches=None,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
                  area_range=(0.08, 1.0),
                  use_mixup=False,
                  mixup_alpha=0.1):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
-  del num_batches
 
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 
@@ -333,7 +331,6 @@ def create_input_iter(split,
                       train,
                       cache,
                       repeat_final_dataset,
-                      num_batches,
                       use_mixup,
                       mixup_alpha):
   ds = create_split(
@@ -348,7 +345,6 @@ def create_input_iter(split,
       stddev_rgb=stddev_rgb,
       cache=cache,
       repeat_final_dataset=repeat_final_dataset,
-      num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
       use_mixup=use_mixup,

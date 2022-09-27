@@ -195,7 +195,12 @@ To automatically fix formatting errors, run the following (*WARNING:* this will 
 yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs reference_submissions tests *.py
 ```
 
-To print out all offending import orderings, run the following (you will need to manually make the edits, because reordering Python imports can cause side-effects):
+To sort all import orderings, run the following:
+```bash
+isort .
+```
+
+To just print out all offending import orderings, run the following:
 ```bash
 isort . --check --diff
 ```
