@@ -29,7 +29,7 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def mixup(batch, alpha=0.1):
+def mixup_pytorch(batch, alpha=0.1):
   inputs, targets = batch
   # Transform to one-hot targets.
   targets = F.one_hot(targets, num_classes=1000)
@@ -55,7 +55,7 @@ def cycle(iterable,
       batch = next(iterator)
       if use_mixup:
         assert keys == ('inputs', 'targets')
-        batch = mixup(batch, alpha=mixup_alpha)
+        batch = mixup_pytorch(batch, alpha=mixup_alpha)
       assert len(keys) == len(batch)
       yield dict(zip(keys, batch))
     except StopIteration:
