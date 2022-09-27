@@ -223,7 +223,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def loss_fn(
       self,
-      # Dense (not one-hot) labels, or a tuple of (tensor, padding) for speech.
+      # Dense or one-hot labels, or a tuple of (tensor, padding) for speech.
       label_batch: Union[Tuple[Tensor, Tensor], Tensor],
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,

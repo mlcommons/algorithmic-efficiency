@@ -30,7 +30,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      data_dir: str,
                      global_batch_size: int,
                      cache: Optional[bool] = None,
-                     repeat_final_dataset: Optional[bool] = None):
+                     repeat_final_dataset: Optional[bool] = None,
+                     use_mixup: bool = False):
     if split == 'test':
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
@@ -58,7 +59,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         self.scale_ratio_range,
         train=train,
         cache=not train if cache is None else cache,
-        repeat_final_dataset=repeat_final_dataset)
+        repeat_final_dataset=repeat_final_dataset,
+        use_mixup=use_mixup,
+        mixup_alpha=0.2)
     return ds
 
   def sync_batch_stats(self, model_state):
@@ -91,7 +94,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet50')
-    model = model_cls(num_classes=1000, dtype=jnp.float32)
+    model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
@@ -156,7 +159,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               logits_batch: spec.Tensor,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
-    one_hot_labels = jax.nn.one_hot(label_batch, num_classes=1000)
+    if label_batch.shape[-1] != self._num_classes:
+      one_hot_labels = jax.nn.one_hot(
+          label_batch, num_classes=self._num_classes)
+    else:
+      one_hot_labels = label_batch
     smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
     return optax.softmax_cross_entropy(
         logits=logits_batch, labels=smoothed_labels)
@@ -181,6 +188,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            rng: spec.RandomState,
                            data_dir: str,
                            global_step: int = 0):
+    del global_step
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
       model_state = self.sync_batch_stats(model_state)

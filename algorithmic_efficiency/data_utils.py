@@ -2,6 +2,7 @@ import jax
 import numpy as np
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
@@ -28,13 +29,33 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
+def mixup_pytorch(batch, alpha=0.2):
+  inputs, targets = batch
+  # Transform to one-hot targets.
+  targets = F.one_hot(targets, num_classes=1000)
+  # Compute weight for convex combination by sampling from Beta distribution.
+  beta_dist = torch.distributions.beta.Beta(alpha, alpha)
+  weight = beta_dist.sample()
+  # Return convex combination of original and shifted inputs and targets.
+  inputs = weight * inputs + (1.0 - weight) * torch.roll(inputs, 1, dims=0)
+  targets = weight * targets + (1.0 - weight) * torch.roll(targets, 1, dims=0)
+  return (inputs, targets)
+
+
 # github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
-def cycle(iterable, keys=('inputs', 'targets'), custom_sampler=False):
+def cycle(iterable,
+          keys=('inputs', 'targets'),
+          custom_sampler=False,
+          use_mixup=False,
+          mixup_alpha=0.2):
   iterator = iter(iterable)
   epoch = 0
   while True:
     try:
       batch = next(iterator)
+      if use_mixup:
+        assert keys == ('inputs', 'targets')
+        batch = mixup_pytorch(batch, alpha=mixup_alpha)
       assert len(keys) == len(batch)
       yield dict(zip(keys, batch))
     except StopIteration:
