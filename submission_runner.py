@@ -16,31 +16,40 @@ import json
 import os
 import struct
 import time
-from typing import Optional, Tuple
+from typing import Dict, Iterator, List, Tuple, Optional
+import functools
+import jax.lax as lax
+import jax.numpy as jnp
+import flax
 
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import optax 
+import flax.linen as nn
+import flax.jax_utils as jax_utils
 
-import wandb  # pylint: disable=g-import-not-at-top
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax import \
+    models
 
+from algorithmic_efficiency.workloads.librispeech_conformer import \
+    input_pipeline
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
+from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-
-# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-# it unavailable to JAX.
-tf.config.set_visible_devices([], 'GPU')
+import jax 
 
 # Setup JAX so it preallocates less GPU memory by default.
-# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
-# os.environ['XLA_FLAGS']='--xla_dump_to=/home/smedapati/algorithmic-efficiency/deepspeech_xla_dump'
+#os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.7'
+#os.environ['XLA_PYTHON_CLIENT_ALLOCATOR']='platform'
 
+
+_GRAD_CLIP_EPS = 1e-6
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -109,7 +118,10 @@ flags.DEFINE_integer('num_tuning_trials',
 flags.DEFINE_integer('num_train_steps',
                      10,
                      'The number of training steps to run.')
-flags.DEFINE_string('data_dir', 'algorithmic_efficiency/workloads/librispeech_conformer/work_dir/data', 'Dataset location')
+flags.DEFINE_string('data_dir', '/mnt/disks/librispeech_processed/work_dir/data', 'Dataset location')
+flags.DEFINE_string('imagenet_v2_data_dir',
+                    '~/tensorflow_datasets/',
+                    'Dataset location for ImageNet-v2.')
 flags.DEFINE_enum(
     'framework',
     'jax',
@@ -121,12 +133,11 @@ flags.DEFINE_string('summary_log_dir',
                     'reference_submissions/librispeech_deepspeech/librispeech_jax/summaries',
                     'Location to dump tensorboard summaries.')
 flags.DEFINE_string('tokenizer_vocab_path',
-                    '/home/smedapati/algorithmic-efficiency/algorithmic_efficiency/workloads/librispeech_conformer/spm_model.vocab',
+                    '/mnt/disks/librispeech_processed/spm_model.vocab',
                     'Location to read tokenizer from.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
-
 
 def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)
@@ -136,18 +147,15 @@ def convert_filepath_to_module(path: str):
 
   return base.replace('/', '.')
 
-
 def import_workload(workload_path: str,
                     workload_class_name: str,
                     return_class=False) -> spec.Workload:
   """Import and add the workload to the registry.
-
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
   a submitter only wants to write Jax code, the try/except below will catch
   the import errors caused if they do not have the PyTorch dependencies
   installed on their system.
-
   Args:
     workload_path: the path to the `workload.py` file to load.
     workload_class_name: the name of the Workload class that implements the
@@ -177,6 +185,148 @@ def import_workload(workload_path: str,
     return workload_class
   return workload_class()
 
+# def init_model_fn(model_init_rng):
+#   params_rng, dropout_rng = jax.random.split(model_init_rng, 2)
+
+#   inputs = jnp.zeros((2, 320000))
+#   input_paddings = jnp.zeros((2, 320000))
+  
+#   vars = model_class.init(
+#     {'params': params_rng, 'dropout': dropout_rng}, 
+#     inputs, 
+#     input_paddings, 
+#     train=True)
+
+#   batch_stats = vars['batch_stats']
+#   params = vars['params']
+
+#   return params, batch_stats
+
+
+# config = models.DeepspeechConfig()
+# model_class = models.Deepspeech(config)
+
+# def rsqrt_schedule(
+#     init_value: float,
+#     shift: int = 0):
+#   def schedule(count):
+#     return init_value * (count + shift)**-.5 * shift**.5
+
+#   return schedule
+
+# def create_learning_rate_schedule(learning_rate: float, warmup_steps: int):
+#   """Creates a rsqrt schedule with linear warmup."""
+#   return optax.join_schedules([
+#       optax.linear_schedule(
+#           init_value=0, end_value=learning_rate, transition_steps=warmup_steps),
+#       rsqrt_schedule(init_value=learning_rate, shift=warmup_steps),
+#   ],
+#   boundaries=[warmup_steps])
+
+# def init_optimizer_state(params):
+#   learning_rate_init=0.002
+#   warmup_steps = 5
+
+#   learning_rate_fn = create_learning_rate_schedule(learning_rate_init, warmup_steps)
+#   optimizer_init_fn, optimizer_update_fn = optax.adamw(
+#       learning_rate_fn, 
+#       b1=0.9, 
+#       b2=0.98, 
+#       eps=1e-9, 
+#       weight_decay=0.1)
+#   optimizer_state = optimizer_init_fn(params)
+#   return optimizer_state, optimizer_update_fn
+
+
+# def update_step(
+#   batch, 
+#   params, 
+#   batch_stats, 
+#   optimizer_state, 
+#   workload, global_step, hyperparameters, opt_update_fn, rng):
+  
+#   # lr = workload.get_learning_rate(global_step, hyperparameters)
+#   def _loss_fn(params):
+#     """loss function used for training."""
+#     params_rng, dropout_rng = jax.random.split(rng, 2)
+#     (logits, logit_paddings), new_batch_stats = workload.model_fn(
+#         params,
+#         batch,
+#         batch_stats,
+#         spec.ForwardPassMode.TRAIN,
+#         {'params' : params_rng, 'dropout' : dropout_rng})
+
+#     loss = workload.loss_fn(batch['targets'],(logits, logit_paddings))
+#     return loss, new_batch_stats
+
+
+#   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
+#   (loss, new_model_state), grad = grad_fn(params)
+#   loss, grad = lax.pmean((loss, grad), axis_name='batch')
+#   print('loss inside pmap = ', loss)
+
+#   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
+#   print('applying updates')
+#   updated_params = optax.apply_updates(params, updates)
+#   print('after applying updates')
+
+#   return updated_params, new_model_state, new_optimizer_state, loss
+
+
+# def update_params(
+#     workload, 
+#     params,
+#     batch_stats,
+#     hyperparameters,
+#     batch,
+#     optimizer_state,
+#     eval_results: List[Tuple[int, float]],
+#     global_step: int,
+#     rng):
+#   """Return (updated_optimizer_state, updated_params)."""
+#   del eval_results
+
+#   print('in update params in submission')
+#   per_device_rngs = jax.random.split(rng, jax.local_device_count())
+#   print('before pmapped_update')
+#   # unfrozen = params.unfreeze()
+#   print('params shape = ', params['Dense_0']['kernel'].shape)
+#   # @functools.partial(
+#   #   jax.pmap,
+#   #   axis_name='batch',
+#   #   in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
+#   #   static_broadcasted_argnums=(0, 1))
+
+#   optimizer_state, opt_update_fn = optimizer_state
+
+#   update_fn = functools.partial(
+#     update_step, 
+#     opt_update_fn=opt_update_fn,
+#     global_step=global_step,
+#     workload=workload,
+#     hyperparameters=hyperparameters,
+#     rng=rng)
+
+#   pmapped_update_step = jax.pmap(update_fn, axis_name='batch', in_axes=(0,0,0,0))
+#   new_params, new_batch_stats, new_optimizer_state, loss = pmapped_update_step(batch, params, batch_stats, optimizer_state)
+
+#   #new_params = jax_utils.unreplicate(new_params)
+
+#   print('after applying updates inside submission')
+#   print('loss = ', loss.mean())
+#   print('updated params shape = ', new_params['Dense_0']['kernel'].shape)
+
+#   return (new_optimizer_state, opt_update_fn), new_params, new_batch_stats
+  
+# def shard(batch, n_devices=None):
+#   if n_devices is None:
+#     n_devices = jax.local_device_count()
+
+#   # Otherwise, the entries are arrays, so just reshape them.
+#   def _shard_array(array):
+#     return array.reshape((n_devices, -1) + array.shape[1:])
+
+#   return jax.tree_map(_shard_array, batch)
 
 # Example reference implementation showing how to use the above functions
 # together.
@@ -184,6 +334,7 @@ def train_once(
     workload: spec.Workload,
     global_batch_size: int,
     data_dir: str,
+    imagenet_v2_data_dir: str,
     init_optimizer_state: spec.InitOptimizerFn,
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
@@ -192,7 +343,7 @@ def train_once(
     profiler: Profiler,
     log_dir: Optional[str] = None,
     tokenizer_vocab_path: Optional[str] = None,
-    num_train_steps: Optional[int] = None
+    num_train_steps:int = None
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
@@ -218,12 +369,8 @@ def train_once(
                                            model_state,
                                            hyperparameters,
                                            opt_init_rng)
-
-  logging.info('Initializing metrics bundle.')
-  if tokenizer_vocab_path:
-    workload.init_metrics_bundle(tokenizer_vocab_path)
-  if wandb is not None and RANK == 0:
-    wandb.init()
+  # optimizer_state, opt_update_fn = init_optimizer_state(model_params)
+  # replicated_optimizer_state = flax.jax_utils.replicate(optimizer_state)
 
   # Bookkeeping.
   goal_reached = False
@@ -236,17 +383,12 @@ def train_once(
   global_start_time = time.time()
 
   logging.info('Starting training loop.')
-  while is_time_remaining and not goal_reached and not training_complete:
-    if num_train_steps is not None and global_step == num_train_steps:
-      training_complete = True
-      break
-    
+  while global_step < num_train_steps:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
 
     with profiler.profile('Data selection'):
-      print('loading data batch')
       batch = data_selection(workload,
                              input_queue,
                              optimizer_state,
@@ -264,38 +406,32 @@ def train_once(
           model_state=model_state,
           hyperparameters=hyperparameters,
           batch=batch,
-          loss_type=workload.loss_type,
           optimizer_state=optimizer_state,
+          loss_type=workload.loss_type,
           eval_results=eval_results,
           global_step=global_step,
           rng=update_rng)
         print('after update_params in submission_runner.py')
+        global_step += 1
     except spec.TrainingCompleteError:
       training_complete = True
-    except RuntimeError as e:
-      print('runtime error : ', e)
-      raise ValueError('Runtime Error')
-    global_step += 1
-    current_time = time.time()
-    accumulated_submission_time += current_time - start_time
-    is_time_remaining = (
-        accumulated_submission_time < workload.max_allowed_runtime_sec)
-      
+  
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  return accumulated_submission_time, metrics
+  return 0, metrics
 
 
 def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
+                                 imagenet_v2_data_dir: str,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 num_train_steps: Optional[int] = None,
                                  log_dir: Optional[str] = None,
-                                 tokenizer_vocab_path: Optional[str] = None):
+                                 tokenizer_vocab_path: Optional[str] = None, 
+                                 num_train_steps:int = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -331,10 +467,16 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       with profiler.profile('Train'):
+        if 'imagenet' not in workload_name:
+          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, global_batch_size,
-                                     data_dir, init_optimizer_state,
-                                     update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path, num_train_steps)  # pylint: disable=line-too-long
+                                     data_dir, imagenet_v2_data_dir,
+                                     init_optimizer_state,
+                                     update_params,
+                                     data_selection,
+                                     hyperparameters, rng, profiler, log_dir,
+                                     tokenizer_vocab_path,
+                                     num_train_steps)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -350,9 +492,13 @@ def score_submission_on_workload(workload: spec.Workload,
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     with profiler.profile('Train'):
-      score, _ = train_once(workload, global_batch_size, data_dir,
-                            init_optimizer_state, update_params, data_selection,
-                            None, rng, profiler)
+      score, _ = train_once(
+          workload, global_batch_size, data_dir,
+          imagenet_v2_data_dir,
+          init_optimizer_state,
+          update_params,
+          data_selection,
+          None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -364,29 +510,7 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
-    # Make sure no GPU memory is preallocated to Jax.
-    os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-    # From the docs: "(...) causes cuDNN to benchmark multiple convolution
-    # algorithms and select the fastest."
-    torch.backends.cudnn.benchmark = True
-
-    if USE_PYTORCH_DDP:
-      # Avoid tf input pipeline creating too many threads.
-      if RANK != 0:
-        tf.config.threading.set_intra_op_parallelism_threads(1)
-        tf.config.threading.set_inter_op_parallelism_threads(1)
-
-      torch.cuda.set_device(RANK)
-      profiler.set_local_rank(RANK)
-      # only log once (for local rank == 0)
-      if RANK != 0:
-
-        def logging_pass(*args):
-          pass
-
-        logging.info = logging_pass
-      # initialize the process group
-      dist.init_process_group('nccl')
+    pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
@@ -398,18 +522,18 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  # nvidia_smi.nvmlInit()
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
                                        FLAGS.data_dir,
+                                       FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       FLAGS.num_train_steps,
                                        FLAGS.summary_log_dir,
-                                       FLAGS.tokenizer_vocab_path)
+                                       FLAGS.tokenizer_vocab_path,
+                                       FLAGS.num_train_steps)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.profile:

@@ -38,7 +38,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload, BaseDeepspeech
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state, params = variables.pop('params')
+    model_state=variables["batch_stats"]
+    params = variables["params"]
 
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)

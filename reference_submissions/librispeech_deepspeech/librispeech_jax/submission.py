@@ -47,8 +47,8 @@ def init_optimizer_state(workload: spec.Workload,
   opt_init_fn, opt_update_fn = optimizer(hyperparameters,
                                          workload.num_train_examples)
   optimizer_state = opt_init_fn(params_zeros_like)
-  log_pytree_shape_and_statistics(
-      flax.jax_utils.unreplicate(model_params), workload.summary_writer)
+  # log_pytree_shape_and_statistics(
+  #     flax.jax_utils.unreplicate(model_params), workload.summary_writer)
   return jax_utils.replicate(optimizer_state), opt_update_fn
 
 
@@ -178,15 +178,8 @@ def update_params(
     rng=rng)
 
   pmapped_update_step = jax.pmap(update_fn, axis_name='batch', in_axes=(0,0,0,0))
-  try:
-    # gc.collect()
-    # torch.cuda.empty_cache()
-    new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(  # pylint: disable=line-too-long
-        batch, current_param_container, model_state, optimizer_state)
-    print('sssssssssss')
-  except RuntimeError as e:
-    print(e)
-    raise ValueError('RuntimeError')
+  new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(  # pylint: disable=line-too-long
+      batch, current_param_container, model_state, optimizer_state)
   
   print('after applying updates inside submission')
   print('loss = ', loss.mean())
