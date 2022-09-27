@@ -179,6 +179,8 @@ class MnistWorkload(BaseMnistWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_prob=None,
+        aux_dropout_prob=None,
         update_batch_norm=False)
     accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
     loss = jnp.sum(self.loss_fn(batch['targets'], logits))

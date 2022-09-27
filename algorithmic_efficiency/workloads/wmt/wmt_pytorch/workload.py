@@ -277,6 +277,8 @@ class WmtWorkload(BaseWmtWorkload):
         mode=spec.ForwardPassMode.EVAL,
         model_state=None,
         rng=None,
+        dropout_prob=0.1,  # Unused for eval.
+        aux_dropout_prob=0.1,  # Unused for eval.
         update_batch_norm=False)
     return self.compute_summed_metrics(logits, targets, weights)
 

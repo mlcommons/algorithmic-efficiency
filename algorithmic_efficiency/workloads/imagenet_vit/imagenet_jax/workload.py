@@ -46,13 +46,13 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
-    del mode
     del aux_dropout_prob
     del update_batch_norm
     model_kwargs = copy.deepcopy(self._model_kwargs)
     model_kwargs['dropout_prob'] = dropout_prob
     model = models.ViT(**model_kwargs)
     train = mode == spec.ForwardPassMode.TRAIN
+    print(rng)
     logits = model.apply(
         {'params': params},
         augmented_and_preprocessed_input_batch['inputs'],

@@ -286,9 +286,9 @@ def _test_submission(workload_name,
   data_selection = submission_module.data_selection
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
-  if FLAGS.run_all:
+  if FLAGS.all:
     if FLAGS.global_batch_size > 0:
-      raise ValueError('Cannot set --global_batch_size and --run_all.')
+      raise ValueError('Cannot set --global_batch_size and --all.')
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size
@@ -341,6 +341,7 @@ def _test_submission(workload_name,
       model_state,
       eval_rng,
       data_dir,
+      imagenet_v2_data_dir=None,
       global_step=0)
   _ = workload.eval_model(
       global_batch_size,
@@ -348,6 +349,7 @@ def _test_submission(workload_name,
       model_state,
       eval_rng,
       data_dir,
+      imagenet_v2_data_dir=None,
       global_step=0)
   return eval_result
 
@@ -382,9 +384,12 @@ class ReferenceSubmissionTest(absltest.TestCase):
     self_location = os.path.dirname(os.path.realpath(__file__))
     # Example: /home/znado/algorithmic-efficiency
     repo_location = '/'.join(self_location.split('/')[:-1])
-    if FLAGS.run_all:
+    if FLAGS.all:
       references_dir = f'{repo_location}/reference_submissions'
       for workload_name in os.listdir(references_dir):
+        # DO NOT SUBMIT
+        if workload_name in ['imagenet_resnet', 'criteo1tb']:
+          continue
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':
             pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)

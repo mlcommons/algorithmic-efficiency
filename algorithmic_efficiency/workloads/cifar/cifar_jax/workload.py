@@ -131,6 +131,8 @@ class CifarWorkload(BaseCifarWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_prob=None,
+        aux_dropout_prob=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 

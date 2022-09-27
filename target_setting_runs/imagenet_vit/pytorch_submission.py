@@ -42,6 +42,8 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_prob=0.0,  # Default.
+      aux_dropout_prob=None,
       update_batch_norm=True)
 
   label_smoothing = (

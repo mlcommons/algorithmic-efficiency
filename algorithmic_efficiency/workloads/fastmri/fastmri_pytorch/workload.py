@@ -277,6 +277,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         model_rng,
+        dropout_prob=0.0,  # Not relevant for eval.
+        aux_dropout_prob=None,
         update_batch_norm=False)
       batch_metrics = self._eval_metric(outputs,
                                         batch['targets'],

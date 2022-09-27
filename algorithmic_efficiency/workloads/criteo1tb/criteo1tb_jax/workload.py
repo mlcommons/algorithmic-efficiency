@@ -80,9 +80,12 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       dropout_prob: float,
       aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del mode
     del rng
+    del dropout_prob
+    del aux_dropout_prob
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']
     targets = augmented_and_preprocessed_input_batch['targets']
@@ -101,6 +104,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
+        dropout_prob=None,
+        aux_dropout_prob=None,
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])

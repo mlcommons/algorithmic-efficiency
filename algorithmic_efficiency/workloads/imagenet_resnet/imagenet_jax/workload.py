@@ -120,6 +120,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         state,
         spec.ForwardPassMode.EVAL,
         rng=None,
+        dropout_prob=None,
+        aux_dropout_prob=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 

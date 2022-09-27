@@ -232,6 +232,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=rng,
+        dropout_prob=0.0,  # Not relevant for eval.
+        aux_dropout_prob=None,
         update_batch_norm=False)
     ssim_vals = ssim(
         batch['targets'],

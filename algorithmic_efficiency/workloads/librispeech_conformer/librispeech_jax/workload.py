@@ -214,7 +214,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         params,
         batch,
         model_state,
-        spec.ForwardPassMode.EVAL)
+        spec.ForwardPassMode.EVAL,
+        rng,
+        dropout_prob=0.1,
+        aux_dropout_prob=0.1,
+        update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
     normalized_loss = self.loss_fn(batch['targets'], (logits, logit_paddings))

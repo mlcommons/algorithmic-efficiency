@@ -11,7 +11,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency import pytorch_utils
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
@@ -21,10 +21,20 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.
     ConformerEncoderDecoder
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
     initialize
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+    Subsample
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
+
+
+def _update_model_dropout(model, residual_dropout_prob, input_dropout_prob):
+  for child in model.modules():
+    if isinstance(child, Subsample):
+      child.input_dropout_prob = input_dropout_prob
+    # elif isinstance(child, TODO):
+    _update_model_dropout(child, residual_dropout_prob, input_dropout_prob)
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -64,12 +74,23 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_prob: float,
+      aux_dropout_prob: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Conformer model function.
+
+    Here we use dropout_prob as residual_dropout_prob, and aux_dropout_prob as
+    input_dropout_prob.
+    """
     del model_state
     del rng
     del update_batch_norm
 
     model = params
+    _update_model_dropout(
+        model,
+        residual_dropout_prob=dropout_prob,
+        input_dropout_prob=aux_dropout_prob)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

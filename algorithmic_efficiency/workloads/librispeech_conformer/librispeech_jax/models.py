@@ -49,6 +49,7 @@ class ConformerConfig:
   time_mask_max_ratio: float = 0.05
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
+  # DO NOT SUBMIT use or delete?
   residual_dropout_prob: float = 0.1
   input_dropout_prob: float = 0.1
   batch_norm_momentum: float = 0.999
