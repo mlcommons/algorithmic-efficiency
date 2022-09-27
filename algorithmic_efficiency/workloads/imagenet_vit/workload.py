@@ -1,6 +1,4 @@
 """ImageNet ViT workload."""
-from typing import Optional
-
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
