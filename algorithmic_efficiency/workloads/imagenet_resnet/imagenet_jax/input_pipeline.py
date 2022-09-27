@@ -202,7 +202,7 @@ def preprocess_for_eval(image_bytes,
 # Modified from
 # github.com/google/init2winit/blob/master/init2winit/dataset_lib/ (cont. below)
 # image_preprocessing.py.
-def mixup_tf(key, inputs, targets, alpha=0.1):
+def mixup_tf(key, inputs, targets, alpha=0.2):
   """Perform mixup https://arxiv.org/abs/1710.09412.
   NOTE: Code taken from https://github.com/google/big_vision with variables
   renamed to match `mixup` in this file and logic to synchronize globally.

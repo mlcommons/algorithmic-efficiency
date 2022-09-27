@@ -29,7 +29,7 @@ def shard_numpy_ds(xs):
   return jax.tree_map(_prepare, xs)
 
 
-def mixup_pytorch(batch, alpha=0.1):
+def mixup_pytorch(batch, alpha=0.2):
   inputs, targets = batch
   # Transform to one-hot targets.
   targets = F.one_hot(targets, num_classes=1000)
@@ -47,7 +47,7 @@ def cycle(iterable,
           keys=('inputs', 'targets'),
           custom_sampler=False,
           use_mixup=False,
-          mixup_alpha=0.1):
+          mixup_alpha=0.2):
   iterator = iter(iterable)
   epoch = 0
   while True:

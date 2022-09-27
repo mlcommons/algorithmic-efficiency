@@ -1,5 +1,7 @@
 """ImageNet ViT workload."""
+from typing import Optional
 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
@@ -61,3 +63,19 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
   @property
   def eval_period_time_sec(self):
     return 6000  # 100 mins
+
+  def _build_dataset(self,
+                     data_rng: spec.RandomState,
+                     split: str,
+                     data_dir: str,
+                     global_batch_size: int,
+                     cache: bool,
+                     repeat_final_dataset: bool):
+    use_mixup = split == 'train'
+    return super()._build_dataset(data_rng,
+                                  split,
+                                  data_dir,
+                                  global_batch_size,
+                                  cache,
+                                  repeat_final_dataset,
+                                  use_mixup)

@@ -96,9 +96,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
                         global_batch_size: int,
                         cache: Optional[bool] = None,
                         repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None,
-                        use_mixup: bool = False,
-                        mixup_alpha: float = 0.1):
+                        num_batches: Optional[int] = None):
     del num_batches
     if global_batch_size % jax.local_device_count() != 0:
       raise ValueError('Batch size must be divisible by the number of devices')
@@ -112,6 +110,4 @@ class BaseImagenetResNetWorkload(spec.Workload):
                                data_dir,
                                global_batch_size,
                                cache,
-                               repeat_final_dataset,
-                               use_mixup,
-                               mixup_alpha)
+                               repeat_final_dataset)

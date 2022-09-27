@@ -111,9 +111,7 @@ class Workload(metaclass=abc.ABCMeta):
                         global_batch_size: int,
                         cache: Optional[bool] = None,
                         repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None,
-                        use_mixup: bool = False,
-                        mixup_alpha: float = 0.1) -> Dict[str, Any]:
+                        num_batches: Optional[int] = None) -> Dict[str, Any]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.

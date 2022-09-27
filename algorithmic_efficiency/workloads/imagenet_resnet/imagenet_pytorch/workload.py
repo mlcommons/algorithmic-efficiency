@@ -58,8 +58,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: bool,
                      repeat_final_dataset: bool,
-                     use_mixup: bool = False,
-                     mixup_alpha: float = 0.1):
+                     use_mixup: bool = False):
     del data_rng
     del cache
     del repeat_final_dataset
@@ -129,7 +128,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         dataloader,
         custom_sampler=USE_PYTORCH_DDP,
         use_mixup=use_mixup,
-        mixup_alpha=mixup_alpha)
+        mixup_alpha=0.2)
 
     return dataloader
 
