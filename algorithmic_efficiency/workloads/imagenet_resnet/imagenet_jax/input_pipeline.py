@@ -8,6 +8,7 @@ from flax import jax_utils
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import tensorflow_probability as tfp
 
 from algorithmic_efficiency import data_utils
 
@@ -198,6 +199,32 @@ def preprocess_for_eval(image_bytes,
   return image
 
 
+# Modified from
+# github.com/google/init2winit/blob/master/init2winit/dataset_lib/ (cont. below)
+# image_preprocessing.py.
+def mixup_tf(key, inputs, targets, alpha=0.1):
+  """Perform mixup https://arxiv.org/abs/1710.09412.
+  NOTE: Code taken from https://github.com/google/big_vision with variables
+  renamed to match `mixup` in this file and logic to synchronize globally.
+  Args:
+    key: The random key to use.
+    inputs: inputs to mix.
+    targets: targets to mix.
+    alpha: the beta/dirichlet concentration parameter, typically 0.1 or 0.2.
+  Returns:
+    Mixed inputs and targets.
+  """
+  # Transform to one-hot targets.
+  targets = tf.one_hot(targets, 1000)
+  # Compute weight for convex combination by sampling from Beta distribution.
+  beta_dist = tfp.distributions.Beta(alpha, alpha)
+  weight = beta_dist.sample(seed=tf.cast(key[0], tf.int32))
+  # Return convex combination of original and shifted inputs and targets.
+  inputs = weight * inputs + (1.0 - weight) * tf.roll(inputs, 1, axis=0)
+  targets = weight * targets + (1.0 - weight) * tf.roll(targets, 1, axis=0)
+  return inputs, targets
+
+
 def create_split(split,
                  dataset_builder,
                  rng,
@@ -211,7 +238,9 @@ def create_split(split,
                  repeat_final_dataset=False,
                  num_batches=None,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
-                 area_range=(0.08, 1.0)):
+                 area_range=(0.08, 1.0),
+                 use_mixup=False,
+                 mixup_alpha=0.1):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
   del num_batches
 
@@ -261,6 +290,28 @@ def create_split(split,
   ds = ds.map(decode_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   ds = ds.batch(global_batch_size, drop_remainder=train)
 
+  if use_mixup:
+    if train:
+      mixup_rng = tf.convert_to_tensor(shuffle_rng, dtype=tf.int32)
+      mixup_rng = tf.random.experimental.stateless_fold_in(mixup_rng, 0)
+
+      def mixup_batch(batch_index, batch):
+        per_batch_mixup_rng = tf.random.experimental.stateless_fold_in(
+            mixup_rng, batch_index)
+        (inputs, targets) = mixup_tf(
+            per_batch_mixup_rng,
+            batch['inputs'],
+            batch['targets'],
+            alpha=mixup_alpha)
+        batch['inputs'] = inputs
+        batch['targets'] = targets
+        return batch
+
+      ds = ds.enumerate().map(
+          mixup_batch, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    else:
+      raise ValueError('Mixup can only be used for the training split.')
+
   if repeat_final_dataset:
     ds = ds.repeat()
 
@@ -282,7 +333,9 @@ def create_input_iter(split,
                       train,
                       cache,
                       repeat_final_dataset,
-                      num_batches):
+                      num_batches,
+                      use_mixup,
+                      mixup_alpha):
   ds = create_split(
       split,
       dataset_builder,
@@ -297,7 +350,9 @@ def create_input_iter(split,
       repeat_final_dataset=repeat_final_dataset,
       num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
-      area_range=area_range)
+      area_range=area_range,
+      use_mixup=use_mixup,
+      mixup_alpha=mixup_alpha)
   it = map(data_utils.shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
