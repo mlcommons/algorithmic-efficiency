@@ -401,13 +401,14 @@ def train_once(
         print('before call to update parameters')
         optimizer_state, model_params, model_state = update_params(
           workload=workload,
+          # params=model_params,
           current_param_container=model_params,
           current_params_types=workload.model_params_types,
           model_state=model_state,
           hyperparameters=hyperparameters,
           batch=batch,
           optimizer_state=optimizer_state,
-          loss_type=workload.loss_type,
+          # loss_type=workload.loss_type,
           eval_results=eval_results,
           global_step=global_step,
           rng=update_rng)
