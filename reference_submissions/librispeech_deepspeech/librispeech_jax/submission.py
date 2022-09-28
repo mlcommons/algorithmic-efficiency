@@ -21,7 +21,7 @@ _GRAD_CLIP_EPS = 1e-6
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 8
+  return 256
 
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
@@ -78,47 +78,6 @@ def l2_regularization(params, l2_decay_rank_threshold):
   return weight_l2
 
 
-# def update_step(batch, params, batch_stats, optimizer_state, workload, opt_update_fn, hyperparameters, rng, lr):
-#   optimizer_state.hyperparams['learning_rate'] = lr
-
-#   def _loss_fn(params):
-#     """loss function used for training."""
-#     params_rng, dropout_rng = jax.random.split(rng, 2)
-#     logits_and_paddings, new_model_state = workload.model_fn(
-#         params,
-#         batch,
-#         batch_stats,
-#         spec.ForwardPassMode.TRAIN,
-#         {'params' : params_rng, 'dropout' : dropout_rng})
-
-#     loss = workload.loss_fn(batch['targets'],
-#                             logits_and_paddings)
-#     return loss, new_model_state
-
-#   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-#   (loss, new_model_state), grad = grad_fn(params)
-#   loss, grad = lax.pmean((loss, grad), axis_name='batch')
-#   print('loss inside pmap = ', loss)
-
-#   grad_clip = hyperparameters.grad_clip
-#   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
-#   scaled_grad = jax.tree_map(
-#       lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
-#   grad = jax.lax.cond(grad_norm > grad_clip,
-#                       lambda _: scaled_grad,
-#                       lambda _: grad,
-#                       None)
-
-#   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-#                                                params)
-  
-#   print('applying updates')
-#   updated_params = optax.apply_updates(params, updates)
-#   print('after applying updates')
-
-#   return updated_params, new_model_state, new_optimizer_state, loss, grad_norm
-
-
 def _summary_str(param):
   total_norm = jnp.linalg.norm(param.reshape(-1))
   return '{} - {} - {}'.format(str(param.shape), param.size, total_norm)
@@ -144,9 +103,9 @@ def update_step(
   params, 
   batch_stats, 
   optimizer_state, 
-  workload, global_step, hyperparameters, opt_update_fn, rng):
-  
-  # lr = workload.get_learning_rate(global_step, hyperparameters)
+  workload, global_step, hyperparameters, opt_update_fn, rng, lr):
+
+  optimizer_state.hyperparams['learning_rate'] = lr
   def _loss_fn(params):
     """loss function used for training."""
     params_rng, dropout_rng = jax.random.split(rng, 2)
@@ -163,15 +122,20 @@ def update_step(
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(params)
+
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
-  print('loss inside pmap = ', loss)
+  grad_clip = hyperparameters.grad_clip
+  grad_norm = jnp.sqrt(l2_regularization(grad, 0))
+
+  # grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+  # grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
+
+  # grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
-  print('applying updates')
   updated_params = optax.apply_updates(params, updates)
-  print('after applying updates')
 
-  return updated_params, new_model_state, new_optimizer_state, loss
+  return updated_params, new_model_state, new_optimizer_state, loss, grad_norm
 
 
 def update_params(
@@ -181,24 +145,17 @@ def update_params(
     model_state,
     hyperparameters,
     batch,
+    loss_type: spec.LossType,
     optimizer_state,
     eval_results: List[Tuple[int, float]],
     global_step: int,
     rng):
   """Return (updated_optimizer_state, updated_params)."""
   del eval_results
+  del loss_type
+  del current_params_types
 
-  print('in update params in submission')
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  print('before pmapped_update')
-  # unfrozen = params.unfreeze()
-  print('params shape = ', current_param_container['Dense_0']['kernel'].shape)
-  # @functools.partial(
-  #   jax.pmap,
-  #   axis_name='batch',
-  #   in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
-  #   static_broadcasted_argnums=(0, 1))
-
+  lr = workload.get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
 
   update_fn = functools.partial(
@@ -207,16 +164,13 @@ def update_params(
     global_step=global_step,
     workload=workload,
     hyperparameters=hyperparameters,
-    rng=rng)
+    rng=rng,
+    lr = lr)
 
   pmapped_update_step = jax.pmap(update_fn, axis_name='batch', in_axes=(0,0,0,0))
-  new_params, new_model_state, new_optimizer_state, loss = pmapped_update_step(batch, current_param_container, model_state, optimizer_state)
+  new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(batch, current_param_container, model_state, optimizer_state)
 
-  #new_params = jax_utils.unreplicate(new_params)
-
-  print('after applying updates inside submission')
-  print('loss = ', loss.mean())
-  print('updated params shape = ', new_params['Dense_0']['kernel'].shape)
+  print('{}) loss = {}, grad_norm = {}'.format(global_step, loss.mean(), grad_norm.mean()))
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
@@ -235,9 +189,7 @@ def update_params(
 #     global_step: int,
 #     rng: spec.RandomState) -> spec.UpdateReturn:
 #   """Return (updated_optimizer_state, updated_params)."""
-#   del current_params_types
-#   del eval_results
-#   del loss_type
+
 
 #   print('in update params in submission')
 #   lr = workload.get_learning_rate(global_step, hyperparameters)

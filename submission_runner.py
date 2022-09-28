@@ -16,24 +16,20 @@ import json
 import os
 import struct
 import time
-from typing import Dict, Iterator, List, Tuple, Optional
-import functools
-import jax.lax as lax
-import jax.numpy as jnp
-import flax
+from typing import Optional, Tuple
 
 from absl import app
 from absl import flags
 from absl import logging
-import optax 
-import flax.linen as nn
-import flax.jax_utils as jax_utils
+import tensorflow as tf
+import torch
+import torch.distributed as dist
 
-from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax import \
-    models
-
-from algorithmic_efficiency.workloads.librispeech_conformer import \
-    input_pipeline
+try:
+  import wandb  # pylint: disable=g-import-not-at-top
+except ModuleNotFoundError:
+  logging.exception('Unable to import wandb.')
+  wandb = None
 
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
@@ -42,14 +38,10 @@ from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-import jax 
 
-# Setup JAX so it preallocates less GPU memory by default.
-#os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.7'
-#os.environ['XLA_PYTHON_CLIENT_ALLOCATOR']='platform'
-
-
-_GRAD_CLIP_EPS = 1e-6
+# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+# it unavailable to JAX.
+tf.config.set_visible_devices([], 'GPU')
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -94,12 +86,12 @@ WORKLOADS = {
 
 flags.DEFINE_string(
     'submission_path',
-    'reference_submissions/librispeech_deepspeech/librispeech_jax/submission.py',
+    'reference_submissions/mnist/mnist_jax/submission.py',
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
     'workload',
-    'librispeech_deepspeech',
+    'mnist',
     help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
 )
 flags.DEFINE_enum(
@@ -109,35 +101,35 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'reference_submissions/librispeech_deepspeech/tuning_search_space.json',
+    'reference_submissions/mnist/tuning_search_space.json',
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
-                     1,
+                     20,
                      'The number of external hyperparameter trials to run.')
-
-flags.DEFINE_integer('num_train_steps',
-                     10,
-                     'The number of training steps to run.')
-flags.DEFINE_string('data_dir', '/mnt/disks/librispeech_processed/work_dir/data', 'Dataset location')
+flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/tensorflow_datasets/',
                     'Dataset location for ImageNet-v2.')
 flags.DEFINE_enum(
     'framework',
-    'jax',
+    None,
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_string('summary_log_dir',
-                    'reference_submissions/librispeech_deepspeech/librispeech_jax/summaries',
+                    '',
                     'Location to dump tensorboard summaries.')
 flags.DEFINE_string('tokenizer_vocab_path',
-                    '/mnt/disks/librispeech_processed/spm_model.vocab',
+                    '',
                     'Location to read tokenizer from.')
+flags.DEFINE_integer('num_training_steps',
+                     -1,
+                     'The number of total training steps to run, this flag is used for debugging purposes.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
+
 
 def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)
@@ -147,15 +139,18 @@ def convert_filepath_to_module(path: str):
 
   return base.replace('/', '.')
 
+
 def import_workload(workload_path: str,
                     workload_class_name: str,
                     return_class=False) -> spec.Workload:
   """Import and add the workload to the registry.
+
   This importlib loading is nice to have because it allows runners to avoid
   installing the dependencies of all the supported frameworks. For example, if
   a submitter only wants to write Jax code, the try/except below will catch
   the import errors caused if they do not have the PyTorch dependencies
   installed on their system.
+
   Args:
     workload_path: the path to the `workload.py` file to load.
     workload_class_name: the name of the Workload class that implements the
@@ -185,8 +180,7 @@ def import_workload(workload_path: str,
     return workload_class
   return workload_class()
 
-# Example reference implementation showing how to use the above functions
-# together.
+
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
@@ -199,8 +193,7 @@ def train_once(
     rng: spec.RandomState,
     profiler: Profiler,
     log_dir: Optional[str] = None,
-    tokenizer_vocab_path: Optional[str] = None,
-    num_train_steps:int = None
+    tokenizer_vocab_path: Optional[str] = None
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
@@ -226,8 +219,12 @@ def train_once(
                                            model_state,
                                            hyperparameters,
                                            opt_init_rng)
-  # optimizer_state, opt_update_fn = init_optimizer_state(model_params)
-  # replicated_optimizer_state = flax.jax_utils.replicate(optimizer_state)
+
+  logging.info('Initializing metrics bundle.')
+  if tokenizer_vocab_path:
+    workload.init_metrics_bundle(tokenizer_vocab_path)
+  if wandb is not None and RANK == 0:
+    wandb.init()
 
   # Bookkeeping.
   goal_reached = False
@@ -240,7 +237,7 @@ def train_once(
   global_start_time = time.time()
 
   logging.info('Starting training loop.')
-  while global_step < num_train_steps:
+  while is_time_remaining and not goal_reached and not training_complete:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
@@ -255,27 +252,62 @@ def train_once(
                              data_select_rng)
     try:
       with profiler.profile('Update parameters'):
-        print('before call to update parameters')
         optimizer_state, model_params, model_state = update_params(
-          workload=workload,
-          # params=model_params,
-          current_param_container=model_params,
-          current_params_types=workload.model_params_types,
-          model_state=model_state,
-          hyperparameters=hyperparameters,
-          batch=batch,
-          optimizer_state=optimizer_state,
-          # loss_type=workload.loss_type,
-          eval_results=eval_results,
-          global_step=global_step,
-          rng=update_rng)
-        print('after update_params in submission_runner.py')
-        global_step += 1
+            workload=workload,
+            current_param_container=model_params,
+            current_params_types=workload.model_params_types,
+            model_state=model_state,
+            hyperparameters=hyperparameters,
+            batch=batch,
+            loss_type=workload.loss_type,
+            optimizer_state=optimizer_state,
+            eval_results=eval_results,
+            global_step=global_step,
+            rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-  
+    global_step += 1
+    if USE_PYTORCH_DDP:
+      # Make sure all processes run eval after the same step when using DDP.
+      dist.barrier()
+    current_time = time.time()
+    accumulated_submission_time += current_time - start_time
+    is_time_remaining = (
+        accumulated_submission_time < workload.max_allowed_runtime_sec)
+    # Check if submission is eligible for an untimed eval.
+    if (current_time - last_eval_time >= workload.eval_period_time_sec or
+        training_complete):
+      with profiler.profile('Evaluation'):
+        try:
+          latest_eval_result = workload.eval_model(global_batch_size,
+                                                   model_params,
+                                                   model_state,
+                                                   eval_rng,
+                                                   data_dir,
+                                                   global_step)
+          logging.info('%.2fs \t%d \t%s',
+                       current_time - global_start_time,
+                       global_step,
+                       latest_eval_result)
+          last_eval_time = current_time
+          eval_results.append((global_step, latest_eval_result))
+          goal_reached = workload.has_reached_goal(latest_eval_result)
+        except RuntimeError as e:
+          logging.exception(f'Eval step {global_step} error.\n')
+          if "out of memory" in str(e):
+            logging.warning(
+                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
+            )
+            if torch.cuda.is_available():
+              torch.cuda.empty_cache()
+
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  return 0, metrics
+  if USE_PYTORCH_DDP:
+    # Sync final score (accumulated training time); choose highest, i.e. worst.
+    score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
+    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
+    accumulated_submission_time = score_tensor.item()
+  return accumulated_submission_time, metrics
 
 
 def score_submission_on_workload(workload: spec.Workload,
@@ -288,8 +320,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
-                                 tokenizer_vocab_path: Optional[str] = None, 
-                                 num_train_steps:int = None):
+                                 tokenizer_vocab_path: Optional[str] = None):
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
@@ -330,11 +361,9 @@ def score_submission_on_workload(workload: spec.Workload,
         timing, metrics = train_once(workload, global_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
-                                     update_params,
-                                     data_selection,
+                                     update_params, data_selection,
                                      hyperparameters, rng, profiler, log_dir,
-                                     tokenizer_vocab_path,
-                                     num_train_steps)
+                                     tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -353,9 +382,7 @@ def score_submission_on_workload(workload: spec.Workload,
       score, _ = train_once(
           workload, global_batch_size, data_dir,
           imagenet_v2_data_dir,
-          init_optimizer_state,
-          update_params,
-          data_selection,
+          init_optimizer_state, update_params, data_selection,
           None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
@@ -390,8 +417,7 @@ def main(_):
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
                                        FLAGS.summary_log_dir,
-                                       FLAGS.tokenizer_vocab_path,
-                                       FLAGS.num_train_steps)
+                                       FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.profile:

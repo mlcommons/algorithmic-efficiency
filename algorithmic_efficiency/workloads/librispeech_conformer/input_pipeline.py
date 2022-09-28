@@ -81,4 +81,5 @@ def get_librispeech_dataset(split_name: str,
   if num_batches is not None:
     ds = ds.take(num_batches)
 
+  ds = ds.prefetch(10)
   return ds
