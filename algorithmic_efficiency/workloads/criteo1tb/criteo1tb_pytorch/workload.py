@@ -141,7 +141,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
             per_device_batch_size = torch.tensor(
                 len(batch['inputs']), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
-          dist.broadcast(torch.stack(tensor_list), src=0)
+          dist.broadcast(torch.cat(tensor_list, dim=-1), src=0)
       else:
         # During eval, the batch size of the remainder might be different.
         if split != 'train':
