@@ -11,7 +11,7 @@ ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {"librispeech_conformer": 8}
+  batch_sizes = {"librispeech_conformer": 256}
   return batch_sizes[workload_name]
 
 
@@ -23,10 +23,9 @@ def init_optimizer_state(workload: spec.Workload,
   del workload
   del model_state
   del rng
-
   optimizer = torch.optim.AdamW(
       params=model_params.parameters(),
-      lr=2e-4,
+      lr=0.0,
       betas=(hyperparameters.beta1, hyperparameters.beta2),
       eps=hyperparameters.epsilon,
       weight_decay=hyperparameters.weight_decay)
@@ -63,14 +62,16 @@ def update_params(
       update_batch_norm=True)
 
   train_ctc_loss = workload.compute_loss(
-      logits, logits_padding, batch['targets'],
-      batch["target_paddings"])['average_loss']
+      logits, logits_padding, batch['targets'][0],
+      batch["targets"][1])['average_loss']
   train_ctc_loss.backward()
   grad_clip = hyperparameters.grad_clip
   for g in optimizer_state.param_groups:
     g['lr'] = workload.get_learning_rate(global_step, hyperparameters)
   torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
   optimizer_state.step()
+  if global_step%100==0:
+    print(f"{global_step}) {train_ctc_loss.item()}")
   return optimizer_state, current_param_container, None
 
 

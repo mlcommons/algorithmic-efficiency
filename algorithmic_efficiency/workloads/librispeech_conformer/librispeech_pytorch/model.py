@@ -31,9 +31,6 @@ class ConformerConfig:
   feed_forward_residual_dropout_rate: float = 0.1
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
-  conv_expansion_factor: int = 2
-  conv_subsampling_factor: int = 2
-  conv_subsampling_layers: int = 2
   freq_mask_count: int = 2
   freq_mask_max_bins: int = 27
   time_mask_count: int = 10
@@ -177,7 +174,7 @@ class Conv2dSubsampling(nn.Module):
         input=padded_paddings,
         weight=torch.ones([1, 1, 1], device=paddings.device),
         stride=self.filter_stride[:1])
-    out_padding = out_padding.squeeze(dim=1)
+    out_padding = out_padding.squeeze(dim=1) 
     outputs = outputs * (1 - out_padding[:, None, :, None])
     return outputs, out_padding
 
@@ -378,7 +375,7 @@ class MHSAwithQS(nn.MultiheadAttention):
       if not why_not_fast_path:
         # Scale the query bias parameter and the query vector
         query = self.qs(
-            query.reshape(-1, self.num_heads,
+            query.view(query.shape[0],query.shape[1], self.num_heads,
                           self.embed_dim // self.num_heads)).view(*query.shape)
         in_proj_bias = self.in_proj_bias + 0
         in_proj_bias[:self.embed_dim] = self.qs(
@@ -426,7 +423,7 @@ class MHSAwithQS(nn.MultiheadAttention):
     else:
       # Scale the query bias parameter and the query vector
       query = self.qs(
-          query.reshape(-1, self.num_heads,
+          query.view(query.shape[0],query.shape[1], self.num_heads,
                         self.embed_dim // self.num_heads)).view(*query.shape)
       in_proj_bias = self.in_proj_bias + 0
       in_proj_bias[:self.embed_dim] = self.qs(
@@ -463,7 +460,7 @@ class MultiHeadedSelfAttention(nn.Module):
         query=outputs,
         key=outputs,
         value=outputs,
-        key_padding_mask=paddings,
+        key_padding_mask=paddings==1,
         need_weights=False,
     )
     outputs = self.dropout(outputs)
@@ -541,14 +538,11 @@ class BatchNorm(nn.Module):
   def forward(self, inputs, input_paddings):
     #inputs: NHD
     #padding: NH
-    n, h, d = inputs.shape
-    inputs = inputs.reshape(n * h, d)
-    input_paddings = input_paddings.reshape(n * h)
     bn_inp = self.bn(inputs[input_paddings == 0])
-    output = torch.zeros(n * h, d, device=inputs.device)
+    output = torch.zeros_like(inputs)
     output[input_paddings == 0] = bn_inp
 
-    return output.reshape(n, h, d)
+    return output
 
 
 class ConvolutionBlock(nn.Module):
@@ -629,7 +623,7 @@ class ConformerEncoderDecoder(nn.Module):
         compute_energy=True,
         window_fn='HANNING',
         output_log_floor=1,
-        pad_end=True,
+        pad_end=False,
         preemph=0.97,
         preemph_htk_flavor=True,
         noise_scale=0,
