@@ -159,9 +159,9 @@ def update_params(workload,
     optimizer_state)
 
   logging.info('%d) loss = %0.03f, grad_norm = %0.03f',
-    global_step,
-    loss.mean(),
-    grad_norm.mean())
+               global_step,
+               loss.mean(),
+               grad_norm.mean())
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
