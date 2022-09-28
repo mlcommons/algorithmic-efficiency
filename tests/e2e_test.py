@@ -1,4 +1,5 @@
-import os
+# pylint: skip-file
+
 import time
 
 import flax
