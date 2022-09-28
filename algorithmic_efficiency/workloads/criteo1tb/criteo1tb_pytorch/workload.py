@@ -67,7 +67,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
-    # model.to(DEVICE)
+    model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
