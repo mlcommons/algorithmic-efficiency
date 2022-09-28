@@ -16,11 +16,22 @@ from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import 
     DlrmSmall
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
+from algorithmic_efficiency import param_utils
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
+
+  @property
+  def model_params_types(self):
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    if self._param_types is None:
+      self._param_types = param_utils.jax_param_types(self._param_shapes)
+    return self._param_types
 
   def loss_fn(self,
               label_batch: spec.Tensor,
@@ -55,6 +66,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
+    model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
