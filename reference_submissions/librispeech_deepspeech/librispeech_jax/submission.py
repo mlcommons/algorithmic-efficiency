@@ -1,6 +1,5 @@
 """Training algorithm track submission functions for LibriSpeech."""
 import functools
-import operator
 from typing import Dict, Iterator, List, Tuple
 
 from absl import logging
@@ -47,8 +46,6 @@ def init_optimizer_state(workload: spec.Workload,
   opt_init_fn, opt_update_fn = optimizer(hyperparameters,
                                          workload.num_train_examples)
   optimizer_state = opt_init_fn(params_zeros_like)
-  # log_pytree_shape_and_statistics(
-  #     flax.jax_utils.unreplicate(model_params), workload.summary_writer)
   return jax_utils.replicate(optimizer_state), opt_update_fn
 
 
@@ -76,26 +73,6 @@ def l2_regularization(params, l2_decay_rank_threshold):
       for x in weight_penalty_params
       if x.ndim >= l2_decay_rank_threshold)
   return weight_l2
-
-
-def _summary_str(param):
-  total_norm = jnp.linalg.norm(param.reshape(-1))
-  return '{} - {} - {}'.format(str(param.shape), param.size, total_norm)
-
-
-def log_pytree_shape_and_statistics(pytree, writer):
-  """Logs the shape and norm of every array in the pytree."""
-  if not pytree:
-    logging.info('Empty pytree')
-    return
-  logging.info('Printing model param shapes.')
-  shape_dict = jax.tree_map(_summary_str, pytree)
-
-  logging.info(shape_dict.pretty_repr())
-
-  total_params = jax.tree_util.tree_reduce(
-      operator.add, jax.tree_map(lambda x: x.size, pytree))
-  print('num params = ', total_params)
 
 
 def update_step(batch,
@@ -127,14 +104,17 @@ def update_step(batch,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(params)
 
-  grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
 
-  grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
-  grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
-
-  grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
+  # with following code uncommented the submission hangs
+  # need to figure out how to do gradient clipping in this submission.
+
+  # grad_clip = hyperparameters.grad_clip
+  # grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+  # grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
+
+  # grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
   updated_params = optax.apply_updates(params, updates)
@@ -178,9 +158,10 @@ def update_params(workload,
     model_state,
     optimizer_state)
 
-  print('{}) loss = {}, grad_norm = {}'.format(global_step,
-                                               loss.mean(),
-                                               grad_norm.mean()))
+  logging.info('%d) loss = %0.03f, grad_norm = %0.03f',
+    global_step,
+    loss.mean(),
+    grad_norm.mean())
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

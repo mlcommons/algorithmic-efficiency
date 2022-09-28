@@ -6,12 +6,12 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
-tf.config.set_visible_devices([], 'GPU')
+from algorithmic_efficiency import spec
 
 
 def get_librispeech_dataset(split_name: str,
                             data_dir: str,
-                            shuffle_rng,
+                            shuffle_rng: spec.RandomState,
                             is_training: bool,
                             global_batch_size: int,
                             num_batches: Optional[int] = None):

@@ -635,9 +635,7 @@ class LSTM(nn.Module):
 
 
 class BatchRNN(nn.Module):
-  """Implements a single conformer encoder layer.
-
-  High level overview:
+  """Implements a single deepspeech encoder layer.
   """
   config: DeepspeechConfig
 
