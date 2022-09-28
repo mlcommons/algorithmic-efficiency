@@ -149,7 +149,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
-        tensor = torch.empty((3, N_GPUS, per_device_batch_size, 39),
+        tensor = torch.empty((N_GPUS, per_device_batch_size, 39),
                              dtype=torch.int64,
                              device=DEVICE)
         dist.broadcast(tensor, src=0)
