@@ -63,6 +63,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         mlp_bottom_dims=(128, 128),
         mlp_top_dims=(256, 128, 1),
         embed_dim=64)
+
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }

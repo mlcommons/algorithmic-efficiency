@@ -120,12 +120,9 @@ class DlrmSmall(nn.Module):
                         math.sqrt(1. / module.out_features))
 
   def forward(self, x):
-    # print(x.shape)
-    print("forward")
     bot_mlp_input, cat_features = torch.split(x, [self.num_dense_features, self.num_sparse_features], 1)
     cat_features = cat_features.to(dtype=torch.int32)
     bot_mlp_output = self.bot_mlp(bot_mlp_input)
-    print(bot_mlp_output.shape)
     batch_size = bot_mlp_output.shape[0]
     feature_stack = torch.reshape(bot_mlp_output,
                                   [batch_size, -1, self.embed_dim])
@@ -134,14 +131,10 @@ class DlrmSmall(nn.Module):
     idx_lookup = cat_features + idx_offsets
     idx_lookup = torch.reshape(idx_lookup, [-1])
     embed_features = self.embedding_table(idx_lookup)
-    print(embed_features.shape)
-
     embed_features = torch.reshape(embed_features,
                                    [batch_size, -1, self.embed_dim])
     feature_stack = torch.cat([feature_stack, embed_features], axis=1)
-    print(feature_stack.shape)
     dot_interact_output = dot_interact(concat_features=feature_stack)
-    print(dot_interact_output.shape)
     top_mlp_input = torch.cat([bot_mlp_output, dot_interact_output], axis=-1)
     logits = self.top_mlp(top_mlp_input)
     return logits
