@@ -55,13 +55,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_prob: float,
-      aux_dropout_prob: float,
+      dropout_rate: float,
+      aux_dropout_rate: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Conformer model function.
 
-    Here we use dropout_prob as residual_dropout_prob, and aux_dropout_prob as
-    input_dropout_prob.
+    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
     """
     del update_batch_norm
 
@@ -71,7 +71,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     model_config = models.ConformerConfig(
-        residual_dropout_prob=dropout_prob, input_dropout_prob=aux_dropout_prob)
+        residual_dropout_rate=dropout_rate, input_dropout_rate=aux_dropout_rate)
     model = models.Conformer(model_config)
     if is_train_mode:
       (logits, logit_paddings), new_model_state = model.apply(
@@ -215,8 +215,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_prob=0.1,
-        aux_dropout_prob=0.1,
+        dropout_rate=0.1,
+        aux_dropout_rate=0.1,
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)

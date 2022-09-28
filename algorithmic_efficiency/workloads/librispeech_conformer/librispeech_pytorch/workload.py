@@ -29,13 +29,13 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 MAX_INPUT_LENGTH = 320000
 
 
-def _update_model_dropout(model, residual_dropout_prob, input_dropout_prob):
+def _update_model_dropout(model, residual_dropout_rate, input_dropout_rate):
   # model.modules() returns the model itself as the first element.
   for child in list(model.modules())[1:]:
     if isinstance(child, Subsample):
-      child.input_dropout_prob = input_dropout_prob
+      child.input_dropout_rate = input_dropout_rate
     # elif isinstance(child, TODO):
-    _update_model_dropout(child, residual_dropout_prob, input_dropout_prob)
+    _update_model_dropout(child, residual_dropout_rate, input_dropout_rate)
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -75,13 +75,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_prob: float,
-      aux_dropout_prob: float,
+      dropout_rate: float,
+      aux_dropout_rate: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Conformer model function.
 
-    Here we use dropout_prob as residual_dropout_prob, and aux_dropout_prob as
-    input_dropout_prob.
+    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
     """
     del model_state
     del rng
@@ -90,8 +90,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model = params
     _update_model_dropout(
         model,
-        residual_dropout_prob=dropout_prob,
-        input_dropout_prob=aux_dropout_prob)
+        residual_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -273,8 +273,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
-          dropout_prob=0.1,  # Default, unused for eval.
-          aux_dropout_prob=0.1,  # Default, unused for eval.
+          dropout_rate=0.1,  # Default, unused for eval.
+          aux_dropout_rate=0.1,  # Default, unused for eval.
           update_batch_norm=False)
       decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
       targets, target_paddings = batch['targets']

@@ -35,11 +35,11 @@ class ConformerConfig:
   encoder_dim: int = 512
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
-  attention_dropout_prob: float = 0.0
-  attention_residual_dropout_prob: float = 0.1
-  conv_residual_dropout_prob: float = 0.0
-  feed_forward_dropout_prob: float = 0.0
-  feed_forward_residual_dropout_prob: float = 0.1
+  attention_dropout_rate: float = 0.0
+  attention_residual_dropout_rate: float = 0.1
+  conv_residual_dropout_rate: float = 0.0
+  feed_forward_dropout_rate: float = 0.0
+  feed_forward_residual_dropout_rate: float = 0.1
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
@@ -50,8 +50,8 @@ class ConformerConfig:
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
   # DO NOT SUBMIT use or delete?
-  residual_dropout_prob: float = 0.1
-  input_dropout_prob: float = 0.1
+  residual_dropout_rate: float = 0.1
+  input_dropout_rate: float = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
 
@@ -90,10 +90,10 @@ class Subsample(nn.Module):
 
   Attributes:
     encoder_dim: model dimension of conformer.
-    input_dropout_prob: dropout rate for inputs.
+    input_dropout_rate: dropout rate for inputs.
   """
   encoder_dim: int = 0
-  input_dropout_prob: float = 0.0
+  input_dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, inputs, input_paddings, train):
@@ -123,7 +123,7 @@ class Subsample(nn.Module):
         seq_length=outputs.shape[1])
 
     outputs = nn.Dropout(
-        rate=self.input_dropout_prob, deterministic=not train)(
+        rate=self.input_dropout_rate, deterministic=not train)(
             outputs)
 
     return outputs, output_paddings
@@ -202,7 +202,7 @@ class FeedForwardModule(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(
             inputs)
     inputs = nn.swish(inputs)
-    inputs = nn.Dropout(rate=config.feed_forward_dropout_prob)(
+    inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
         inputs, deterministic=not train)
 
     inputs = inputs * padding_mask
@@ -214,7 +214,7 @@ class FeedForwardModule(nn.Module):
             inputs)
     inputs = inputs * padding_mask
 
-    inputs = nn.Dropout(rate=config.feed_forward_residual_dropout_prob)(
+    inputs = nn.Dropout(rate=config.feed_forward_residual_dropout_rate)(
         inputs, deterministic=not train)
 
     return inputs
@@ -385,11 +385,11 @@ class MultiHeadedSelfAttention(nn.Module):
         use_bias=True,
         broadcast_dropout=False,
         attention_fn=dot_product_attention,
-        dropout_rate=config.attention_dropout_prob,
+        dropout_rate=config.attention_dropout_rate,
         deterministic=not train)(inputs, attention_mask)
 
     result = nn.Dropout(
-        rate=config.attention_residual_dropout_prob, deterministic=not train)(
+        rate=config.attention_residual_dropout_rate, deterministic=not train)(
             result)
 
     return result
@@ -526,7 +526,7 @@ class ConvolutionBlock(nn.Module):
             inputs)
 
     inputs = nn.Dropout(
-        rate=config.conv_residual_dropout_prob, deterministic=not train)(
+        rate=config.conv_residual_dropout_rate, deterministic=not train)(
             inputs)
     return inputs
 
@@ -611,7 +611,7 @@ class Conformer(nn.Module):
     # Subsample input by a factor of 4 by performing strided convolutions.
     outputs, output_paddings = Subsample(
       encoder_dim=config.encoder_dim,
-      input_dropout_prob=config.input_dropout_prob)(
+      input_dropout_rate=config.input_dropout_rate)(
       outputs, output_paddings, train)
 
     # Run the conformer encoder layers.

@@ -136,14 +136,14 @@ class MnistWorkload(BaseMnistWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_prob: float,
-      aux_dropout_prob: float,
+      dropout_rate: float,
+      aux_dropout_rate: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Dropout is unused."""
     del model_state
     del rng
-    del dropout_prob
-    del aux_dropout_prob
+    del dropout_rate
+    del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply(
@@ -179,8 +179,8 @@ class MnistWorkload(BaseMnistWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_prob=None,
-        aux_dropout_prob=None,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
     loss = jnp.sum(self.loss_fn(batch['targets'], logits))

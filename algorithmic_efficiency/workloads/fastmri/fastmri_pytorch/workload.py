@@ -188,16 +188,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_prob: float,
-      aux_dropout_prob: float,
+      dropout_rate: float,
+      aux_dropout_rate: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del aux_dropout_prob
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
-    pytorch_utils.update_dropout(model, dropout_prob)
+    pytorch_utils.update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -277,8 +277,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         model_rng,
-        dropout_prob=0.0,  # Not relevant for eval.
-        aux_dropout_prob=None,
+        dropout_rate=0.0,  # Not relevant for eval.
+        aux_dropout_rate=None,
         update_batch_norm=False)
       batch_metrics = self._eval_metric(outputs,
                                         batch['targets'],

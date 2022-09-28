@@ -42,8 +42,8 @@ def pmapped_train_step(workload,
         model_state=None,
         mode=spec.ForwardPassMode.TRAIN,
         rng=dropout_rng,
-        dropout_prob=0.1,  # Default.
-        aux_dropout_prob=0.1,  # Default.
+        dropout_rate=0.1,  # Default.
+        aux_dropout_rate=0.1,  # Default.
         update_batch_norm=False)
     targets = batch['targets']
     weights = jnp.where(targets > 0, 1.0, 0.0)

@@ -131,8 +131,8 @@ class CifarWorkload(BaseCifarWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_prob=None,
-        aux_dropout_prob=None,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 
@@ -155,13 +155,13 @@ class CifarWorkload(BaseCifarWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_prob: float,
-      aux_dropout_prob: float,
+      dropout_rate: float,
+      aux_dropout_rate: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Dropout is unused."""
     del mode
-    del dropout_prob
-    del aux_dropout_prob
+    del dropout_rate
+    del aux_dropout_rate
     del rng
     variables = {'params': params, **model_state}
     if update_batch_norm:

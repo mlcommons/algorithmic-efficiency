@@ -39,12 +39,12 @@ class GNN(nn.Module):
   num_outputs: int
   latent_dim: int = 256
   hidden_dims: Tuple[int] = (256,)
-  dropout_prob: float = 0.1
+  dropout_rate: float = 0.1
   num_message_passing_steps: int = 5
 
   @nn.compact
   def __call__(self, graph, train):
-    dropout = nn.Dropout(rate=self.dropout_prob, deterministic=not train)
+    dropout = nn.Dropout(rate=self.dropout_rate, deterministic=not train)
 
     graph = graph._replace(
         globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))

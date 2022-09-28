@@ -158,14 +158,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_prob: float,
-      aux_dropout_prob: float,
+      dropout_rate: float,
+      aux_dropout_rate: float,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Dropout is unused."""
     del model_state
     del rng
-    del dropout_prob
-    del aux_dropout_prob
+    del dropout_rate
+    del aux_dropout_rate
 
     model = params
 
@@ -255,8 +255,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
-          dropout_prob=0.0,  # Default for ViT, unused in eval anyways.
-          aux_dropout_prob=None,
+          dropout_rate=0.0,  # Default for ViT, unused in eval anyways.
+          aux_dropout_rate=None,
           update_batch_norm=False)
       batch_metrics = self._eval_metric(logits, batch['targets'])
       total_metrics = {

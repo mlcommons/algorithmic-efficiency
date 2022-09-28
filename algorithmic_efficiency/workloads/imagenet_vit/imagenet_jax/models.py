@@ -41,7 +41,7 @@ def get_posemb(self, emb_type, seqshape, width, name, dtype=jnp.float32):
 class MlpBlock(nn.Module):
   """Transformer MLP / feed-forward block."""
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
-  dropout_prob: float = 0.0
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, train=True):
@@ -54,7 +54,7 @@ class MlpBlock(nn.Module):
     d = x.shape[2]
     x = nn.Dense(self.mlp_dim or 4 * d, **inits)(x)
     x = nn.gelu(x)
-    x = nn.Dropout(rate=self.dropout_prob)(x, train)
+    x = nn.Dropout(rate=self.dropout_rate)(x, train)
     x = nn.Dense(d, **inits)(x)
     return x
 
@@ -63,7 +63,7 @@ class Encoder1DBlock(nn.Module):
   """Single transformer encoder block (MHSA + MLP)."""
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
   num_heads: int = 12
-  dropout_prob: float = 0.0
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, train=True):
@@ -75,14 +75,14 @@ class Encoder1DBlock(nn.Module):
         deterministic=train,
         name='MultiHeadDotProductAttention_1')(
             y)
-    y = nn.Dropout(rate=self.dropout_prob)(y, train)
+    y = nn.Dropout(rate=self.dropout_rate)(y, train)
     x = out['+sa'] = x + y
 
     y = nn.LayerNorm(name='LayerNorm_2')(x)
     y = out['mlp'] = MlpBlock(
-        mlp_dim=self.mlp_dim, dropout_prob=self.dropout_prob,
+        mlp_dim=self.mlp_dim, dropout_rate=self.dropout_rate,
         name='MlpBlock_3')(y, train)
-    y = nn.Dropout(rate=self.dropout_prob)(y, train)
+    y = nn.Dropout(rate=self.dropout_rate)(y, train)
     x = out['+mlp'] = x + y
     return x, out
 
@@ -92,7 +92,7 @@ class Encoder(nn.Module):
   depth: int
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
   num_heads: int = 12
-  dropout_prob: float = 0.0
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, train=True):
@@ -104,7 +104,7 @@ class Encoder(nn.Module):
           name=f'encoderblock_{lyr}',
           mlp_dim=self.mlp_dim,
           num_heads=self.num_heads,
-          dropout_prob=self.dropout_prob)
+          dropout_rate=self.dropout_rate)
       x, out[f'block{lyr:02d}'] = block(x, train)
     out['pre_ln'] = x  # Alias for last block, but without the number in it.
 
@@ -129,7 +129,7 @@ class MAPHead(nn.Module):
         num_heads=self.num_heads,
         kernel_init=nn.initializers.xavier_uniform())(probe, x)
 
-    # TODO(lbeyer): dropout_prob on head?
+    # TODO(lbeyer): dropout_rate on head?
     y = nn.LayerNorm()(x)
     x = x + MlpBlock(mlp_dim=self.mlp_dim)(y)
     return x[:, 0]
@@ -146,7 +146,7 @@ class ViT(nn.Module):
   num_heads: int = 12
   posemb: str = 'sincos2d'  # Can also be "learn"
   rep_size: Union[int, bool] = True
-  dropout_prob: float = 0.0
+  dropout_rate: float = 0.0
   pool_type: str = 'gap'  # Can also be 'map' or 'tok'
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
@@ -176,13 +176,13 @@ class ViT(nn.Module):
       x = jnp.concatenate([jnp.tile(cls, [n, 1, 1]), x], axis=1)
 
     n, l, c = x.shape  # pylint: disable=unused-variable
-    x = nn.Dropout(rate=self.dropout_prob)(x, not train)
+    x = nn.Dropout(rate=self.dropout_rate)(x, not train)
 
     x, out['encoder'] = Encoder(
         depth=self.depth,
         mlp_dim=self.mlp_dim,
         num_heads=self.num_heads,
-        dropout_prob=self.dropout_prob,
+        dropout_rate=self.dropout_rate,
         name='Transformer')(
             x, train=not train)
     encoded = out['encoded'] = x

@@ -206,8 +206,8 @@ class Workload(metaclass=abc.ABCMeta):
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
-               dropout_prob: float,
-               aux_dropout_prob: float,
+               dropout_rate: float,
+               aux_dropout_rate: float,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
     # Possible side effect of updating BN.

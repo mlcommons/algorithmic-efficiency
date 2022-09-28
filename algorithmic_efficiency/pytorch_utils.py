@@ -43,22 +43,20 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
     dist.init_process_group('nccl')
 
 
-# DO NOT SUBMIT make sure this works
-def update_dropout(model, dropout_prob):
+def update_dropout(model, dropout_rate):
   # model.modules() returns the model itself as the first element.
   for child in list(model.modules())[1:]:
     if isinstance(child, torch.nn.Dropout):
-      child.p = dropout_prob
-    update_dropout(child, dropout_prob)
+      child.p = dropout_rate
+    update_dropout(child, dropout_rate)
 
 
-# DO NOT SUBMIT make sure this works
-def update_attention_dropout(model, attention_dropout_prob):
+def update_attention_dropout(model, attention_dropout_rate):
   # model.modules() returns the model itself as the first element.
   for child in list(model.modules())[1:]:
     if isinstance(child, torch.nn.TransformerDecoderLayer):
-      child.self_attn.dropout = attention_dropout_prob
-      child.multihead_attn.dropout = attention_dropout_prob
+      child.self_attn.dropout = attention_dropout_rate
+      child.multihead_attn.dropout = attention_dropout_rate
     elif isinstance(child, torch.nn.TransformerEncoderLayer):
-      child.self_attn.dropout = attention_dropout_prob
-    update_dropout(child, attention_dropout_prob)
+      child.self_attn.dropout = attention_dropout_rate
+    update_dropout(child, attention_dropout_rate)

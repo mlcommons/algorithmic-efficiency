@@ -131,25 +131,25 @@ class Transformer(nn.Module):
                nhead: int = 16,
                d_hid: int = 4096,
                nlayers: int = 6,
-               dropout_prob: float = 0.1,
-               attention_dropout_prob: float = 0.1,
+               dropout_rate: float = 0.1,
+               attention_dropout_rate: float = 0.1,
                layer_norm_eps: float = 1e-6):
     super().__init__()
-    self.pos_encoder = PositionalEncoding(d_model, dropout_prob)
+    self.pos_encoder = PositionalEncoding(d_model, dropout_rate)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
     self.encoder = Encoder(d_model,
                            nhead,
                            d_hid,
                            nlayers,
-                           dropout_prob,
-                           attention_dropout_prob,
+                           dropout_rate,
+                           attention_dropout_rate,
                            layer_norm_eps)
     self.decoder = Decoder(d_model,
                            nhead,
                            d_hid,
                            nlayers,
-                           dropout_prob,
-                           attention_dropout_prob,
+                           dropout_rate,
+                           attention_dropout_rate,
                            layer_norm_eps)
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
@@ -212,8 +212,8 @@ class Encoder(nn.Module):
                nhead: int = 16,
                d_hid: int = 4096,
                nlayers: int = 6,
-               dropout_prob: float = 0.1,
-               attention_dropout_prob: float = 0.1,
+               dropout_rate: float = 0.1,
+               attention_dropout_rate: float = 0.1,
                layer_norm_eps: float = 1e-6):
     super().__init__()
     self.nhead = nhead
@@ -223,8 +223,8 @@ class Encoder(nn.Module):
         d_model,
         nhead,
         d_hid,
-        dropout_prob,
-        attention_dropout_prob=attention_dropout_prob,
+        dropout_rate,
+        attention_dropout_rate=attention_dropout_rate,
         layer_norm_eps=layer_norm_eps)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
     self.encoder = nn.TransformerEncoder(encoder_layer, nlayers, encoder_norm)
@@ -248,8 +248,8 @@ class Decoder(nn.Module):
                nhead: int = 16,
                d_hid: int = 4096,
                nlayers: int = 6,
-               dropout_prob: float = 0.1,
-               attention_dropout_prob: float = 0.1,
+               dropout_rate: float = 0.1,
+               attention_dropout_rate: float = 0.1,
                layer_norm_eps: float = 1e-6):
     super().__init__()
     self.nhead = nhead
@@ -258,8 +258,8 @@ class Decoder(nn.Module):
     self.decoder = TransformerDecoder(d_model,
                                       nhead,
                                       d_hid,
-                                      dropout_prob,
-                                      attention_dropout_prob,
+                                      dropout_rate,
+                                      attention_dropout_rate,
                                       layer_norm_eps,
                                       nlayers)
 
@@ -305,10 +305,10 @@ class PositionalEncoding(nn.Module):
 
   def __init__(self,
                d_model: int,
-               dropout_prob: float = 0.1,
+               dropout_rate: float = 0.1,
                max_len: int = 256):
     super().__init__()
-    self.dropout_prob = nn.Dropout(p=dropout_prob)
+    self.dropout_rate = nn.Dropout(p=dropout_rate)
 
     position = torch.arange(max_len).unsqueeze(1)
     scale_factor = -math.log(10000.0) / (d_model // 2 - 1)
@@ -346,14 +346,14 @@ class PositionalEncoding(nn.Module):
         }
       pe = self.pe[0, cache[name]['cache_index'], :]
       cache[name]['cache_index'] += 1
-      return self.dropout_prob(x + pe), cache
+      return self.dropout_rate(x + pe), cache
     if inputs_positions is None:
       # normal unpacked case:
       pe = self.pe[:, :x.size(1), :]
     else:
       # for packed data we need to use known position indices:
       pe = self.pe[0, inputs_positions, :]
-    return self.dropout_prob(x + pe)
+    return self.dropout_rate(x + pe)
 
 
 # TransformerEncoderLayer and TransformerDecoderLayer are taken from:
@@ -373,7 +373,7 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
     nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
         (default=4096).
-    dropout_prob: the dropout_prob value (default=0.1).
+    dropout_rate: the dropout_rate value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
        string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
@@ -399,8 +399,8 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
                d_model: int = 1024,
                nhead: int = 16,
                dim_feedforward: int = 4096,
-               dropout_prob: float = 0.1,
-               attention_dropout_prob: float = 0.1,
+               dropout_rate: float = 0.1,
+               attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                layer_norm_eps: float = 1e-6,
                batch_first: bool = True,
@@ -412,7 +412,7 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
         d_model,
         nhead,
         dim_feedforward=dim_feedforward,
-        dropout=dropout_prob,
+        dropout=dropout_rate,
         activation=activation,
         layer_norm_eps=layer_norm_eps,
         batch_first=batch_first,
@@ -422,7 +422,7 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
     self.self_attn = MultiheadAttention(
         d_model,
         nhead,
-        dropout_prob=attention_dropout_prob,
+        dropout_rate=attention_dropout_rate,
         batch_first=batch_first,
         bias=False,
         **factory_kwargs)
@@ -436,7 +436,7 @@ class TransformerDecoder(nn.Module):
     nhead: the number of heads in the multiheadattention models (default=16).
     d_hid: the dimension of the feedforward network model
         (default=4096).
-    dropout_prob: the dropout_prob value (default=0.1).
+    dropout_rate: the dropout_rate value (default=0.1).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
     decoder_layer: an instance of the TransformerDecoderLayer() class (required)
@@ -454,8 +454,8 @@ class TransformerDecoder(nn.Module):
                d_model,
                nhead,
                d_hid,
-               dropout_prob,
-               attention_dropout_prob,
+               dropout_rate,
+               attention_dropout_rate,
                layer_norm_eps,
                num_layers):
     super().__init__()
@@ -464,8 +464,8 @@ class TransformerDecoder(nn.Module):
             d_model,
             nhead,
             d_hid,
-            dropout_prob,
-            attention_dropout_prob,
+            dropout_rate,
+            attention_dropout_rate,
             layer_norm_eps=layer_norm_eps) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
@@ -526,7 +526,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
     nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
         (default=4096).
-    dropout_prob: the dropout_prob value (default=0.1).
+    dropout_rate: the dropout_rate value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
         string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
@@ -554,8 +554,8 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
                d_model: int = 1024,
                nhead: int = 16,
                dim_feedforward: int = 4096,
-               dropout_prob: float = 0.1,
-               attention_dropout_prob: float = 0.1,
+               dropout_rate: float = 0.1,
+               attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                layer_norm_eps: float = 1e-6,
                batch_first: bool = True,
@@ -567,7 +567,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         d_model,
         nhead,
         dim_feedforward=dim_feedforward,
-        dropout=dropout_prob,
+        dropout=dropout_rate,
         activation=activation,
         layer_norm_eps=layer_norm_eps,
         batch_first=batch_first,
@@ -577,14 +577,14 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
     self.self_attn = MultiheadAttention(
         d_model,
         nhead,
-        dropout_prob=attention_dropout_prob,
+        dropout_rate=attention_dropout_rate,
         batch_first=batch_first,
         bias=False,
         **factory_kwargs)
     self.multihead_attn = MultiheadAttention(
         d_model,
         nhead,
-        dropout_prob=attention_dropout_prob,
+        dropout_rate=attention_dropout_rate,
         batch_first=batch_first,
         bias=False,
         **factory_kwargs)
@@ -675,8 +675,8 @@ class MultiheadAttention(nn.MultiheadAttention):
     num_heads: Number of parallel attention heads. Note that ``embed_dim`` will
         be split across ``num_heads`` (i.e. each head will have dimension
         ``embed_dim // num_heads``).
-    dropout_prob: Dropout probability on ``attn_output_weights``.
-        Default: ``0.0`` (no dropout_prob).
+    dropout_rate: Dropout probability on ``attn_output_weights``.
+        Default: ``0.0`` (no dropout_rate).
     bias: If specified, adds bias to input / output projection layers.
        Default: ``True``.
     add_bias_kv: If specified, adds bias to the key and value sequences at
@@ -697,7 +697,7 @@ class MultiheadAttention(nn.MultiheadAttention):
   def __init__(self,
                embed_dim,
                num_heads,
-               dropout_prob=0.,
+               dropout_rate=0.,
                bias=True,
                add_bias_kv=False,
                add_zero_attn=False,
@@ -709,7 +709,7 @@ class MultiheadAttention(nn.MultiheadAttention):
     super().__init__(
         embed_dim,
         num_heads,
-        dropout=dropout_prob,
+        dropout=dropout_rate,
         bias=bias,
         add_bias_kv=add_bias_kv,
         add_zero_attn=add_zero_attn,
@@ -852,7 +852,7 @@ def multi_head_attention_forward(
     in_proj_bias: Optional[Tensor],
     bias_k: Optional[Tensor],
     bias_v: Optional[Tensor],
-    dropout_prob_p: float,
+    dropout_rate_p: float,
     out_proj_weight: Tensor,
     out_proj_bias: Optional[Tensor],
     training: bool = True,
@@ -873,9 +873,9 @@ def multi_head_attention_forward(
     num_heads: parallel attention heads.
     in_proj_bias: input projection bias.
     bias_k, bias_v: bias of the key and value sequences to be added at dim=0.
-    dropout_prob_p: probability of an element to be zeroed.
+    dropout_rate_p: probability of an element to be zeroed.
     out_proj_weight, out_proj_bias: the output projection weight and bias.
-    training: apply dropout_prob if is ``True``.
+    training: apply dropout_rate if is ``True``.
     need_weights: output attn_output_weights.
     attn_mask: 2D or 3D mask that prevents attention to certain positions.
     A 2D mask will be broadcasted for all
@@ -1051,15 +1051,15 @@ def multi_head_attention_forward(
     new_attn_mask.masked_fill_(attn_mask, -1e10)
     attn_mask = new_attn_mask
 
-  # adjust dropout_prob probability
+  # adjust dropout_rate probability
   if not training:
-    dropout_prob_p = 0.0
+    dropout_rate_p = 0.0
 
   #
   # (deep breath) calculate attention and out projection
   #
   attn_output, attn_output_weights = _scaled_dot_product_attention(
-      q, k, v, attn_mask, dropout_prob_p)
+      q, k, v, attn_mask, dropout_rate_p)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
   attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)

@@ -21,8 +21,8 @@ class TransformerConfig:
   qkv_dim: int = 1024
   mlp_dim: int = 4096
   max_len: int = 256
-  dropout_prob: float = 0.1
-  attention_dropout_prob: float = 0.1
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
   deterministic: bool = False
   decode: bool = False
   kernel_init: Callable = nn.initializers.xavier_uniform()
@@ -151,14 +151,14 @@ class MlpBlock(nn.Module):
         bias_init=cfg.bias_init)(
             inputs)
     x = nn.relu(x)
-    x = nn.Dropout(rate=cfg.dropout_prob)(x, deterministic=cfg.deterministic)
+    x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
     output = nn.Dense(
         actual_out_dim,
         dtype=cfg.dtype,
         kernel_init=cfg.kernel_init,
         bias_init=cfg.bias_init)(
             x)
-    output = nn.Dropout(rate=cfg.dropout_prob)(
+    output = nn.Dropout(rate=cfg.dropout_rate)(
         output, deterministic=cfg.deterministic)
     return output
 
@@ -195,10 +195,10 @@ class Encoder1DBlock(nn.Module):
         bias_init=cfg.bias_init,
         use_bias=False,
         broadcast_dropout=False,
-        dropout_rate=cfg.attention_dropout_prob,
+        dropout_rate=cfg.attention_dropout_rate,
         deterministic=cfg.deterministic)(x, encoder_mask)
 
-    x = nn.Dropout(rate=cfg.dropout_prob)(x, deterministic=cfg.deterministic)
+    x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + inputs
 
     # MLP block.
@@ -246,10 +246,10 @@ class EncoderDecoder1DBlock(nn.Module):
         bias_init=cfg.bias_init,
         use_bias=False,
         broadcast_dropout=False,
-        dropout_rate=cfg.attention_dropout_prob,
+        dropout_rate=cfg.attention_dropout_rate,
         deterministic=cfg.deterministic,
         decode=cfg.decode)(x, decoder_mask)
-    x = nn.Dropout(rate=cfg.dropout_prob)(x, deterministic=cfg.deterministic)
+    x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + targets
 
     # Encoder-Decoder block.
@@ -262,10 +262,10 @@ class EncoderDecoder1DBlock(nn.Module):
         bias_init=cfg.bias_init,
         use_bias=False,
         broadcast_dropout=False,
-        dropout_rate=cfg.attention_dropout_prob,
+        dropout_rate=cfg.attention_dropout_rate,
         deterministic=cfg.deterministic)(y, encoded, encoder_decoder_mask)
 
-    y = nn.Dropout(rate=cfg.dropout_prob)(y, deterministic=cfg.deterministic)
+    y = nn.Dropout(rate=cfg.dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
 
     # MLP block.
@@ -313,7 +313,7 @@ class Encoder(nn.Module):
     x = AddPositionEmbs(
         config=cfg, decode=False, name='posembed_input')(
             x, inputs_positions=inputs_positions)
-    x = nn.Dropout(rate=cfg.dropout_prob)(x, deterministic=cfg.deterministic)
+    x = nn.Dropout(rate=cfg.dropout_rate)(x, deterministic=cfg.deterministic)
 
     x = x.astype(cfg.dtype)
 
@@ -377,7 +377,7 @@ class Decoder(nn.Module):
     y = AddPositionEmbs(
         config=cfg, decode=cfg.decode, name='posembed_output')(
             y, inputs_positions=targets_positions)
-    y = nn.Dropout(rate=cfg.dropout_prob)(y, deterministic=cfg.deterministic)
+    y = nn.Dropout(rate=cfg.dropout_rate)(y, deterministic=cfg.deterministic)
 
     y = y.astype(cfg.dtype)
 
