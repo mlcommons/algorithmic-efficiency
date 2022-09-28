@@ -129,7 +129,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         tensor_list = []
         for key, value in batch.items():
-          tensor = torch.as_tensor(value, dtype=torch.int64, device=DEVICE)
+          tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
           tensor_list.append(tensor)
           batch[key] = (
               tensor[0] if USE_PYTORCH_DDP else tensor.view(
@@ -150,7 +150,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
         tensor = torch.empty((3, N_GPUS, per_device_batch_size, 39),
-                             dtype=torch.int64,
+                             dtype=torch.float32,
                              device=DEVICE)
         dist.broadcast(tensor, src=0)
         # Note that the order of the keys is important.
