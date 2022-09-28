@@ -17,9 +17,6 @@ from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
 class OgbgWorkload(BaseOgbgWorkload):
 
-  def __init__(self):
-    super().__init__()
-
   @property
   def model_params_types(self):
     if self._param_shapes is None:

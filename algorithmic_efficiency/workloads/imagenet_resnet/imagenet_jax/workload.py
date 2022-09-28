@@ -211,8 +211,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       step_eval_rngs = prng.split(eval_rng, jax.local_device_count())
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(
-          params, batch, model_state, step_eval_rngs)
+      synced_metrics = self._eval_model(params,
+                                        batch,
+                                        model_state,
+                                        step_eval_rngs)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

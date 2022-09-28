@@ -303,7 +303,10 @@ class Decoder(nn.Module):
 
 class PositionalEncoding(nn.Module):
 
-  def __init__(self, d_model: int, dropout_prob: float = 0.1, max_len: int = 256):
+  def __init__(self,
+               d_model: int,
+               dropout_prob: float = 0.1,
+               max_len: int = 256):
     super().__init__()
     self.dropout_prob = nn.Dropout(p=dropout_prob)
 
@@ -447,15 +450,14 @@ class TransformerDecoder(nn.Module):
   """
   __constants__ = ['norm']
 
-  def __init__(
-      self,
-      d_model,
-      nhead,
-      d_hid,
-      dropout_prob,
-      attention_dropout_prob,
-      layer_norm_eps,
-      num_layers):
+  def __init__(self,
+               d_model,
+               nhead,
+               d_hid,
+               dropout_prob,
+               attention_dropout_prob,
+               layer_norm_eps,
+               num_layers):
     super().__init__()
     self.layers = nn.ModuleList([
         TransformerDecoderLayer(
@@ -464,8 +466,7 @@ class TransformerDecoder(nn.Module):
             d_hid,
             dropout_prob,
             attention_dropout_prob,
-            layer_norm_eps=layer_norm_eps)
-        for _ in range(num_layers)
+            layer_norm_eps=layer_norm_eps) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
     self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
@@ -674,8 +675,8 @@ class MultiheadAttention(nn.MultiheadAttention):
     num_heads: Number of parallel attention heads. Note that ``embed_dim`` will
         be split across ``num_heads`` (i.e. each head will have dimension
         ``embed_dim // num_heads``).
-    dropout_prob: Dropout probability on ``attn_output_weights``. Default: ``0.0``
-        (no dropout_prob).
+    dropout_prob: Dropout probability on ``attn_output_weights``.
+        Default: ``0.0`` (no dropout_prob).
     bias: If specified, adds bias to input / output projection layers.
        Default: ``True``.
     add_bias_kv: If specified, adds bias to the key and value sequences at

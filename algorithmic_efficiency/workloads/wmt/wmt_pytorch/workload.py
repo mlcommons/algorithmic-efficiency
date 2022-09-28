@@ -10,8 +10,8 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
-from algorithmic_efficiency import spec
 from algorithmic_efficiency import pytorch_utils
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
 from algorithmic_efficiency.interop_utils import pytorch_to_jax
 from algorithmic_efficiency.workloads.wmt import bleu

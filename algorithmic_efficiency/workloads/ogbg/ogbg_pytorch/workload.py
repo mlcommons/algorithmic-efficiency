@@ -9,8 +9,8 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
-from algorithmic_efficiency import spec
 from algorithmic_efficiency import pytorch_utils
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg import metrics
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import GNN
 from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload

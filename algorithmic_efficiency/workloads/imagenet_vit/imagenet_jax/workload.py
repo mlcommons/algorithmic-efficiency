@@ -52,11 +52,10 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     model_kwargs['dropout_prob'] = dropout_prob
     model = models.ViT(**model_kwargs)
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = model.apply(
-        {'params': params},
-        augmented_and_preprocessed_input_batch['inputs'],
-        rngs={'dropout': rng},
-        train=train)
+    logits = model.apply({'params': params},
+                         augmented_and_preprocessed_input_batch['inputs'],
+                         rngs={'dropout': rng},
+                         train=train)
     return logits, None
 
   def _eval_model_on_split(self,

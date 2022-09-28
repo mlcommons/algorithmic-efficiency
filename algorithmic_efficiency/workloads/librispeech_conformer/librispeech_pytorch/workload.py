@@ -10,8 +10,8 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
-from algorithmic_efficiency import spec
 from algorithmic_efficiency import pytorch_utils
+from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
@@ -147,9 +147,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           if USE_PYTORCH_DDP:
             batch[key] = (tensor[0], tensor_paddings[0])
           else:
-            batch[key] = (
-                tensor.view(-1, *value.shape[2:]),
-                tensor_paddings.view(-1, *value_paddings.shape[2:]))
+            batch[key] = (tensor.view(-1, *value.shape[2:]),
+                          tensor_paddings.view(-1, *value_paddings.shape[2:]))
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           # During eval, the batch size of the remainder might be different.
@@ -174,14 +173,16 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         tensors = tensor.split([MAX_INPUT_LENGTH, MAX_INPUT_LENGTH, 256, 256],
                                dim=-1)
         batch = {
-          'inputs': (tensors[0][RANK], tensors[1][RANK]),
-          'targets': (tensors[2][RANK], tensors[3][RANK]),
+            'inputs': (tensors[0][RANK], tensors[1][RANK]),
+            'targets': (tensors[2][RANK], tensors[3][RANK]),
         }
       yield batch
 
-  def _loss_fn(self,
-               label_batch: Tuple[spec.Tensor, spec.Tensor],
-               logits_batch: Tuple[spec.Tensor, spec.Tensor]) -> spec.Tensor:  # differentiable
+  def _loss_fn(
+      self,
+      label_batch: Tuple[spec.Tensor, spec.Tensor],
+      logits_batch: Tuple[spec.Tensor, spec.Tensor]
+  ) -> spec.Tensor:  # differentiable
     targets, target_paddings = label_batch
     logits, logit_paddings = logits_batch
     logprobs = torch.log_softmax(logits, dim=-1)

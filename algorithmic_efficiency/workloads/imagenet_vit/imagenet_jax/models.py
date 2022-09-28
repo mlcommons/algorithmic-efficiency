@@ -73,14 +73,14 @@ class Encoder1DBlock(nn.Module):
         num_heads=self.num_heads,
         kernel_init=nn.initializers.xavier_uniform(),
         deterministic=train,
-        name='MultiHeadDotProductAttention_1')(y)
+        name='MultiHeadDotProductAttention_1')(
+            y)
     y = nn.Dropout(rate=self.dropout_prob)(y, train)
     x = out['+sa'] = x + y
 
     y = nn.LayerNorm(name='LayerNorm_2')(x)
     y = out['mlp'] = MlpBlock(
-        mlp_dim=self.mlp_dim,
-        dropout_prob=self.dropout_prob,
+        mlp_dim=self.mlp_dim, dropout_prob=self.dropout_prob,
         name='MlpBlock_3')(y, train)
     y = nn.Dropout(rate=self.dropout_prob)(y, train)
     x = out['+mlp'] = x + y

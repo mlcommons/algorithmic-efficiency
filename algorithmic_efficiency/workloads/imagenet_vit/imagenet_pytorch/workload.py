@@ -6,8 +6,8 @@ from typing import Dict, Tuple
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algorithmic_efficiency import spec
 from algorithmic_efficiency import pytorch_utils
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
     ImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch import \

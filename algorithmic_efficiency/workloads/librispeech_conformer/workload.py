@@ -142,12 +142,10 @@ class BaseLibrispeechWorkload(spec.Workload):
       return np.pad(ar, pw, mode='constant', constant_values=padding_value)
 
     padded_batch = {
-      'inputs': (
-          zero_pad(inputs, batch_axis),
-          zero_pad(input_paddings, batch_axis)),
-      'targets': (
-          zero_pad(targets, batch_axis),
-          zero_pad(target_paddings, batch_axis))
+        'inputs': (zero_pad(inputs, batch_axis),
+                   zero_pad(input_paddings, batch_axis)),
+        'targets': (zero_pad(targets, batch_axis),
+                    zero_pad(target_paddings, batch_axis))
     }
     return padded_batch
 

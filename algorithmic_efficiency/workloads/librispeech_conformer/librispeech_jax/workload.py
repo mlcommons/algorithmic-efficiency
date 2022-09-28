@@ -71,8 +71,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     model_config = models.ConformerConfig(
-        residual_dropout_prob=dropout_prob,
-        input_dropout_prob=aux_dropout_prob)
+        residual_dropout_prob=dropout_prob, input_dropout_prob=aux_dropout_prob)
     model = models.Conformer(model_config)
     if is_train_mode:
       (logits, logit_paddings), new_model_state = model.apply(
