@@ -158,7 +158,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         keys = ['inputs', 'weights', 'targets']
         batch = {}
         for key, n in zip(keys, range(3)):
-          batch[key] = tensors[n][RANK]
+          batch[key] = tensor[n][RANK]
       yield batch
 
   def _eval_batch(self, params, batch):
