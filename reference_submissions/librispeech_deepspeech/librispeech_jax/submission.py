@@ -4,7 +4,6 @@ import operator
 from typing import Dict, Iterator, List, Tuple
 
 from absl import logging
-import flax
 from flax import jax_utils
 import jax
 from jax import lax
@@ -173,7 +172,11 @@ def update_params(workload,
 
   pmapped_update_step = jax.pmap(
       update_fn, axis_name='batch', in_axes=(0, 0, 0, 0))
-  new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(batch, current_param_container, model_state, optimizer_state)
+  new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(  # pylint: disable=line-too-long
+    batch,
+    current_param_container,
+    model_state,
+    optimizer_state)
 
   print('{}) loss = {}, grad_norm = {}'.format(global_step,
                                                loss.mean(),
