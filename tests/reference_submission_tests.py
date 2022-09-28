@@ -16,20 +16,27 @@ import importlib
 import json
 import os
 
+# Make sure no GPU memory is preallocated to Jax.
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+
 from absl import flags
 from absl import logging
 from absl.testing import absltest
 import flax
 import jax
-import jraph
 import numpy as np
 import tensorflow as tf
 import torch
+import torch.distributed as dist
 
 from algorithmic_efficiency import halton
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import random_utils as prng
+from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.workloads.ogbg import \
     input_pipeline as ogbg_input_pipeline
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
+    _graph_map
 import submission_runner
 
 flags.DEFINE_integer(
@@ -43,7 +50,7 @@ flags.DEFINE_boolean(
     False,
     'Run all workloads instead of using --workload and --framework.')
 FLAGS = flags.FLAGS
-PYTORCH_DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, _ = pytorch_utils.pytorch_setup()
 
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
@@ -72,28 +79,12 @@ def _make_fake_image_batch(batch_shape, data_shape, num_classes):
   return {'inputs': examples, 'targets': labels, 'weights': masks}
 
 
-def _tile(x):
-  # Go from n_node.shape = (1,) -> (local_device_count, 1).
-  return np.tile(
-      np.expand_dims(x, axis=0),
-      (jax.local_device_count(), *[1] * len(x.shape)))
-
-
-def _graph_tuple_to_device(graph_tuple):
-  return jraph.GraphsTuple(
-      n_node=torch.from_numpy(graph_tuple.n_node).to(
-          PYTORCH_DEVICE, dtype=torch.long),
-      n_edge=torch.from_numpy(graph_tuple.n_edge).to(
-          PYTORCH_DEVICE, dtype=torch.long),
-      nodes=torch.from_numpy(graph_tuple.nodes).to(
-          PYTORCH_DEVICE, dtype=torch.float),
-      edges=torch.from_numpy(graph_tuple.edges).to(
-          PYTORCH_DEVICE, dtype=torch.float),
-      globals=graph_tuple.globals,
-      senders=torch.from_numpy(graph_tuple.senders).to(
-          PYTORCH_DEVICE, dtype=torch.long),
-      receivers=torch.from_numpy(graph_tuple.receivers).to(
-          PYTORCH_DEVICE, dtype=torch.long))
+def _pytorch_map(inputs):
+  if USE_PYTORCH_DDP:
+    return jax.tree_map(
+        lambda a: torch.as_tensor(a[RANK], device=PYTORCH_DEVICE), inputs)
+  return jax.tree_map(lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE),
+                      inputs)
 
 
 class _FakeTokenizer:
@@ -164,7 +155,7 @@ def _make_one_batch_workload(workload_class,
       del kwargs
 
       np.random.seed(42)
-      if framework == 'jax':
+      if framework == 'jax' or USE_PYTORCH_DDP:
         num_devices = jax.local_device_count()
         batch_shape = (num_devices, global_batch_size // num_devices)
       else:
@@ -199,13 +190,12 @@ def _make_one_batch_workload(workload_class,
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=(28, 28, 1), num_classes=10)
       elif workload_name == 'ogbg':
-        # TODO(znado): fix the memory usage of this for pytorch.
         fake_batch = {
-            'edge_feat': tf.ones((1,)),
-            'node_feat': tf.ones((1,)),
-            'edge_index': tf.ones((1, 2)),
-            'labels': tf.ones((1,)),
-            'num_nodes': tf.ones((1,)),
+            'edge_feat': tf.ones((1, 3)),
+            'node_feat': tf.ones((1, 9)),
+            'edge_index': tf.ones((1, 2), dtype=tf.int64),
+            'labels': tf.ones((self._num_outputs,)),
+            'num_nodes': tf.ones((1,), dtype=tf.int64),
         }
 
         def _fake_iter():
@@ -216,7 +206,7 @@ def _make_one_batch_workload(workload_class,
             _fake_iter(), global_batch_size)
         fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
-          fake_batch['inputs'] = _graph_tuple_to_device(fake_batch['inputs'])
+          fake_batch['inputs'] = _graph_map(_pytorch_map, fake_batch['inputs'])
       elif workload_name == 'wmt':
         max_len = 256
         fake_batch = {
@@ -242,8 +232,12 @@ def _make_one_batch_workload(workload_class,
       if framework == 'pytorch':
 
         def to_device(k, v):
-          dtype = torch.long if k in ['targets', 'weights'] else torch.float
-          return torch.from_numpy(v).to(PYTORCH_DEVICE, dtype=dtype)
+          dtype = (
+              torch.long if k == 'targets' else
+              torch.bool if k == 'weights' else torch.float)
+          if USE_PYTORCH_DDP:
+            v = v[RANK]
+          return torch.as_tensor(v, device=PYTORCH_DEVICE, dtype=dtype)
 
         new_fake_batch = {}
         for k, v in fake_batch.items():
@@ -293,8 +287,8 @@ def _test_submission(workload_name,
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
   if FLAGS.run_all:
-    if FLAGS.batch_size < 0:
-      raise ValueError('Cannot set --batch_size and --run_all.')
+    if FLAGS.global_batch_size > 0:
+      raise ValueError('Cannot set --global_batch_size and --run_all.')
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size
@@ -383,6 +377,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
       self.assertIn(expected_name, actual_names)
 
   def test_submission(self):
+    profiler = PassThroughProfiler()
     # Example: /home/znado/algorithmic-efficiency/tests
     self_location = os.path.dirname(os.path.realpath(__file__))
     # Example: /home/znado/algorithmic-efficiency
@@ -391,6 +386,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
       references_dir = f'{repo_location}/reference_submissions'
       for workload_name in os.listdir(references_dir):
         for framework in ['jax', 'pytorch']:
+          if framework == 'pytorch':
+            pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
           search_space_path, submission_path = _make_paths(
               repo_location, framework, workload_name)
           if search_space_path is None:
@@ -400,11 +397,13 @@ class ReferenceSubmissionTest(absltest.TestCase):
               framework,
               submission_path,
               search_space_path,
-              data_dir=None,
+              data_dir=FLAGS.data_dir,
               use_fake_input_queue=FLAGS.use_fake_input_queue)
           self._assert_eval_result(workload_name, eval_result)
     else:
       framework = FLAGS.framework
+      if framework == 'pytorch':
+        pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
       workload_name = FLAGS.workload
       search_space_path, submission_path = _make_paths(
           repo_location, framework, workload_name)
@@ -413,9 +412,13 @@ class ReferenceSubmissionTest(absltest.TestCase):
           framework,
           submission_path,
           search_space_path,
-          data_dir=None,
+          data_dir=FLAGS.data_dir,
           use_fake_input_queue=FLAGS.use_fake_input_queue)
       self._assert_eval_result(workload_name, eval_result)
+
+    if USE_PYTORCH_DDP:
+      # cleanup
+      dist.destroy_process_group()
 
 
 if __name__ == '__main__':
