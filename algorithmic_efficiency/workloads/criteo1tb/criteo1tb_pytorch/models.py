@@ -3,7 +3,7 @@
 import math
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 def dot_interact(concat_features):
@@ -55,7 +55,7 @@ class DlrmSmall(nn.Module):
                mlp_bottom_dims=(512, 256, 128),
                mlp_top_dims=(1024, 1024, 512, 256, 1),
                embed_dim=128):
-    super(DlrmSmall, self).__init__()
+    super().__init__()
     self.vocab_sizes = torch.tensor(vocab_sizes, dtype=torch.int32)
     self.total_vocab_sizes = total_vocab_sizes
     self.num_dense_features = num_dense_features
@@ -96,10 +96,8 @@ class DlrmSmall(nn.Module):
                         math.sqrt(1. / module.out_features))
 
     # top mlp
-    # precomputed dot interaction self input_dim
-    # number of sparse features = 26
-    input_dims = ((self.num_sparse_features + 1) *
-                  (self.num_sparse_features + 1 + 1)) // 2 + self.embed_dim
+    # TODO (JB): Write down the formula here instead of the constant.
+    input_dims = 534
     top_mlp_layers = []
     num_layers_top = len(self.mlp_top_dims)
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
@@ -120,7 +118,8 @@ class DlrmSmall(nn.Module):
                         math.sqrt(1. / module.out_features))
 
   def forward(self, x):
-    bot_mlp_input, cat_features = torch.split(x, [self.num_dense_features, self.num_sparse_features], 1)
+    bot_mlp_input, cat_features = \
+      torch.split(x, [self.num_dense_features, self.num_sparse_features], 1)
     cat_features = cat_features.to(dtype=torch.int32)
     bot_mlp_output = self.bot_mlp(bot_mlp_input)
     batch_size = bot_mlp_output.shape[0]

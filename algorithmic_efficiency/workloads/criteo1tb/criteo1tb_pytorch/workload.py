@@ -1,13 +1,14 @@
 """Criteo1TB workload implemented in PyTorch."""
 import contextlib
-import math
 from typing import Dict, Optional, Tuple
 
 import jax
+import numpy as np
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-import numpy as np
+
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import \
@@ -16,7 +17,6 @@ from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import 
     DlrmSmall
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
-from algorithmic_efficiency import param_utils
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -67,7 +67,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
     }
-    model.to(DEVICE)
+    # model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
