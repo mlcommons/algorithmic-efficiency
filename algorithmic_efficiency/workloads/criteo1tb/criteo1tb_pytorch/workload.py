@@ -154,10 +154,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                              device=DEVICE)
         dist.broadcast(tensor, src=0)
         # Note that the order of the keys is important.
+        tensors = tensor.split([[39, 1]], dim=-1)
         keys = ['inputs', 'weights', 'targets']
         batch = {}
         for key, n in zip(keys, range(3)):
-          batch[key] = tensor[n][RANK]
+          batch[key] = tensors[n][RANK]
       yield batch
 
   def _eval_batch(self, params, batch):
