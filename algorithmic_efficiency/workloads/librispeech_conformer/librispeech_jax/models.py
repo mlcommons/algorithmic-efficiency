@@ -289,7 +289,7 @@ def dot_product_attention(query,
                           mask=None,
                           broadcast_dropout=True,
                           dropout_rng=None,
-                          dropout_prob=0.,
+                          dropout_rate=0.,
                           deterministic=False,
                           dtype=jnp.float32,
                           precision=None):
@@ -320,7 +320,7 @@ def dot_product_attention(query,
       is `False`.
     broadcast_dropout: bool: use a broadcasted dropout along batch dims.
     dropout_rng: JAX PRNGKey: to be used for dropout
-    dropout_prob: dropout rate
+    dropout_rate: dropout rate
     deterministic: bool, deterministic or not (to apply dropout)
     dtype: the dtype of the computation (default: float32)
     precision: numerical precision of the computation see `jax.lax.Precision`
@@ -345,7 +345,7 @@ def dot_product_attention(query,
       mask,
       broadcast_dropout,
       dropout_rng,
-      dropout_prob,
+      dropout_rate,
       deterministic,
       dtype,
       precision)
@@ -385,7 +385,7 @@ class MultiHeadedSelfAttention(nn.Module):
         use_bias=True,
         broadcast_dropout=False,
         attention_fn=dot_product_attention,
-        dropout_prob=config.attention_dropout_prob,
+        dropout_rate=config.attention_dropout_prob,
         deterministic=not train)(inputs, attention_mask)
 
     result = nn.Dropout(

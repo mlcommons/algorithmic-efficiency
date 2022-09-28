@@ -254,10 +254,9 @@ class LibriSpeechWorkload(spec.Workload):
           t = transcripts[k].detach().cpu().tolist()
           tlength = len(t)
           tt = ''.join([self._rev_label_dict[i] for i in t])
-          print(tt, hyp)
           error = levenshtein_distance(tt, hh)
           total_error += error
           total_length += tlength
 
     wer = total_error / total_length
-    return {'word_error_rate': wer}
+    return {'wer': wer}

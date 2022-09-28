@@ -44,8 +44,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
 
-  def init_metrics_bundle(self, tokenizer_vocab_path):
-    logging.info('Initializing metrics bundle.')
+  def init_tokenizer(self, tokenizer_vocab_path):
+    logging.info('Initializing metrics bundle and tokenizer.')
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
 
   def model_fn(
@@ -70,9 +70,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     is_train_mode = (mode == spec.ForwardPassMode.TRAIN)
 
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
-    model_config = models.ConformerConfig()
-    model_config.residual_dropout_prob = dropout_prob
-    model_config.input_dropout_prob = aux_dropout_prob
+    model_config = models.ConformerConfig(
+        residual_dropout_prob=dropout_prob,
+        input_dropout_prob=aux_dropout_prob)
     model = models.Conformer(model_config)
     if is_train_mode:
       (logits, logit_paddings), new_model_state = model.apply(
@@ -244,14 +244,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     """Run a full evaluation of the model."""
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
-      logging.info('syncing batch_stats across replicas before eval.')
       model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
-    logging.info('split = %s, num_examples = %d, num_batches = %d',
-                 split,
-                 num_examples,
-                 num_batches)
 
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(

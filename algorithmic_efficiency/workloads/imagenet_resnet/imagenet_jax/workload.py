@@ -12,6 +12,7 @@ import optax
 import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
@@ -111,16 +112,16 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   @functools.partial(
       jax.pmap,
       axis_name='batch',
-      in_axes=(None, 0, 0, 0),
+      in_axes=(None, 0, 0, 0, 0),
       static_broadcasted_argnums=(0,))
-  def _eval_model(self, params, batch, state):
+  def _eval_model(self, params, batch, state, rng):
     logits, _ = self.model_fn(
         params,
         batch,
         state,
         spec.ForwardPassMode.EVAL,
-        rng=None,
-        dropout_prob=None,
+        rng=rng,
+        dropout_prob=0.0,  # Default for ViT, unused in eval anyways.
         aux_dropout_prob=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
@@ -192,10 +193,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       # Sync batch statistics across replicas before evaluating.
       model_state = self.sync_batch_stats(model_state)
     num_batches = int(math.ceil(num_examples / global_batch_size))
+    data_rng, eval_rng = prng.split(rng, 2)
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
       self._eval_iters[split] = self.build_input_queue(
-          rng,
+          data_rng,
           split=split,
           global_batch_size=global_batch_size,
           data_dir=data_dir,
@@ -204,10 +206,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           num_batches=num_batches)
 
     eval_metrics = {}
-    for _ in range(num_batches):
+    for bi in range(num_batches):
+      eval_rng = prng.fold_in(eval_rng, bi)
+      step_eval_rngs = prng.split(eval_rng, jax.local_device_count())
       batch = next(self._eval_iters[split])
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params, batch, model_state)
+      synced_metrics = self._eval_model(
+          params, batch, model_state, step_eval_rngs)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

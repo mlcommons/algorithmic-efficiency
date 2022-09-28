@@ -219,7 +219,7 @@ def train_once(
 
   logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
-    workload.init_metrics_bundle(tokenizer_vocab_path)
+    workload.init_tokenizer(tokenizer_vocab_path)
   if wandb is not None and RANK == 0:
     wandb.init()
 
@@ -264,7 +264,7 @@ def train_once(
     except spec.TrainingCompleteError:
       training_complete = True
     except RuntimeError as e:
-      if "out of memory" in str(e):
+      if 'out of memory' in str(e):
         logging.warning(
             f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
         )

@@ -52,7 +52,6 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     model_kwargs['dropout_prob'] = dropout_prob
     model = models.ViT(**model_kwargs)
     train = mode == spec.ForwardPassMode.TRAIN
-    print(rng)
     logits = model.apply(
         {'params': params},
         augmented_and_preprocessed_input_batch['inputs'],

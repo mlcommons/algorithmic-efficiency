@@ -55,11 +55,11 @@ def update_params(
   if hasattr(hyperparameters, 'input_dropout_prob'):
     input_dropout_prob = hyperparameters.input_dropout_prob
   else:
-    input_dropout_prob = None
+    input_dropout_prob = 0.1
   if hasattr(hyperparameters, 'residual_dropout_prob'):
     residual_dropout_prob = hyperparameters.residual_dropout_prob
   else:
-    residual_dropout_prob = None
+    residual_dropout_prob = 0.1
 
   optimizer_state.zero_grad()
   current_model = current_param_container
@@ -73,9 +73,7 @@ def update_params(
       aux_dropout_prob=input_dropout_prob,
       update_batch_norm=True)
 
-  train_ctc_loss = workload.compute_loss(
-      logits, logits_padding, batch['targets'],
-      batch["target_paddings"])['average_loss']
+  train_ctc_loss = workload.loss_fn(batch['targets'], (logits, logits_padding))
   train_ctc_loss.backward()
   grad_clip = hyperparameters.grad_clip
   for g in optimizer_state.param_groups:

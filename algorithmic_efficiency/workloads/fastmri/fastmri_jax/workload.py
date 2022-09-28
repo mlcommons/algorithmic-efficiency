@@ -134,7 +134,6 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   std = std.reshape((-1,) + (1,) * (len(logits.shape) - 1))
   logits = logits * std + mean
   targets = targets * std + mean
-  print(logits.shape, targets.shape, volume_max.shape)
   ssims = jax.vmap(structural_similarity)(logits, targets, volume_max)
   return ssims
 

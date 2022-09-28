@@ -211,11 +211,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
 
     with contexts[mode]():
-      targets_batch = model(
+      logit_batch = model(
           augmented_and_preprocessed_input_batch['inputs'].unsqueeze(
               1)).squeeze(1)
 
-    return targets_batch, None
+    return logit_batch, None
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,

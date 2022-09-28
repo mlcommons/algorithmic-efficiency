@@ -50,7 +50,7 @@ def update_params(workload: spec.Workload,
       hyperparameters.label_smoothing if hasattr(hyperparameters,
                                                  'label_smoothing') else 0.0)
   loss = workload.loss_fn(
-      targets_batch=batch['targets'],
+      label_batch=batch['targets'],
       outputs_batch=outputs_batch,
       label_smoothing=label_smoothing).mean()
 

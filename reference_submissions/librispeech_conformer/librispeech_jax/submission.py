@@ -91,11 +91,11 @@ def pmapped_train_step(workload,
   if hasattr(hyperparameters, 'input_dropout_prob'):
     input_dropout_prob = hyperparameters.input_dropout_prob
   else:
-    input_dropout_prob = None
+    input_dropout_prob = 0.1
   if hasattr(hyperparameters, 'residual_dropout_prob'):
     residual_dropout_prob = hyperparameters.residual_dropout_prob
   else:
-    residual_dropout_prob = None
+    residual_dropout_prob = 0.1
 
   def _loss_fn(params):
     """loss function used for training."""
@@ -104,10 +104,11 @@ def pmapped_train_step(workload,
         params,
         batch,
         model_state,
+        mode=spec.ForwardPassMode.TRAIN,
+        rng={'params' : params_rng, 'dropout' : dropout_rng},
         dropout_prob=residual_dropout_prob,
         aux_dropout_prob=input_dropout_prob,
-        mode=spec.ForwardPassMode.TRAIN,
-        rng={'params' : params_rng, 'dropout' : dropout_rng})
+        update_batch_norm=False)
 
     loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))
     return loss, new_model_state

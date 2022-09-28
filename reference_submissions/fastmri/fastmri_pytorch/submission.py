@@ -55,7 +55,6 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
-  del hyperparameters
   del loss_type
   del eval_results
 
@@ -78,7 +77,7 @@ def update_params(
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      targets_batch=batch['targets'], logits_batch=outputs_batch).mean()
+      label_batch=batch['targets'], logits_batch=outputs_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()

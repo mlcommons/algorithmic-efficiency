@@ -656,7 +656,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         max_len=max_len,
         cache=cache,
         index=index)
-    return self.dropout_prob1(x), cache
+    return self.dropout1(x), cache
 
 
 # Only difference to standard PyTorch class is that 'self._qkv_same_embed_dim'
@@ -824,7 +824,7 @@ class MultiheadAttention(nn.MultiheadAttention):
     attn_output, attn_output_weights, loc_cache = multi_head_attention_forward(
         query, key, value, self.embed_dim, self.num_heads,
         self.in_proj_bias, self.bias_k, self.bias_v,
-        self.dropout_prob, self.out_proj.weight, self.out_proj.bias,
+        self.dropout, self.out_proj.weight, self.out_proj.bias,
         training=self.training, need_weights=need_weights, attn_mask=attn_mask,
         q_proj_weight=self.q_proj_weight,
         k_proj_weight=self.k_proj_weight,
