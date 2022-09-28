@@ -41,7 +41,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   scheduler2 = CosineAnnealingLR(
       optimizer_state['optimizer'],
-      T_max=(workload.step_hint - hyperparameters.warmup_steps),
+      T_max=(hyperparameters.step_hint - hyperparameters.warmup_steps),
   )
 
   optimizer_state['scheduler'] = SequentialLR(
