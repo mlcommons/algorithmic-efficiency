@@ -49,7 +49,7 @@ class MeanAveragePrecision(
         all_values[idx] = torch.cat(all_tensors).cpu().numpy()
       labels, logits, mask = all_values
 
-    mask = mask.astype(np.bool)
+    mask = mask.astype(bool)
 
     probs = jax.nn.sigmoid(logits)
     num_tasks = labels.shape[1]

@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import numpy as np
 import torch
 
-from algorithmic_efficiency.pytorch_utils import jax_to_pytorch
+from algorithmic_efficiency.interop_utils import jax_to_pytorch
 
 # Constants
 # We assume the default End-of-Sentence token id is 2 (SentencePiece).

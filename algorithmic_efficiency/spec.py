@@ -223,7 +223,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def loss_fn(
       self,
-      # Dense (not one-hot) labels, or a tuple of (tensor, padding) for speech.
+      # Dense or one-hot labels, or a tuple of (tensor, padding) for speech.
       label_batch: Union[Tuple[Tensor, Tensor], Tensor],
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
@@ -252,6 +252,7 @@ class Workload(metaclass=abc.ABCMeta):
                  model_state: ModelAuxiliaryState,
                  rng: RandomState,
                  data_dir: str,
+                 imagenet_v2_data_dir: Optional[str],
                  global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')
@@ -266,35 +267,35 @@ class Workload(metaclass=abc.ABCMeta):
         global_step=global_step)
     eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     # We always require a validation set.
-    # logging.info('Evaluating on the validation split.')
-    # validation_metrics = self._eval_model_on_split(
-    #     'validation',
-    #     num_examples=self.num_validation_examples,
-    #     global_batch_size=global_batch_size,
-    #     params=params,
-    #     model_state=model_state,
-    #     rng=rng,
-    #     data_dir=data_dir,
-    #     global_step=global_step)
-    # for k, v in validation_metrics.items():
-    #   eval_metrics['validation/' + k] = v
-    # # Evaluate on the test set if we have one.
-    # try:
-    #   if self.num_test_examples is not None:
-    #     logging.info('Evaluating on the test split.')
-    #     test_metrics = self._eval_model_on_split(
-    #         'test',
-    #         num_examples=self.num_test_examples,
-    #         global_batch_size=global_batch_size,
-    #         params=params,
-    #         model_state=model_state,
-    #         rng=rng,
-    #         data_dir=data_dir,
-    #         global_step=global_step)
-    #     for k, v in test_metrics.items():
-    #       eval_metrics['test/' + k] = v
-    # except NotImplementedError:
-    #   pass
+    logging.info('Evaluating on the validation split.')
+    validation_metrics = self._eval_model_on_split(
+        'validation',
+        num_examples=self.num_validation_examples,
+        global_batch_size=global_batch_size,
+        params=params,
+        model_state=model_state,
+        rng=rng,
+        data_dir=data_dir,
+        global_step=global_step)
+    for k, v in validation_metrics.items():
+      eval_metrics['validation/' + k] = v
+    # Evaluate on the test set. TODO(znado): always eval on the test set.
+    try:
+      if self.num_test_examples is not None:
+        logging.info('Evaluating on the test split.')
+        test_metrics = self._eval_model_on_split(
+            'test',
+            num_examples=self.num_test_examples,
+            global_batch_size=global_batch_size,
+            params=params,
+            model_state=model_state,
+            rng=rng,
+            data_dir=imagenet_v2_data_dir if imagenet_v2_data_dir else data_dir,
+            global_step=global_step)
+        for k, v in test_metrics.items():
+          eval_metrics['test/' + k] = v
+    except NotImplementedError:
+      pass
     return eval_metrics
 
 

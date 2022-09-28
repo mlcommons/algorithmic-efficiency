@@ -284,6 +284,7 @@ def train_once(
                                                    model_state,
                                                    eval_rng,
                                                    data_dir,
+                                                   imagenet_v2_data_dir,
                                                    global_step)
           logging.info('%.2fs \t%d \t%s',
                        current_time - global_start_time,
