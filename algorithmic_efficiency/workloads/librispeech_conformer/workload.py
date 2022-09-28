@@ -21,7 +21,7 @@ class BaseLibrispeechWorkload(spec.Workload):
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['train/wer'] < self.target_value
+    return eval_result['validation/wer'] < self.target_value
 
   @property
   def target_value(self):
