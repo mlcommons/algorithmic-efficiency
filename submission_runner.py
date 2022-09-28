@@ -117,7 +117,8 @@ flags.DEFINE_enum(
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-flags.DEFINE_boolean('wandb', False,
+flags.DEFINE_boolean('wandb',
+                     False,
                      'Whether to monitor the results with Wandb.')
 
 flags.DEFINE_string('summary_log_dir',
