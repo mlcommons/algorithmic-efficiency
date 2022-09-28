@@ -437,7 +437,7 @@ def main(_):
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
   if FLAGS.wandb and wandb is not None and RANK == 0:
-    wandb.log({"score": score})
+    wandb.log({'score': score})
     wandb.finish()
 
   if FLAGS.profile:
