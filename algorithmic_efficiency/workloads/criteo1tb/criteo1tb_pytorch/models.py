@@ -120,6 +120,7 @@ class DlrmSmall(nn.Module):
                         math.sqrt(1. / module.out_features))
 
   def forward(self, x):
+    print(x.shape)
     bot_mlp_input, cat_features = torch.split(x, [self.num_dense_features, self.num_sparse_features], 1)
     cat_features = cat_features.to(dtype=torch.int32)
     bot_mlp_output = self.bot_mlp(bot_mlp_input)
