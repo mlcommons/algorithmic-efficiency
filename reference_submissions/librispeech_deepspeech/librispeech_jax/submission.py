@@ -123,15 +123,15 @@ def update_step(
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(params)
 
-  loss, grad = lax.pmean((loss, grad), axis_name='batch')
   grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
 
-  # grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
-  # grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
+  grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+  grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
 
-  # grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
-
+  grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
+  loss, grad = lax.pmean((loss, grad), axis_name='batch')
+  
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
   updated_params = optax.apply_updates(params, updates)
 
@@ -173,63 +173,6 @@ def update_params(
   print('{}) loss = {}, grad_norm = {}'.format(global_step, loss.mean(), grad_norm.mean()))
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
-
-
-# def update_params(
-#     workload: spec.Workload,
-#     current_param_container: spec.ParameterContainer,
-#     current_params_types: spec.ParameterTypeTree,
-#     model_state: spec.ModelAuxiliaryState,
-#     hyperparameters: spec.Hyperparameters,
-#     batch: Dict[str, spec.Tensor],
-#     # This will define the output activation via `output_activation_fn`.
-#     loss_type: spec.LossType,
-#     optimizer_state: spec.OptimizerState,
-#     eval_results: List[Tuple[int, float]],
-#     global_step: int,
-#     rng: spec.RandomState) -> spec.UpdateReturn:
-#   """Return (updated_optimizer_state, updated_params)."""
-
-
-#   print('in update params in submission')
-#   lr = workload.get_learning_rate(global_step, hyperparameters)
-#   optimizer_state, opt_update_fn = optimizer_state
-#   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-#   print('before pmapped_update')
-
-#   # @functools.partial(
-#   #   jax.pmap,
-#   #   axis_name='batch',
-#   #   in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
-#   #   static_broadcasted_argnums=(0, 1))
-
-#   update_fn = functools.partial(
-#     update_step, 
-#     workload=workload, 
-#     hyperparameters=hyperparameters,
-#     opt_update_fn=opt_update_fn,
-#     lr=lr,
-#     rng=rng)
-
-#   pmapped_update_step = jax.pmap(update_fn, axis_name='batch', in_axes=(0,0,0,0))
-#   new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(  # pylint: disable=line-too-long
-#       batch, current_param_container, model_state, optimizer_state)
-  
-#   print('after applying updates inside submission')
-#   print('loss = ', loss.mean())
-#   logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
-#                  global_step,
-#                  loss.mean(),
-#                  grad_norm.mean(),
-#                  lr)
-#   if global_step <= 1000 or global_step % 100 == 0:
-#     workload.summary_writer.scalar('train_step_ctc_loss',
-#                                    loss.mean(),
-#                                    global_step)
-#     workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
-#     workload.summary_writer.scalar('learning_rate', lr, global_step)
-
-#   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or

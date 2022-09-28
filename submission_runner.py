@@ -123,10 +123,6 @@ flags.DEFINE_string('summary_log_dir',
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
-flags.DEFINE_integer('num_training_steps',
-                     -1,
-                     'The number of total training steps to run, this flag is used for debugging purposes.')
-
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
