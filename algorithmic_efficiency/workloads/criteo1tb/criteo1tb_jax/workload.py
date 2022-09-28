@@ -1,3 +1,4 @@
+"""Criteo1TB workload implemented in Jax."""
 import functools
 from typing import Dict, Optional, Tuple
 
@@ -15,7 +16,6 @@ from algorithmic_efficiency.workloads.criteo1tb.workload import \
 
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
-  """Criteo1TB DLRM-Small Jax workload."""
 
   @property
   def model_params_types(self):
