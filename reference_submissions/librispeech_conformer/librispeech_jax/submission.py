@@ -148,11 +148,11 @@ def update_params(
 
   if global_step <= 1000 or global_step % 100 == 0:
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
-                global_step,
-                loss.mean(),
-                grad_norm.mean(),
-                lr)
- 
+                 global_step,
+                 loss.mean(),
+                 grad_norm.mean(),
+                 lr)
+
     if workload.summary_writer is not None:
       workload.summary_writer.scalar('train_step_ctc_loss',
                                      loss.mean(),

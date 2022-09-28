@@ -23,7 +23,6 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax impo
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
 
-
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]
 PRNGKey = Any
@@ -96,17 +95,20 @@ class Subsample(nn.Module):
     outputs = nn.Dense(
         config.encoder_dim,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(outputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            outputs)
 
     outputs = nn.Dropout(
-        rate=config.input_dropout_rate, deterministic=not train)(outputs)
+        rate=config.input_dropout_rate, deterministic=not train)(
+            outputs)
 
     return outputs, output_paddings
 
 
 @jax.jit
 def hard_tanh(x, min_value, max_value):
-  return jnp.where(x < min_value, min_value,
+  return jnp.where(x < min_value,
+                   min_value,
                    jnp.where(x > max_value, max_value, x))
 
 
@@ -128,10 +130,11 @@ class Conv2dSubsampling(nn.Module):
 
   def setup(self):
     self.filter_shape = (3, 3, self.input_channels, self.output_channels)
-    self.kernel = self.param('kernel', nn.initializers.xavier_uniform(),
+    self.kernel = self.param('kernel',
+                             nn.initializers.xavier_uniform(),
                              self.filter_shape)
-    self.bias = self.param('bias', lambda rng, s: jnp.zeros(s, jnp.float32),
-                           self.output_channels)
+    self.bias = self.param(
+        'bias', lambda rng, s: jnp.zeros(s, jnp.float32), self.output_channels)
 
   @nn.compact
   def __call__(self, inputs, paddings, train):
@@ -148,7 +151,8 @@ class Conv2dSubsampling(nn.Module):
 
     outputs += jnp.reshape(self.bias, (1,) * (outputs.ndim - 1) + (-1,))
 
-    outputs = BatchNorm(self.encoder_dim, self.dtype,
+    outputs = BatchNorm(self.encoder_dim,
+                        self.dtype,
                         self.batch_norm_momentum,
                         self.batch_norm_epsilon)(
                             outputs, input_paddings=None, train=train)
@@ -184,13 +188,15 @@ class FeedForwardModule(nn.Module):
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
     config = self.config
 
-    inputs = BatchNorm(config.encoder_dim, config.dtype,
+    inputs = BatchNorm(config.encoder_dim,
+                       config.dtype,
                        config.batch_norm_momentum,
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
     inputs = nn.Dense(
         config.encoder_dim,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(inputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            inputs)
     inputs *= padding_mask
 
     inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
@@ -249,10 +255,14 @@ class BatchNorm(nn.Module):
     dim = self.encoder_dim
     dtype = self.dtype
 
-    self.ra_mean = self.variable('batch_stats', 'mean',
-                                 lambda s: jnp.zeros(s, dtype), dim)
-    self.ra_var = self.variable('batch_stats', 'var',
-                                lambda s: jnp.ones(s, dtype), dim)
+    self.ra_mean = self.variable('batch_stats',
+                                 'mean',
+                                 lambda s: jnp.zeros(s, dtype),
+                                 dim)
+    self.ra_var = self.variable('batch_stats',
+                                'var',
+                                lambda s: jnp.ones(s, dtype),
+                                dim)
 
     self.gamma = self.param('scale', nn.initializers.zeros, dim, dtype)
     self.beta = self.param('bias', nn.initializers.zeros, dim, dtype)
@@ -370,8 +380,11 @@ class GenericRNNSequenceEncoder(nn.Module):
       in_axes=(1, flax.core.axes_scan.broadcast, flax.core.axes_scan.broadcast),
       out_axes=1,
       split_rngs={'params': False})
-  def unroll_cell(self, cell_state: StateType, inputs: Array,
-                  recurrent_dropout_mask: Optional[Array], deterministic: bool):
+  def unroll_cell(self,
+                  cell_state: StateType,
+                  inputs: Array,
+                  recurrent_dropout_mask: Optional[Array],
+                  deterministic: bool):
     """Unrolls a recurrent cell over an input sequence.
 
     Args:
@@ -421,7 +434,8 @@ class GenericRNNSequenceEncoder(nn.Module):
       inputs = flip_sequences(inputs, lengths)
 
     recurrent_dropout_mask = None
-    _, (cell_states, outputs) = self.unroll_cell(initial_state, inputs,
+    _, (cell_states, outputs) = self.unroll_cell(initial_state,
+                                                 inputs,
                                                  recurrent_dropout_mask,
                                                  deterministic)
     final_state = jax.tree_map(
@@ -469,8 +483,7 @@ class GenericRNN(nn.Module):
       inputs: Array,
       lengths: Array,
       initial_states: Optional[Sequence[StateType]] = None,
-      deterministic: bool = False
-  ) -> Tuple[Array, Sequence[StateType]]:
+      deterministic: bool = False) -> Tuple[Array, Sequence[StateType]]:
     """Processes the input sequence using the recurrent cell.
 
     Args:
@@ -632,7 +645,8 @@ class BatchRNN(nn.Module):
   def __call__(self, inputs, input_paddings, train):
     config = self.config
 
-    inputs = BatchNorm(config.encoder_dim, config.dtype,
+    inputs = BatchNorm(config.encoder_dim,
+                       config.dtype,
                        config.batch_norm_momentum,
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
     lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
@@ -702,7 +716,8 @@ class Deepspeech(nn.Module):
             outputs, output_paddings, train)
       else:
         outputs = FeedForwardModule(config=self.config)(outputs,
-                                                        output_paddings, train)
+                                                        output_paddings,
+                                                        train)
 
     # Run the decoder which in this case is a trivial projection layer.
     if config.enable_decoder_layer_norm:
@@ -711,13 +726,7 @@ class Deepspeech(nn.Module):
     outputs = nn.Dense(
         config.vocab_size,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(outputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            outputs)
 
     return outputs, output_paddings
-
-
-
-
-
-
-

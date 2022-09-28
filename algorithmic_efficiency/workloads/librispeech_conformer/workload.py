@@ -37,7 +37,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 512 
+    return 512
 
   @property
   def num_validation_examples(self):
@@ -125,7 +125,7 @@ class BaseLibrispeechWorkload(spec.Workload):
       we add a key representing weights, to indicate how the batch was padded.
     """
     batch_axis = 0
-    
+
     inputs, input_paddings = batch['inputs']
     targets, target_paddings = batch['targets']
 
@@ -143,16 +143,12 @@ class BaseLibrispeechWorkload(spec.Workload):
       return np.pad(ar, pw, mode='constant', constant_values=padding_value)
 
     padded_batch = {
-      'inputs': (
-        zero_pad(inputs, batch_axis),
-        zero_pad(input_paddings, batch_axis)
-      ),
-      'targets': (
-        zero_pad(targets, batch_axis),
-        zero_pad(target_paddings, batch_axis)
-      )
+        'inputs': (zero_pad(inputs, batch_axis),
+                   zero_pad(input_paddings, batch_axis)),
+        'targets': (zero_pad(targets, batch_axis),
+                    zero_pad(target_paddings, batch_axis))
     }
-    
+
     return padded_batch
 
   def _build_dataset(self,

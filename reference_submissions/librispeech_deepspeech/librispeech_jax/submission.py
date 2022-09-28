@@ -10,10 +10,11 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
-# import gc
-# import torch
 
 from algorithmic_efficiency import spec
+
+# import gc
+# import torch
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -98,14 +99,19 @@ def log_pytree_shape_and_statistics(pytree, writer):
   print('num params = ', total_params)
 
 
-def update_step(
-  batch, 
-  params, 
-  batch_stats, 
-  optimizer_state, 
-  workload, global_step, hyperparameters, opt_update_fn, rng, lr):
+def update_step(batch,
+                params,
+                batch_stats,
+                optimizer_state,
+                workload,
+                global_step,
+                hyperparameters,
+                opt_update_fn,
+                rng,
+                lr):
 
   optimizer_state.hyperparams['learning_rate'] = lr
+
   def _loss_fn(params):
     """loss function used for training."""
     params_rng, dropout_rng = jax.random.split(rng, 2)
@@ -116,9 +122,8 @@ def update_step(
         spec.ForwardPassMode.TRAIN,
         {'params' : params_rng, 'dropout' : dropout_rng})
 
-    loss = workload.loss_fn(batch['targets'],(logits, logit_paddings))
+    loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))
     return loss, new_batch_stats
-
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(params)
@@ -131,25 +136,24 @@ def update_step(
 
   grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
-  
+
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
   updated_params = optax.apply_updates(params, updates)
 
   return updated_params, new_model_state, new_optimizer_state, loss, grad_norm
 
 
-def update_params(
-    workload, 
-    current_param_container,
-    current_params_types,
-    model_state,
-    hyperparameters,
-    batch,
-    loss_type: spec.LossType,
-    optimizer_state,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng):
+def update_params(workload,
+                  current_param_container,
+                  current_params_types,
+                  model_state,
+                  hyperparameters,
+                  batch,
+                  loss_type: spec.LossType,
+                  optimizer_state,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng):
   """Return (updated_optimizer_state, updated_params)."""
   del eval_results
   del loss_type
@@ -159,18 +163,21 @@ def update_params(
   optimizer_state, opt_update_fn = optimizer_state
 
   update_fn = functools.partial(
-    update_step, 
-    opt_update_fn=opt_update_fn,
-    global_step=global_step,
-    workload=workload,
-    hyperparameters=hyperparameters,
-    rng=rng,
-    lr = lr)
+      update_step,
+      opt_update_fn=opt_update_fn,
+      global_step=global_step,
+      workload=workload,
+      hyperparameters=hyperparameters,
+      rng=rng,
+      lr=lr)
 
-  pmapped_update_step = jax.pmap(update_fn, axis_name='batch', in_axes=(0,0,0,0))
+  pmapped_update_step = jax.pmap(
+      update_fn, axis_name='batch', in_axes=(0, 0, 0, 0))
   new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(batch, current_param_container, model_state, optimizer_state)
 
-  print('{}) loss = {}, grad_norm = {}'.format(global_step, loss.mean(), grad_norm.mean()))
+  print('{}) loss = {}, grad_norm = {}'.format(global_step,
+                                               loss.mean(),
+                                               grad_norm.mean()))
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

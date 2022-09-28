@@ -14,16 +14,18 @@ import numpy as np
 import optax
 
 from algorithmic_efficiency import spec
-
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import LibriSpeechConformerWorkload
-from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import BaseDeepspeechLibrispeechWorkload
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
+    LibriSpeechConformerWorkload
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax import \
     models
+from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
+    BaseDeepspeechLibrispeechWorkload
 
 FLAGS = flags.FLAGS
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload, BaseDeepspeechLibrispeechWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
+                                    BaseDeepspeechLibrispeechWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'Deepspeech')
@@ -38,7 +40,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload, BaseDeepspeech
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state=variables["batch_stats"]
+    model_state = variables["batch_stats"]
     params = variables["params"]
 
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
@@ -46,4 +48,3 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload, BaseDeepspeech
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
-
