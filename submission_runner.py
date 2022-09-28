@@ -437,6 +437,7 @@ def main(_):
 
   if FLAGS.wandb and wandb is not None and RANK == 0:
     wandb.log({"score": score})
+    wandb.finish()
 
   if FLAGS.profile:
     logging.info(profiler.summary())
