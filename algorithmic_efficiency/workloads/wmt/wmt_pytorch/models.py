@@ -308,7 +308,7 @@ class PositionalEncoding(nn.Module):
                dropout_rate: float = 0.1,
                max_len: int = 256):
     super().__init__()
-    self.dropout_rate = nn.Dropout(p=dropout_rate)
+    self.dropout = nn.Dropout(p=dropout_rate)
 
     position = torch.arange(max_len).unsqueeze(1)
     scale_factor = -math.log(10000.0) / (d_model // 2 - 1)
@@ -346,14 +346,14 @@ class PositionalEncoding(nn.Module):
         }
       pe = self.pe[0, cache[name]['cache_index'], :]
       cache[name]['cache_index'] += 1
-      return self.dropout_rate(x + pe), cache
+      return self.dropout(x + pe), cache
     if inputs_positions is None:
       # normal unpacked case:
       pe = self.pe[:, :x.size(1), :]
     else:
       # for packed data we need to use known position indices:
       pe = self.pe[0, inputs_positions, :]
-    return self.dropout_rate(x + pe)
+    return self.dropout(x + pe)
 
 
 # TransformerEncoderLayer and TransformerDecoderLayer are taken from:
@@ -852,7 +852,7 @@ def multi_head_attention_forward(
     in_proj_bias: Optional[Tensor],
     bias_k: Optional[Tensor],
     bias_v: Optional[Tensor],
-    dropout_rate_p: float,
+    dropout_rate: float,
     out_proj_weight: Tensor,
     out_proj_bias: Optional[Tensor],
     training: bool = True,
@@ -873,7 +873,7 @@ def multi_head_attention_forward(
     num_heads: parallel attention heads.
     in_proj_bias: input projection bias.
     bias_k, bias_v: bias of the key and value sequences to be added at dim=0.
-    dropout_rate_p: probability of an element to be zeroed.
+    dropout_rate: probability of an element to be zeroed.
     out_proj_weight, out_proj_bias: the output projection weight and bias.
     training: apply dropout_rate if is ``True``.
     need_weights: output attn_output_weights.
@@ -1053,13 +1053,13 @@ def multi_head_attention_forward(
 
   # adjust dropout_rate probability
   if not training:
-    dropout_rate_p = 0.0
+    dropout_rate = 0.0
 
   #
   # (deep breath) calculate attention and out projection
   #
   attn_output, attn_output_weights = _scaled_dot_product_attention(
-      q, k, v, attn_mask, dropout_rate_p)
+      q, k, v, attn_mask, dropout_rate)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
   attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)

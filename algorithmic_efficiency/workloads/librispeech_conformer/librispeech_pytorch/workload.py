@@ -15,14 +15,8 @@ from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    ConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    ConformerEncoderDecoder
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    initialize
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    Subsample
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
+    model as conformer_model
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
@@ -30,19 +24,25 @@ MAX_INPUT_LENGTH = 320000
 
 
 def _update_model_dropout(model, residual_dropout_rate, input_dropout_rate):
-  # model.modules() returns the model itself as the first element.
-  for child in list(model.modules())[1:]:
-    if isinstance(child, Subsample):
-      child.input_dropout_rate = input_dropout_rate
-    # elif isinstance(child, TODO):
-    _update_model_dropout(child, residual_dropout_rate, input_dropout_rate)
+  for child in list(model.modules()):
+    # Residual dropout.
+    if isinstance(child, conformer_model.MultiHeadedSelfAttention):
+      child.dropout.p = residual_dropout_rate
+    elif isinstance(child, conformer_model.ConvolutionBlock):
+      child.dropout.p = residual_dropout_rate
+    elif isinstance(child, conformer_model.FeedForwardModule):
+      child.dropout2.p = residual_dropout_rate
+    # Input dropout.
+    elif isinstance(child, conformer_model.Subsample):
+      child.dropout.p = input_dropout_rate
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = ConformerEncoderDecoder(ConformerConfig())
+    model = conformer_model.ConformerEncoderDecoder(
+        conformer_model.ConformerConfig())
     self._model = model
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers
@@ -50,7 +50,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
-    initialize(model)
+    conformer_model.initialize(model)
 
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
@@ -75,8 +75,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: float,
-      aux_dropout_rate: float,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Conformer model function.
 

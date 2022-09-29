@@ -53,8 +53,8 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: float,
-      aux_dropout_rate: float,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs.
 
