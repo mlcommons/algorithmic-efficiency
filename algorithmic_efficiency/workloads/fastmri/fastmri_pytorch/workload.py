@@ -39,9 +39,9 @@ def ssim(gt: torch.Tensor,
   """Compute Structural Similarity Index Metric (SSIM)"""
   # TODO: Change this
   if not len(gt.shape) == 3:
-    raise ValueError("Unexpected number of dimensions in ground truth.")
+    raise ValueError('Unexpected number of dimensions in ground truth.')
   if not len(gt.shape) == len(pred.shape):
-    raise ValueError("Ground truth dimensions does not match pred.")
+    raise ValueError('Ground truth dimensions does not match pred.')
 
   if volume_max is None:
     volume_max = torch.ones(gt.shape[0])
@@ -126,7 +126,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}
 
     dataset = SliceDataset(
-        root=os.path.join(data_dir, "singlecoil_" + folder[split]),
+        root=os.path.join(data_dir, 'singlecoil_' + folder[split]),
         transform=transform_config[split],
     )
 
