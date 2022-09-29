@@ -127,7 +127,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     while True:
       if RANK == 0:
         batch = next(dataset_iter)  # pylint: disable=stop-iteration-return
-
         inputs = torch.as_tensor(
             batch['inputs'], dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
@@ -135,6 +134,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         weights = torch.as_tensor(
             batch['weights'], dtype=torch.bool, device=DEVICE)
 
+        # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           # During eval, the batch size of the remainder might be different.
           if split != 'train':
@@ -151,21 +151,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           inputs = inputs.view(-1, *inputs.shape[2:])
           targets = targets.view(-1, *targets.shape[2:])
           weights = weights.view(-1, *weights.shape[2:])
-        # tensor_list = []
-        # for key, value in batch.items():
-        #   tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
-        #   tensor_list.append(tensor)
-        #   batch[key] = (
-        #       tensor[0] if USE_PYTORCH_DDP else tensor.view(
-        #           -1, *value.shape[2:]))
-        # # Send batch to other devices when using DDP.
-        # if USE_PYTORCH_DDP:
-        #   # During eval, the batch size of the remainder might be different.
-        #   if split != 'train':
-        #     per_device_batch_size = torch.tensor(
-        #         len(batch['inputs']), dtype=torch.int32, device=DEVICE)
-        #     dist.broadcast(per_device_batch_size, src=0)
-        #   dist.broadcast(torch.stack(tensor_list), src=0)
       else:
         # During eval, the batch size of the remainder might be different.
         if split != 'train':
@@ -179,13 +164,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                              device=DEVICE)
         dist.broadcast(inputs, src=0)
         inputs = inputs[RANK]
-
         targets = torch.empty((N_GPUS, per_device_batch_size, 39),
                               dtype=torch.float32,
                               device=DEVICE)
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
-
         weights = torch.empty((N_GPUS, per_device_batch_size, 39),
                               dtype=torch.bool,
                               device=DEVICE)
@@ -197,6 +180,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           'targets': targets,
           'weights': weights,
       }
+      
       yield batch
 
   def _eval_batch(self, params, batch):
