@@ -180,7 +180,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           'targets': targets,
           'weights': weights,
       }
-
       yield batch
 
   def _eval_batch(self, params, batch):
