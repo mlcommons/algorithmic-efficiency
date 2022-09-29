@@ -34,7 +34,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   scheduler1 = LinearLR(
       optimizer_state['optimizer'],
-      start_factor=0,
+      start_factor=1e-12,
       end_factor=1.,
       total_iters=hyperparameters.warmup_steps)
 
