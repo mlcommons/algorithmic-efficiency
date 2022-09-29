@@ -93,7 +93,7 @@ def get_models(workload):
         mlp_top_dims=(256, 128, 1),
         embed_dim=64).init
     jax_model = model_init(init_rngs, jnp.ones(input_shape, jnp.float32),
-                           False)["params"]
+                           False)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchDlrmSmall(
         vocab_sizes=tuple([1024 * 128] * 26),

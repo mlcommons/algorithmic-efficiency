@@ -19,7 +19,7 @@ def roc_auc_score(logits, targets):
   targets.squeeze_()
   logits.squeeze_()
   if targets.shape != logits.shape:
-    raise TypeError(f'Shapre of targets and logits must match. '
+    raise TypeError(f'Shape of targets and logits must match. '
                     f'Got {targets.shape()} and {logits.shape()}.')
 
   desc_score_indices = torch.argsort(logits, descending=True)

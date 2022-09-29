@@ -65,7 +65,7 @@ class DlrmSmall(nn.Module):
     self.embed_dim = embed_dim
 
     self.register_buffer(
-        "idx_offsets",
+        'idx_offsets',
         torch.tensor(
             [0] + list(torch.cumsum(self.vocab_sizes[:-1], dim=0)),
             dtype=torch.int32))
@@ -118,8 +118,8 @@ class DlrmSmall(nn.Module):
                         math.sqrt(1. / module.out_features))
 
   def forward(self, x):
-    bot_mlp_input, cat_features = \
-      torch.split(x, [self.num_dense_features, self.num_sparse_features], 1)
+    bot_mlp_input, cat_features = torch.split(
+      x, [self.num_dense_features, self.num_sparse_features], 1)
     cat_features = cat_features.to(dtype=torch.int32)
     bot_mlp_output = self.bot_mlp(bot_mlp_input)
     batch_size = bot_mlp_output.shape[0]

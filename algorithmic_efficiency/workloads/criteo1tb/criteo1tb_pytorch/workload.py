@@ -30,7 +30,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           'This should not happen, workload.init_model_fn() should be called '
           'before workload.param_shapes!')
     if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(self._param_shapes)
+      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
   def loss_fn(self,
@@ -117,24 +117,26 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
     # The input pipeline has to be created in all processes, because
     # self._tokenizer has to be available in every process.
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
+    if RANK == 0:
+      data_rng = data_rng.astype('uint32')
+      dataset_iter = super().build_input_queue(data_rng,
+                                               split,
+                                               data_dir,
+                                               global_batch_size,
+                                               num_batches,
+                                               repeat_final_dataset)
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
       if RANK == 0:
-        batch = next(np_iter)  # pylint: disable=stop-iteration-return
+        batch = next(dataset_iter)  # pylint: disable=stop-iteration-return
         tensor_list = []
         for key, value in batch.items():
           tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
           tensor_list.append(tensor)
           batch[key] = (
               tensor[0] if USE_PYTORCH_DDP else tensor.view(
-                  -1, value.shape[-1]))
+                  -1, *value.shape[2:]))
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           # During eval, the batch size of the remainder might be different.
@@ -155,7 +157,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                              device=DEVICE)
         dist.broadcast(tensor, src=0)
         # Note that the order of the keys is important.
-        # tensors = tensor.split([[39, 1]], dim=-1)
         keys = ['inputs', 'weights', 'targets']
         batch = {}
         for key, n in zip(keys, range(3)):
@@ -173,5 +174,5 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])
     batch_loss_numerator = torch.sum(per_example_losses)
-    batch_loss_denominator = np.sum(batch['weights'])
-    return np.asarray(batch_loss_numerator), batch_loss_denominator
+    batch_loss_denominator = torch.sum(batch['weights'])
+    return batch_loss_numerator, batch_loss_denominator
