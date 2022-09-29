@@ -3,7 +3,6 @@ import contextlib
 from typing import Dict, Optional, Tuple
 
 import jax
-import numpy as np
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -115,8 +114,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
-    # The input pipeline has to be created in all processes, because
-    # self._tokenizer has to be available in every process.
+    # Only create and iterate over tf input pipeline in one Python process to
+    # avoid creating too many threads.
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
       dataset_iter = super().build_input_queue(data_rng,
@@ -126,25 +125,47 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                                num_batches,
                                                repeat_final_dataset)
     while True:
-      # Only iterate over tf input pipeline in one Python process to
-      # avoid creating too many threads.
       if RANK == 0:
         batch = next(dataset_iter)  # pylint: disable=stop-iteration-return
-        tensor_list = []
-        for key, value in batch.items():
-          tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
-          tensor_list.append(tensor)
-          batch[key] = (
-              tensor[0] if USE_PYTORCH_DDP else tensor.view(
-                  -1, *value.shape[2:]))
-        # Send batch to other devices when using DDP.
+
+        inputs = torch.as_tensor(
+            batch['inputs'], dtype=torch.float32, device=DEVICE)
+        targets = torch.as_tensor(
+            batch['targets'], dtype=torch.float32, device=DEVICE)
+        weights = torch.as_tensor(
+            batch['weights'], dtype=torch.bool, device=DEVICE)
+
         if USE_PYTORCH_DDP:
           # During eval, the batch size of the remainder might be different.
           if split != 'train':
             per_device_batch_size = torch.tensor(
-                len(batch['inputs']), dtype=torch.int32, device=DEVICE)
+                len(targets[0]), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
-          dist.broadcast(torch.cat(tensor_list, dim=-1), src=0)
+          dist.broadcast(inputs, src=0)
+          inputs = inputs[0]
+          dist.broadcast(targets, src=0)
+          targets = targets[0]
+          dist.broadcast(weights, src=0)
+          weights = weights[0]
+        else:
+          inputs = inputs.view(-1, *inputs.shape[2:])
+          targets = targets.view(-1, *targets.shape[2:])
+          weights = weights.view(-1, *weights.shape[2:])
+        # tensor_list = []
+        # for key, value in batch.items():
+        #   tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
+        #   tensor_list.append(tensor)
+        #   batch[key] = (
+        #       tensor[0] if USE_PYTORCH_DDP else tensor.view(
+        #           -1, *value.shape[2:]))
+        # # Send batch to other devices when using DDP.
+        # if USE_PYTORCH_DDP:
+        #   # During eval, the batch size of the remainder might be different.
+        #   if split != 'train':
+        #     per_device_batch_size = torch.tensor(
+        #         len(batch['inputs']), dtype=torch.int32, device=DEVICE)
+        #     dist.broadcast(per_device_batch_size, src=0)
+        #   dist.broadcast(torch.stack(tensor_list), src=0)
       else:
         # During eval, the batch size of the remainder might be different.
         if split != 'train':
@@ -152,15 +173,30 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
-        tensor = torch.empty((3, N_GPUS, per_device_batch_size, 39),
+
+        inputs = torch.empty((N_GPUS, per_device_batch_size, 39),
                              dtype=torch.float32,
                              device=DEVICE)
-        dist.broadcast(tensor, src=0)
-        # Note that the order of the keys is important.
-        keys = ['inputs', 'weights', 'targets']
-        batch = {}
-        for key, n in zip(keys, range(3)):
-          batch[key] = tensor[n][RANK]
+        dist.broadcast(inputs, src=0)
+        inputs = inputs[RANK]
+
+        targets = torch.empty((N_GPUS, per_device_batch_size, 39),
+                              dtype=torch.float32,
+                              device=DEVICE)
+        dist.broadcast(targets, src=0)
+        targets = targets[RANK]
+
+        weights = torch.empty((N_GPUS, per_device_batch_size, 39),
+                              dtype=torch.bool,
+                              device=DEVICE)
+        dist.broadcast(weights, src=0)
+        weights = weights[RANK]
+
+      batch = {
+          'inputs': inputs,
+          'targets': targets,
+          'weights': weights,
+      }
       yield batch
 
   def _eval_batch(self, params, batch):
