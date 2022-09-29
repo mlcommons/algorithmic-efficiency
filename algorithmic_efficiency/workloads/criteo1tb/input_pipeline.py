@@ -30,9 +30,9 @@ def get_criteo1tb_dataset(split: str,
                           repeat_final_dataset: bool = False):
   """Get the Criteo 1TB dataset for a given split."""
   if split in ['train', 'eval_train']:
-    file_path = os.path.join(data_dir, 'day_[0-22]_*.csv')
+    file_path = os.path.join(data_dir, 'day_[0-22]_*')
   else:
-    file_path = os.path.join(data_dir, 'day_23_*.csv')
+    file_path = os.path.join(data_dir, 'day_23_*')
   num_devices = jax.local_device_count()
   per_device_batch_size = global_batch_size // num_devices
 
