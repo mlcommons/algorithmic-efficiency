@@ -86,6 +86,12 @@ def get_criteo1tb_dataset(split: str,
     num_files = math.ceil(num_examples / _CSV_LINES_PER_FILE)
     ds = ds.take(num_files)
 
+  # Avoid creating too many threads when using PyTorch DDP.
+  if RANK != 0:
+    options = tf.data.Options()
+    options.threading.private_threadpool_size = 1
+    ds = ds.with_options(options)
+
   if is_training:
     ds = ds.repeat()
   ds = ds.interleave(
@@ -94,8 +100,8 @@ def get_criteo1tb_dataset(split: str,
       block_length=per_device_batch_size,
       num_parallel_calls=32,
       deterministic=False)
-  ds = ds.batch(global_batch_size, drop_remainder=is_training)
   ds = ds.map(_parse_example_fn, num_parallel_calls=AUTOTUNE)
+  ds = ds.batch(global_batch_size, drop_remainder=is_training)
   ds = ds.prefetch(tf.data.AUTOTUNE)
 
   if num_batches is not None:
