@@ -1,5 +1,4 @@
 import contextlib
-import itertools
 import math
 from typing import Dict, Optional, Tuple
 
@@ -82,7 +81,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
 
-    with contexts[mode](): 
+    with contexts[mode]():
       logits, logits_paddings = model(
           augmented_and_preprocessed_input_batch['inputs'][0],
           augmented_and_preprocessed_input_batch['inputs'][1])
@@ -119,10 +118,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         for key in keys:
           value, value_pad = batch[key]
           tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
-          tensor_pad = torch.as_tensor(value_pad, dtype=torch.float32, device=DEVICE)
-          tensor_list.extend([tensor,tensor_pad])
-          batch[key] = (
-              (tensor[RANK], tensor_pad[RANK]) if USE_PYTORCH_DDP else (tensor.view(-1, *value.shape[2:]),tensor_pad.view(-1, *value.shape[2:])))
+          tensor_pad = torch.as_tensor(
+              value_pad, dtype=torch.float32, device=DEVICE)
+          tensor_list.extend([tensor, tensor_pad])
+          batch[key] = ((tensor[RANK], tensor_pad[RANK]) if USE_PYTORCH_DDP else
+                        (tensor.view(-1, *value.shape[2:]),
+                         tensor_pad.view(-1, *value.shape[2:])))
 
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
@@ -149,8 +150,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         tensors = tensor.split([MAX_INPUT_LENGTH, MAX_INPUT_LENGTH, 256, 256],
                                dim=-1)
         batch = {}
-        batch['inputs'] = (tensors[0][RANK],tensors[1][RANK])
-        batch['targets'] = (tensors[2][RANK],tensors[3][RANK])
+        batch['inputs'] = (tensors[0][RANK], tensors[1][RANK])
+        batch['targets'] = (tensors[2][RANK], tensors[3][RANK])
         del tensor, tensors
       yield batch
 
@@ -171,7 +172,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         targets.long(),
         input_lengths,
         target_lengths)
-    average_loss = per_seq_loss.sum() / max(target_lengths.sum(),1)
+    average_loss = per_seq_loss.sum() / max(target_lengths.sum(), 1)
     return {
         'loss': per_seq_loss.sum(),
         'lengths': target_lengths.sum(),
@@ -180,7 +181,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def greedy_decode(self, logits, logit_paddings):
     framewise_tokens = logits.max(dim=-1)[1]
-    framewise_tokens = framewise_tokens * (1-logit_paddings)
+    framewise_tokens = framewise_tokens * (1 - logit_paddings)
 
     # add sentinel because unique_consecutive will flatten array
     # and then compute the unique
@@ -242,7 +243,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           spec.ForwardPassMode.EVAL,
           model_rng,
           update_batch_norm=False)
-      
+
       with torch.no_grad():
         decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
         word_errors, num_words = metrics.compute_wer(
@@ -253,9 +254,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             ).cpu().numpy(),
             tokenizer=self.tokenizer)
         loss = self.compute_loss(logits,
-                                logits_padding,
-                                batch['targets'][0],
-                                batch['targets'][1])
+                                 logits_padding,
+                                 batch['targets'][0],
+                                 batch['targets'][1])
       batch_metrics = {
           'loss': loss['loss'],
           'lengths': loss['lengths'],

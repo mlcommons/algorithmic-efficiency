@@ -174,7 +174,7 @@ class Conv2dSubsampling(nn.Module):
         input=padded_paddings,
         weight=torch.ones([1, 1, 1], device=paddings.device),
         stride=self.filter_stride[:1])
-    out_padding = out_padding.squeeze(dim=1) 
+    out_padding = out_padding.squeeze(dim=1)
     outputs = outputs * (1 - out_padding[:, None, :, None])
     return outputs, out_padding
 
@@ -375,8 +375,10 @@ class MHSAwithQS(nn.MultiheadAttention):
       if not why_not_fast_path:
         # Scale the query bias parameter and the query vector
         query = self.qs(
-            query.view(query.shape[0],query.shape[1], self.num_heads,
-                          self.embed_dim // self.num_heads)).view(*query.shape)
+            query.view(query.shape[0],
+                       query.shape[1],
+                       self.num_heads,
+                       self.embed_dim // self.num_heads)).view(*query.shape)
         in_proj_bias = self.in_proj_bias + 0
         in_proj_bias[:self.embed_dim] = self.qs(
             self.in_proj_bias[:self.embed_dim].view(
@@ -423,8 +425,10 @@ class MHSAwithQS(nn.MultiheadAttention):
     else:
       # Scale the query bias parameter and the query vector
       query = self.qs(
-          query.view(query.shape[0],query.shape[1], self.num_heads,
-                        self.embed_dim // self.num_heads)).view(*query.shape)
+          query.view(query.shape[0],
+                     query.shape[1],
+                     self.num_heads,
+                     self.embed_dim // self.num_heads)).view(*query.shape)
       in_proj_bias = self.in_proj_bias + 0
       in_proj_bias[:self.embed_dim] = self.qs(
           self.in_proj_bias[:self.embed_dim].view(
