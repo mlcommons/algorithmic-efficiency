@@ -1,6 +1,6 @@
 """WMT workload implemented in Jax."""
 import functools
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from absl import logging
 from flax import jax_utils

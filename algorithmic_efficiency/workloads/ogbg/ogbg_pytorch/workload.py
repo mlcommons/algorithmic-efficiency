@@ -1,6 +1,6 @@
 """OGBG workload implemented in PyTorch."""
 import contextlib
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import jax
 from jraph import GraphsTuple

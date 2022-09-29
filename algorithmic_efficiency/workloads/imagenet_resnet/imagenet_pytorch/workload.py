@@ -4,7 +4,7 @@ import contextlib
 import itertools
 import math
 import os
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch

@@ -1,7 +1,7 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import nn

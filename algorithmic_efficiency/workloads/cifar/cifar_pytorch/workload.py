@@ -3,7 +3,7 @@
 import contextlib
 import math
 import random
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from torch import nn

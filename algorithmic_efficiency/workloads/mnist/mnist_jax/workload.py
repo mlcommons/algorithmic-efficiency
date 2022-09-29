@@ -1,7 +1,7 @@
 """MNIST workload implemented in Jax."""
 import functools
 import itertools
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
