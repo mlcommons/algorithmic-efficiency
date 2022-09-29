@@ -56,8 +56,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      split: str,
                      data_dir: str,
                      global_batch_size: int,
-                     cache,
-                     repeat_final_dataset):
+                     cache: bool,
+                     repeat_final_dataset: bool,
+                     use_mixup: bool = False):
     del data_rng
     del cache
     del repeat_final_dataset
@@ -71,6 +72,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
+    if not is_train and use_mixup:
+      raise ValueError('Mixup can only be used for the training split.')
 
     if is_train:
       transform_config = transforms.Compose([
@@ -121,7 +124,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                                               DEVICE,
                                               self.train_mean,
                                               self.train_stddev)
-    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
+    dataloader = data_utils.cycle(
+        dataloader,
+        custom_sampler=USE_PYTORCH_DDP,
+        use_mixup=use_mixup,
+        mixup_alpha=0.2)
+
     return dataloader
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
@@ -230,6 +238,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            data_dir: str,
                            global_step: int = 0):
     """Run a full evaluation of the model."""
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       is_test = split == 'test'
