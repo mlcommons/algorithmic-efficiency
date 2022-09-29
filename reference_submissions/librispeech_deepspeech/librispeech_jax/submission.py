@@ -107,14 +107,13 @@ def update_step(batch,
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
 
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
-  # with following code uncommented the submission hangs
-  # need to figure out how to do gradient clipping in this submission.
+  # with following gradient clipping code submission doesn't hang
 
-  # grad_clip = hyperparameters.grad_clip
-  # grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
-  # grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
+  grad_clip = hyperparameters.grad_clip
+  grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+  grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
 
-  # grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
+  grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
   updated_params = optax.apply_updates(params, updates)

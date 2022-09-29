@@ -20,8 +20,8 @@ tf.config.set_visible_devices([], 'GPU')
 print(jax.local_device_count())
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 
-BATCH_SIZE = 8
-GRAD_CLIP = False
+BATCH_SIZE = 256
+GRAD_CLIP = True
 NUM_TRAINING_STEPS = 1
 
 _GRAD_CLIP_EPS = 1e-6
@@ -195,11 +195,17 @@ for i in range(NUM_TRAINING_STEPS):
     grad_norm = jnp.sqrt(l2_regularization(grad, 0))
 
     if GRAD_CLIP:
-      grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
-      grad_scaling_factor = jax.lax.clamp(
-          min=0.0, x=grad_scaling_factor, max=1.0)
-
-      grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
+      scaled_grad = jax.tree_map(
+        lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
+      grad = jax.lax.cond(grad_norm > grad_clip, lambda _: scaled_grad,
+                        lambda _: grad, None)
+      
+      # If we use this below version of gradient clipping it doesn't hang in submission
+      
+      # grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+      # grad_scaling_factor = jax.lax.clamp(
+      #     min=0.0, x=grad_scaling_factor, max=1.0)
+      #grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
     updates, new_optimizer_state = optimizer_update_fn(grad, optimizer_state, params)
     new_params = optax.apply_updates(params, updates)
