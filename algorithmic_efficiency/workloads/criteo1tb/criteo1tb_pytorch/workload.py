@@ -117,7 +117,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
     if RANK == 0:
-      data_rng = data_rng.astype('uint32')
       dataset_iter = super().build_input_queue(data_rng,
                                                split,
                                                data_dir,
@@ -164,7 +163,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                              device=DEVICE)
         dist.broadcast(inputs, src=0)
         inputs = inputs[RANK]
-        targets = torch.empty((N_GPUS, per_device_batch_size, 39),
+        targets = torch.empty((N_GPUS, per_device_batch_size, 1),
                               dtype=torch.float32,
                               device=DEVICE)
         dist.broadcast(targets, src=0)

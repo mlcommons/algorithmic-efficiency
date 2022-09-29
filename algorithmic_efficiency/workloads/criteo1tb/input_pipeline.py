@@ -7,7 +7,13 @@ https://github.com/NVIDIA/DeepLearningExamples/blob/4e764dcd78732ebfe105fc05ea3d
 """
 import math
 import os
+import tensorflow as tf
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from typing import Optional, Sequence
+from algorithmic_efficiency import data_utils
+
+RANK = pytorch_setup()[1]
+AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 
 import jax
 import tensorflow as tf
@@ -88,14 +94,16 @@ def get_criteo1tb_dataset(split: str,
       block_length=per_device_batch_size,
       num_parallel_calls=32,
       deterministic=False)
-  ds = ds.batch(per_device_batch_size, drop_remainder=is_training)
-  ds = ds.map(_parse_example_fn, num_parallel_calls=16)
+  ds = ds.batch(global_batch_size, drop_remainder=is_training)
+  ds = ds.map(_parse_example_fn, num_parallel_calls=AUTOTUNE)
+  ds = ds.prefetch(tf.data.AUTOTUNE)
+
   if num_batches is not None:
     ds = ds.take(num_batches)
-  # We do not need a ds.cache() because we will do this anyways with
-  # itertools.cycle in the base workload.
+
   if repeat_final_dataset:
     ds = ds.repeat()
-  ds = ds.batch(num_devices)
-  ds = ds.prefetch(tf.data.AUTOTUNE)
+
+  ds = map(data_utils.shard_numpy_ds, ds)
+
   return ds
