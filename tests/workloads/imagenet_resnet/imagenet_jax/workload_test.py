@@ -1,7 +1,5 @@
 """Tests for imagenet_resnet/imagenet_jax/workload.py."""
 
-import functools
-
 from absl.testing import absltest
 import jax
 import jax.numpy as jnp
