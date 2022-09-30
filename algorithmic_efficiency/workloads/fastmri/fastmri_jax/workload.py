@@ -213,7 +213,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         std=batch['std'],
         volume_max=batch['volume_max'])
     ssim_sum = jnp.sum(ssim_vals)
-    loss = jnp.sum(self.loss_fn(outputs, batch['targets']))
+    loss = jnp.sum(self.loss_fn(batch['targets'], outputs))
     metrics = {
         'ssim': ssim_sum,
         'loss': loss,

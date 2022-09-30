@@ -204,12 +204,23 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     return F.l1_loss(
         logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
 
-  def _eval_metric(self, outputs, targets, mean, std, volume_max):
+  def _eval_model(self, params, batch, rng):
     """Return the SSIM and loss as a dict."""
+    outputs, _ = self.model_fn(
+        params,
+        batch,
+        None,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
     ssim_vals = ssim(
-        targets, outputs, mean=mean, std=std, volume_max=volume_max)
-    loss = self.loss_fn(targets, outputs).sum()
-    return {'ssim': ssim_vals, 'loss': loss}
+        batch['targets'],
+        outputs,
+        mean=batch['mean'],
+        std=batch['std'],
+        volume_max=batch['volume_max'])
+    loss = self.loss_fn(batch['targets'], outputs).sum()
+    return {'ssim': ssim_vals, 'loss': loss, 'weight': batch['weights'].sum()}
 
   def _eval_model_on_split(self,
                            split: str,
@@ -221,36 +232,32 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            data_dir: str,
                            global_step: int = 0):
     """Run a full evaluation of the model."""
+    del model_state
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+          data_rng,
+          split,
+          data_dir,
+          global_batch_size=global_batch_size,
+          repeat_final_dataset=True)
 
     total_metrics = {
         'ssim': torch.tensor(0., device=DEVICE),
         'loss': torch.tensor(0., device=DEVICE),
+        'weight': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      outputs, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        model_rng,
-        update_batch_norm=False)
-      batch_metrics = self._eval_metric(outputs,
-                                        batch['targets'],
-                                        batch['mean'],
-                                        batch['std'],
-                                        batch['volume_max'])
+      batch_metrics = self._eval_model(params, batch, model_rng)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
     if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
+    num_examples = total_metrics.pop('weight')
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
