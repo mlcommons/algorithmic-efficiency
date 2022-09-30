@@ -2,7 +2,7 @@
 
 import functools
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from flax import jax_utils
 import jax
@@ -11,7 +11,6 @@ import jax.numpy as jnp
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax import input_pipeline
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax import models
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
@@ -134,18 +133,11 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   std = std.reshape((-1,) + (1,) * (len(logits.shape) - 1))
   logits = logits * std + mean
   targets = targets * std + mean
-  print(logits.shape, targets.shape, volume_max.shape)
   ssims = jax.vmap(structural_similarity)(logits, targets, volume_max)
   return ssims
 
 
 class FastMRIWorkload(BaseFastMRIWorkload):
-
-  def __init__(self):
-    super().__init__()
-    self._param_types = None
-    self._eval_iters = {}
-    self._model = models.UNet()
 
   @property
   def model_params_types(self):
@@ -154,25 +146,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       self._param_types = param_utils.jax_param_types(self._param_shapes)
     return self._param_types
 
-  def build_input_queue(self,
-                        data_rng,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
-    del cache
-    return input_pipeline.load_fastmri_split(global_batch_size,
-                                             split,
-                                             data_dir,
-                                             data_rng,
-                                             num_batches,
-                                             repeat_final_dataset)
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     fake_batch = jnp.zeros((13, 320, 320))
-    variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
+    variables = jax.jit(models.UNet().init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
@@ -190,10 +166,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del model_state
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch['inputs'],
-                               rngs={'dropout': rng},
-                               train=train)
+    logits = models.UNet().apply(
+        {'params': params},
+        augmented_and_preprocessed_input_batch['inputs'],
+        rngs={'dropout': rng},
+        train=train)
     return logits, None
 
   def output_activation_fn(self,
@@ -256,6 +233,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            global_step: int = 0):
     """Run a full evaluation of the model."""
     del model_state
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
