@@ -235,7 +235,7 @@ def load_fastmri_split(global_batch_size,
   if split != 'train':
     ds = ds.cache()
 
-  def finite_iterator(ds, split):
+  def finite_iterator(ds):
     for batch in iter(ds):
       actual_batch_size = batch['inputs'].shape[0]
       if actual_batch_size != global_batch_size:
@@ -259,4 +259,4 @@ def load_fastmri_split(global_batch_size,
     if repeat_final_eval_dataset:
       ds = ds.repeat()
     ds = ds.prefetch(10)
-    return finite_iterator(ds, split)
+    return finite_iterator(ds)
