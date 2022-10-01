@@ -4,8 +4,6 @@ import contextlib
 import math
 from typing import Dict, Optional, Tuple
 
-import numpy as np
-from skimage.metrics import structural_similarity
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -13,43 +11,17 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.interop_utils import jax_to_pytorch
+from algorithmic_efficiency.interop_utils import pytorch_to_jax
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
+from algorithmic_efficiency.workloads.fastmri.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
-
-def ssim(gt: torch.Tensor,
-         pred: torch.Tensor,
-         mean: np.ndarray,
-         std: np.ndarray,
-         volume_max: Optional[float] = None) -> np.ndarray:
-  """Compute Structural Similarity Index Metric (SSIM)"""
-  # TODO: Change this
-  if not len(gt.shape) == 3:
-    raise ValueError('Unexpected number of dimensions in ground truth.')
-  if not len(gt.shape) == len(pred.shape):
-    raise ValueError('Ground truth dimensions does not match pred.')
-
-  if volume_max is None:
-    volume_max = torch.ones(gt.shape[0])
-
-  gt = gt * std.view(std.shape[0], 1, 1) + mean.view(mean.shape[0], 1, 1)
-  pred = pred * std.view(std.shape[0], 1, 1) + mean.view(mean.shape[0], 1, 1)
-  gt = gt.detach().cpu().numpy()
-  pred = pred.detach().cpu().numpy()
-  volume_max = volume_max.detach().cpu().numpy()
-
-  ssims = 0
-  for slice_num in range(gt.shape[0]):
-    ssims = ssims + structural_similarity(
-        gt[slice_num], pred[slice_num], data_range=volume_max[slice_num])
-
-  return ssims
 
 
 class FastMRIWorkload(BaseFastMRIWorkload):
@@ -213,14 +185,15 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    ssim_vals = ssim(
-        batch['targets'],
-        outputs,
-        mean=batch['mean'],
-        std=batch['std'],
-        volume_max=batch['volume_max'])
+    ssim_sum = jax_to_pytorch(
+        ssim(
+            pytorch_to_jax(outputs),
+            pytorch_to_jax(batch['targets']),
+            mean=pytorch_to_jax(batch['mean']),
+            std=pytorch_to_jax(batch['std']),
+            volume_max=pytorch_to_jax(batch['volume_max']))).sum()
     loss = self.loss_fn(batch['targets'], outputs).sum()
-    return {'ssim': ssim_vals, 'loss': loss, 'weight': batch['weights'].sum()}
+    return {'ssim': ssim_sum, 'loss': loss, 'weight': batch['weights'].sum()}
 
   def _eval_model_on_split(self,
                            split: str,
