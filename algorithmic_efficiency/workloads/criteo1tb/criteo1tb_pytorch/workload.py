@@ -124,8 +124,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                           num_batches,
                                           repeat_final_dataset)
     while True:
-      # Only iterate over tf input pipeline in one Python process to
-      # avoid creating too many threads.
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         inputs = torch.as_tensor(
