@@ -116,20 +116,21 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-
-
-
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
+flags.DEFINE_string('tokenizer_vocab_path',
+                    '',
+                    'Location to read tokenizer from.')
+
+flags.DEFINE_string('root_dir',
+                    '',
+                    'The root directory to store all experiments')
+flags.DEFINE_string('experiment_name',
+                    '',
+                    'Name of the experiment.')
 flags.DEFINE_boolean('wandb',
                      False,
                      'Whether to monitor the results with Wandb.')
 
-flags.DEFINE_string('summary_log_dir',
-                    '',
-                    'Location to dump tensorboard summaries.')
-flags.DEFINE_string('tokenizer_vocab_path',
-                    '',
-                    'Location to read tokenizer from.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()

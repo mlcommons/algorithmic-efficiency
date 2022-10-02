@@ -300,7 +300,25 @@ def load_checkpoint(
   return restored
 
 
-def load_latest_checkpoint(train_dir, target=None, prefix='ckpt_'):
+def load_latest_jax_checkpoint(train_dir, target=None, prefix='ckpt_'):
+  """Loads the most recent checkpoint listed in train_dir.
+  Args:
+    train_dir: the directory to read checkpoints from.
+    target: used for Flax checkpointing, a pytree whose structure will be used
+      to structure the restored checkpoint data.
+    prefix: the prefix of the names of checkpoint files.
+  Returns:
+    The state restored from the checkpoint. If using Flax checkpointing and
+    target=None, this will return a unstructured dictionary containing the
+    checkpoint data, as returned by to_state_dict in serialization.py:
+    https://github.com/google/flax/blob/master/flax/serialization.py#L67.
+  """
+  restored = flax_checkpoints.restore_checkpoint(
+      train_dir, target=target, prefix=prefix)
+  return restored
+
+
+def load_latest_pytorch_checkpoint(train_dir, target=None, prefix='ckpt_'):
   """Loads the most recent checkpoint listed in train_dir.
   Args:
     train_dir: the directory to read checkpoints from.
