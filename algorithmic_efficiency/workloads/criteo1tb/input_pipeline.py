@@ -7,16 +7,17 @@ https://github.com/NVIDIA/DeepLearningExamples/blob/4e764dcd78732ebfe105fc05ea3d
 """
 import math
 import os
-import tensorflow as tf
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from typing import Optional, Sequence
+
+import tensorflow as tf
+
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 RANK = pytorch_setup()[1]
 AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 
 import jax
-import tensorflow as tf
 
 _CSV_LINES_PER_FILE = 5_000_000
 
@@ -107,6 +108,8 @@ def get_criteo1tb_dataset(split: str,
   if num_batches is not None:
     ds = ds.take(num_batches)
 
+  # We do not need a ds.cache() because we will do this anyways with
+  # itertools.cycle in the base workload.
   if repeat_final_dataset:
     ds = ds.repeat()
 

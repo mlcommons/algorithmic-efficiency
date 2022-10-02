@@ -59,9 +59,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         vocab_sizes=self.vocab_sizes,
         total_vocab_sizes=sum(self.vocab_sizes),
         num_dense_features=self.num_dense_features,
-        mlp_bottom_dims=(128, 128),
-        mlp_top_dims=(256, 128, 1),
-        embed_dim=64)
+        mlp_bottom_dims=self.mlp_bottom_dims,
+        mlp_top_dims=self.mlp_top_dims,
+        embed_dim=self.embed_dim)
 
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
@@ -114,15 +114,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
-    # Only create and iterate over tf input pipeline in one Python process to
-    # avoid creating too many threads.
-    # if RANK == 0:
-    #   dataset_iter = super().build_input_queue(data_rng,
-    #                                            split,
-    #                                            data_dir,
-    #                                            global_batch_size,
-    #                                            num_batches,
-    #                                            repeat_final_dataset)
+    # The input pipeline has to be created in all processes, because
+    # self._tokenizer has to be available in every process.
     np_iter = super().build_input_queue(data_rng,
                                         split,
                                         data_dir,
@@ -130,6 +123,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                         num_batches,
                                         repeat_final_dataset)
     while True:
+      # Only iterate over tf input pipeline in one Python process to
+      # avoid creating too many threads.
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         inputs = torch.as_tensor(
