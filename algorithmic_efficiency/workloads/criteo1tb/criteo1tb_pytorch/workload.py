@@ -114,14 +114,15 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
-    # The input pipeline has to be created in all processes, because
-    # self._tokenizer has to be available in every process.
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
+    # Only create and iterate over tf input pipeline in one Python process to
+    # avoid creating too many threads.
+    if RANK == 0:
+      np_iter = super().build_input_queue(data_rng,
+                                          split,
+                                          data_dir,
+                                          global_batch_size,
+                                          num_batches,
+                                          repeat_final_dataset)
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
