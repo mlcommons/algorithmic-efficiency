@@ -168,7 +168,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                               device=DEVICE)
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
-        weights = torch.empty((N_GPUS, per_device_batch_size, 39),
+        weights = torch.empty((N_GPUS, per_device_batch_size, 1),
                               dtype=torch.bool,
                               device=DEVICE)
         dist.broadcast(weights, src=0)
