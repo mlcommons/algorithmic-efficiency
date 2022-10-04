@@ -15,7 +15,7 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 RANK = pytorch_setup()[1]
-AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
+AUTOTUNE = tf.data.AUTOTUNE
 
 import jax
 
@@ -86,12 +86,6 @@ def get_criteo1tb_dataset(split: str,
     num_examples = num_batches * global_batch_size
     num_files = math.ceil(num_examples / _CSV_LINES_PER_FILE)
     ds = ds.take(num_files)
-
-  # Avoid creating too many threads when using PyTorch DDP.
-  if RANK != 0:
-    options = tf.data.Options()
-    options.threading.private_threadpool_size = 1
-    ds = ds.with_options(options)
 
   if is_training:
     ds = ds.repeat()
