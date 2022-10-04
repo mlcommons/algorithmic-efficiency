@@ -9,15 +9,10 @@ import math
 import os
 from typing import Optional, Sequence
 
+import jax
 import tensorflow as tf
 
 from algorithmic_efficiency import data_utils
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-
-RANK = pytorch_setup()[1]
-AUTOTUNE = tf.data.AUTOTUNE
-
-import jax
 
 _CSV_LINES_PER_FILE = 5_000_000
 
@@ -96,7 +91,7 @@ def get_criteo1tb_dataset(split: str,
       num_parallel_calls=32,
       deterministic=False)
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
-  ds = ds.map(_parse_example_fn, num_parallel_calls=AUTOTUNE)
+  ds = ds.map(_parse_example_fn, num_parallel_calls=tf.data.AUTOTUNE)
   ds = ds.prefetch(tf.data.AUTOTUNE)
 
   if num_batches is not None:
