@@ -16,6 +16,9 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   def __init__(self):
     self.vocab_sizes = tuple([1024 * 128] * 26)
     self.num_dense_features = 13
+    self.mlp_bottom_dims = (128, 128)
+    self.mlp_top_dims = (256, 128, 1)
+    self.embed_dim = 64
     self._eval_iters = {}
     self._param_shapes = None
     self._param_types = None
@@ -86,17 +89,13 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
 
-    # # Separate function is necessary because the code above has to be executed
-    # # when build_input_queue is called (not when next() is first called on it).
-    # def _input_queue_generator():
-    #   for batch in iter(ds):
-    #     batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
-    #     yield batch
+    # Separate function is necessary because the code above has to be executed
+    # when build_input_queue is called (not when next() is first called on it).
+    def _input_queue_generator():
+      for batch in iter(ds):
+        yield batch
 
-    for batch in iter(ds):
-      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
-      yield batch
-    # return _input_queue_generator()
+    return _input_queue_generator()
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
