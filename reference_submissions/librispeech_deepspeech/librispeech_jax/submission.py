@@ -11,9 +11,6 @@ import optax
 
 from algorithmic_efficiency import spec
 
-# import gc
-# import torch
-
 _GRAD_CLIP_EPS = 1e-6
 
 
@@ -75,92 +72,89 @@ def l2_regularization(params, l2_decay_rank_threshold):
   return weight_l2
 
 
-def update_step(batch,
-                params,
-                batch_stats,
-                optimizer_state,
-                workload,
-                global_step,
-                hyperparameters,
-                opt_update_fn,
-                rng,
-                lr):
-
+@functools.partial(
+    jax.pmap,
+    axis_name='batch',
+    in_axes=(None, None, 0, 0, 0, None, 0, 0, None),
+    static_broadcasted_argnums=(0, 1))
+def pmapped_train_step(workload,
+                       opt_update_fn,
+                       model_state,
+                       optimizer_state,
+                       current_param_container,
+                       hyperparameters,
+                       batch,
+                       rng,
+                       lr):
   optimizer_state.hyperparams['learning_rate'] = lr
 
   def _loss_fn(params):
     """loss function used for training."""
     params_rng, dropout_rng = jax.random.split(rng, 2)
-    (logits, logit_paddings), new_batch_stats = workload.model_fn(
+    (logits, logit_paddings), new_model_state = workload.model_fn(
         params,
         batch,
-        batch_stats,
+        model_state,
         spec.ForwardPassMode.TRAIN,
         {'params' : params_rng, 'dropout' : dropout_rng})
 
     loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))
-    return loss, new_batch_stats
+    return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (loss, new_model_state), grad = grad_fn(params)
-
-  grad_norm = jnp.sqrt(l2_regularization(grad, 0))
-
+  (loss, new_model_state), grad = grad_fn(current_param_container)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
-  # with following gradient clipping code submission doesn't hang
-
+  
+  grad_norm = jnp.sqrt(l2_regularization(grad, 0))
   grad_clip = hyperparameters.grad_clip
   grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
   grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
 
   grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
-  updates, new_optimizer_state = opt_update_fn(grad, optimizer_state, params)
-  updated_params = optax.apply_updates(params, updates)
+  updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
+                                               current_param_container)
+  updated_params = optax.apply_updates(current_param_container, updates)
 
-  return updated_params, new_model_state, new_optimizer_state, loss, grad_norm
+  return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
 
-
-def update_params(workload,
-                  current_param_container,
-                  current_params_types,
-                  model_state,
-                  hyperparameters,
-                  batch,
-                  loss_type: spec.LossType,
-                  optimizer_state,
-                  eval_results: List[Tuple[int, float]],
-                  global_step: int,
-                  rng):
+def update_params(
+    workload: spec.Workload,
+    current_param_container: spec.ParameterContainer,
+    current_params_types: spec.ParameterTypeTree,
+    model_state: spec.ModelAuxiliaryState,
+    hyperparameters: spec.Hyperparameters,
+    batch: Dict[str, spec.Tensor],
+    # This will define the output activation via `output_activation_fn`.
+    loss_type: spec.LossType,
+    optimizer_state: spec.OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
+  del current_params_types
   del eval_results
   del loss_type
-  del current_params_types
 
   lr = workload.get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
+  per_device_rngs = jax.random.split(rng, jax.local_device_count())
+  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(  # pylint: disable=line-too-long
+      workload, opt_update_fn, model_state, optimizer_state,
+      current_param_container, hyperparameters, batch, per_device_rngs, lr)
 
-  update_fn = functools.partial(
-      update_step,
-      opt_update_fn=opt_update_fn,
-      global_step=global_step,
-      workload=workload,
-      hyperparameters=hyperparameters,
-      rng=rng,
-      lr=lr)
-
-  pmapped_update_step = jax.pmap(
-      update_fn, axis_name='batch', in_axes=(0, 0, 0, 0))
-  new_params, new_model_state, new_optimizer_state, loss, grad_norm = pmapped_update_step(  # pylint: disable=line-too-long
-    batch,
-    current_param_container,
-    model_state,
-    optimizer_state)
-
-  logging.info('%d) loss = %0.03f, grad_norm = %0.03f',
-               global_step,
-               loss.mean(),
-               grad_norm.mean())
+  if global_step <= 1000 or global_step % 100 == 0:
+    logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',
+                 global_step,
+                 loss.mean(),
+                 grad_norm.mean(),
+                 lr)
+    if workload.summary_writer is not None:
+      workload.summary_writer.scalar('train_step_ctc_loss',
+                                     loss.mean(),
+                                     global_step)
+      workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
+      workload.summary_writer.scalar('learning_rate', lr, global_step)
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

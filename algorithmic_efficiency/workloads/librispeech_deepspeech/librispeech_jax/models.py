@@ -16,6 +16,7 @@ from flax import linen as nn
 from flax import struct
 import jax
 import jax.numpy as jnp
+import numpy as np
 from ml_collections.config_dict import config_dict
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
@@ -68,6 +69,9 @@ class Subsample(nn.Module):
 
   @nn.compact
   def __call__(self, inputs, output_paddings, train):
+    # print('subsample input shape = ', inputs.shape)
+    # print('subsample paddings shape = ', output_paddings.shape)
+
     config = self.config
     outputs = jnp.expand_dims(inputs, axis=-1)
 
@@ -79,6 +83,9 @@ class Subsample(nn.Module):
         input_channels=1,
         output_channels=config.encoder_dim)(outputs, output_paddings, train)
 
+    # print('after conv 1 subsample input shape = ', outputs.shape)
+    # print('after conv 1 subsample paddings shape = ', output_paddings.shape)
+    
     outputs, output_paddings = Conv2dSubsampling(
         encoder_dim=config.encoder_dim,
         dtype=config.dtype,
@@ -86,6 +93,9 @@ class Subsample(nn.Module):
         batch_norm_epsilon=config.batch_norm_epsilon,
         input_channels=config.encoder_dim,
         output_channels=config.encoder_dim)(outputs, output_paddings, train)
+
+    # print('after conv 2 subsample input shape = ', outputs.shape)
+    # print('after conv 2 subsample paddings shape = ', output_paddings.shape)
 
     batch_size, subsampled_lengths, subsampled_dims, channels = outputs.shape
 
@@ -103,13 +113,6 @@ class Subsample(nn.Module):
             outputs)
 
     return outputs, output_paddings
-
-
-@jax.jit
-def hard_tanh(x, min_value, max_value):
-  return jnp.where(x < min_value,
-                   min_value,
-                   jnp.where(x > max_value, max_value, x))
 
 
 class Conv2dSubsampling(nn.Module):
@@ -150,14 +153,8 @@ class Conv2dSubsampling(nn.Module):
         feature_group_count=feature_group_count)
 
     outputs += jnp.reshape(self.bias, (1,) * (outputs.ndim - 1) + (-1,))
-
-    outputs = BatchNorm(self.encoder_dim,
-                        self.dtype,
-                        self.batch_norm_momentum,
-                        self.batch_norm_epsilon)(
-                            outputs, input_paddings=None, train=train)
     outputs = nn.relu(outputs)
-
+    
     # Computing correct paddings post input convolution.
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
@@ -195,8 +192,8 @@ class FeedForwardModule(nn.Module):
     inputs = nn.Dense(
         config.encoder_dim,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(
-            inputs)
+        kernel_init=nn.initializers.xavier_uniform())(inputs)
+    inputs = nn.relu(inputs)
     inputs *= padding_mask
 
     inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
@@ -293,14 +290,19 @@ class BatchNorm(nn.Module):
       count_v = jnp.sum(
           jnp.ones_like(inputs) * mask, axis=reduce_over_dims, keepdims=True)
 
+      sum_v = jax.lax.psum(sum_v, axis_name='batch')
+      count_v = jax.lax.psum(count_v, axis_name='batch')
+      
       count_v = jnp.maximum(count_v, 1.0)
       mean = sum_v / count_v
+      variance = (inputs - mean) * (inputs - mean) * mask
 
       sum_vv = jnp.sum(
-          (inputs - mean) * (inputs - mean) * mask,
+          variance,
           axis=reduce_over_dims,
           keepdims=True)
 
+      sum_vv = jax.lax.psum(sum_vv, axis_name='batch')
       var = sum_vv / count_v
 
       self.ra_mean.value = momentum * self.ra_mean.value + (1 - momentum) * mean
@@ -315,6 +317,7 @@ class BatchNorm(nn.Module):
     bn_output *= 1.0 - padding
 
     return bn_output
+    # return inputs
 
 
 @jax.vmap
@@ -407,7 +410,7 @@ class GenericRNNSequenceEncoder(nn.Module):
 
   def __call__(self,
                inputs: Array,
-               lengths: Array,
+               input_paddings: Array,
                initial_state: StateType,
                reverse: bool = False,
                deterministic: bool = False):
@@ -430,6 +433,8 @@ class GenericRNNSequenceEncoder(nn.Module):
         LSTM cell the final states are a tuple (c, h), each shaped <float32>[
           batch_size, hidden_size].
     """
+    lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
+
     if reverse:
       inputs = flip_sequences(inputs, lengths)
 
@@ -438,13 +443,11 @@ class GenericRNNSequenceEncoder(nn.Module):
                                                  inputs,
                                                  recurrent_dropout_mask,
                                                  deterministic)
-    final_state = jax.tree_map(
-        lambda x: x[jnp.arange(inputs.shape[0]), lengths - 1], cell_states)
 
     if reverse:
       outputs = flip_sequences(outputs, lengths)
 
-    return outputs, final_state
+    return outputs
 
 
 class GenericRNN(nn.Module):
@@ -481,7 +484,7 @@ class GenericRNN(nn.Module):
   def __call__(
       self,
       inputs: Array,
-      lengths: Array,
+      input_paddings: Array,
       initial_states: Optional[Sequence[StateType]] = None,
       deterministic: bool = False) -> Tuple[Array, Sequence[StateType]]:
     """Processes the input sequence using the recurrent cell.
@@ -506,7 +509,6 @@ class GenericRNN(nn.Module):
       for others cells it only contains a single vector (h,).
     """
     batch_size = inputs.shape[0]
-    final_states = []
     num_directions = 2 if self.bidirectional else 1
     num_cells = self.num_layers * num_directions
 
@@ -526,39 +528,37 @@ class GenericRNN(nn.Module):
     cell_idx = 0
     for _ in range(self.num_layers):
       # Unroll an RNN cell (forward direction) for this layer.
-      outputs, final_state = GenericRNNSequenceEncoder(
+      outputs = GenericRNNSequenceEncoder(
           cell_type=self.cell_type,
           cell_kwargs=self.cell_kwargs,
           hidden_size=self.hidden_size,
           recurrent_dropout_rate=self.recurrent_dropout_rate,
           name=f'{self.name}SequenceEncoder_{cell_idx}')(
               inputs,
-              lengths,
+              input_paddings,
               initial_state=initial_states[cell_idx],
               deterministic=deterministic)
-      final_states.append(final_state)
       cell_idx += 1
 
       # Unroll an RNN cell (backward direction) for this layer.
       if self.bidirectional:
-        backward_outputs, backward_final_state = GenericRNNSequenceEncoder(
+        backward_outputs = GenericRNNSequenceEncoder(
             cell_type=self.cell_type,
             cell_kwargs=self.cell_kwargs,
             hidden_size=self.hidden_size,
             recurrent_dropout_rate=self.recurrent_dropout_rate,
             name=f'{self.name}SequenceEncoder_{cell_idx}')(
                 inputs,
-                lengths,
+                input_paddings,
                 initial_state=initial_states[cell_idx],
                 reverse=True,
                 deterministic=deterministic)
         outputs = jnp.concatenate([outputs, backward_outputs], axis=-1)
-        final_states.append(backward_final_state)
         cell_idx += 1
 
       inputs = outputs
 
-    return outputs, final_states
+    return outputs
 
 
 class LSTM(nn.Module):
@@ -592,7 +592,7 @@ class LSTM(nn.Module):
   def __call__(
       self,
       inputs: Array,
-      lengths: Array,
+      input_paddings: Array,
       initial_states: Optional[Sequence[StateType]] = None,
       deterministic: bool = False) -> Tuple[Array, Sequence[StateType]]:
     """Processes an input sequence with an LSTM cell.
@@ -629,7 +629,7 @@ class LSTM(nn.Module):
         cell_kwargs=self.cell_kwargs,
         name='LSTM')(
             inputs,
-            lengths,
+            input_paddings,
             initial_states=initial_states,
             deterministic=deterministic)
 
@@ -647,11 +647,10 @@ class BatchRNN(nn.Module):
                        config.dtype,
                        config.batch_norm_momentum,
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
-    lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
 
-    output, _ = LSTM(
+    output = LSTM(
         hidden_size=config.encoder_dim // 2, bidirectional=config.bidirectional,
-        num_layers=1)(inputs, lengths)
+        num_layers=1)(inputs, input_paddings)
 
     return output
 
@@ -724,7 +723,6 @@ class Deepspeech(nn.Module):
     outputs = nn.Dense(
         config.vocab_size,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(
-            outputs)
+        kernel_init=nn.initializers.xavier_uniform())(outputs)
 
     return outputs, output_paddings
