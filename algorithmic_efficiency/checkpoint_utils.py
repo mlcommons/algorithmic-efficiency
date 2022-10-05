@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Implements checkpointing of nested python containers of numpy arrays.
 This is useful for training neural networks with stax, where model parameters
 are nested numpy arrays.
@@ -30,7 +29,6 @@ from flax.training import checkpoints as flax_checkpoints
 import jax
 import jax.numpy as jnp
 
-
 FLAGS = flags.FLAGS
 
 
@@ -45,10 +43,7 @@ def load_pytree(pytree_file):
   return None
 
 
-def replicate_checkpoint(
-    latest,
-    pytree_keys: Sequence[str],
-    replicate=True):
+def replicate_checkpoint(latest, pytree_keys: Sequence[str], replicate=True):
   """Restores from the provided checkpoint.
   Args:
     latest: A dict representing the state of the
@@ -70,7 +65,8 @@ def replicate_checkpoint(
   expected = ['global_step', 'preemption_count', 'sum_train_cost']
   if any(k not in latest for k in expected):
     logging.warn('Checkpoint state missing keys, obtained %s expected %s',
-                 list(latest.keys()), expected)
+                 list(latest.keys()),
+                 expected)
 
   pytree = {k: latest[k] for k in pytree_keys}
   if replicate:
@@ -79,13 +75,12 @@ def replicate_checkpoint(
   return pytree, extra_dict
 
 
-def replicate_and_maybe_restore_checkpoint(
-    unreplicated_optimizer_state,
-    unreplicated_params,
-    unreplicated_batch_stats,
-    unreplicated_training_metrics_state,
-    train_dir,
-    external_checkpoint_path=None):
+def replicate_and_maybe_restore_checkpoint(unreplicated_optimizer_state,
+                                           unreplicated_params,
+                                           unreplicated_batch_stats,
+                                           unreplicated_training_metrics_state,
+                                           train_dir,
+                                           external_checkpoint_path=None):
   """Replicates everything, and optionally restores from a checkpoint.
   The checkpoint logic is as follows: if there is a checkpoint in `train_dir`,
   restore it.  Else, if `external_checkpoint_path` is set, restore the
@@ -122,8 +117,8 @@ def replicate_and_maybe_restore_checkpoint(
       global_step=uninitialized_global_step,
       preemption_count=0,
       sum_train_cost=0.0)
-  latest_ckpt = load_latest_checkpoint(train_dir,
-                                       target=unreplicated_checkpoint_state)
+  latest_ckpt = load_latest_checkpoint(
+      train_dir, target=unreplicated_checkpoint_state)
   # Load_latest_checkpoint() will return unreplicated_checkpoint_state if
   # train_dir does not exist or if it exists and contains no checkpoints.
   # Note that we could likely change the below line to:
@@ -141,8 +136,8 @@ def replicate_and_maybe_restore_checkpoint(
     # is that some of the fields in the training metrics state are arrays of
     # shape [num_train_steps].  In the future we may want to handle these
     # arrays explicitly, in order to avoid this crash.
-    ckpt_to_return = load_checkpoint(external_checkpoint_path,
-                                     target=unreplicated_checkpoint_state)
+    ckpt_to_return = load_checkpoint(
+        external_checkpoint_path, target=unreplicated_checkpoint_state)
     is_restored = False  # We don't want trainer to increment preemption_count.
   else:  # Else, don't restore from any checkpoint.
     return (
@@ -163,27 +158,25 @@ def replicate_and_maybe_restore_checkpoint(
           'batch_stats',
           'training_metrics_grabber',
       ])
-  return (
-      pytree_dict['optimizer_state'],
-      pytree_dict['params'],
-      pytree_dict['batch_stats'],
-      pytree_dict['training_metrics_grabber'],
-      extra_state['global_step'],
-      extra_state['sum_train_cost'],
-      extra_state['preemption_count'],
-      is_restored)
+  return (pytree_dict['optimizer_state'],
+          pytree_dict['params'],
+          pytree_dict['batch_stats'],
+          pytree_dict['training_metrics_grabber'],
+          extra_state['global_step'],
+          extra_state['sum_train_cost'],
+          extra_state['preemption_count'],
+          is_restored)
 
 
-def save_unreplicated_checkpoint_background(
-    train_dir,
-    optimizer_state,
-    params,
-    batch_stats,
-    training_metrics_state,
-    global_step,
-    preemption_count,
-    sum_train_cost,
-    max_to_keep=1):
+def save_unreplicated_checkpoint_background(train_dir,
+                                            optimizer_state,
+                                            params,
+                                            batch_stats,
+                                            training_metrics_state,
+                                            global_step,
+                                            preemption_count,
+                                            sum_train_cost,
+                                            max_to_keep=1):
   """Saves pytree, step, preemption_count, and sum_train_cost to train_dir."""
   logging.info('Saving checkpoint to ckpt_%d', global_step)
   unreplicated_optimizer_state = jax.device_get(
@@ -192,18 +185,16 @@ def save_unreplicated_checkpoint_background(
   unreplicated_batch_stats = jax.device_get(jax_utils.unreplicate(batch_stats))
   unreplicated_training_metrics_state = jax.device_get(
       jax_utils.unreplicate(training_metrics_state))
-  state = dict(global_step=global_step,
-               preemption_count=preemption_count,
-               sum_train_cost=sum_train_cost,
-               optimizer_state=unreplicated_optimizer_state,
-               params=unreplicated_params,
-               batch_stats=unreplicated_batch_stats,
-               training_metrics_grabber=unreplicated_training_metrics_state)
+  state = dict(
+      global_step=global_step,
+      preemption_count=preemption_count,
+      sum_train_cost=sum_train_cost,
+      optimizer_state=unreplicated_optimizer_state,
+      params=unreplicated_params,
+      batch_stats=unreplicated_batch_stats,
+      training_metrics_grabber=unreplicated_training_metrics_state)
   save_checkpoint_background(
-      train_dir,
-      global_step,
-      state,
-      max_to_keep=max_to_keep)
+      train_dir, global_step, state, max_to_keep=max_to_keep)
   logging.info('Done saving checkpoint.')
 
 
@@ -252,15 +243,13 @@ def save_checkpoint_background(*args, **kwargs):
     kwargs = copy.deepcopy(kwargs)
     _save_checkpoint_background_thread = threading.Thread(
         target=_save_checkpoint_background_catch_error,
-        args=args, kwargs=kwargs, daemon=False)
+        args=args,
+        kwargs=kwargs,
+        daemon=False)
     _save_checkpoint_background_thread.start()
 
 
-def save_checkpoint(train_dir,
-                    step,
-                    state,
-                    prefix='ckpt_',
-                    max_to_keep=None):
+def save_checkpoint(train_dir, step, state, prefix='ckpt_', max_to_keep=None):
   """Saves checkpoint to train_dir/{prefix}{step}.
   A list of checkpoints will be stored in train_dir. The user
   is responsible for using unique checkpoint names when calling save_checkpoint
@@ -290,10 +279,7 @@ def save_checkpoint(train_dir,
   return save_dir
 
 
-def load_checkpoint(
-    checkpoint_path,
-    target=None,
-    prefix='ckpt_'):
+def load_checkpoint(checkpoint_path, target=None, prefix='ckpt_'):
   """Loads the specified checkpoint."""
   restored = flax_checkpoints.restore_checkpoint(
       checkpoint_path, target=target, prefix=prefix)

@@ -242,10 +242,6 @@ class Workload(metaclass=abc.ABCMeta):
                            global_step: int = 0) -> Dict[str, float]:
     """Evaluate the model on a given dataset split, return final scalars."""
 
-  def create_summary_writer(self, log_dir):
-    logging.info('tensorboard summaries at %s', log_dir)
-    self.summary_writer = tensorboard.SummaryWriter(log_dir)
-
   def eval_model(self,
                  global_batch_size: int,
                  params: ParameterContainer,

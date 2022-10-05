@@ -17,23 +17,23 @@ import os
 import struct
 import time
 from typing import Optional, Tuple
-import jax
 
 from absl import app
 from absl import flags
 from absl import logging
+import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-
+from algorithmic_efficiency.logger_utils import get_meta_data
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.logger_utils import set_up_loggers
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.logger_utils import set_up_loggers
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -112,20 +112,15 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
+flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 flags.DEFINE_string('root_dir',
                     'experiments',
                     'The root directory to store all experiments')
-flags.DEFINE_string('experiment_name',
-                    'baseline',
-                    'Name of the experiment.')
-flags.DEFINE_boolean('wandb',
-                     False,
-                     'Whether to monitor the results with Wandb.')
+flags.DEFINE_string('experiment_name', 'baseline', 'Name of the experiment.')
 
 
 FLAGS = flags.FLAGS
@@ -199,17 +194,24 @@ def train_once(
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Logger setup.
+  logging.info('Initializing loggers.')
   hparams_fname = os.path.join(log_dir, 'hparams.json')
-  logging.info('saving hparams to %s', hparams_fname)
-  with open(hparams_fname, 'w') as f:
-    f.write(json.dumps(hyperparameters._asdict(), indent=2))
-  meta_data = {'status': 'incomplete', 'timestamp': time.time()}
+  # meta_data = {'status': 'incomplete', 'timestamp': time.time()}
+  meta_data = get_meta_data(workload)
   meta_fname = os.path.join(log_dir, 'meta_data.json')
-  logging.info('saving meta data to %s', meta_fname)
-  with open(meta_fname, 'w') as f:
-    f.write(json.dumps(meta_data, indent=2))
+  flag_fname = os.path.join(log_dir, 'flags.json')
+
   if RANK == 0:
-    metrics_logger = set_up_loggers(log_dir, hyperparameters)
+    logging.info('saving hparams to %s', hparams_fname)
+    with open(hparams_fname, 'w') as f:
+      f.write(json.dumps(hyperparameters._asdict(), indent=2))
+    logging.info('saving meta data to %s', meta_fname)
+    with open(meta_fname, 'w') as f:
+      f.write(json.dumps(meta_data, indent=2))
+    logging.info('saving flags to %s', flag_fname)
+    with open(flag_fname, 'w') as f:
+      f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
+    metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
   else:
     metrics_logger = None
 
@@ -314,10 +316,9 @@ def train_once(
           last_eval_time = current_time
           eval_results.append((global_step, latest_eval_result))
 
-          # if FLAGS.wandb and wandb is not None and RANK == 0:
-          #   wandb.log(latest_eval_result)
-          metrics_logger.append_scalar_metrics(latest_eval_result,
-                                               global_step=global_step)
+          if RANK == 0:
+            metrics_logger.append_scalar_metrics(
+                latest_eval_result, global_step=global_step)
 
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
@@ -335,6 +336,11 @@ def train_once(
     score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
     accumulated_submission_time = score_tensor.item()
+
+  if RANK == 0:
+    metrics_logger.append_scalar_metrics(
+      {"score": accumulated_submission_time}, global_step=global_step)
+
   return accumulated_submission_time, metrics
 
 
@@ -386,6 +392,7 @@ def score_submission_on_workload(workload: spec.Workload,
 
       tuning_log_dir = os.path.join(log_dir, str(hi + 1))
       if RANK == 0:
+        logging.info('Creating tuning directory at %s', tuning_log_dir)
         os.makedirs(tuning_log_dir, exist_ok=True)
 
       with profiler.profile('Train'):
@@ -395,7 +402,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, tuning_log_dir,
+                                     hyperparameters, rng, profiler,
+                                     tuning_log_dir,
                                      tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
@@ -446,6 +454,7 @@ def main(_):
   experiment_log_dir = os.path.join(FLAGS.root_dir, experiment_name)
   if RANK == 0:
     # only one worker should create the required dir
+    logging.info('Creating experiment directory at %s', experiment_log_dir)
     os.makedirs(name=experiment_log_dir, exist_ok=True)
 
   score = score_submission_on_workload(workload,
