@@ -196,12 +196,14 @@ for i in range(NUM_TRAINING_STEPS):
 
     if GRAD_CLIP:
       scaled_grad = jax.tree_map(
-        lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
-      grad = jax.lax.cond(grad_norm > grad_clip, lambda _: scaled_grad,
-                        lambda _: grad, None)
-      
+          lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
+      grad = jax.lax.cond(grad_norm > grad_clip,
+                          lambda _: scaled_grad,
+                          lambda _: grad,
+                          None)
+
       # If we use this below version of gradient clipping it doesn't hang in submission
-      
+
       # grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
       # grad_scaling_factor = jax.lax.clamp(
       #     min=0.0, x=grad_scaling_factor, max=1.0)

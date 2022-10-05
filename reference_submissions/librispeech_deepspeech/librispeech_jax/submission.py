@@ -104,7 +104,7 @@ def pmapped_train_step(workload,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(current_param_container)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
-  
+
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
   grad_clip = hyperparameters.grad_clip
   grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
@@ -117,6 +117,7 @@ def pmapped_train_step(workload,
   updated_params = optax.apply_updates(current_param_container, updates)
 
   return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
+
 
 def update_params(
     workload: spec.Workload,

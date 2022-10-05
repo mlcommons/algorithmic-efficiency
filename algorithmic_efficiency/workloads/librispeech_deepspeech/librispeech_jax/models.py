@@ -16,8 +16,8 @@ from flax import linen as nn
 from flax import struct
 import jax
 import jax.numpy as jnp
-import numpy as np
 from ml_collections.config_dict import config_dict
+import numpy as np
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
@@ -85,7 +85,7 @@ class Subsample(nn.Module):
 
     # print('after conv 1 subsample input shape = ', outputs.shape)
     # print('after conv 1 subsample paddings shape = ', output_paddings.shape)
-    
+
     outputs, output_paddings = Conv2dSubsampling(
         encoder_dim=config.encoder_dim,
         dtype=config.dtype,
@@ -154,7 +154,7 @@ class Conv2dSubsampling(nn.Module):
 
     outputs += jnp.reshape(self.bias, (1,) * (outputs.ndim - 1) + (-1,))
     outputs = nn.relu(outputs)
-    
+
     # Computing correct paddings post input convolution.
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
@@ -192,7 +192,8 @@ class FeedForwardModule(nn.Module):
     inputs = nn.Dense(
         config.encoder_dim,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(inputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            inputs)
     inputs = nn.relu(inputs)
     inputs *= padding_mask
 
@@ -292,15 +293,12 @@ class BatchNorm(nn.Module):
 
       sum_v = jax.lax.psum(sum_v, axis_name='batch')
       count_v = jax.lax.psum(count_v, axis_name='batch')
-      
+
       count_v = jnp.maximum(count_v, 1.0)
       mean = sum_v / count_v
       variance = (inputs - mean) * (inputs - mean) * mask
 
-      sum_vv = jnp.sum(
-          variance,
-          axis=reduce_over_dims,
-          keepdims=True)
+      sum_vv = jnp.sum(variance, axis=reduce_over_dims, keepdims=True)
 
       sum_vv = jax.lax.psum(sum_vv, axis_name='batch')
       var = sum_vv / count_v
@@ -649,7 +647,8 @@ class BatchRNN(nn.Module):
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
 
     output = LSTM(
-        hidden_size=config.encoder_dim // 2, bidirectional=config.bidirectional,
+        hidden_size=config.encoder_dim // 2,
+        bidirectional=config.bidirectional,
         num_layers=1)(inputs, input_paddings)
 
     return output
@@ -723,6 +722,7 @@ class Deepspeech(nn.Module):
     outputs = nn.Dense(
         config.vocab_size,
         use_bias=True,
-        kernel_init=nn.initializers.xavier_uniform())(outputs)
+        kernel_init=nn.initializers.xavier_uniform())(
+            outputs)
 
     return outputs, output_paddings
