@@ -117,6 +117,10 @@ flags.DEFINE_enum(
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
+flags.DEFINE_boolean('wandb',
+                     False,
+                     'Whether to monitor the results with Wandb.')
+
 flags.DEFINE_string('summary_log_dir',
                     '',
                     'Location to dump tensorboard summaries.')
@@ -219,8 +223,6 @@ def train_once(
   logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
     workload.init_metrics_bundle(tokenizer_vocab_path)
-  if wandb is not None and RANK == 0:
-    wandb.init()
 
   # Bookkeeping.
   goal_reached = False
@@ -288,6 +290,10 @@ def train_once(
                        latest_eval_result)
           last_eval_time = current_time
           eval_results.append((global_step, latest_eval_result))
+
+          if FLAGS.wandb and wandb is not None and RANK == 0:
+            wandb.log(latest_eval_result)
+
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
@@ -394,6 +400,10 @@ def main(_):
   if FLAGS.framework == 'pytorch':
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
+  if FLAGS.wandb and wandb is not None and RANK == 0:
+    wandb.init()
+    wandb.config.update(flags.FLAGS)
+
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
   workload_metadata['workload_path'] = os.path.join(
@@ -416,6 +426,10 @@ def main(_):
                                        FLAGS.summary_log_dir,
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
+
+  if FLAGS.wandb and wandb is not None and RANK == 0:
+    wandb.log({'score': score})
+    wandb.finish()
 
   if FLAGS.profile:
     logging.info(profiler.summary())
