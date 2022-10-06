@@ -11,7 +11,7 @@ ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {"librispeech": 8}
+  batch_sizes = {"librispeech_conformer": 8}
   return batch_sizes[workload_name]
 
 
@@ -24,8 +24,12 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  optimizer = torch.optim.Adam(model_params.parameters(),
-                               hyperparameters.learning_rate)
+  optimizer = torch.optim.AdamW(
+      params=model_params.parameters(),
+      lr=2e-4,
+      betas=(hyperparameters.beta1, hyperparameters.beta2),
+      eps=hyperparameters.epsilon,
+      weight_decay=hyperparameters.weight_decay)
   return optimizer
 
 
@@ -45,21 +49,37 @@ def update_params(
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
   del eval_results
-  del global_step
   del model_state
   del loss_type
-  del hyperparameters
+
+  if hasattr(hyperparameters, 'input_dropout_rate'):
+    input_dropout_rate = hyperparameters.input_dropout_rate
+  else:
+    input_dropout_rate = 0.1
+  if hasattr(hyperparameters, 'residual_dropout_rate'):
+    residual_dropout_rate = hyperparameters.residual_dropout_rate
+  else:
+    residual_dropout_rate = 0.1
 
   optimizer_state.zero_grad()
+  current_model = current_param_container
+  (logits, logits_padding), _ = workload.model_fn(
+      current_model,
+      batch,
+      None,
+      spec.ForwardPassMode.TRAIN,
+      rng,
+      dropout_rate=residual_dropout_rate,
+      aux_dropout_rate=input_dropout_rate,
+      update_batch_norm=True)
 
-  (log_y, output_lengths), _ = workload.model_fn(
-      current_param_container, batch, None,
-      spec.ForwardPassMode.TRAIN, rng, False)
-
-  train_ctc_loss = torch.mean(workload.loss_fn(batch, (log_y, output_lengths)))
+  train_ctc_loss = workload.loss_fn(batch['targets'], (logits, logits_padding))
   train_ctc_loss.backward()
+  grad_clip = hyperparameters.grad_clip
+  for g in optimizer_state.param_groups:
+    g['lr'] = workload.get_learning_rate(global_step, hyperparameters)
+  torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
   optimizer_state.step()
-
   return optimizer_state, current_param_container, None
 
 
@@ -74,8 +94,8 @@ def data_selection(workload: spec.Workload,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
-  Each element of the queue is a batch of training examples and labels.
-  """
+    Each element of the queue is a batch of training examples and labels.
+    """
   del optimizer_state
   del current_param_container
   del global_step

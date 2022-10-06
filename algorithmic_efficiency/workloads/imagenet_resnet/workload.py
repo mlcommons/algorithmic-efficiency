@@ -1,4 +1,7 @@
 """ImageNet workload parent class."""
+from typing import Optional
+
+import jax
 
 from algorithmic_efficiency import spec
 
@@ -9,6 +12,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
     self._param_shapes = None
     self._param_types = None
     self._eval_iters = {}
+    self._num_classes = 1000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
@@ -35,7 +39,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def num_test_examples(self):
-    return None
+    return 10000  # ImageNet-v2
 
   @property
   def train_mean(self):
@@ -45,7 +49,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
   def train_stddev(self):
     return [0.229 * 255, 0.224 * 255, 0.225 * 255]
 
-  # data augmentation settings
+  # Data augmentation settings.
 
   @property
   def scale_ratio_range(self):
@@ -84,3 +88,26 @@ class BaseImagenetResNetWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
+
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    del num_batches
+    if global_batch_size % jax.local_device_count() != 0:
+      raise ValueError('Batch size must be divisible by the number of devices')
+    if split == 'test':
+      if not cache:
+        raise ValueError('cache must be True for split=test.')
+      if not repeat_final_dataset:
+        raise ValueError('repeat_final_dataset must be True for split=test.')
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset)

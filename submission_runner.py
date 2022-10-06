@@ -36,14 +36,12 @@ from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
+from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
-
-# Setup JAX so it preallocates less GPU memory by default.
-# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.85'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -108,7 +106,10 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      20,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location')
+flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
+flags.DEFINE_string('imagenet_v2_data_dir',
+                    '~/tensorflow_datasets/',
+                    'Dataset location for ImageNet-v2.')
 flags.DEFINE_enum(
     'framework',
     None,
@@ -116,13 +117,16 @@ flags.DEFINE_enum(
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
+flags.DEFINE_boolean('wandb',
+                     False,
+                     'Whether to monitor the results with Wandb.')
+
 flags.DEFINE_string('summary_log_dir',
                     '',
                     'Location to dump tensorboard summaries.')
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
-
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
@@ -177,12 +181,11 @@ def import_workload(workload_path: str,
   return workload_class()
 
 
-# Example reference implementation showing how to use the above functions
-# together.
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
     data_dir: str,
+    imagenet_v2_data_dir: str,
     init_optimizer_state: spec.InitOptimizerFn,
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
@@ -219,9 +222,7 @@ def train_once(
 
   logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
-    workload.init_metrics_bundle(tokenizer_vocab_path)
-  if wandb is not None and RANK == 0:
-    wandb.init()
+    workload.init_tokenizer(tokenizer_vocab_path)
 
   # Bookkeeping.
   goal_reached = False
@@ -250,26 +251,19 @@ def train_once(
     try:
       with profiler.profile('Update parameters'):
         optimizer_state, model_params, model_state = update_params(
-          workload=workload,
-          current_param_container=model_params,
-          current_params_types=workload.model_params_types,
-          model_state=model_state,
-          hyperparameters=hyperparameters,
-          batch=batch,
-          loss_type=workload.loss_type,
-          optimizer_state=optimizer_state,
-          eval_results=eval_results,
-          global_step=global_step,
-          rng=update_rng)
+            workload=workload,
+            current_param_container=model_params,
+            current_params_types=workload.model_params_types,
+            model_state=model_state,
+            hyperparameters=hyperparameters,
+            batch=batch,
+            loss_type=workload.loss_type,
+            optimizer_state=optimizer_state,
+            eval_results=eval_results,
+            global_step=global_step,
+            rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-    except RuntimeError as e:
-      if "out of memory" in str(e):
-        logging.warning(
-            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
-        )
-        if torch.cuda.is_available():
-          torch.cuda.empty_cache()
     global_step += 1
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
@@ -288,6 +282,7 @@ def train_once(
                                                    model_state,
                                                    eval_rng,
                                                    data_dir,
+                                                   imagenet_v2_data_dir,
                                                    global_step)
           logging.info('%.2fs \t%d \t%s',
                        current_time - global_start_time,
@@ -295,8 +290,13 @@ def train_once(
                        latest_eval_result)
           last_eval_time = current_time
           eval_results.append((global_step, latest_eval_result))
+
+          if FLAGS.wandb and wandb is not None and RANK == 0:
+            wandb.log(latest_eval_result)
+
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
+          logging.exception(f'Eval step {global_step} error.\n')
           if "out of memory" in str(e):
             logging.warning(
                 f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
@@ -307,6 +307,7 @@ def train_once(
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
+    dist.barrier()
     score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
     accumulated_submission_time = score_tensor.item()
@@ -317,6 +318,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
+                                 imagenet_v2_data_dir: str,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
                                  tuning_search_space: Optional[str] = None,
@@ -358,10 +360,14 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
       with profiler.profile('Train'):
+        if 'imagenet' not in workload_name:
+          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, global_batch_size,
-                                     data_dir, init_optimizer_state,
+                                     data_dir, imagenet_v2_data_dir,
+                                     init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir, tokenizer_vocab_path)  # pylint: disable=line-too-long
+                                     hyperparameters, rng, profiler, log_dir,
+                                     tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -377,9 +383,11 @@ def score_submission_on_workload(workload: spec.Workload,
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
     with profiler.profile('Train'):
-      score, _ = train_once(workload, global_batch_size, data_dir,
-                            init_optimizer_state, update_params, data_selection,
-                            None, rng, profiler)
+      score, _ = train_once(
+          workload, global_batch_size, data_dir,
+          imagenet_v2_data_dir,
+          init_optimizer_state, update_params, data_selection,
+          None, rng, profiler)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -391,29 +399,11 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
-    # Make sure no GPU memory is preallocated to Jax.
-    os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-    # From the docs: "(...) causes cuDNN to benchmark multiple convolution
-    # algorithms and select the fastest."
-    torch.backends.cudnn.benchmark = True
+    pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
-    if USE_PYTORCH_DDP:
-      # Avoid tf input pipeline creating too many threads.
-      if RANK != 0:
-        tf.config.threading.set_intra_op_parallelism_threads(1)
-        tf.config.threading.set_inter_op_parallelism_threads(1)
-
-      torch.cuda.set_device(RANK)
-      profiler.set_local_rank(RANK)
-      # only log once (for local rank == 0)
-      if RANK != 0:
-
-        def logging_pass(*args):
-          pass
-
-        logging.info = logging_pass
-      # initialize the process group
-      dist.init_process_group('nccl')
+  if FLAGS.wandb and wandb is not None and RANK == 0:
+    wandb.init()
+    wandb.config.update(flags.FLAGS)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
@@ -425,11 +415,11 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  # nvidia_smi.nvmlInit()
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
                                        FLAGS.data_dir,
+                                       FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
@@ -437,6 +427,10 @@ def main(_):
                                        FLAGS.summary_log_dir,
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
+
+  if FLAGS.wandb and wandb is not None and RANK == 0:
+    wandb.log({'score': score})
+    wandb.finish()
 
   if FLAGS.profile:
     logging.info(profiler.summary())

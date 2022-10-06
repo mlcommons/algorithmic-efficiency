@@ -1,6 +1,6 @@
 """WMT workload implemented in Jax."""
 import functools
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from absl import logging
 from flax import jax_utils
@@ -30,7 +30,6 @@ class WmtWorkload(BaseWmtWorkload):
 
   def __init__(self):
     super().__init__()
-    self._train_config = models.TransformerConfig()
     self._eval_config = models.TransformerConfig(deterministic=True)
 
   def compute_weighted_cross_entropy(self,
@@ -205,12 +204,16 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """aux_dropout_rate is used as attention_dropout_rate."""
     del model_state
     del update_batch_norm
 
     if mode == spec.ForwardPassMode.TRAIN:
-      model_config = self._train_config
+      model_config = models.TransformerConfig(
+          dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
     else:
       model_config = self._eval_config
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)

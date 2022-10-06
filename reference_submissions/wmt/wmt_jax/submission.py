@@ -97,16 +97,25 @@ def init_optimizer_state(workload: spec.Workload,
 
 @functools.partial(
     jax.pmap,
-    in_axes=(None, None, 0, 0, 0, 0),
+    in_axes=(None, None, 0, 0, 0, 0, None),
     axis_name='batch',
-    static_broadcasted_argnums=(0, 1))
+    static_broadcasted_argnums=(0, 1, 6))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        optimizer_state,
                        current_param_container,
                        batch,
-                       dropout_rng):
+                       dropout_rng,
+                       hyperparameters):
   """Perform a single training step."""
+  if hasattr(hyperparameters, 'dropout_rate'):
+    dropout_rate = hyperparameters.dropout_rate
+  else:
+    dropout_rate = 0.1
+  if hasattr(hyperparameters, 'attention_dropout_rate'):
+    attention_dropout_rate = hyperparameters.attention_dropout_rate
+  else:
+    attention_dropout_rate = 0.1
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -116,6 +125,8 @@ def pmapped_train_step(workload,
         model_state=None,
         mode=spec.ForwardPassMode.TRAIN,
         rng=dropout_rng,
+        dropout_rate=dropout_rate,
+        aux_dropout_rate=attention_dropout_rate,
         update_batch_norm=False)
     targets = batch['targets']
     weights = jnp.where(targets > 0, 1.0, 0.0)
@@ -150,7 +161,6 @@ def update_params(
   del eval_results
   del global_step
   del model_state
-  del hyperparameters
   del loss_type
 
   optimizer_state, opt_update_fn = optimizer_state
@@ -161,7 +171,8 @@ def update_params(
       optimizer_state,
       current_param_container,
       batch,
-      dropout_rngs)
+      dropout_rngs,
+      hyperparameters)
   return (new_optimizer_state, opt_update_fn), updated_params, None
 
 

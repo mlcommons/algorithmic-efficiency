@@ -10,16 +10,16 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import jax_to_pytorch
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.pytorch_utils import pytorch_to_jax
+from algorithmic_efficiency.interop_utils import jax_to_pytorch
+from algorithmic_efficiency.interop_utils import pytorch_to_jax
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 class WmtWorkload(BaseWmtWorkload):
@@ -163,12 +163,19 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """aux_dropout_rate is used as attention_dropout_rate."""
     del model_state
     del rng
     del update_batch_norm
 
     model = params
+    # Update all Dropout layers with dropout_rate, then go over and only update
+    # Dropout layers inside MultiheadAttention with aux_dropout_rate.
+    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.update_attention_dropout(model, aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -270,6 +277,8 @@ class WmtWorkload(BaseWmtWorkload):
         mode=spec.ForwardPassMode.EVAL,
         model_state=None,
         rng=None,
+        dropout_rate=0.1,  # Unused for eval.
+        aux_dropout_rate=0.1,  # Unused for eval.
         update_batch_norm=False)
     return self.compute_summed_metrics(logits, targets, weights)
 

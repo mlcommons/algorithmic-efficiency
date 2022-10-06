@@ -3,7 +3,12 @@ import jax.numpy as jnp
 import jax.random as jax_rng
 import jraph
 import pytest
+import torch
 
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.models import \
+    DlrmSmall as JaxDlrmSmall
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import \
+    DlrmSmall as PyTorchDlrmSmall
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet18 as JaxResNet_c10
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
@@ -16,6 +21,14 @@ from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.models import \
     ViT as JaxViT
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.models import \
     ViT as PyTorchViT
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.models import \
+    Conformer as JaxConformer
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.models import \
+    ConformerConfig as JaxConformerConfig
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+    ConformerConfig as PytorchConformerConfig
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+    ConformerEncoderDecoder as PytorchConformer
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
 from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
@@ -30,7 +43,16 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
+WORKLOADS = [
+    'mnist',
+    'cifar',
+    'criteo1tb',
+    'imagenet_resnet',
+    'imagenet_vit',
+    'wmt',
+    'ogbg',
+    'librispeech_conformer',
+]
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -59,6 +81,28 @@ def get_models(workload):
                                                jnp.float32))["params"]
     # Init PyTorch model.
     pytorch_model = PyTorchResNet_c10(num_classes=10)
+
+  elif workload == 'criteo1tb':
+    # Init Jax model.
+    input_shape = (1, 39)
+    model_init = JaxDlrmSmall(
+        vocab_sizes=tuple([1024 * 128] * 26),
+        total_vocab_sizes=sum(tuple([1024 * 128] * 26)),
+        num_dense_features=13,
+        mlp_bottom_dims=(128, 128),
+        mlp_top_dims=(256, 128, 1),
+        embed_dim=64).init
+    jax_model = model_init(init_rngs, jnp.ones(input_shape, jnp.float32),
+                           False)['params']
+    # Init PyTorch model.
+    pytorch_model = PyTorchDlrmSmall(
+        vocab_sizes=tuple([1024 * 128] * 26),
+        total_vocab_sizes=sum(tuple([1024 * 128] * 26)),
+        num_dense_features=13,
+        mlp_bottom_dims=(128, 128),
+        mlp_top_dims=(256, 128, 1),
+        embed_dim=64)
+
   elif workload == 'imagenet_resnet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
@@ -75,6 +119,21 @@ def get_models(workload):
         init_rngs, jnp.ones(input_shape, jnp.float32))['params']
     # Init PyTorch model.
     pytorch_model = PyTorchViT()
+  elif workload == 'librispeech_conformer':
+    jax_model = JaxConformer(JaxConformerConfig())
+    pytorch_model = PytorchConformer(PytorchConformerConfig())
+
+    # Init Jax model
+    input_shape = [(320000,), (320000,)]
+    fake_input_batch = [jnp.zeros((2, *x), jnp.float32) for x in input_shape]
+    jax_model = jax_model.init(
+        init_rngs, train=False, *fake_input_batch)["params"]
+
+    # Run model once to initialize lazy layers
+    wave = torch.randn(2, 320000)
+    pad = torch.zeros_like(wave)
+    pytorch_model(wave, pad)
+
   elif workload == 'wmt':
     # Init Jax model.
     input_shape = (16, 256)

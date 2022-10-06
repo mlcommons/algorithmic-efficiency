@@ -59,6 +59,8 @@ def update_params(
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=None,
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   loss = workload.loss_fn(

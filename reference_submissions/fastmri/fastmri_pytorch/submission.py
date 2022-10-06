@@ -55,13 +55,16 @@ def update_params(
     rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
-  del hyperparameters
   del loss_type
   del eval_results
 
   current_model = current_param_container
   current_param_container.train()
   optimizer_state['optimizer'].zero_grad()
+  if hasattr(hyperparameters, 'dropout_rate'):
+    dropout_rate = hyperparameters.dropout_rate
+  else:
+    dropout_rate = 0.0
 
   outputs_batch, new_model_state = workload.model_fn(
       params=current_model,
@@ -69,10 +72,12 @@ def update_params(
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=dropout_rate,
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      targets_batch=batch['targets'], logits_batch=outputs_batch).mean()
+      label_batch=batch['targets'], logits_batch=outputs_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()

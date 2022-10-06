@@ -1,6 +1,6 @@
 """OGBG workload implemented in Jax."""
 import functools
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -17,10 +17,6 @@ from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
 class OgbgWorkload(BaseOgbgWorkload):
 
-  def __init__(self):
-    super().__init__()
-    self._model = models.GNN(self._num_outputs)
-
   @property
   def model_params_types(self):
     if self._param_shapes is None:
@@ -34,7 +30,8 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
-    init_fn = jax.jit(functools.partial(self._model.init, train=False))
+    model = models.GNN(self._num_outputs)
+    init_fn = jax.jit(functools.partial(model.init, train=False))
     fake_batch = jraph.GraphsTuple(
         n_node=jnp.asarray([1]),
         n_edge=jnp.asarray([1]),
@@ -56,17 +53,24 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Get predicted logits from the network for input graphs."""
+    """Get predicted logits from the network for input graphs.
+
+    aux_dropout_rate is unused.
+    """
+    del aux_dropout_rate
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:
       raise ValueError(
           f'Expected model_state to be None, received {model_state}.')
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch['inputs'],
-                               rngs={'dropout': rng},
-                               train=train)
+    model = models.GNN(self._num_outputs, dropout_rate=dropout_rate)
+    logits = model.apply({'params': params},
+                         augmented_and_preprocessed_input_batch['inputs'],
+                         rngs={'dropout': rng},
+                         train=train)
     return logits, None
 
   def _binary_cross_entropy_with_mask(

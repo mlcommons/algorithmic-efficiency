@@ -15,7 +15,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 512
+  return 64
 
 
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
@@ -70,6 +70,11 @@ def pmapped_train_step(workload,
                        batch,
                        rng):
 
+  if hasattr(hyperparameters, 'dropout_rate'):
+    dropout_rate = hyperparameters.dropout_rate
+  else:
+    dropout_rate = 0.0
+
   def _loss_fn(params):
     """loss function used for training."""
     logits, _ = workload.model_fn(
@@ -78,6 +83,8 @@ def pmapped_train_step(workload,
         model_state=None,
         mode=spec.ForwardPassMode.TRAIN,
         rng=rng,
+        dropout_rate=dropout_rate,
+        aux_dropout_rate=None,
         update_batch_norm=True)
     loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
     weight_penalty_params = jax.tree_leaves(params)

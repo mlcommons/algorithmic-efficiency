@@ -45,6 +45,8 @@ def pmapped_train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=True)
     loss = jnp.mean(
         workload.loss_fn(

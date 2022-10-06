@@ -122,6 +122,8 @@ class BaseOgbgWorkload(spec.Workload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_rate=0.1,  # Unused for eval.
+        aux_dropout_rate=None,
         update_batch_norm=False)
     return self._eval_metric(batch['targets'], logits, batch['weights'])
 
@@ -135,6 +137,7 @@ class BaseOgbgWorkload(spec.Workload):
                            data_dir: str,
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self.build_input_queue(
