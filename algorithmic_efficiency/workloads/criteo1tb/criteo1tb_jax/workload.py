@@ -50,9 +50,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         vocab_sizes=self.vocab_sizes,
         total_vocab_sizes=sum(self.vocab_sizes),
         num_dense_features=self.num_dense_features,
-        mlp_bottom_dims=(128, 128),
-        mlp_top_dims=(256, 128, 1),
-        embed_dim=64)
+        mlp_bottom_dims=self.mlp_bottom_dims,
+        mlp_top_dims=self.mlp_top_dims,
+        embed_dim=self.embed_dim)
 
     rng, init_rng = jax.random.split(rng)
     init_fake_batch_size = 2
@@ -77,10 +77,15 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del mode
     del rng
+    del dropout_rate
+    del aux_dropout_rate
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']
     targets = augmented_and_preprocessed_input_batch['targets']
@@ -99,6 +104,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])

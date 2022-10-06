@@ -92,10 +92,10 @@ def pmapped_train_step(workload,
     input_dropout_rate = hyperparameters.input_dropout_rate
   else:
     input_dropout_rate = 0.1
-  if hasattr(hyperparameters, 'residual_dropout_rate'):
-    residual_dropout_rate = hyperparameters.residual_dropout_rate
+  if hasattr(hyperparameters, 'feed_forward_dropout_rate'):
+    feed_forward_dropout_rate = hyperparameters.feed_forward_dropout_rate
   else:
-    residual_dropout_rate = 0.1
+    feed_forward_dropout_rate = 0.1
 
   def _loss_fn(params):
     """loss function used for training."""
@@ -104,9 +104,9 @@ def pmapped_train_step(workload,
         params,
         batch,
         model_state,
-        mode=spec.ForwardPassMode.TRAIN,
-        rng={'params' : params_rng, 'dropout' : dropout_rng},
-        dropout_rate=residual_dropout_rate,
+        spec.ForwardPassMode.TRAIN,
+        {'params' : params_rng, 'dropout' : dropout_rng},
+        dropout_rate=feed_forward_dropout_rate,
         aux_dropout_rate=input_dropout_rate,
         update_batch_norm=True)
 
@@ -117,14 +117,12 @@ def pmapped_train_step(workload,
   (loss, new_model_state), grad = grad_fn(current_param_container)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
 
-  grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
-  scaled_grad = jax.tree_map(
-      lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
-  grad = jax.lax.cond(grad_norm > grad_clip,
-                      lambda _: scaled_grad,
-                      lambda _: grad,
-                      None)
+  grad_clip = hyperparameters.grad_clip
+  grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+  grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
+
+  grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
@@ -164,7 +162,6 @@ def update_params(
                  loss.mean(),
                  grad_norm.mean(),
                  lr)
-
     if workload.summary_writer is not None:
       workload.summary_writer.scalar('train_step_ctc_loss',
                                      loss.mean(),

@@ -9,7 +9,7 @@ from algorithmic_efficiency import spec
 
 
 def get_batch_size(workload_name):
-  batch_sizes = {'criteo1tb': 131072}
+  batch_sizes = {'criteo1tb': 524_288}
   return batch_sizes[workload_name]
 
 
@@ -34,7 +34,6 @@ def init_optimizer_state(workload: spec.Workload,
 
   scheduler1 = LinearLR(
       optimizer_state['optimizer'],
-      # (TODO:rakshithvasudev) check correctness
       start_factor=1e-12,
       end_factor=1.,
       total_iters=hyperparameters.warmup_steps)
@@ -69,8 +68,6 @@ def update_params(
 
   current_model = current_param_container
   current_param_container.train()
-
-  # TODO: (rakshithvasudev) zero grad is slow, update the grads via None
   optimizer_state['optimizer'].zero_grad()
 
   logits_batch, new_model_state = workload.model_fn(

@@ -1,13 +1,13 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
     ImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch import \
@@ -17,7 +17,7 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     decode_variant
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 # Make sure we inherit from the ViT base workload first.
@@ -45,12 +45,16 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
+    pytorch_utils.update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

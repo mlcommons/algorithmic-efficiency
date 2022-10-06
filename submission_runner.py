@@ -116,6 +116,7 @@ flags.DEFINE_enum(
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
+
 flags.DEFINE_string('experiment_dir',
                     None,
                     'The root directory to store all experiments')
@@ -235,7 +236,7 @@ def train_once(
 
   logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
-    workload.init_metrics_bundle(tokenizer_vocab_path)
+    workload.init_tokenizer(tokenizer_vocab_path)
 
   # Bookkeeping.
   goal_reached = False
@@ -277,13 +278,6 @@ def train_once(
             rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-    except RuntimeError as e:
-      if "out of memory" in str(e):
-        logging.warning(
-            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
-        )
-        if torch.cuda.is_available():
-          torch.cuda.empty_cache()
     global_step += 1
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
@@ -328,6 +322,7 @@ def train_once(
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
+    dist.barrier()
     score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
     accumulated_submission_time = score_tensor.item()

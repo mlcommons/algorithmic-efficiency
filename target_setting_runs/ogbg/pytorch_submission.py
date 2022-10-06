@@ -44,6 +44,8 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=0.1,  # Default.
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   mask = batch['weights']

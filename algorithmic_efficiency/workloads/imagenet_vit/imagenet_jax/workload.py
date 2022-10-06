@@ -1,5 +1,6 @@
 """ImageNet workload implemented in Jax."""
-from typing import Dict, Tuple
+import copy
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -25,9 +26,10 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     return params, model_state
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    model_kwargs = decode_variant('B/32')
-    model = models.ViT(num_classes=1000, **model_kwargs)
-    self._model = model
+    self._model_kwargs = {
+        'num_classes': self._num_classes, **decode_variant('B/32')
+    }
+    model = models.ViT(**self._model_kwargs)
     params, model_state = self.initialized(rng, model)
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
@@ -42,13 +44,20 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
+    del aux_dropout_rate
     del update_batch_norm
-    del mode
-    del rng
-    logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch['inputs'])
+    model_kwargs = copy.deepcopy(self._model_kwargs)
+    model_kwargs['dropout_rate'] = dropout_rate
+    model = models.ViT(**model_kwargs)
+    train = mode == spec.ForwardPassMode.TRAIN
+    logits = model.apply({'params': params},
+                         augmented_and_preprocessed_input_batch['inputs'],
+                         rngs={'dropout': rng},
+                         train=train)
     return logits, None
 
   def _eval_model_on_split(self,

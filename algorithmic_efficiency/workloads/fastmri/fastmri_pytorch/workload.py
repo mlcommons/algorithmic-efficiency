@@ -2,87 +2,29 @@
 
 import contextlib
 import math
-import os
 from typing import Dict, Optional, Tuple
 
-import numpy as np
-from skimage.metrics import structural_similarity
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency.interop_utils import jax_to_pytorch
+from algorithmic_efficiency.interop_utils import pytorch_to_jax
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.input_pipeline import \
-    RandomMask
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.input_pipeline import \
-    SliceDataset
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.input_pipeline import \
-    UnetDataTransform
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
+from algorithmic_efficiency.workloads.fastmri.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
-
-def ssim(gt: torch.Tensor,
-         pred: torch.Tensor,
-         mean: np.ndarray,
-         std: np.ndarray,
-         volume_max: Optional[float] = None) -> np.ndarray:
-  """Compute Structural Similarity Index Metric (SSIM)"""
-  # TODO: Change this
-  if not len(gt.shape) == 3:
-    raise ValueError("Unexpected number of dimensions in ground truth.")
-  if not len(gt.shape) == len(pred.shape):
-    raise ValueError("Ground truth dimensions does not match pred.")
-
-  if volume_max is None:
-    volume_max = torch.ones(gt.shape[0])
-
-  gt = gt * std.view(std.shape[0], 1, 1) + mean.view(mean.shape[0], 1, 1)
-  pred = pred * std.view(std.shape[0], 1, 1) + mean.view(mean.shape[0], 1, 1)
-  gt = gt.detach().cpu().numpy()
-  pred = pred.detach().cpu().numpy()
-  volume_max = volume_max.detach().cpu().numpy()
-
-  ssims = 0
-  for slice_num in range(gt.shape[0]):
-    ssims = ssims + structural_similarity(
-        gt[slice_num], pred[slice_num], data_range=volume_max[slice_num])
-
-  return ssims
-
-
-def worker_init_fn(worker_id):
-  """Handle random seeding for all mask_func."""
-  worker_info = torch.utils.data.get_worker_info()
-  data = worker_info.dataset
-
-  # for NumPy random seed we need it to be in this range
-  base_seed = worker_info.seed
-
-  if data.transform.mask_func is not None:
-    # DDP training: unique seed is determined by worker and device
-    if USE_PYTORCH_DDP:
-      seed = base_seed + RANK * worker_info.num_workers
-    else:
-      seed = base_seed
-    data.transform.mask_func.rng.seed(seed % (2**32 - 1))
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 class FastMRIWorkload(BaseFastMRIWorkload):
-
-  def __init__(self):
-    super().__init__()
-    self._param_types = None
-    self._eval_iters = {}
 
   @property
   def model_params_types(self):
@@ -95,77 +37,74 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                         data_rng: spec.RandomState,
                         split: str,
                         data_dir: str,
-                        global_batch_size: int):
-    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].float().to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-          'mean': batch['mean'].to(DEVICE, non_blocking=True),
-          'std': batch['std'].to(DEVICE, non_blocking=True),
-          'fname': batch['fname'],
-          'slice_num': batch['slice_num'],
-          'volume_max': batch['volume_max']
-      }
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    per_device_batch_size = int(global_batch_size / N_GPUS)
 
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     batch_size: int):
-    del data_rng
-    is_train = split == 'train'
-    mask = RandomMask(self.center_fractions, self.accelerations)
+    # Only create and iterate over tf input pipeline in one Python process to
+    # avoid creating too many threads.
+    if RANK == 0:
+      data_rng = data_rng.astype('uint32')
+      np_iter = super().build_input_queue(data_rng,
+                                          split,
+                                          data_dir,
+                                          global_batch_size,
+                                          cache,
+                                          repeat_final_dataset,
+                                          num_batches)
 
-    transform_config = {
-        'train': UnetDataTransform(mask_func=mask, use_seed=False),
-        'eval_train': UnetDataTransform(mask_func=mask),
-        'validation': UnetDataTransform(mask_func=mask),
-    }
-
-    folder = {'train': 'train', 'validation': 'val', 'eval_train': 'train'}
-
-    dataset = SliceDataset(
-        root=os.path.join(data_dir, "singlecoil_" + folder[split]),
-        transform=transform_config[split],
-    )
-
-    if split == 'eval_train':
-      # We always use the same subset of the training data for evaluation.
-      dataset = torch.utils.data.Subset(dataset,
-                                        range(self.num_eval_train_examples))
-
-    sampler = None
-    if USE_PYTORCH_DDP:
-      if is_train:
-        sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
+    while True:
+      if RANK == 0:
+        batch = next(np_iter)  # pylint: disable=stop-iteration-return
+        tensor_list, aux_tensor_list = [], []
+        for key, value in batch.items():
+          tensor = torch.as_tensor(value, device=DEVICE)
+          if tensor.dim() == 4:
+            tensor_list.append(tensor)
+          else:
+            aux_tensor_list.append(tensor)
+          batch[key] = (
+              tensor[0] if USE_PYTORCH_DDP else tensor.view(
+                  -1, *value.shape[2:]))
+        # Send batch to other devices when using DDP.
+        if USE_PYTORCH_DDP:
+          # During eval, the batch size of the remainder might be different.
+          if split != 'train':
+            per_device_batch_size = torch.tensor(
+                len(batch['inputs']), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
+            weights = aux_tensor_list.pop(-1)
+            dist.broadcast(weights, src=0)
+          dist.broadcast(torch.stack(tensor_list), src=0)
+          dist.broadcast(torch.stack(aux_tensor_list), src=0)
       else:
-        sampler = data_utils.DistributedEvalSampler(
-            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
-      batch_size //= N_GPUS
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=not USE_PYTORCH_DDP and is_train,
-        worker_init_fn=worker_init_fn,
-        sampler=sampler,
-        num_workers=4,
-        pin_memory=True,
-        drop_last=is_train)
-
-    dataloader = data_utils.cycle(
-        dataloader,
-        custom_sampler=USE_PYTORCH_DDP,
-        keys=('inputs',
-              'targets',
-              'mean',
-              'std',
-              'fname',
-              'slice_num',
-              'volume_max'))
-
-    return dataloader
+        batch = {}
+        # During eval, the batch size of the remainder might be different.
+        if split != 'train':
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
+          weights = torch.empty((N_GPUS, per_device_batch_size),
+                                dtype=torch.float64,
+                                device=DEVICE)
+          dist.broadcast(weights, src=0)
+          batch['weights'] = weights
+        tensors = torch.empty((2, N_GPUS, per_device_batch_size, 320, 320),
+                              device=DEVICE)
+        dist.broadcast(tensors, src=0)
+        aux_tensors = torch.empty((3, N_GPUS, per_device_batch_size),
+                                  device=DEVICE)
+        dist.broadcast(aux_tensors, src=0)
+        # Note that the batch dict in the RANK == 0 process is ordered.
+        batch['inputs'] = tensors[0][RANK]
+        batch['targets'] = tensors[1][RANK]
+        batch['mean'] = aux_tensors[0][RANK]
+        batch['std'] = aux_tensors[1][RANK]
+        batch['volume_max'] = aux_tensors[2][RANK]
+      yield batch
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
@@ -188,12 +127,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
+    pytorch_utils.update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -207,11 +150,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
 
     with contexts[mode]():
-      targets_batch = model(
+      logit_batch = model(
           augmented_and_preprocessed_input_batch['inputs'].unsqueeze(
               1)).squeeze(1)
 
-    return targets_batch, None
+    return logit_batch, None
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,
@@ -237,12 +180,26 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     return F.l1_loss(
         logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
 
-  def _eval_metric(self, outputs, targets, mean, std, volume_max):
+  def _eval_model(self, params, batch, rng):
     """Return the SSIM and loss as a dict."""
-    ssim_vals = ssim(
-        targets, outputs, mean=mean, std=std, volume_max=volume_max)
-    loss = self.loss_fn(targets, outputs).sum()
-    return {'ssim': ssim_vals, 'loss': loss}
+    outputs, _ = self.model_fn(
+        params,
+        batch,
+        None,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        dropout_rate=0.0,
+        aux_dropout_rate=0.0,
+        update_batch_norm=False)
+    ssim_sum = jax_to_pytorch(
+        ssim(
+            pytorch_to_jax(outputs),
+            pytorch_to_jax(batch['targets']),
+            mean=pytorch_to_jax(batch['mean']),
+            std=pytorch_to_jax(batch['std']),
+            volume_max=pytorch_to_jax(batch['volume_max']))).sum()
+    loss = self.loss_fn(batch['targets'], outputs).sum()
+    return {'ssim': ssim_sum, 'loss': loss, 'weight': batch['weights'].sum()}
 
   def _eval_model_on_split(self,
                            split: str,
@@ -254,35 +211,32 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            data_dir: str,
                            global_step: int = 0):
     """Run a full evaluation of the model."""
+    del model_state
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self.build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+          data_rng,
+          split,
+          data_dir,
+          global_batch_size=global_batch_size,
+          repeat_final_dataset=True)
 
     total_metrics = {
         'ssim': torch.tensor(0., device=DEVICE),
         'loss': torch.tensor(0., device=DEVICE),
+        'weight': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      outputs, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        model_rng,
-        update_batch_norm=False)
-      batch_metrics = self._eval_metric(outputs,
-                                        batch['targets'],
-                                        batch['mean'],
-                                        batch['std'],
-                                        batch['volume_max'])
+      batch_metrics = self._eval_model(params, batch, model_rng)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
     if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
+    num_examples = total_metrics.pop('weight')
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

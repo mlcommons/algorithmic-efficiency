@@ -10,28 +10,39 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    ConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    ConformerEncoderDecoder
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    initialize
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
+    model as conformer_model
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
+
+
+def _update_model_dropout(model, residual_dropout_rate, input_dropout_rate):
+  for child in list(model.modules()):
+    # Residual dropout.
+    if isinstance(child, conformer_model.MultiHeadedSelfAttention):
+      child.dropout.p = residual_dropout_rate
+    elif isinstance(child, conformer_model.ConvolutionBlock):
+      child.dropout.p = residual_dropout_rate
+    elif isinstance(child, conformer_model.FeedForwardModule):
+      child.dropout2.p = residual_dropout_rate
+    # Input dropout.
+    elif isinstance(child, conformer_model.Subsample):
+      child.dropout.p = input_dropout_rate
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model = ConformerEncoderDecoder(ConformerConfig())
+    model = conformer_model.ConformerEncoderDecoder(
+        conformer_model.ConformerConfig())
     self._model = model
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers
@@ -39,7 +50,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
-    initialize(model)
+    conformer_model.initialize(model)
 
     self._param_shapes = {
         k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
@@ -53,8 +64,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
-  def init_metrics_bundle(self, tokenizer_vocab_path):
-    logging.info('Initializing metrics bundle.')
+  def init_tokenizer(self, tokenizer_vocab_path):
+    logging.info('Initializing tokenizer.')
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
 
   def model_fn(
@@ -64,12 +75,23 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Conformer model function.
+
+    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
+    """
     del model_state
     del rng
     del update_batch_norm
 
     model = params
+    _update_model_dropout(
+        model,
+        residual_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -83,9 +105,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     }
 
     with contexts[mode]():
-      logits, logits_paddings = model(
-          augmented_and_preprocessed_input_batch['inputs'],
-          augmented_and_preprocessed_input_batch['input_paddings'])
+      inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+      logits, logits_paddings = model(inputs, input_paddings)
 
     return (logits, logits_paddings), None
 
@@ -103,7 +124,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                         num_batches: Optional[int] = None,
                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
-    keys = ['inputs', 'input_paddings', 'targets', 'target_paddings']
+    keys = ['inputs', 'targets']
     np_iter = super().build_input_queue(data_rng,
                                         split,
                                         data_dir,
@@ -117,18 +138,23 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         tensor_list = []
         for key in keys:
-          value = batch[key]
+          value, value_paddings = batch[key]
           tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
+          tensor_paddings = torch.as_tensor(
+              value_paddings, dtype=torch.float32, device=DEVICE)
           tensor_list.append(tensor)
-          batch[key] = (
-              tensor[0] if USE_PYTORCH_DDP else tensor.view(
-                  -1, *value.shape[2:]))
+          tensor_list.append(tensor_paddings)
+          if USE_PYTORCH_DDP:
+            batch[key] = (tensor[0], tensor_paddings[0])
+          else:
+            batch[key] = (tensor.view(-1, *value.shape[2:]),
+                          tensor_paddings.view(-1, *value_paddings.shape[2:]))
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           # During eval, the batch size of the remainder might be different.
           if split != 'train':
             per_device_batch_size = torch.tensor(
-                len(batch['inputs']), dtype=torch.int32, device=DEVICE)
+                len(batch['inputs'][0]), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
           dist.broadcast(torch.cat(tensor_list, dim=-1), src=0)
       else:
@@ -146,20 +172,19 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         # Note that the order of the keys is important.
         tensors = tensor.split([MAX_INPUT_LENGTH, MAX_INPUT_LENGTH, 256, 256],
                                dim=-1)
-        batch = {}
-        for n, key in enumerate(keys):
-          batch[key] = tensors[n][RANK]
+        batch = {
+            'inputs': (tensors[0][RANK], tensors[1][RANK]),
+            'targets': (tensors[2][RANK], tensors[3][RANK]),
+        }
       yield batch
 
-  def loss_fn(
+  def _loss_fn(
       self,
-      label_batch,  # Dense (not one-hot) labels.
-      logits_batch,
-      mask_batch=None,
-      label_smoothing: float = 0.0):
-    return None
-
-  def compute_loss(self, logits, logit_paddings, targets, target_paddings):
+      label_batch: Tuple[spec.Tensor, spec.Tensor],
+      logits_batch: Tuple[spec.Tensor, spec.Tensor]
+  ) -> spec.Tensor:  # differentiable
+    targets, target_paddings = label_batch
+    logits, logit_paddings = logits_batch
     logprobs = torch.log_softmax(logits, dim=-1)
     input_lengths = torch.einsum('bh->b', 1 - logit_paddings).long()
     target_lengths = torch.einsum('bh->b', 1 - target_paddings).long()
@@ -174,6 +199,15 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         'lengths': target_lengths.sum(),
         'average_loss': average_loss
     }
+
+  def loss_fn(self,
+              label_batch: Tuple[spec.Tensor, spec.Tensor],
+              logits_batch: Tuple[spec.Tensor, spec.Tensor],
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    del mask_batch
+    del label_smoothing
+    return self._loss_fn(label_batch, logits_batch)['average_loss']
 
   def greedy_decode(self, logits, logit_paddings):
     framewise_tokens = logits.max(dim=-1)[1]
@@ -214,6 +248,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            data_dir: str,
                            global_step: int):
     """Run a full evaluation of the model."""
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
@@ -238,19 +273,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
+          dropout_rate=0.1,  # Default, unused for eval.
+          aux_dropout_rate=0.1,  # Default, unused for eval.
           update_batch_norm=False)
       decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
+      targets, target_paddings = batch['targets']
       word_errors, num_words = metrics.compute_wer(
           decoded=decoded.detach().cpu().numpy(),
           decoded_paddings=decoded_paddings.detach().cpu().numpy(),
-          targets=batch['targets'].detach().cpu().numpy(),
-          target_paddings=batch['target_paddings'].detach(
-          ).cpu().numpy(),
+          targets=targets.detach().cpu().numpy(),
+          target_paddings=target_paddings.detach().cpu().numpy(),
           tokenizer=self.tokenizer)
-      loss = self.compute_loss(logits,
-                               logits_padding,
-                               batch['targets'],
-                               batch['target_paddings'])
+      loss = self._loss_fn((targets, target_paddings), (logits, logits_padding))
       batch_metrics = {
           'loss': loss['loss'],
           'lengths': loss['lengths'],

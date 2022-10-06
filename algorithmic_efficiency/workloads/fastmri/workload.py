@@ -1,12 +1,17 @@
 """FastMRI workload parent class."""
 
+from typing import Optional
+
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.fastmri import input_pipeline
 
 
 class BaseFastMRIWorkload(spec.Workload):
 
   def __init__(self):
     self._param_shapes = None
+    self._param_types = None
+    self._eval_iters = {}
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/ssim'] > self.target_value
@@ -79,3 +84,19 @@ class BaseFastMRIWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
+
+  def build_input_queue(self,
+                        data_rng: spec.RandomState,
+                        split: str,
+                        data_dir: str,
+                        global_batch_size: int,
+                        cache: Optional[bool] = None,
+                        repeat_final_dataset: Optional[bool] = None,
+                        num_batches: Optional[int] = None):
+    del cache
+    return input_pipeline.load_fastmri_split(global_batch_size,
+                                             split,
+                                             data_dir,
+                                             data_rng,
+                                             num_batches,
+                                             repeat_final_dataset)

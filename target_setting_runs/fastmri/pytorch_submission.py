@@ -42,13 +42,15 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=0.0,  # Default.
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   label_smoothing = (
       hyperparameters.label_smoothing if hasattr(hyperparameters,
                                                  'label_smoothing') else 0.0)
   loss = workload.loss_fn(
-      targets_batch=batch['targets'],
+      label_batch=batch['targets'],
       outputs_batch=outputs_batch,
       label_smoothing=label_smoothing).mean()
 

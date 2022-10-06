@@ -12,6 +12,8 @@ from typing import Optional, Sequence
 import jax
 import tensorflow as tf
 
+from algorithmic_efficiency import data_utils
+
 _CSV_LINES_PER_FILE = 5_000_000
 
 
@@ -24,9 +26,9 @@ def get_criteo1tb_dataset(split: str,
                           repeat_final_dataset: bool = False):
   """Get the Criteo 1TB dataset for a given split."""
   if split in ['train', 'eval_train']:
-    file_path = os.path.join(data_dir, 'day_[0-22]_*.csv')
+    file_path = os.path.join(data_dir, 'day_[0-22]_*')
   else:
-    file_path = os.path.join(data_dir, 'day_23_*.csv')
+    file_path = os.path.join(data_dir, 'day_23_*')
   num_devices = jax.local_device_count()
   per_device_batch_size = global_batch_size // num_devices
 
@@ -88,14 +90,18 @@ def get_criteo1tb_dataset(split: str,
       block_length=per_device_batch_size,
       num_parallel_calls=32,
       deterministic=False)
-  ds = ds.batch(per_device_batch_size, drop_remainder=is_training)
-  ds = ds.map(_parse_example_fn, num_parallel_calls=16)
+  ds = ds.batch(global_batch_size, drop_remainder=is_training)
+  ds = ds.map(_parse_example_fn, num_parallel_calls=tf.data.AUTOTUNE)
+  ds = ds.prefetch(tf.data.AUTOTUNE)
+
   if num_batches is not None:
     ds = ds.take(num_batches)
+
   # We do not need a ds.cache() because we will do this anyways with
   # itertools.cycle in the base workload.
   if repeat_final_dataset:
     ds = ds.repeat()
-  ds = ds.batch(num_devices)
-  ds = ds.prefetch(tf.data.AUTOTUNE)
+
+  ds = map(data_utils.shard_numpy_ds, ds)
+
   return ds
