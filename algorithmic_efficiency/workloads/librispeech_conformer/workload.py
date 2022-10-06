@@ -125,7 +125,11 @@ class BaseLibrispeechWorkload(spec.Workload):
       we add a key representing weights, to indicate how the batch was padded.
     """
     batch_axis = 0
-    batch_size = batch['inputs'].shape[batch_axis]
+
+    inputs, input_paddings = batch['inputs']
+    targets, target_paddings = batch['targets']
+
+    batch_size = inputs.shape[batch_axis]
     batch_pad = desired_batch_size - batch_size
 
     # Most batches will not need padding so we quickly return to avoid slowdown.
@@ -138,11 +142,13 @@ class BaseLibrispeechWorkload(spec.Workload):
       pw[pad_axis] = (0, batch_pad)
       return np.pad(ar, pw, mode='constant', constant_values=padding_value)
 
-    padded_batch = {'inputs': zero_pad(batch['inputs'], batch_axis)}
-    batch_keys = list(batch.keys())
-    batch_keys.remove('inputs')
-    for key in batch_keys:
-      padded_batch[key] = zero_pad(batch[key], 0)
+    padded_batch = {
+        'inputs': (zero_pad(inputs, batch_axis),
+                   zero_pad(input_paddings, batch_axis)),
+        'targets': (zero_pad(targets, batch_axis),
+                    zero_pad(target_paddings, batch_axis))
+    }
+
     return padded_batch
 
   def _build_dataset(self,

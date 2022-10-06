@@ -105,14 +105,12 @@ def pmapped_train_step(workload,
   (loss, new_model_state), grad = grad_fn(current_param_container)
   loss, grad = lax.pmean((loss, grad), axis_name='batch')
 
-  grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
-  scaled_grad = jax.tree_map(
-      lambda x: x / (grad_norm + _GRAD_CLIP_EPS) * grad_clip, grad)
-  grad = jax.lax.cond(grad_norm > grad_clip,
-                      lambda _: scaled_grad,
-                      lambda _: grad,
-                      None)
+  grad_clip = hyperparameters.grad_clip
+  grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
+  grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
+
+  grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
@@ -152,7 +150,6 @@ def update_params(
                  loss.mean(),
                  grad_norm.mean(),
                  lr)
-
     if workload.summary_writer is not None:
       workload.summary_writer.scalar('train_step_ctc_loss',
                                      loss.mean(),

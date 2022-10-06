@@ -127,7 +127,6 @@ flags.DEFINE_string('summary_log_dir',
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
-
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
@@ -265,13 +264,6 @@ def train_once(
             rng=update_rng)
     except spec.TrainingCompleteError:
       training_complete = True
-    except RuntimeError as e:
-      if "out of memory" in str(e):
-        logging.warning(
-            f'error: GPU out of memory during training during step {global_step}, error: {str(e)}'  # pylint: disable=line-too-long
-        )
-        if torch.cuda.is_available():
-          torch.cuda.empty_cache()
     global_step += 1
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
@@ -423,7 +415,6 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  # nvidia_smi.nvmlInit()
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
