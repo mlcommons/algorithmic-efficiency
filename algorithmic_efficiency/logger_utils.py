@@ -1,18 +1,18 @@
 import logging
 import os.path
+import platform
+import re
+import subprocess
+from typing import Any, Optional
 
+from absl import flags
 from clu import metric_writers
-
 import GPUtil
 import pandas as pd
 import psutil
-import platform
+
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-import subprocess
-from typing import Any, Optional
-from absl import flags
-import re
 
 try:
   import wandb  # pylint: disable=g-import-not-at-top
@@ -173,7 +173,7 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
   return workload_properties
 
 
-def get_meta_data(workload):
+def get_meta_data(workload: spec.Workload) -> dict:
   meta_data = {}
   workload_properties = _get_workload_properties(workload)
   meta_data.update(workload_properties)
@@ -186,16 +186,6 @@ def get_meta_data(workload):
   return meta_data
 
 
-def set_up_loggers(train_dir, flags):
-  csv_path = os.path.join(train_dir, 'measurements.csv')
-  metrics_logger = MetricLogger(
-      csv_path=csv_path,
-      events_dir=train_dir,
-      flags=flags
-  )
-  return metrics_logger
-
-
 class MetricLogger(object):
   """Used to log all measurements during training.
 
@@ -205,8 +195,8 @@ class MetricLogger(object):
 
   def __init__(self,
                csv_path: str = '',
-               events_dir: Optional[None] = None,
-               flags: Optional[flags.FLAGS] = None):
+               events_dir: Optional[str] = None,
+               configs: Optional[flags.FLAGS] = None) -> None:
     self._measurements = {}
     self._csv_path = csv_path
 
@@ -214,13 +204,13 @@ class MetricLogger(object):
       self._tb_metric_writer = metric_writers.create_default_writer(events_dir)
       if wandb is not None:
         wandb.init(dir=events_dir)
-        wandb.config.update(flags)
+        wandb.config.update(configs)
 
   def append_scalar_metrics(self, metrics: dict, global_step: int) -> None:
     metrics['global_step'] = global_step
 
     try:
-      with open(self._csv_path, "r") as csv_file:
+      with open(self._csv_path, 'r') as csv_file:
         measurements = pd.read_csv(csv_file)
         measurements = measurements.append([metrics])
     except (pd.errors.EmptyDataError, FileNotFoundError) as e:
@@ -229,7 +219,7 @@ class MetricLogger(object):
         logging.info('Measurements file is empty. Create a new one, starting '
                      'with metrics from this step.')
 
-    with open(self._csv_path, "w") as csv_file:
+    with open(self._csv_path, 'w') as csv_file:
       measurements.to_csv(csv_file, index=False)
 
     if self._tb_metric_writer:
@@ -239,3 +229,14 @@ class MetricLogger(object):
 
     if wandb is not None:
       wandb.log(metrics)
+
+  def finish(self) -> None:
+    if wandb is not None:
+      wandb.finish()
+
+
+def set_up_loggers(train_dir: str, configs: flags.FLAGS) -> MetricLogger:
+  csv_path = os.path.join(train_dir, 'measurements.csv')
+  metrics_logger = MetricLogger(
+      csv_path=csv_path, events_dir=train_dir, configs=configs)
+  return metrics_logger

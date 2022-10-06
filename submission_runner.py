@@ -330,6 +330,7 @@ def train_once(
   if RANK == 0 and metrics_logger is not None:
     metrics_logger.append_scalar_metrics({"score": accumulated_submission_time},
                                          global_step=global_step)
+    metrics_logger.finish()
 
   return accumulated_submission_time, metrics
 
@@ -380,13 +381,12 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
 
+      tuning_log_dir = None
       if log_dir is not None:
         tuning_log_dir = os.path.join(log_dir, str(hi + 1))
         if RANK == 0:
           logging.info('Creating tuning directory at %s', tuning_log_dir)
           os.makedirs(tuning_log_dir, exist_ok=True)
-      else:
-        tuning_log_dir = None
 
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
