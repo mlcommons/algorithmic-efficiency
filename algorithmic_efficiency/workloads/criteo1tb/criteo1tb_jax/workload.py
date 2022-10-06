@@ -1,3 +1,4 @@
+"""Criteo1TB workload implemented in Jax."""
 import functools
 from typing import Dict, Optional, Tuple
 
@@ -15,7 +16,6 @@ from algorithmic_efficiency.workloads.criteo1tb.workload import \
 
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
-  """Criteo1TB DLRM-Small Jax workload."""
 
   @property
   def model_params_types(self):
@@ -50,9 +50,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         vocab_sizes=self.vocab_sizes,
         total_vocab_sizes=sum(self.vocab_sizes),
         num_dense_features=self.num_dense_features,
-        mlp_bottom_dims=(128, 128),
-        mlp_top_dims=(256, 128, 1),
-        embed_dim=64)
+        mlp_bottom_dims=self.mlp_bottom_dims,
+        mlp_top_dims=self.mlp_top_dims,
+        embed_dim=self.embed_dim)
 
     rng, init_rng = jax.random.split(rng)
     init_fake_batch_size = 2

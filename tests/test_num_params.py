@@ -5,6 +5,10 @@ import jraph
 import pytest
 import torch
 
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.models import \
+    DlrmSmall as JaxDlrmSmall
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import \
+    DlrmSmall as PyTorchDlrmSmall
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet18 as JaxResNet_c10
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
@@ -42,6 +46,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
 WORKLOADS = [
     'mnist',
     'cifar',
+    'criteo1tb',
     'imagenet_resnet',
     'imagenet_vit',
     'wmt',
@@ -76,6 +81,28 @@ def get_models(workload):
                                                jnp.float32))["params"]
     # Init PyTorch model.
     pytorch_model = PyTorchResNet_c10(num_classes=10)
+
+  elif workload == 'criteo1tb':
+    # Init Jax model.
+    input_shape = (1, 39)
+    model_init = JaxDlrmSmall(
+        vocab_sizes=tuple([1024 * 128] * 26),
+        total_vocab_sizes=sum(tuple([1024 * 128] * 26)),
+        num_dense_features=13,
+        mlp_bottom_dims=(128, 128),
+        mlp_top_dims=(256, 128, 1),
+        embed_dim=64).init
+    jax_model = model_init(init_rngs, jnp.ones(input_shape, jnp.float32),
+                           False)['params']
+    # Init PyTorch model.
+    pytorch_model = PyTorchDlrmSmall(
+        vocab_sizes=tuple([1024 * 128] * 26),
+        total_vocab_sizes=sum(tuple([1024 * 128] * 26)),
+        num_dense_features=13,
+        mlp_bottom_dims=(128, 128),
+        mlp_top_dims=(256, 128, 1),
+        embed_dim=64)
+
   elif workload == 'imagenet_resnet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)

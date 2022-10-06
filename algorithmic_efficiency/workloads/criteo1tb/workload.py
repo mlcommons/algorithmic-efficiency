@@ -16,6 +16,9 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   def __init__(self):
     self.vocab_sizes = tuple([1024 * 128] * 26)
     self.num_dense_features = 13
+    self.mlp_bottom_dims = (128, 128)
+    self.mlp_top_dims = (256, 128, 1)
+    self.embed_dim = 64
     self._eval_iters = {}
     self._param_shapes = None
     self._param_types = None
@@ -85,8 +88,8 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
         vocab_sizes=self.vocab_sizes,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
+
     for batch in iter(ds):
-      batch = jax.tree_map(lambda x: x._numpy(), batch)  # pylint: disable=protected-access
       yield batch
 
   # Return whether or not a key in spec.ParameterContainer is the output layer
