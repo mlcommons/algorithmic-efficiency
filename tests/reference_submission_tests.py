@@ -17,9 +17,6 @@ import importlib
 import json
 import os
 
-# Make sure no GPU memory is preallocated to Jax.
-os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-
 from absl import flags
 from absl import logging
 from absl.testing import absltest
