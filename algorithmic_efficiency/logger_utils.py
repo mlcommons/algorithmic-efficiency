@@ -1,18 +1,8 @@
-import concurrent.futures
-import functools
-import json
 import logging
-import operator
 import os.path
-import time
 
-from absl import logging as absl_logging
 from clu import metric_writers
-from flax.training import checkpoints as flax_checkpoints
-# from init2winit import checkpoint
-import jax
-import jax.numpy as jnp
-import numpy as np
+
 import GPUtil
 import pandas as pd
 import psutil
@@ -21,6 +11,8 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import subprocess
 from typing import Any, Optional
+from absl import flags
+import re
 
 try:
   import wandb  # pylint: disable=g-import-not-at-top
@@ -32,26 +24,12 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def _get_utilization() -> dict:
-  """Collect system-wide hardware performance measurements.
-  High-level utilization measurements for the GPU (if available), CPU,
-  temperature, memory, disk, and network.
-  The performance measurements are all system-wide because we can't guarentee
-  how many processes Jax or PyTorch will start and not all measurements are
-  available on a per-process basis (eg. network).
-  """
   util_data = {}
 
   # CPU
   util_data['cpu.util.avg_percent_since_last'] = psutil.cpu_percent(
       interval=None)  # non-blocking (cpu util percentage since last call)
   util_data['cpu.freq.current'] = psutil.cpu_freq().current
-
-  # Temp
-  # sensor_temps = psutil.sensors_temperatures()
-  # for key in sensor_temps.keys():  # pylint: disable=consider-using-dict-items
-  #   # Take the first temp reading for each kind of device (CPU, GPU, Disk, etc.)
-  #   value = sensor_temps[key][0].current
-  #   util_data[f'temp.{key}.current'] = value
 
   # Memory
   memory_util = psutil.virtual_memory()
@@ -89,7 +67,6 @@ def _get_utilization() -> dict:
       util_data[f'gpu.{idx}.mem.used'] = gpu.memoryUsed
       util_data[f'gpu.{idx}.mem.free'] = gpu.memoryFree
       util_data[f'gpu.{idx}.temp.current'] = gpu.temperature
-      # Note: GPU wattage was not available from gputil as of writing
       avg_gpu_load += gpu.load
       avg_gpu_memory_util += gpu.memoryUtil
       avg_gpu_memory_total += gpu.memoryTotal
@@ -112,7 +89,7 @@ def _get_system_hardware_info() -> dict:
     system_hardware_info['cpu_model_name'] = _get_cpu_model_name()
     system_hardware_info['cpu_count'] = psutil.cpu_count()
   except:  # pylint: disable=bare-except
-    logging.warn('Unable to record cpu information. Continuing without it.')
+    logging.info('Unable to record cpu information. Continuing without it.')
 
   gpus = GPUtil.getGPUs()
   if gpus:
@@ -121,7 +98,7 @@ def _get_system_hardware_info() -> dict:
       system_hardware_info['gpu_count'] = len(gpus)
       system_hardware_info['gpu_driver'] = gpus[0].driver
     except:  # pylint: disable=bare-except
-      logging.warn('Unable to record gpu information. Continuing without it.')
+      logging.info('Unable to record gpu information. Continuing without it.')
 
   return system_hardware_info
 
@@ -143,9 +120,10 @@ def _get_system_software_info() -> dict:
     # Note: do not store git repo url as it may be sensitive or contain a
     # secret.
   except:  # pylint: disable=bare-except
-    logging.warn('Unable to record git information. Continuing without it.')
+    logging.info('Unable to record git information. Continuing without it.')
 
   return system_software_info
+
 
 def _get_git_commit_hash() -> str:
   return subprocess.check_output(['git', 'rev-parse',
@@ -176,34 +154,9 @@ def _is_primitive_type(item: Any) -> bool:
   return isinstance(item, primitive)
 
 
-def _get_extra_metadata_as_dict(extra_metadata: list) -> dict:
-  """Parse the extra_metadata CLI argument from string into dict.
-  For example this program was executed with --extra_metadata="key=value"
-  then {'extra.key':'value'} is returned.
-  """
-  metadata = {}
-  if not extra_metadata:
-    return metadata
-  for item in extra_metadata:
-    try:
-      key, value = item.split("=")
-      metadata['extra.' + key] = value
-    except:  # pylint: disable=bare-except
-      raise ValueError(  # pylint: disable=raise-missing-from
-          f'Failed to parse this extra_metadata CLI argument: {item}. ' +
-          'Please check your command.')
-  return metadata
-
-
 def _get_workload_properties(workload: spec.Workload) -> dict:
-  """Parse the workload class to extract its basic properties.
-  Each workload has properties such as target_value, num_train_examples,
-  train_stddev, etc. We want to record these to enable follow-up analysis.
-  Instead of hardcoding a list of properties to be extracted, we automatically
-  extract any float, int, str, or bool because each workload is different and
-  may change."""
   workload_properties = {}
-  skip_list = ['param_shapes']
+  skip_list = ['param_shapes', 'model_params_types']
   keys = [
       key for key in dir(workload)
       if not key.startswith('_') and key not in skip_list
@@ -212,12 +165,13 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
     try:
       attr = getattr(workload, key)
     except:  # pylint: disable=bare-except
-      logging.warn(
+      logging.info(
           f'Unable to record workload.{key} information. Continuing without it.'
       )
     if _is_primitive_type(attr):
       workload_properties[f'workload.{key}'] = attr
   return workload_properties
+
 
 def get_meta_data(workload):
   meta_data = {}
@@ -231,26 +185,11 @@ def get_meta_data(workload):
   meta_data.update(system_hardware_info)
   return meta_data
 
-# def get_meta_data(workload):
-#   meta_data = {}
-#   workload_properties = _get_workload_properties(workload)
-#   meta_data.update(workload_properties)
-#   utilization_measurements = _get_utilization()
-#   meta_data.update(utilization_measurements)
-#   system_software_info = _get_system_software_info()
-#   meta_data.update(system_software_info)
-#   system_hardware_info = _get_system_hardware_info()
-#   meta_data.update(system_hardware_info)
-#   return meta_data
 
 def set_up_loggers(train_dir, flags):
-  """Creates a logger for eval metrics."""
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  checkpoint_path = os.path.join(train_dir, 'checkpoints')
-  os.makedirs(checkpoint_path, exist_ok=True)
   metrics_logger = MetricLogger(
       csv_path=csv_path,
-      checkpoint_path=checkpoint_path,
       events_dir=train_dir,
       flags=flags
   )
@@ -265,21 +204,11 @@ class MetricLogger(object):
   """
 
   def __init__(self,
-               csv_path='',
-               checkpoint_path='',
-               events_dir=None,
-               flags=None):
-    """Create a recorder for metrics, as CSV or JSON.
-    Args:
-      csv_path: A filepath to a CSV file to append to.
-      checkpoint_path: Where to save checkpoints.
-      events_dir: Optional. If specified, save tfevents summaries to this
-        directory.
-
-    """
+               csv_path: str = '',
+               events_dir: Optional[None] = None,
+               flags: Optional[flags.FLAGS] = None):
     self._measurements = {}
     self._csv_path = csv_path
-    self._checkpoint_path = checkpoint_path
 
     if events_dir:
       self._tb_metric_writer = metric_writers.create_default_writer(events_dir)
@@ -287,12 +216,7 @@ class MetricLogger(object):
         wandb.init(dir=events_dir)
         wandb.config.update(flags)
 
-  def append_scalar_metrics(self, metrics, global_step):
-    """Record a dictionary of scalar metrics at a given step.
-    Args:
-      metrics: a Dict of metric names to scalar values. 'global_step' is the
-        only required key.
-    """
+  def append_scalar_metrics(self, metrics: dict, global_step: int) -> None:
     metrics['global_step'] = global_step
 
     try:
@@ -315,59 +239,3 @@ class MetricLogger(object):
 
     if wandb is not None:
       wandb.log(metrics)
-
-
-  # def write_pytree(self, pytree, prefix='training_metrics'):
-  #   """Record a serializable pytree to disk, overwriting any previous state.
-  #   Args:
-  #     pytree: Any serializable pytree
-  #     prefix: The prefix for the checkpoint.  Save path is
-  #       self._pytree_path/prefix
-  #   """
-  #   state = dict(pytree=pytree)
-  #   checkpoint.save_checkpoint(
-  #       self._pytree_path,
-  #       step='',
-  #       state=state,
-  #       prefix=prefix,
-  #       max_to_keep=None)
-  #
-  # def append_pytree(self, pytree, prefix='training_metrics'):
-  #   """Append and record a serializable pytree to disk.
-  #   The pytree will be saved to disk as a list of pytree objects. Everytime
-  #   this function is called, it will load the previous saved state, append the
-  #   next pytree to the list, then save the appended list.
-  #   Args:
-  #     pytree: Any serializable pytree.
-  #     prefix: The prefix for the checkpoint.
-  #   """
-  #   # Read the latest (and only) checkpoint, then append the new state to it
-  #   # before saving back to disk.
-  #   old_state = flax_checkpoints.restore_checkpoint(
-  #       self._pytree_path, target=None, prefix=prefix)
-  #   # Because we pass target=None, checkpointing will return the raw state
-  #   # dict, where 'pytree' is a dict with keys ['0', '1', ...] instead of a
-  #   # list.
-  #   if old_state:
-  #     state_list = old_state['pytree']
-  #     state_list = [state_list[str(i)] for i in range(len(state_list))]
-  #   else:
-  #     state_list = []
-  #   state_list.append(pytree)
-  #
-  #   self.write_pytree(state_list)
-  #
-  # def append_json_object(self, json_obj):
-  #   """Append a json serializable object to the json file."""
-  #
-  #   if not self._json_path:
-  #     raise ValueError('Attempting to write to a null json path')
-  #   if exists(self._json_path):
-  #     with gfile.GFile(self._json_path) as json_file:
-  #       json_objs = json.loads(json_file.read())
-  #     json_objs.append(json_obj)
-  #   else:
-  #     json_objs = [json_obj]
-  #   # TODO(gdahl,gilmer): Should this be an atomic file?
-  #   with gfile.GFile(self._json_path, 'w') as json_file:
-  #     json_file.write(json.dumps(json_objs))

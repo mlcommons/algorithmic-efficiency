@@ -8,7 +8,8 @@ python3 submission_runner.py \
     --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
-    --num_tuning_trials=3
+    --num_tuning_trials=3 \
+    --experiment_dir=experiments
 """
 import importlib
 import inspect
@@ -21,14 +22,14 @@ from typing import Optional, Tuple
 from absl import app
 from absl import flags
 from absl import logging
-import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-from algorithmic_efficiency.logger_utils import get_meta_data
+
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.logger_utils import get_meta_data
 from algorithmic_efficiency.logger_utils import set_up_loggers
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
@@ -115,13 +116,11 @@ flags.DEFINE_enum(
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
-flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-
-flags.DEFINE_string('root_dir',
-                    'experiments',
+flags.DEFINE_string('experiment_dir',
+                    None,
                     'The root directory to store all experiments')
-flags.DEFINE_string('experiment_name', 'baseline', 'Name of the experiment.')
-
+flags.DEFINE_string('experiment_name', '', 'Name of the experiment.')
+flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
@@ -194,26 +193,25 @@ def train_once(
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Logger setup.
-  logging.info('Initializing loggers.')
-  hparams_fname = os.path.join(log_dir, 'hparams.json')
-  # meta_data = {'status': 'incomplete', 'timestamp': time.time()}
-  meta_data = get_meta_data(workload)
-  meta_fname = os.path.join(log_dir, 'meta_data.json')
-  flag_fname = os.path.join(log_dir, 'flags.json')
+  logging.info('Initializing logger.')
+  metrics_logger = None
+  if log_dir is not None:
+    hparams_fname = os.path.join(log_dir, 'hparams.json')
+    meta_data = get_meta_data(workload)
+    meta_fname = os.path.join(log_dir, 'meta_data.json')
+    flag_fname = os.path.join(log_dir, 'flags.json')
 
-  if RANK == 0:
-    logging.info('saving hparams to %s', hparams_fname)
-    with open(hparams_fname, 'w') as f:
-      f.write(json.dumps(hyperparameters._asdict(), indent=2))
-    logging.info('saving meta data to %s', meta_fname)
-    with open(meta_fname, 'w') as f:
-      f.write(json.dumps(meta_data, indent=2))
-    logging.info('saving flags to %s', flag_fname)
-    with open(flag_fname, 'w') as f:
-      f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
-    metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
-  else:
-    metrics_logger = None
+    if RANK == 0:
+      logging.info('saving hparams to %s', hparams_fname)
+      with open(hparams_fname, 'w') as f:
+        f.write(json.dumps(hyperparameters._asdict(), indent=2))
+      logging.info('saving meta data to %s', meta_fname)
+      with open(meta_fname, 'w') as f:
+        f.write(json.dumps(meta_data, indent=2))
+      logging.info('saving flags to %s', flag_fname)
+      with open(flag_fname, 'w') as f:
+        f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
+      metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
 
   # Workload setup.
   logging.info('Initializing dataset.')
@@ -227,9 +225,6 @@ def train_once(
   with profiler.profile('Initializing model'):
     model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  # if log_dir:
-  #   logging.info('Initializing tensorboard summary writer')
-  #   workload.create_summary_writer(log_dir)
 
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -316,7 +311,7 @@ def train_once(
           last_eval_time = current_time
           eval_results.append((global_step, latest_eval_result))
 
-          if RANK == 0:
+          if RANK == 0 and metrics_logger is not None:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result, global_step=global_step)
 
@@ -337,9 +332,9 @@ def train_once(
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
     accumulated_submission_time = score_tensor.item()
 
-  if RANK == 0:
-    metrics_logger.append_scalar_metrics(
-      {"score": accumulated_submission_time}, global_step=global_step)
+  if RANK == 0 and metrics_logger is not None:
+    metrics_logger.append_scalar_metrics({"score": accumulated_submission_time},
+                                         global_step=global_step)
 
   return accumulated_submission_time, metrics
 
@@ -390,10 +385,13 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
 
-      tuning_log_dir = os.path.join(log_dir, str(hi + 1))
-      if RANK == 0:
-        logging.info('Creating tuning directory at %s', tuning_log_dir)
-        os.makedirs(tuning_log_dir, exist_ok=True)
+      if log_dir is not None:
+        tuning_log_dir = os.path.join(log_dir, str(hi + 1))
+        if RANK == 0:
+          logging.info('Creating tuning directory at %s', tuning_log_dir)
+          os.makedirs(tuning_log_dir, exist_ok=True)
+      else:
+        tuning_log_dir = None
 
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
@@ -448,10 +446,10 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  experiment_name = FLAGS.workload + '_' \
-                    + FLAGS.framework + '_' \
-                    + FLAGS.experiment_name
-  experiment_log_dir = os.path.join(FLAGS.root_dir, experiment_name)
+  experiment_name = FLAGS.workload + '_' + FLAGS.framework
+  if FLAGS.experiment_name != '':
+    experiment_name = experiment_name + '_' + FLAGS.experiment_nname
+  experiment_log_dir = os.path.join(FLAGS.experiment_dir, experiment_name)
   if RANK == 0:
     # only one worker should create the required dir
     logging.info('Creating experiment directory at %s', experiment_log_dir)
@@ -470,10 +468,6 @@ def main(_):
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 
-  # if FLAGS.wandb and wandb is not None and RANK == 0:
-  #   wandb.log({'score': score})
-  #   wandb.finish()
-
   if FLAGS.profile:
     logging.info(profiler.summary())
 
@@ -483,4 +477,5 @@ def main(_):
 
 
 if __name__ == '__main__':
+  flags.mark_flag_as_required('experiment_dir')
   app.run(main)
