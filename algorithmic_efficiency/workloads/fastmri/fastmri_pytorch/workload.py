@@ -14,7 +14,6 @@ from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
 from algorithmic_efficiency.interop_utils import pytorch_to_jax
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
