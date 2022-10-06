@@ -69,14 +69,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         feed_forward_residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate)
     model = models.Conformer(model_config)
-    return self._model_fn(
-        params,
-        augmented_and_preprocessed_input_batch,
-        model_state,
-        mode,
-        rng,
-        update_batch_norm,
-        model)
+    return self._model_fn(params,
+                          augmented_and_preprocessed_input_batch,
+                          model_state,
+                          mode,
+                          rng,
+                          update_batch_norm,
+                          model)
 
   def _model_fn(
       self,
