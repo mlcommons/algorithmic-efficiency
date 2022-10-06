@@ -108,7 +108,7 @@ def pmapped_train_step(workload,
         rng={'params' : params_rng, 'dropout' : dropout_rng},
         dropout_rate=residual_dropout_rate,
         aux_dropout_rate=input_dropout_rate,
-        update_batch_norm=False)
+        update_batch_norm=True)
 
     loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))
     return loss, new_model_state

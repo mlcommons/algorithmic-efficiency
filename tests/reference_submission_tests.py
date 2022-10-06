@@ -60,6 +60,7 @@ _EXPECTED_METRIC_NAMES = {
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
     'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
     'librispeech_conformer': ['train/wer', 'validation/wer', 'train/ctc_loss'],
+    'librispeech_deepspeech': ['train/wer', 'validation/wer', 'train/ctc_loss'],
     'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
     'ogbg': [
         'train/accuracy', 'validation/loss', 'test/mean_average_precision'

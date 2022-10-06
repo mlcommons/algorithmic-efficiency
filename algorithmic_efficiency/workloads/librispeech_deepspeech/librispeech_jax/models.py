@@ -69,9 +69,6 @@ class Subsample(nn.Module):
 
   @nn.compact
   def __call__(self, inputs, output_paddings, train):
-    # print('subsample input shape = ', inputs.shape)
-    # print('subsample paddings shape = ', output_paddings.shape)
-
     config = self.config
     outputs = jnp.expand_dims(inputs, axis=-1)
 
@@ -83,9 +80,6 @@ class Subsample(nn.Module):
         input_channels=1,
         output_channels=config.encoder_dim)(outputs, output_paddings, train)
 
-    # print('after conv 1 subsample input shape = ', outputs.shape)
-    # print('after conv 1 subsample paddings shape = ', output_paddings.shape)
-
     outputs, output_paddings = Conv2dSubsampling(
         encoder_dim=config.encoder_dim,
         dtype=config.dtype,
@@ -93,9 +87,6 @@ class Subsample(nn.Module):
         batch_norm_epsilon=config.batch_norm_epsilon,
         input_channels=config.encoder_dim,
         output_channels=config.encoder_dim)(outputs, output_paddings, train)
-
-    # print('after conv 2 subsample input shape = ', outputs.shape)
-    # print('after conv 2 subsample paddings shape = ', output_paddings.shape)
 
     batch_size, subsampled_lengths, subsampled_dims, channels = outputs.shape
 

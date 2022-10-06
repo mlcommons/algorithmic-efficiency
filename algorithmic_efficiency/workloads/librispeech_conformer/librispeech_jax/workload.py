@@ -63,25 +63,39 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
     input_dropout_rate.
     """
-    del update_batch_norm
-
-    variables = {'params': params, **model_state}
-
-    is_train_mode = (mode == spec.ForwardPassMode.TRAIN)
-
-    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     model_config = models.ConformerConfig(
         attention_residual_dropout_rate=dropout_rate,
         conv_residual_dropout_rate=dropout_rate,
         feed_forward_residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate)
     model = models.Conformer(model_config)
-    if is_train_mode:
+    return self._model_fn(
+        params,
+        augmented_and_preprocessed_input_batch,
+        model_state,
+        mode,
+        rng,
+        update_batch_norm,
+        model)
+
+  def _model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool,
+      model: nn.Module) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    variables = {'params': params, **model_state}
+    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+    is_train_mode = mode == spec.ForwardPassMode.TRAIN
+    if update_batch_norm or is_train_mode:
       (logits, logit_paddings), new_model_state = model.apply(
           variables,
           inputs,
           input_paddings,
-          is_train_mode,
+          train=True,
           rngs=rng,
           mutable=['batch_stats'])
       return (logits, logit_paddings), new_model_state
@@ -90,7 +104,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           variables,
           inputs,
           input_paddings,
-          is_train_mode,
+          train=False,
           mutable=False)
       return (logits, logit_paddings), None
 
