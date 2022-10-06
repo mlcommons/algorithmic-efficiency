@@ -1,17 +1,11 @@
 import functools
-import itertools
-import math
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from absl import flags
-from absl import logging
 from flax import jax_utils
-import flax.linen as nn
 import jax
-from jax import lax
 import jax.numpy as jnp
 import numpy as np
-import optax
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
@@ -40,11 +34,38 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state = variables["batch_stats"]
-    params = variables["params"]
+    model_state = variables['batch_stats']
+    params = variables['params']
 
     self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
                                       params)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+
+  def model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Deepspeech model function.
+
+    Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
+    as input_dropout_rate.
+    """
+    model_config = models.DeepspeechConfig(
+        feed_forward_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate)
+    model = models.Deepspeech(model_config)
+    return self._model_fn(params,
+                          augmented_and_preprocessed_input_batch,
+                          model_state,
+                          mode,
+                          rng,
+                          update_batch_norm,
+                          model)

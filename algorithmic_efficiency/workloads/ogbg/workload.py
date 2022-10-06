@@ -122,6 +122,8 @@ class BaseOgbgWorkload(spec.Workload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_rate=0.1,  # Unused for eval.
+        aux_dropout_rate=None,
         update_batch_norm=False)
     return self._eval_metric(batch['targets'], logits, batch['weights'])
 

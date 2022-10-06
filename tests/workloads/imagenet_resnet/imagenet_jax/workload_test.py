@@ -28,17 +28,22 @@ class ModelsTest(absltest.TestCase):
     first_input_batch = jax.random.normal(data_rngs[0], shape=input_shape)
     expected_logits_shape = (jax.local_device_count(), batch_size, 1000)
 
+    # static_broadcasted_argnums=(3, 7) will recompile each time we call it in
+    # this file because we call it with a different combination of those two
+    # args each time. Can't call with kwargs.
     pmapped_model_fn = jax.pmap(
         workload.model_fn,
         axis_name='batch',
-        in_axes=(0, 0, 0, None, None, None),
-        static_broadcasted_argnums=(3, 5))
+        in_axes=(0, 0, 0, None, None, None, None, None),
+        static_broadcasted_argnums=(3, 7))
     logits, updated_batch_stats = pmapped_model_fn(
         model_params,
         {'inputs': first_input_batch},
         batch_stats,
         spec.ForwardPassMode.TRAIN,
         rng,
+        None,
+        None,
         True)
     self.assertEqual(logits.shape, expected_logits_shape)
     # Test that batch stats are updated.
@@ -53,6 +58,8 @@ class ModelsTest(absltest.TestCase):
         batch_stats,
         spec.ForwardPassMode.TRAIN,
         rng,
+        None,
+        None,
         False)
     self.assertIsNone(same_batch_stats)
 
@@ -63,6 +70,8 @@ class ModelsTest(absltest.TestCase):
         batch_stats,
         spec.ForwardPassMode.EVAL,
         rng,
+        None,
+        None,
         False)
     self.assertEqual(logits.shape, expected_logits_shape)
 

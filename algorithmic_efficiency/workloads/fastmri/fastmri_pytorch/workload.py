@@ -10,10 +10,10 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
 from algorithmic_efficiency.interop_utils import pytorch_to_jax
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
@@ -21,7 +21,7 @@ from algorithmic_efficiency.workloads.fastmri.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 class FastMRIWorkload(BaseFastMRIWorkload):
@@ -127,12 +127,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
+    pytorch_utils.update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -146,11 +150,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
 
     with contexts[mode]():
-      targets_batch = model(
+      logit_batch = model(
           augmented_and_preprocessed_input_batch['inputs'].unsqueeze(
               1)).squeeze(1)
 
-    return targets_batch, None
+    return logit_batch, None
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,
@@ -184,6 +188,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         None,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_rate=0.0,
+        aux_dropout_rate=0.0,
         update_batch_norm=False)
     ssim_sum = jax_to_pytorch(
         ssim(

@@ -2,7 +2,7 @@
 
 import functools
 import math
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -42,11 +42,15 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """aux_dropout_rate is unused."""
     del model_state
+    del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = models.UNet().apply(
+    logits = models.UNet(dropout_rate=dropout_rate).apply(
         {'params': params},
         augmented_and_preprocessed_input_batch['inputs'],
         rngs={'dropout': rng},
@@ -85,6 +89,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=rng,
+        dropout_rate=0.0,  # Not relevant for eval.
+        aux_dropout_rate=None,
         update_batch_norm=False)
     ssim_vals = ssim(
         batch['targets'],

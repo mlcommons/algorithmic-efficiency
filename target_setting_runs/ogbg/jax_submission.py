@@ -36,6 +36,8 @@ def train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
+        dropout_rate=0.1,  # Default.
+        aux_dropout_rate=None,
         update_batch_norm=True)
     mask_batch = batch['weights']
     per_example_losses = workload.loss_fn(

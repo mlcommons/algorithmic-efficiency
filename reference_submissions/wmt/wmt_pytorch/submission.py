@@ -103,7 +103,15 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del eval_results
   del loss_type
-  del hyperparameters
+
+  if hasattr(hyperparameters, 'dropout_rate'):
+    dropout_rate = hyperparameters.dropout_rate
+  else:
+    dropout_rate = 0.1
+  if hasattr(hyperparameters, 'attention_dropout_rate'):
+    attention_dropout_rate = hyperparameters.attention_dropout_rate
+  else:
+    attention_dropout_rate = 0.1
 
   current_model = current_param_container
   current_param_container.train()
@@ -116,6 +124,8 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=dropout_rate,
+      aux_dropout_rate=attention_dropout_rate,
       update_batch_norm=False)
 
   targets = batch['targets']

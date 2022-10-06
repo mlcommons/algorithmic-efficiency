@@ -12,12 +12,10 @@ that it is defined in:
 "reference_submissions/{workload}/tuning_search_space.json".
 """
 import copy
+import functools
 import importlib
 import json
 import os
-
-# Make sure no GPU memory is preallocated to Jax.
-os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 
 from absl import flags
 from absl import logging
@@ -46,7 +44,7 @@ flags.DEFINE_integer(
      'a per-device batch size of 2 is used.'))
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 flags.DEFINE_boolean(
-    'run_all',
+    'all',
     False,
     'Run all workloads instead of using --workload and --framework.')
 FLAGS = flags.FLAGS
@@ -58,11 +56,8 @@ _EXPECTED_METRIC_NAMES = {
     'fastmri': ['train/ssim', 'validation/ssim'],
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
     'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
-    'librispeech_conformer': [
-        'train/word_error_rate',
-        'validation/word_error_rate',
-        'train/ctc_loss',
-    ],
+    'librispeech_conformer': ['train/wer', 'validation/wer', 'train/ctc_loss'],
+    'librispeech_deepspeech': ['train/wer', 'validation/wer', 'train/ctc_loss'],
     'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
     'ogbg': [
         'train/accuracy', 'validation/loss', 'test/mean_average_precision'
@@ -103,7 +98,7 @@ class _FakeMetricsCollection:
 
   def compute(self):
     return {
-        'word_error_rate': 0.0,
+        'wer': 0.0,
         'ctc_loss': 0.0,
     }
 
@@ -132,6 +127,7 @@ def _make_one_batch_workload(workload_class,
       self.summary_writer = None
       if 'librispeech' in workload_name:
         self.metrics_bundle = _FakeMetricsBundle()
+        self.tokenizer = _FakeTokenizer()
 
     @property
     def num_eval_train_examples(self):
@@ -162,8 +158,12 @@ def _make_one_batch_workload(workload_class,
         batch_shape = (global_batch_size,)
 
       if workload_name == 'cifar':
+        if framework == 'jax':
+          data_shape = (32, 32, 3)
+        else:
+          data_shape = (3, 32, 32)
         fake_batch = _make_fake_image_batch(
-            batch_shape, data_shape=(32, 32, 3), num_classes=10)
+            batch_shape, data_shape=data_shape, num_classes=10)
       elif workload_name == 'criteo1tb':
         targets = np.ones(batch_shape)
         targets[0] = 0
@@ -180,11 +180,11 @@ def _make_one_batch_workload(workload_class,
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=data_shape, num_classes=1000)
       elif 'librispeech' in workload_name:
-        inputs = np.random.normal((*batch_shape, 320000))
-        targets = np.random.normal((*batch_shape, 256))
+        inputs = np.random.normal(size=(*batch_shape, 320000))
+        targets = np.random.normal(size=(*batch_shape, 256))
         fake_batch = {
-            'inputs': (inputs, inputs),
-            'targets': (targets, targets),
+            'inputs': (inputs, np.zeros_like(inputs)),
+            'targets': (targets, np.zeros_like(targets)),
         }
       elif workload_name == 'mnist':
         fake_batch = _make_fake_image_batch(
@@ -243,6 +243,8 @@ def _make_one_batch_workload(workload_class,
         for k, v in fake_batch.items():
           if isinstance(v, np.ndarray):
             new_fake_batch[k] = to_device(k, v)
+          elif isinstance(v, tuple):
+            new_fake_batch[k] = tuple(map(functools.partial(to_device, k), v))
           else:
             new_fake_batch[k] = v
         fake_batch = new_fake_batch
@@ -286,9 +288,9 @@ def _test_submission(workload_name,
   data_selection = submission_module.data_selection
   get_batch_size = submission_module.get_batch_size
   global_batch_size = get_batch_size(workload_name)
-  if FLAGS.run_all:
+  if FLAGS.all:
     if FLAGS.global_batch_size > 0:
-      raise ValueError('Cannot set --global_batch_size and --run_all.')
+      raise ValueError('Cannot set --global_batch_size and --all.')
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size
@@ -341,6 +343,7 @@ def _test_submission(workload_name,
       model_state,
       eval_rng,
       data_dir,
+      imagenet_v2_data_dir=None,
       global_step=0)
   _ = workload.eval_model(
       global_batch_size,
@@ -348,6 +351,7 @@ def _test_submission(workload_name,
       model_state,
       eval_rng,
       data_dir,
+      imagenet_v2_data_dir=None,
       global_step=0)
   return eval_result
 
@@ -382,7 +386,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
     self_location = os.path.dirname(os.path.realpath(__file__))
     # Example: /home/znado/algorithmic-efficiency
     repo_location = '/'.join(self_location.split('/')[:-1])
-    if FLAGS.run_all:
+    if FLAGS.all:
       references_dir = f'{repo_location}/reference_submissions'
       for workload_name in os.listdir(references_dir):
         for framework in ['jax', 'pytorch']:

@@ -1,7 +1,7 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import nn
@@ -139,9 +139,14 @@ class MnistWorkload(BaseMnistWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del rng
+    del dropout_rate
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
@@ -192,6 +197,8 @@ class MnistWorkload(BaseMnistWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.

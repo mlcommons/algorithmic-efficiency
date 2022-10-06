@@ -1,7 +1,7 @@
 """MNIST workload implemented in Jax."""
 import functools
 import itertools
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -136,9 +136,14 @@ class MnistWorkload(BaseMnistWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del rng
+    del dropout_rate
+    del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply(
@@ -174,6 +179,8 @@ class MnistWorkload(BaseMnistWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
     loss = jnp.sum(self.loss_fn(batch['targets'], logits))

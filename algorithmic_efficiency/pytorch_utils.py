@@ -41,3 +41,16 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
       logging.info = logging_pass
     # initialize the process group
     dist.init_process_group('nccl')
+
+
+# torch.nn.functional.dropout will not be affected by this function.
+def update_dropout(model, dropout_rate):
+  for child in list(model.modules()):
+    if isinstance(child, torch.nn.Dropout):
+      child.p = dropout_rate
+
+
+def update_attention_dropout(model, attention_dropout_rate):
+  for child in list(model.modules()):
+    if isinstance(child, torch.nn.MultiheadAttention):
+      child.dropout = attention_dropout_rate
