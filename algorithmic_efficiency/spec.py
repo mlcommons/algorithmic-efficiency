@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
 
+
 class LossType(enum.Enum):
   SOFTMAX_CROSS_ENTROPY = 0
   SIGMOID_CROSS_ENTROPY = 1
