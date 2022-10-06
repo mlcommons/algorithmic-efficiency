@@ -5,8 +5,6 @@ import enum
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
-from flax.metrics import tensorboard
-
 
 class LossType(enum.Enum):
   SOFTMAX_CROSS_ENTROPY = 0
