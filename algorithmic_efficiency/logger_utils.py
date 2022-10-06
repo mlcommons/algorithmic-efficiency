@@ -137,7 +137,7 @@ def _get_git_branch() -> str:
 
 def _get_cpu_model_name() -> str:
   output = subprocess.check_output(['lscpu']).decode('ascii').strip()
-  return re.findall(r"(?=Model name:\s{1,}).*",
+  return re.findall(r'(?=Model name:\s{1,}).*',
                     output)[0].split('Model name:')[1].strip()
 
 

@@ -312,7 +312,7 @@ def train_once(
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
-          if "out of memory" in str(e):
+          if 'out of memory' in str(e):
             logging.warning(
                 f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
             )
@@ -328,7 +328,7 @@ def train_once(
     accumulated_submission_time = score_tensor.item()
 
   if RANK == 0 and metrics_logger is not None:
-    metrics_logger.append_scalar_metrics({"score": accumulated_submission_time},
+    metrics_logger.append_scalar_metrics({'score': accumulated_submission_time},
                                          global_step=global_step)
     metrics_logger.finish()
 
