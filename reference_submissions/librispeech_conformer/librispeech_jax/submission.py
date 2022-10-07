@@ -7,6 +7,7 @@ from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
+import numpy as np
 import optax
 
 from algorithmic_efficiency import spec
@@ -18,6 +19,16 @@ def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
   return 256
+
+
+def get_learning_rate(step, hyperparams):
+  warmup_steps = hyperparams.warmup_steps
+  if step < warmup_steps:
+    current_lr = (step * hyperparams.base_lr) / warmup_steps
+  else:
+    decay_factor = (1 + np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+    current_lr = hyperparams.base_lr * decay_factor
+  return current_lr
 
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
@@ -151,7 +162,7 @@ def update_params(
   del eval_results
   del loss_type
 
-  lr = workload.get_learning_rate(global_step, hyperparameters)
+  lr = get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(  # pylint: disable=line-too-long
