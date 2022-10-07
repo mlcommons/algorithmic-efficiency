@@ -1,6 +1,7 @@
 """Training algorithm track submission functions for LibriSpeech."""
 from typing import Dict, Iterator, List, Tuple
 
+import numpy as np
 import torch
 
 from algorithmic_efficiency import spec
@@ -13,6 +14,17 @@ def get_batch_size(workload_name):
   # Return the global batch size.
   batch_sizes = {"librispeech_conformer": 8}
   return batch_sizes[workload_name]
+
+
+def get_learning_rate(step, hyperparams):
+  warmup_steps = hyperparams.warmup_steps
+  if step < warmup_steps:
+    current_lr = (step * hyperparams.base_lr) / warmup_steps
+  else:
+    decay_factor = (1 +
+                    np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+    current_lr = hyperparams.base_lr * decay_factor
+  return current_lr
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -77,7 +89,7 @@ def update_params(
   train_ctc_loss.backward()
   grad_clip = hyperparameters.grad_clip
   for g in optimizer_state.param_groups:
-    g['lr'] = workload.get_learning_rate(global_step, hyperparameters)
+    g['lr'] = get_learning_rate(global_step, hyperparameters)
   torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
   optimizer_state.step()
   return optimizer_state, current_param_container, None
