@@ -13,14 +13,12 @@ import optax
 from algorithmic_efficiency import spec
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
-from target_setting_runs.jax_adamw import \
-    init_optimizer_state  # pylint: disable=unused-import
 
 
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 131072
+  return 524288
 
 
 @functools.partial(

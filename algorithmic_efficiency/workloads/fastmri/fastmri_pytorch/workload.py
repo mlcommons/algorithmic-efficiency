@@ -136,7 +136,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del update_batch_norm
 
     model = params
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

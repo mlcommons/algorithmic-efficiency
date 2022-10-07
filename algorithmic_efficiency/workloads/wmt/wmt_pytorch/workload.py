@@ -174,7 +174,7 @@ class WmtWorkload(BaseWmtWorkload):
     model = params
     # Update all Dropout layers with dropout_rate, then go over and only update
     # Dropout layers inside MultiheadAttention with aux_dropout_rate.
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
     pytorch_utils.update_attention_dropout(model, aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:

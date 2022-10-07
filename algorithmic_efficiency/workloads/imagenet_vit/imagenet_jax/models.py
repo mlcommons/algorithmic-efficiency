@@ -146,7 +146,7 @@ class ViT(nn.Module):
   num_heads: int = 12
   posemb: str = 'sincos2d'  # Can also be "learn"
   rep_size: Union[int, bool] = True
-  dropout_rate: float = 0.0
+  dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
   pool_type: str = 'gap'  # Can also be 'map' or 'tok'
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
@@ -175,14 +175,17 @@ class ViT(nn.Module):
       cls = self.param('cls', nn.initializers.zeros, (1, 1, c), x.dtype)
       x = jnp.concatenate([jnp.tile(cls, [n, 1, 1]), x], axis=1)
 
-    n, l, c = x.shape  # pylint: disable=unused-variable
-    x = nn.Dropout(rate=self.dropout_rate)(x, not train)
+    n, _, c = x.shape
+    dropout_rate = self.dropout_rate
+    if dropout_rate is None:
+      dropout_rate = 0.0
+    x = nn.Dropout(rate=dropout_rate)(x, not train)
 
     x, out['encoder'] = Encoder(
         depth=self.depth,
         mlp_dim=self.mlp_dim,
         num_heads=self.num_heads,
-        dropout_rate=self.dropout_rate,
+        dropout_rate=dropout_rate,
         name='Transformer')(
             x, train=not train)
     encoded = out['encoded'] = x
