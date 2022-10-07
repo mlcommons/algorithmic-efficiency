@@ -8,6 +8,7 @@ def data_selection(
     input_queue: Iterator[Dict[str, spec.Tensor]],
     optimizer_state: spec.OptimizerState,
     current_param_container: spec.ParameterContainer,
+    model_state: spec.ModelAuxiliaryState,
     hyperparameters: spec.Hyperparameters,
     global_step: int,
     rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:

@@ -60,7 +60,7 @@
 
 
   #### Additional Details
-  
+
    You can also install the requirements for individual workloads, e.g. via
 
    ```bash
@@ -214,3 +214,5 @@ pylint reference_submissions
 pylint submission_runner.py
 pylint tests
 ```
+
+You can also use `python tests/reference_submission_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_submissions/`.
