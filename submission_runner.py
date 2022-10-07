@@ -117,11 +117,12 @@ flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
 
-flags.DEFINE_string('experiment_dir',
-                    None,
-                    'The root directory to store all experiments. '
-                    'While not required, the directory should be an '
-                    'absolute path rather than a relative path.')
+flags.DEFINE_string(
+    'experiment_dir',
+    None,
+    'The root directory to store all experiments. '
+    'While not required, the directory should be an '
+    'absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', '', 'Name of the experiment.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
