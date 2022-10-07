@@ -26,8 +26,7 @@ def get_learning_rate(step, hyperparams):
   if step < warmup_steps:
     current_lr = (step * hyperparams.base_lr) / warmup_steps
   else:
-    decay_factor = (1 +
-                    np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+    decay_factor = (1 + np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
     current_lr = hyperparams.base_lr * decay_factor
   return current_lr
 
