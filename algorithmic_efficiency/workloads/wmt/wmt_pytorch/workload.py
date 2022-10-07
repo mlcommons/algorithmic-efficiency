@@ -78,7 +78,7 @@ class WmtWorkload(BaseWmtWorkload):
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
+      flat_ids = jax_to_pytorch(flat_ids)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
