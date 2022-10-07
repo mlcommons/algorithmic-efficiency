@@ -8,7 +8,8 @@ python3 submission_runner.py \
     --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
-    --num_tuning_trials=3
+    --num_tuning_trials=3 \
+    --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
 """
 import importlib
 import inspect
@@ -25,15 +26,11 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 
-try:
-  import wandb  # pylint: disable=g-import-not-at-top
-except ModuleNotFoundError:
-  logging.exception('Unable to import wandb.')
-  wandb = None
-
 from algorithmic_efficiency import halton
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.logger_utils import get_meta_data
+from algorithmic_efficiency.logger_utils import set_up_loggers
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
@@ -116,17 +113,19 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-flags.DEFINE_boolean('wandb',
-                     False,
-                     'Whether to monitor the results with Wandb.')
-
-flags.DEFINE_string('summary_log_dir',
-                    '',
-                    'Location to dump tensorboard summaries.')
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',
                     'Location to read tokenizer from.')
+
+flags.DEFINE_string(
+    'experiment_dir',
+    None,
+    'The root directory to store all experiments. '
+    'It is not required, but the directory should have '
+    'an absolute path rather than a relative path.')
+flags.DEFINE_string('experiment_name', '', 'Name of the experiment.')
+flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
+
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
@@ -197,6 +196,27 @@ def train_once(
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
+  # Logger setup.
+  logging.info('Initializing logger.')
+  metrics_logger = None
+  if log_dir is not None:
+    hparams_filename = os.path.join(log_dir, 'hparams.json')
+    meta_data = get_meta_data(workload)
+    meta_filename = os.path.join(log_dir, 'meta_data.json')
+    flag_filename = os.path.join(log_dir, 'flags.json')
+
+    if RANK == 0:
+      logging.info('saving hparams to %s', hparams_filename)
+      with open(hparams_filename, 'w') as f:
+        f.write(json.dumps(hyperparameters._asdict(), indent=2))
+      logging.info('saving meta data to %s', meta_filename)
+      with open(meta_filename, 'w') as f:
+        f.write(json.dumps(meta_data, indent=2))
+      logging.info('saving flags to %s', flag_filename)
+      with open(flag_filename, 'w') as f:
+        f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
+      metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
+
   # Workload setup.
   logging.info('Initializing dataset.')
   with profiler.profile('Initializing dataset'):
@@ -209,9 +229,6 @@ def train_once(
   with profiler.profile('Initializing model'):
     model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-  if log_dir:
-    logging.info('Initializing tensorboard summary writer')
-    workload.create_summary_writer(log_dir)
 
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -291,13 +308,14 @@ def train_once(
           last_eval_time = current_time
           eval_results.append((global_step, latest_eval_result))
 
-          if FLAGS.wandb and wandb is not None and RANK == 0:
-            wandb.log(latest_eval_result)
+          if RANK == 0 and metrics_logger is not None:
+            metrics_logger.append_scalar_metrics(
+                latest_eval_result, global_step=global_step)
 
           goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
-          if "out of memory" in str(e):
+          if 'out of memory' in str(e):
             logging.warning(
                 f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
             )
@@ -311,6 +329,12 @@ def train_once(
     score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
     accumulated_submission_time = score_tensor.item()
+
+  if RANK == 0 and metrics_logger is not None:
+    metrics_logger.append_scalar_metrics({'score': accumulated_submission_time},
+                                         global_step=global_step)
+    metrics_logger.finish()
+
   return accumulated_submission_time, metrics
 
 
@@ -359,6 +383,14 @@ def score_submission_on_workload(workload: spec.Workload,
       # number.
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
+
+      tuning_log_dir = None
+      if log_dir is not None:
+        tuning_log_dir = os.path.join(log_dir, str(hi + 1))
+        if RANK == 0:
+          logging.info('Creating tuning directory at %s', tuning_log_dir)
+          os.makedirs(tuning_log_dir, exist_ok=True)
+
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
@@ -366,7 +398,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler, log_dir,
+                                     hyperparameters, rng, profiler,
+                                     tuning_log_dir,
                                      tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
@@ -387,7 +420,7 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, data_dir,
           imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler)
+          None, rng, profiler, log_dir, tokenizer_vocab_path)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -401,10 +434,6 @@ def main(_):
   if FLAGS.framework == 'pytorch':
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
-  if FLAGS.wandb and wandb is not None and RANK == 0:
-    wandb.init()
-    wandb.config.update(flags.FLAGS)
-
   workload_metadata = WORKLOADS[FLAGS.workload]
   # extend path according to framework
   workload_metadata['workload_path'] = os.path.join(
@@ -415,6 +444,15 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
+  experiment_name = FLAGS.workload + '_' + FLAGS.framework
+  if FLAGS.experiment_name != '':
+    experiment_name = experiment_name + '_' + FLAGS.experiment_nname
+  experiment_log_dir = os.path.join(FLAGS.experiment_dir, experiment_name)
+  if RANK == 0:
+    # only one worker should create the required dir
+    logging.info('Creating experiment directory at %s', experiment_log_dir)
+    os.makedirs(name=experiment_log_dir, exist_ok=True)
+
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
@@ -424,13 +462,9 @@ def main(_):
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       FLAGS.summary_log_dir,
+                                       experiment_log_dir,
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
-
-  if FLAGS.wandb and wandb is not None and RANK == 0:
-    wandb.log({'score': score})
-    wandb.finish()
 
   if FLAGS.profile:
     logging.info(profiler.summary())
@@ -441,4 +475,10 @@ def main(_):
 
 
 if __name__ == '__main__':
+  flags.mark_flag_as_required('workload')
+  flags.mark_flag_as_required('framework')
+  flags.mark_flag_as_required('submission_path')
+  flags.mark_flag_as_required('tuning_ruleset')
+  flags.mark_flag_as_required('tuning_search_space')
+  flags.mark_flag_as_required('experiment_dir')
   app.run(main)
