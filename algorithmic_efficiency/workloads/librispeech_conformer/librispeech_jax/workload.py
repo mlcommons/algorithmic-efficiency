@@ -287,14 +287,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     computed_metrics = metrics_report.compute()
 
-    # if self.summary_writer is not None:
-    #   self.summary_writer.scalar('{}/WER'.format(split),
-    #                              computed_metrics['wer'],
-    #                              global_step)
-    #   self.summary_writer.scalar('{}/ctc_loss'.format(split),
-    #                              computed_metrics['ctc_loss'],
-    #                              global_step)
-
     return computed_metrics
 
   def sync_batch_stats(self, model_state):

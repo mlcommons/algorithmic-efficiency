@@ -9,7 +9,7 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
-    --experiment_dir=experiments
+    --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
 """
 import importlib
 import inspect
@@ -119,7 +119,9 @@ flags.DEFINE_string('tokenizer_vocab_path',
 
 flags.DEFINE_string('experiment_dir',
                     None,
-                    'The root directory to store all experiments')
+                    'The root directory to store all experiments. '
+                    'While not required, the directory should be an '
+                    'absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', '', 'Name of the experiment.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
@@ -197,20 +199,20 @@ def train_once(
   logging.info('Initializing logger.')
   metrics_logger = None
   if log_dir is not None:
-    hparams_fname = os.path.join(log_dir, 'hparams.json')
+    hparams_filename = os.path.join(log_dir, 'hparams.json')
     meta_data = get_meta_data(workload)
-    meta_fname = os.path.join(log_dir, 'meta_data.json')
-    flag_fname = os.path.join(log_dir, 'flags.json')
+    meta_filename = os.path.join(log_dir, 'meta_data.json')
+    flag_filename = os.path.join(log_dir, 'flags.json')
 
     if RANK == 0:
-      logging.info('saving hparams to %s', hparams_fname)
-      with open(hparams_fname, 'w') as f:
+      logging.info('saving hparams to %s', hparams_filename)
+      with open(hparams_filename, 'w') as f:
         f.write(json.dumps(hyperparameters._asdict(), indent=2))
-      logging.info('saving meta data to %s', meta_fname)
-      with open(meta_fname, 'w') as f:
+      logging.info('saving meta data to %s', meta_filename)
+      with open(meta_filename, 'w') as f:
         f.write(json.dumps(meta_data, indent=2))
-      logging.info('saving flags to %s', flag_fname)
-      with open(flag_fname, 'w') as f:
+      logging.info('saving flags to %s', flag_filename)
+      with open(flag_filename, 'w') as f:
         f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
       metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
 
@@ -472,5 +474,10 @@ def main(_):
 
 
 if __name__ == '__main__':
+  flags.mark_flag_as_required('workload')
+  flags.mark_flag_as_required('framework')
+  flags.mark_flag_as_required('submission_path')
+  flags.mark_flag_as_required('tuning_ruleset')
+  flags.mark_flag_as_required('tuning_search_space')
   flags.mark_flag_as_required('experiment_dir')
   app.run(main)
