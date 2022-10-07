@@ -144,9 +144,9 @@ def _make_one_batch_workload(workload_class,
         return global_batch_size
       return None
 
-    def build_input_queue(self, *args, **kwargs):
+    def _build_input_queue(self, *args, **kwargs):
       if not use_fake_input_queue:
-        return super().build_input_queue(*args, **kwargs)
+        return super()._build_input_queue(*args, **kwargs)
       del args
       del kwargs
 
@@ -307,7 +307,7 @@ def _test_submission(workload_name,
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
-  input_queue = workload.build_input_queue(
+  input_queue = workload._build_input_queue(
       data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
   model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(workload,

@@ -106,11 +106,11 @@ class MnistWorkload(BaseMnistWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def build_input_queue(self,
-                        data_rng,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int) -> Dict[str, Any]:
+  def _build_input_queue(self,
+                         data_rng,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int) -> Dict[str, Any]:
     it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
       yield {

@@ -89,14 +89,14 @@ class BaseImagenetResNetWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     del num_batches
     if global_batch_size % jax.local_device_count() != 0:
       raise ValueError('Batch size must be divisible by the number of devices')

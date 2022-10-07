@@ -265,11 +265,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(
-          self.build_input_queue(rng,
-                                 split,
-                                 data_dir,
-                                 global_batch_size,
-                                 num_batches))
+          self._build_input_queue(rng,
+                                  split,
+                                  data_dir,
+                                  global_batch_size,
+                                  num_batches))
 
     metrics_report = None
     for _ in range(num_batches):

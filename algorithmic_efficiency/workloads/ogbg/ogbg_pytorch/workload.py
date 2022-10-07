@@ -46,11 +46,11 @@ def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
 
 class OgbgWorkload(BaseOgbgWorkload):
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int):
     # TODO: Check where the + 1 comes from.
     per_device_batch_size = int(global_batch_size / N_GPUS) + 1
 
@@ -58,10 +58,10 @@ class OgbgWorkload(BaseOgbgWorkload):
     # avoid creating too many threads.
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
-      dataset_iter = super().build_input_queue(data_rng,
-                                               split,
-                                               data_dir,
-                                               global_batch_size)
+      dataset_iter = super()._build_input_queue(data_rng,
+                                                split,
+                                                data_dir,
+                                                global_batch_size)
 
     while True:
       if RANK == 0:

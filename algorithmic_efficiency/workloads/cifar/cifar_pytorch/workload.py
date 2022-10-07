@@ -42,11 +42,11 @@ class CifarWorkload(BaseCifarWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int):
     it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
       yield {
@@ -227,7 +227,7 @@ class CifarWorkload(BaseCifarWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = {

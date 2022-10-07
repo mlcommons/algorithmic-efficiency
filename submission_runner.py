@@ -200,7 +200,7 @@ def train_once(
   # Workload setup.
   logging.info('Initializing dataset.')
   with profiler.profile('Initializing dataset'):
-    input_queue = workload.build_input_queue(
+    input_queue = workload._build_input_queue(
         data_rng,
         'train',
         data_dir=data_dir,
@@ -245,6 +245,7 @@ def train_once(
                              input_queue,
                              optimizer_state,
                              model_params,
+                             model_state,
                              hyperparameters,
                              global_step,
                              data_select_rng)

@@ -120,6 +120,7 @@ def data_selection(
   del workload
   del optimizer_state
   del current_param_container
+  del model_state
   del hyperparameters
   del global_step
   del rng

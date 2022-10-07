@@ -243,7 +243,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if split not in self._eval_iters:
       is_test = split == 'test'
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split,
           data_dir,

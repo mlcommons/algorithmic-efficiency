@@ -25,14 +25,14 @@ class CifarWorkload(BaseCifarWorkload):
     super().__init__()
     self.epoch_metrics = []
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     return self._build_dataset(data_rng,
                                split,
                                data_dir,
@@ -215,7 +215,7 @@ class CifarWorkload(BaseCifarWorkload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split=split,
           global_batch_size=global_batch_size,

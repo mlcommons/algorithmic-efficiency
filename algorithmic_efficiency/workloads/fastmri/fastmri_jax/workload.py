@@ -123,7 +123,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split,
           data_dir,

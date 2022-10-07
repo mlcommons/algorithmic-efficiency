@@ -85,14 +85,14 @@ class BaseFastMRIWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     raise NotImplementedError
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     del cache
     return input_pipeline.load_fastmri_split(global_batch_size,
                                              split,
