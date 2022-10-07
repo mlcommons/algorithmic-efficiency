@@ -322,6 +322,7 @@ def _test_submission(workload_name,
                          input_queue,
                          optimizer_state,
                          model_params,
+                         model_state,
                          hyperparameters,
                          global_step,
                          data_select_rng)
