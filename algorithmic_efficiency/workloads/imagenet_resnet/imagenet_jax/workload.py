@@ -204,7 +204,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     data_rng, eval_rng = prng.split(rng, 2)
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split=split,
           global_batch_size=global_batch_size,

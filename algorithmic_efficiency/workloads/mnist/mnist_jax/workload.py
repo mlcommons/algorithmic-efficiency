@@ -98,11 +98,11 @@ class MnistWorkload(BaseMnistWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def build_input_queue(self,
-                        data_rng,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int) -> Dict[str, Any]:
+  def _build_input_queue(self,
+                         data_rng,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int) -> Dict[str, Any]:
     ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     if split != 'train':
       # Note that this stores the entire eval dataset in memory.

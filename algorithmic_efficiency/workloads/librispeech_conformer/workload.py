@@ -71,14 +71,14 @@ class BaseLibrispeechWorkload(spec.Workload):
           'before workload.param_shapes!')
     return self._param_shapes
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = False,
-                        repeat_final_dataset: Optional[bool] = False,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = False,
+                         repeat_final_dataset: Optional[bool] = False,
+                         num_batches: Optional[int] = None):
     return self._build_dataset(data_rng,
                                split,
                                data_dir,

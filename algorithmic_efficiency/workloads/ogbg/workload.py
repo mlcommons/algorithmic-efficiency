@@ -73,11 +73,11 @@ class BaseOgbgWorkload(spec.Workload):
           'before workload.param_shapes!')
     return self._param_shapes
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int):
     if split == 'eval_train':
       split = f'train[:{self.num_eval_train_examples}]'
     dataset_iter = input_pipeline.get_dataset_iter(split,
@@ -140,7 +140,7 @@ class BaseOgbgWorkload(spec.Workload):
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = None

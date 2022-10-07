@@ -33,27 +33,27 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
-      np_iter = super().build_input_queue(data_rng,
-                                          split,
-                                          data_dir,
-                                          global_batch_size,
-                                          cache,
-                                          repeat_final_dataset,
-                                          num_batches)
+      np_iter = super()._build_input_queue(data_rng,
+                                           split,
+                                           data_dir,
+                                           global_batch_size,
+                                           cache,
+                                           repeat_final_dataset,
+                                           num_batches)
 
     while True:
       if RANK == 0:
@@ -216,7 +216,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split,
           data_dir,

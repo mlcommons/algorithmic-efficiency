@@ -116,21 +116,21 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
     keys = ['inputs', 'targets']
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
+    np_iter = super()._build_input_queue(data_rng,
+                                         split,
+                                         data_dir,
+                                         global_batch_size,
+                                         num_batches,
+                                         repeat_final_dataset)
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
@@ -253,7 +253,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = itertools.cycle(
-          self.build_input_queue(
+          self._build_input_queue(
               data_rng, split, data_dir, global_batch_size=global_batch_size))
 
     total_metrics = {

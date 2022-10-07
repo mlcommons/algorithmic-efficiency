@@ -72,13 +72,13 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     """Return the final activations of the model."""
     pass
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     del data_rng
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
@@ -120,7 +120,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           rng,
           split,
           data_dir,

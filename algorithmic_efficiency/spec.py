@@ -103,14 +103,14 @@ class Workload(metaclass=abc.ABCMeta):
     """Return whether or not the workload goal has been reached."""
 
   @abc.abstractmethod
-  def build_input_queue(self,
-                        data_rng: RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None) -> Dict[str, Any]:
+  def _build_input_queue(self,
+                         data_rng: RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None) -> Dict[str, Any]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -345,6 +345,7 @@ def data_selection(workload: Workload,
                    input_queue: Iterator[Dict[str, Tensor]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
+                   model_state: ModelAuxiliaryState,
                    hyperparameters: Hyperparameters,
                    global_step: int,
                    rng: RandomState) -> Dict[str, Tensor]:

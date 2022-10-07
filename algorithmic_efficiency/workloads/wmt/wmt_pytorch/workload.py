@@ -200,24 +200,24 @@ class WmtWorkload(BaseWmtWorkload):
 
     return logits_batch, None
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
     n_inputs = 6 if split == 'train' else 2
 
     # The input pipeline has to be created in all processes, because
     # self._tokenizer has to be available in every process.
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
+    np_iter = super()._build_input_queue(data_rng,
+                                         split,
+                                         data_dir,
+                                         global_batch_size,
+                                         num_batches,
+                                         repeat_final_dataset)
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.

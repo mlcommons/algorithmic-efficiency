@@ -105,14 +105,14 @@ def update_params(
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
-def data_selection(
-    workload: spec.Workload,
-    input_queue: Iterator[Dict[str, spec.Tensor]],
-    optimizer_state: spec.OptimizerState,
-    current_param_container: spec.ParameterContainer,
-    hyperparameters: spec.Hyperparameters,
-    global_step: int,
-    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
+def data_selection(workload: spec.Workload,
+                   input_queue: Iterator[Dict[str, spec.Tensor]],
+                   optimizer_state: spec.OptimizerState,
+                   current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
+                   hyperparameters: spec.Hyperparameters,
+                   global_step: int,
+                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
   Each element of the queue is a batch of training examples and labels.
@@ -120,6 +120,7 @@ def data_selection(
   del workload
   del optimizer_state
   del current_param_container
+  del model_state
   del hyperparameters
   del global_step
   del rng

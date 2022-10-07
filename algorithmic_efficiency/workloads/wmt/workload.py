@@ -74,13 +74,13 @@ class BaseWmtWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 2400
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     is_training = split == 'train'
     if split == 'eval_train':
       # Without the '+1' only `num_eval_train_examples-1` examples are used
@@ -98,7 +98,7 @@ class BaseWmtWorkload(spec.Workload):
         repeat_final_dataset=repeat_final_dataset)
 
     # Separate function is necessary because the code above has to be executed
-    # when build_input_queue is called (not when next() is first called on it).
+    # when _build_input_queue is called (not when next() is first called on it).
     def _input_queue_generator():
       for batch in iter(ds):
         yield batch
@@ -119,7 +119,7 @@ class BaseWmtWorkload(spec.Workload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           rng,
           split,
           data_dir,
