@@ -16,7 +16,7 @@
     },
     "warmup_steps": {
         "feasible_points": [
-            1600
+            200
         ]
     },
     "num_steps": {

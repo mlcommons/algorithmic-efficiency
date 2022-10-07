@@ -1,11 +1,15 @@
-"""Submission file for an AdamW optimizer in PyTorch."""
+"""Submission file for an AdamW optimizer with warmup+cosine LR in PyTorch."""
 
 import torch
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.optim.lr_scheduler import LinearLR
-from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
+from target_setting_runs import cosine_warmup
+from target_setting_runs.data_selection import \
+    data_selection  # pylint: disable=unused-import
+from target_setting_runs.get_batch_size import \
+    get_batch_size  # pylint: disable=unused-import
+from target_setting_runs.pytorch_submission_base import \
+    update_params  # pylint: disable=unused-import
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -30,19 +34,7 @@ def init_optimizer_state(workload: spec.Workload,
               weight_decay=hyperparameters.l2)
   }
 
-  scheduler1 = LinearLR(
-      optimizer_state['optimizer'],
-      start_factor=1e-10,
-      end_factor=1.,
-      total_iters=hyperparameters.warmup_steps)
-  cosine_steps = max(hyperparameters.num_steps - hyperparameters.warmup_steps,
-                     1)
-  scheduler2 = CosineAnnealingLR(
-      optimizer_state['optimizer'], T_max=cosine_steps)
-
-  optimizer_state['scheduler'] = SequentialLR(
-      optimizer_state['optimizer'],
-      schedulers=[scheduler1, scheduler2],
-      milestones=[hyperparameters.warmup_steps])
+  optimizer_state['scheduler'] = cosine_warmup.pytorch_cosine_warmup(
+      hyperparameters, optimizer_state['optimizer'])
 
   return optimizer_state
