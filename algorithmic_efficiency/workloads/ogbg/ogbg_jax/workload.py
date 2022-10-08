@@ -17,17 +17,6 @@ from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
 class OgbgWorkload(BaseOgbgWorkload):
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
     model = models.GNN(self._num_outputs)
@@ -42,8 +31,8 @@ class OgbgWorkload(BaseOgbgWorkload):
         receivers=jnp.asarray([0]))
     params = init_fn({'params': params_rng, 'dropout': dropout_rng}, fake_batch)
     params = params['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(params), None
 
   def model_fn(

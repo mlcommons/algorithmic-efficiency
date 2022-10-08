@@ -82,17 +82,6 @@ class MnistWorkload(BaseMnistWorkload):
     ds = map(data_utils.shard_numpy_ds, ds)
     return iter(ds)
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -113,8 +102,8 @@ class MnistWorkload(BaseMnistWorkload):
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
     initial_params = self._model.init({'params': rng}, init_val,
                                       train=True)['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      initial_params)
+    self._param_shapes = param_utils.jax_param_shapes(initial_params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
 
   # Keep this separate from the loss function in order to support optimizers

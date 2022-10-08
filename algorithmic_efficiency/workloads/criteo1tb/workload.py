@@ -19,9 +19,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     self.mlp_bottom_dims = (128, 128)
     self.mlp_top_dims = (256, 128, 1)
     self.embed_dim = 64
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.target_value
@@ -96,15 +93,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
-
-  @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
 
   def _eval_model_on_split(self,
                            split: str,

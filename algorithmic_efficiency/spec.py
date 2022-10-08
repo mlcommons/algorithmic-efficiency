@@ -98,6 +98,10 @@ DataSelectionFn = Callable[[
 
 class Workload(metaclass=abc.ABCMeta):
 
+  _param_shapes: Optional[ParameterShapeTree] = None
+  _param_types: Optional[ParameterTypeTree] = None
+  _eval_iters: dict = {}
+
   @abc.abstractmethod
   def has_reached_goal(self, eval_result: float) -> bool:
     """Return whether or not the workload goal has been reached."""
@@ -123,16 +127,6 @@ class Workload(metaclass=abc.ABCMeta):
     convention should be plural key names because the values are batches of
     examples.
     """
-
-  @property
-  @abc.abstractmethod
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-
-  @property
-  @abc.abstractmethod
-  def model_params_types(self) -> ParameterType:
-    """The types of the parameters in the workload model."""
 
   @property
   @abc.abstractmethod
@@ -183,6 +177,24 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def eval_period_time_sec(self):
     """The eval period of the workload in seconds."""
+
+  @property
+  def param_shapes(self):
+    """The shapes of the parameters in the workload model."""
+    if self._param_shapes is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_shapes!')
+    return self._param_shapes
+
+  @property
+  def model_params_types(self):
+    """The types of the parameters in the workload model."""
+    if self._param_types is None:
+      raise ValueError(
+          'This should not happen, workload.init_model_fn() should be called '
+          'before workload.param_types!')
+    return self._param_types
 
   @abc.abstractmethod
   def is_output_params(self, param_key: ParameterKey) -> bool:

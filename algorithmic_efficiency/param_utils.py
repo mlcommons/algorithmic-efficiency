@@ -1,12 +1,14 @@
 """Utilities for dealing with parameter-related logic like types and shapes."""
+import jax
+
 from algorithmic_efficiency import spec
 
 
+def pytorch_param_shapes(model):
+  return {k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()}
+
+
 def pytorch_param_types(param_shapes):
-  if param_shapes is None:
-    raise ValueError(
-        'This should not happen, workload.init_model_fn() should be called '
-        'before workload.model_params_types!')
   param_types = {}
   for name in param_shapes.keys():
     if 'bias' in name:
@@ -22,9 +24,13 @@ def pytorch_param_types(param_shapes):
   return param_types
 
 
-def jax_param_types(param_tree):
+def jax_param_shapes(params):
+  return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), params)
+
+
+def jax_param_types(param_shapes):
   param_types_dict = {}
-  for name, value in param_tree.items():
+  for name, value in param_shapes.items():
     if isinstance(value, dict):
       param_types_dict[name] = jax_param_types(value)
     else:

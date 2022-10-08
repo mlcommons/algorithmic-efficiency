@@ -22,9 +22,6 @@ class BaseWmtWorkload(spec.Workload):
   """A WMT workload."""
 
   def __init__(self):
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
     self._tokenizer = None
     self._vocab_size = 32000
 
@@ -192,15 +189,6 @@ class BaseWmtWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
-
-  @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,

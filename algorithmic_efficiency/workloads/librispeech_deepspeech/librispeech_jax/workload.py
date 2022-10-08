@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
     LibriSpeechConformerWorkload
@@ -36,9 +37,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
 
     model_state = variables['batch_stats']
     params = variables['params']
-
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
