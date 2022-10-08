@@ -2,9 +2,9 @@
 
 import datetime
 import functools
+import glob
 import os
 
-import glob
 import h5py
 import jax
 import numpy as np
