@@ -51,12 +51,13 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    # wmt14_translate/de-en 'validation' split size
+    # wmt14_translate/de-en 'validation' split size.
     return 3000
 
   @property
   def num_test_examples(self):
-    return None
+    # wmt14_translate/de-en 'test' split size.
+    return 3003
 
   @property
   def train_mean(self):
