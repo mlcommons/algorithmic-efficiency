@@ -1,4 +1,5 @@
 """Utilities for dealing with parameter-related logic like types and shapes."""
+import flax
 import jax
 
 from algorithmic_efficiency import spec
@@ -13,11 +14,11 @@ def pytorch_param_types(param_shapes):
   for name in param_shapes.keys():
     if 'bias' in name:
       param_types[name] = spec.ParameterType.BIAS
-    elif 'BatchNorm' in name:
+    elif 'bn' in name:
       param_types[name] = spec.ParameterType.BATCH_NORM
-    elif 'Conv' in name:
+    elif 'conv' in name:
       param_types[name] = spec.ParameterType.CONV_WEIGHT
-    elif 'Embedding' in name:
+    elif 'embedding' in name:
       param_types[name] = spec.ParameterType.EMBEDDING
     else:
       param_types[name] = spec.ParameterType.WEIGHT
@@ -28,17 +29,17 @@ def jax_param_shapes(params):
   return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), params)
 
 
-def jax_param_types(param_shapes):
+def jax_param_types(param_shapes, parent_name=''):
   param_types_dict = {}
   for name, value in param_shapes.items():
-    if isinstance(value, dict):
-      param_types_dict[name] = jax_param_types(value)
+    if isinstance(value, dict) or isinstance(value, flax.core.FrozenDict):
+      param_types_dict[name] = jax_param_types(value, parent_name=name)
     else:
       if 'bias' in name:
         param_types_dict[name] = spec.ParameterType.BIAS
-      elif 'BatchNorm' in name:
+      elif 'BatchNorm' in parent_name:
         param_types_dict[name] = spec.ParameterType.BATCH_NORM
-      elif 'Conv' in name:
+      elif 'Conv' in parent_name:
         param_types_dict[name] = spec.ParameterType.CONV_WEIGHT
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
