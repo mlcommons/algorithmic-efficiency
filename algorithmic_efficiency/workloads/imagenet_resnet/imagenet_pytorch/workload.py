@@ -213,7 +213,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
-              mask_batch: Optional[Tensor] = None,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     losses = F.cross_entropy(
         logits_batch,

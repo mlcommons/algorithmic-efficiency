@@ -211,7 +211,7 @@ class BaseWmtWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
-      mask_batch: Optional[Tensor] = None,
+      mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> spec.Tensor:
     return self.compute_weighted_cross_entropy(
         logits_batch,

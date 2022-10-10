@@ -161,7 +161,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
-              mask_batch: Optional[Tensor] = None,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
     if label_batch.shape[-1] != self._num_classes:
@@ -170,7 +170,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       one_hot_labels = label_batch
     smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
-    losses = -jnp.sum(labels * jax.nn.log_softmax(logits, axis=-1), axis=-1)
+    losses = -jnp.sum(
+        smoothed_labels * jax.nn.log_softmax(logits_batch, axis=-1), axis=-1)
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
       losses *= mask_batch
