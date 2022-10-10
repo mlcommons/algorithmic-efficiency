@@ -197,17 +197,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return logits_batch, None
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-
-    activation_fn = {
-        spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
-        spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
-        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
-    }
-    return activation_fn[loss_type](logits_batch)
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
