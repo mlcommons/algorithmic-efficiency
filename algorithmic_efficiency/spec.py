@@ -2,9 +2,15 @@
 
 import abc
 import enum
+import functools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
+from absl import flags
 from absl import logging
+import jax
+import torch.nn.functional as F
+
+FLAGS = flags.FLAGS
 
 
 class LossType(enum.Enum):
@@ -193,7 +199,7 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def init_model_fn(
       self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxiliaryState]:
-    """return initial_params, initial_model_state"""
+    """Return (initial_params, initial_model_state)."""
 
   # ModelFn = Callable[
   #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
@@ -211,12 +217,21 @@ class Workload(metaclass=abc.ABCMeta):
     """return logits_batch"""
     # Possible side effect of updating BN.
 
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  @abc.abstractmethod
   def output_activation_fn(self, logits_batch: Tensor,
                            loss_type: LossType) -> Tensor:
-    """Return the final activations of the model."""
+    """Turn logits into probabilities."""
+    activation_fn = {
+        LossType.MEAN_SQUARED_ERROR: lambda z: z,
+        LossType.MEAN_ABSOLUTE_ERROR: lambda z: z,
+    }
+    is_pytorch = FLAGS.framework == 'pytorch'  # If False, framework == 'jax'.
+    softmax_fn = (
+        functools.partial(F.softmax, dim=-1) if is_pytorch else jax.nn.softmax)
+    sigmoid_fn = F.sigmoid if is_pytorch else jax.nn.sigmoid
+    activation_fn[LossType.SOFTMAX_CROSS_ENTROPY] = softmax_fn
+    activation_fn[LossType.SIGMOID_CROSS_ENTROPY] = sigmoid_fn
+    activation_fn[LossType.CTC_LOSS] = softmax_fn
+    return activation_fn[loss_type](logits_batch)
 
   # LossFn = Callable[Tuple[Tensor, Tensor], Tensor]
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -229,7 +244,7 @@ class Workload(metaclass=abc.ABCMeta):
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
       label_smoothing: float = 0.0) -> Tensor:  # differentiable
-    """return oned_array_of_losses_per_example"""
+    """Return one_array_of_losses_per_example."""
 
   @abc.abstractmethod
   def _eval_model_on_split(self,
