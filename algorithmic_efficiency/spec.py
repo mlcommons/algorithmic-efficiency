@@ -5,12 +5,9 @@ import enum
 import functools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
-from absl import flags
 from absl import logging
 import jax
 import torch.nn.functional as F
-
-FLAGS = flags.FLAGS
 
 
 class LossType(enum.Enum):
@@ -217,13 +214,14 @@ class Workload(metaclass=abc.ABCMeta):
     """return logits_batch"""
     # Possible side effect of updating BN.
 
-  def output_activation_fn(self, logits_batch: Tensor) -> Tensor:
+  def output_activation_fn(self, logits_batch: Tensor,
+                           framework: str) -> Tensor:
     """Turn logits into probabilities, according to the loss_type property."""
     activation_fn = {
         LossType.MEAN_SQUARED_ERROR: lambda z: z,
         LossType.MEAN_ABSOLUTE_ERROR: lambda z: z,
     }
-    is_pytorch = FLAGS.framework == 'pytorch'  # If False, framework == 'jax'.
+    is_pytorch = framework == 'pytorch'  # If False, framework == 'jax'.
     softmax_fn = (
         functools.partial(F.softmax, dim=-1) if is_pytorch else jax.nn.softmax)
     sigmoid_fn = F.sigmoid if is_pytorch else jax.nn.sigmoid
@@ -336,18 +334,17 @@ _UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 # and if has not actually achieved the goal then it will be considered as not
 # achieved the goal and get an infinite time score. Most submissions will likely
 # wait until the next free eval and not use this functionality.
-def update_params(
-    workload: Workload,
-    current_param_container: ParameterContainer,
-    current_params_types: ParameterTypeTree,
-    model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparameters,
-    batch: Dict[str, Tensor],
-    loss_type: LossType,
-    optimizer_state: OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: RandomState) -> _UpdateReturn:
+def update_params(workload: Workload,
+                  current_param_container: ParameterContainer,
+                  current_params_types: ParameterTypeTree,
+                  model_state: ModelAuxiliaryState,
+                  hyperparameters: Hyperparameters,
+                  batch: Dict[str, Tensor],
+                  loss_type: LossType,
+                  optimizer_state: OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: RandomState) -> _UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
 
