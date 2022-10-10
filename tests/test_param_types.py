@@ -33,10 +33,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
 WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
 
 
-# Ideally we would match the types layer-wise, but for that we
-# have to ensure the exact same number of the types and that the
-# types of the weights of the same layer type actually match between
-# Jax and PyTorch, which is not always the case.
 @pytest.mark.parametrize('workload', WORKLOADS)
 def test_param_types(workload):
   jax_workload, pytorch_workload = get_workload(workload)

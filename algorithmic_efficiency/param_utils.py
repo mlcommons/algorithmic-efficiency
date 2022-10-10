@@ -37,9 +37,9 @@ def jax_param_types(param_shapes, parent_name=''):
     else:
       if 'bias' in name:
         param_types_dict[name] = spec.ParameterType.BIAS
-      elif 'BatchNorm' in parent_name:
+      elif 'batchnorm' in parent_name.lower():
         param_types_dict[name] = spec.ParameterType.BATCH_NORM
-      elif 'Conv' in parent_name:
+      elif 'conv' in parent_name.lower():
         param_types_dict[name] = spec.ParameterType.CONV_WEIGHT
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
