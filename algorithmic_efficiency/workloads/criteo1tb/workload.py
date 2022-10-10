@@ -63,12 +63,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 10 * 60
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
-
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,

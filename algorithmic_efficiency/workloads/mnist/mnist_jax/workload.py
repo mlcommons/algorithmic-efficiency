@@ -106,18 +106,6 @@ class MnistWorkload(BaseMnistWorkload):
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
 
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    if loss_type == spec.LossType.SOFTMAX_CROSS_ENTROPY:
-      return jax.nn.softmax(logits_batch, axis=-1)
-    if loss_type == spec.LossType.SIGMOID_CROSS_ENTROPY:
-      return jax.nn.sigmoid(logits_batch)
-    if loss_type == spec.LossType.MEAN_SQUARED_ERROR:
-      return logits_batch
-
   def model_fn(
       self,
       params: spec.ParameterContainer,

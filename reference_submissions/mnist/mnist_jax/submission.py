@@ -76,19 +76,17 @@ def pmapped_update_params(workload: spec.Workload,
   return new_optimizer_state, updated_params, new_model_state
 
 
-def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    # This will define the output activation via `output_activation_fn`.
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(workload: spec.Workload,
+                  current_param_container: spec.ParameterContainer,
+                  current_params_types: spec.ParameterTypeTree,
+                  model_state: spec.ModelAuxiliaryState,
+                  hyperparameters: spec.Hyperparameters,
+                  batch: Dict[str, spec.Tensor],
+                  loss_type: spec.LossType,
+                  optimizer_state: spec.OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
