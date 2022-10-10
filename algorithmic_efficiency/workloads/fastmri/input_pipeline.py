@@ -161,7 +161,7 @@ def load_fastmri_split(global_batch_size,
                        shuffle_rng,
                        num_batches,
                        repeat_final_eval_dataset):
-  """Creates a split from the FastMRI dataset using tfds.
+  """Creates a split from the FastMRI dataset using tf.data.
 
   NOTE: only creates knee singlecoil datasets.
   NOTE: fastMRI has fixed randomness for eval.

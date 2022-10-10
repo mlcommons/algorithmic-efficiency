@@ -42,7 +42,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           stddev_rgb=self.train_stddev)
       return itertools.cycle(np_iter)
 
-    ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
+    ds_builder = tfds.builder('imagenet2012:5.1.0', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
     if split == 'eval_train':
