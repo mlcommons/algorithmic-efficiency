@@ -168,7 +168,7 @@ def update_params(
 - `current_param_container` is the same kind of nested structure as used by `model_fn` which constitutes a nested collection of `float32` arrays, each endowed with information about what kind of parameter that array represents stored in a parallel structure of `current_params_types`.
   - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}
 - `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics
-- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_fn` enum/name.
+- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_type` enum/name.
 - The `loss_fn` produces a loss per example, so the submission code is responsible for summing or averaging
 - Allowed to update state for the optimizer
 - Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state)
