@@ -55,7 +55,7 @@ class ModelsTest(absltest.TestCase):
     _, same_batch_stats = pmapped_model_fn(
         model_params,
         {'inputs': second_input_batch},
-        batch_stats,
+        updated_batch_stats,
         spec.ForwardPassMode.TRAIN,
         rng,
         None,
