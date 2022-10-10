@@ -241,8 +241,8 @@ class ViT(nn.Module):
     num_patches = (self.image_height // self.patch_size[0]) * \
                   (self.image_width // self.patch_size[1])
     if self.posemb == 'learn':
-      self.pos_embedding = nn.Parameter(torch.randn(1, num_patches, width))
-      self.pos_embedding.data.normal_(std=1 / math.sqrt(self.width))
+      self.pos_embed = nn.Parameter(torch.randn(1, num_patches, width))
+      self.pos_embed.data.normal_(std=1 / math.sqrt(self.width))
 
     if self.pool_type == 'tok':
       self.cls = nn.Parameter(torch.randn(1, 1, width)).type(self.dtype)
@@ -253,13 +253,13 @@ class ViT(nn.Module):
       self.pre_logits = nn.Linear(self.width, rep_size)
       init_weights(self.pre_logits)
 
-    self.embedding = nn.Conv2d(
+    self.embed = nn.Conv2d(
         self.channels,
         self.width,
         self.patch_size,
         stride=self.patch_size,
         padding='valid')
-    init_weights(self.embedding)
+    init_weights(self.embed)
     self.dropout = nn.Dropout(p=dropout)
 
     self.encoder = Encoder(
@@ -277,7 +277,7 @@ class ViT(nn.Module):
 
   def get_posemb(self, x: Tensor) -> Tensor:
     if self.posemb == 'learn':
-      return self.pos_embedding.type(self.dtype)
+      return self.pos_embed.type(self.dtype)
     elif self.posemb == 'sincos2d':
       return posemb_sincos_2d(x).type(self.dtype)
     else:
@@ -287,7 +287,7 @@ class ViT(nn.Module):
     out = {}
 
     # Patch extraction
-    x = out['stem'] = self.embedding(x)
+    x = out['stem'] = self.embed(x)
 
     # Add posemb before adding extra token.
     n, c, h, w = x.shape

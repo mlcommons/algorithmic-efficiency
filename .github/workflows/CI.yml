@@ -25,3 +25,4 @@ jobs:
         pytest -vx tests/workloads/imagenet_resnet/imagenet_jax/workload_test.py
         pytest -vx tests/test_num_params.py
         pytest -vx tests/test_param_shapes.py
+        pytest -vx tests/test_param_types.py

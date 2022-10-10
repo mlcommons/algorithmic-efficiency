@@ -26,13 +26,6 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 class FastMRIWorkload(BaseFastMRIWorkload):
 
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
   def _build_input_queue(self,
                          data_rng: spec.RandomState,
                          split: str,
@@ -109,9 +102,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = unet()
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:

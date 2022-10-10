@@ -51,10 +51,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
     conformer_model.initialize(model)
-
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -109,12 +107,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       logits, logits_paddings = model(inputs, input_paddings)
 
     return (logits, logits_paddings), None
-
-  @property
-  def model_params_types(self):
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

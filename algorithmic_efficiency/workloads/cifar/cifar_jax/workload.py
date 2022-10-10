@@ -21,10 +21,6 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def __init__(self):
-    super().__init__()
-    self.epoch_metrics = []
-
   def _build_input_queue(self,
                          data_rng: spec.RandomState,
                          split: str,
@@ -80,25 +76,6 @@ class CifarWorkload(BaseCifarWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=10, dtype=jnp.float32)
@@ -107,9 +84,8 @@ class CifarWorkload(BaseCifarWorkload):
     variables = jax.jit(model.init)({'params': rng},
                                     jnp.ones(input_shape, model.dtype))
     model_state, params = variables.pop('params')
-
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
