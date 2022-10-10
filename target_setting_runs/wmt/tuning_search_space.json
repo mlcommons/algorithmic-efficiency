@@ -19,11 +19,6 @@
             1000
         ]
     },
-    "num_steps": {
-        "feasible_points": [
-            50000
-        ]
-    },
     "l2": {
         "feasible_points": [
             0.081354

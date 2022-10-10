@@ -35,6 +35,6 @@ def init_optimizer_state(workload: spec.Workload,
   }
 
   optimizer_state['scheduler'] = cosine_warmup.pytorch_cosine_warmup(
-      hyperparameters, optimizer_state['optimizer'])
+      workload.step_hint, hyperparameters, optimizer_state['optimizer'])
 
   return optimizer_state

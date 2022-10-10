@@ -27,7 +27,7 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
 
   # Create learning rate schedule.
-  lr_schedule_fn = create_lr_schedule_fn(hyperparameters)
+  lr_schedule_fn = create_lr_schedule_fn(workload.step_hint, hyperparameters)
 
   # Create optimizer.
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
@@ -43,12 +43,13 @@ def init_optimizer_state(workload: spec.Workload,
 
 
 def create_lr_schedule_fn(
+    step_hint: int,
     hyperparameters: spec.Hyperparameters) -> Callable[[int], float]:
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=hyperparameters.learning_rate,
       transition_steps=hyperparameters.warmup_steps)
-  decay_steps = hyperparameters.num_steps - hyperparameters.warmup_steps
+  decay_steps = step_hint - hyperparameters.warmup_steps
   polynomial_schedule_fn = optax.polynomial_schedule(
       init_value=hyperparameters.learning_rate,
       end_value=hyperparameters.learning_rate * hyperparameters.end_factor,
