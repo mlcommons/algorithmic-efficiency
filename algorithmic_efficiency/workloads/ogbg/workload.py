@@ -115,6 +115,11 @@ class BaseOgbgWorkload(spec.Workload):
                            loss_type: spec.LossType) -> spec.Tensor:
     pass
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 60_000
+
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
         params,

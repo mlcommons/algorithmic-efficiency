@@ -111,3 +111,8 @@ class BaseImagenetResNetWorkload(spec.Workload):
                                global_batch_size,
                                cache,
                                repeat_final_dataset)
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 140_000

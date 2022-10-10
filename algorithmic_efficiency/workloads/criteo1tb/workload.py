@@ -106,6 +106,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           'before workload.param_shapes!')
     return self._param_shapes
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 4000
+
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,

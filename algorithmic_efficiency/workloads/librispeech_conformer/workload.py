@@ -185,3 +185,8 @@ class BaseLibrispeechWorkload(spec.Workload):
                            logits_batch: spec.Tensor,
                            loss_type: spec.LossType) -> spec.Tensor:
     pass
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 100_000

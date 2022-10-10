@@ -65,6 +65,11 @@ class BaseFastMRIWorkload(spec.Workload):
     return 6000  # 100 mins
 
   @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 27142
+
+  @property
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
     if self._param_shapes is None:
