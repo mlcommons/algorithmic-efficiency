@@ -9,8 +9,6 @@ import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec
-
-from algorithmic_efficiency import spec
 from target_setting_runs import cosine_warmup
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
@@ -165,7 +163,7 @@ def init_optimizer_state(workload: spec.Workload,
       b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
       eps=epsilon,
-      weight_decay=hyperparameters.l2)
+      weight_decay=hyperparameters.weight_decay)
   optimizer_state = opt_init_fn(params_zeros_like)
 
   return jax_utils.replicate(optimizer_state), opt_update_fn

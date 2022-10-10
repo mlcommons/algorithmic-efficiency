@@ -34,7 +34,7 @@ def init_optimizer_state(workload: spec.Workload,
                                    workload.param_shapes)
   opt_init_fn, opt_update_fn = sgd(
       learning_rate=lr_schedule_fn,
-      weight_decay=hyperparameters.l2,
+      weight_decay=hyperparameters.weight_decay,
       momentum=hyperparameters.beta1,
       nesterov=True)
   optimizer_state = opt_init_fn(params_zeros_like)
@@ -67,7 +67,7 @@ def sgd(learning_rate, weight_decay, momentum=None, nesterov=False):
 
   NOTE: We apply weight decay **before** computing the momentum update.
   This is equivalent to applying WD after for heavy-ball momentum,
-  but slightly different when using Nesterov accelleration. This is the same as
+  but slightly different when using Nesterov acceleration. This is the same as
   how the Flax optimizers handle weight decay
   https://flax.readthedocs.io/en/latest/_modules/flax/optim/momentum.html.
 

@@ -152,6 +152,7 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 python3 submission_runner.py \
     --framework=jax \
     --workload=mnist \
+    --experiment_dir=/home/znado \
     --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
     --tuning_search_space=reference_submissions/mnist/tuning_search_space.json
 ```
@@ -162,6 +163,7 @@ python3 submission_runner.py \
 python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
+    --experiment_dir=/home/znado \
     --submission_path=reference_submissions/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=reference_submissions/mnist/tuning_search_space.json
 ```
@@ -174,7 +176,10 @@ To do so, simply replace `python3` by
 torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
 ```
 
-where `N_GPUS` is the number of available GPUs on the node.
+where `N_GPUS` is the number of available GPUs on the node. To only see output from the first process, you can run the following to redirect the output from processes 1-7 to a log file:
+```bash
+torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8
+ ```
 
 ## Rules
 

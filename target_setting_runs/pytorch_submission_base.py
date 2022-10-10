@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 from algorithmic_efficiency import spec
 
+
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
@@ -31,13 +32,14 @@ def update_params(workload: spec.Workload,
   current_model.train()
   optimizer_state['optimizer'].zero_grad()
 
-  outputs_batch, new_model_state = workload.model_fn(
+  logits_batch, new_model_state = workload.model_fn(
       params=current_model,
       augmented_and_preprocessed_input_batch=batch,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
-      dropout_rate=0.0,  # Default.
+      # There was no dropout rate tuning in the target setting runs.
+      dropout_rate=None,
       aux_dropout_rate=None,
       update_batch_norm=True)
 
@@ -46,7 +48,8 @@ def update_params(workload: spec.Workload,
                                                  'label_smoothing') else 0.0)
   loss = workload.loss_fn(
       label_batch=batch['targets'],
-      outputs_batch=outputs_batch,
+      logits_batch=logits_batch,
+      mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing).mean()
 
   loss.backward()

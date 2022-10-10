@@ -33,7 +33,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 25
+    return 30.8788074
 
   @property
   def loss_type(self):
@@ -72,7 +72,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 2400
+    return 14 * 60
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
@@ -211,6 +211,10 @@ class BaseWmtWorkload(spec.Workload):
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
+      mask_batch: Optional[Tensor] = None,
       label_smoothing: float = 0.0) -> spec.Tensor:
     return self.compute_weighted_cross_entropy(
-        logits_batch, label_batch, label_smoothing=label_smoothing)
+        logits_batch,
+        label_batch,
+        weights=mask_batch,
+        label_smoothing=label_smoothing)

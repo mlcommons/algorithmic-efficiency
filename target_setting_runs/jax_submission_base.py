@@ -1,6 +1,5 @@
 """Update submission function in Jax."""
 import functools
-from multiprocessing.sharedctypes import Value
 from typing import Dict, List, Tuple
 
 import jax
@@ -9,7 +8,6 @@ import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec
-
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -40,18 +38,22 @@ def pmapped_train_step(workload,
         # There was no dropout rate tuning in the target setting runs.
         dropout_rate=None,
         aux_dropout_rate=None,
-        update_batch_norm=False)
+        update_batch_norm=True)
     loss = jnp.mean(
         workload.loss_fn(
-            batch['targets'], logits, label_smoothing=label_smoothing))
-    return loss, (new_model_state, logits)
+            label_batch=batch['targets'],
+            logits_batch=logits,
+            mask_batch=batch.get('weights'),
+            label_smoothing=label_smoothing))
+    return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (new_model_state, _), grad = grad_fn(current_param_container)
+  (loss, new_model_state), grad = grad_fn(current_param_container)
+  del loss
   grad = lax.pmean(grad, axis_name='batch')
 
   if grad_clip is not None:
-    grad_norm = sum(jnp.sum(g ** 2) for g in jax.tree_leaves(grad))
+    grad_norm = sum(jnp.sum(g**2) for g in jax.tree_leaves(grad))
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
     grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
     grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
@@ -59,7 +61,7 @@ def pmapped_train_step(workload,
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
-  return new_model_state, new_optimizer_state, updated_params
+  return new_optimizer_state, updated_params, new_model_state
 
 
 def update_params(workload: spec.Workload,
@@ -89,7 +91,7 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  new_model_state, new_optimizer_state, new_params = pmapped_train_step(
+  new_optimizer_state, new_params, new_model_state = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, per_device_rngs, grad_clip,
       label_smoothing)

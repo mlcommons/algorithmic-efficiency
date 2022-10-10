@@ -400,7 +400,8 @@ class MultiHeadedSelfAttention(nn.Module):
     else:
       attention_residual_dropout_rate = config.attention_residual_dropout_rate
     result = nn.Dropout(
-        rate=attention_residual_dropout_rate, deterministic=not train)(result)
+        rate=attention_residual_dropout_rate, deterministic=not train)(
+            result)
 
     return result
 
@@ -540,7 +541,8 @@ class ConvolutionBlock(nn.Module):
     else:
       conv_residual_dropout_rate = config.conv_residual_dropout_rate
     inputs = nn.Dropout(
-        rate=conv_residual_dropout_rate, deterministic=not train)(inputs)
+        rate=conv_residual_dropout_rate, deterministic=not train)(
+            inputs)
     return inputs
 
 

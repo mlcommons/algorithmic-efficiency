@@ -28,7 +28,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.1255
+    return 0.12422498
 
   @property
   def loss_type(self):
@@ -64,7 +64,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 10 * 60
+    return 24 * 60
 
   def output_activation_fn(self,
                            logits_batch: spec.Tensor,

@@ -41,12 +41,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
-      weighted_losses = per_example_losses * mask_batch
-      normalization = mask_batch.sum()
-    else:
-      weighted_losses = per_example_losses
-      normalization = label_batch.shape[0]
-    return torch.sum(weighted_losses, dim=-1) / normalization
+      per_example_losses *= mask_batch
+    return per_example_losses
 
   def _eval_metric(self, logits: spec.Tensor,
                    targets: spec.Tensor) -> Dict[str, int]:
@@ -81,9 +77,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del dropout_rate
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
@@ -188,9 +188,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])
-    batch_loss_numerator = torch.sum(per_example_losses)
-    batch_loss_denominator = torch.sum(batch['weights'])
+    batch_loss_numerator = torch.sum(per_example_losses).cpu().numpy()
+    batch_loss_denominator = torch.sum(batch['weights']).cpu().numpy()
     return batch_loss_numerator, batch_loss_denominator

@@ -25,7 +25,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.109
+    return 0.08420191
 
   @property
   def loss_type(self):
@@ -61,7 +61,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 2500
+    return 11 * 60
 
   @property
   def param_shapes(self):

@@ -105,7 +105,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           input_paddings,
           train=False,
           mutable=False)
-      return (logits, logit_paddings), None
+      return (logits, logit_paddings), model_state
 
   @property
   def model_params_types(self):
