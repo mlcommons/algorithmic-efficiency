@@ -83,12 +83,12 @@ WORKLOADS = {
 
 flags.DEFINE_string(
     'submission_path',
-    'reference_submissions/mnist/mnist_jax/submission.py',
+    None,
     'The relative path of the Python file containing submission functions. '
     'NOTE: the submission dir must have an __init__.py file!')
 flags.DEFINE_string(
     'workload',
-    'mnist',
+    None,
     help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
 )
 flags.DEFINE_enum(
@@ -98,10 +98,10 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to use.')
 flags.DEFINE_string(
     'tuning_search_space',
-    'reference_submissions/mnist/tuning_search_space.json',
+    None,
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
-                     20,
+                     1,
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
@@ -123,7 +123,7 @@ flags.DEFINE_string(
     'The root directory to store all experiments. '
     'It is not required, but the directory should have '
     'an absolute path rather than a relative path.')
-flags.DEFINE_string('experiment_name', '', 'Name of the experiment.')
+flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
@@ -206,13 +206,13 @@ def train_once(
     flag_filename = os.path.join(log_dir, 'flags.json')
 
     if RANK == 0:
-      logging.info('saving hparams to %s', hparams_filename)
+      logging.info('Saving hparams to %s', hparams_filename)
       with open(hparams_filename, 'w') as f:
         f.write(json.dumps(hyperparameters._asdict(), indent=2))
-      logging.info('saving meta data to %s', meta_filename)
+      logging.info('Saving meta data to %s', meta_filename)
       with open(meta_filename, 'w') as f:
         f.write(json.dumps(meta_data, indent=2))
-      logging.info('saving flags to %s', flag_filename)
+      logging.info('Saving flags to %s', flag_filename)
       with open(flag_filename, 'w') as f:
         f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
       metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
@@ -436,7 +436,7 @@ def main(_):
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
-  # extend path according to framework
+  # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + FLAGS.framework,
@@ -445,12 +445,15 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  experiment_name = FLAGS.workload + '_' + FLAGS.framework
-  if FLAGS.experiment_name != '':
-    experiment_name = experiment_name + '_' + FLAGS.experiment_nname
-  experiment_log_dir = os.path.join(FLAGS.experiment_dir, experiment_name)
+  workload_dir_name = FLAGS.workload + '_' + FLAGS.framework
+  if FLAGS.experiment_name is None:
+    experiment_log_dir = os.path.join(FLAGS.experiment_dir, workload_dir_name)
+  else:
+    experiment_log_dir = os.path.join(FLAGS.experiment_dir,
+                                      FLAGS.experiment_name,
+                                      workload_dir_name)
   if RANK == 0:
-    # only one worker should create the required dir
+    # Only one worker should create the required dir.
     logging.info('Creating experiment directory at %s', experiment_log_dir)
     os.makedirs(name=experiment_log_dir, exist_ok=True)
 
@@ -471,7 +474,7 @@ def main(_):
     logging.info(profiler.summary())
 
   if USE_PYTORCH_DDP:
-    # cleanup
+    # Cleanup.
     dist.destroy_process_group()
 
 
@@ -479,7 +482,6 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('workload')
   flags.mark_flag_as_required('framework')
   flags.mark_flag_as_required('submission_path')
-  flags.mark_flag_as_required('tuning_ruleset')
   flags.mark_flag_as_required('tuning_search_space')
   flags.mark_flag_as_required('experiment_dir')
   app.run(main)

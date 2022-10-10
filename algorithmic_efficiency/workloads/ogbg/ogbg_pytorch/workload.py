@@ -148,7 +148,7 @@ class OgbgWorkload(BaseOgbgWorkload):
       raise ValueError(
           f'Expected model_state to be None, received {model_state}.')
     model = params
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()

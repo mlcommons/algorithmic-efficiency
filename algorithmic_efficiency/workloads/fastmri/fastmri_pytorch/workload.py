@@ -128,7 +128,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del update_batch_norm
 
     model = params
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -153,12 +153,15 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
-              mask_batch: spec.Tensor = None,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    del mask_batch
     del label_smoothing
-    return F.l1_loss(
-        logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
+    losses = F.l1_loss(
+        logits_batch, label_batch, reduction='none').sum(dim=(1, 2))
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _eval_model(self, params, batch, rng):
     """Return the SSIM and loss as a dict."""

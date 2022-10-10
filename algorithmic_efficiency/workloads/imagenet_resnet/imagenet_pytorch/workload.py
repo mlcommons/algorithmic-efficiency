@@ -194,12 +194,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    return F.cross_entropy(
+    losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""

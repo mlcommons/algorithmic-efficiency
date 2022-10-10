@@ -13,7 +13,7 @@ high-level overview of Conformer encoder layer.
 """
 
 import math
-from typing import Any, List
+from typing import Any, List, Optional
 
 from flax import linen as nn
 from flax import struct
@@ -36,10 +36,13 @@ class ConformerConfig:
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
   attention_dropout_rate: float = 0.0
-  attention_residual_dropout_rate: float = 0.1
-  conv_residual_dropout_rate: float = 0.0
+  # If None, defaults to 0.1.
+  attention_residual_dropout_rate: Optional[float] = 0.1
+  # If None, defaults to 0.0.
+  conv_residual_dropout_rate: Optional[float] = 0.0
   feed_forward_dropout_rate: float = 0.0
-  feed_forward_residual_dropout_rate: float = 0.1
+  # If None, defaults to 0.1.
+  feed_forward_residual_dropout_rate: Optional[float] = 0.1
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
@@ -49,7 +52,8 @@ class ConformerConfig:
   time_mask_max_ratio: float = 0.05
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
-  input_dropout_rate: float = 0.1
+  # If None, defaults to 0.1.
+  input_dropout_rate: Optional[float] = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
 
@@ -212,7 +216,12 @@ class FeedForwardModule(nn.Module):
             inputs)
     inputs = inputs * padding_mask
 
-    inputs = nn.Dropout(rate=config.feed_forward_residual_dropout_rate)(
+    if config.feed_forward_residual_dropout_rate is None:
+      feed_forward_residual_dropout_rate = 0.1
+    else:
+      feed_forward_residual_dropout_rate = (
+          config.feed_forward_residual_dropout_rate)
+    inputs = nn.Dropout(rate=feed_forward_residual_dropout_rate)(
         inputs, deterministic=not train)
 
     return inputs
@@ -386,8 +395,12 @@ class MultiHeadedSelfAttention(nn.Module):
         dropout_rate=config.attention_dropout_rate,
         deterministic=not train)(inputs, attention_mask)
 
+    if config.attention_residual_dropout_rate is None:
+      attention_residual_dropout_rate = 0.1
+    else:
+      attention_residual_dropout_rate = config.attention_residual_dropout_rate
     result = nn.Dropout(
-        rate=config.attention_residual_dropout_rate, deterministic=not train)(
+        rate=attention_residual_dropout_rate, deterministic=not train)(
             result)
 
     return result
@@ -523,8 +536,12 @@ class ConvolutionBlock(nn.Module):
         config.encoder_dim, kernel_init=nn.initializers.xavier_uniform())(
             inputs)
 
+    if config.conv_residual_dropout_rate is None:
+      conv_residual_dropout_rate = 0.0
+    else:
+      conv_residual_dropout_rate = config.conv_residual_dropout_rate
     inputs = nn.Dropout(
-        rate=config.conv_residual_dropout_rate, deterministic=not train)(
+        rate=conv_residual_dropout_rate, deterministic=not train)(
             inputs)
     return inputs
 
@@ -607,9 +624,13 @@ class Conformer(nn.Module):
       outputs, output_paddings = self.specaug(outputs, output_paddings)
 
     # Subsample input by a factor of 4 by performing strided convolutions.
+    if config.input_dropout_rate is None:
+      input_dropout_rate = 0.1
+    else:
+      input_dropout_rate = config.input_dropout_rate
     outputs, output_paddings = Subsample(
       encoder_dim=config.encoder_dim,
-      input_dropout_rate=config.input_dropout_rate)(
+      input_dropout_rate=input_dropout_rate)(
       outputs, output_paddings, train)
 
     # Run the conformer encoder layers.

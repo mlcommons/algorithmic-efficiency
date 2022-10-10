@@ -23,17 +23,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> spec.Tensor:
-    # TODO(znado): confirm that we do not want to tune label smoothing here.
-    del label_smoothing
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
-      weighted_losses = per_example_losses * mask_batch
-      normalization = mask_batch.sum()
-    else:
-      weighted_losses = per_example_losses
-      normalization = label_batch.shape[0]
-    return jnp.sum(weighted_losses, axis=-1) / normalization
+      per_example_losses *= mask_batch
+    return per_example_losses
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     self._model = models.DlrmSmall(

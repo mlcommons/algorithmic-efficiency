@@ -1,4 +1,4 @@
-"""Submission file for a NAdamW optimizer in Jax."""
+"""Submission file for a NAdamW optimizer with warmup+cosine LR in Jax."""
 
 from typing import Any, Callable, NamedTuple, Optional, Union
 
@@ -9,45 +9,13 @@ import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec
-
-
-def init_optimizer_state(workload: spec.Workload,
-                         model_params: spec.ParameterContainer,
-                         model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparameters,
-                         rng: spec.RandomState) -> spec.OptimizerState:
-  """Creates a NAdamW optimizer and a learning rate schedule."""
-  del model_params
-  del model_state
-  del rng
-
-  # Create learning rate schedule.
-  warmup_fn = optax.linear_schedule(
-      init_value=0.,
-      end_value=hyperparameters.learning_rate,
-      transition_steps=hyperparameters.warmup_steps)
-  cosine_steps = max(hyperparameters.num_steps - hyperparameters.warmup_steps,
-                     1)
-  cosine_fn = optax.cosine_decay_schedule(
-      init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
-  schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, cosine_fn],
-      boundaries=[hyperparameters.warmup_steps])
-
-  # Create optimizer.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
-                                   workload.param_shapes)
-  epsilon = (
-      hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
-  opt_init_fn, opt_update_fn = nadamw(
-      learning_rate=schedule_fn,
-      b1=hyperparameters.beta1,
-      b2=hyperparameters.beta2,
-      eps=epsilon,
-      weight_decay=hyperparameters.l2)
-  optimizer_state = opt_init_fn(params_zeros_like)
-
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+from target_setting_runs import cosine_warmup
+from target_setting_runs.data_selection import \
+    data_selection  # pylint: disable=unused-import
+from target_setting_runs.get_batch_size import \
+    get_batch_size  # pylint: disable=unused-import
+from target_setting_runs.jax_submission_base import \
+    update_params  # pylint: disable=unused-import
 
 
 # Forked from
@@ -171,3 +139,31 @@ def scale_by_learning_rate(learning_rate, flip_sign=True):
   if callable(learning_rate):
     return optax.scale_by_schedule(lambda count: m * learning_rate(count))
   return optax.scale(m * learning_rate)
+
+
+def init_optimizer_state(workload: spec.Workload,
+                         model_params: spec.ParameterContainer,
+                         model_state: spec.ModelAuxiliaryState,
+                         hyperparameters: spec.Hyperparameters,
+                         rng: spec.RandomState) -> spec.OptimizerState:
+  """Creates a NAdamW optimizer and a learning rate schedule."""
+  del model_params
+  del model_state
+  del rng
+
+  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(hyperparameters)
+
+  # Create optimizer.
+  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+                                   workload.param_shapes)
+  epsilon = (
+      hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
+  opt_init_fn, opt_update_fn = nadamw(
+      learning_rate=lr_schedule_fn,
+      b1=hyperparameters.beta1,
+      b2=hyperparameters.beta2,
+      eps=epsilon,
+      weight_decay=hyperparameters.weight_decay)
+  optimizer_state = opt_init_fn(params_zeros_like)
+
+  return jax_utils.replicate(optimizer_state), opt_update_fn

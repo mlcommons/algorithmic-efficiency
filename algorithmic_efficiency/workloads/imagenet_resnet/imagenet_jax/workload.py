@@ -75,18 +75,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  def initialized(self, key, model):
-    input_shape = (1, 224, 224, 3)
-    variables = jax.jit(model.init)({'params': key},
-                                    jnp.ones(input_shape, model.dtype))
-    model_state, params = variables.pop('params')
-    return params, model_state
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
-    params, model_state = self.initialized(rng, model)
+    input_shape = (1, 224, 224, 3)
+    variables = jax.jit(model.init)({'params': rng},
+                                    jnp.ones(input_shape, model.dtype))
+    model_state, params = variables.pop('params')
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
@@ -139,13 +135,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
-      return logits, None
+      return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
     if label_batch.shape[-1] != self._num_classes:
@@ -154,8 +151,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       one_hot_labels = label_batch
     smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
-    return optax.softmax_cross_entropy(
-        logits=logits_batch, labels=smoothed_labels)
+    losses = -jnp.sum(
+        smoothed_labels * jax.nn.log_softmax(logits_batch, axis=-1), axis=-1)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))

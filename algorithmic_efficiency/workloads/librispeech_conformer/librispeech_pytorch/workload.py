@@ -23,17 +23,23 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 MAX_INPUT_LENGTH = 320000
 
 
-def _update_model_dropout(model, residual_dropout_rate, input_dropout_rate):
+def _maybe_update_model_dropout(model,
+                                residual_dropout_rate,
+                                input_dropout_rate):
   for child in list(model.modules()):
     # Residual dropout.
-    if isinstance(child, conformer_model.MultiHeadedSelfAttention):
+    if (isinstance(child, conformer_model.MultiHeadedSelfAttention) and
+        residual_dropout_rate is not None):
       child.dropout.p = residual_dropout_rate
-    elif isinstance(child, conformer_model.ConvolutionBlock):
+    elif (isinstance(child, conformer_model.ConvolutionBlock) and
+          residual_dropout_rate is not None):
       child.dropout.p = residual_dropout_rate
-    elif isinstance(child, conformer_model.FeedForwardModule):
+    elif (isinstance(child, conformer_model.FeedForwardModule) and
+          residual_dropout_rate is not None):
       child.dropout2.p = residual_dropout_rate
     # Input dropout.
-    elif isinstance(child, conformer_model.Subsample):
+    elif (isinstance(child, conformer_model.Subsample) and
+          input_dropout_rate is not None):
       child.dropout.p = input_dropout_rate
 
 
@@ -86,7 +92,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     del update_batch_norm
 
     model = params
-    _update_model_dropout(
+    _maybe_update_model_dropout(
         model,
         residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate)

@@ -52,10 +52,19 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              outputs_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-    return jnp.abs(outputs_batch -
-                   label_batch).mean(axis=tuple(range(1, outputs_batch.ndim)))
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    del label_smoothing
+    losses = jnp.sum(
+        jnp.abs(logits_batch - label_batch),
+        axis=tuple(range(1, logits_batch.ndim)))
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   @functools.partial(
       jax.pmap,

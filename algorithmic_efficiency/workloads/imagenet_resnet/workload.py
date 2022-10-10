@@ -16,7 +16,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.76
+    return 0.771850005
 
   @property
   def loss_type(self):
@@ -70,7 +70,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 6000  # 100 mins
+    return 510  # 8.5 minutes.
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.

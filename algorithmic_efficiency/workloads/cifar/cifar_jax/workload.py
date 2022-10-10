@@ -141,21 +141,26 @@ class CifarWorkload(BaseCifarWorkload):
           augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
-      return logits, None
+      return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
-    return -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    losses = -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    # mask_batch is assumed to be shape [batch]
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))
-    # not accuracy, but nr. of correct predictions
+    # Number of correct predictions.
     accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
     metrics = {
         'loss': loss,
