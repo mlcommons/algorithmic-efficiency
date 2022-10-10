@@ -5,12 +5,6 @@ from typing import Dict, List, Tuple
 from algorithmic_efficiency import spec
 
 
-def get_batch_size(workload_name):
-  # Return the global batch size.
-  del workload_name
-  return 8
-
-
 def update_params(workload: spec.Workload,
                   current_param_container: spec.ParameterContainer,
                   current_params_types: spec.ParameterTypeTree,
