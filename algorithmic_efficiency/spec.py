@@ -243,7 +243,7 @@ class Workload(metaclass=abc.ABCMeta):
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
       label_smoothing: float = 0.0) -> Tensor:  # differentiable
-    """Return one_array_of_losses_per_example."""
+    """Return 1-d array of per-example losses."""
 
   @abc.abstractmethod
   def _eval_model_on_split(self,
@@ -343,7 +343,6 @@ def update_params(
     model_state: ModelAuxiliaryState,
     hyperparameters: Hyperparameters,
     batch: Dict[str, Tensor],
-    # This will define the output activation via `output_activation_fn`.
     loss_type: LossType,
     optimizer_state: OptimizerState,
     eval_results: List[Tuple[int, float]],

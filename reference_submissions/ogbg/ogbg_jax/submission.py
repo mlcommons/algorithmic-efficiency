@@ -81,7 +81,6 @@ def update_params(
     hyperparameters: spec.Hyperparameters,
     batch: Dict[str, spec.Tensor],
     loss_type: spec.LossType,
-    # This will define the output activation via `output_activation_fn`.
     optimizer_state: spec.OptimizerState,
     eval_results: List[Tuple[int, float]],
     global_step: int,
