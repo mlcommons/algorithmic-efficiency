@@ -9,8 +9,6 @@ import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec
-
-from algorithmic_efficiency import spec
 from target_setting_runs import cosine_warmup
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
@@ -153,8 +151,8 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(
-      workload.step_hint, hyperparameters)
+  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(workload.step_hint,
+                                                   hyperparameters)
 
   # Create optimizer.
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),

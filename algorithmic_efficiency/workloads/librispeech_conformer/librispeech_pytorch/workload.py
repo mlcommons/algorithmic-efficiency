@@ -23,8 +23,9 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 MAX_INPUT_LENGTH = 320000
 
 
-def _maybe_update_model_dropout(
-    model, residual_dropout_rate, input_dropout_rate):
+def _maybe_update_model_dropout(model,
+                                residual_dropout_rate,
+                                input_dropout_rate):
   for child in list(model.modules()):
     # Residual dropout.
     if (isinstance(child, conformer_model.MultiHeadedSelfAttention) and

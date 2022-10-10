@@ -10,7 +10,6 @@ import optax
 
 from algorithmic_efficiency import spec
 
-
 _GRAD_CLIP_EPS = 1e-6
 
 
@@ -51,7 +50,7 @@ def pmapped_train_step(workload,
   grad = lax.pmean(grad, axis_name='batch')
 
   if grad_clip is not None:
-    grad_norm = sum(jnp.sum(g ** 2) for g in jax.tree_leaves(grad))
+    grad_norm = sum(jnp.sum(g**2) for g in jax.tree_leaves(grad))
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
     grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
     grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
