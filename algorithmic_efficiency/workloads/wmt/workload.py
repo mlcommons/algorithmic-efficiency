@@ -51,12 +51,13 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    # wmt14_translate/de-en 'validation' split size
+    # wmt14_translate/de-en 'validation' split size.
     return 3000
 
   @property
   def num_test_examples(self):
-    return None
+    # wmt14_translate/de-en 'test' split size.
+    return 3003
 
   @property
   def train_mean(self):
@@ -200,12 +201,6 @@ class BaseWmtWorkload(spec.Workload):
           'This should not happen, workload.init_model_fn() should be called '
           'before workload.param_shapes!')
     return self._param_shapes
-
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
 
   def loss_fn(
       self,

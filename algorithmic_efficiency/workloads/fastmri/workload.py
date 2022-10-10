@@ -34,11 +34,11 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 7135
+    return 3554
 
   @property
   def num_test_examples(self):
-    return None
+    return 3581
 
   @property
   def train_mean(self):

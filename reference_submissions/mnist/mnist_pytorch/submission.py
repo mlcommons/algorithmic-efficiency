@@ -29,19 +29,17 @@ def init_optimizer_state(workload: spec.Workload,
   return optimizer_state
 
 
-def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    # This will define the output activation via `output_activation_fn`.
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(workload: spec.Workload,
+                  current_param_container: spec.ParameterContainer,
+                  current_params_types: spec.ParameterTypeTree,
+                  model_state: spec.ModelAuxiliaryState,
+                  hyperparameters: spec.Hyperparameters,
+                  batch: Dict[str, spec.Tensor],
+                  loss_type: spec.LossType,
+                  optimizer_state: spec.OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del hyperparameters
   del loss_type
