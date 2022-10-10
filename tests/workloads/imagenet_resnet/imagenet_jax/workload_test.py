@@ -61,7 +61,8 @@ class ModelsTest(absltest.TestCase):
         None,
         None,
         False)
-    self.assertIsNone(same_batch_stats)
+    self.assertEqual(
+        _pytree_total_diff(same_batch_stats, updated_batch_stats), 0.0)
 
     # Test eval model.
     logits, _ = pmapped_model_fn(
