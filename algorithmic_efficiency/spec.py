@@ -217,6 +217,9 @@ class Workload(metaclass=abc.ABCMeta):
   def output_activation_fn(self, logits_batch: Tensor,
                            framework: str) -> Tensor:
     """Turn logits into probabilities, according to the loss_type property."""
+    if framework not in ['pytorch', 'jax']:
+      raise ValueError(
+          f'`framework` has to be either `pytorch` or `jax`, got {framework}.')
     activation_fn = {
         LossType.MEAN_SQUARED_ERROR: lambda z: z,
         LossType.MEAN_ABSOLUTE_ERROR: lambda z: z,
