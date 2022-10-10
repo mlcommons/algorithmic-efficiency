@@ -66,6 +66,13 @@ class BaseMnistWorkload(spec.Workload):
     return 10
 
   @property
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 10
+    # epochs at batch size 64.
+    return 7813
+
+  @property
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
     if self._param_shapes is None:

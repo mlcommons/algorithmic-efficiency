@@ -1,6 +1,5 @@
 """Update submission function in Jax."""
 import functools
-from multiprocessing.sharedctypes import Value
 from typing import Dict, List, Tuple
 
 import jax

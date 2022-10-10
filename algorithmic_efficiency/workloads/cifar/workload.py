@@ -67,6 +67,13 @@ class BaseCifarWorkload(spec.Workload):
     return 600  # 10 mins
 
   @property
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 100
+    # epochs at batch size 1024.
+    return 4883
+
+  @property
   def param_shapes(self):
     """The shapes of the parameters in the workload model."""
     if self._param_shapes is None:
