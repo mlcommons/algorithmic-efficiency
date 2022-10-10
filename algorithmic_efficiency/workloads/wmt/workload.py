@@ -202,12 +202,6 @@ class BaseWmtWorkload(spec.Workload):
           'before workload.param_shapes!')
     return self._param_shapes
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
-
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.

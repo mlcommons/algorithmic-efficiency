@@ -104,14 +104,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
 
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
-
   @functools.partial(
       jax.pmap,
       axis_name='batch',

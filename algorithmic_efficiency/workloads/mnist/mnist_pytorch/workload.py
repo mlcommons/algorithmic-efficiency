@@ -164,14 +164,6 @@ class MnistWorkload(BaseMnistWorkload):
 
     return logits_batch, None
 
-  # TODO(znado): Implement.
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    raise NotImplementedError
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
