@@ -217,9 +217,8 @@ class Workload(metaclass=abc.ABCMeta):
     """return logits_batch"""
     # Possible side effect of updating BN.
 
-  def output_activation_fn(self, logits_batch: Tensor,
-                           loss_type: LossType) -> Tensor:
-    """Turn logits into probabilities."""
+  def output_activation_fn(self, logits_batch: Tensor) -> Tensor:
+    """Turn logits into probabilities, according to the loss_type property."""
     activation_fn = {
         LossType.MEAN_SQUARED_ERROR: lambda z: z,
         LossType.MEAN_ABSOLUTE_ERROR: lambda z: z,
@@ -231,7 +230,7 @@ class Workload(metaclass=abc.ABCMeta):
     activation_fn[LossType.SOFTMAX_CROSS_ENTROPY] = softmax_fn
     activation_fn[LossType.SIGMOID_CROSS_ENTROPY] = sigmoid_fn
     activation_fn[LossType.CTC_LOSS] = softmax_fn
-    return activation_fn[loss_type](logits_batch)
+    return activation_fn[self.loss_type](logits_batch)
 
   # LossFn = Callable[Tuple[Tensor, Tensor], Tensor]
   # Does NOT apply regularization, which is left to the submitter to do in
