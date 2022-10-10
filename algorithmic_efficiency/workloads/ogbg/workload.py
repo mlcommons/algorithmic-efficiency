@@ -22,9 +22,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    # From Flax example
-    # https://tensorboard.dev/experiment/AAJqfvgSRJaA1MBkc0jMWQ/#scalars.
-    return 0.24
+    return 0.28380056
 
   @property
   def loss_type(self):
@@ -60,7 +58,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 120
+    return 4 * 60
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

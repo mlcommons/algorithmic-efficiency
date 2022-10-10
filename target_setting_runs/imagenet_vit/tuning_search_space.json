@@ -19,7 +19,7 @@
             14075
         ]
     },
-    "l2": {
+    "weight_decay": {
         "feasible_points": [
             0.026595
         ]

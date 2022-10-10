@@ -68,7 +68,7 @@ class MnistWorkload(BaseMnistWorkload):
     else:
       tfds_split = f'train[:{self.num_train_examples}]'
     ds = tfds.load(
-        'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
+        'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.map(lambda x: {
         'inputs': self._normalize(x['image']),
         'targets': x['label'],
@@ -134,10 +134,15 @@ class MnistWorkload(BaseMnistWorkload):
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
-    return -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    losses = -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   @functools.partial(
       jax.pmap,

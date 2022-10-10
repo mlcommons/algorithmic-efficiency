@@ -30,7 +30,7 @@ def init_optimizer_state(workload: spec.Workload,
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
               momentum=hyperparameters.beta1,
-              weight_decay=hyperparameters.l2,
+              weight_decay=hyperparameters.weight_decay,
               nesterov=True)
   }
 

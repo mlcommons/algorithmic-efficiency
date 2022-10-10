@@ -260,9 +260,9 @@ def get_wmt_dataset(data_rng,
     vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
 
   if split in ['validation', 'test']:
-    ds_name = 'wmt14_translate/de-en'
+    ds_name = 'wmt14_translate/de-en:1.0.0'
   else:
-    ds_name = 'wmt17_translate/de-en'
+    ds_name = 'wmt17_translate/de-en:1.0.0'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
 

@@ -113,7 +113,11 @@ def model_fn(
 ###### Loss function
 
 ```python
-def loss_fn(label_batch, logits_output_batch) -> 1d array of losses per example  # differentiable
+def loss_fn(
+    label_batch: Union[Tuple[Tensor, Tensor], Tensor],
+    logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
+    mask_batch: Optional[Tensor] = None,
+    label_smoothing: float = 0.0) -> 1d array of losses per example  # differentiable
 ```
 
 - Unlike in the [Model Track](#model-track), we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.

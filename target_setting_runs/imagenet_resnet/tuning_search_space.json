@@ -6,7 +6,7 @@
     },
     "beta1": {
         "feasible_points": [
-            0.99
+            0.990086
         ]
     },
     "warmup_steps": {
@@ -16,7 +16,7 @@
     },
     "decay_steps_factor": {
         "feasible_points": [
-            0.9079
+            0.90788
         ]
     },
     "end_factor": {
@@ -24,9 +24,9 @@
             0.01
         ]
     },
-    "l2": {
+    "weight_decay": {
         "feasible_points": [
-            7.6e-6
+            7.61e-6
         ]
     },
     "label_smoothing": {

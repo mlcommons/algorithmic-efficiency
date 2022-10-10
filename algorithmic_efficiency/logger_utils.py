@@ -131,8 +131,8 @@ def _get_git_commit_hash() -> str:
 
 
 def _get_git_branch() -> str:
-  return subprocess.check_output(['git', 'branch',
-                                  '--show-current']).decode('ascii').strip()
+  return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref',
+                                  'HEAD']).decode('ascii').strip()
 
 
 def _get_cpu_model_name() -> str:
