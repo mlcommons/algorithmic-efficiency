@@ -15,9 +15,6 @@ FLAGS = flags.FLAGS
 class BaseOgbgWorkload(spec.Workload):
 
   def __init__(self) -> None:
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
     self._num_outputs = 128
 
   def has_reached_goal(self, eval_result: float) -> bool:
@@ -65,14 +62,6 @@ class BaseOgbgWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 120
 
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,
@@ -106,13 +95,6 @@ class BaseOgbgWorkload(spec.Workload):
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
     pass
 
   @property

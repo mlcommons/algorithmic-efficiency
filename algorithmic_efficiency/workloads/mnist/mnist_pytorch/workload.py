@@ -94,13 +94,6 @@ class MnistWorkload(BaseMnistWorkload):
 
     return dataloader
 
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
   # Return whether or not a key in spec.ParameterContainer is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -121,9 +114,8 @@ class MnistWorkload(BaseMnistWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = _Model()
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -163,14 +155,6 @@ class MnistWorkload(BaseMnistWorkload):
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
-
-  # TODO(znado): Implement.
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    raise NotImplementedError
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.

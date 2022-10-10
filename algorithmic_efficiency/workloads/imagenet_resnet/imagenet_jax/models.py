@@ -32,9 +32,9 @@ class ResNetBlock(nn.Module):
 
     if residual.shape != y.shape:
       residual = self.conv(
-          self.filters, (1, 1), self.strides, name='conv_proj')(
+          self.filters, (1, 1), self.strides, name='Conv_proj')(
               residual)
-      residual = self.norm(name='norm_proj')(residual)
+      residual = self.norm(name='BatchNorm_proj')(residual)
 
     return self.act(residual + y)
 
@@ -61,9 +61,9 @@ class BottleneckResNetBlock(nn.Module):
 
     if residual.shape != y.shape:
       residual = self.conv(
-          self.filters * 4, (1, 1), self.strides, name='conv_proj')(
+          self.filters * 4, (1, 1), self.strides, name='Conv_proj')(
               residual)
-      residual = self.norm(name='norm_proj')(residual)
+      residual = self.norm(name='BatchNorm_proj')(residual)
 
     return self.act(residual + y)
 
@@ -90,9 +90,9 @@ class ResNet(nn.Module):
     x = conv(
         self.num_filters, (7, 7), (2, 2),
         padding=[(3, 3), (3, 3)],
-        name='conv_init')(
+        name='Conv_init')(
             x)
-    x = norm(name='bn_init')(x)
+    x = norm(name='BatchNorm_init')(x)
     x = nn.relu(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
     for i, block_size in enumerate(self.stage_sizes):

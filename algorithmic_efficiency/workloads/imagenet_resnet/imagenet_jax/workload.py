@@ -75,17 +75,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
   def initialized(self, key, model):
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': key},
@@ -98,19 +87,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
     params, model_state = self.initialized(rng, model)
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
 
   @functools.partial(
       jax.pmap,
