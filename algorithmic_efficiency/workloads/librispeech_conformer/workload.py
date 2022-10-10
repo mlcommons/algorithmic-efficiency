@@ -15,9 +15,6 @@ FLAGS = flags.FLAGS
 class BaseLibrispeechWorkload(spec.Workload):
 
   def __init__(self) -> None:
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
@@ -62,14 +59,6 @@ class BaseLibrispeechWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 11 * 60
-
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,

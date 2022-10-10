@@ -6,6 +6,7 @@ from flax import jax_utils
 import jax
 import jax.numpy as jnp
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload
@@ -31,8 +32,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     }
     model = models.ViT(**self._model_kwargs)
     params, model_state = self.initialized(rng, model)
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state

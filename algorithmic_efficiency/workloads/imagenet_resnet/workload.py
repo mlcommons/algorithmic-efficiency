@@ -9,9 +9,6 @@ from algorithmic_efficiency import spec
 class BaseImagenetResNetWorkload(spec.Workload):
 
   def __init__(self):
-    self._param_shapes = None
-    self._param_types = None
-    self._eval_iters = {}
     self._num_classes = 1000
 
   def has_reached_goal(self, eval_result: float) -> bool:
@@ -74,15 +71,6 @@ class BaseImagenetResNetWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 510  # 8.5 minutes.
-
-  @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
