@@ -13,7 +13,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.735102235
+    return 0.7351
 
   @property
   def loss_type(self):
