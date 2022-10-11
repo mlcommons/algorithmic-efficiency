@@ -5,9 +5,9 @@ Example command:
 python3 submission_runner.py \
     --workload=mnist \
     --framework=jax \
-    --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
+    --submission_path=tests/reference_algorithms/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json \
+    --tuning_search_space=tests/reference_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
     --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
 """

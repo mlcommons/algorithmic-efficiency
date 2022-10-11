@@ -29,17 +29,18 @@ class SubmissionRunnerTest(parameterized.TestCase):
           testcase_name='mnist_jax',
           workload='mnist',
           framework='jax',
-          submission_path='reference_submissions/mnist/mnist_jax/submission.py',
+          submission_path=(
+              'tests/reference_algorithms/mnist/mnist_jax/submission.py'),
           tuning_search_space=(
-              'reference_submissions/mnist/tuning_search_space.json')),
+              'tests/reference_algorithms/mnist/tuning_search_space.json')),
       dict(
           testcase_name='mnist_pytorch',
           workload='mnist',
           framework='pytorch',
           submission_path=(
-              'reference_submissions/mnist/mnist_pytorch/submission.py'),
+              'tests/reference_algorithms/mnist/mnist_pytorch/submission.py'),
           tuning_search_space=(
-              'reference_submissions/mnist/tuning_search_space.json')),
+              'tests/reference_algorithms/mnist/tuning_search_space.json')),
   )
   def test_submission(self,
                       workload,
