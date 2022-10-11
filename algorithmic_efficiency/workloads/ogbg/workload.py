@@ -90,11 +90,6 @@ class BaseOgbgWorkload(spec.Workload):
         label_smoothing=label_smoothing)
     return per_example_losses
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
         params,

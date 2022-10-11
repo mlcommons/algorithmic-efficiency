@@ -100,10 +100,8 @@ class CifarWorkload(BaseCifarWorkload):
 
     return dataloader
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key in ['fc.weight', 'fc.bias']
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])

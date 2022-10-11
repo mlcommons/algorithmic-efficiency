@@ -185,11 +185,6 @@ class BaseWmtWorkload(spec.Workload):
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._tokenizer.detokenize(valid_toks).numpy().decode('utf-8')
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
