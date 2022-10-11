@@ -38,6 +38,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'pre_logits'
+
   def model_fn(
       self,
       params: spec.ParameterContainer,

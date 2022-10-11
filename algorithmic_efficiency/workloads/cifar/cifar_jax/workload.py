@@ -90,6 +90,9 @@ class CifarWorkload(BaseCifarWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_0'
+
   @functools.partial(
       jax.pmap,
       axis_name='batch',

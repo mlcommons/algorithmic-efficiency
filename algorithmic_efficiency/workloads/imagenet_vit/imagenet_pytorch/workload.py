@@ -38,6 +38,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['pre_logits.weight', 'pre_logits.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,

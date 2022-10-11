@@ -94,10 +94,8 @@ class MnistWorkload(BaseMnistWorkload):
 
     return dataloader
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key in ['net.layer2.weight', 'net_layer2.bias']
 
   def _build_input_queue(self,
                          data_rng,
