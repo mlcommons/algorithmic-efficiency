@@ -58,7 +58,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
               mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     del label_smoothing
-    losses = jnp.sum(
+    losses = jnp.mean(
         jnp.abs(logits_batch - label_batch),
         axis=tuple(range(1, logits_batch.ndim)))
     # mask_batch is assumed to be shape [batch].
