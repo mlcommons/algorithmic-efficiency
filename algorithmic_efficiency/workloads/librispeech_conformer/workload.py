@@ -162,8 +162,3 @@ class BaseLibrispeechWorkload(spec.Workload):
       batch = self.shard(batch)
 
       yield batch
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass

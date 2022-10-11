@@ -112,6 +112,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['up_conv.3.1.weight', 'up_conv.3.1.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,

@@ -97,7 +97,7 @@ class ConvBlock(nn.Module):
     self.out_chans = out_chans
     self.dropout = dropout
 
-    self.layers = nn.Sequential(
+    self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
         nn.InstanceNorm2d(out_chans),
         nn.LeakyReLU(negative_slope=0.2, inplace=True),
@@ -109,7 +109,7 @@ class ConvBlock(nn.Module):
     )
 
   def forward(self, x: Tensor) -> Tensor:
-    return self.layers(x)
+    return self.conv_layers(x)
 
 
 class TransposeConvBlock(nn.Module):
