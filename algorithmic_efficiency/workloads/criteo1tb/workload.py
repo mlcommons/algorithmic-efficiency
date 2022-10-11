@@ -25,7 +25,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.12422498
+    return 0.124225
 
   @property
   def loss_type(self):
