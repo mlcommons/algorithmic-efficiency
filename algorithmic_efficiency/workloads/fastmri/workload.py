@@ -59,6 +59,11 @@ class BaseFastMRIWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 80
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 27142
+
   def _build_input_queue(self,
                          data_rng: spec.RandomState,
                          split: str,

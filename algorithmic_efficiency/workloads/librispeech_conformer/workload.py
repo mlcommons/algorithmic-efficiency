@@ -162,3 +162,8 @@ class BaseLibrispeechWorkload(spec.Workload):
       batch = self.shard(batch)
 
       yield batch
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 100_000

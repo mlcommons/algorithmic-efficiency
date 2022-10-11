@@ -60,6 +60,13 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 10
 
+  @property
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 10
+    # epochs at batch size 64.
+    return 7813
+
   def _eval_model(
       self,
       params: spec.ParameterContainer,

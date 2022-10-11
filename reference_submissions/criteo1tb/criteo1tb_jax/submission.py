@@ -27,7 +27,7 @@ def create_learning_rate_fn(workload: spec.Workload,
       transition_steps=hparams.warmup_steps)
   cosine_fn = optax.cosine_decay_schedule(
       init_value=hparams.learning_rate,
-      decay_steps=(hparams.step_hint - hparams.warmup_steps))
+      decay_steps=(workload.step_hint - hparams.warmup_steps))
   schedule_fn = optax.join_schedules(
       schedules=[warmup_fn, cosine_fn], boundaries=[hparams.warmup_steps])
   return schedule_fn

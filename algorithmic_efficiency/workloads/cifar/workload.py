@@ -60,3 +60,10 @@ class BaseCifarWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 600  # 10 mins
+
+  @property
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 100
+    # epochs at batch size 1024.
+    return 4883

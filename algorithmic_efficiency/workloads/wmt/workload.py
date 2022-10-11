@@ -72,6 +72,11 @@ class BaseWmtWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 14 * 60
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 100_000
+
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,

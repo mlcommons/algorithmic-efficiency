@@ -83,6 +83,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     for batch in iter(ds):
       yield batch
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 4000
+
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,

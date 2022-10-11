@@ -138,27 +138,27 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def loss_type(self):
+  def loss_type(self) -> LossType:
     """The type of loss function."""
 
   @property
   @abc.abstractmethod
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     """The size of the training set."""
 
   @property
   @abc.abstractmethod
-  def num_eval_train_examples(self):
+  def num_eval_train_examples(self) -> int:
     """The number of training examples to evaluate metrics on."""
 
   @property
   @abc.abstractmethod
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     """The size of the validation set."""
 
   @property
   @abc.abstractmethod
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     """The size of the test set."""
 
   @property
@@ -173,13 +173,18 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     """The max allowed runtime of the workload in seconds."""
 
   @property
   @abc.abstractmethod
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     """The eval period of the workload in seconds."""
+
+  @property
+  @abc.abstractmethod
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
 
   @property
   def param_shapes(self):
