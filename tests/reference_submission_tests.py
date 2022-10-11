@@ -8,8 +8,8 @@ submission_runner_test.py.
 
 Assumes that each reference submission is using the external tuning ruleset and
 that it is defined in:
-"tests/reference_algorithms/{workload}/{workload}_{framework}/submission.py"
-"tests/reference_algorithms/{workload}/tuning_search_space.json".
+"reference_algorithms/{workload}/{workload}_{framework}/submission.py"
+"reference_algorithms/{workload}/tuning_search_space.json".
 """
 import copy
 import functools
@@ -362,9 +362,9 @@ def _make_paths(repo_location, framework, workload_name):
     dataset_name = workload_name.split('_')[0]
   else:
     dataset_name = workload_name
-  workload_dir = f'{repo_location}/tests/reference_algorithms/{workload_name}'
+  workload_dir = f'{repo_location}/reference_algorithms/{workload_name}'
   search_space_path = f'{workload_dir}/tuning_search_space.json'
-  submission_path = (f'tests/reference_algorithms/{workload_name}/'
+  submission_path = (f'reference_algorithms/{workload_name}/'
                      f'{dataset_name}_{framework}/submission.py')
   full_submission_path = f'{repo_location}/{submission_path}'
   if not os.path.exists(full_submission_path):
@@ -388,7 +388,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
     # Example: /home/znado/algorithmic-efficiency
     repo_location = '/'.join(self_location.split('/')[:-1])
     if FLAGS.all:
-      references_dir = f'{repo_location}/tests/reference_algorithms'
+      references_dir = f'{repo_location}/reference_algorithms'
       for workload_name in os.listdir(references_dir):
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':

@@ -153,8 +153,8 @@ python3 submission_runner.py \
     --framework=jax \
     --workload=mnist \
     --experiment_dir=/home/znado \
-    --submission_path=tests/reference_algorithms/mnist/mnist_jax/submission.py \
-    --tuning_search_space=tests/reference_algorithms/mnist/tuning_search_space.json
+    --submission_path=reference_algorithms/mnist/mnist_jax/submission.py \
+    --tuning_search_space=reference_algorithms/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
@@ -164,8 +164,8 @@ python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
     --experiment_dir=/home/znado \
-    --submission_path=tests/reference_algorithms/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=tests/reference_algorithms/mnist/tuning_search_space.json
+    --submission_path=reference_algorithms/mnist/mnist_pytorch/submission.py \
+    --tuning_search_space=reference_algorithms/mnist/tuning_search_space.json
 ```
 
 When using multiple GPUs on a single node it is recommended to use PyTorch's
@@ -197,7 +197,7 @@ To run the below commands, use the versions installed via `pip install -e '.[dev
 
 To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
 ```bash
-yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs tests/reference_algorithms tests *.py
+yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs reference_algorithms tests *.py
 ```
 
 To sort all import orderings, run the following:
@@ -215,9 +215,9 @@ To print out all offending pylint issues, run the following:
 pylint algorithmic_efficiency
 pylint baselines
 pylint target_setting_runs
-pylint tests/reference_algorithms
+pylint reference_algorithms
 pylint submission_runner.py
 pylint tests
 ```
 
-You can also use `python tests/reference_submission_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `tests/reference_algorithms/`.
+You can also use `python tests/reference_submission_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/`.
