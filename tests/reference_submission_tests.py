@@ -22,6 +22,7 @@ from absl import logging
 from absl.testing import absltest
 import flax
 import jax
+from jraph import GraphsTuple
 import numpy as np
 import tensorflow as tf
 import torch
@@ -243,7 +244,7 @@ def _make_one_batch_workload(workload_class,
         for k, v in fake_batch.items():
           if isinstance(v, np.ndarray):
             new_fake_batch[k] = to_device(k, v)
-          elif isinstance(v, tuple):
+          elif isinstance(v, tuple) and not isinstance(v, GraphsTuple):
             new_fake_batch[k] = tuple(map(functools.partial(to_device, k), v))
           else:
             new_fake_batch[k] = v

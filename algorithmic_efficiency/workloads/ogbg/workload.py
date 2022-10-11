@@ -34,7 +34,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 10000
+    return 43793
 
   @property
   def num_validation_examples(self):
