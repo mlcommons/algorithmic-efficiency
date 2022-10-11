@@ -43,7 +43,7 @@ def maybe_restore_checkpoint(framework: str,
       optimizer_state=opt_state,
       model_state=model_state,
       train_state=train_state,
-      eval_results={},
+      eval_results=None,
       global_step=uninitialized_global_step,
       preemption_count=preemption_count)
 
@@ -51,7 +51,7 @@ def maybe_restore_checkpoint(framework: str,
     latest_ckpt = flax_checkpoints.restore_checkpoint(
         checkpoint_dir, target=checkpoint_state)
     save_path = os.path.join(checkpoint_dir,
-                             'checkpoint_' + latest_ckpt['global_step'])
+                             'checkpoint_' + str(latest_ckpt['global_step']))
   else:
     latest_ckpt = checkpoint_state
     save_path = os.path.join(checkpoint_dir, 'checkpoint')
@@ -82,6 +82,9 @@ def maybe_restore_checkpoint(framework: str,
         ])
     checkpoint_state['optimizer_state'] = (checkpoint_state['optimizer_state'],
                                            opt_update_fn)
+    checkpoint_state['eval_results'] = [
+        (value, key) for key, value in latest_ckpt['eval_results'].items()
+    ]
 
   else:
     checkpoint_state = latest_ckpt
@@ -140,7 +143,7 @@ def save_checkpoint(framework: str,
         optimizer_state=opt_state,
         model_state=model_state,
         train_state=train_state,
-        eval_results=eval_results,
+        eval_results=tuple(eval_results),
         global_step=global_step,
         preemption_count=preemption_count)
 

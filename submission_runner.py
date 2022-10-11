@@ -420,7 +420,8 @@ def score_submission_on_workload(workload: spec.Workload,
         logging.info('Creating tuning directory at %s', tuning_dir_name)
         logger_utils.makedir(tuning_dir_name)
 
-        # If existing hyperparameter exists, use saved hyperparameters for consistency.
+        # If existing hyperparameter exists, use saved
+        # hyperparameters for consistency.
         hyperparameters = logger_utils.write_hparams(hyperparameters,
                                                      tuning_dir_name)
         tuning_search_space[hi] = hyperparameters
