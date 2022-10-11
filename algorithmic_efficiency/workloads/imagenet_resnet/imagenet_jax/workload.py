@@ -1,4 +1,8 @@
-"""ImageNet workload implemented in Jax."""
+"""ImageNet workload implemented in Jax.
+
+Forked from the Flax ImageNet Example v0.3.3
+https://github.com/google/flax/tree/v0.3.3/examples/imagenet.
+"""
 import functools
 import itertools
 import math
