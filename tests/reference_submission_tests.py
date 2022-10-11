@@ -294,6 +294,8 @@ def _test_submission(workload_name,
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size
+    if FLAGS.global_batch_size < 0:
+      raise ValueError('Must set --global_batch_size.')
   workload = _make_one_batch_workload(workload_class,
                                       workload_name,
                                       framework,
