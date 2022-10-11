@@ -151,7 +151,8 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(hyperparameters)
+  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(workload.step_hint,
+                                                   hyperparameters)
 
   # Create optimizer.
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),

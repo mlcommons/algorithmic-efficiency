@@ -19,11 +19,6 @@
             2000
         ]
     },
-    "num_steps": {
-        "feasible_points": [
-            100000
-        ]
-    },
     "weight_decay": {
         "feasible_points": [
             0.026842

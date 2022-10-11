@@ -95,6 +95,11 @@ class BaseOgbgWorkload(spec.Workload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 60_000
+
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
         params,

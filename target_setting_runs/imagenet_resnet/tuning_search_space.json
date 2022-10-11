@@ -14,11 +14,6 @@
             7000
         ]
     },
-    "num_steps": {
-        "feasible_points": [
-            140000
-        ]
-    },
     "decay_steps_factor": {
         "feasible_points": [
             0.90788

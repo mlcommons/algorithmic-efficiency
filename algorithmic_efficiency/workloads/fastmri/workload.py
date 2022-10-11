@@ -59,6 +59,11 @@ class BaseFastMRIWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 80
 
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 27142
+
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
