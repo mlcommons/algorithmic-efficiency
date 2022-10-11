@@ -16,7 +16,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.771850005
+    return 0.77185  # TODO(namanagarwal): This will edited again soon.
 
   @property
   def loss_type(self):
@@ -99,3 +99,8 @@ class BaseImagenetResNetWorkload(spec.Workload):
                                global_batch_size,
                                cache,
                                repeat_final_dataset)
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 140_000

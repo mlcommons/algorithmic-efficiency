@@ -68,7 +68,7 @@ class MnistWorkload(BaseMnistWorkload):
     else:
       tfds_split = f'train[:{self.num_train_examples}]'
     ds = tfds.load(
-        'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
+        'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.map(lambda x: {
         'inputs': self._normalize(x['image']),
         'targets': x['label'],

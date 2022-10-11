@@ -13,7 +13,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.735102235
+    return 0.7351
 
   @property
   def loss_type(self):
@@ -58,6 +58,11 @@ class BaseFastMRIWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 80
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 27142
 
   # Return whether or not a key in spec.ParameterTree is the output layer
   # parameters.

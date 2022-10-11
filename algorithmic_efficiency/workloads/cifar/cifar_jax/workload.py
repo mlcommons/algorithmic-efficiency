@@ -47,7 +47,7 @@ class CifarWorkload(BaseCifarWorkload):
                      num_batches: Optional[int] = None):
     if batch_size % jax.local_device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    ds_builder = tfds.builder('cifar10', data_dir=data_dir)
+    ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
     ds = input_pipeline.create_input_iter(

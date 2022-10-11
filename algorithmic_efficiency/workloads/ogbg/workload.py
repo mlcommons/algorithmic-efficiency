@@ -34,7 +34,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 10000
+    return 43793
 
   @property
   def num_validation_examples(self):
@@ -94,6 +94,11 @@ class BaseOgbgWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 60_000
 
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(

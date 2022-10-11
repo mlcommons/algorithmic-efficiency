@@ -25,7 +25,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.12422498
+    return 0.124225
 
   @property
   def loss_type(self):
@@ -87,6 +87,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 4000
 
   def _eval_model_on_split(self,
                            split: str,

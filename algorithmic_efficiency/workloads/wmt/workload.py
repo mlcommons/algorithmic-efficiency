@@ -30,7 +30,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 30.8788074
+    return 30.879  # TODO(namanagarwal): This will edited again soon.
 
   @property
   def loss_type(self):
@@ -71,6 +71,11 @@ class BaseWmtWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 14 * 60
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 100_000
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
