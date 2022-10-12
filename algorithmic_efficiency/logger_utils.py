@@ -138,14 +138,6 @@ def _get_cpu_model_name() -> str:
                     output)[0].split('Model name:')[1].strip()
 
 
-def _get_os_package_list() -> str:
-  return subprocess.check_output(['dpkg', '-l']).decode('ascii').strip()
-
-
-def _get_pip_package_list() -> str:
-  return subprocess.check_output(['pip', 'freeze']).decode('ascii').strip()
-
-
 def _is_primitive_type(item: Any) -> bool:
   primitive = (float, int, str, bool)
   return isinstance(item, primitive)
