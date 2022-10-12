@@ -350,7 +350,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
                                  tokenizer_vocab_path: Optional[str] = None):
-  # Expand paths because '~' will not be recognized
+  # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(data_dir)
 
