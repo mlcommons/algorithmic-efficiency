@@ -60,6 +60,13 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self):
     return 10
 
+  @property
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 10
+    # epochs at batch size 64.
+    return 7813
+
   def _eval_model(
       self,
       params: spec.ParameterContainer,
@@ -67,10 +74,6 @@ class BaseMnistWorkload(spec.Workload):
       labels: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    raise NotImplementedError
-
-  def _eval_metric(self, logits, labels):
-    """Return the mean accuracy and loss as a dict."""
     raise NotImplementedError
 
   def _eval_model_on_split(self,

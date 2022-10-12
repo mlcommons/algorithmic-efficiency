@@ -1,4 +1,8 @@
-"""ImageNet workload implemented in Jax."""
+"""ImageNet workload implemented in Jax.
+
+Forked from the Flax ImageNet Example v0.3.3
+https://github.com/google/flax/tree/v0.3.3/examples/imagenet.
+"""
 import functools
 import itertools
 import math
@@ -88,6 +92,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_0'
 
   @functools.partial(
       jax.pmap,

@@ -22,6 +22,7 @@ from absl import logging
 from absl.testing import absltest
 import flax
 import jax
+from jraph import GraphsTuple
 import numpy as np
 import tensorflow as tf
 import torch
@@ -243,7 +244,7 @@ def _make_one_batch_workload(workload_class,
         for k, v in fake_batch.items():
           if isinstance(v, np.ndarray):
             new_fake_batch[k] = to_device(k, v)
-          elif isinstance(v, tuple):
+          elif isinstance(v, tuple) and not isinstance(v, GraphsTuple):
             new_fake_batch[k] = tuple(map(functools.partial(to_device, k), v))
           else:
             new_fake_batch[k] = v
@@ -294,6 +295,8 @@ def _test_submission(workload_name,
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size
+    if FLAGS.global_batch_size < 0:
+      raise ValueError('Must set --global_batch_size.')
   workload = _make_one_batch_workload(workload_class,
                                       workload_name,
                                       framework,
