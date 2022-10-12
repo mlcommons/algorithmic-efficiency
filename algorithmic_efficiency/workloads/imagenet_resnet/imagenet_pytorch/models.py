@@ -4,6 +4,7 @@ Adapted from torchvision:
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 """
 
+import collections
 from typing import Any, Callable, List, Optional, Type, Union
 
 import torch
@@ -168,8 +169,8 @@ class ResNet(nn.Module):
       replace_stride_with_dilation = [False, False, False]
     if len(replace_stride_with_dilation) != 3:
       raise ValueError(
-          "replace_stride_with_dilation should be None "
-          f"or a 3-element tuple, got {replace_stride_with_dilation}")
+          'replace_stride_with_dilation should be None '
+          f'or a 3-element tuple, got {replace_stride_with_dilation}')
     self.groups = groups
     self.base_width = width_per_group
     self.conv1 = nn.Conv2d(
@@ -219,10 +220,12 @@ class ResNet(nn.Module):
       self.dilation *= stride
       stride = 1
     if stride != 1 or self.inplanes != planes * block.expansion:
-      downsample = nn.Sequential(
-          conv1x1(self.inplanes, planes * block.expansion, stride),
-          norm_layer(planes * block.expansion),
-      )
+      downsample = torch.nn.Sequential(
+          collections.OrderedDict([
+              ("conv", conv1x1(self.inplanes, planes * block.expansion,
+                               stride)),
+              ("bn", norm_layer(planes * block.expansion)),
+          ]))
 
     layers = []
     layers.append(

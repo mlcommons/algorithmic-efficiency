@@ -1,13 +1,14 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
     ImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch import \
@@ -17,7 +18,7 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     decode_variant
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 # Make sure we inherit from the ViT base workload first.
@@ -27,9 +28,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     torch.random.manual_seed(rng[0])
     model_kwargs = decode_variant('B/32')
     model = models.ViT(num_classes=1000, **model_kwargs)
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -38,6 +38,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['pre_logits.weight', 'pre_logits.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -45,12 +48,16 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

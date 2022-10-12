@@ -1,6 +1,6 @@
 """OGBG workload implemented in PyTorch."""
 import contextlib
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import jax
 from jraph import GraphsTuple
@@ -9,13 +9,13 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.ogbg import metrics
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import GNN
 from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 def _pytorch_map(inputs: Any) -> Any:
@@ -46,11 +46,11 @@ def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
 
 class OgbgWorkload(BaseOgbgWorkload):
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int):
     # TODO: Check where the + 1 comes from.
     per_device_batch_size = int(global_batch_size / N_GPUS) + 1
 
@@ -58,10 +58,10 @@ class OgbgWorkload(BaseOgbgWorkload):
     # avoid creating too many threads.
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
-      dataset_iter = super().build_input_queue(data_rng,
-                                               split,
-                                               data_dir,
-                                               global_batch_size)
+      dataset_iter = super()._build_input_queue(data_rng,
+                                                split,
+                                                data_dir,
+                                                global_batch_size)
 
     while True:
       if RANK == 0:
@@ -114,22 +114,11 @@ class OgbgWorkload(BaseOgbgWorkload):
 
       yield batch
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = GNN(self._num_outputs)
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -138,6 +127,9 @@ class OgbgWorkload(BaseOgbgWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['decoder.weight', 'decoder.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -145,14 +137,21 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Get predicted logits from the network for input graphs."""
+    """Get predicted logits from the network for input graphs.
+
+    aux_dropout_rate is unused.
+    """
     del rng
+    del aux_dropout_rate
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:
       raise ValueError(
           f'Expected model_state to be None, received {model_state}.')
     model = params
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()

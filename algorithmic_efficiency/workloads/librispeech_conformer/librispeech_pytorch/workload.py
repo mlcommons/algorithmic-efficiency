@@ -9,22 +9,38 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    ConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    ConformerEncoderDecoder
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
-    initialize
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import LibriDataset
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
+    model as conformer_model
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
+
+
+def _maybe_update_model_dropout(model,
+                                residual_dropout_rate,
+                                input_dropout_rate):
+  for child in list(model.modules()):
+    # Residual dropout.
+    if (isinstance(child, conformer_model.MultiHeadedSelfAttention) and
+        residual_dropout_rate is not None):
+      child.dropout.p = residual_dropout_rate
+    elif (isinstance(child, conformer_model.ConvolutionBlock) and
+          residual_dropout_rate is not None):
+      child.dropout.p = residual_dropout_rate
+    elif (isinstance(child, conformer_model.FeedForwardModule) and
+          residual_dropout_rate is not None):
+      child.dropout2.p = residual_dropout_rate
+    # Input dropout.
+    elif (isinstance(child, conformer_model.Subsample) and
+          input_dropout_rate is not None):
+      child.dropout.p = input_dropout_rate
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -32,7 +48,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     torch.backends.cudnn.benchmark = False
-    model = ConformerEncoderDecoder(ConformerConfig())
+    model = conformer_model.ConformerEncoderDecoder(
+        conformer_model.ConformerConfig())
     self._model = model
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers
@@ -40,11 +57,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
-    initialize(model)
-
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    conformer_model.initialize(model)
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -53,8 +68,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
-  def init_metrics_bundle(self, tokenizer_vocab_path):
-    logging.info('Initializing metrics bundle.')
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
+
+  def init_tokenizer(self, tokenizer_vocab_path):
+    logging.info('Initializing tokenizer.')
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
 
   def model_fn(
@@ -64,12 +82,23 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Conformer model function.
+
+    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
+    """
     del model_state
     del rng
     del update_batch_norm
 
     model = params
+    _maybe_update_model_dropout(
+        model,
+        residual_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -83,9 +112,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     }
 
     with contexts[mode]():
-      logits, logits_paddings = model(
-          augmented_and_preprocessed_input_batch['inputs'][0].to(DEVICE),
-          augmented_and_preprocessed_input_batch['inputs'][1].to(DEVICE))
+      inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+      logits, logits_paddings = model(inputs.to(DEVICE), input_paddings.to(DEVICE))
 
     return (logits, logits_paddings), None
 
@@ -95,7 +123,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     return self._param_types
 
-  def build_input_queue(self,
+  def _build_input_queue(self,
                         data_rng: jax.random.PRNGKey,
                         split: str,
                         data_dir: str,
@@ -107,7 +135,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     train = False
 
     if split == 'train':
-      split = 'train-clean-100'#+train-clean-360+train-other-500'
+      split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
@@ -145,13 +173,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   
   def loss_fn(
       self,
-      label_batch,  # Dense (not one-hot) labels.
-      logits_batch,
-      mask_batch=None,
-      label_smoothing: float = 0.0):
-    return None
-
-  def compute_loss(self, logits, logit_paddings, targets, target_paddings):
+      label_batch: Tuple[spec.Tensor, spec.Tensor],
+      logits_batch: Tuple[spec.Tensor, spec.Tensor]
+  ) -> spec.Tensor:  # differentiable
+    targets, target_paddings = label_batch
+    logits, logit_paddings = logits_batch
     logprobs = torch.log_softmax(logits, dim=-1)
     input_lengths = torch.einsum('bh->b', 1 - logit_paddings).long()
     target_lengths = torch.einsum('bh->b', 1 - target_paddings).long()
@@ -166,6 +192,15 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         'lengths': target_lengths.sum(),
         'average_loss': average_loss
     }
+
+  def loss_fn(self,
+              label_batch: Tuple[spec.Tensor, spec.Tensor],
+              logits_batch: Tuple[spec.Tensor, spec.Tensor],
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    del mask_batch
+    del label_smoothing
+    return self._loss_fn(label_batch, logits_batch)['average_loss']
 
   def greedy_decode(self, logits, logit_paddings):
     framewise_tokens = logits.max(dim=-1)[1]
@@ -214,11 +249,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            data_dir: str,
                            global_step: int):
     """Run a full evaluation of the model."""
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = (
-          self.build_input_queue(
+          self._build_input_queue(
               data_rng, split, data_dir, global_batch_size=global_batch_size))
 
     total_metrics = {
@@ -238,21 +274,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
+          dropout_rate=0.1,  # Default, unused for eval.
+          aux_dropout_rate=0.1,  # Default, unused for eval.
           update_batch_norm=False)
-
-      with torch.no_grad():
-        decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
-        word_errors, num_words = metrics.compute_wer(
-            decoded=decoded.detach().cpu().numpy(),
-            decoded_paddings=decoded_paddings.detach().cpu().numpy(),
-            targets=batch['targets'][0].detach().cpu().numpy(),
-            target_paddings=batch['targets'][1].detach(
-            ).cpu().numpy(),
-            tokenizer=self.tokenizer)
-        loss = self.compute_loss(logits,
-                                 logits_padding,
-                                 batch['targets'][0],
-                                 batch['targets'][1])
+      decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
+      targets, target_paddings = batch['targets']
+      word_errors, num_words = metrics.compute_wer(
+          decoded=decoded.detach().cpu().numpy(),
+          decoded_paddings=decoded_paddings.detach().cpu().numpy(),
+          targets=targets.detach().cpu().numpy(),
+          target_paddings=target_paddings.detach().cpu().numpy(),
+          tokenizer=self.tokenizer)
+      loss = self._loss_fn((targets, target_paddings), (logits, logits_padding))
       batch_metrics = {
           'loss': loss['loss'],
           'lengths': loss['lengths'],

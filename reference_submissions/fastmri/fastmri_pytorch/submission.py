@@ -40,28 +40,29 @@ def init_optimizer_state(workload: spec.Workload,
   return optimizer_state
 
 
-def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    # This will define the output activation via `output_activation_fn`.
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(workload: spec.Workload,
+                  current_param_container: spec.ParameterContainer,
+                  current_params_types: spec.ParameterTypeTree,
+                  model_state: spec.ModelAuxiliaryState,
+                  hyperparameters: spec.Hyperparameters,
+                  batch: Dict[str, spec.Tensor],
+                  loss_type: spec.LossType,
+                  optimizer_state: spec.OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
-  del hyperparameters
   del loss_type
   del eval_results
 
   current_model = current_param_container
   current_param_container.train()
   optimizer_state['optimizer'].zero_grad()
+  if hasattr(hyperparameters, 'dropout_rate'):
+    dropout_rate = hyperparameters.dropout_rate
+  else:
+    dropout_rate = 0.0
 
   outputs_batch, new_model_state = workload.model_fn(
       params=current_model,
@@ -69,10 +70,12 @@ def update_params(
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=dropout_rate,
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   loss = workload.loss_fn(
-      targets_batch=batch['targets'], logits_batch=outputs_batch).mean()
+      label_batch=batch['targets'], logits_batch=outputs_batch).mean()
 
   loss.backward()
   optimizer_state['optimizer'].step()
@@ -89,6 +92,7 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Dict[str, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
                    hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
@@ -98,6 +102,7 @@ def data_selection(workload: spec.Workload,
   del workload
   del optimizer_state
   del current_param_container
+  del model_state
   del hyperparameters
   del global_step
   del rng

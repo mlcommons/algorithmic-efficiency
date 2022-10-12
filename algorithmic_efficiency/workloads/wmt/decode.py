@@ -13,8 +13,11 @@ import numpy as np
 import torch
 
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 # Constants
+RANK = pytorch_setup()[1]
+DEVICE = jax.devices()[RANK]
 # We assume the default End-of-Sentence token id is 2 (SentencePiece).
 EOS_ID = 2
 # "Effective negative infinity" constant for masking in beam search.
@@ -142,7 +145,8 @@ def beam_init(batch_size, beam_size, max_decode_len, cache):
   live_logprobs0 = jnp.tile(
       jnp.array([0.0] + [NEG_INF] * (beam_size - 1)), [batch_size, 1])
   finished_scores0 = jnp.ones((batch_size, beam_size)) * NEG_INF
-  live_seqs0 = jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32)
+  live_seqs0 = jax.device_put(
+      jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32), DEVICE)
   finished_seqs0 = jnp.zeros((batch_size, beam_size, max_decode_len), jnp.int32)
   finished_flags0 = jnp.zeros((batch_size, beam_size), jnp.bool_)
   # add beam dimension to attention cache pytree elements

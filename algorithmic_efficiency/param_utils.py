@@ -1,43 +1,50 @@
 """Utilities for dealing with parameter-related logic like types and shapes."""
+import flax
+import jax
+
 from algorithmic_efficiency import spec
 
 
+def pytorch_param_shapes(model):
+  return {k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()}
+
+
 def pytorch_param_types(param_shapes):
-  if param_shapes is None:
-    raise ValueError(
-        'This should not happen, workload.init_model_fn() should be called '
-        'before workload.model_params_types!')
   param_types = {}
   for name in param_shapes.keys():
     if 'bias' in name:
       param_types[name] = spec.ParameterType.BIAS
-    elif 'BatchNorm' in name:
+    elif 'bn' in name:
       param_types[name] = spec.ParameterType.BATCH_NORM
-    elif 'Conv' in name:
+    elif 'conv' in name:
       param_types[name] = spec.ParameterType.CONV_WEIGHT
-    elif 'Embedding' in name:
+    elif 'embedding' in name:
       param_types[name] = spec.ParameterType.EMBEDDING
     else:
       param_types[name] = spec.ParameterType.WEIGHT
   return param_types
 
 
-def jax_param_types(param_tree):
+def jax_param_shapes(params):
+  return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), params)
+
+
+def jax_param_types(param_shapes, parent_name=''):
   param_types_dict = {}
-  for name, value in param_tree.items():
-    if isinstance(value, dict):
-      param_types_dict[name] = jax_param_types(value)
+  for name, value in param_shapes.items():
+    if isinstance(value, dict) or isinstance(value, flax.core.FrozenDict):
+      param_types_dict[name] = jax_param_types(value, parent_name=name)
     else:
       if 'bias' in name:
         param_types_dict[name] = spec.ParameterType.BIAS
-      elif 'BatchNorm' in name:
+      elif 'batchnorm' in parent_name.lower():
         param_types_dict[name] = spec.ParameterType.BATCH_NORM
-      elif 'Conv' in name:
+      elif 'conv' in parent_name.lower():
         param_types_dict[name] = spec.ParameterType.CONV_WEIGHT
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
       # https://github.com/google/flax/blob/main/flax/linen/linear.py#L604.
-      elif name == 'embedding':
+      elif 'embedding' in name:
         param_types_dict[name] = spec.ParameterType.EMBEDDING
       else:
         param_types_dict[name] = spec.ParameterType.WEIGHT

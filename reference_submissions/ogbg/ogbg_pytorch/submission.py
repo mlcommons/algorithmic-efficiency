@@ -28,25 +28,26 @@ def init_optimizer_state(workload: spec.Workload,
   return optimizer_state
 
 
-def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    loss_type: spec.LossType,
-    # This will define the output activation via `output_activation_fn`.
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(workload: spec.Workload,
+                  current_param_container: spec.ParameterContainer,
+                  current_params_types: spec.ParameterTypeTree,
+                  model_state: spec.ModelAuxiliaryState,
+                  hyperparameters: spec.Hyperparameters,
+                  batch: Dict[str, spec.Tensor],
+                  loss_type: spec.LossType,
+                  optimizer_state: spec.OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
-  del hyperparameters
   del loss_type
   del eval_results
   del global_step
+  if hasattr(hyperparameters, 'dropout_rate'):
+    dropout_rate = hyperparameters.dropout_rate
+  else:
+    dropout_rate = 0.1
 
   current_model = current_param_container
   current_model.train()
@@ -58,6 +59,8 @@ def update_params(
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      dropout_rate=dropout_rate,
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   mask = batch['weights']
@@ -70,14 +73,14 @@ def update_params(
   return optimizer_state, current_param_container, new_model_state
 
 
-def data_selection(
-    workload: spec.Workload,
-    input_queue: Iterator[Dict[str, spec.Tensor]],
-    optimizer_state: spec.OptimizerState,
-    current_param_container: spec.ParameterContainer,
-    hyperparameters: spec.Hyperparameters,
-    global_step: int,
-    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
+def data_selection(workload: spec.Workload,
+                   input_queue: Iterator[Dict[str, spec.Tensor]],
+                   optimizer_state: spec.OptimizerState,
+                   current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
+                   hyperparameters: spec.Hyperparameters,
+                   global_step: int,
+                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
   Each element of the queue is a batch of training examples and labels.
@@ -85,6 +88,7 @@ def data_selection(
   del workload
   del optimizer_state
   del current_param_container
+  del model_state
   del hyperparameters
   del global_step
   del rng

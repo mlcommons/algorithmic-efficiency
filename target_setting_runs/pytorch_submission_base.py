@@ -1,18 +1,8 @@
-"""PyTorch submission for the target-setting run on ImageNet-ViT with AdamW."""
+"""Batch size and update submission functions in PyTorch."""
 
 from typing import Dict, List, Tuple
 
 from algorithmic_efficiency import spec
-from target_setting_runs.data_selection import \
-    data_selection  # pylint: disable=unused-import
-from target_setting_runs.pytorch_adamw import \
-    init_optimizer_state  # pylint: disable=unused-import
-
-
-def get_batch_size(workload_name):
-  # Return the global batch size.
-  del workload_name
-  return 1024
 
 
 def update_params(workload: spec.Workload,
@@ -42,6 +32,9 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
+      # There was no dropout rate tuning in the target setting runs.
+      dropout_rate=None,
+      aux_dropout_rate=None,
       update_batch_norm=True)
 
   label_smoothing = (
@@ -50,6 +43,7 @@ def update_params(workload: spec.Workload,
   loss = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
+      mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing).mean()
 
   loss.backward()

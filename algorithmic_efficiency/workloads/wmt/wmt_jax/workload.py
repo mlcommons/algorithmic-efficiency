@@ -1,6 +1,6 @@
 """WMT workload implemented in Jax."""
 import functools
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from absl import logging
 from flax import jax_utils
@@ -30,7 +30,6 @@ class WmtWorkload(BaseWmtWorkload):
 
   def __init__(self):
     super().__init__()
-    self._train_config = models.TransformerConfig()
     self._eval_config = models.TransformerConfig(deterministic=True)
 
   def compute_weighted_cross_entropy(self,
@@ -194,9 +193,12 @@ class WmtWorkload(BaseWmtWorkload):
         jnp.ones(target_shape, jnp.float32))
 
     initial_params = initial_variables['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      initial_params)
+    self._param_shapes = param_utils.jax_param_shapes(initial_params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'shared_embedding'
 
   def model_fn(
       self,
@@ -205,12 +207,16 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """aux_dropout_rate is used as attention_dropout_rate."""
     del model_state
     del update_batch_norm
 
     if mode == spec.ForwardPassMode.TRAIN:
-      model_config = self._train_config
+      model_config = models.TransformerConfig(
+          dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
     else:
       model_config = self._eval_config
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)
@@ -233,13 +239,3 @@ class WmtWorkload(BaseWmtWorkload):
         targets_segmentation=targets_segmentations,
         rngs={'dropout': rng})
     return logits_batch, None
-
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return self._param_types

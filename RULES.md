@@ -59,11 +59,18 @@ Submissions provide a [per-workload batch size](#batch-size-getter) to use. Spec
 The **submission functions** are the *batch size getter*, *optimizer state initializer*, *variable update*, and *data selection functions*. The *fixed functions* are the *data augmentation/preprocessing*, *model initialization*, *forward pass*, and *loss function*. The trained model will be evaluated in a separate step that does not call any of the submitted code.
 
 ##### Fixed functions
+With the exception of `_build_input_queue`, submitters can call any of these functions (along with any public function in the provided `Workload` instance) at any time in their submitted functions.
+
+```python
+@property
+def step_hint(self): -> int
+```
+- The `step_hint` function gives the number of global steps the target setting algorithm was allowed to use to reach the validation metric target for a workload. Note that the target setting algorithms may have reached the target in fewer steps than this, but these were the max number of steps the target setting algorithms used for their learning rate schedules. Submitters can use this to help specify learning rate (or other) schedules.
 
 ###### Data augmentation and preprocessing
 
 ```python
-def build_input_queue(
+def _build_input_queue(
     self,
     data_rng: RandomState,
     split: str,
@@ -71,7 +78,7 @@ def build_input_queue(
     global_batch_size: int) -> Iterator[Dict[str, Tensor]]:
 ```
 
-- The `build_input_queue` function will be called to produce the iterator over batches that the submitted data selection function consumes. It is responsible for all data reading, shuffling, repeating, preprocessing, and batching. Note that for Jax this should return an iterator over tensors of shape `(num_devices, per_device_batch_size, ...)`, and for PyTorch this should return tensors of shape `(per_device_batch_size, ...)` (assuming PyTorch's [DDP](https://pytorch.org/docs/stable/notes/ddp.html) is used).
+- The `_build_input_queue` function will be called to produce the iterator over batches that the submitted data selection function consumes. It is responsible for all data reading, shuffling, repeating, preprocessing, and batching. Note that for Jax this should return an iterator over tensors of shape `(num_devices, per_device_batch_size, ...)`, and for PyTorch this should return tensors of shape `(per_device_batch_size, ...)` (assuming PyTorch's [DDP](https://pytorch.org/docs/stable/notes/ddp.html) is used).
 
 ###### Model initialization
 
@@ -106,7 +113,11 @@ def model_fn(
 ###### Loss function
 
 ```python
-def loss_fn(label_batch, logits_output_batch) -> 1d array of losses per example  # differentiable
+def loss_fn(
+    label_batch: Union[Tuple[Tensor, Tensor], Tensor],
+    logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
+    mask_batch: Optional[Tensor] = None,
+    label_smoothing: float = 0.0) -> 1d array of losses per example  # differentiable
 ```
 
 - Unlike in the [Model Track](#model-track), we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
@@ -161,7 +172,7 @@ def update_params(
 - `current_param_container` is the same kind of nested structure as used by `model_fn` which constitutes a nested collection of `float32` arrays, each endowed with information about what kind of parameter that array represents stored in a parallel structure of `current_params_types`.
   - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}
 - `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics
-- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_fn` enum/name.
+- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_type` enum/name.
 - The `loss_fn` produces a loss per example, so the submission code is responsible for summing or averaging
 - Allowed to update state for the optimizer
 - Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state)

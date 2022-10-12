@@ -3,7 +3,7 @@
 import contextlib
 import math
 import random
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from torch import nn
@@ -27,26 +27,11 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class CifarWorkload(BaseCifarWorkload):
 
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int):
     it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
       yield {
@@ -115,17 +100,14 @@ class CifarWorkload(BaseCifarWorkload):
 
     return dataloader
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key in ['fc.weight', 'fc.bias']
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = resnet18(num_classes=10)
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -152,9 +134,14 @@ class CifarWorkload(BaseCifarWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Dropout is unused."""
     del model_state
     del rng
+    del dropout_rate
+    del aux_dropout_rate
 
     model = params
 
@@ -178,28 +165,22 @@ class CifarWorkload(BaseCifarWorkload):
 
     return logits_batch, None
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-
-    activation_fn = {
-        spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
-        spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
-        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
-    }
-    return activation_fn[loss_type](logits_batch)
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    return F.cross_entropy(
+    losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
@@ -222,7 +203,7 @@ class CifarWorkload(BaseCifarWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = {
@@ -238,6 +219,8 @@ class CifarWorkload(BaseCifarWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
+          dropout_rate=None,
+          aux_dropout_rate=None,
           update_batch_norm=False)
       batch_metrics = self._eval_metric(logits, batch['targets'])
       total_metrics = {

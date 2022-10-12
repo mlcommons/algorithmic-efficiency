@@ -15,9 +15,6 @@ FLAGS = flags.FLAGS
 class BaseLibrispeechWorkload(spec.Workload):
 
   def __init__(self) -> None:
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
     self._num_outputs = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
@@ -25,7 +22,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.109
+    return 0.0842
 
   @property
   def loss_type(self):
@@ -61,41 +58,21 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 2500
+    return 11 * 60
 
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = False,
-                        repeat_final_dataset: Optional[bool] = False,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = False,
+                         repeat_final_dataset: Optional[bool] = False,
+                         num_batches: Optional[int] = None):
     return self._build_dataset(data_rng,
                                split,
                                data_dir,
                                global_batch_size,
                                num_batches)
-
-  def get_learning_rate(self, step, hyperparams):
-    warmup_steps = hyperparams.warmup_steps
-    current_lr = 0.0
-    if step < warmup_steps:
-      current_lr = (step * hyperparams.base_lr) / warmup_steps
-    else:
-      decay_factor = (1 +
-                      np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
-      current_lr = hyperparams.base_lr * decay_factor
-
-    return current_lr
 
   def shard(self, batch, n_devices=None):
     if n_devices is None:
@@ -125,7 +102,10 @@ class BaseLibrispeechWorkload(spec.Workload):
       we add a key representing weights, to indicate how the batch was padded.
     """
     batch_axis = 0
-    batch_size = batch['inputs'].shape[batch_axis]
+    inputs, input_paddings = batch['inputs']
+    targets, target_paddings = batch['targets']
+
+    batch_size = inputs.shape[batch_axis]
     batch_pad = desired_batch_size - batch_size
 
     # Most batches will not need padding so we quickly return to avoid slowdown.
@@ -138,11 +118,12 @@ class BaseLibrispeechWorkload(spec.Workload):
       pw[pad_axis] = (0, batch_pad)
       return np.pad(ar, pw, mode='constant', constant_values=padding_value)
 
-    padded_batch = {'inputs': zero_pad(batch['inputs'], batch_axis)}
-    batch_keys = list(batch.keys())
-    batch_keys.remove('inputs')
-    for key in batch_keys:
-      padded_batch[key] = zero_pad(batch[key], 0)
+    padded_batch = {
+        'inputs': (zero_pad(inputs, batch_axis),
+                   zero_pad(input_paddings, batch_axis)),
+        'targets': (zero_pad(targets, batch_axis),
+                    zero_pad(target_paddings, batch_axis))
+    }
     return padded_batch
 
   def _build_dataset(self,
@@ -182,14 +163,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
       yield batch
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    pass
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 100_000
