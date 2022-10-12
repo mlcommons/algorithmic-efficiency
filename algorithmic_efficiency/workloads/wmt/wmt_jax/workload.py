@@ -28,7 +28,7 @@ def _to_host(x):
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._eval_config = models.TransformerConfig(deterministic=True)
 
@@ -196,6 +196,9 @@ class WmtWorkload(BaseWmtWorkload):
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'shared_embedding'
 
   def model_fn(
       self,

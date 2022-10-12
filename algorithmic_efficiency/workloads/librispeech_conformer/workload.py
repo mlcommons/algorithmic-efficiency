@@ -14,8 +14,7 @@ FLAGS = flags.FLAGS
 
 class BaseLibrispeechWorkload(spec.Workload):
 
-  def __init__(self) -> None:
-    self._num_outputs = 1024
+  _num_outputs: int = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/wer'] < self.target_value
@@ -162,11 +161,6 @@ class BaseLibrispeechWorkload(spec.Workload):
       batch = self.shard(batch)
 
       yield batch
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   @property
   def step_hint(self) -> int:

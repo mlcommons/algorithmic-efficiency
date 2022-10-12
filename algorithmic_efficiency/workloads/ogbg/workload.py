@@ -14,8 +14,7 @@ FLAGS = flags.FLAGS
 
 class BaseOgbgWorkload(spec.Workload):
 
-  def __init__(self) -> None:
-    self._num_outputs = 128
+  _num_outputs: int = 128
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/mean_average_precision'] > self.target_value
@@ -89,11 +88,6 @@ class BaseOgbgWorkload(spec.Workload):
         mask=mask_batch,
         label_smoothing=label_smoothing)
     return per_example_losses
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   @property
   def step_hint(self) -> int:

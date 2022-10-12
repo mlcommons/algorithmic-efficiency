@@ -10,6 +10,10 @@ from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
     Criteo1TbDlrmSmallWorkload as JaxCriteoWorkload
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.workload import \
     Criteo1TbDlrmSmallWorkload as PyTorchCriteoWorkload
+from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import \
+    FastMRIWorkload as JaxFastMRIWorkload
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.workload import \
+    FastMRIWorkload as PyTorchFastMRIWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload as JaxImagenetResNetWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
@@ -31,7 +35,16 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
-WORKLOADS = ['mnist', 'cifar', 'imagenet_resnet', 'imagenet_vit', 'wmt', 'ogbg']
+WORKLOADS = [
+    'mnist',
+    'cifar',
+    'criteo1tb',
+    'fastmri',
+    'imagenet_resnet',
+    'imagenet_vit',
+    'wmt',
+    'ogbg'
+]
 
 
 # Ideally we would match the shapes layer-wise, but for that we
@@ -70,6 +83,11 @@ def get_workload(workload):
     jax_workload = JaxCriteoWorkload()
     # Init PyTorch workload.
     pytorch_workload = PyTorchCriteoWorkload()
+  elif workload == 'fastmri':
+    # Init Jax workload.
+    jax_workload = JaxFastMRIWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchFastMRIWorkload()
   elif workload == 'imagenet_resnet':
     # Init Jax workload.
     jax_workload = JaxImagenetResNetWorkload()

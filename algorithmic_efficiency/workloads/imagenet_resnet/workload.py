@@ -8,8 +8,7 @@ from algorithmic_efficiency import spec
 
 class BaseImagenetResNetWorkload(spec.Workload):
 
-  def __init__(self):
-    self._num_classes = 1000
+  _num_classes: int = 1000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
@@ -71,11 +70,6 @@ class BaseImagenetResNetWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 510  # 8.5 minutes.
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,

@@ -28,6 +28,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     params = jax_utils.replicate(params)
     return params, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Conv_0'
+
   def model_fn(
       self,
       params: spec.ParameterContainer,

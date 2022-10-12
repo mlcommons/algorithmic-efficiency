@@ -19,7 +19,6 @@ def init_optimizer_state(workload: spec.Workload,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   """Creates a Nesterov optimizer and a learning rate schedule."""
-  del workload
   del model_state
   del rng
 
@@ -35,7 +34,7 @@ def init_optimizer_state(workload: spec.Workload,
   }
 
   # Create learning rate schedule.
-  lr_schedule_fn = create_lr_schedule_fn(hyperparameters)
+  lr_schedule_fn = create_lr_schedule_fn(workload.step_hint, hyperparameters)
 
   # PyTorch's LambdaLR expects the lr_lambda fn to return a factor which will
   # be multiplied with the base lr, so we have to divide by it here.

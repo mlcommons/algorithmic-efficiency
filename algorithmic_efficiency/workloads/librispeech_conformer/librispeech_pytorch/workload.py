@@ -68,6 +68,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
+
   def init_tokenizer(self, tokenizer_vocab_path):
     logging.info('Initializing tokenizer.')
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)

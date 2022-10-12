@@ -30,7 +30,7 @@ def _pytorch_map(inputs: Any) -> Any:
 def _shard(inputs: Any) -> Any:
   if not USE_PYTORCH_DDP:
     return inputs
-  return jax.tree_map(lambda tensor: tensor[RANK].to(DEVICE), inputs)
+  return jax.tree_map(lambda tensor: tensor[RANK], inputs)
 
 
 def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
@@ -126,6 +126,9 @@ class OgbgWorkload(BaseOgbgWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['decoder.weight', 'decoder.bias']
 
   def model_fn(
       self,

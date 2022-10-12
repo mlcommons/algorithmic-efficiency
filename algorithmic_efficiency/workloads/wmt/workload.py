@@ -21,9 +21,11 @@ FLAGS = flags.FLAGS
 class BaseWmtWorkload(spec.Workload):
   """A WMT workload."""
 
-  def __init__(self):
+  _vocab_size: int = 32000
+
+  def __init__(self) -> None:
+    super().__init__()
     self._tokenizer = None
-    self._vocab_size = 32000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/bleu'] > self.target_value
@@ -189,11 +191,6 @@ class BaseWmtWorkload(spec.Workload):
       toks = toks.cpu().numpy()
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._tokenizer.detokenize(valid_toks).numpy().decode('utf-8')
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   def loss_fn(
       self,
