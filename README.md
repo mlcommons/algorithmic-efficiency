@@ -109,17 +109,6 @@
 
    To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
-### Docker
-
-Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only the [NVIDIA® GPU driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver) is required on the host machine (the NVIDIA® CUDA® Toolkit does not need to be installed).
-
-#### Docker requirements
-
-- Install [Docker](https://docs.docker.com/get-docker/) on your local host machine.
-
-- For GPU support on Linux, [install NVIDIA Docker support](https://github.com/NVIDIA/nvidia-docker).
-  - Take note of your Docker version with docker -v. Versions earlier than 19.03 require nvidia-docker2 and the --runtime=nvidia flag. On versions including and after 19.03, you will use the nvidia-container-toolkit package and the --gpus all flag. Both options are documented on the page linked above.
-
 #### Setup
 
 1. Clone this repository:
@@ -146,6 +135,8 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 
 ## Running a workload
 
+See the [`reference_algorithms/`](https://github.com/mlcommons/algorithmic-efficiency/tree/main/reference_algorithms) dir for training various algorithm implementations (note that none of these are valid submissions because they have workload-specific logic, so we refer to them as "algorithms" instead of "submissions").
+
 ### JAX
 
 ```bash
@@ -153,8 +144,8 @@ python3 submission_runner.py \
     --framework=jax \
     --workload=mnist \
     --experiment_dir=/home/znado \
-    --submission_path=reference_algorithms/mnist/mnist_jax/submission.py \
-    --tuning_search_space=reference_algorithms/mnist/tuning_search_space.json
+    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
+    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
@@ -164,8 +155,8 @@ python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
     --experiment_dir=/home/znado \
-    --submission_path=reference_algorithms/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=reference_algorithms/mnist/tuning_search_space.json
+    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
+    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
 
 When using multiple GPUs on a single node it is recommended to use PyTorch's
@@ -220,4 +211,4 @@ pylint submission_runner.py
 pylint tests
 ```
 
-You can also use `python tests/reference_submission_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/`.
+You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/development_algorithms/`.
