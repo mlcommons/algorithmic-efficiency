@@ -61,8 +61,8 @@ class LayerNorm(nn.Module):
     self.epsilon = epsilon
 
   def forward(self, x):
-    return F.layer_norm(
-            x, (self.dim,), 1+self.scale, self.bias, self.epsilon)
+    return F.layer_norm(x, (self.dim,), 1 + self.scale, self.bias, self.epsilon)
+
 
 class Subsample(nn.Module):
 
@@ -465,40 +465,45 @@ class MultiHeadedSelfAttention(nn.Module):
 
 
 class BatchNorm(nn.Module):
-    def __init__(self, config: ConformerConfig):
-        super().__init__()
-        running_mean = torch.zeros(config.encoder_dim)
-        running_var = torch.zeros(config.encoder_dim)
-        self.register_buffer("running_mean", running_mean)
-        self.register_buffer("running_var",running_var)
-        self.weight = nn.Parameter(torch.zeros(config.encoder_dim))
-        self.bias = nn.Parameter(torch.zeros(config.encoder_dim))
-        self.register_buffer("momentum", torch.FloatTensor([config.batch_norm_momentum]))
-        self.register_buffer("epsilon", torch.FloatTensor([config.batch_norm_epsilon]))
-        self.register_buffer("dim", torch.FloatTensor([config.encoder_dim]))
-        # self.momentum = config.batch_norm_momentum
-        # self.epsilon = config.batch_norm_epsilon
-        # self.dim = config.encoder_dim
 
-    def forward(self, inputs, input_paddings):
-        #inputs: NHD
-        #padding: NH
-        mask = 1-input_paddings[:,:,None]
-        if self.training:
-            count = mask.sum()
-            masked_inp = inputs.masked_fill(mask==0,0)
-            mean = (masked_inp).sum(dim=(0,1))/count
-            var = (torch.square(masked_inp-mean)).sum(dim=(0,1))/count
+  def __init__(self, config: ConformerConfig):
+    super().__init__()
+    running_mean = torch.zeros(config.encoder_dim)
+    running_var = torch.zeros(config.encoder_dim)
+    self.register_buffer("running_mean", running_mean)
+    self.register_buffer("running_var", running_var)
+    self.weight = nn.Parameter(torch.zeros(config.encoder_dim))
+    self.bias = nn.Parameter(torch.zeros(config.encoder_dim))
+    self.register_buffer("momentum",
+                         torch.FloatTensor([config.batch_norm_momentum]))
+    self.register_buffer("epsilon",
+                         torch.FloatTensor([config.batch_norm_epsilon]))
+    self.register_buffer("dim", torch.FloatTensor([config.encoder_dim]))
+    # self.momentum = config.batch_norm_momentum
+    # self.epsilon = config.batch_norm_epsilon
+    # self.dim = config.encoder_dim
 
-            self.running_mean = self.momentum*self.running_mean + (1-self.momentum)*mean.detach()
-            self.running_var = self.momentum*self.running_var + (1-self.momentum)*var.detach()
-        else:
-            mean = self.running_mean
-            var = self.running_var
-        v = (1+self.weight)*torch.rsqrt(var+self.epsilon)
-        bn = (inputs-mean)*v+self.bias
-        output = bn.masked_fill(mask==0,0)
-        return output
+  def forward(self, inputs, input_paddings):
+    #inputs: NHD
+    #padding: NH
+    mask = 1 - input_paddings[:, :, None]
+    if self.training:
+      count = mask.sum()
+      masked_inp = inputs.masked_fill(mask == 0, 0)
+      mean = (masked_inp).sum(dim=(0, 1)) / count
+      var = (torch.square(masked_inp - mean)).sum(dim=(0, 1)) / count
+
+      self.running_mean = self.momentum * self.running_mean + (
+          1 - self.momentum) * mean.detach()
+      self.running_var = self.momentum * self.running_var + (
+          1 - self.momentum) * var.detach()
+    else:
+      mean = self.running_mean
+      var = self.running_var
+    v = (1 + self.weight) * torch.rsqrt(var + self.epsilon)
+    bn = (inputs - mean) * v + self.bias
+    output = bn.masked_fill(mask == 0, 0)
+    return output
 
 
 class ConvolutionBlock(nn.Module):
@@ -528,7 +533,7 @@ class ConvolutionBlock(nn.Module):
   def forward(self, inputs, input_paddings):
     inputs = self.ln(inputs)
 
-    inputs = F.glu(torch.cat([self.lin1(inputs),self.lin2(inputs)],dim=2))
+    inputs = F.glu(torch.cat([self.lin1(inputs), self.lin2(inputs)], dim=2))
     inputs = inputs * (1 - input_paddings[:, :, None])
 
     inputs = inputs.permute(0, 2, 1)

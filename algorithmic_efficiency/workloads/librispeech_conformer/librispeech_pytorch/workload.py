@@ -7,6 +7,7 @@ import jax
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
@@ -14,9 +15,10 @@ from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import LibriDataset
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     model as conformer_model
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import \
+    LibriDataset
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
@@ -113,7 +115,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     with contexts[mode]():
       inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
-      logits, logits_paddings = model(inputs.to(DEVICE), input_paddings.to(DEVICE))
+      logits, logits_paddings = model(inputs.to(DEVICE),
+                                      input_paddings.to(DEVICE))
 
     return (logits, logits_paddings), None
 
@@ -124,18 +127,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return self._param_types
 
   def _build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     del data_rng
     del repeat_final_dataset
     train = False
 
     if split == 'train':
-      split = 'train-clean-100'#+train-clean-360+train-other-500'
+      split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
@@ -170,7 +173,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     dataloader = data_utils.cycle(
         dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)
     return dataloader
-  
+
   def _loss_fn(
       self,
       label_batch: Tuple[spec.Tensor, spec.Tensor],
@@ -234,9 +237,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def sync_sd(self, params):
     sd = params.state_dict()
     for k in sd:
-      dist.all_reduce(sd[k],op=dist.ReduceOp.SUM)
+      dist.all_reduce(sd[k], op=dist.ReduceOp.SUM)
       # Assumes N_GPUS is the world size.
-      sd[k] = sd[k]/N_GPUS 
+      sd[k] = sd[k] / N_GPUS
     params.load_state_dict(sd)
 
   def _eval_model_on_split(self,
