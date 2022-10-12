@@ -7,6 +7,7 @@ import functools
 import jax
 import numpy as np
 import tensorflow_datasets as tfds
+import torch
 
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     input_pipeline
