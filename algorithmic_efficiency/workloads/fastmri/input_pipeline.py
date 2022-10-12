@@ -178,7 +178,7 @@ def load_fastmri_split(global_batch_size,
   if split not in ['train', 'eval_train', 'validation', 'test']:
     raise ValueError('Unrecognized split {}'.format(split))
 
-  # Check if data directories exist because glob wil not raise an error 
+  # Check if data directories exist because glob wil not raise an error
   if not os.path.exists(os.path.join(data_dir, _TRAIN_DIR)):
     raise NotADirectoryError("Directory not found: {}".format(
       os.path.join(data_dir, _TRAIN_DIR)))
