@@ -14,20 +14,14 @@ FLAGS = flags.FLAGS
 
 class BaseOgbgWorkload(spec.Workload):
 
-  def __init__(self) -> None:
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
-    self._num_outputs = 128
+  _num_outputs: int = 128
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/mean_average_precision'] > self.target_value
 
   @property
   def target_value(self):
-    # From Flax example
-    # https://tensorboard.dev/experiment/AAJqfvgSRJaA1MBkc0jMWQ/#scalars.
-    return 0.24
+    return 0.28380056
 
   @property
   def loss_type(self):
@@ -39,7 +33,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 10000
+    return 43793
 
   @property
   def num_validation_examples(self):
@@ -63,21 +57,13 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 120
+    return 4 * 60
 
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int):
     if split == 'eval_train':
       split = f'train[:{self.num_eval_train_examples}]'
     dataset_iter = input_pipeline.get_dataset_iter(split,
@@ -103,17 +89,10 @@ class BaseOgbgWorkload(spec.Workload):
         label_smoothing=label_smoothing)
     return per_example_losses
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    pass
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 60_000
 
   def _eval_batch(self, params, batch, model_state, rng):
     logits, _ = self.model_fn(
@@ -140,7 +119,7 @@ class BaseOgbgWorkload(spec.Workload):
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = None

@@ -4,7 +4,7 @@ Forked from Flax example which can be found here:
 https://github.com/google/flax/blob/main/examples/imagenet/models.py
 """
 
-from functools import partial
+import functools
 from typing import Any, Callable, Tuple
 
 from flax import linen as nn
@@ -32,9 +32,9 @@ class ResNetBlock(nn.Module):
 
     if residual.shape != y.shape:
       residual = self.conv(
-          self.filters, (1, 1), self.strides, name='conv_proj')(
+          self.filters, (1, 1), self.strides, name='Conv_proj')(
               residual)
-      residual = self.norm(name='norm_proj')(residual)
+      residual = self.norm(name='BatchNorm_proj')(residual)
 
     return self.act(residual + y)
 
@@ -61,9 +61,9 @@ class BottleneckResNetBlock(nn.Module):
 
     if residual.shape != y.shape:
       residual = self.conv(
-          self.filters * 4, (1, 1), self.strides, name='conv_proj')(
+          self.filters * 4, (1, 1), self.strides, name='Conv_proj')(
               residual)
-      residual = self.norm(name='norm_proj')(residual)
+      residual = self.norm(name='BatchNorm_proj')(residual)
 
     return self.act(residual + y)
 
@@ -79,8 +79,8 @@ class ResNet(nn.Module):
 
   @nn.compact
   def __call__(self, x, update_batch_norm: bool = True):
-    conv = partial(nn.Conv, use_bias=False, dtype=self.dtype)
-    norm = partial(
+    conv = functools.partial(nn.Conv, use_bias=False, dtype=self.dtype)
+    norm = functools.partial(
         nn.BatchNorm,
         use_running_average=not update_batch_norm,
         momentum=0.9,
@@ -90,9 +90,9 @@ class ResNet(nn.Module):
     x = conv(
         self.num_filters, (7, 7), (2, 2),
         padding=[(3, 3), (3, 3)],
-        name='conv_init')(
+        name='Conv_init')(
             x)
-    x = norm(name='bn_init')(x)
+    x = norm(name='BatchNorm_init')(x)
     x = nn.relu(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
     for i, block_size in enumerate(self.stage_sizes):
@@ -112,16 +112,18 @@ class ResNet(nn.Module):
     return x
 
 
-ResNet18 = partial(ResNet, stage_sizes=(2, 2, 2, 2), block_cls=ResNetBlock)
-ResNet34 = partial(ResNet, stage_sizes=(3, 4, 6, 3), block_cls=ResNetBlock)
-ResNet50 = partial(
+ResNet18 = functools.partial(
+    ResNet, stage_sizes=(2, 2, 2, 2), block_cls=ResNetBlock)
+ResNet34 = functools.partial(
+    ResNet, stage_sizes=(3, 4, 6, 3), block_cls=ResNetBlock)
+ResNet50 = functools.partial(
     ResNet, stage_sizes=(3, 4, 6, 3), block_cls=BottleneckResNetBlock)
-ResNet101 = partial(
+ResNet101 = functools.partial(
     ResNet, stage_sizes=(3, 4, 23, 3), block_cls=BottleneckResNetBlock)
-ResNet152 = partial(
+ResNet152 = functools.partial(
     ResNet, stage_sizes=(3, 8, 36, 3), block_cls=BottleneckResNetBlock)
-ResNet200 = partial(
+ResNet200 = functools.partial(
     ResNet, stage_sizes=(3, 24, 36, 3), block_cls=BottleneckResNetBlock)
 
 # Used for testing only.
-_ResNet1 = partial(ResNet, stage_sizes=(1,), block_cls=ResNetBlock)
+_ResNet1 = functools.partial(ResNet, stage_sizes=(1,), block_cls=ResNetBlock)

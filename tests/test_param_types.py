@@ -1,5 +1,4 @@
 import jax
-import numpy as np
 import pytest
 
 from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import \
@@ -47,24 +46,29 @@ WORKLOADS = [
 ]
 
 
-# Ideally we would match the shapes layer-wise, but for that we
-# have to ensure the exact same order of the shapes and that the
-# shapes of the weights of the same layer type actually match between
-# Jax and PyTorch, which is not always the case.
 @pytest.mark.parametrize('workload', WORKLOADS)
-def test_param_shapes(workload):
+def test_param_types(workload):
   jax_workload, pytorch_workload = get_workload(workload)
   # Compare number of parameter tensors of both models.
-  jax_param_shapes = jax.tree_leaves(jax_workload.param_shapes.unfreeze())
-  pytorch_param_shapes = jax.tree_leaves(pytorch_workload.param_shapes)
-  assert len(jax_param_shapes) == len(pytorch_param_shapes)
-  # Check if total number of params deduced from shapes match.
-  num_jax_params = 0
-  num_pytorch_params = 0
-  for jax_shape, pytorch_shape in zip(jax_param_shapes, pytorch_param_shapes):
-    num_jax_params += np.prod(jax_shape.shape_tuple)
-    num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
-  assert num_jax_params == num_pytorch_params
+  jax_param_types = jax.tree_leaves(jax_workload.model_params_types)
+  pytorch_param_types = jax.tree_leaves(pytorch_workload.model_params_types)
+  assert len(jax_param_types) == len(pytorch_param_types)
+
+  def count_param_types(param_types):
+    types_dict = {}
+    for t in param_types:
+      if t not in types_dict:
+        types_dict[t] = 1
+      else:
+        types_dict[t] += 1
+    return types_dict
+
+  jax_param_types_dict = count_param_types(jax_param_types)
+  pytorch_param_types_dict = count_param_types(pytorch_param_types)
+  assert jax_param_types_dict.keys() == pytorch_param_types_dict.keys()
+  # Check if total number of each type match.
+  for key in list(jax_param_types_dict.keys()):
+    assert jax_param_types_dict[key] == pytorch_param_types_dict[key]
 
 
 def get_workload(workload):

@@ -1,4 +1,8 @@
-"""ImageNet workload implemented in Jax."""
+"""ImageNet workload implemented in Jax.
+
+Forked from the Flax ImageNet Example v0.3.3
+https://github.com/google/flax/tree/v0.3.3/examples/imagenet.
+"""
 import functools
 import itertools
 import math
@@ -42,7 +46,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           stddev_rgb=self.train_stddev)
       return itertools.cycle(np_iter)
 
-    ds_builder = tfds.builder('imagenet2012:5.*.*', data_dir=data_dir)
+    ds_builder = tfds.builder('imagenet2012:5.1.0', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
     if split == 'eval_train':
@@ -75,42 +79,22 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
-  def initialized(self, key, model):
-    input_shape = (1, 224, 224, 3)
-    variables = jax.jit(model.init)({'params': key},
-                                    jnp.ones(input_shape, model.dtype))
-    model_state, params = variables.pop('params')
-    return params, model_state
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
-    params, model_state = self.initialized(rng, model)
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    input_shape = (1, 224, 224, 3)
+    variables = jax.jit(model.init)({'params': rng},
+                                    jnp.ones(input_shape, model.dtype))
+    model_state, params = variables.pop('params')
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
 
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_0'
 
   @functools.partial(
       jax.pmap,
@@ -158,13 +142,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
-      return logits, None
+      return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     """Cross Entropy Loss"""
     if label_batch.shape[-1] != self._num_classes:
@@ -173,8 +158,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       one_hot_labels = label_batch
     smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
-    return optax.softmax_cross_entropy(
-        logits=logits_batch, labels=smoothed_labels)
+    losses = -jnp.sum(
+        smoothed_labels * jax.nn.log_softmax(logits_batch, axis=-1), axis=-1)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))
@@ -204,7 +193,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     data_rng, eval_rng = prng.split(rng, 2)
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split=split,
           global_batch_size=global_batch_size,

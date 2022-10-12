@@ -22,16 +22,6 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
@@ -41,12 +31,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
-      weighted_losses = per_example_losses * mask_batch
-      normalization = mask_batch.sum()
-    else:
-      weighted_losses = per_example_losses
-      normalization = label_batch.shape[0]
-    return torch.sum(weighted_losses, dim=-1) / normalization
+      per_example_losses *= mask_batch
+    return per_example_losses
 
   def _eval_metric(self, logits: spec.Tensor,
                    targets: spec.Tensor) -> Dict[str, int]:
@@ -62,10 +48,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim)
-
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -74,6 +58,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['top_mlp.4.weight', 'top_mlp.4.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -81,9 +68,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
+      dropout_rate: Optional[float],
+      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
+    del dropout_rate
+    del aux_dropout_rate
     del update_batch_norm
 
     model = params
@@ -105,24 +96,24 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
     return logits_batch, None
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
     if RANK == 0:
-      np_iter = super().build_input_queue(data_rng,
-                                          split,
-                                          data_dir,
-                                          global_batch_size,
-                                          num_batches,
-                                          repeat_final_dataset)
+      np_iter = super()._build_input_queue(data_rng,
+                                           split,
+                                           data_dir,
+                                           global_batch_size,
+                                           num_batches,
+                                           repeat_final_dataset)
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
@@ -188,9 +179,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
+        dropout_rate=None,
+        aux_dropout_rate=None,
         update_batch_norm=False)
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits, batch['targets'])
-    batch_loss_numerator = torch.sum(per_example_losses)
-    batch_loss_denominator = torch.sum(batch['weights'])
+    batch_loss_numerator = torch.sum(per_example_losses).cpu().numpy()
+    batch_loss_denominator = torch.sum(batch['weights']).cpu().numpy()
     return batch_loss_numerator, batch_loss_denominator

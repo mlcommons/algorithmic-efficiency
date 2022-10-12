@@ -23,17 +23,23 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 MAX_INPUT_LENGTH = 320000
 
 
-def _update_model_dropout(model, residual_dropout_rate, input_dropout_rate):
+def _maybe_update_model_dropout(model,
+                                residual_dropout_rate,
+                                input_dropout_rate):
   for child in list(model.modules()):
     # Residual dropout.
-    if isinstance(child, conformer_model.MultiHeadedSelfAttention):
+    if (isinstance(child, conformer_model.MultiHeadedSelfAttention) and
+        residual_dropout_rate is not None):
       child.dropout.p = residual_dropout_rate
-    elif isinstance(child, conformer_model.ConvolutionBlock):
+    elif (isinstance(child, conformer_model.ConvolutionBlock) and
+          residual_dropout_rate is not None):
       child.dropout.p = residual_dropout_rate
-    elif isinstance(child, conformer_model.FeedForwardModule):
+    elif (isinstance(child, conformer_model.FeedForwardModule) and
+          residual_dropout_rate is not None):
       child.dropout2.p = residual_dropout_rate
     # Input dropout.
-    elif isinstance(child, conformer_model.Subsample):
+    elif (isinstance(child, conformer_model.Subsample) and
+          input_dropout_rate is not None):
       child.dropout.p = input_dropout_rate
 
 
@@ -51,10 +57,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
     conformer_model.initialize(model)
-
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -63,6 +67,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
 
   def init_tokenizer(self, tokenizer_vocab_path):
     logging.info('Initializing tokenizer.')
@@ -88,7 +95,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     del update_batch_norm
 
     model = params
-    _update_model_dropout(
+    _maybe_update_model_dropout(
         model,
         residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate)
@@ -110,27 +117,21 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     return (logits, logits_paddings), None
 
-  @property
-  def model_params_types(self):
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
     keys = ['inputs', 'targets']
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
+    np_iter = super()._build_input_queue(data_rng,
+                                         split,
+                                         data_dir,
+                                         global_batch_size,
+                                         num_batches,
+                                         repeat_final_dataset)
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
@@ -253,7 +254,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = itertools.cycle(
-          self.build_input_queue(
+          self._build_input_queue(
               data_rng, split, data_dir, global_batch_size=global_batch_size))
 
     total_metrics = {

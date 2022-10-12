@@ -22,6 +22,7 @@ from absl import logging
 from absl.testing import absltest
 import flax
 import jax
+from jraph import GraphsTuple
 import numpy as np
 import tensorflow as tf
 import torch
@@ -144,9 +145,9 @@ def _make_one_batch_workload(workload_class,
         return global_batch_size
       return None
 
-    def build_input_queue(self, *args, **kwargs):
+    def _build_input_queue(self, *args, **kwargs):
       if not use_fake_input_queue:
-        return super().build_input_queue(*args, **kwargs)
+        return super()._build_input_queue(*args, **kwargs)
       del args
       del kwargs
 
@@ -243,7 +244,7 @@ def _make_one_batch_workload(workload_class,
         for k, v in fake_batch.items():
           if isinstance(v, np.ndarray):
             new_fake_batch[k] = to_device(k, v)
-          elif isinstance(v, tuple):
+          elif isinstance(v, tuple) and not isinstance(v, GraphsTuple):
             new_fake_batch[k] = tuple(map(functools.partial(to_device, k), v))
           else:
             new_fake_batch[k] = v
@@ -294,6 +295,8 @@ def _test_submission(workload_name,
     global_batch_size = 2 * jax.local_device_count()
   else:
     global_batch_size = FLAGS.global_batch_size
+    if FLAGS.global_batch_size < 0:
+      raise ValueError('Must set --global_batch_size.')
   workload = _make_one_batch_workload(workload_class,
                                       workload_name,
                                       framework,
@@ -307,7 +310,7 @@ def _test_submission(workload_name,
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
-  input_queue = workload.build_input_queue(
+  input_queue = workload._build_input_queue(
       data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
   model_params, model_state = workload.init_model_fn(model_init_rng)
   optimizer_state = init_optimizer_state(workload,
@@ -322,6 +325,7 @@ def _test_submission(workload_name,
                          input_queue,
                          optimizer_state,
                          model_params,
+                         model_state,
                          hyperparameters,
                          global_step,
                          data_select_rng)

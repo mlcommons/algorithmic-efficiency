@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
@@ -27,9 +28,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     torch.random.manual_seed(rng[0])
     model_kwargs = decode_variant('B/32')
     model = models.ViT(num_classes=1000, **model_kwargs)
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -37,6 +37,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['pre_logits.weight', 'pre_logits.bias']
 
   def model_fn(
       self,
@@ -54,7 +57,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     del update_batch_norm
 
     model = params
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

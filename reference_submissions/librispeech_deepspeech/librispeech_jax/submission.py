@@ -131,19 +131,17 @@ def pmapped_train_step(workload,
   return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
 
 
-def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    # This will define the output activation via `output_activation_fn`.
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(workload: spec.Workload,
+                  current_param_container: spec.ParameterContainer,
+                  current_params_types: spec.ParameterTypeTree,
+                  model_state: spec.ModelAuxiliaryState,
+                  hyperparameters: spec.Hyperparameters,
+                  batch: Dict[str, spec.Tensor],
+                  loss_type: spec.LossType,
+                  optimizer_state: spec.OptimizerState,
+                  eval_results: List[Tuple[int, float]],
+                  global_step: int,
+                  rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
   del eval_results
@@ -178,6 +176,7 @@ def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Dict[str, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
                    current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
                    hyperparameters: spec.Hyperparameters,
                    global_step: int,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:

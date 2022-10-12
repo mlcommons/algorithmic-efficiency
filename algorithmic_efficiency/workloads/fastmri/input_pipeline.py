@@ -2,6 +2,7 @@
 
 import datetime
 import functools
+import glob
 import os
 
 import h5py
@@ -10,9 +11,6 @@ import numpy as np
 import tensorflow as tf
 
 from algorithmic_efficiency import data_utils
-
-gfile = tf.io.gfile
-listdir = tf.io.gfile.listdir
 
 _NUM_TRAIN_H5_FILES = 973
 _TRAIN_DIR = 'knee_singlecoil_train'
@@ -127,7 +125,7 @@ def _h5_to_examples(path, log=False):
     tf.print('fastmri_dataset._h5_to_examples call:',
              path,
              datetime.datetime.now().strftime('%H:%M:%S:%f'))
-  with gfile.GFile(path, 'rb') as gf:
+  with open(path, 'rb') as gf:
     with h5py.File(gf, 'r') as hf:
       # NOTE(dsuo): logic taken from reference code
       volume_max = hf.attrs.get('max', 0.0)
@@ -163,7 +161,7 @@ def load_fastmri_split(global_batch_size,
                        shuffle_rng,
                        num_batches,
                        repeat_final_eval_dataset):
-  """Creates a split from the FastMRI dataset using tfds.
+  """Creates a split from the FastMRI dataset using tf.data.
 
   NOTE: only creates knee singlecoil datasets.
   NOTE: fastMRI has fixed randomness for eval.
@@ -180,28 +178,15 @@ def load_fastmri_split(global_batch_size,
   if split not in ['train', 'eval_train', 'validation']:
     raise ValueError('Unrecognized split {}'.format(split))
 
-  # NOTE(dsuo): we split on h5 files, but each h5 file has some number of slices
-  # that each represent an example. h5 files have approximately the same number
-  # of slices, so we just split files equally among hosts.
   if split in ['train', 'eval_train']:
-    split_size = _NUM_TRAIN_H5_FILES // jax.process_count()
-  else:
-    split_size = _NUM_VALID_H5_FILES // jax.process_count()
-  start = jax.process_index() * split_size
-  end = start + split_size
-  # In order to properly load the full dataset, it is important that we load
-  # entirely to the end of it on the last host, because otherwise we will drop
-  # the last `{train,valid}_size % split_size` elements.
-  if jax.process_index() == jax.process_count() - 1:
-    end = -1
-
-  if split in ['train', 'eval_train']:
-    data_dir = os.path.join(data_dir, _TRAIN_DIR)
-  else:  # split == 'validation'
-    data_dir = os.path.join(data_dir, _VAL_DIR)
-
-  h5_paths = [os.path.join(data_dir, path) for path in listdir(data_dir)
-             ][start:end]
+    file_pattern = os.path.join(data_dir, _TRAIN_DIR, '*.h5')
+    h5_paths = glob.glob(file_pattern)
+  elif split == 'validation':
+    file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
+    h5_paths = sorted(glob.glob(file_pattern))[:100]
+  elif split == 'test':
+    file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
+    h5_paths = sorted(glob.glob(file_pattern))[100:]
 
   ds = tf.data.Dataset.from_tensor_slices(h5_paths)
   ds = ds.interleave(
