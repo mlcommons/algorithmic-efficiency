@@ -61,15 +61,8 @@ class LayerNorm(nn.Module):
     self.epsilon = epsilon
 
   def forward(self, x):
-    mean = x.mean(dim=-1, keepdims=True)
-    var = x.var(dim=-1, unbiased=False, keepdims=True)
-
-    normed_x = (x - mean) * torch.rsqrt(var + self.epsilon)
-    normed_x *= (1 + self.scale)
-    normed_x += self.bias
-
-    return normed_x
-
+    return F.layer_norm(
+            x, (self.dim,), 1+self.scale, self.bias, self.epsilon)
 
 class Subsample(nn.Module):
 
@@ -471,82 +464,41 @@ class MultiHeadedSelfAttention(nn.Module):
     return outputs
 
 
-class CustomBatchNorm1d(nn.BatchNorm1d):
-
-  def __init__(self, config: ConformerConfig):
-    super().__init__(
-        num_features=config.encoder_dim,
-        momentum=config.batch_norm_momentum,
-        eps=config.batch_norm_epsilon)
-
-  def reset_parameters(self) -> None:
-    self.reset_running_stats()
-    if self.affine:
-      init.zeros_(self.weight)
-      init.zeros_(self.bias)
-
-  def forward(self, input):  # pylint: disable=redefined-builtin
-    self._check_input_dim(input)
-
-    # exponential_average_factor is set to self.momentum
-    # (when it is available) only so that it gets updated
-    # in ONNX graph when this node is exported to ONNX.
-    if self.momentum is None:
-      exponential_average_factor = 0.0
-    else:
-      exponential_average_factor = self.momentum
-
-    if self.training and self.track_running_stats:
-      # TODO: if statement only here to tell the jit to skip emitting
-      # this when it is None
-      if self.num_batches_tracked is not None:  # type: ignore[has-type]
-        self.num_batches_tracked.add_(1)  # type: ignore[has-type]
-        if self.momentum is None:  # use cumulative moving average
-          exponential_average_factor = 1.0 / \
-              float(self.num_batches_tracked)
-        else:  # use exponential moving average
-          exponential_average_factor = self.momentum
-
-    # Decide whether the mini-batch stats should be used for normalization
-    # rather than the buffers. Mini-batch stats are used in training mode,
-    # and in eval mode when buffers are None.
-    if self.training:
-      bn_training = True
-    else:
-      bn_training = (self.running_mean is None) and (self.running_var is None)
-    # Buffers are only updated if they are to be tracked and we are in training
-    # mode. Thus they only need to be passed when the update should occur (i.e.
-    # in training mode when they are tracked), or when buffer stats are used
-    # for normalization (i.e. in eval mode when buffers are not None).
-    return F.batch_norm(
-        input,
-        # If buffers are not to be tracked, ensure that they won't be updated
-        self.running_mean
-        if not self.training or self.track_running_stats else None,
-        self.running_var
-        if not self.training or self.track_running_stats else None,
-        1 + self.weight,
-        self.bias,
-        bn_training,
-        exponential_average_factor,
-        self.eps,
-    )
-
-
 class BatchNorm(nn.Module):
+    def __init__(self, config: ConformerConfig):
+        super().__init__()
+        running_mean = torch.zeros(config.encoder_dim)
+        running_var = torch.zeros(config.encoder_dim)
+        self.register_buffer("running_mean", running_mean)
+        self.register_buffer("running_var",running_var)
+        self.weight = nn.Parameter(torch.zeros(config.encoder_dim))
+        self.bias = nn.Parameter(torch.zeros(config.encoder_dim))
+        self.register_buffer("momentum", torch.FloatTensor([config.batch_norm_momentum]))
+        self.register_buffer("epsilon", torch.FloatTensor([config.batch_norm_epsilon]))
+        self.register_buffer("dim", torch.FloatTensor([config.encoder_dim]))
+        # self.momentum = config.batch_norm_momentum
+        # self.epsilon = config.batch_norm_epsilon
+        # self.dim = config.encoder_dim
 
-  def __init__(self, config: ConformerConfig):
-    super().__init__()
-    self.bn = CustomBatchNorm1d(config)
+    def forward(self, inputs, input_paddings):
+        #inputs: NHD
+        #padding: NH
+        mask = 1-input_paddings[:,:,None]
+        if self.training:
+            count = mask.sum()
+            masked_inp = inputs.masked_fill(mask==0,0)
+            mean = (masked_inp).sum(dim=(0,1))/count
+            var = (torch.square(masked_inp-mean)).sum(dim=(0,1))/count
 
-  def forward(self, inputs, input_paddings):
-    #inputs: NHD
-    #padding: NH
-    bn_inp = self.bn(inputs[input_paddings == 0])
-    output = torch.zeros_like(inputs)
-    output[input_paddings == 0] = bn_inp
-
-    return output
+            self.running_mean = self.momentum*self.running_mean + (1-self.momentum)*mean.detach()
+            self.running_var = self.momentum*self.running_var + (1-self.momentum)*var.detach()
+        else:
+            mean = self.running_mean
+            var = self.running_var
+        v = (1+self.weight)*torch.rsqrt(var+self.epsilon)
+        bn = (inputs-mean)*v+self.bias
+        output = bn.masked_fill(mask==0,0)
+        return output
 
 
 class ConvolutionBlock(nn.Module):
@@ -576,10 +528,7 @@ class ConvolutionBlock(nn.Module):
   def forward(self, inputs, input_paddings):
     inputs = self.ln(inputs)
 
-    input_gated1 = self.lin1(inputs)
-    input_gated2 = self.lin2(inputs)
-
-    inputs = input_gated1 * torch.sigmoid(input_gated2)
+    inputs = F.glu(torch.cat([self.lin1(inputs),self.lin2(inputs)],dim=2))
     inputs = inputs * (1 - input_paddings[:, :, None])
 
     inputs = inputs.permute(0, 2, 1)

@@ -7,7 +7,7 @@ import jax
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
-
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -20,6 +20,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.
     ConformerEncoderDecoder
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
     initialize
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import LibriDataset
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -30,6 +31,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
+    torch.backends.cudnn.benchmark = False
     model = ConformerEncoderDecoder(ConformerConfig())
     self._model = model
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
@@ -46,7 +48,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
@@ -83,8 +84,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     with contexts[mode]():
       logits, logits_paddings = model(
-          augmented_and_preprocessed_input_batch['inputs'][0],
-          augmented_and_preprocessed_input_batch['inputs'][1])
+          augmented_and_preprocessed_input_batch['inputs'][0].to(DEVICE),
+          augmented_and_preprocessed_input_batch['inputs'][1].to(DEVICE))
 
     return (logits, logits_paddings), None
 
@@ -101,60 +102,47 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                         global_batch_size: int,
                         num_batches: Optional[int] = None,
                         repeat_final_dataset: bool = False):
-    per_device_batch_size = int(global_batch_size / N_GPUS)
-    keys = ['inputs', 'targets']
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
-    while True:
-      # Only iterate over tf input pipeline in one Python process to
-      # avoid creating too many threads.
-      if RANK == 0:
-        batch = next(np_iter)  # pylint: disable=stop-iteration-return
-        tensor_list = []
-        for key in keys:
-          value, value_pad = batch[key]
-          tensor = torch.as_tensor(value, dtype=torch.float32, device=DEVICE)
-          tensor_pad = torch.as_tensor(
-              value_pad, dtype=torch.float32, device=DEVICE)
-          tensor_list.extend([tensor, tensor_pad])
-          batch[key] = ((tensor[RANK], tensor_pad[RANK]) if USE_PYTORCH_DDP else
-                        (tensor.view(-1, *value.shape[2:]),
-                         tensor_pad.view(-1, *value.shape[2:])))
+    del data_rng
+    del repeat_final_dataset
+    train = False
 
-        # Send batch to other devices when using DDP.
-        if USE_PYTORCH_DDP:
-          # During eval, the batch size of the remainder might be different.
-          if split != 'train':
-            per_device_batch_size = torch.tensor(
-                len(batch['inputs'][0]), dtype=torch.int32, device=DEVICE)
-            dist.broadcast(per_device_batch_size, src=0)
-          dist.broadcast(torch.cat(tensor_list, dim=-1), src=0)
-        del tensor_list
+    if split == 'train':
+      split = 'train-clean-100'#+train-clean-360+train-other-500'
+      train = True
+    elif split == 'eval_train':
+      split = 'train-clean-100'
+    elif split == 'validation':
+      split = 'dev-clean+dev-other'
+    elif split == 'test':
+      split = 'test-clean'
+
+    ds = LibriDataset(split=split, data_dir=data_dir)
+    sampler = None
+    if USE_PYTORCH_DDP:
+      per_device_batch_size = global_batch_size // N_GPUS
+      ds_iter_batch_size = per_device_batch_size
+    else:
+      ds_iter_batch_size = global_batch_size
+    if USE_PYTORCH_DDP:
+      if train:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            ds, num_replicas=N_GPUS, rank=RANK, shuffle=True, seed=0)
       else:
-        # During eval, the batch size of the remainder might be different.
-        if split != 'train':
-          per_device_batch_size = torch.empty((1,),
-                                              dtype=torch.int32,
-                                              device=DEVICE)
-          dist.broadcast(per_device_batch_size, src=0)
-        tensor = torch.empty(
-            (N_GPUS, per_device_batch_size, MAX_INPUT_LENGTH * 2 + 256 * 2),
-            dtype=torch.float32,
-            device=DEVICE)
-        dist.broadcast(tensor, src=0)
-        # Note that the order of the keys is important.
-        tensors = tensor.split([MAX_INPUT_LENGTH, MAX_INPUT_LENGTH, 256, 256],
-                               dim=-1)
-        batch = {}
-        batch['inputs'] = (tensors[0][RANK], tensors[1][RANK])
-        batch['targets'] = (tensors[2][RANK], tensors[3][RANK])
-        del tensor, tensors
-      yield batch
+        sampler = data_utils.DistributedEvalSampler(
+            ds, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+    dataloader = torch.utils.data.DataLoader(
+        ds,
+        batch_size=ds_iter_batch_size,
+        shuffle=not USE_PYTORCH_DDP and train,
+        sampler=sampler,
+        num_workers=4,
+        pin_memory=True,
+        drop_last=train)
 
+    dataloader = data_utils.cycle(
+        dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)
+    return dataloader
+  
   def loss_fn(
       self,
       label_batch,  # Dense (not one-hot) labels.
@@ -208,6 +196,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     padding = (fin_result == 0)
     return fin_result, padding
 
+  def sync_sd(self, params):
+    sd = params.state_dict()
+    for k in sd:
+      dist.all_reduce(sd[k],op=dist.ReduceOp.SUM)
+      # Assumes N_GPUS is the world size.
+      sd[k] = sd[k]/N_GPUS 
+    params.load_state_dict(sd)
+
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
@@ -232,7 +228,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         'num_words': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
-
+    self.sync_sd(params)
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
 
