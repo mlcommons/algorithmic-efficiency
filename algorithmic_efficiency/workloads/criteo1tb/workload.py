@@ -25,7 +25,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.12422498
+    return 0.124225
 
   @property
   def loss_type(self):
@@ -82,11 +82,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
     for batch in iter(ds):
       yield batch
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   @property
   def step_hint(self) -> int:

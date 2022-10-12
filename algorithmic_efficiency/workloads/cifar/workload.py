@@ -67,8 +67,3 @@ class BaseCifarWorkload(spec.Workload):
     # workload, but for completeness we provide the number of steps for 100
     # epochs at batch size 1024.
     return 4883
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError

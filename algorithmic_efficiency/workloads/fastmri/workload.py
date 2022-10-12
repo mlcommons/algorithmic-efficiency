@@ -13,7 +13,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.735102235
+    return 0.7351
 
   @property
   def loss_type(self):
@@ -63,11 +63,6 @@ class BaseFastMRIWorkload(spec.Workload):
   def step_hint(self) -> int:
     """Max num steps the target setting algo was given to reach the target."""
     return 27142
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,

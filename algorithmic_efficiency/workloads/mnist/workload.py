@@ -76,10 +76,6 @@ class BaseMnistWorkload(spec.Workload):
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     raise NotImplementedError
 
-  def _eval_metric(self, logits, labels):
-    """Return the mean accuracy and loss as a dict."""
-    raise NotImplementedError
-
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,

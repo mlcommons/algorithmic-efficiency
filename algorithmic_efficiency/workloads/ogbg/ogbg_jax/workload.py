@@ -35,6 +35,9 @@ class OgbgWorkload(BaseOgbgWorkload):
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(params), None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_17'
+
   def model_fn(
       self,
       params: spec.ParameterContainer,

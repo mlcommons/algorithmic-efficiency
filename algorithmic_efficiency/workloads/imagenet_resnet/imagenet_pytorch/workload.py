@@ -139,6 +139,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['fc.weight', 'fc.bias']
+
   def _update_batch_norm(self, model, update_batch_norm):
     bn_layers = (nn.BatchNorm1d,
                  nn.BatchNorm2d,

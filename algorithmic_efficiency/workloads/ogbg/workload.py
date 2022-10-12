@@ -34,7 +34,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 10000
+    return 43793
 
   @property
   def num_validation_examples(self):
@@ -89,11 +89,6 @@ class BaseOgbgWorkload(spec.Workload):
         mask=mask_batch,
         label_smoothing=label_smoothing)
     return per_example_losses
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   @property
   def step_hint(self) -> int:

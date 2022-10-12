@@ -112,6 +112,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['up_conv.3.1.weight', 'up_conv.3.1.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -157,7 +160,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     del label_smoothing
     losses = F.l1_loss(
-        logits_batch, label_batch, reduction='none').sum(dim=(1, 2))
+        logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
       losses *= mask_batch

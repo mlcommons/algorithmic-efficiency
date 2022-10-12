@@ -22,7 +22,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.08420191
+    return 0.0842
 
   @property
   def loss_type(self):
@@ -162,11 +162,6 @@ class BaseLibrispeechWorkload(spec.Workload):
       batch = self.shard(batch)
 
       yield batch
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
 
   @property
   def step_hint(self) -> int:

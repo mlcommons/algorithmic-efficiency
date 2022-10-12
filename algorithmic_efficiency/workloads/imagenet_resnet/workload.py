@@ -16,7 +16,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def target_value(self):
-    return 0.771850005
+    return 0.77185  # TODO(namanagarwal): This will edited again soon.
 
   @property
   def loss_type(self):
@@ -71,11 +71,6 @@ class BaseImagenetResNetWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self):
     return 510  # 8.5 minutes.
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,
