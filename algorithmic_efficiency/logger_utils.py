@@ -43,8 +43,9 @@ def write_hparams(hparams: spec.Hyperparameters,
                                      hparams_dict)(**hparams_dict)
     return hparams
   else:
-    with open(hparams_file_name, 'w') as f:
-      f.write(json.dumps(hparams._asdict(), indent=2))
+    if RANK == 0:
+      with open(hparams_file_name, 'w') as f:
+        f.write(json.dumps(hparams._asdict(), indent=2))
     return hparams
 
 
