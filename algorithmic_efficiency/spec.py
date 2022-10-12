@@ -101,9 +101,10 @@ DataSelectionFn = Callable[[
 
 class Workload(metaclass=abc.ABCMeta):
 
-  _param_shapes: Optional[ParameterShapeTree] = None
-  _param_types: Optional[ParameterTypeTree] = None
-  _eval_iters: dict = {}
+  def __init__(self) -> None:
+    self._param_shapes: Optional[ParameterShapeTree] = None
+    self._param_types: Optional[ParameterTypeTree] = None
+    self._eval_iters: Dict[str, Iterator] = {}
 
   @abc.abstractmethod
   def has_reached_goal(self, eval_result: float) -> bool:
