@@ -469,16 +469,16 @@ class BatchNorm(nn.Module):
   def __init__(self, config: ConformerConfig):
     super().__init__()
     running_mean = torch.zeros(config.encoder_dim)
-    running_var = torch.zeros(config.encoder_dim)
-    self.register_buffer("running_mean", running_mean)
-    self.register_buffer("running_var", running_var)
+    running_var = torch.ones(config.encoder_dim)
+    self.register_buffer('running_mean', running_mean)
+    self.register_buffer('running_var', running_var)
     self.weight = nn.Parameter(torch.zeros(config.encoder_dim))
     self.bias = nn.Parameter(torch.zeros(config.encoder_dim))
-    self.register_buffer("momentum",
+    self.register_buffer('momentum',
                          torch.FloatTensor([config.batch_norm_momentum]))
-    self.register_buffer("epsilon",
+    self.register_buffer('epsilon',
                          torch.FloatTensor([config.batch_norm_epsilon]))
-    self.register_buffer("dim", torch.FloatTensor([config.encoder_dim]))
+    self.register_buffer('dim', torch.FloatTensor([config.encoder_dim]))
     # self.momentum = config.batch_norm_momentum
     # self.epsilon = config.batch_norm_epsilon
     # self.dim = config.encoder_dim

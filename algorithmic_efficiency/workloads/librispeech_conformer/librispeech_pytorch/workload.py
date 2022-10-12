@@ -18,7 +18,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer import workload
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     model as conformer_model
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import \
-    LibriDataset
+    LibriSpeechDataset
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
@@ -49,12 +49,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
+    # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
     model = conformer_model.ConformerEncoderDecoder(
         conformer_model.ConformerConfig())
     self._model = model
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
-    # Run model once to initialize lazy layers
+    # Run model once to initialize lazy layers.
     t = MAX_INPUT_LENGTH
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
@@ -120,12 +121,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     return (logits, logits_paddings), None
 
-  @property
-  def model_params_types(self):
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,
@@ -138,7 +133,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     train = False
 
     if split == 'train':
-      split = 'train-clean-100'  #+train-clean-360+train-other-500'
+      split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
@@ -147,7 +142,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     elif split == 'test':
       split = 'test-clean'
 
-    ds = LibriDataset(split=split, data_dir=data_dir)
+    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
     sampler = None
     if USE_PYTORCH_DDP:
       per_device_batch_size = global_batch_size // N_GPUS

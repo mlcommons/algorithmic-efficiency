@@ -1,3 +1,7 @@
+"""
+Sharing the jax input pipeline slows down the data loading
+and step times.
+"""
 import csv
 
 from absl import logging
@@ -5,7 +9,7 @@ import numpy as np
 import torch
 
 
-class LibriDataset(torch.utils.data.Dataset):
+class LibriSpeechDataset(torch.utils.data.Dataset):
 
   def __init__(self, split, data_dir):
     super().__init__()
@@ -13,7 +17,7 @@ class LibriDataset(torch.utils.data.Dataset):
     splits = split.split("+")
     ids = []
     for split in splits:
-      logging.info('loading split = %s', split)
+      logging.info('Loading split = %s', split)
       feat_csv = '{}/{}.csv'.format(data_dir, split)
 
       with open(feat_csv, newline='') as csvfile:
