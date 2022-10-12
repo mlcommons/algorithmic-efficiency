@@ -31,8 +31,7 @@ class SubmissionRunnerTest(parameterized.TestCase):
           testcase_name='mnist_jax',
           workload='mnist',
           framework='jax',
-          submission_path=(
-              f'{_MNIST_DEV_ALGO_DIR}/mnist_jax/submission.py'),
+          submission_path=(f'{_MNIST_DEV_ALGO_DIR}/mnist_jax/submission.py'),
           tuning_search_space=(
               f'{_MNIST_DEV_ALGO_DIR}/tuning_search_space.json')),
       dict(

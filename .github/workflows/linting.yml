@@ -19,7 +19,6 @@ jobs:
       run: |
         pylint algorithmic_efficiency
         pylint baselines
-        pylint target_setting_runs
         pylint reference_algorithms
         pylint submission_runner.py
         pylint tests
