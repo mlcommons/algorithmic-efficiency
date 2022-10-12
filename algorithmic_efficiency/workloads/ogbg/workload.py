@@ -14,8 +14,7 @@ FLAGS = flags.FLAGS
 
 class BaseOgbgWorkload(spec.Workload):
 
-  def __init__(self) -> None:
-    self._num_outputs = 128
+  _num_outputs: int = 128
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/mean_average_precision'] > self.target_value

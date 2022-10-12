@@ -12,15 +12,12 @@ import pandas as pd
 import psutil
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 try:
   import wandb  # pylint: disable=g-import-not-at-top
 except ModuleNotFoundError:
   logging.exception('Unable to import wandb.')
   wandb = None
-
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def _get_utilization() -> dict:
@@ -141,14 +138,6 @@ def _get_cpu_model_name() -> str:
                     output)[0].split('Model name:')[1].strip()
 
 
-def _get_os_package_list() -> str:
-  return subprocess.check_output(['dpkg', '-l']).decode('ascii').strip()
-
-
-def _get_pip_package_list() -> str:
-  return subprocess.check_output(['pip', 'freeze']).decode('ascii').strip()
-
-
 def _is_primitive_type(item: Any) -> bool:
   primitive = (float, int, str, bool)
   return isinstance(item, primitive)
@@ -199,10 +188,11 @@ class MetricLogger(object):
                configs: Optional[flags.FLAGS] = None) -> None:
     self._measurements = {}
     self._csv_path = csv_path
+    self.use_wandb = configs.use_wandb
 
     if events_dir:
       self._tb_metric_writer = metric_writers.create_default_writer(events_dir)
-      if wandb is not None:
+      if wandb is not None and self.use_wandb:
         wandb.init(
             dir=events_dir, tags=[flags.FLAGS.workload, flags.FLAGS.framework])
         wandb.config.update(configs)
@@ -228,11 +218,11 @@ class MetricLogger(object):
           step=int(metrics['global_step']), scalars=metrics)
       self._tb_metric_writer.flush()
 
-    if wandb is not None:
+    if wandb is not None and self.use_wandb:
       wandb.log(metrics)
 
   def finish(self) -> None:
-    if wandb is not None:
+    if wandb is not None and self.use_wandb:
       wandb.finish()
 
 

@@ -8,8 +8,7 @@ from algorithmic_efficiency import spec
 
 class BaseImagenetResNetWorkload(spec.Workload):
 
-  def __init__(self):
-    self._num_classes = 1000
+  _num_classes: int = 1000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value

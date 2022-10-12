@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from absl import flags
 import jax
@@ -13,12 +13,11 @@ FLAGS = flags.FLAGS
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
 
-  def __init__(self):
-    self.vocab_sizes = tuple([1024 * 128] * 26)
-    self.num_dense_features = 13
-    self.mlp_bottom_dims = (128, 128)
-    self.mlp_top_dims = (256, 128, 1)
-    self.embed_dim = 64
+  vocab_sizes: Tuple[int] = tuple([1024 * 128] * 26)
+  num_dense_features: int = 13
+  mlp_bottom_dims: Tuple[int, int] = (128, 128)
+  mlp_top_dims: Tuple[int, int, int] = (256, 128, 1)
+  embed_dim: int = 64
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.target_value
