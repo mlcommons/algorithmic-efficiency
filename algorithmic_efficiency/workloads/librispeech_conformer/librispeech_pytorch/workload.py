@@ -135,7 +135,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     train = False
 
     if split == 'train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
+      split = 'train-clean-100'#+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100'
@@ -171,7 +171,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)
     return dataloader
   
-  def loss_fn(
+  def _loss_fn(
       self,
       label_batch: Tuple[spec.Tensor, spec.Tensor],
       logits_batch: Tuple[spec.Tensor, spec.Tensor]
