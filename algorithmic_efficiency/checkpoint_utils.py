@@ -7,6 +7,7 @@ from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
 import jax
 import torch
+import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -159,3 +160,6 @@ def save_checkpoint(framework: str,
       save_path = os.path.join(checkpoint_dir, 'checkpoint')
       torch.save(checkpoint_state, save_path)
     logging.info('Saved checkpoint to %s', save_path)
+
+  if USE_PYTORCH_DDP:
+    dist.barrier()
