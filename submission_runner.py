@@ -353,6 +353,10 @@ def score_submission_on_workload(workload: spec.Workload,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
                                  tokenizer_vocab_path: Optional[str] = None):
+  # Expand paths because '~' may not be recognized
+  data_dir = os.path.expanduser(data_dir)
+  imagenet_v2_data_dir = os.path.expanduser(data_dir)
+
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
