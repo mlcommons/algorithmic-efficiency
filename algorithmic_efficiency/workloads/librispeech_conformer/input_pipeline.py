@@ -76,8 +76,8 @@ def get_librispeech_dataset(split_name: str,
 
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
 
-  # if is_training:
-  ds = ds.repeat()
+  if is_training:
+    ds = ds.repeat()
 
   if num_batches is not None:
     ds = ds.take(num_batches)
