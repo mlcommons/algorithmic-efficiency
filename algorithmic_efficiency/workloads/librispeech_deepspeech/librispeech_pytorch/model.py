@@ -206,8 +206,8 @@ class FeedForwardModule(nn.Module):
 
 class CustomBatchNorm1d(nn.BatchNorm1d):
 
-  def __init__(self, dim, momentum, eps):
-    super().__init__(num_features=dim, momentum=momentum, eps=eps)
+  def __init__(self, num_features, momentum, eps):
+    super().__init__(num_features=num_features, momentum=momentum, eps=eps)
 
   def reset_parameters(self) -> None:
     self.reset_running_stats()
@@ -268,7 +268,7 @@ class BatchNorm(nn.Module):
   def __init__(self, dim, batch_norm_momentum, batch_norm_epsilon):
     super().__init__()
     self.bn = CustomBatchNorm1d(
-        dim=dim, momentum=batch_norm_momentum, eps=batch_norm_epsilon)
+        num_features=dim, momentum=batch_norm_momentum, eps=batch_norm_epsilon)
 
   def forward(self, inputs, input_paddings=None):
     # inputs: ...D
@@ -346,22 +346,7 @@ class DeepspeechEncoderDecoder(nn.Module):
         time_masks_per_frame=config.time_masks_per_frame,
         use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames
     )
-    preprocessing_config = preprocessor.PreprocessorConfig(
-        sample_rate=16000,
-        frame_size_ms=25,
-        frame_step_ms=10,
-        compute_energy=True,
-        window_fn="HANNING",
-        output_log_floor=1,
-        pad_end=True,
-        preemph=0.97,
-        preemph_htk_flavor=True,
-        noise_scale=0,
-        num_bins=80,
-        lower_edge_hertz=125,
-        upper_edge_hertz=7600,
-        fft_overdrive=False,
-        output_floor=0.00001)
+    preprocessing_config = preprocessor.PreprocessorConfig()
     self.preprocessor = preprocessor.MelFilterbankFrontend(
         preprocessing_config,
         per_bin_mean=preprocessor.LIBRISPEECH_MEAN_VECTOR,
@@ -387,7 +372,6 @@ class DeepspeechEncoderDecoder(nn.Module):
 
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     outputs, output_paddings = self.specaug(outputs, output_paddings)
-    # print(outputs.shape)
     outputs, output_paddings = self.subsample(outputs, output_paddings)
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:

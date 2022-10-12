@@ -3,6 +3,7 @@ This is a pytorch implementation mirroring:
 https://github.com/google/init2winit/blob/master/init2winit/model_lib/librispeech_preprocessor.py
 """
 from collections import namedtuple
+from dataclasses import dataclass
 import math
 from typing import Any, Optional, Union
 
@@ -180,25 +181,25 @@ LIBRISPEECH_STD_VECTOR = [
     3.4299170970916748
 ]
 
-PreprocessorConfig = namedtuple(
-    'PreprocessorConfig',
-    field_names=[
-        'sample_rate',
-        'frame_size_ms',
-        'frame_step_ms',
-        'compute_energy',
-        'window_fn',
-        'output_log_floor',
-        'pad_end',
-        'preemph',
-        'preemph_htk_flavor',
-        'noise_scale',
-        'num_bins',
-        'lower_edge_hertz',
-        'upper_edge_hertz',
-        'fft_overdrive',
-        'output_floor'
-    ])
+
+@dataclass
+class PreprocessorConfig:
+  """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
+  sample_rate: 16000
+  frame_size_ms: 25
+  frame_step_ms: 10
+  compute_energy: True
+  window_fn: 'HANNING'
+  output_log_floor: 1
+  pad_end: False
+  preemph: 0.97
+  preemph_htk_flavor: True
+  noise_scale: 0
+  num_bins: 80
+  lower_edge_hertz: 125
+  upper_edge_hertz: 7600
+  fft_overdrive: False
+  output_floor: 0.00001
 
 
 def _hertz_to_mel(frequencies_hertz):

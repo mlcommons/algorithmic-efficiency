@@ -574,22 +574,7 @@ class ConformerEncoderDecoder(nn.Module):
   def __init__(self, config: ConformerConfig):
     super().__init__()
     self.config = config
-    preprocessing_config = preprocessor.PreprocessorConfig(
-        sample_rate=16000,
-        frame_size_ms=25,
-        frame_step_ms=10,
-        compute_energy=True,
-        window_fn='HANNING',
-        output_log_floor=1,
-        pad_end=False,
-        preemph=0.97,
-        preemph_htk_flavor=True,
-        noise_scale=0,
-        num_bins=80,
-        lower_edge_hertz=125,
-        upper_edge_hertz=7600,
-        fft_overdrive=False,
-        output_floor=0.00001)
+    preprocessing_config = preprocessor.PreprocessorConfig()
     self.preprocessor = preprocessor.MelFilterbankFrontend(
         preprocessing_config,
         per_bin_mean=preprocessor.LIBRISPEECH_MEAN_VECTOR,
