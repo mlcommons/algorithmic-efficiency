@@ -175,8 +175,14 @@ def load_fastmri_split(global_batch_size,
   Returns:
     A `tf.data.Dataset`.
   """
-  if split not in ['train', 'eval_train', 'validation']:
+  if split not in ['train', 'eval_train', 'validation', 'test']:
     raise ValueError('Unrecognized split {}'.format(split))
+
+  # Check if data directories exist because glob below wil not raise an error if they don't
+  if not os.path.exists(os.path.join(data_dir, _TRAIN_DIR)):
+    raise NotADirectoryError("Directory not found: {}".format(os.path.join(data_dir, _TRAIN_DIR)))
+  if not os.path.exists(os.path.join(data_dir, _VAL_DIR)):
+    raise NotADirectoryError("Directory not found: {}".format(os.path.join(data_dir, _VAL_DIR)))
 
   if split in ['train', 'eval_train']:
     file_pattern = os.path.join(data_dir, _TRAIN_DIR, '*.h5')
@@ -185,6 +191,7 @@ def load_fastmri_split(global_batch_size,
     file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
     h5_paths = sorted(glob.glob(file_pattern))[:100]
   elif split == 'test':
+    # The fastmri validation set is split into a validation and test set
     file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
     h5_paths = sorted(glob.glob(file_pattern))[100:]
 
