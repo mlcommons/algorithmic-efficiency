@@ -83,11 +83,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     for batch in iter(ds):
       yield batch
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
   @property
   def step_hint(self) -> int:
     """Max num steps the target setting algo was given to reach the target."""

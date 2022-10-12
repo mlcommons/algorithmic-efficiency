@@ -43,6 +43,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
+
   def init_tokenizer(self, tokenizer_vocab_path):
     logging.info('Initializing metrics bundle and tokenizer.')
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)

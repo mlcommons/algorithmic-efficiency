@@ -82,10 +82,8 @@ class MnistWorkload(BaseMnistWorkload):
     ds = map(data_utils.shard_numpy_ds, ds)
     return iter(ds)
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key == 'Dense_1'
 
   def _build_input_queue(self,
                          data_rng,

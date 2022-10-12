@@ -58,6 +58,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model = torch.nn.DataParallel(model)
     return model, None
 
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['top_mlp.4.weight', 'top_mlp.4.bias']
+
   def model_fn(
       self,
       params: spec.ParameterContainer,

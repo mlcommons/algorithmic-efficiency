@@ -44,7 +44,7 @@ def jax_param_types(param_shapes, parent_name=''):
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
       # https://github.com/google/flax/blob/main/flax/linen/linear.py#L604.
-      elif name == 'embedding':
+      elif 'embedding' in name:
         param_types_dict[name] = spec.ParameterType.EMBEDDING
       else:
         param_types_dict[name] = spec.ParameterType.WEIGHT
