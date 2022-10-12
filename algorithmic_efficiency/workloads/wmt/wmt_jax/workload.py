@@ -10,10 +10,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import sacrebleu
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
@@ -62,6 +62,12 @@ class WmtWorkload(BaseWmtWorkload):
       loss = loss * weights
 
     return loss
+
+  def compute_bleu_from_predictions(self, predictions, references):
+    """Computes BLEU score given predictions and references."""
+    bleu_score = sacrebleu.corpus_bleu(predictions, [references])
+    print(bleu_score)
+    return bleu_score
 
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
@@ -176,9 +182,10 @@ class WmtWorkload(BaseWmtWorkload):
         references.append(self._decode_tokens(tar))
         predictions.append(self._decode_tokens(pred))
 
-    # Calculate BLEU score for translated eval corpus against reference.
-    bleu_matches = bleu.bleu_partial(references, predictions)
-    bleu_score = bleu.complete_bleu(*bleu_matches)
+    bleu_score = self.compute_bleu_from_predictions(predictions, references)
+    # # Calculate BLEU score for translated eval corpus against reference.
+    # bleu_matches = bleu.bleu_partial(references, predictions)
+    # bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
