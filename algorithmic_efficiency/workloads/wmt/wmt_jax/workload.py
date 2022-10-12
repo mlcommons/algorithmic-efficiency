@@ -246,7 +246,6 @@ class WmtWorkload(BaseWmtWorkload):
         targets_segmentation=targets_segmentations,
         rngs={'dropout': rng})
     return logits_batch, None
-<<<<<<< HEAD
 
   @property
   def model_params_types(self):
@@ -257,5 +256,3 @@ class WmtWorkload(BaseWmtWorkload):
     if self._param_types is None:
       self._param_types = param_utils.jax_param_types(self._param_shapes)
     return self._param_types
-=======
->>>>>>> 018b2f02a9fa7dc747754328d37f56ea4846f9c2
