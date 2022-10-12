@@ -14,8 +14,7 @@ FLAGS = flags.FLAGS
 
 class BaseLibrispeechWorkload(spec.Workload):
 
-  def __init__(self) -> None:
-    self._num_outputs = 1024
+  _num_outputs: int = 1024
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/wer'] < self.target_value

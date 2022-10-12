@@ -121,9 +121,12 @@ flags.DEFINE_string(
     'experiment_dir',
     None,
     'The root directory to store all experiments. '
-    'It is not required, but the directory should have '
+    'It is required and the directory should have '
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
+flags.DEFINE_boolean('use_wandb',
+                     False,
+                     'Whether to use Weights & Biases logging.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
@@ -486,6 +489,5 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('workload')
   flags.mark_flag_as_required('framework')
   flags.mark_flag_as_required('submission_path')
-  flags.mark_flag_as_required('tuning_search_space')
   flags.mark_flag_as_required('experiment_dir')
   app.run(main)

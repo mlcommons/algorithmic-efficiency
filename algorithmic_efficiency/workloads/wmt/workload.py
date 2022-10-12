@@ -21,9 +21,11 @@ FLAGS = flags.FLAGS
 class BaseWmtWorkload(spec.Workload):
   """A WMT workload."""
 
-  def __init__(self):
+  _vocab_size: int = 32000
+
+  def __init__(self) -> None:
+    super().__init__()
     self._tokenizer = None
-    self._vocab_size = 32000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/bleu'] > self.target_value

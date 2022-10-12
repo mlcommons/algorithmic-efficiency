@@ -48,10 +48,6 @@ def _param_types(param_tree):
 
 class MnistWorkload(BaseMnistWorkload):
 
-  def __init__(self):
-    super().__init__()
-    self._model = _Model()
-
   def _normalize(self, image):
     return (tf.cast(image, tf.float32) - self.train_mean) / self.train_stddev
 
@@ -98,8 +94,8 @@ class MnistWorkload(BaseMnistWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    initial_params = self._model.init({'params': rng}, init_val,
-                                      train=True)['params']
+    initial_params = _Model().init({'params': rng}, init_val,
+                                   train=True)['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
@@ -121,7 +117,7 @@ class MnistWorkload(BaseMnistWorkload):
     del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits_batch = self._model.apply(
+    logits_batch = _Model().apply(
         {'params': params},
         augmented_and_preprocessed_input_batch['inputs'],
         train=train)
