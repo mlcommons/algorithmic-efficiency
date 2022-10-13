@@ -18,7 +18,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=criteo1tb \
     --submission_path=reference_algorithms/reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms.target_setting_algorithms/criteo1tb/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
