@@ -57,7 +57,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     # Run the initialization in eval mode to disable BN tracking.
-    model = model.eval() 
+    model = model.eval()
     t = MAX_INPUT_LENGTH
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
