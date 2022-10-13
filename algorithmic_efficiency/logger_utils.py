@@ -6,7 +6,6 @@ import platform
 import re
 import subprocess
 from typing import Any, Optional
-from absl import flags
 
 from absl import flags
 from clu import metric_writers
@@ -18,7 +17,6 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
-
 
 try:
   import wandb  # pylint: disable=g-import-not-at-top
@@ -267,6 +265,7 @@ class MetricLogger(object):
     if RANK == 0:
       if wandb is not None and self.use_wandb:
         wandb.finish()
+
 
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
