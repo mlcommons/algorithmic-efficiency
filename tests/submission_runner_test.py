@@ -2,7 +2,7 @@
 
 This is an end-to-end test for MNIST in PyTorch and Jax that requires the
 dataset to be available. For testing the workload and reference submission code
-for all workloads, see reference_submission_tests.py.
+for all workloads, see reference_algorithm_tests.py.
 """
 import copy
 import os
@@ -20,6 +20,8 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
+_MNIST_DEV_ALGO_DIR = 'reference_algorithms/development_algorithms/mnist'
+
 
 class SubmissionRunnerTest(parameterized.TestCase):
   """Tests for reference submissions."""
@@ -29,17 +31,17 @@ class SubmissionRunnerTest(parameterized.TestCase):
           testcase_name='mnist_jax',
           workload='mnist',
           framework='jax',
-          submission_path='reference_submissions/mnist/mnist_jax/submission.py',
+          submission_path=(f'{_MNIST_DEV_ALGO_DIR}/mnist_jax/submission.py'),
           tuning_search_space=(
-              'reference_submissions/mnist/tuning_search_space.json')),
+              f'{_MNIST_DEV_ALGO_DIR}/tuning_search_space.json')),
       dict(
           testcase_name='mnist_pytorch',
           workload='mnist',
           framework='pytorch',
           submission_path=(
-              'reference_submissions/mnist/mnist_pytorch/submission.py'),
+              f'{_MNIST_DEV_ALGO_DIR}/mnist_pytorch/submission.py'),
           tuning_search_space=(
-              'reference_submissions/mnist/tuning_search_space.json')),
+              f'{_MNIST_DEV_ALGO_DIR}/tuning_search_space.json')),
   )
   def test_submission(self,
                       workload,
