@@ -1,14 +1,18 @@
 """Submission file for a SGD with Nesterov optimizer in PyTorch."""
 
+import torch
+from torch.optim.lr_scheduler import LambdaLR
+
 from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import
 from reference_algorithms.target_setting_algorithms.get_batch_size import \
     get_batch_size  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.jax_nesterov import create_lr_schedule_fn
+from reference_algorithms.target_setting_algorithms.jax_nesterov import \
+    create_lr_schedule_fn
 from reference_algorithms.target_setting_algorithms.pytorch_submission_base import \
     update_params  # pylint: disable=unused-import
-import torch
-from torch.optim.lr_scheduler import LambdaLR
+
+isort .
 
 from algorithmic_efficiency import spec
 

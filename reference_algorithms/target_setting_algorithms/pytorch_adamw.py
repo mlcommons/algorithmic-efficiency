@@ -1,5 +1,8 @@
 """Submission file for an AdamW optimizer with warmup+cosine LR in PyTorch."""
 
+import torch
+
+from algorithmic_efficiency import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
 from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import
@@ -7,9 +10,6 @@ from reference_algorithms.target_setting_algorithms.get_batch_size import \
     get_batch_size  # pylint: disable=unused-import
 from reference_algorithms.target_setting_algorithms.pytorch_submission_base import \
     update_params  # pylint: disable=unused-import
-import torch
-
-from algorithmic_efficiency import spec
 
 
 def init_optimizer_state(workload: spec.Workload,
