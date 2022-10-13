@@ -356,7 +356,6 @@ def score_submission_on_workload(workload: spec.Workload,
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
-  log_dir = os.path.expanduser(log_dir)
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
@@ -460,6 +459,8 @@ def main(_):
     experiment_log_dir = os.path.join(FLAGS.experiment_dir,
                                       FLAGS.experiment_name,
                                       workload_dir_name)
+  experiment_log_dir = os.path.expanduser(experiment_log_dir)
+
   if RANK == 0:
     # Only one worker should create the required dir.
     logging.info('Creating experiment directory at %s', experiment_log_dir)
