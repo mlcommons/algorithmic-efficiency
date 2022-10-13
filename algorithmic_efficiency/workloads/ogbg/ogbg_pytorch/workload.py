@@ -30,7 +30,7 @@ def _pytorch_map(inputs: Any) -> Any:
 def _shard(inputs: Any) -> Any:
   if not USE_PYTORCH_DDP:
     return inputs
-  return jax.tree_map(lambda tensor: tensor[RANK].to(DEVICE), inputs)
+  return jax.tree_map(lambda tensor: tensor[RANK], inputs)
 
 
 def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
