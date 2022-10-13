@@ -124,11 +124,6 @@ class Conv2dSubsampling(nn.Module):
         torch.nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
     self.bias = nn.Parameter(torch.zeros(output_channels))
 
-    self.bn = BatchNorm(
-        dim=output_channels,
-        batch_norm_momentum=batch_norm_momentum,
-        batch_norm_epsilon=batch_norm_epsilon)
-
   def get_same_padding(self, input_shape):
     in_height, in_width = input_shape[2:]
     stride_height, stride_width = self.filter_stride
@@ -162,7 +157,6 @@ class Conv2dSubsampling(nn.Module):
         dilation=(1, 1),
         groups=groups)
 
-    outputs = self.bn(outputs.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
     outputs = F.relu(outputs)
 
     input_length = paddings.shape[1]
