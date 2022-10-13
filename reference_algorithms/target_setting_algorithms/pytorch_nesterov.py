@@ -1,9 +1,5 @@
 """Submission file for a SGD with Nesterov optimizer in PyTorch."""
 
-import torch
-from torch.optim.lr_scheduler import LambdaLR
-
-from algorithmic_efficiency import spec
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
 from target_setting_runs.get_batch_size import \
@@ -11,6 +7,10 @@ from target_setting_runs.get_batch_size import \
 from target_setting_runs.jax_nesterov import create_lr_schedule_fn
 from target_setting_runs.pytorch_submission_base import \
     update_params  # pylint: disable=unused-import
+import torch
+from torch.optim.lr_scheduler import LambdaLR
+
+from algorithmic_efficiency import spec
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -19,7 +19,6 @@ def init_optimizer_state(workload: spec.Workload,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   """Creates a Nesterov optimizer and a learning rate schedule."""
-  del workload
   del model_state
   del rng
 
@@ -35,7 +34,7 @@ def init_optimizer_state(workload: spec.Workload,
   }
 
   # Create learning rate schedule.
-  lr_schedule_fn = create_lr_schedule_fn(hyperparameters)
+  lr_schedule_fn = create_lr_schedule_fn(workload.step_hint, hyperparameters)
 
   # PyTorch's LambdaLR expects the lr_lambda fn to return a factor which will
   # be multiplied with the base lr, so we have to divide by it here.

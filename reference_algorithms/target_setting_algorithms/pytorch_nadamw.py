@@ -3,10 +3,6 @@
 import math
 from typing import List
 
-import torch
-from torch import Tensor
-
-from algorithmic_efficiency import spec
 from target_setting_runs import cosine_warmup
 from target_setting_runs.data_selection import \
     data_selection  # pylint: disable=unused-import
@@ -14,6 +10,10 @@ from target_setting_runs.get_batch_size import \
     get_batch_size  # pylint: disable=unused-import
 from target_setting_runs.pytorch_submission_base import \
     update_params  # pylint: disable=unused-import
+import torch
+from torch import Tensor
+
+from algorithmic_efficiency import spec
 
 
 # Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py
@@ -186,7 +186,6 @@ def init_optimizer_state(workload: spec.Workload,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   """Creates a NAdamW optimizer and a learning rate schedule."""
-  del workload
   del model_state
   del rng
 

@@ -34,7 +34,10 @@ def imagenet_v2_to_torch(batch):
   # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
   new_batch = {}
   for k, v in batch.items():
-    new_v = v[RANK]
+    if USE_PYTORCH_DDP:
+      new_v = v[RANK]
+    else:
+      new_v = v
     if k == 'inputs':
       new_v = np.transpose(new_v, (0, 3, 1, 2))
     dtype = torch.long if k == 'targets' else torch.float

@@ -28,7 +28,7 @@ def _to_host(x):
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._eval_config = models.TransformerConfig(deterministic=True)
 
