@@ -12,8 +12,6 @@ from reference_algorithms.target_setting_algorithms.jax_nesterov import \
 from reference_algorithms.target_setting_algorithms.pytorch_submission_base import \
     update_params  # pylint: disable=unused-import
 
-isort .
-
 from algorithmic_efficiency import spec
 
 
