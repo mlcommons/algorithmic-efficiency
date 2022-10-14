@@ -1,7 +1,6 @@
 import os
 from typing import Sequence, Tuple
 
-from absl import flags
 from absl import logging
 from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
