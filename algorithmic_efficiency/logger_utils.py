@@ -237,40 +237,60 @@ class MetricLogger(object):
                             metrics: dict,
                             global_step: int,
                             preemption_count: int) -> None:
-    if RANK == 0:
-      metrics['global_step'] = global_step
-      metrics['preemption_count'] = preemption_count
+    metrics['global_step'] = global_step
+    metrics['preemption_count'] = preemption_count
 
-      try:
-        with open(self._csv_path, 'r') as csv_file:
-          measurements = pd.read_csv(csv_file)
-          measurements = measurements.append([metrics])
-      except (pd.errors.EmptyDataError, FileNotFoundError) as e:
-        measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
-        if isinstance(e, pd.errors.EmptyDataError):
-          logging.info('Measurements file is empty. Create a new one, starting '
-                       'with metrics from this step.')
+    try:
+      with open(self._csv_path, 'r') as csv_file:
+        measurements = pd.read_csv(csv_file)
+        measurements = measurements.append([metrics])
+    except (pd.errors.EmptyDataError, FileNotFoundError) as e:
+      measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
+      if isinstance(e, pd.errors.EmptyDataError):
+        logging.info('Measurements file is empty. Create a new one, starting '
+                     'with metrics from this step.')
 
-      with open(self._csv_path, 'w') as csv_file:
-        measurements.to_csv(csv_file, index=False)
+    with open(self._csv_path, 'w') as csv_file:
+      measurements.to_csv(csv_file, index=False)
 
-      if self._tb_metric_writer:
-        self._tb_metric_writer.write_scalars(
-            step=int(metrics['global_step']), scalars=metrics)
-        self._tb_metric_writer.flush()
+    if self._tb_metric_writer:
+      self._tb_metric_writer.write_scalars(
+          step=int(metrics['global_step']), scalars=metrics)
+      self._tb_metric_writer.flush()
 
-      if wandb is not None and self.use_wandb:
-        wandb.log(metrics)
+    if wandb is not None and self.use_wandb:
+      wandb.log(metrics)
 
   def finish(self) -> None:
-    if RANK == 0:
-      if wandb is not None and self.use_wandb:
-        wandb.finish()
+    if wandb is not None and self.use_wandb:
+      wandb.finish()
+
+
+class PassThroughMetricLogger(object):
+
+  def __init__(self,
+               csv_path: str = '',
+               events_dir: Optional[str] = None,
+               configs: Optional[flags.FLAGS] = None) -> None:
+    pass
+
+  def append_scalar_metrics(self,
+                            metrics: dict,
+                            global_step: int,
+                            preemption_count: int) -> None:
+    pass
+
+  def finish(self) -> None:
+    pass
 
 
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  metrics_logger = MetricLogger(
-      csv_path=csv_path, events_dir=train_dir, configs=configs)
+  if RANK == 0:
+    metrics_logger = MetricLogger(
+        csv_path=csv_path, events_dir=train_dir, configs=configs)
+  else:
+    metrics_logger = PassThroughMetricLogger(
+        csv_path=csv_path, events_dir=train_dir, configs=configs)
   return metrics_logger
