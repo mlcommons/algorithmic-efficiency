@@ -370,6 +370,16 @@ def train_once(
         global_step=global_step,
         preemption_count=preemption_count)
     metrics_logger.finish()
+    checkpoint_utils.save_checkpoint(
+      framework=FLAGS.framework,
+      optimizer_state=optimizer_state,
+      model_params=model_params,
+      model_state=model_state,
+      train_state=train_state,
+      eval_results=eval_results,
+      global_step=global_step,
+      preemption_count=preemption_count,
+      checkpoint_dir=log_dir)
 
   return train_state['accumulated_submission_time'], metrics
 
