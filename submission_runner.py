@@ -133,7 +133,7 @@ flags.DEFINE_boolean('use_wandb',
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 
 FLAGS = flags.FLAGS
-USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def convert_filepath_to_module(path: str):
@@ -368,6 +368,9 @@ def score_submission_on_workload(workload: spec.Workload,
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
   global_batch_size = submission_module.get_batch_size(workload_name)
+  if global_batch_size % N_GPUS != 0:
+    raise ValueError(
+        'The global batch size has to be divisible by the number of GPUs.')
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
