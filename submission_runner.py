@@ -323,9 +323,8 @@ def train_once(
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
-            logging.warning(
-                f'error: GPU out of memory during eval during step {global_step}, error : {str(e)}'  # pylint: disable=line-too-long
-            )
+            logging.warning('error: GPU out of memory during eval during step '
+                            f'{global_step}, error : {str(e)}')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 

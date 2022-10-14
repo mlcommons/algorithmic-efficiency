@@ -1,8 +1,6 @@
 """ImageNet workload parent class."""
 from typing import Optional
 
-import jax
-
 from algorithmic_efficiency import spec
 
 
