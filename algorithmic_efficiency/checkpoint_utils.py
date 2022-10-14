@@ -150,12 +150,11 @@ def save_checkpoint(framework: str,
 
     if framework == 'jax':
       save_path = os.path.join(checkpoint_dir, 'checkpoint_' + str(global_step))
-      if jax.process_index() == 0:
-        flax_checkpoints.save_checkpoint(
-            checkpoint_dir,
-            target=checkpoint_state,
-            step=global_step,
-            overwrite=True)
+      flax_checkpoints.save_checkpoint(
+          checkpoint_dir,
+          target=checkpoint_state,
+          step=global_step,
+          overwrite=True)
     else:
       save_path = os.path.join(checkpoint_dir, 'checkpoint')
       torch.save(checkpoint_state, save_path)
