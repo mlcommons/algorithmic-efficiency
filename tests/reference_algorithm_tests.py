@@ -6,12 +6,11 @@ iterator because it is not realistic to have all datasets available at testing
 time. For end-to-end tests of submission_runner.py see
 submission_runner_test.py.
 
-# pylint: disable=line-too-long
 Assumes that each reference submission is using the external tuning ruleset and
 that it is defined in:
+# pylint: disable=line-too-long
 "reference_algorithms/development_algorithms/{workload}/{workload}_{framework}/submission.py"
 "reference_algorithms/development_algorithms/{workload}/tuning_search_space.json".
-# pylint: enable=line-too-long
 """
 import copy
 import functools

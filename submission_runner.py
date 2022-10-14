@@ -1,8 +1,8 @@
 r"""Run a submission on a single workload.
 
-# pylint: disable=line-too-long
 Example command:
 
+# pylint: disable=line-too-long
 python3 submission_runner.py \
     --workload=mnist \
     --framework=jax \
@@ -11,8 +11,6 @@ python3 submission_runner.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
     --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
-
-# pylint: enable=line-too-long
 """
 import importlib
 import inspect
