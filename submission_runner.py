@@ -505,6 +505,7 @@ def main(_):
     experiment_dir_name = os.path.join(FLAGS.experiment_dir,
                                        FLAGS.experiment_name,
                                        workload_dir_name)
+  experiment_dir_name = os.path.expanduser(experiment_dir_name)
   logging.info('Creating experiment directory at %s', experiment_dir_name)
   logger_utils.makedir(experiment_dir_name)
 
