@@ -39,6 +39,7 @@ def maybe_restore_checkpoint(framework: str,
     opt_state, opt_update_fn = optimizer_state, None
 
   uninitialized_global_step = -1
+  uninitialized_preemption_count = -1
   checkpoint_state = dict(
       model_params=model_params,
       optimizer_state=opt_state,
@@ -46,7 +47,7 @@ def maybe_restore_checkpoint(framework: str,
       train_state=train_state,
       eval_results=None,
       global_step=uninitialized_global_step,
-      preemption_count=preemption_count)
+      preemption_count=uninitialized_preemption_count)
 
   if framework == 'jax':
     latest_ckpt = flax_checkpoints.restore_checkpoint(
@@ -103,7 +104,7 @@ def maybe_restore_checkpoint(framework: str,
           checkpoint_state['train_state'],
           list(checkpoint_state['eval_results']),
           checkpoint_state['global_step'],
-          preemption_count + 1)
+          checkpoint_state['preemption_count'] + 1)
 
 
 def replicate_checkpoint(latest: dict,
