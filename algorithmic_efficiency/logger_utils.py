@@ -270,8 +270,7 @@ class MetricLogger(object):
 
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
-  if RANK == 0:
-    csv_path = os.path.join(train_dir, 'measurements.csv')
-    metrics_logger = MetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
-    return metrics_logger
+  csv_path = os.path.join(train_dir, 'measurements.csv')
+  metrics_logger = MetricLogger(
+      csv_path=csv_path, events_dir=train_dir, configs=configs)
+  return metrics_logger
