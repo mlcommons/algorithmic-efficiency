@@ -7,15 +7,15 @@ from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import optax
-from target_setting_runs import cosine_warmup
-from target_setting_runs.data_selection import \
-    data_selection  # pylint: disable=unused-import
-from target_setting_runs.get_batch_size import \
-    get_batch_size  # pylint: disable=unused-import
-from target_setting_runs.jax_submission_base import \
-    update_params  # pylint: disable=unused-import
 
 from algorithmic_efficiency import spec
+from reference_algorithms.target_setting_algorithms import cosine_warmup
+from reference_algorithms.target_setting_algorithms.data_selection import \
+    data_selection  # pylint: disable=unused-import
+from reference_algorithms.target_setting_algorithms.get_batch_size import \
+    get_batch_size  # pylint: disable=unused-import
+from reference_algorithms.target_setting_algorithms.jax_submission_base import \
+    update_params  # pylint: disable=unused-import
 
 
 # Forked from
