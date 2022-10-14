@@ -51,7 +51,8 @@ flags.DEFINE_boolean(
     False,
     'Run all workloads instead of using --workload and --framework.')
 FLAGS = flags.FLAGS
-USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, _ = pytorch_utils.pytorch_setup()
+USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
+N_GPUS = max(N_GPUS, jax.local_device_count())
 
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
@@ -155,8 +156,7 @@ def _make_one_batch_workload(workload_class,
 
       np.random.seed(42)
       if framework == 'jax' or USE_PYTORCH_DDP:
-        num_devices = jax.local_device_count()
-        batch_shape = (num_devices, global_batch_size // num_devices)
+        batch_shape = (N_GPUS, global_batch_size // N_GPUS)
       else:
         batch_shape = (global_batch_size,)
 
@@ -294,7 +294,7 @@ def _test_submission(workload_name,
   if FLAGS.all:
     if FLAGS.global_batch_size > 0:
       raise ValueError('Cannot set --global_batch_size and --all.')
-    global_batch_size = 2 * jax.local_device_count()
+    global_batch_size = 2 * N_GPUS
   else:
     global_batch_size = FLAGS.global_batch_size
     if FLAGS.global_batch_size < 0:

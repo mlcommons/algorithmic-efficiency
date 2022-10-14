@@ -8,6 +8,7 @@ import jax
 import jraph
 import numpy as np
 import tensorflow_datasets as tfds
+import torch
 
 AVG_NODES_PER_GRAPH = 26
 AVG_EDGES_PER_GRAPH = 56
@@ -105,7 +106,7 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
     smaller batches.
   """
   if not num_shards:
-    num_shards = jax.local_device_count()
+    num_shards = max(torch.cuda.device_count(), jax.local_device_count())
 
   # We will construct num_shards smaller batches and then put them together.
   per_device_batch_size = global_batch_size // num_shards
