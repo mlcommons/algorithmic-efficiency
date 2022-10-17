@@ -6,7 +6,7 @@ https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 
 import collections
 from typing import Any, Callable, List, Optional, Type, Union
-from algorithmic_efficiency import init_utils
+
 import torch
 from torch import nn
 from torch import Tensor
@@ -151,7 +151,7 @@ class ResNet(nn.Module):
                block: Type[Union[BasicBlock, Bottleneck]],
                layers: List[int],
                num_classes: int = 1000,
-               zero_init_residual: bool = True,
+               zero_init_residual: bool = False,
                groups: int = 1,
                width_per_group: int = 64,
                replace_stride_with_dilation: Optional[List[bool]] = None,
@@ -191,10 +191,6 @@ class ResNet(nn.Module):
     for m in self.modules():
       if isinstance(m, nn.Conv2d):
         nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-        # if m.bias is not None:
-        #   nn.init.constant_(m.bias, 0)
-      # elif isinstance(m, nn.Linear):
-      #   init_utils.pytorch_default_init(m)
       elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)

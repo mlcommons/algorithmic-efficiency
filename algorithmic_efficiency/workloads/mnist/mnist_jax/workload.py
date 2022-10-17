@@ -33,6 +33,19 @@ class _Model(nn.Module):
     return x
 
 
+def _param_types(param_tree):
+  param_types_dict = {}
+  for name, value in param_tree.items():
+    if isinstance(value, dict):
+      param_types_dict[name] = _param_types(value)
+    else:
+      if 'bias' in name:
+        param_types_dict[name] = spec.ParameterType.BIAS
+      else:
+        param_types_dict[name] = spec.ParameterType.WEIGHT
+  return param_types_dict
+
+
 class MnistWorkload(BaseMnistWorkload):
 
   def _normalize(self, image):

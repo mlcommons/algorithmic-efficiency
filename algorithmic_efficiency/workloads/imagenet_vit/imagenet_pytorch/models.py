@@ -1,16 +1,16 @@
 """A refactored and simplified ViT.
 
-Note: Adapted from
+Adapted from:
 https://github.com/huggingface/transformers/tree/main/src/transformers/models/vit
 https://github.com/lucidrains/vit-pytorch
 """
 
 import math
 from typing import Any, Optional, Tuple, Union
-from algorithmic_efficiency import spec
-from algorithmic_efficiency import init_utils
+
 import torch
 from torch import nn
+from torch import Tensor
 import torch.nn.functional as F
 
 
@@ -30,6 +30,18 @@ def posemb_sincos_2d(patches, temperature=10_000.):
   return pe[None, :, :]
 
 
+def init_weights(module) -> None:
+  if isinstance(module, (nn.Linear, nn.Conv2d)):
+    # Slightly different from the TF version which uses truncated_normal
+    # for initialization, cf https://github.com/pytorch/pytorch/pull/5617
+    module.weight.data.normal_(mean=0.0, std=0.02)
+    if module.bias is not None:
+      module.bias.data.zero_()
+  elif isinstance(module, nn.LayerNorm):
+    module.bias.data.zero_()
+    module.weight.data.fill_(1.0)
+
+
 class MlpBlock(nn.Module):
   """Transformer MLP / feed-forward block."""
 
@@ -37,28 +49,28 @@ class MlpBlock(nn.Module):
       self,
       width: int,
       mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
-      dropout_rate: float = 0.0) -> None:
+      dropout: float = 0.0) -> None:
     super().__init__()
 
     self.width = width
     self.mlp_dim = mlp_dim or 4 * width
-    self.dropout_rate = dropout_rate
+    self.dropout = dropout
 
     self.net = nn.Sequential(
         nn.Linear(self.width, self.mlp_dim),
         nn.GELU(),
-        nn.Dropout(self.dropout_rate),
+        nn.Dropout(self.dropout),
         nn.Linear(self.mlp_dim, self.width))
-    self.reset_parameters()
+    self._init_weights()
 
-  def reset_parameters(self) -> None:
+  def _init_weights(self) -> None:
     for module in self.modules():
       if isinstance(module, nn.Linear):
-        nn.init.xavier_uniform_(module.weight)
+        torch.nn.init.xavier_uniform_(module.weight)
         if module.bias is not None:
           module.bias.data.normal_(std=1e-6)
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: Tensor) -> Tensor:
     return self.net(x)
 
 
@@ -81,26 +93,26 @@ class SelfAttention(nn.Module):
     self.all_head_dim = self.num_heads * self.head_dim
 
     self.query = nn.Linear(self.width, self.all_head_dim)
+    torch.nn.init.xavier_uniform_(self.query.weight)
+    self.query.bias.data.zero_()
     self.key = nn.Linear(self.width, self.all_head_dim)
+    torch.nn.init.xavier_uniform_(self.key.weight)
+    self.key.bias.data.zero_()
     self.value = nn.Linear(self.width, self.all_head_dim)
+    torch.nn.init.xavier_uniform_(self.value.weight)
+    self.value.bias.data.zero_()
 
     self.dropout = nn.Dropout(dropout)
     self.out = nn.Linear(self.width, self.width)
-    self.reset_parameters()
+    torch.nn.init.xavier_uniform_(self.out.weight)
+    self.out.bias.data.zero_()
 
-  def reset_parameters(self) -> None:
-    for module in self.modules():
-      if isinstance(module, nn.Linear):
-        nn.init.xavier_uniform_(module.weight)
-        if module.bias is not None:
-          nn.init.constant_(module.bias, 0.)
-
-  def transpose_for_scores(self, x: spec.Tensor) -> spec.Tensor:
+  def transpose_for_scores(self, x: Tensor) -> Tensor:
     new_x_shape = x.size()[:-1] + (self.num_heads, self.head_dim)
     x = x.view(new_x_shape)
     return x.permute(0, 2, 1, 3)
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: Tensor) -> Tensor:
     mixed_query_layer = self.query(x)
 
     key_layer = self.transpose_for_scores(self.key(x))
@@ -128,7 +140,7 @@ class Encoder1DBlock(nn.Module):
                width: int,
                mlp_dim: Optional[int] = None,
                num_heads: int = 12,
-               dropout_rate: float = 0.0) -> None:
+               dropout: float = 0.0) -> None:
     super().__init__()
 
     self.width = width
@@ -136,22 +148,25 @@ class Encoder1DBlock(nn.Module):
     self.num_heads = num_heads
 
     self.layer_norm0 = nn.LayerNorm(self.width)
+    init_weights(self.layer_norm0)
     self.self_attention1 = SelfAttention(self.width, self.num_heads)
-    self.dropout = nn.Dropout(dropout_rate)
+    self.dropout = nn.Dropout(dropout)
     self.layer_norm2 = nn.LayerNorm(self.width)
-    self.mlp3 = MlpBlock(self.width, self.mlp_dim, dropout_rate)
+    init_weights(self.layer_norm2)
+    self.mlp3 = MlpBlock(self.width, self.mlp_dim, dropout)
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: Tensor) -> Tuple[Tensor, dict]:
+    out = {}
     y = self.layer_norm0(x)
-    y = self.self_attention1(y)
+    y = out['sa'] = self.self_attention1(y)
     y = self.dropout(y)
-    x = x + y
+    x = out['+sa'] = x + y
 
     y = self.layer_norm2(x)
-    y = self.mlp3(y)
+    y = out['mlp'] = self.mlp3(y)
     y = self.dropout(y)
-    x = x + y
-    return x
+    x = out['+mlp'] = x + y
+    return x, out
 
 
 class Encoder(nn.Module):
@@ -175,11 +190,17 @@ class Encoder(nn.Module):
         for _ in range(depth)
     ])
     self.encoder_norm = nn.LayerNorm(self.width)
+    init_weights(self.encoder_norm)
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: Tensor) -> Tuple[Tensor, dict]:
+    out = {}
+
+    # Input Encoder
     for lyr, block in enumerate(self.net):
-      x = block(x)
-    return self.encoder_norm(x)
+      x, out[f'block{lyr:02d}'] = block(x)
+    out['pre_ln'] = x  # Alias for last block, but without the number in it.
+
+    return self.encoder_norm(x), out
 
 
 class ViT(nn.Module):
@@ -221,15 +242,16 @@ class ViT(nn.Module):
                   (self.image_width // self.patch_size[1])
     if self.posemb == 'learn':
       self.pos_embed = nn.Parameter(torch.randn(1, num_patches, width))
-      nn.init.normal_(self.pos_embed.data, std=1 / math.sqrt(self.width))
+      self.pos_embed.data.normal_(std=1 / math.sqrt(self.width))
 
     if self.pool_type == 'tok':
       self.cls = nn.Parameter(torch.randn(1, 1, width)).type(self.dtype)
-      nn.init.constant_(self.cls.data, 0.)
+      self.cls.data.zero_()
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size  # pylint: disable=g-bool-id-comparison
       self.pre_logits = nn.Linear(self.width, rep_size)
+      init_weights(self.pre_logits)
 
     self.embed = nn.Conv2d(
         self.channels,
@@ -237,6 +259,7 @@ class ViT(nn.Module):
         self.patch_size,
         stride=self.patch_size,
         padding='valid')
+    init_weights(self.embed)
     self.dropout = nn.Dropout(p=dropout)
 
     self.encoder = Encoder(
@@ -248,23 +271,11 @@ class ViT(nn.Module):
 
     if self.num_classes:
       self.head = nn.Linear(self.width, self.num_classes)
+      init_weights(self.head)
     if self.head_zeroinit:
       self.head.weight.data.zero_()
 
-  def reset_parameters(self):
-    init_utils.pytorch_default_init(self.embed)
-
-    if self.rep_size:
-      init_utils.pytorch_default_init(self.pre_logits)
-
-    if self.num_classes:
-      if self.head_zeroinit:
-        nn.init.constant_(self.head.weight.data, 0.)
-        nn.init.constant_(self.head.bias.data, 0.)
-      else:
-        init_utils.pytorch_default_init(self.pre_logits)
-
-  def get_posemb(self, x: spec.Tensor) -> spec.Tensor:
+  def get_posemb(self, x: Tensor) -> Tensor:
     if self.posemb == 'learn':
       return self.pos_embed.type(self.dtype)
     elif self.posemb == 'sincos2d':
@@ -272,9 +283,11 @@ class ViT(nn.Module):
     else:
       raise ValueError(f'Unknown posemb type: {self.posemb}')
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: Tensor) -> Tensor:
+    out = {}
+
     # Patch extraction
-    x = self.embed(x)
+    x = out['stem'] = self.embed(x)
 
     # Add posemb before adding extra token.
     n, c, h, w = x.shape
@@ -282,25 +295,37 @@ class ViT(nn.Module):
 
     # Reshape to match Jax's ViT implementation.
     x = torch.transpose(torch.reshape(x, (n, c, h * w)), 1, 2)
-    x = x + pes
+    x = out['with_posemb'] = x + pes
 
     if self.pool_type == 'tok':
       x = torch.cat((torch.tile(self.cls, [n, 1, 1]), x), dim=1)
 
+    n, l, c = x.shape  # pylint: disable=unused-variable
     x = self.dropout(x)
-    x = self.encoder(x)
+
+    x, out['encoder'] = self.encoder(x)
+    encoded = out['encoded'] = x
+
     if self.pool_type == 'gap':
-      x = torch.mean(x, dim=1)
+      x = out['head_input'] = torch.mean(x, dim=1)
     elif self.pool_type == '0':
-      x = x[:, 0]
+      x = out['head_input'] = x[:, 0]
     elif self.pool_type == 'tok':
-      x = x[:, 0]
+      x = out['head_input'] = x[:, 0]
+      encoded = encoded[:, 1:]
     else:
       raise ValueError(f'Unknown pool type: "{self.pool_type}"')
 
+    x_2d = torch.reshape(encoded, [n, h, w, -1])
+
     if self.rep_size:
+      x_2d = torch.tanh(self.pre_logits(x_2d))
       x = torch.tanh(self.pre_logits(x))
 
+    out['pre_logits_2d'] = x_2d
+    out['pre_logits'] = x
+
     if self.num_classes:
-      x = self.head(x)
+      x_2d = out['logits_2d'] = self.head(x_2d)
+      x = out['logits'] = self.head(x)
     return x

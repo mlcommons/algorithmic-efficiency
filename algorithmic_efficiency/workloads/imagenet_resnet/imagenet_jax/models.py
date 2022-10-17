@@ -6,7 +6,7 @@ https://github.com/google/flax/blob/main/examples/imagenet/models.py
 
 import functools
 from typing import Any, Callable, Tuple
-from algorithmic_efficiency.init_utils import jax_kaiming_non_trunc_normal
+
 from flax import linen as nn
 import jax.numpy as jnp
 
@@ -89,7 +89,7 @@ class ResNet(nn.Module):
 
     x = conv(
         self.num_filters, (7, 7), (2, 2),
-        # padding=[(3, 3), (3, 3)],
+        padding=[(3, 3), (3, 3)],
         name='Conv_init')(
             x)
     x = norm(name='BatchNorm_init')(x)

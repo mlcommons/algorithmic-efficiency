@@ -26,7 +26,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
-    model_kwargs = decode_variant('S/16')
+    model_kwargs = decode_variant('B/32')
     model = models.ViT(num_classes=1000, **model_kwargs)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
@@ -39,7 +39,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     return model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key in ['head.weight', 'head.bias']
+    return param_key in ['pre_logits.weight', 'pre_logits.bias']
 
   def model_fn(
       self,

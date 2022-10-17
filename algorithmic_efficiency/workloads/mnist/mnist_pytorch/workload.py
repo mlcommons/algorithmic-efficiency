@@ -10,7 +10,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
-from algorithmic_efficiency import init_utils
+
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -33,14 +33,8 @@ class _Model(nn.Module):
                      ('layer1_sig', torch.nn.Sigmoid()),
                      ('layer2',
                       torch.nn.Linear(num_hidden, num_classes, bias=True))]))
-    self.reset_parameters()
 
-  def reset_parameters(self):
-    for module in self.net.modules():
-      if isinstance(module, nn.Linear):
-        init_utils.pytorch_default_init(module)
-
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: spec.Tensor):
     x = x.view(x.size()[0], -1)
     return self.net(x)
 
