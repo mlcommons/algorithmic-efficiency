@@ -36,6 +36,10 @@ class BaseFastMRIWorkload(spec.Workload):
     return 3581
 
   @property
+  def eval_batch_size(self):
+    return 8
+
+  @property
   def train_mean(self):
     return [0., 0., 0.]
 

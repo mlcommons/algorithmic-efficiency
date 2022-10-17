@@ -55,6 +55,10 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
     return 0.77171
 
   @property
+  def eval_batch_size(self):
+    return 2048
+
+  @property
   def max_allowed_runtime_sec(self):
     return 111600  # 31 hours
 
