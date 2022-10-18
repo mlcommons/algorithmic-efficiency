@@ -196,7 +196,7 @@ def main(_):
   num_decompression_threads = FLAGS.num_decompression_threads
   if ';' in dataset_dir or ' ' in dataset_dir or '&' in dataset_dir:
     raise ValueError(f'Invalid dataset_dir: {dataset_dir}.')
-  dataset_dir = os.path.abspath(dataset_dir)
+  dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
   logging.info('Downloading data to %s...', dataset_dir)
   if FLAGS.all or FLAGS.criteo:
     logging.info('Downloading criteo...')
