@@ -195,6 +195,7 @@ def train_once(
     hyperparameters: Optional[spec.Hyperparameters],
     rng: spec.RandomState,
     profiler: Profiler,
+    max_global_steps: int = None,
     log_dir: Optional[str] = None,
     tokenizer_vocab_path: Optional[str] = None
 ) -> Tuple[spec.Timing, spec.Steps]:
@@ -455,9 +456,12 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler,
+                                     hyperparameters, rng,
+                                     profiler,
+                                     max_global_steps,
                                      tuning_dir_name,
-                                     tokenizer_vocab_path)
+                                     tokenizer_vocab_path,
+                                     max_global_steps)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
