@@ -9,7 +9,6 @@ from typing import Optional, Sequence, Union
 
 from flax import linen as nn
 import jax.numpy as jnp
-import numpy as np
 
 from algorithmic_efficiency import spec
 
