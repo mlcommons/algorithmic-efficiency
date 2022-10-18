@@ -10,8 +10,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
-from algorithmic_efficiency import init_utils
+
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup

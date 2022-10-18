@@ -1,12 +1,13 @@
 # Ported to PyTorch from
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
 from typing import Callable, Optional, Tuple
-from algorithmic_efficiency import init_utils
 
 import jax.tree_util as tree
 from jraph import GraphsTuple
 import torch
 from torch import nn
+
+from algorithmic_efficiency import init_utils
 
 
 def _make_mlp(in_dim, hidden_dims, dropout_rate):
