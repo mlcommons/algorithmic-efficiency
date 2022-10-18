@@ -105,23 +105,13 @@ class ViT(nn.Module):
   depth: int = 12
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
   num_heads: int = 12
-  posemb: str = 'sincos2d'
   rep_size: Union[int, bool] = True
   dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
-  pool_type: str = 'gap'  # Can also be 'tok'
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
 
-  def get_posemb(self, emb_type, seqshape, width, name, dtype=jnp.float32):
-    if emb_type == 'learn':
-      return self.param(name,
-                        nn.initializers.normal(stddev=1 / np.sqrt(width)),
-                        (1, np.prod(seqshape), width),
-                        dtype)
-    elif emb_type == 'sincos2d':
-      return posemb_sincos_2d(*seqshape, width, dtype=dtype)
-    else:
-      raise ValueError(f'Unknown posemb type: {emb_type}')
+  def get_posemb(self, seqshape, width, dtype=jnp.float32):
+    return posemb_sincos_2d(*seqshape, width, dtype=dtype)
 
   @nn.compact
   def __call__(self, x: spec.Tensor, *, train: bool = False) -> spec.Tensor:
@@ -138,11 +128,7 @@ class ViT(nn.Module):
     x = jnp.reshape(x, [n, h * w, c])
 
     # Add posemb before adding extra token.
-    x = x + self.get_posemb(self.posemb, (h, w), c, 'pos_embedding', x.dtype)
-
-    if self.pool_type == 'tok':
-      cls = self.param('cls', nn.initializers.zeros, (1, 1, c), x.dtype)
-      x = jnp.concatenate([jnp.tile(cls, [n, 1, 1]), x], axis=1)
+    x = x + self.get_posemb((h, w), c, x.dtype)
 
     dropout_rate = self.dropout_rate
     if dropout_rate is None:
@@ -157,14 +143,7 @@ class ViT(nn.Module):
         name='Transformer')(
             x, train=not train)
 
-    if self.pool_type == 'gap':
-      x = jnp.mean(x, axis=1)
-    elif self.pool_type == '0':
-      x = x[:, 0]
-    elif self.pool_type == 'tok':
-      x = x[:, 0]
-    else:
-      raise ValueError(f'Unknown pool type: "{self.pool_type}"')
+    x = jnp.mean(x, axis=1)
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size  # pylint: disable=g-bool-id-comparison

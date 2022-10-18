@@ -199,10 +199,8 @@ class ViT(nn.Module):
       depth: int = 12,
       mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
       num_heads: int = 12,
-      posemb: str = 'sincos2d',
       rep_size: Union[int, bool] = True,
       dropout_rate: float = 0.0,
-      pool_type: str = 'gap',  # Can also be 'tok'
       head_zeroinit: bool = True,
       dtype: Any = torch.float32) -> None:
     super().__init__()
@@ -213,21 +211,9 @@ class ViT(nn.Module):
     self.depth = depth
     self.mlp_dim = mlp_dim
     self.num_heads = num_heads
-    self.posemb = posemb
     self.rep_size = rep_size
-    self.pool_type = pool_type
     self.head_zeroinit = head_zeroinit
     self.dtype = dtype
-
-    num_patches = (self.image_height // self.patch_size[0]) * \
-                  (self.image_width // self.patch_size[1])
-    if self.posemb == 'learn':
-      self.pos_embed = nn.Parameter(torch.randn(1, num_patches, width))
-      nn.init.normal_(self.pos_embed.data, std=1 / math.sqrt(self.width))
-
-    if self.pool_type == 'tok':
-      self.cls = nn.Parameter(torch.randn(1, 1, width)).type(self.dtype)
-      nn.init.constant_(self.cls.data, 0.)
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size  # pylint: disable=g-bool-id-comparison
@@ -268,12 +254,7 @@ class ViT(nn.Module):
         init_utils.pytorch_default_init(self.head)
 
   def get_posemb(self, x: spec.Tensor) -> spec.Tensor:
-    if self.posemb == 'learn':
-      return self.pos_embed.type(self.dtype)
-    elif self.posemb == 'sincos2d':
-      return posemb_sincos_2d(x).type(self.dtype)
-    else:
-      raise ValueError(f'Unknown posemb type: {self.posemb}')
+    return posemb_sincos_2d(x).type(self.dtype)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
     # Patch extraction
@@ -287,19 +268,9 @@ class ViT(nn.Module):
     x = torch.transpose(torch.reshape(x, (n, c, h * w)), 1, 2)
     x = x + pes
 
-    if self.pool_type == 'tok':
-      x = torch.cat((torch.tile(self.cls, [n, 1, 1]), x), dim=1)
-
     x = self.dropout(x)
     x = self.encoder(x)
-    if self.pool_type == 'gap':
-      x = torch.mean(x, dim=1)
-    elif self.pool_type == '0':
-      x = x[:, 0]
-    elif self.pool_type == 'tok':
-      x = x[:, 0]
-    else:
-      raise ValueError(f'Unknown pool type: "{self.pool_type}"')
+    x = torch.mean(x, dim=1)
 
     if self.rep_size:
       x = torch.tanh(self.pre_logits(x))
