@@ -201,7 +201,7 @@ class ViT(nn.Module):
       num_heads: int = 12,
       posemb: str = 'sincos2d',
       rep_size: Union[int, bool] = True,
-      dropout: float = 0.0,
+      dropout_rate: float = 0.0,
       pool_type: str = 'gap',  # Can also be 'tok'
       head_zeroinit: bool = True,
       dtype: Any = torch.float32) -> None:
@@ -239,14 +239,14 @@ class ViT(nn.Module):
         self.patch_size,
         stride=self.patch_size,
         padding='valid')
-    self.dropout = nn.Dropout(p=dropout)
+    self.dropout = nn.Dropout(p=dropout_rate)
 
     self.encoder = Encoder(
         depth=self.depth,
         width=self.width,
         mlp_dim=self.mlp_dim,
         num_heads=self.num_heads,
-        dropout=dropout)
+        dropout_rate=dropout_rate)
 
     if self.num_classes:
       self.head = nn.Linear(self.width, self.num_classes)
