@@ -253,6 +253,8 @@ class ViT(nn.Module):
     if self.head_zeroinit:
       self.head.weight.data.zero_()
 
+    self.reset_parameters()
+
   def reset_parameters(self):
     init_utils.pytorch_default_init(self.embed)
 
