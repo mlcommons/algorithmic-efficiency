@@ -186,7 +186,8 @@ def main():
   for subset in subset_list:
     print('processing split = ', subset)
     os.makedirs(save_dir + '/' + subset, exist_ok=True)
-    example_ids, num_entries = preprocess_data(f'{data_dir}/{subset}', tokenizer, subset)  # pylint: disable=line-too-long
+    example_ids, num_entries = preprocess_data(
+        f'{data_dir}/{subset}', tokenizer, subset)
 
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('preprocessed dataframe final count not equal to '

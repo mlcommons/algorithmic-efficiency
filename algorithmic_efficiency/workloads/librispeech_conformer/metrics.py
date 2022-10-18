@@ -80,7 +80,7 @@ def edit_distance(source, target):
   return distance[num_source_words][num_target_words]
 
 
-def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):  # pylint: disable=line-too-long
+def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):
   word_errors = 0.0
   num_words = 0.0
 
