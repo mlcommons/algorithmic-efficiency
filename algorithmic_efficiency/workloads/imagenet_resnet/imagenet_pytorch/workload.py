@@ -34,7 +34,10 @@ def imagenet_v2_to_torch(batch):
   # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
   new_batch = {}
   for k, v in batch.items():
-    new_v = v[RANK]
+    if USE_PYTORCH_DDP:
+      new_v = v[RANK]
+    else:
+      new_v = v
     if k == 'inputs':
       new_v = np.transpose(new_v, (0, 3, 1, 2))
     dtype = torch.long if k == 'targets' else torch.float
@@ -43,13 +46,6 @@ def imagenet_v2_to_torch(batch):
 
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
-
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -135,9 +131,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = resnet50()
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -146,6 +141,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['fc.weight', 'fc.bias']
 
   def _update_batch_norm(self, model, update_batch_norm):
     bn_layers = (nn.BatchNorm1d,
@@ -197,28 +195,22 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return logits_batch, None
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-
-    activation_fn = {
-        spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
-        spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
-        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z
-    }
-    return activation_fn[loss_type](logits_batch)
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    return F.cross_entropy(
+    losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
@@ -243,7 +235,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if split not in self._eval_iters:
       is_test = split == 'test'
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split,
           data_dir,

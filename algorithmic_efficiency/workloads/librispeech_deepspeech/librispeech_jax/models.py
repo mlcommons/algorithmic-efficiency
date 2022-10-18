@@ -51,8 +51,10 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
-  input_dropout_rate: float = 0.1
-  feed_forward_dropout_rate: float = 0.1
+  # If None, defaults to 0.1.
+  input_dropout_rate: Optional[float] = 0.1
+  # If None, defaults to 0.1.
+  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -99,8 +101,12 @@ class Subsample(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(
             outputs)
 
+    if config.input_dropout_rate is None:
+      input_dropout_rate = 0.1
+    else:
+      input_dropout_rate = config.input_dropout_rate
     outputs = nn.Dropout(
-        rate=config.input_dropout_rate, deterministic=not train)(
+        rate=input_dropout_rate, deterministic=not train)(
             outputs)
 
     return outputs, output_paddings
@@ -188,7 +194,11 @@ class FeedForwardModule(nn.Module):
     inputs = nn.relu(inputs)
     inputs *= padding_mask
 
-    inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
+    if config.feed_forward_dropout_rate is None:
+      feed_forward_dropout_rate = 0.1
+    else:
+      feed_forward_dropout_rate = config.feed_forward_dropout_rate
+    inputs = nn.Dropout(rate=feed_forward_dropout_rate)(
         inputs, deterministic=not train)
 
     return inputs

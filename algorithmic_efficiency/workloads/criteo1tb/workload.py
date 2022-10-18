@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from absl import flags
 import jax
@@ -13,22 +13,18 @@ FLAGS = flags.FLAGS
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
 
-  def __init__(self):
-    self.vocab_sizes = tuple([1024 * 128] * 26)
-    self.num_dense_features = 13
-    self.mlp_bottom_dims = (128, 128)
-    self.mlp_top_dims = (256, 128, 1)
-    self.embed_dim = 64
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
+  vocab_sizes: Tuple[int] = tuple([1024 * 128] * 26)
+  num_dense_features: int = 13
+  mlp_bottom_dims: Tuple[int, int] = (128, 128)
+  mlp_top_dims: Tuple[int, int, int] = (256, 128, 1)
+  embed_dim: int = 64
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.target_value
 
   @property
   def target_value(self):
-    return 0.1255
+    return 0.124225
 
   @property
   def loss_type(self):
@@ -64,21 +60,15 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 10 * 60
+    return 24 * 60
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
-
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     del data_rng
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
@@ -92,19 +82,10 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     for batch in iter(ds):
       yield batch
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
   @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 4000
 
   def _eval_model_on_split(self,
                            split: str,
@@ -120,7 +101,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           rng,
           split,
           data_dir,

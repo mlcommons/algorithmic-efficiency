@@ -19,21 +19,17 @@ from algorithmic_efficiency.workloads.fastmri.workload import \
 
 class FastMRIWorkload(BaseFastMRIWorkload):
 
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return self._param_types
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     fake_batch = jnp.zeros((13, 320, 320))
     variables = jax.jit(models.UNet().init)({'params': rng}, fake_batch)
     params = variables['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     params = jax_utils.replicate(params)
     return params, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Conv_0'
 
   def model_fn(
       self,
@@ -57,24 +53,21 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         train=train)
     return logits, None
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-
-    activation_fn = {
-        spec.LossType.SOFTMAX_CROSS_ENTROPY: jax.nn.softmax,
-        spec.LossType.SIGMOID_CROSS_ENTROPY: jax.nn.sigmoid,
-        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z,
-        spec.LossType.MEAN_ABSOLUTE_ERROR: lambda z: z
-    }
-    return activation_fn[loss_type](logits_batch)
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self, label_batch: spec.Tensor,
-              outputs_batch: spec.Tensor) -> spec.Tensor:  # differentiable
-    return jnp.abs(outputs_batch -
-                   label_batch).mean(axis=tuple(range(1, outputs_batch.ndim)))
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+    del label_smoothing
+    losses = jnp.mean(
+        jnp.abs(logits_batch - label_batch),
+        axis=tuple(range(1, logits_batch.ndim)))
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   @functools.partial(
       jax.pmap,
@@ -123,7 +116,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split,
           data_dir,

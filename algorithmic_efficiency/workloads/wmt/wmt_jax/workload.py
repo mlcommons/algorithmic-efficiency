@@ -28,7 +28,7 @@ def _to_host(x):
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._eval_config = models.TransformerConfig(deterministic=True)
 
@@ -193,9 +193,12 @@ class WmtWorkload(BaseWmtWorkload):
         jnp.ones(target_shape, jnp.float32))
 
     initial_params = initial_variables['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      initial_params)
+    self._param_shapes = param_utils.jax_param_shapes(initial_params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'shared_embedding'
 
   def model_fn(
       self,
@@ -236,13 +239,3 @@ class WmtWorkload(BaseWmtWorkload):
         targets_segmentation=targets_segmentations,
         rngs={'dropout': rng})
     return logits_batch, None
-
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return self._param_types

@@ -28,12 +28,12 @@ this command will generate `spm_model.vocab` file in the folder it's run
 
 > mkdir work_dir
 > cd work_dir
-> python3 ../prepare_data.py --data_dir=../data_dir/LibriSpeech --tokenizer_vocab_path=../spm_model.vocab 
+> python3 ../prepare_data.py --data_dir=../data_dir/LibriSpeech --tokenizer_vocab_path=../spm_model.vocab
 
 the preprocessing script will generate `.npy` files for audio data, `features.csv` which have path to saved audio `.npy`
-and `trans.csv` which has path to features.csv and transcription data, individual data loaders 
+and `trans.csv` which has path to features.csv and transcription data, individual data loaders
 
-## Run workload 
+## Run workload
 
 > cd algorithmic_efficiency
-> python3 submission_runner.py     --framework=jax     --workload=librispeech_conformer     --submission_path=reference_submissions/librispeech_conformer/librispeech_jax/submission.py     --tuning_search_space=reference_submissions/librispeech_conformer/tuning_search_space.json --data_dir=algorithmic_efficiency/workloads/librispeech_conformer/work_dir/data --num_tuning_trials=1 --summary_log_dir=reference_submissions/librispeech_conformer/librispeech_jax/data_512_4_256_full_train_set/ --tokenizer_vocab_path=/home/smedapati_google_com/algorithmic-efficiency/algorithmic_efficiency/workloads/librispeech_conformer/spm_model.vocab 
+> python3 submission_runner.py     --framework=jax     --workload=librispeech_conformer     --submission_path=reference_algorithms/development_algorithms/librispeech_conformer/librispeech_jax/submission.py     --tuning_search_space=reference_algorithms/development_algorithms/librispeech_conformer/tuning_search_space.json --data_dir=algorithmic_efficiency/workloads/librispeech_conformer/work_dir/data --num_tuning_trials=1 --summary_log_dir=reference_algorithms/development_algorithms/librispeech_conformer/librispeech_jax/data_512_4_256_full_train_set/ --tokenizer_vocab_path=/home/smedapati_google_com/algorithmic-efficiency/algorithmic_efficiency/workloads/librispeech_conformer/spm_model.vocab

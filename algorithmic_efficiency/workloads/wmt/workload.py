@@ -21,19 +21,18 @@ FLAGS = flags.FLAGS
 class BaseWmtWorkload(spec.Workload):
   """A WMT workload."""
 
-  def __init__(self):
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
+  _vocab_size: int = 32000
+
+  def __init__(self) -> None:
+    super().__init__()
     self._tokenizer = None
-    self._vocab_size = 32000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/bleu'] > self.target_value
 
   @property
   def target_value(self):
-    return 25
+    return 30.879  # TODO(namanagarwal): This will edited again soon.
 
   @property
   def loss_type(self):
@@ -51,12 +50,13 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    # wmt14_translate/de-en 'validation' split size
+    # wmt14_translate/de-en 'validation' split size.
     return 3000
 
   @property
   def num_test_examples(self):
-    return None
+    # wmt14_translate/de-en 'test' split size.
+    return 3003
 
   @property
   def train_mean(self):
@@ -72,15 +72,20 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 2400
+    return 14 * 60
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 100_000
+
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     is_training = split == 'train'
     if split == 'eval_train':
       # Without the '+1' only `num_eval_train_examples-1` examples are used
@@ -98,7 +103,7 @@ class BaseWmtWorkload(spec.Workload):
         repeat_final_dataset=repeat_final_dataset)
 
     # Separate function is necessary because the code above has to be executed
-    # when build_input_queue is called (not when next() is first called on it).
+    # when _build_input_queue is called (not when next() is first called on it).
     def _input_queue_generator():
       for batch in iter(ds):
         yield batch
@@ -119,7 +124,7 @@ class BaseWmtWorkload(spec.Workload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           rng,
           split,
           data_dir,
@@ -187,30 +192,14 @@ class BaseWmtWorkload(spec.Workload):
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._tokenizer.detokenize(valid_toks).numpy().decode('utf-8')
 
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
-  @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    """Return the final activations of the model."""
-    pass
-
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> spec.Tensor:
     return self.compute_weighted_cross_entropy(
-        logits_batch, label_batch, label_smoothing=label_smoothing)
+        logits_batch,
+        label_batch,
+        weights=mask_batch,
+        label_smoothing=label_smoothing)

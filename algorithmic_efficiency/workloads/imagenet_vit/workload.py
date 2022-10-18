@@ -52,7 +52,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def target_value(self):
-    return 0.76
+    return 0.77171
 
   @property
   def max_allowed_runtime_sec(self):
@@ -60,7 +60,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def eval_period_time_sec(self):
-    return 6000  # 100 mins
+    return 7 * 60  # 7 mins.
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -77,3 +77,8 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
                                   cache,
                                   repeat_final_dataset,
                                   use_mixup)
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 140_000

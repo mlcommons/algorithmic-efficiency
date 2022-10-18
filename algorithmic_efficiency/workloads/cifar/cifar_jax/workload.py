@@ -21,18 +21,14 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def __init__(self):
-    super().__init__()
-    self.epoch_metrics = []
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     return self._build_dataset(data_rng,
                                split,
                                data_dir,
@@ -51,7 +47,7 @@ class CifarWorkload(BaseCifarWorkload):
                      num_batches: Optional[int] = None):
     if batch_size % jax.local_device_count() > 0:
       raise ValueError('Batch size must be divisible by the number of devices')
-    ds_builder = tfds.builder('cifar10', data_dir=data_dir)
+    ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
     ds = input_pipeline.create_input_iter(
@@ -80,25 +76,6 @@ class CifarWorkload(BaseCifarWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  @property
-  def param_shapes(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=10, dtype=jnp.float32)
@@ -107,12 +84,14 @@ class CifarWorkload(BaseCifarWorkload):
     variables = jax.jit(model.init)({'params': rng},
                                     jnp.ones(input_shape, model.dtype))
     model_state, params = variables.pop('params')
-
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_0'
 
   @functools.partial(
       jax.pmap,
@@ -135,18 +114,6 @@ class CifarWorkload(BaseCifarWorkload):
         aux_dropout_rate=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    if loss_type == spec.LossType.SOFTMAX_CROSS_ENTROPY:
-      return jax.nn.softmax(logits_batch, axis=-1)
-    if loss_type == spec.LossType.SIGMOID_CROSS_ENTROPY:
-      return jax.nn.sigmoid(logits_batch)
-    if loss_type == spec.LossType.MEAN_SQUARED_ERROR:
-      return logits_batch
 
   def model_fn(
       self,
@@ -177,21 +144,26 @@ class CifarWorkload(BaseCifarWorkload):
           augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False)
-      return logits, None
+      return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
-    return -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    losses = -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    # mask_batch is assumed to be shape [batch]
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _compute_metrics(self, logits, labels):
     loss = jnp.sum(self.loss_fn(labels, logits))
-    # not accuracy, but nr. of correct predictions
+    # Number of correct predictions.
     accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
     metrics = {
         'loss': loss,
@@ -215,7 +187,7 @@ class CifarWorkload(BaseCifarWorkload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     # We already repeat the dataset indefinitely in tf.data.
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split=split,
           global_batch_size=global_batch_size,

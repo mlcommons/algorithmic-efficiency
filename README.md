@@ -60,7 +60,7 @@
 
 
   #### Additional Details
-  
+
    You can also install the requirements for individual workloads, e.g. via
 
    ```bash
@@ -109,17 +109,6 @@
 
    To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
-### Docker
-
-Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only the [NVIDIA® GPU driver](https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver) is required on the host machine (the NVIDIA® CUDA® Toolkit does not need to be installed).
-
-#### Docker requirements
-
-- Install [Docker](https://docs.docker.com/get-docker/) on your local host machine.
-
-- For GPU support on Linux, [install NVIDIA Docker support](https://github.com/NVIDIA/nvidia-docker).
-  - Take note of your Docker version with docker -v. Versions earlier than 19.03 require nvidia-docker2 and the --runtime=nvidia flag. On versions including and after 19.03, you will use the nvidia-container-toolkit package and the --gpus all flag. Both options are documented on the page linked above.
-
 #### Setup
 
 1. Clone this repository:
@@ -146,14 +135,17 @@ Docker is the easiest way to enable PyTorch/JAX GPU support on Linux since only 
 
 ## Running a workload
 
+See the [`reference_algorithms/`](https://github.com/mlcommons/algorithmic-efficiency/tree/main/reference_algorithms) dir for training various algorithm implementations (note that none of these are valid submissions because they have workload-specific logic, so we refer to them as "algorithms" instead of "submissions").
+
 ### JAX
 
 ```bash
 python3 submission_runner.py \
     --framework=jax \
     --workload=mnist \
-    --submission_path=reference_submissions/mnist/mnist_jax/submission.py \
-    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json
+    --experiment_dir=/home/znado \
+    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
+    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
 
 ### PyTorch
@@ -162,8 +154,9 @@ python3 submission_runner.py \
 python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
-    --submission_path=reference_submissions/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=reference_submissions/mnist/tuning_search_space.json
+    --experiment_dir=/home/znado \
+    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
+    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
 
 When using multiple GPUs on a single node it is recommended to use PyTorch's
@@ -174,7 +167,10 @@ To do so, simply replace `python3` by
 torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
 ```
 
-where `N_GPUS` is the number of available GPUs on the node.
+where `N_GPUS` is the number of available GPUs on the node. To only see output from the first process, you can run the following to redirect the output from processes 1-7 to a log file:
+```bash
+torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8
+ ```
 
 ## Rules
 
@@ -192,7 +188,7 @@ To run the below commands, use the versions installed via `pip install -e '.[dev
 
 To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
 ```bash
-yapf -i -r -vv -p algorithmic_efficiency baselines target_setting_runs reference_submissions tests *.py
+yapf -i -r -vv -p algorithmic_efficiency baselines reference_algorithms tests *.py
 ```
 
 To sort all import orderings, run the following:
@@ -209,8 +205,9 @@ To print out all offending pylint issues, run the following:
 ```bash
 pylint algorithmic_efficiency
 pylint baselines
-pylint target_setting_runs
-pylint reference_submissions
+pylint reference_algorithms
 pylint submission_runner.py
 pylint tests
 ```
+
+You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/development_algorithms/`.
