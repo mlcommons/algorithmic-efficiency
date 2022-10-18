@@ -5,7 +5,7 @@ https://github.com/facebookresearch/fastMRI/blob/main/fastmri/models/unet.py
 """
 
 from typing import Any
-
+from algorithmic_efficiency import init_utils
 import torch
 from torch import nn
 from torch import Tensor
@@ -49,6 +49,10 @@ class Unet(nn.Module):
             ConvBlock(ch * 2, ch, dropout),
             nn.Conv2d(ch, self.out_chans, kernel_size=1, stride=1),
         ))
+
+    for m in self.modules():
+      if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+        init_utils.pytorch_default_init(m)
 
   def forward(self, x: Tensor) -> Tensor:
     stack = []

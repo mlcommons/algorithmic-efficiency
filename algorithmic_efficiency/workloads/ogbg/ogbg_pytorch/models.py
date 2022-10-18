@@ -1,6 +1,7 @@
 # Ported to PyTorch from
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
 from typing import Callable, Optional, Tuple
+from algorithmic_efficiency import init_utils
 
 import jax.tree_util as tree
 from jraph import GraphsTuple
@@ -63,6 +64,10 @@ class GNN(nn.Module):
 
     self.decoder = nn.Linear(
         in_features=self.hidden_dims[-1], out_features=self.num_outputs)
+
+    for m in self.modules():
+      if isinstance(m, nn.Linear):
+        init_utils.pytorch_default_init(m)
 
   def forward(self, graph: GraphsTuple) -> torch.Tensor:
     graph = graph._replace(
