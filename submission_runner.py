@@ -29,11 +29,11 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 
+from algorithmic_efficiency import checkpoint_utils
 from algorithmic_efficiency import halton
+from algorithmic_efficiency import logger_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.logger_utils import get_meta_data
-from algorithmic_efficiency.logger_utils import set_up_loggers
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
@@ -202,27 +202,6 @@ def train_once(
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
-  # Logger setup.
-  logging.info('Initializing logger.')
-  metrics_logger = None
-  if log_dir is not None:
-    hparams_filename = os.path.join(log_dir, 'hparams.json')
-    meta_data = get_meta_data(workload)
-    meta_filename = os.path.join(log_dir, 'meta_data.json')
-    flag_filename = os.path.join(log_dir, 'flags.json')
-
-    if RANK == 0:
-      logging.info('Saving hparams to %s', hparams_filename)
-      with open(hparams_filename, 'w') as f:
-        f.write(json.dumps(hyperparameters._asdict(), indent=2))
-      logging.info('Saving meta data to %s', meta_filename)
-      with open(meta_filename, 'w') as f:
-        f.write(json.dumps(meta_data, indent=2))
-      logging.info('Saving flags to %s', flag_filename)
-      with open(flag_filename, 'w') as f:
-        f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
-      metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
-
   # Workload setup.
   logging.info('Initializing dataset.')
   with profiler.profile('Initializing dataset'):
@@ -235,30 +214,62 @@ def train_once(
   with profiler.profile('Initializing model'):
     model_params, model_state = workload.init_model_fn(model_init_rng)
   logging.info('Initializing optimizer.')
-
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
                                            model_params,
                                            model_state,
                                            hyperparameters,
                                            opt_init_rng)
-
   logging.info('Initializing metrics bundle.')
   if tokenizer_vocab_path:
     workload.init_tokenizer(tokenizer_vocab_path)
 
   # Bookkeeping.
-  goal_reached = False
-  is_time_remaining = True
-  last_eval_time = 0
-  accumulated_submission_time = 0
-  eval_results = []
+  train_state = {
+      'goal_reached': False,
+      'is_time_remaining': True,
+      'last_eval_time': 0,
+      'accumulated_submission_time': 0,
+      'training_complete': False,
+  }
   global_step = 0
-  training_complete = False
-  global_start_time = time.time()
+  eval_results = []
+  preemption_count = 0
 
+  # Loggers and checkpoint setup.
+  logging.info('Initializing checkpoint and logger.')
+  if log_dir is not None:
+    # If the checkpoint exists, load from the checkpoint.
+    (optimizer_state,
+     model_params,
+     model_state,
+     train_state,
+     eval_results,
+     global_step,
+     preemption_count) = checkpoint_utils.maybe_restore_checkpoint(
+         FLAGS.framework,
+         optimizer_state,
+         model_params,
+         model_state,
+         train_state,
+         eval_results,
+         global_step,
+         preemption_count,
+         checkpoint_dir=log_dir)
+    meta_data = logger_utils.get_meta_data(workload)
+    meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
+    logging.info('Saving meta data to %s', meta_file_name)
+    logger_utils.write_json(meta_file_name, meta_data)
+    flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
+    logging.info('Saving flags to %s', flag_file_name)
+    logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
+    metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
+
+  global_start_time = time.time()
   logging.info('Starting training loop.')
-  while is_time_remaining and not goal_reached and not training_complete:
+  while train_state['is_time_remaining'] and \
+      not train_state['goal_reached'] and \
+      not train_state['training_complete']:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
@@ -287,18 +298,19 @@ def train_once(
             global_step=global_step,
             rng=update_rng)
     except spec.TrainingCompleteError:
-      training_complete = True
+      train_state['training_complete'] = True
     global_step += 1
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
       dist.barrier()
     current_time = time.time()
-    accumulated_submission_time += current_time - start_time
-    is_time_remaining = (
-        accumulated_submission_time < workload.max_allowed_runtime_sec)
+    train_state['accumulated_submission_time'] += current_time - start_time
+    train_state['is_time_remaining'] = (
+        train_state['accumulated_submission_time'] <
+        workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if (current_time - last_eval_time >= workload.eval_period_time_sec or
-        training_complete):
+    if ((current_time - train_state['last_eval_time']) >=
+        workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
           latest_eval_result = workload.eval_model(global_batch_size,
@@ -312,14 +324,27 @@ def train_once(
                        current_time - global_start_time,
                        global_step,
                        latest_eval_result)
-          last_eval_time = current_time
+          train_state['last_eval_time'] = current_time
           eval_results.append((global_step, latest_eval_result))
+          train_state['goal_reached'] = workload.has_reached_goal(
+              latest_eval_result)
 
-          if RANK == 0 and metrics_logger is not None:
+          if log_dir is not None:
             metrics_logger.append_scalar_metrics(
-                latest_eval_result, global_step=global_step)
+                latest_eval_result,
+                global_step=global_step,
+                preemption_count=preemption_count)
+            checkpoint_utils.save_checkpoint(
+                framework=FLAGS.framework,
+                optimizer_state=optimizer_state,
+                model_params=model_params,
+                model_state=model_state,
+                train_state=train_state,
+                eval_results=eval_results,
+                global_step=global_step,
+                preemption_count=preemption_count,
+                checkpoint_dir=log_dir)
 
-          goal_reached = workload.has_reached_goal(latest_eval_result)
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
@@ -333,16 +358,29 @@ def train_once(
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
     dist.barrier()
-    score_tensor = torch.tensor(accumulated_submission_time, device=DEVICE)
+    score_tensor = torch.tensor(
+        train_state['accumulated_submission_time'], device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
-    accumulated_submission_time = score_tensor.item()
+    train_state['accumulated_submission_time'] = score_tensor.item()
 
-  if RANK == 0 and metrics_logger is not None:
-    metrics_logger.append_scalar_metrics({'score': accumulated_submission_time},
-                                         global_step=global_step)
+  if log_dir is not None:
+    metrics_logger.append_scalar_metrics(
+        {'score': train_state['accumulated_submission_time']},
+        global_step=global_step,
+        preemption_count=preemption_count)
     metrics_logger.finish()
+    checkpoint_utils.save_checkpoint(
+        framework=FLAGS.framework,
+        optimizer_state=optimizer_state,
+        model_params=model_params,
+        model_state=model_state,
+        train_state=train_state,
+        eval_results=eval_results,
+        global_step=global_step,
+        preemption_count=preemption_count,
+        checkpoint_dir=log_dir)
 
-  return accumulated_submission_time, metrics
+  return train_state['accumulated_submission_time'], metrics
 
 
 def score_submission_on_workload(workload: spec.Workload,
@@ -395,12 +433,17 @@ def score_submission_on_workload(workload: spec.Workload,
       rng, _ = prng.split(rng, 2)
       logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
 
-      tuning_log_dir = None
+      tuning_dir_name = None
       if log_dir is not None:
-        tuning_log_dir = os.path.join(log_dir, str(hi + 1))
-        if RANK == 0:
-          logging.info('Creating tuning directory at %s', tuning_log_dir)
-          os.makedirs(tuning_log_dir, exist_ok=True)
+        tuning_dir_name = os.path.join(log_dir, 'trial_' + str(hi + 1))
+        logging.info('Creating tuning directory at %s', tuning_dir_name)
+        logger_utils.makedir(tuning_dir_name)
+
+        # If existing hyperparameter exists, use saved
+        # hyperparameters for consistency.
+        hyperparameters = logger_utils.write_hparams(hyperparameters,
+                                                     tuning_dir_name)
+        tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
@@ -410,7 +453,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                      init_optimizer_state,
                                      update_params, data_selection,
                                      hyperparameters, rng, profiler,
-                                     tuning_log_dir,
+                                     tuning_dir_name,
                                      tokenizer_vocab_path)
       all_timings.append(timing)
       all_metrics.append(metrics)
@@ -457,17 +500,14 @@ def main(_):
 
   workload_dir_name = FLAGS.workload + '_' + FLAGS.framework
   if FLAGS.experiment_name is None:
-    experiment_log_dir = os.path.join(FLAGS.experiment_dir, workload_dir_name)
+    experiment_dir_name = os.path.join(FLAGS.experiment_dir, workload_dir_name)
   else:
-    experiment_log_dir = os.path.join(FLAGS.experiment_dir,
-                                      FLAGS.experiment_name,
-                                      workload_dir_name)
-  experiment_log_dir = os.path.expanduser(experiment_log_dir)
-
-  if RANK == 0:
-    # Only one worker should create the required dir.
-    logging.info('Creating experiment directory at %s', experiment_log_dir)
-    os.makedirs(name=experiment_log_dir, exist_ok=True)
+    experiment_dir_name = os.path.join(FLAGS.experiment_dir,
+                                       FLAGS.experiment_name,
+                                       workload_dir_name)
+  experiment_dir_name = os.path.expanduser(experiment_dir_name)
+  logging.info('Creating experiment directory at %s', experiment_dir_name)
+  logger_utils.makedir(experiment_dir_name)
 
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
@@ -478,7 +518,7 @@ def main(_):
                                        FLAGS.tuning_ruleset,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       experiment_log_dir,
+                                       experiment_dir_name,
                                        FLAGS.tokenizer_vocab_path)
   logging.info('Final %s score: %f', FLAGS.workload, score)
 

@@ -1,3 +1,5 @@
+import collections
+import json
 import logging
 import os.path
 import platform
@@ -12,12 +14,46 @@ import pandas as pd
 import psutil
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
 try:
   import wandb  # pylint: disable=g-import-not-at-top
 except ModuleNotFoundError:
   logging.exception('Unable to import wandb.')
   wandb = None
+
+
+def makedir(dir_name: str, exist_ok: bool = True) -> None:
+  if RANK == 0:
+    # only one worker should create the required dir
+    os.makedirs(name=dir_name, exist_ok=exist_ok)
+
+
+def write_hparams(hparams: spec.Hyperparameters,
+                  tuning_dir: str) -> spec.Hyperparameters:
+  hparams_file_name = os.path.join(tuning_dir, 'hparams.json')
+  if os.path.exists(hparams_file_name):
+    # If hparams.json already exist, use the previously saved hyperparameters.
+    logging.info('Loading hparams from %s', hparams_file_name)
+    with open(hparams_file_name, 'r') as f:
+      hparams_dict = json.load(f)
+    hparams = collections.namedtuple('Hyperparameters',
+                                     hparams_dict)(**hparams_dict)
+    return hparams
+  else:
+    logging.info('Saving hparams to %s', hparams_file_name)
+    if RANK == 0:
+      with open(hparams_file_name, 'w') as f:
+        f.write(json.dumps(hparams._asdict(), indent=2))
+    return hparams
+
+
+def write_json(name: str, log_dict: dict, indent: int = 2):
+  if RANK == 0:
+    with open(name, 'w') as f:
+      f.write(json.dumps(log_dict, indent=indent))
 
 
 def _get_utilization() -> dict:
@@ -197,8 +233,12 @@ class MetricLogger(object):
             dir=events_dir, tags=[flags.FLAGS.workload, flags.FLAGS.framework])
         wandb.config.update(configs)
 
-  def append_scalar_metrics(self, metrics: dict, global_step: int) -> None:
+  def append_scalar_metrics(self,
+                            metrics: dict,
+                            global_step: int,
+                            preemption_count: int) -> None:
     metrics['global_step'] = global_step
+    metrics['preemption_count'] = preemption_count
 
     try:
       with open(self._csv_path, 'r') as csv_file:
@@ -226,8 +266,31 @@ class MetricLogger(object):
       wandb.finish()
 
 
-def set_up_loggers(train_dir: str, configs: flags.FLAGS) -> MetricLogger:
+class PassThroughMetricLogger(object):
+
+  def __init__(self,
+               csv_path: str = '',
+               events_dir: Optional[str] = None,
+               configs: Optional[flags.FLAGS] = None) -> None:
+    pass
+
+  def append_scalar_metrics(self,
+                            metrics: dict,
+                            global_step: int,
+                            preemption_count: int) -> None:
+    pass
+
+  def finish(self) -> None:
+    pass
+
+
+def set_up_loggers(train_dir: str,
+                   configs: flags.FLAGS) -> Optional[MetricLogger]:
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  metrics_logger = MetricLogger(
-      csv_path=csv_path, events_dir=train_dir, configs=configs)
+  if RANK == 0:
+    metrics_logger = MetricLogger(
+        csv_path=csv_path, events_dir=train_dir, configs=configs)
+  else:
+    metrics_logger = PassThroughMetricLogger(
+        csv_path=csv_path, events_dir=train_dir, configs=configs)
   return metrics_logger
