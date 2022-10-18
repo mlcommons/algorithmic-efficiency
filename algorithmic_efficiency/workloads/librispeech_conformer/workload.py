@@ -4,6 +4,7 @@ from absl import flags
 from absl import logging
 import jax
 import numpy as np
+import torch
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import \
@@ -75,7 +76,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   def shard(self, batch, n_devices=None):
     if n_devices is None:
-      n_devices = jax.local_device_count()
+      n_devices = max(torch.cuda.device_count(), jax.local_device_count())
 
     # Otherwise, the entries are arrays, so just reshape them.
     def _shard_array(array):
@@ -131,11 +132,7 @@ class BaseLibrispeechWorkload(spec.Workload):
                      data_dir: str,
                      batch_size: int,
                      num_batches: Optional[int] = None):
-    if batch_size % jax.local_device_count() > 0:
-      raise ValueError('Batch size must be divisible by the number of devices')
-
     train = False
-
     if split == 'train':
       split = 'train-clean-100+train-clean-360+train-other-500'
       train = True

@@ -163,9 +163,16 @@ def update_params(workload: spec.Workload,
   lr = get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(  # pylint: disable=line-too-long
-      workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, per_device_rngs, lr)
+  outputs = pmapped_train_step(workload,
+                               opt_update_fn,
+                               model_state,
+                               optimizer_state,
+                               current_param_container,
+                               hyperparameters,
+                               batch,
+                               per_device_rngs,
+                               lr)
+  new_model_state, new_optimizer_state, new_params, loss, grad_norm = outputs
 
   if global_step <= 1000 or global_step % 100 == 0:
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',

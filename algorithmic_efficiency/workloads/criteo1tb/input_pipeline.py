@@ -11,6 +11,7 @@ from typing import Optional, Sequence
 
 import jax
 import tensorflow as tf
+import torch
 
 from algorithmic_efficiency import data_utils
 
@@ -29,7 +30,7 @@ def get_criteo1tb_dataset(split: str,
     file_path = os.path.join(data_dir, 'day_[0-22]_*')
   else:
     file_path = os.path.join(data_dir, 'day_23_*')
-  num_devices = jax.local_device_count()
+  num_devices = max(torch.cuda.device_count(), jax.local_device_count())
   per_device_batch_size = global_batch_size // num_devices
 
   @tf.function

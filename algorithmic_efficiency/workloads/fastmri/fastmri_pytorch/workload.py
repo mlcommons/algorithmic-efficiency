@@ -13,7 +13,6 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
-from algorithmic_efficiency.interop_utils import pytorch_to_jax
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
@@ -179,11 +178,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         update_batch_norm=False)
     ssim_sum = jax_to_pytorch(
         ssim(
-            pytorch_to_jax(outputs),
-            pytorch_to_jax(batch['targets']),
-            mean=pytorch_to_jax(batch['mean']),
-            std=pytorch_to_jax(batch['std']),
-            volume_max=pytorch_to_jax(batch['volume_max']))).sum()
+            outputs.cpu().numpy(),
+            batch['targets'].cpu().numpy(),
+            mean=batch['mean'].cpu().numpy(),
+            std=batch['std'].cpu().numpy(),
+            volume_max=batch['volume_max'].cpu().numpy())).sum()
     loss = self.loss_fn(batch['targets'], outputs).sum()
     return {'ssim': ssim_sum, 'loss': loss, 'weight': batch['weights'].sum()}
 
