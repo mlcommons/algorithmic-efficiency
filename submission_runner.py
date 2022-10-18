@@ -519,7 +519,7 @@ def main(_):
                                        FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
-                                       FLAGS.max_global_steps
+                                       FLAGS.max_global_steps,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
                                        experiment_dir_name,
