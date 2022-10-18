@@ -131,7 +131,7 @@ flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-
+flags.DEFINE_integer('max_global_steps', 1e6, 'Maximum number of update steps')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 
@@ -289,6 +289,8 @@ def train_once(
     except spec.TrainingCompleteError:
       training_complete = True
     global_step += 1
+    if global_step == max_global_steps:
+      training_complete = True
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
       dist.barrier()
@@ -352,10 +354,11 @@ def score_submission_on_workload(workload: spec.Workload,
                                  imagenet_v2_data_dir: str,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
+                                 max_global_steps: int,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
-                                 tokenizer_vocab_path: Optional[str] = None):
+                                 tokenizer_vocab_path: Optional[str] = None,):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
@@ -476,6 +479,7 @@ def main(_):
                                        FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
+                                       FLAGS.max_global_steps
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
                                        experiment_log_dir,
