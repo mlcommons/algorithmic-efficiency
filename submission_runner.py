@@ -481,7 +481,7 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, data_dir,
           imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, log_dir, tokenizer_vocab_path)
+          None, rng, profiler, max_global_steps, log_dir, tokenizer_vocab_path)
   # TODO(znado): record and return other information (number of steps).
   return score
 
