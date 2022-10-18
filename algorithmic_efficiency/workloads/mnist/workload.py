@@ -6,6 +6,7 @@ from typing import Dict, Tuple
 from absl import flags
 from flax import jax_utils
 import jax
+import torch
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
@@ -100,9 +101,10 @@ class BaseMnistWorkload(spec.Workload):
         'loss': 0.,
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
+    num_devices = max(torch.cuda.device_count(), jax.local_device_count())
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
+      per_device_model_rngs = prng.split(model_rng, num_devices)
       batch_metrics = self._eval_model(params,
                                        batch,
                                        model_state,

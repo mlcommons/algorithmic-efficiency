@@ -14,7 +14,7 @@ def shard_numpy_ds(xs):
   Convert an input batch from tf Tensors to numpy arrays and reshape it to be
   sharded across devices.
   """
-  local_device_count = jax.local_device_count()
+  local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.

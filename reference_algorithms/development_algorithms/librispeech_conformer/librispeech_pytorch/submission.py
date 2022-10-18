@@ -12,7 +12,7 @@ ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {"librispeech_conformer": 8}
+  batch_sizes = {"librispeech_conformer": 256}
   return batch_sizes[workload_name]
 
 
@@ -34,10 +34,9 @@ def init_optimizer_state(workload: spec.Workload,
   del workload
   del model_state
   del rng
-
   optimizer = torch.optim.AdamW(
       params=model_params.parameters(),
-      lr=2e-4,
+      lr=0.0,
       betas=(hyperparameters.beta1, hyperparameters.beta2),
       eps=hyperparameters.epsilon,
       weight_decay=hyperparameters.weight_decay)
