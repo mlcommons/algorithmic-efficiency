@@ -39,7 +39,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def eval_batch_size(self):
-    return 512
+    return 1024
 
   @property
   def train_mean(self):

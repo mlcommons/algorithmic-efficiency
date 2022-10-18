@@ -34,7 +34,7 @@ class BaseCifarWorkload(spec.Workload):
 
   @property
   def eval_batch_size(self):
-    return 128
+    return 1024
 
   @property
   def train_mean(self):
