@@ -46,7 +46,7 @@ class BaseMnistWorkload(spec.Workload):
 
   @property
   def eval_batch_size(self):
-    return 1024
+    return 50000
 
   @property
   def train_mean(self):
