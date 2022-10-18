@@ -233,7 +233,7 @@ def main(_):
     # download_ogbg(dataset_dir, tmp_dir)
   if FLAGS.all or FLAGS.wmt:
     logging.info('Downloading WMT...')
-    # download_wmt(dataset_dir)
+    download_wmt(dataset_dir)
 
 
 if __name__ == '__main__':
