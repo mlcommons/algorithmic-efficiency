@@ -30,7 +30,7 @@ class ResNetBlock(nn.Module):
     y = self.conv(self.filters, (3, 3))(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
 
-    if residual.shape != y.shape:
+    if residual.shape != y.shape or self.strides != (1, 1):
       residual = self.conv(
           self.filters, (1, 1), self.strides, name='Conv_proj')(
               residual)
@@ -59,7 +59,7 @@ class BottleneckResNetBlock(nn.Module):
     y = self.conv(self.filters * 4, (1, 1))(y)
     y = self.norm(scale_init=nn.initializers.zeros)(y)
 
-    if residual.shape != y.shape:
+    if residual.shape != y.shape or self.strides != (1, 1):
       residual = self.conv(
           self.filters * 4, (1, 1), self.strides, name='Conv_proj')(
               residual)
@@ -106,9 +106,8 @@ class ResNet(nn.Module):
             act=self.act)(
                 x)
     x = jnp.mean(x, axis=(1, 2))
-    x = nn.Dense(self.num_classes, dtype=self.dtype)(x)
-    x = jnp.asarray(x, self.dtype)
-    x = nn.log_softmax(x)
+    x = nn.Dense(self.num_classes, kernel_init=nn.initializers.normal(),
+                 dtype=self.dtype)(x)
     return x
 
 
