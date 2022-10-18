@@ -18,7 +18,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=criteo1tb \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -28,7 +28,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=criteo1tb \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
 ```
 
 ## FastMRI
@@ -41,7 +41,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=fastmri \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -51,7 +51,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=fastmri \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
 ```
 
 ## ImageNet-Resnet
@@ -65,7 +65,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=imagenet_resnet \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_nesterov.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -76,7 +76,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=imagenet_resnet \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nesterov.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
 ```
 
 ## ImageNet-ViT
@@ -90,7 +90,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=imagenet_vit \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -101,7 +101,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=imagenet_vit \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
 ```
 
 ## Librispeech-Conformer
@@ -114,7 +114,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=librispeech_conformer \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -124,7 +124,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=librispeech_conformer \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
 ```
 
 ## Librispeech-Deepspeech
@@ -137,7 +137,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=librispeech_deepspeech \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -147,7 +147,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=librispeech_deepspeech \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
 ```
 
 ## OGBG
@@ -160,7 +160,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=ogbg \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_nesterov.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -170,7 +170,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=ogbg \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nesterov.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
 ```
 
 ## WMT
@@ -183,7 +183,7 @@ python3 submission_runner.py \
     --experiment_name=target_setting \
     --workload=wmt \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
 ```
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
@@ -193,5 +193,5 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_name=target_setting \
     --workload=wmt \
     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py \
-    --tuning_search_space=reference_algorithms/reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
 ```
