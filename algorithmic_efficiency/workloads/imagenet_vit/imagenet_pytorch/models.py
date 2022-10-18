@@ -163,7 +163,7 @@ class Encoder(nn.Module):
                width: int,
                mlp_dim: Optional[int] = None,
                num_heads: int = 12,
-               dropout: float = 0.0) -> None:
+               dropout_rate: float = 0.0) -> None:
     super().__init__()
 
     self.depth = depth
@@ -172,14 +172,14 @@ class Encoder(nn.Module):
     self.num_heads = num_heads
 
     self.net = nn.ModuleList([
-        Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout)
+        Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout_rate)
         for _ in range(depth)
     ])
     self.encoder_norm = nn.LayerNorm(self.width)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
     # Input Encoder
-    for lyr, block in enumerate(self.net):
+    for block in self.net:
       x = block(x)
     return self.encoder_norm(x)
 
@@ -252,10 +252,9 @@ class ViT(nn.Module):
       self.head = nn.Linear(self.width, self.num_classes)
     if self.head_zeroinit:
       self.head.weight.data.zero_()
-
     self.reset_parameters()
 
-  def reset_parameters(self):
+  def reset_parameters(self) -> None:
     init_utils.pytorch_default_init(self.embed)
 
     if self.rep_size:

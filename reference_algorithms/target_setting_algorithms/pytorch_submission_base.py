@@ -55,7 +55,6 @@ def update_params(workload: spec.Workload,
   loss.backward()
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(current_model, grad_clip)
-
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
 
