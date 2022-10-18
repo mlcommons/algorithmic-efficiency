@@ -47,6 +47,10 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return 89_137_318 // 2
 
   @property
+  def eval_batch_size(self):
+    return 524_288
+
+  @property
   def train_mean(self):
     return 0.0
 

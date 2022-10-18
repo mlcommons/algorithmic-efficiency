@@ -187,6 +187,7 @@ def import_workload(workload_path: str,
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
+    global_eval_batch_size: int,
     data_dir: str,
     imagenet_v2_data_dir: str,
     init_optimizer_state: spec.InitOptimizerFn,
@@ -311,7 +312,7 @@ def train_once(
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
-          latest_eval_result = workload.eval_model(global_batch_size,
+          latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
                                                    eval_rng,
@@ -406,6 +407,12 @@ def score_submission_on_workload(workload: spec.Workload,
   if global_batch_size % N_GPUS != 0:
     raise ValueError(
         'The global batch size has to be divisible by the number of GPUs.')
+  if hasattr(submission_module, 'get_eval_batch_size'):
+    # If the user specifies the eval batch size, use the provided one.
+    global_eval_batch_size = submission_module.get_eval_batch_size(
+        workload_name)
+  else:
+    global_eval_batch_size = workload.eval_batch_size
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -449,6 +456,7 @@ def score_submission_on_workload(workload: spec.Workload,
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, global_batch_size,
+                                     global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
@@ -471,8 +479,8 @@ def score_submission_on_workload(workload: spec.Workload,
     # once and return the total time.
     with profiler.profile('Train'):
       score, _ = train_once(
-          workload, global_batch_size, data_dir,
-          imagenet_v2_data_dir,
+          workload, global_batch_size, global_eval_batch_size,
+          data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
           None, rng, profiler, log_dir, tokenizer_vocab_path)
   # TODO(znado): record and return other information (number of steps).

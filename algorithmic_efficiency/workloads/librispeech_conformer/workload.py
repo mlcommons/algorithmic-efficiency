@@ -45,6 +45,10 @@ class BaseLibrispeechWorkload(spec.Workload):
     return 2472
 
   @property
+  def eval_batch_size(self):
+    return 256
+
+  @property
   def train_mean(self):
     return 0.0
 

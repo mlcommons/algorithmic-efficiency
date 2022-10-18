@@ -44,6 +44,10 @@ class BaseOgbgWorkload(spec.Workload):
     return 43793
 
   @property
+  def eval_batch_size(self):
+    return 32768
+
+  @property
   def train_mean(self):
     raise NotImplementedError
 
