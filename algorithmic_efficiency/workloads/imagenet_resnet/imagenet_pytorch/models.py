@@ -6,11 +6,12 @@ https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 
 import collections
 from typing import Any, Callable, List, Optional, Type, Union
-from algorithmic_efficiency.init_utils import pytorch_default_init
 
 import torch
 from torch import nn
 from torch import Tensor
+
+from algorithmic_efficiency.init_utils import pytorch_default_init
 
 __all__ = ['ResNet', 'resnet50']
 
