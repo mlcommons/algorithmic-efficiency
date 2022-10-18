@@ -46,6 +46,8 @@ class ConformerConfig:
 def initialize(m):
   if isinstance(m, nn.Linear) or isinstance(m, nn.Conv1d):
     init.xavier_uniform_(m.weight)
+    if m.bias is not None:
+      init.constant_(m.bias, 0)
   elif isinstance(m, nn.MultiheadAttention):
     init.xavier_uniform_(m.in_proj_weight)
   for i in m.children():

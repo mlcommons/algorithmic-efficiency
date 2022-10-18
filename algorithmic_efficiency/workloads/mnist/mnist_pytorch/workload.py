@@ -12,6 +12,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -34,7 +35,12 @@ class _Model(nn.Module):
                      ('layer2',
                       torch.nn.Linear(num_hidden, num_classes, bias=True))]))
 
-  def forward(self, x: spec.Tensor):
+  def reset_parameters(self) -> None:
+    for m in self.net.modules():
+      if isinstance(m, nn.Linear):
+        init_utils.pytorch_default_init(m)
+
+  def forward(self, x: spec.Tensor) -> spec.Tensor:
     x = x.view(x.size()[0], -1)
     return self.net(x)
 
