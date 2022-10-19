@@ -50,7 +50,8 @@ def pmapped_train_step(workload,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(current_param_container)
   (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
-  grad_norm = jnp.sqrt(sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
+  grad_norm = jnp.sqrt(
+    sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 
   if grad_clip is not None:
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
