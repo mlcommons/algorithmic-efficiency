@@ -215,7 +215,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       params: spec.ParameterContainer,
       batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:  # pylint: disable=line-too-long
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     (logits, logit_paddings), _ = self.model_fn(
         params,
         batch,

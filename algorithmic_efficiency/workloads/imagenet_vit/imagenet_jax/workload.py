@@ -28,7 +28,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     self._model_kwargs = {
-        'num_classes': self._num_classes, **decode_variant('B/32')
+        'num_classes': self._num_classes, **decode_variant('S/16')
     }
     model = models.ViT(**self._model_kwargs)
     params, model_state = self.initialized(rng, model)
@@ -39,7 +39,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key == 'pre_logits'
+    return param_key == 'head'
 
   def model_fn(
       self,

@@ -34,7 +34,10 @@ def imagenet_v2_to_torch(batch):
   # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
   new_batch = {}
   for k, v in batch.items():
-    new_v = v[RANK]
+    if USE_PYTORCH_DDP:
+      new_v = v[RANK]
+    else:
+      new_v = v
     if k == 'inputs':
       new_v = np.transpose(new_v, (0, 3, 1, 2))
     dtype = torch.long if k == 'targets' else torch.float
@@ -56,12 +59,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del cache
     del repeat_final_dataset
     if split == 'test':
+      train_mean = [m / 255 for m in self.train_mean]
+      train_stddev = [s / 255 for s in self.train_stddev]
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
           shard_batch=USE_PYTORCH_DDP,
-          mean_rgb=self.train_mean,
-          stddev_rgb=self.train_stddev)
+          mean_rgb=train_mean,
+          stddev_rgb=train_stddev)
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'

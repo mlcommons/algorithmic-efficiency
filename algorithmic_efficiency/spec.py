@@ -154,6 +154,11 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
+  def eval_batch_size(self) -> int:
+    """The batch size for evaluation."""
+
+  @property
+  @abc.abstractmethod
   def num_eval_train_examples(self) -> int:
     """The number of training examples to evaluate metrics on."""
 

@@ -1,8 +1,6 @@
 """ImageNet workload parent class."""
 from typing import Optional
 
-import jax
-
 from algorithmic_efficiency import spec
 
 
@@ -36,6 +34,10 @@ class BaseImagenetResNetWorkload(spec.Workload):
   @property
   def num_test_examples(self):
     return 10000  # ImageNet-v2
+
+  @property
+  def eval_batch_size(self):
+    return 1024
 
   @property
   def train_mean(self):
@@ -80,8 +82,6 @@ class BaseImagenetResNetWorkload(spec.Workload):
                          repeat_final_dataset: Optional[bool] = None,
                          num_batches: Optional[int] = None):
     del num_batches
-    if global_batch_size % jax.local_device_count() != 0:
-      raise ValueError('Batch size must be divisible by the number of devices')
     if split == 'test':
       if not cache:
         raise ValueError('cache must be True for split=test.')

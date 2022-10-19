@@ -11,6 +11,8 @@ import torch
 from torch import nn
 from torch import Tensor
 
+from algorithmic_efficiency.init_utils import pytorch_default_init
+
 __all__ = ['ResNet', 'resnet50']
 
 
@@ -151,7 +153,7 @@ class ResNet(nn.Module):
                block: Type[Union[BasicBlock, Bottleneck]],
                layers: List[int],
                num_classes: int = 1000,
-               zero_init_residual: bool = False,
+               zero_init_residual: bool = True,
                groups: int = 1,
                width_per_group: int = 64,
                replace_stride_with_dilation: Optional[List[bool]] = None,
@@ -190,10 +192,12 @@ class ResNet(nn.Module):
 
     for m in self.modules():
       if isinstance(m, nn.Conv2d):
-        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        pytorch_default_init(m)
       elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
+    nn.init.normal_(self.fc.weight, std=1e-2)
+    nn.init.constant_(self.fc.bias, 0.)
 
     # Zero-initialize the last BN in each residual branch,
     # so that the residual branch starts with zeros,

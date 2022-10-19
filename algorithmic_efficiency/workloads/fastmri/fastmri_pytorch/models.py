@@ -11,6 +11,8 @@ from torch import nn
 from torch import Tensor
 from torch.nn import functional as F
 
+from algorithmic_efficiency import init_utils
+
 
 class Unet(nn.Module):
 
@@ -49,6 +51,10 @@ class Unet(nn.Module):
             ConvBlock(ch * 2, ch, dropout),
             nn.Conv2d(ch, self.out_chans, kernel_size=1, stride=1),
         ))
+
+    for m in self.modules():
+      if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+        init_utils.pytorch_default_init(m)
 
   def forward(self, x: Tensor) -> Tensor:
     stack = []

@@ -1,8 +1,8 @@
 """A flax layer to do data augmentation for audio signals as
 described in https://arxiv.org/abs/1904.08779.
 
-code based on
-https://github.com/tensorflow/lingvo/blob/master/lingvo/jax/layers/spectrum_augmenter.py.  # pylint: disable=line-too-long
+Code based on:
+github.com/tensorflow/lingvo/blob/master/lingvo/jax/layers/spectrum_augmenter.py
 """
 
 import flax.linen as nn
@@ -14,7 +14,7 @@ class SpecAug(nn.Module):
   """Layer performs masking prodecure along time and frequency axis.
 
   The procedure is detailed in https://arxiv.org/abs/1904.08779.
-  This is an essential component in speech recognition models that helps achieve  # pylint: disable=line-too-long
+  This is an essential component in speech recognition models that helps achieve
   better word error rates.
   """
   freq_mask_count: int = 1

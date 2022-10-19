@@ -9,7 +9,6 @@ def decode_variant(variant):
   v, patch = variant.split('/')
 
   return {
-      # pylint:disable=line-too-long
       # Reference: Table 2 of https://arxiv.org/abs/2106.04560.
       'width': {
           'Ti': 192,
@@ -43,7 +42,7 @@ def decode_variant(variant):
       }[v],
       'num_heads': {
           'Ti': 3, 'S': 6, 'M': 8, 'B': 12, 'L': 16, 'H': 16, 'g': 16, 'G': 16
-      }[v],  # pylint:enable=line-too-long
+      }[v],
       'patch_size': (int(patch), int(patch))
   }
 
@@ -53,6 +52,10 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
   @property
   def target_value(self):
     return 0.77171
+
+  @property
+  def eval_batch_size(self):
+    return 2048
 
   @property
   def max_allowed_runtime_sec(self):
