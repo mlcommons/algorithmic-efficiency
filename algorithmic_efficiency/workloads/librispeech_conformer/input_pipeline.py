@@ -67,6 +67,7 @@ def get_librispeech_dataset(split_name: str,
     return preprocessed_example
 
   ds = tf.data.Dataset.from_tensor_slices({'ids': ids})
+  ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
   ds = ds.map(preprocess, num_parallel_calls=10)
 

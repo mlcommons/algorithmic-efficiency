@@ -37,7 +37,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 2566
+    return 5348
 
   @property
   def num_test_examples(self):

@@ -219,6 +219,7 @@ def train_once(
       with open(flag_filename, 'w') as f:
         f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
       metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
+      workload.attach_metrics_logger(metrics_logger)
 
   # Workload setup.
   logging.info('Initializing dataset.')

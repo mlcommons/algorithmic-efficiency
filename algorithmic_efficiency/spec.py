@@ -131,6 +131,11 @@ class Workload(metaclass=abc.ABCMeta):
     convention should be plural key names because the values are batches of
     examples.
     """
+  
+  def attach_metrics_logger(self, metrics_logger):
+    """Attaches a metric logger to workload."""
+    self.metrics_logger = metrics_logger
+    return
 
   @property
   @abc.abstractmethod
