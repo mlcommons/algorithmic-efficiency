@@ -476,7 +476,7 @@ class BatchNorm(nn.Module):
     running_var = torch.ones(config.encoder_dim)
     self.register_buffer('running_mean', running_mean)
     self.register_buffer('running_var', running_var)
-    self.weight = nn.Parameter(torch.zeros(config.encoder_dim))
+    self.scale = nn.Parameter(torch.zeros(config.encoder_dim))
     self.bias = nn.Parameter(torch.zeros(config.encoder_dim))
     self.register_buffer('momentum',
                          torch.FloatTensor([config.batch_norm_momentum]))
@@ -504,7 +504,7 @@ class BatchNorm(nn.Module):
     else:
       mean = self.running_mean
       var = self.running_var
-    v = (1 + self.weight) * torch.rsqrt(var + self.epsilon)
+    v = (1 + self.scale) * torch.rsqrt(var + self.epsilon)
     bn = (inputs - mean) * v + self.bias
     output = bn.masked_fill(mask == 0, 0)
     return output
