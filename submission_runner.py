@@ -201,28 +201,6 @@ def train_once(
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
-  # Logger setup.
-  logging.info('Initializing logger.')
-  metrics_logger = None
-  if log_dir is not None:
-    hparams_filename = os.path.join(log_dir, 'hparams.json')
-    meta_data = get_meta_data(workload)
-    meta_filename = os.path.join(log_dir, 'meta_data.json')
-    flag_filename = os.path.join(log_dir, 'flags.json')
-
-    if RANK == 0:
-      logging.info('Saving hparams to %s', hparams_filename)
-      with open(hparams_filename, 'w') as f:
-        f.write(json.dumps(hyperparameters._asdict(), indent=2))
-      logging.info('Saving meta data to %s', meta_filename)
-      with open(meta_filename, 'w') as f:
-        f.write(json.dumps(meta_data, indent=2))
-      logging.info('Saving flags to %s', flag_filename)
-      with open(flag_filename, 'w') as f:
-        f.write(json.dumps(flags.FLAGS.flag_values_dict(), indent=2))
-      metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
-      workload.attach_metrics_logger(metrics_logger)
-
   # Workload setup.
   logging.info('Initializing dataset.')
   with profiler.profile('Initializing dataset'):
@@ -285,6 +263,7 @@ def train_once(
     logging.info('Saving flags to %s', flag_file_name)
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
+    workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = time.time()
   logging.info('Starting training loop.')
