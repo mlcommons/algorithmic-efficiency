@@ -239,3 +239,4 @@ class WmtWorkload(BaseWmtWorkload):
         targets_segmentation=targets_segmentations,
         rngs={'dropout': rng})
     return logits_batch, None
+    
