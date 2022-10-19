@@ -95,4 +95,4 @@ def update_params(workload: spec.Workload,
       current_param_container, batch, per_device_rngs, grad_clip,
       label_smoothing)
 
-  return (new_optimizer_state, opt_update_fn), new_params, new_model_state, loss.mean(), grad_norm.mean() # pylint: disable=line-too-long
+  return (new_optimizer_state, opt_update_fn), new_params, new_model_state, loss.mean(), grad_norm.mean()  # pylint: disable=line-too-long
