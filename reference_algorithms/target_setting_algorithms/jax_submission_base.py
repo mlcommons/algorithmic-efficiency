@@ -51,7 +51,7 @@ def pmapped_train_step(workload,
   (loss, new_model_state), grad = grad_fn(current_param_container)
   (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
   grad_norm = jnp.sqrt(
-    sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
+      sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 
   if grad_clip is not None:
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
@@ -90,9 +90,9 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = pmapped_train_step(
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = pmapped_train_step( # pylint: disable=line-too-long
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, per_device_rngs, grad_clip,
       label_smoothing)
 
-  return (new_optimizer_state, opt_update_fn), new_params, new_model_state, loss.mean(), grad_norm.mean()
+  return (new_optimizer_state, opt_update_fn), new_params, new_model_state, loss.mean(), grad_norm.mean() # pylint: disable=line-too-long
