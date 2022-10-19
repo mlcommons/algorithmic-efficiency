@@ -298,17 +298,20 @@ def train_once(
             global_step=global_step,
             rng=update_rng)
       # Log training metrics - loss, grad_norm, batch_size.
-      if global_step <= 100 or global_step % 500 == 0:      
+      if global_step <= 100 or global_step % 500 == 0:
         if log_dir is not None:
           metrics_logger.append_scalar_metrics(
-            {
-                'loss': loss,
-                'grad_norm': grad_norm,
-                'global_batch_size': global_batch_size
-            },
-            global_step, 
-            preemption_count)
-        logging.info('%d) loss = %0.3f, grad_norm = %0.3f', global_step, loss, grad_norm)
+              {
+                  'loss': loss,
+                  'grad_norm': grad_norm,
+                  'global_batch_size': global_batch_size
+              },
+              global_step,
+              preemption_count)
+        logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
+                     global_step,
+                     loss,
+                     grad_norm)
     except spec.TrainingCompleteError:
       train_state['training_complete'] = True
     global_step += 1
