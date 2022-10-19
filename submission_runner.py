@@ -285,7 +285,7 @@ def train_once(
                              data_select_rng)
     try:
       with profiler.profile('Update parameters'):
-        optimizer_state, model_params, model_state = update_params(
+        optimizer_state, model_params, model_state, loss, grad_norm = update_params(
             workload=workload,
             current_param_container=model_params,
             current_params_types=workload.model_params_types,
@@ -297,6 +297,18 @@ def train_once(
             eval_results=eval_results,
             global_step=global_step,
             rng=update_rng)
+      # Log training metrics - loss, grad_norm, batch_size.
+      if global_step <= 100 or global_step % 500 == 0:      
+        if log_dir is not None:
+          metrics_logger.append_scalar_metrics(
+            {
+                'loss': loss,
+                'grad_norm': grad_norm,
+                'global_batch_size': global_batch_size
+            },
+            global_step, 
+            preemption_count)
+        logging.info('%d) loss = %0.3f, grad_norm = %0.3f', global_step, loss, grad_norm)
     except spec.TrainingCompleteError:
       train_state['training_complete'] = True
     global_step += 1

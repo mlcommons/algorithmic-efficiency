@@ -49,11 +49,10 @@ def pmapped_train_step(workload,
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (loss, new_model_state), grad = grad_fn(current_param_container)
-  del loss
-  grad = lax.pmean(grad, axis_name='batch')
+  (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
+  grad_norm = jnp.sqrt(sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 
   if grad_clip is not None:
-    grad_norm = jnp.sqrt(sum(jnp.sum(g**2) for g in jax.tree_leaves(grad)))
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
     grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
     grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
@@ -61,7 +60,7 @@ def pmapped_train_step(workload,
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
-  return new_optimizer_state, updated_params, new_model_state
+  return new_optimizer_state, updated_params, new_model_state, loss, grad_norm
 
 
 def update_params(workload: spec.Workload,
@@ -79,7 +78,6 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del eval_results
-  del global_step
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
@@ -91,9 +89,9 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  new_optimizer_state, new_params, new_model_state = pmapped_train_step(
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, per_device_rngs, grad_clip,
       label_smoothing)
 
-  return (new_optimizer_state, opt_update_fn), new_params, new_model_state
+  return (new_optimizer_state, opt_update_fn), new_params, new_model_state, loss.mean(), grad_norm.mean()
