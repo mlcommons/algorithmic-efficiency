@@ -38,7 +38,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 2566
+    return 5348
 
   @property
   def num_test_examples(self):
@@ -62,7 +62,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 11 * 60
+    return 40 * 60
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,

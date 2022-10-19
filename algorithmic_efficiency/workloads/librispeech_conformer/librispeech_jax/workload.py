@@ -253,6 +253,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
+    if self.metrics_logger is not None:
+      self.metrics_logger.append_scalar_metrics(
+          {
+              f'{split}/num_batches': num_batches,
+              f'{split}/num_examples': num_examples,
+              'batch_size': global_batch_size
+          },
+          global_step)
 
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(

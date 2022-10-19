@@ -132,6 +132,11 @@ class Workload(metaclass=abc.ABCMeta):
     examples.
     """
 
+  def attach_metrics_logger(self, metrics_logger):
+    """Attaches a metric logger to workload."""
+    self.metrics_logger = metrics_logger
+    return
+
   @property
   @abc.abstractmethod
   def target_value(self):

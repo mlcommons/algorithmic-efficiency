@@ -263,6 +263,7 @@ def train_once(
     logging.info('Saving flags to %s', flag_file_name)
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
+    workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = time.time()
   logging.info('Starting training loop.')
