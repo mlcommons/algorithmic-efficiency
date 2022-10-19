@@ -201,7 +201,6 @@ def train_once(
 ) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
-<<<<<<< HEAD
   # Logger setup.
   logging.info('Initializing logger.')
   metrics_logger = None
@@ -224,8 +223,6 @@ def train_once(
       metrics_logger = set_up_loggers(log_dir, flags.FLAGS)
       workload.attach_metrics_logger(metrics_logger)
 
-=======
->>>>>>> 25d892bdc10caa5241c9afec38eeb116e814c70c
   # Workload setup.
   logging.info('Initializing dataset.')
   with profiler.profile('Initializing dataset'):
