@@ -23,6 +23,7 @@
     - [Defining target performance](#defining-target-performance)
     - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
     - [Awards and prize money](#awards-and-prize-money)
+  - [Licensing](#licensing)
 - [Model Track](#model-track)
 
 ## Introduction
@@ -59,12 +60,14 @@ Submissions provide a [per-workload batch size](#batch-size-getter) to use. Spec
 The **submission functions** are the *batch size getter*, *optimizer state initializer*, *variable update*, and *data selection functions*. The *fixed functions* are the *data augmentation/preprocessing*, *model initialization*, *forward pass*, and *loss function*. The trained model will be evaluated in a separate step that does not call any of the submitted code.
 
 ##### Fixed functions
+
 With the exception of `_build_input_queue`, submitters can call any of these functions (along with any public function in the provided `Workload` instance) at any time in their submitted functions.
 
 ```python
 @property
 def step_hint(self): -> int
 ```
+
 - The `step_hint` function gives the number of global steps the target setting algorithm was allowed to use to reach the validation metric target for a workload. Note that the target setting algorithms may have reached the target in fewer steps than this, but these were the max number of steps the target setting algorithms used for their learning rate schedules. Submitters can use this to help specify learning rate (or other) schedules.
 
 ###### Data augmentation and preprocessing
@@ -455,6 +458,16 @@ An awards committee will award a prize for the "*Best Performance*" in each rule
 The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
 
 The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money (regular attendance at the working group's meetings is a prerequisite for joining the awards committee). A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
+
+### Licensing
+
+Submitting to the benchmark requires the following legal considerations:
+
+- A signed [Contributor License Agreement (CLA) "Corporate CLA"](https://mlcommons.org/en/policies/) of MLCommons.
+- *Either* membership in MLCommons *or* a signed [non-member test agreement](https://mlcommons.org/en/policies/).
+- A signed trademark license agreement, either the member or the non-member version, as appropriate). These license agreements are available upon request to [support@mlcommons.org](mailto:support@mlcommons.org).
+
+We furthermore require all submissions to be made available open source after the submission deadline under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
 
 ## Model Track
 
