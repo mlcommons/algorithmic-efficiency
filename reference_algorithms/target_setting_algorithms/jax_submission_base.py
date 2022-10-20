@@ -2,6 +2,7 @@
 import functools
 from typing import Dict, List, Tuple
 
+from absl import logging
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -102,9 +103,7 @@ def update_params(workload: spec.Workload,
           {
               'loss': loss,
               'grad_norm': grad_norm,
-              'global_batch_size': global_batch_size
-          },
-          global_step)
+          }, global_step)
   logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
                global_step,
                loss,
