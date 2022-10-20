@@ -320,11 +320,10 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          logging.info('%.2fs \t%d \t%s',
+          logging.info('Time since start: %.2fs, \tStep: %d, \t%s',
                        current_time - global_start_time,
                        global_step,
                        latest_eval_result)
-          train_state['last_eval_time'] = current_time
           eval_results.append((global_step, latest_eval_result))
           train_state['goal_reached'] = workload.has_reached_goal(
               latest_eval_result)
@@ -344,6 +343,7 @@ def train_once(
                 global_step=global_step,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
+          train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')

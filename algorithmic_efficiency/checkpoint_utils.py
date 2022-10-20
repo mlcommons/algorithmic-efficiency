@@ -160,7 +160,8 @@ def save_checkpoint(framework: str,
     else:
       save_path = os.path.join(checkpoint_dir, 'checkpoint')
       torch.save(checkpoint_state, save_path)
-    logging.info('Saved checkpoint to %s', save_path)
 
   if USE_PYTORCH_DDP:
     dist.barrier()
+  if RANK == 0:
+    logging.info('Saved checkpoint to %s', save_path)
