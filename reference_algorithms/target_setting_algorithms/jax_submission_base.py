@@ -99,14 +99,14 @@ def update_params(workload: spec.Workload,
   if global_step <= 100 or global_step % 500 == 0:
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
-        {
-            'loss': loss,
-            'grad_norm': grad_norm,
-            'global_batch_size': global_batch_size
-        },
-        global_step)
+          {
+              'loss': loss,
+              'grad_norm': grad_norm,
+              'global_batch_size': global_batch_size
+          },
+          global_step)
   logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
-                global_step,
-                loss,
-                grad_norm)
+               global_step,
+               loss,
+               grad_norm)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
