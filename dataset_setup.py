@@ -53,16 +53,23 @@ from absl import app
 from absl import flags
 from absl import logging
 import os
-import request
+import requests
+import shutil
 import subprocess
+import tarfile
 import tensorflow_datasets as tfds
 import tqdm
+
+FRAMEWORKS = ['pytorch', 'jax']
 
 KiB = 2**10
 MiB = 2**20
 GiB = 2**30
 TiB = 2**40
 PiB = 2**50
+
+IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
+IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
 
 
 flags.DEFINE_boolean(
@@ -133,7 +140,7 @@ FLAGS = flags.FLAGS
 
 
 class _Downloader:
-  
+
     def __init__(self, url, data_dir):
         self.url = url
         self.data_dir = os.path.expanduser(data_dir)
@@ -211,13 +218,93 @@ def download_fastmri(
   pass
 
 
-def download_imagenet(
-    dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url):
+def download_imagenet(dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url):
+  dataset_dir = os.path.join(dataset_dir, 'imagenet')
+
+  # Download imagnet train set
+  train_downloader = _Downloader(url=imagenet_train_url, data_dir=dataset_dir)
+  train_downloader.download(overwrite=False)
+
+  # Download imagenet valid set
+  valid_downloader = _Downloader(url=imagenet_val_url, data_dir=dataset_dir)
+  valid_downloader.download()
+
   # Download imagenet test set
   download_imagenet_v2(dataset_dir)
+
+
+def setup_imagenet(dataset_dir, framework=None)
+  if framework == 'jax':
+    setup_imagenet_jax(dataset_dir)
+
+  elif framework == 'pytorch':
+    setup_imagenet_pytorch(dataset_dir)
   
-  # Download imagenet train set
-  r = request.
+  else: 
+    raise ValueError("Invalid value for framework: {}".format(framework))
+
+
+def setup_imagenet_jax(dataset_dir):
+  train_tar_file_path = os.path.join(dataset_dir, IMAGENET_TRAIN_TAR_FILENAME )
+  val_tar_file_path = os.path.join(dataset_dir, IMAGENET_VAL_TAR_FILENAME)
+  
+  # Setup jax dataset dir
+  imagenet_jax_dataset_dir = os.path.join(dataset_dir, 'jax')
+  os.makedirs(imagenet_jax_dataset_dir)
+
+  # Copy tar file into jax
+  logging.info("Copying {} to {}".format(train_tar_file_path, imagenet_jax_dataset_dir))
+  shutil.copy(train_tar_file_path, imagenet_jax_dataset_dir)
+  logging.info("Copying {} to {}".format(val_tar_file_path, imagenet_jax_dataset_dir))
+  shutil.copy(val_tar_file_path, imagenet_jax_dataset_dir)
+  logging.info("Set up imagenet dataset for jax framework complete")
+
+
+def setup_imagenet_pytorch(dataset_dir):
+  train_tar_file_path = os.path.join(dataset_dir, IMAGENET_TRAIN_TAR_FILENAME)
+  val_tar_file_path = os.path.join(dataset_dir, IMAGENET_VAL_TAR_FILENAME)
+  
+  # Setup jax dataset dir
+  imagenet_pytorch_dataset_dir = os.path.join(dataset_dir, 'pytorch')
+  os.makedirs(imagenet_pytorch_dataset_dir)
+  os.makedirs(os.path.join(imagenet_pytorch_dataset_dir, 'train'))
+  os.makedirs(os.path.join(imagenet_pytorch_dataset_dir, 'val'))
+
+  # Copy tar file into pytorch directory
+  logging.info("Copying {} to {}".format(train_tar_file_path, imagenet_pytorch_dataset_dir))
+  shutil.copy(train_tar_file_path, imagenet_pytorch_dataset_dir)
+  logging.info("Copying {} to {}".format(val_tar_file_path, imagenet_pytorch_dataset_dir))
+  shutil.copy(val_tar_file_path, imagenet_pytorch_dataset_dir)
+  logging.info("Set up imagenet dataset for pytorch framework complete")
+
+  # Extract and train data
+  extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_TRAIN_TAR_FILENAME),
+          os.path.join(imagenet_pytorch_dataset_dir, 'train'))
+
+  train_tar_filenames = os.listdir(os.path.join(imagenet_pytorch_dataset_dir, 'train'))
+  for tar_filename in train_tar_filenames:
+    if tar_filename.endswith('.tar'):
+      dir_name = tar_filename[:-4]
+      extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_TRAIN_TAR_FILENAME), 
+              os.path.join(imagenet_pytorch_dataset_dir, 'train', dirname))
+
+  # Extract val data
+  extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_VAL_TAR_FILENAME), 
+          os.path.join(imagenet_pytorch_dataset_dir, 'val'))
+
+  cwd=os.path.join(imagenet_pytorch_dataset_dir, 'train'))
+  valprep_command = ['wget', '-qO-', 'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh']
+  valprep_process = subprocess.Popen(valprep_command, cwd=cwd, stdout=subprocess.PIPE)
+  out = subprocess.check_output(['bash'], cwd=cwd, stdin=valprep_process.stdout)
+
+
+def extract(source, dest):
+  if not os.path.exists(dest):
+    os.path.makedirs(dest)
+
+  tar = tarfile.open(source)
+  tar.extractall(dest)
+  tar.close()
 
 
 def download_imagenet_v2(dataset_dir):
