@@ -1,25 +1,19 @@
 """ImageNet workload parent class."""
 from typing import Optional
 
-import jax
-
 from algorithmic_efficiency import spec
 
 
 class BaseImagenetResNetWorkload(spec.Workload):
 
-  def __init__(self):
-    self._param_shapes = None
-    self._param_types = None
-    self._eval_iters = {}
-    self._num_classes = 1000
+  _num_classes: int = 1000
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
 
   @property
   def target_value(self):
-    return 0.76
+    return 0.77185  # TODO(namanagarwal): This will edited again soon.
 
   @property
   def loss_type(self):
@@ -40,6 +34,10 @@ class BaseImagenetResNetWorkload(spec.Workload):
   @property
   def num_test_examples(self):
     return 10000  # ImageNet-v2
+
+  @property
+  def eval_batch_size(self):
+    return 1024
 
   @property
   def train_mean(self):
@@ -73,33 +71,17 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 6000  # 100 mins
+    return 510  # 8.5 minutes.
 
-  @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     del num_batches
-    if global_batch_size % jax.local_device_count() != 0:
-      raise ValueError('Batch size must be divisible by the number of devices')
     if split == 'test':
       if not cache:
         raise ValueError('cache must be True for split=test.')
@@ -111,3 +93,8 @@ class BaseImagenetResNetWorkload(spec.Workload):
                                global_batch_size,
                                cache,
                                repeat_final_dataset)
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 140_000

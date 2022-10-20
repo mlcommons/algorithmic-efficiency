@@ -50,7 +50,7 @@ def _distorted_bounding_box_crop(image_bytes,
     cropped image `Tensor`
   """
   shape = tf.io.extract_jpeg_shape(image_bytes)
-  sample_distorted_bounding_box = tf.image.stateless_sample_distorted_bounding_box(  # pylint: disable=line-too-long
+  bbox_begin, bbox_size, _ = tf.image.stateless_sample_distorted_bounding_box(
       shape,
       seed=rng,
       bounding_boxes=bbox,
@@ -59,7 +59,6 @@ def _distorted_bounding_box_crop(image_bytes,
       area_range=area_range,
       max_attempts=max_attempts,
       use_image_if_no_bounding_boxes=True)
-  bbox_begin, bbox_size, _ = sample_distorted_bounding_box
 
   # Crop the image to the specified bounding box.
   offset_y, offset_x, _ = tf.unstack(bbox_begin)
@@ -159,18 +158,16 @@ def preprocess_for_train(image_bytes,
   Returns:
     A preprocessed image `Tensor`.
   """
-  # Note (runame): Cannot be done in graph mode, i.e. during ds.map().
-  # Alternative?
-  # crop_rng, flip_rng = tf.random.experimental.stateless_split(rng, 2)
+  rngs = tf.random.experimental.stateless_split(rng, 2)
 
   image = _decode_and_random_crop(image_bytes,
-                                  rng,
+                                  rngs[0],
                                   image_size,
                                   aspect_ratio_range,
                                   area_range,
                                   resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
-  image = tf.image.stateless_random_flip_left_right(image, seed=rng)
+  image = tf.image.stateless_random_flip_left_right(image, seed=rngs[1])
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
@@ -242,7 +239,7 @@ def create_split(split,
                  mixup_alpha=0.1):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
 
-  shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
+  shuffle_rng, preprocess_rng, mixup_rng = jax.random.split(rng, 3)
 
   def decode_example(example_index, example):
     dtype = tf.float32
@@ -290,8 +287,6 @@ def create_split(split,
 
   if use_mixup:
     if train:
-      mixup_rng = tf.convert_to_tensor(shuffle_rng, dtype=tf.int32)
-      mixup_rng = tf.random.experimental.stateless_fold_in(mixup_rng, 0)
 
       def mixup_batch(batch_index, batch):
         per_batch_mixup_rng = tf.random.experimental.stateless_fold_in(

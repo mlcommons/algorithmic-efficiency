@@ -6,6 +6,7 @@ from typing import Dict, Tuple
 from absl import flags
 from flax import jax_utils
 import jax
+import torch
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
@@ -16,11 +17,6 @@ USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 class BaseMnistWorkload(spec.Workload):
-
-  def __init__(self):
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
@@ -50,6 +46,10 @@ class BaseMnistWorkload(spec.Workload):
     return 10000
 
   @property
+  def eval_batch_size(self):
+    return 10000
+
+  @property
   def train_mean(self):
     return 0.1307
 
@@ -66,13 +66,11 @@ class BaseMnistWorkload(spec.Workload):
     return 10
 
   @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 10
+    # epochs at batch size 64.
+    return 7813
 
   def _eval_model(
       self,
@@ -81,10 +79,6 @@ class BaseMnistWorkload(spec.Workload):
       labels: spec.Tensor,
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    raise NotImplementedError
-
-  def _eval_metric(self, logits, labels):
-    """Return the mean accuracy and loss as a dict."""
     raise NotImplementedError
 
   def _eval_model_on_split(self,
@@ -99,7 +93,7 @@ class BaseMnistWorkload(spec.Workload):
     """Run a full evaluation of the model."""
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     total_metrics = {
@@ -107,9 +101,10 @@ class BaseMnistWorkload(spec.Workload):
         'loss': 0.,
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
+    num_devices = max(torch.cuda.device_count(), jax.local_device_count())
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      per_device_model_rngs = prng.split(model_rng, jax.local_device_count())
+      per_device_model_rngs = prng.split(model_rng, num_devices)
       batch_metrics = self._eval_model(params,
                                        batch,
                                        model_state,

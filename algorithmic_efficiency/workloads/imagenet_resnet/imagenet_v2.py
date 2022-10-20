@@ -7,13 +7,17 @@ import functools
 import jax
 import numpy as np
 import tensorflow_datasets as tfds
+import torch
 
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     input_pipeline
 
 
 def _shard(x):
-  return x.reshape((jax.local_device_count(), -1, *x.shape[1:]))
+  # If we install the CPU version of a framework it may not return the correct
+  # number of GPUs.
+  num_devices = max(torch.cuda.device_count(), jax.local_device_count())
+  return x.reshape((num_devices, -1, *x.shape[1:]))
 
 
 def shard_and_maybe_pad_batch(desired_batch_size, shard_batch, tf_batch):

@@ -12,6 +12,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -34,7 +35,12 @@ class _Model(nn.Module):
                      ('layer2',
                       torch.nn.Linear(num_hidden, num_classes, bias=True))]))
 
-  def forward(self, x: spec.Tensor):
+  def reset_parameters(self) -> None:
+    for m in self.net.modules():
+      if isinstance(m, nn.Linear):
+        init_utils.pytorch_default_init(m)
+
+  def forward(self, x: spec.Tensor) -> spec.Tensor:
     x = x.view(x.size()[0], -1)
     return self.net(x)
 
@@ -94,23 +100,14 @@ class MnistWorkload(BaseMnistWorkload):
 
     return dataloader
 
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key in ['net.layer2.weight', 'net_layer2.bias']
 
-  def build_input_queue(self,
-                        data_rng,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int) -> Dict[str, Any]:
+  def _build_input_queue(self,
+                         data_rng,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int) -> Dict[str, Any]:
     it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     for batch in it:
       yield {
@@ -121,9 +118,8 @@ class MnistWorkload(BaseMnistWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = _Model()
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -164,25 +160,22 @@ class MnistWorkload(BaseMnistWorkload):
 
     return logits_batch, None
 
-  # TODO(znado): Implement.
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    raise NotImplementedError
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    return F.cross_entropy(
+    losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _eval_model(
       self,

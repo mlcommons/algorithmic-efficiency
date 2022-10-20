@@ -13,7 +13,6 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
-from algorithmic_efficiency.interop_utils import pytorch_to_jax
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
@@ -88,7 +87,7 @@ class WmtWorkload(BaseWmtWorkload):
           cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = flat_logits.cpu().numpy().squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
@@ -145,9 +144,8 @@ class WmtWorkload(BaseWmtWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = Transformer()
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -155,6 +153,9 @@ class WmtWorkload(BaseWmtWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'shared_embedding.weight'
 
   def model_fn(
       self,
@@ -174,7 +175,7 @@ class WmtWorkload(BaseWmtWorkload):
     model = params
     # Update all Dropout layers with dropout_rate, then go over and only update
     # Dropout layers inside MultiheadAttention with aux_dropout_rate.
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
     pytorch_utils.update_attention_dropout(model, aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
@@ -200,24 +201,24 @@ class WmtWorkload(BaseWmtWorkload):
 
     return logits_batch, None
 
-  def build_input_queue(self,
-                        data_rng: jax.random.PRNGKey,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        num_batches: Optional[int] = None,
-                        repeat_final_dataset: bool = False):
+  def _build_input_queue(self,
+                         data_rng: jax.random.PRNGKey,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         num_batches: Optional[int] = None,
+                         repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
     n_inputs = 6 if split == 'train' else 2
 
     # The input pipeline has to be created in all processes, because
     # self._tokenizer has to be available in every process.
-    np_iter = super().build_input_queue(data_rng,
-                                        split,
-                                        data_dir,
-                                        global_batch_size,
-                                        num_batches,
-                                        repeat_final_dataset)
+    np_iter = super()._build_input_queue(data_rng,
+                                         split,
+                                         data_dir,
+                                         global_batch_size,
+                                         num_batches,
+                                         repeat_final_dataset)
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
@@ -281,13 +282,3 @@ class WmtWorkload(BaseWmtWorkload):
         aux_dropout_rate=0.1,  # Unused for eval.
         update_batch_norm=False)
     return self.compute_summed_metrics(logits, targets, weights)
-
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return self._param_types

@@ -12,6 +12,7 @@ github.com/facebookresearch/fastMRI/blob/main/fastmri/pl_modules/unet_module.py
 Data:
 github.com/facebookresearch/fastMRI/tree/main/fastmri/data
 """
+from typing import Optional
 
 import flax.linen as nn
 import jax
@@ -63,27 +64,30 @@ class UNet(nn.Module):
   out_channels: int = 1
   channels: int = 32
   num_pool_layers: int = 4
-  dropout_rate: float = 0.0
+  dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
 
   @nn.compact
   def __call__(self, x, train=True):
-    down_sample_layers = [ConvBlock(self.channels, self.dropout_rate)]
+    dropout_rate = self.dropout_rate
+    if dropout_rate is None:
+      dropout_rate = 0.0
+    down_sample_layers = [ConvBlock(self.channels, dropout_rate)]
 
     ch = self.channels
     for _ in range(self.num_pool_layers - 1):
-      down_sample_layers.append(ConvBlock(ch * 2, self.dropout_rate))
+      down_sample_layers.append(ConvBlock(ch * 2, dropout_rate))
       ch *= 2
-    conv = ConvBlock(ch * 2, self.dropout_rate)
+    conv = ConvBlock(ch * 2, dropout_rate)
 
     up_conv = []
     up_transpose_conv = []
     for _ in range(self.num_pool_layers - 1):
       up_transpose_conv.append(TransposeConvBlock(ch))
-      up_conv.append(ConvBlock(ch, self.dropout_rate))
+      up_conv.append(ConvBlock(ch, dropout_rate))
       ch //= 2
 
     up_transpose_conv.append(TransposeConvBlock(ch))
-    up_conv.append(ConvBlock(ch, self.dropout_rate))
+    up_conv.append(ConvBlock(ch, dropout_rate))
 
     final_conv = nn.Conv(self.out_channels, kernel_size=(1, 1), strides=(1, 1))
 

@@ -1,6 +1,6 @@
 # Forked from the init2winit implementation here
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
-from typing import Tuple
+from typing import Optional, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
@@ -39,12 +39,17 @@ class GNN(nn.Module):
   num_outputs: int
   latent_dim: int = 256
   hidden_dims: Tuple[int] = (256,)
-  dropout_rate: float = 0.1
+  # If None, defaults to 0.1.
+  dropout_rate: Optional[float] = 0.1
   num_message_passing_steps: int = 5
 
   @nn.compact
   def __call__(self, graph, train):
-    dropout = nn.Dropout(rate=self.dropout_rate, deterministic=not train)
+    if self.dropout_rate is None:
+      dropout_rate = 0.1
+    else:
+      dropout_rate = self.dropout_rate
+    dropout = nn.Dropout(rate=dropout_rate, deterministic=not train)
 
     graph = graph._replace(
         globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))

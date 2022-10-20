@@ -33,24 +33,7 @@ class _Model(nn.Module):
     return x
 
 
-def _param_types(param_tree):
-  param_types_dict = {}
-  for name, value in param_tree.items():
-    if isinstance(value, dict):
-      param_types_dict[name] = _param_types(value)
-    else:
-      if 'bias' in name:
-        param_types_dict[name] = spec.ParameterType.BIAS
-      else:
-        param_types_dict[name] = spec.ParameterType.WEIGHT
-  return param_types_dict
-
-
 class MnistWorkload(BaseMnistWorkload):
-
-  def __init__(self):
-    super().__init__()
-    self._model = _Model()
 
   def _normalize(self, image):
     return (tf.cast(image, tf.float32) - self.train_mean) / self.train_stddev
@@ -68,7 +51,7 @@ class MnistWorkload(BaseMnistWorkload):
     else:
       tfds_split = f'train[:{self.num_train_examples}]'
     ds = tfds.load(
-        'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
+        'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.map(lambda x: {
         'inputs': self._normalize(x['image']),
         'targets': x['label'],
@@ -82,27 +65,14 @@ class MnistWorkload(BaseMnistWorkload):
     ds = map(data_utils.shard_numpy_ds, ds)
     return iter(ds)
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
-
-  # Return whether or not a key in spec.ParameterContainer is the output layer
-  # parameters.
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key == 'Dense_1'
 
-  def build_input_queue(self,
-                        data_rng,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int) -> Dict[str, Any]:
+  def _build_input_queue(self,
+                         data_rng,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int) -> Dict[str, Any]:
     ds = self._build_dataset(data_rng, split, data_dir, global_batch_size)
     if split != 'train':
       # Note that this stores the entire eval dataset in memory.
@@ -111,23 +81,11 @@ class MnistWorkload(BaseMnistWorkload):
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    initial_params = self._model.init({'params': rng}, init_val,
-                                      train=True)['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      initial_params)
+    initial_params = _Model().init({'params': rng}, init_val,
+                                   train=True)['params']
+    self._param_shapes = param_utils.jax_param_shapes(initial_params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
-
-  # Keep this separate from the loss function in order to support optimizers
-  # that use the logits.
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-    if loss_type == spec.LossType.SOFTMAX_CROSS_ENTROPY:
-      return jax.nn.softmax(logits_batch, axis=-1)
-    if loss_type == spec.LossType.SIGMOID_CROSS_ENTROPY:
-      return jax.nn.sigmoid(logits_batch)
-    if loss_type == spec.LossType.MEAN_SQUARED_ERROR:
-      return logits_batch
 
   def model_fn(
       self,
@@ -146,7 +104,7 @@ class MnistWorkload(BaseMnistWorkload):
     del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits_batch = self._model.apply(
+    logits_batch = _Model().apply(
         {'params': params},
         augmented_and_preprocessed_input_batch['inputs'],
         train=train)
@@ -157,10 +115,15 @@ class MnistWorkload(BaseMnistWorkload):
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
-    return -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    losses = -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   @functools.partial(
       jax.pmap,

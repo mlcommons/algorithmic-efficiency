@@ -8,17 +8,12 @@ from algorithmic_efficiency.workloads.fastmri import input_pipeline
 
 class BaseFastMRIWorkload(spec.Workload):
 
-  def __init__(self):
-    self._param_shapes = None
-    self._param_types = None
-    self._eval_iters = {}
-
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/ssim'] > self.target_value
 
   @property
   def target_value(self):
-    return 0.70
+    return 0.7351
 
   @property
   def loss_type(self):
@@ -34,11 +29,15 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self):
-    return 7135
+    return 3554
 
   @property
   def num_test_examples(self):
-    return None
+    return 3581
+
+  @property
+  def eval_batch_size(self):
+    return 256
 
   @property
   def train_mean(self):
@@ -62,37 +61,21 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 6000  # 100 mins
+    return 80
 
   @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 27142
 
-  @property
-  def model_params_types(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     del cache
     return input_pipeline.load_fastmri_split(global_batch_size,
                                              split,

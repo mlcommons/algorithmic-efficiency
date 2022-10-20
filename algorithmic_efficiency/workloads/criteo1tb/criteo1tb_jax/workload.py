@@ -17,33 +17,17 @@ from algorithmic_efficiency.workloads.criteo1tb.workload import \
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return self._param_types
-
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> spec.Tensor:
-    # TODO(znado): confirm that we do not want to tune label smoothing here.
-    del label_smoothing
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
-      weighted_losses = per_example_losses * mask_batch
-      normalization = mask_batch.sum()
-    else:
-      weighted_losses = per_example_losses
-      normalization = label_batch.shape[0]
-    return jnp.sum(weighted_losses, axis=-1) / normalization
+      per_example_losses *= mask_batch
+    return per_example_losses
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     self._model = models.DlrmSmall(
@@ -64,11 +48,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         init_rng,
         jnp.ones(input_shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))
-
     initial_params = initial_variables['params']
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      initial_params)
+    self._param_shapes = param_utils.jax_param_shapes(initial_params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_4'
 
   def model_fn(
       self,

@@ -37,12 +37,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                               *fake_input_batch)
 
     model_state, params = variables.pop('params')
-
-    self._param_shapes = jax.tree_map(lambda x: spec.ShapeTuple(x.shape),
-                                      params)
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
 
   def init_tokenizer(self, tokenizer_vocab_path):
     logging.info('Initializing metrics bundle and tokenizer.')
@@ -105,18 +107,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           input_paddings,
           train=False,
           mutable=False)
-      return (logits, logit_paddings), None
-
-  @property
-  def model_params_types(self):
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    if self._param_types is None:
-      self._param_types = param_utils.jax_param_types(
-          self._param_shapes.unfreeze())
-    return self._param_types
+      return (logits, logit_paddings), model_state
 
   def loss_fn(self,
               label_batch: Tuple[spec.Tensor, spec.Tensor],
@@ -224,7 +215,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       params: spec.ParameterContainer,
       batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:  # pylint: disable=line-too-long
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     (logits, logit_paddings), _ = self.model_fn(
         params,
         batch,
@@ -262,14 +253,22 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
+    if self.metrics_logger is not None:
+      self.metrics_logger.append_scalar_metrics(
+          {
+              f'{split}/num_batches': num_batches,
+              f'{split}/num_examples': num_examples,
+              'batch_size': global_batch_size
+          },
+          global_step)
 
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(
-          self.build_input_queue(rng,
-                                 split,
-                                 data_dir,
-                                 global_batch_size,
-                                 num_batches))
+          self._build_input_queue(rng,
+                                  split,
+                                  data_dir,
+                                  global_batch_size,
+                                  num_batches))
 
     metrics_report = None
     for _ in range(num_batches):
@@ -286,14 +285,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         metrics_report = metrics_report.merge(computed_metrics)
 
     computed_metrics = metrics_report.compute()
-
-    if self.summary_writer is not None:
-      self.summary_writer.scalar('{}/WER'.format(split),
-                                 computed_metrics['wer'],
-                                 global_step)
-      self.summary_writer.scalar('{}/ctc_loss'.format(split),
-                                 computed_metrics['ctc_loss'],
-                                 global_step)
 
     return computed_metrics
 

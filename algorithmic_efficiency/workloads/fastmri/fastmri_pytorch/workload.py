@@ -13,7 +13,6 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
-from algorithmic_efficiency.interop_utils import pytorch_to_jax
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
@@ -26,34 +25,27 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 class FastMRIWorkload(BaseFastMRIWorkload):
 
-  @property
-  def model_params_types(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_types is None:
-      self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    return self._param_types
-
-  def build_input_queue(self,
-                        data_rng: spec.RandomState,
-                        split: str,
-                        data_dir: str,
-                        global_batch_size: int,
-                        cache: Optional[bool] = None,
-                        repeat_final_dataset: Optional[bool] = None,
-                        num_batches: Optional[int] = None):
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = None,
+                         repeat_final_dataset: Optional[bool] = None,
+                         num_batches: Optional[int] = None):
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
-      np_iter = super().build_input_queue(data_rng,
-                                          split,
-                                          data_dir,
-                                          global_batch_size,
-                                          cache,
-                                          repeat_final_dataset,
-                                          num_batches)
+      np_iter = super()._build_input_queue(data_rng,
+                                           split,
+                                           data_dir,
+                                           global_batch_size,
+                                           cache,
+                                           repeat_final_dataset,
+                                           num_batches)
 
     while True:
       if RANK == 0:
@@ -109,9 +101,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = unet()
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -119,6 +110,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['up_conv.3.1.weight', 'up_conv.3.1.bias']
 
   def model_fn(
       self,
@@ -136,7 +130,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del update_batch_norm
 
     model = params
-    pytorch_utils.update_dropout(model, dropout_rate)
+    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -156,29 +150,20 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
     return logit_batch, None
 
-  def output_activation_fn(self,
-                           logits_batch: spec.Tensor,
-                           loss_type: spec.LossType) -> spec.Tensor:
-
-    activation_fn = {
-        spec.LossType.SOFTMAX_CROSS_ENTROPY: F.softmax,
-        spec.LossType.SIGMOID_CROSS_ENTROPY: F.sigmoid,
-        spec.LossType.MEAN_SQUARED_ERROR: lambda z: z,
-        spec.LossType.MEAN_ABSOLUTE_ERROR: lambda z: z
-    }
-    return activation_fn[loss_type](logits_batch)
-
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
-              mask_batch: spec.Tensor = None,
+              mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    del mask_batch
     del label_smoothing
-    return F.l1_loss(
+    losses = F.l1_loss(
         logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      losses *= mask_batch
+    return losses
 
   def _eval_model(self, params, batch, rng):
     """Return the SSIM and loss as a dict."""
@@ -193,11 +178,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         update_batch_norm=False)
     ssim_sum = jax_to_pytorch(
         ssim(
-            pytorch_to_jax(outputs),
-            pytorch_to_jax(batch['targets']),
-            mean=pytorch_to_jax(batch['mean']),
-            std=pytorch_to_jax(batch['std']),
-            volume_max=pytorch_to_jax(batch['volume_max']))).sum()
+            outputs.cpu().numpy(),
+            batch['targets'].cpu().numpy(),
+            mean=batch['mean'].cpu().numpy(),
+            std=batch['std'].cpu().numpy(),
+            volume_max=batch['volume_max'].cpu().numpy())).sum()
     loss = self.loss_fn(batch['targets'], outputs).sum()
     return {'ssim': ssim_sum, 'loss': loss, 'weight': batch['weights'].sum()}
 
@@ -216,7 +201,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self.build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
           data_rng,
           split,
           data_dir,

@@ -55,13 +55,14 @@ class ModelsTest(absltest.TestCase):
     _, same_batch_stats = pmapped_model_fn(
         model_params,
         {'inputs': second_input_batch},
-        batch_stats,
+        updated_batch_stats,
         spec.ForwardPassMode.TRAIN,
         rng,
         None,
         None,
         False)
-    self.assertIsNone(same_batch_stats)
+    self.assertEqual(
+        _pytree_total_diff(same_batch_stats, updated_batch_stats), 0.0)
 
     # Test eval model.
     logits, _ = pmapped_model_fn(

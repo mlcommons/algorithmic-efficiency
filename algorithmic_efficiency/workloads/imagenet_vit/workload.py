@@ -9,7 +9,6 @@ def decode_variant(variant):
   v, patch = variant.split('/')
 
   return {
-      # pylint:disable=line-too-long
       # Reference: Table 2 of https://arxiv.org/abs/2106.04560.
       'width': {
           'Ti': 192,
@@ -43,7 +42,7 @@ def decode_variant(variant):
       }[v],
       'num_heads': {
           'Ti': 3, 'S': 6, 'M': 8, 'B': 12, 'L': 16, 'H': 16, 'g': 16, 'G': 16
-      }[v],  # pylint:enable=line-too-long
+      }[v],
       'patch_size': (int(patch), int(patch))
   }
 
@@ -52,7 +51,11 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def target_value(self):
-    return 0.76
+    return 0.77171
+
+  @property
+  def eval_batch_size(self):
+    return 2048
 
   @property
   def max_allowed_runtime_sec(self):
@@ -60,7 +63,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def eval_period_time_sec(self):
-    return 6000  # 100 mins
+    return 7 * 60  # 7 mins.
 
   def _build_dataset(self,
                      data_rng: spec.RandomState,
@@ -77,3 +80,8 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
                                   cache,
                                   repeat_final_dataset,
                                   use_mixup)
+
+  @property
+  def step_hint(self) -> int:
+    """Max num steps the target setting algo was given to reach the target."""
+    return 140_000

@@ -5,11 +5,6 @@ from algorithmic_efficiency import spec
 
 class BaseCifarWorkload(spec.Workload):
 
-  def __init__(self):
-    self._eval_iters = {}
-    self._param_shapes = None
-    self._param_types = None
-
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
 
@@ -36,6 +31,10 @@ class BaseCifarWorkload(spec.Workload):
   @property
   def num_test_examples(self):
     return 10000
+
+  @property
+  def eval_batch_size(self):
+    return 1024
 
   @property
   def train_mean(self):
@@ -67,22 +66,8 @@ class BaseCifarWorkload(spec.Workload):
     return 600  # 10 mins
 
   @property
-  def param_shapes(self):
-    """The shapes of the parameters in the workload model."""
-    if self._param_shapes is None:
-      raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
-    return self._param_shapes
-
-  @property
-  def model_params_types(self):
-    """
-    TODO: return shape tuples from model as a tree
-    """
-    raise NotImplementedError
-
-  # Return whether or not a key in spec.ParameterTree is the output layer
-  # parameters.
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    raise NotImplementedError
+  def step_hint(self) -> int:
+    # Note that the target setting algorithms were not actually run on this
+    # workload, but for completeness we provide the number of steps for 100
+    # epochs at batch size 1024.
+    return 4883
