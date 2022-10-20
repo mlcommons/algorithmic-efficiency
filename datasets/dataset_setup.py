@@ -55,6 +55,10 @@ from absl import logging
 import subprocess
 import tensorflow_datasets as tfds
 
+from datasets import librispeech_preprocess
+from datasets import librispeech_tokenizer
+
+
 flags.DEFINE_boolean(
     'all',
     True,
@@ -119,6 +123,8 @@ flags.DEFINE_integer(
     'num_decompression_threads',
     8,
     'The number of threads to use in parallel when decompressing.')
+
+flags.DEFINE_boolean('train_tokenizer', True, 'Train Librispeech tokenizer.')
 FLAGS = flags.FLAGS
 
 
@@ -133,21 +139,15 @@ def download_criteo(dataset_dir, tmp_dir, num_decompression_threads):
     #
     # DOWNLOADING STRAIGHT TO gcsfuse mounted GCS IS 4000x SLOWER!!!!
     #
-    wget_cmd = [
-        'wget',
-        f'--directory-prefix={tmp_criteo_dir}',
-        f'https://storage.googleapis.com/criteo-cail-datasets/day_{day}.gz'
-    ]
+    wget_cmd = (
+        f'wget --directory-prefix={tmp_criteo_dir} '
+        f'https://storage.googleapis.com/criteo-cail-datasets/day_{day}.gz')
+    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
     output_path = os.path.join(criteo_dir, f'day_{day}.csv')
-    unzip_cmd = [
-        'pigz',
-        '-d',
-        '-c',
-        f'-p{num_decompression_threads}',
-        os.path.join(tmp_criteo_dir, f'day_{day}.gz'),
-        f'> {output_path}'
-    ]
-    command_str = ' '.join([*wget_cmd, '&&', *unzip_cmd])
+    unzip_cmd = (
+        f'pigz -d -c -p{num_decompression_threads} {input_path} > '
+        f'{output_path}')
+    command_str = f'{wget_cmd} && {unzip_cmd}'
     logging.info(f'Running Criteo download command:\n{command_str}')
     # Note that shell=True can be dangerous if the user injects code into the
     # --dataset_dir flag. We do some basic sanitization in main(), but
@@ -176,8 +176,45 @@ def download_imagenet_v2(dataset_dir):
       'imagenet_v2/matched-frequency:3.0.0',
       data_dir=dataset_dir).download_and_prepare()
 
-def download_librispeech(dataset_dir, tmp_dir):
-  pass
+
+def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
+  # After extraction the result is a folder named Librispeech containing audio
+  # files in .flac format along with transcripts containing name of audio file
+  # and corresponding transcription.
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+
+  for split in ['dev', 'test']:
+    for version in ['clean', 'other']:
+      wget_cmd = (
+          f'wget --directory-prefix={tmp_librispeech_dir} '
+          f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
+      subprocess.Popen(wget_cmd, shell=True)
+      subprocess.Popen(f'tar xzvf {split}-{version}.tar.gz', shell=True)
+
+  tars = [
+    'raw-metadata.tar.gz',
+    'train-clean-100.tar.gz',
+    'train-clean-360.tar.gz',
+    'train-other-500.tar.gz',
+  ]
+  for tar_filename in tars:
+    wget_cmd = (
+        f'wget --directory-prefix={tmp_librispeech_dir} '
+        f'http://www.openslr.org/resources/12/{tar_filename}')
+    subprocess.Popen(wget_cmd, shell=True)
+    tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
+    subprocess.Popen(f'tar xzvf {tar_path}', shell=True)
+
+  if train_tokenizer:
+    librispeech_tokenizer.run(train=True, data_dir=tmp_librispeech_dir)
+
+    # Preprocess data.
+    tokenizer_vocab_path = os.path.join(tmp_librispeech_dir, 'spm_model.vocab')
+    librispeech_dir = os.path.join(dataset_dir, 'criteo')
+    librispeech_preprocess.run(
+        input_dir=tmp_librispeech_dir,
+        output_dir=librispeech_dir,
+        tokenizer_vocab_path=tokenizer_vocab_path)
 
 
 def download_ogbg(dataset_dir, tmp_dir):
@@ -227,7 +264,7 @@ def main(_):
     #     dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url)
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
-    # download_librispeech(dataset_dir, tmp_dir)
+    download_librispeech(dataset_dir, tmp_dir, FLAGS.train_tokenizer)
   if FLAGS.all or FLAGS.ogbg:
     logging.info('Downloading OGBG...')
     # download_ogbg(dataset_dir, tmp_dir)
