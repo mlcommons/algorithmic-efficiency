@@ -271,13 +271,13 @@ def setup_imagenet_pytorch(dataset_dir):
   os.makedirs(os.path.join(imagenet_pytorch_dataset_dir, 'val'))
 
   # Copy tar file into pytorch directory
-  logging.info("Copying {} to {}".format(train_tar_file_path, imagenet_pytorch_dataset_dir))
+  logging.info('Copying {} to {}'.format(train_tar_file_path, imagenet_pytorch_dataset_dir))
   shutil.copy(train_tar_file_path, imagenet_pytorch_dataset_dir)
   logging.info("Copying {} to {}".format(val_tar_file_path, imagenet_pytorch_dataset_dir))
   shutil.copy(val_tar_file_path, imagenet_pytorch_dataset_dir)
-  logging.info("Set up imagenet dataset for pytorch framework complete")
 
-  # Extract train data
+  # Extract train data\
+  logging.info('Extracting imagenet train data')
   extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_TRAIN_TAR_FILENAME),
           os.path.join(imagenet_pytorch_dataset_dir, 'train'))
 
@@ -289,6 +289,7 @@ def setup_imagenet_pytorch(dataset_dir):
               os.path.join(imagenet_pytorch_dataset_dir, 'train', dirname))
 
   # Extract val data
+  logging.info('Extracting imagenet val data')
   extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_VAL_TAR_FILENAME), 
           os.path.join(imagenet_pytorch_dataset_dir, 'val'))
 
@@ -296,6 +297,8 @@ def setup_imagenet_pytorch(dataset_dir):
   valprep_command = ['wget', '-qO-', 'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh']
   valprep_process = subprocess.Popen(valprep_command, cwd=cwd, stdout=subprocess.PIPE)
   out = subprocess.check_output(['bash'], cwd=cwd, stdin=valprep_process.stdout)
+  logging.info("Set up imagenet dataset for pytorch framework complete")
+
 
 
 def extract(source, dest):
