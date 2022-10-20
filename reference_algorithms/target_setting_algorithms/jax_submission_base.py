@@ -101,11 +101,11 @@ def update_params(workload: spec.Workload,
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {
-              'loss': loss,
-              'grad_norm': grad_norm,
+              'loss': loss[0],
+              'grad_norm': grad_norm[0],
           }, global_step)
   logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
                global_step,
-               loss,
-               grad_norm)
+               loss[0],
+               grad_norm[0])
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
