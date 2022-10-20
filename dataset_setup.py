@@ -277,7 +277,7 @@ def setup_imagenet_pytorch(dataset_dir):
   shutil.copy(val_tar_file_path, imagenet_pytorch_dataset_dir)
   logging.info("Set up imagenet dataset for pytorch framework complete")
 
-  # Extract and train data
+  # Extract train data
   extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_TRAIN_TAR_FILENAME),
           os.path.join(imagenet_pytorch_dataset_dir, 'train'))
 
