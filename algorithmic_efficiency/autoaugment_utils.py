@@ -6,9 +6,9 @@ https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugm
 
 import inspect
 import math
+
 import tensorflow as tf
 from tensorflow_addons import image as contrib_image
-
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
@@ -76,24 +76,25 @@ def cutout(image, pad_size, replace=0):
 
   # Sample the center location in the image where the zero mask will be applied.
   cutout_center_height = tf.random.uniform(
-      shape=[], minval=0, maxval=image_height,
-      dtype=tf.int32)
+      shape=[], minval=0, maxval=image_height, dtype=tf.int32)
 
   cutout_center_width = tf.random.uniform(
-      shape=[], minval=0, maxval=image_width,
-      dtype=tf.int32)
+      shape=[], minval=0, maxval=image_width, dtype=tf.int32)
 
   lower_pad = tf.maximum(0, cutout_center_height - pad_size)
   upper_pad = tf.maximum(0, image_height - cutout_center_height - pad_size)
   left_pad = tf.maximum(0, cutout_center_width - pad_size)
   right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size)
 
-  cutout_shape = [image_height - (lower_pad + upper_pad),
-                  image_width - (left_pad + right_pad)]
+  cutout_shape = [
+      image_height - (lower_pad + upper_pad),
+      image_width - (left_pad + right_pad)
+  ]
   padding_dims = [[lower_pad, upper_pad], [left_pad, right_pad]]
   mask = tf.pad(
       tf.zeros(cutout_shape, dtype=image.dtype),
-      padding_dims, constant_values=1)
+      padding_dims,
+      constant_values=1)
   mask = tf.expand_dims(mask, -1)
   mask = tf.tile(mask, [1, 1, 3])
   image = tf.where(
@@ -256,9 +257,9 @@ def sharpness(image, factor):
   # Make image 4D for conv operation.
   image = tf.expand_dims(image, 0)
   # SMOOTH PIL Kernel.
-  kernel = tf.constant(
-      [[1, 1, 1], [1, 5, 1], [1, 1, 1]], dtype=tf.float32,
-      shape=[3, 3, 1, 1]) / 13.
+  kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
+                       dtype=tf.float32,
+                       shape=[3, 3, 1, 1]) / 13.
   # Tile across channel dimension.
   kernel = tf.tile(kernel, [1, 1, 3, 1])
   strides = [1, 1, 1, 1]
@@ -283,6 +284,7 @@ def sharpness(image, factor):
 
 def equalize(image):
   """Implements Equalize function from PIL using TF ops."""
+
   def scale_channel(im, c):
     """Scale the data in the channel to implement equalize."""
     im = tf.cast(im[:, :, c], tf.int32)
@@ -306,9 +308,10 @@ def equalize(image):
 
     # If step is zero, return the original image.  Otherwise, build
     # lut from the full histogram and step and then index from it.
-    result = tf.cond(tf.equal(step, 0),
-                     lambda: im,
-                     lambda: tf.gather(build_lut(histo, step), im))
+    result = tf.cond(
+        tf.equal(step, 0),
+        lambda: im,
+        lambda: tf.gather(build_lut(histo, step), im))
 
     return tf.cast(result, tf.uint8)
 
@@ -397,7 +400,7 @@ def _randomly_negate_tensor(tensor):
 
 
 def _rotate_level_to_arg(level):
-  level = (level/_MAX_LEVEL) * 30.
+  level = (level / _MAX_LEVEL) * 30.
   level = _randomly_negate_tensor(level)
   return (level,)
 
@@ -412,18 +415,18 @@ def _shrink_level_to_arg(level):
 
 
 def _enhance_level_to_arg(level):
-  return ((level/_MAX_LEVEL) * 1.8 + 0.1,)
+  return ((level / _MAX_LEVEL) * 1.8 + 0.1,)
 
 
 def _shear_level_to_arg(level):
-  level = (level/_MAX_LEVEL) * 0.3
+  level = (level / _MAX_LEVEL) * 0.3
   # Flip level to negative with 50% chance.
   level = _randomly_negate_tensor(level)
   return (level,)
 
 
 def _translate_level_to_arg(level, translate_const):
-  level = (level/_MAX_LEVEL) * float(translate_const)
+  level = (level / _MAX_LEVEL) * float(translate_const)
   # Flip level to negative with 50% chance.
   level = _randomly_negate_tensor(level)
   return (level,)
@@ -431,30 +434,47 @@ def _translate_level_to_arg(level, translate_const):
 
 def level_to_arg(cutout_const, translate_const):
   return {
-      'AutoContrast': lambda level: (),
-      'Equalize': lambda level: (),
-      'Invert': lambda level: (),
-      'Rotate': _rotate_level_to_arg,
-      'Posterize': lambda level: (int((level/_MAX_LEVEL) * 4),),
-      'Solarize': lambda level: (int((level/_MAX_LEVEL) * 256),),
-      'SolarizeAdd': lambda level: (int((level/_MAX_LEVEL) * 110),),
-      'Color': _enhance_level_to_arg,
-      'Contrast': _enhance_level_to_arg,
-      'Brightness': _enhance_level_to_arg,
-      'Sharpness': _enhance_level_to_arg,
-      'ShearX': _shear_level_to_arg,
-      'ShearY': _shear_level_to_arg,
-      'Cutout': lambda level: (int((level/_MAX_LEVEL) * cutout_const),),
-      # pylint:disable=g-long-lambda
-      'TranslateX': lambda level: _translate_level_to_arg(
-          level, translate_const),
-      'TranslateY': lambda level: _translate_level_to_arg(
-          level, translate_const),
-      # pylint:enable=g-long-lambda
+      'AutoContrast':
+          lambda level: (),
+      'Equalize':
+          lambda level: (),
+      'Invert':
+          lambda level: (),
+      'Rotate':
+          _rotate_level_to_arg,
+      'Posterize':
+          lambda level: (int((level / _MAX_LEVEL) * 4),),
+      'Solarize':
+          lambda level: (int((level / _MAX_LEVEL) * 256),),
+      'SolarizeAdd':
+          lambda level: (int((level / _MAX_LEVEL) * 110),),
+      'Color':
+          _enhance_level_to_arg,
+      'Contrast':
+          _enhance_level_to_arg,
+      'Brightness':
+          _enhance_level_to_arg,
+      'Sharpness':
+          _enhance_level_to_arg,
+      'ShearX':
+          _shear_level_to_arg,
+      'ShearY':
+          _shear_level_to_arg,
+      'Cutout':
+          lambda level: (int((level / _MAX_LEVEL) * cutout_const),),  # pylint:disable=g-long-lambda
+      'TranslateX':
+          lambda level: _translate_level_to_arg(level, translate_const),
+      'TranslateY':
+          lambda level: _translate_level_to_arg(level, translate_const),  # pylint:enable=g-long-lambda
   }
 
 
-def _parse_policy_info(name, prob, level, replace_value, cutout_const, translate_const):
+def _parse_policy_info(name,
+                       prob,
+                       level,
+                       replace_value,
+                       cutout_const,
+                       translate_const):
   """Return the function that corresponds to `name` and update `level` param."""
   func = NAME_TO_FUNC[name]
   args = level_to_arg(cutout_const, translate_const)[name](level)
@@ -496,9 +516,23 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
   """
   replace_value = [128] * 3
   available_ops = [
-      'AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize',
-      'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness',
-      'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd']
+      'AutoContrast',
+      'Equalize',
+      'Invert',
+      'Rotate',
+      'Posterize',
+      'Solarize',
+      'Color',
+      'Contrast',
+      'Brightness',
+      'Sharpness',
+      'ShearX',
+      'ShearY',
+      'TranslateX',
+      'TranslateY',
+      'Cutout',
+      'SolarizeAdd'
+  ]
 
   for layer_num in range(num_layers):
     key = tf.random.experimental.stateless_fold_in(key, layer_num)
@@ -520,8 +554,8 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
         image = tf.cond(
             tf.equal(i, op_to_select),
             # pylint:disable=g-long-lambda
-            lambda selected_func=func, selected_args=args: selected_func(
-                image, *selected_args),
+            lambda selected_func=func,
+            selected_args=args: selected_func(image, *selected_args),
             # pylint:enable=g-long-lambda
             lambda: image)
   return image
