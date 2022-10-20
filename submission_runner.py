@@ -285,7 +285,7 @@ def train_once(
                              data_select_rng)
     try:
       with profiler.profile('Update parameters'):
-        optimizer_state, model_params, model_state, loss, grad_norm = update_params(
+        optimizer_state, model_params, model_state, loss, grad_norm = update_params(  # pylint:disable=line-too-long
             workload=workload,
             current_param_container=model_params,
             current_params_types=workload.model_params_types,
