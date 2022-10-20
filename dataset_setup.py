@@ -52,8 +52,18 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
+import os
+import request
 import subprocess
 import tensorflow_datasets as tfds
+import tqdm
+
+KiB = 2**10
+MiB = 2**20
+GiB = 2**30
+TiB = 2**40
+PiB = 2**50
+
 
 flags.DEFINE_boolean(
     'all',
@@ -122,6 +132,41 @@ flags.DEFINE_integer(
 FLAGS = flags.FLAGS
 
 
+class _Downloader:
+  
+    def __init__(self, url, data_dir):
+        self.url = url
+        self.data_dir = os.path.expanduser(data_dir)
+        self.file_path= os.path.join(data_dir, self.url.split('/')[-1])
+        self.response = requests.get(self.url, stream=True)
+        self.progress_bar = self.setup_progress_bar()
+
+    def setup_data_dirs(self): 
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
+
+    def setup_progress_bar(self):
+        total_size_in_bytes = int(self.response.headers.get('Content-length', 0))
+        total_size_in_MiB = total_size_in_bytes / MiB
+        progress_bar = tqdm.tqdm(total=total_size_in_MiB, unit='MiB', unit_scale=True)
+        return progress_bar
+
+    def download(self, overwrite=False):
+        if not overwrite:
+            if os.path.exists(self.file_path):
+                raise FileExistError("File already exists and may be overwritten {}".format(file_path))
+
+        with open(self.file_path, "wb") as f:
+            for chunk in self.response.iter_content(chunk_size=KiB):
+                chunk_size_in_MiB = len(chunk) / MiB
+                self.progress_bar.update(chunk_size_in_MiB)
+                f.write(chunk)
+        self.progress_bar.close()
+        if total_size_in_MiB != 0 and progress_bar.n != total_size_in_MiB:
+            raise Exception("Data from {url} does not match expected size {size}".format(url=self.url,
+            size=total_size_in_MiB))
+
+
 def download_criteo(dataset_dir, tmp_dir, num_decompression_threads):
   criteo_dir = os.path.join(dataset_dir, 'criteo')
   tmp_criteo_dir = os.path.join(tmp_dir, 'criteo')
@@ -168,7 +213,11 @@ def download_fastmri(
 
 def download_imagenet(
     dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url):
+  # Download imagenet test set
   download_imagenet_v2(dataset_dir)
+  
+  # Download imagenet train set
+  r = request.
 
 
 def download_imagenet_v2(dataset_dir):
