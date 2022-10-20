@@ -128,7 +128,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     eval_rngs = prng.split(model_rng, jax.local_device_count())
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
-      # We already sum these metrics across devices inside _compute_metrics.
+      # We already sum these metrics across devices inside _eval_model.
       synced_metrics = self._eval_model(params, batch, eval_rngs)
       total_metrics = {
           k: v + synced_metrics[k][0] for k, v in total_metrics.items()

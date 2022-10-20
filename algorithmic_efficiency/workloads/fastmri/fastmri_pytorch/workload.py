@@ -83,7 +83,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                                 dtype=torch.float64,
                                 device=DEVICE)
           dist.broadcast(weights, src=0)
-          batch['weights'] = weights
+          batch['weights'] = weights[RANK]
         tensors = torch.empty((2, N_GPUS, per_device_batch_size, 320, 320),
                               device=DEVICE)
         dist.broadcast(tensors, src=0)
