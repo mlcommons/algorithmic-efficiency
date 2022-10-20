@@ -45,7 +45,7 @@ def blend(image1, image2, factor):
   temp = tf.cast(image1, tf.float32) + scaled
 
   # Interpolate
-  if factor > 0.0 and factor < 1.0:
+  if 0.0 < factor < 1.0:
     # Interpolation means we always stay within 0 and 255.
     return tf.cast(temp, tf.uint8)
 
@@ -550,7 +550,8 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
                                            maxval=0.8,
                                            dtype=tf.float32)
         func, _, args = _parse_policy_info(op_name, prob, random_magnitude,
-                                           replace_value, cutout_const=40, translate_const=100)
+                                           replace_value, cutout_const=40,
+                                           translate_const=100)
         image = tf.cond(
             tf.equal(i, op_to_select),
             # pylint:disable=g-long-lambda
