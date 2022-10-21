@@ -5,7 +5,7 @@ import functools
 import functorch
 import torch
 import torch.nn.functional as F
-from torchvision.transforms.functional import pad
+from torchvision.transforms.functional import pad as pad_fn
 
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
@@ -127,7 +127,7 @@ def _uniform_filter(im, size=7):
 
   def conv(im):
     # This function does not seem to work with only two dimensions.
-    padded_im = pad(im.unsqueeze(0), pad_size, padding_mode='symmetric')
+    padded_im = pad_fn(im.unsqueeze(0), pad_size, padding_mode='symmetric')
     # Remove the first dim and the padding from the second dim.
     padded_im = padded_im[0, pad_size:-pad_size]
     filters = torch.ones(1, 1, size, dtype=padded_im.dtype, device=DEVICE)
