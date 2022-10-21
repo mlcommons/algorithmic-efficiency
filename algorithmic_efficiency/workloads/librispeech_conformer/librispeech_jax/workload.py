@@ -39,6 +39,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model_state, params = variables.pop('params')
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
+    self._model = model
+
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
@@ -65,19 +67,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
     input_dropout_rate.
     """
-    model_config = models.ConformerConfig(
-        attention_residual_dropout_rate=dropout_rate,
-        conv_residual_dropout_rate=dropout_rate,
-        feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
-    model = models.Conformer(model_config)
     return self._model_fn(params,
                           augmented_and_preprocessed_input_batch,
                           model_state,
                           mode,
                           rng,
-                          update_batch_norm,
-                          model)
+                          update_batch_norm)
 
   def _model_fn(
       self,
@@ -86,13 +81,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool,
-      model: nn.Module) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm or is_train_mode:
-      (logits, logit_paddings), new_model_state = model.apply(
+      (logits, logit_paddings), new_model_state = self._model.apply(
           variables,
           inputs,
           input_paddings,
@@ -101,7 +95,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           mutable=['batch_stats'])
       return (logits, logit_paddings), new_model_state
     else:
-      logits, logit_paddings = model.apply(
+      logits, logit_paddings = self._model.apply(
           variables,
           inputs,
           input_paddings,
