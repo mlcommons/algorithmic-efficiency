@@ -15,9 +15,9 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   vocab_sizes: Tuple[int] = tuple([1024 * 128] * 26)
   num_dense_features: int = 13
-  mlp_bottom_dims: Tuple[int, int] = (128, 128)
-  mlp_top_dims: Tuple[int, int, int] = (256, 128, 1)
-  embed_dim: int = 64
+  mlp_bottom_dims: Tuple[int, int] = (512, 256, 128)
+  mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
+  embed_dim: int = 128
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.target_value
