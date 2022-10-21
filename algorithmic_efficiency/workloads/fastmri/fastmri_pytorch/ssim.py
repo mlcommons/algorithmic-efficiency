@@ -1,9 +1,15 @@
-"""Structural similarity index calculation in Jax."""
+"""Structural similarity index calculation in PyTorch, ported from Jax."""
 
 import functools
 
-import jax
-import jax.numpy as jnp
+import functorch
+import torch
+import torch.nn.functional as F
+from torchvision.transforms.functional import pad
+
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+DEVICE = pytorch_setup()[2]
 
 
 def ssim(logits, targets, mean=None, std=None, volume_max=None):
@@ -13,8 +19,8 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   as in https://arxiv.org/abs/1811.08839.
 
   Args:
-   logits: (batch,) + input.shape float array.
-   targets: (batch,) + input.shape float array.
+   logits: (batch,) + input.shape float tensor.
+   targets: (batch,) + input.shape float tensor.
    mean: (batch,) mean of original images.
    std: (batch,) std of original images.
    volume_max: (batch,) of the volume max for the volumes each example came
@@ -23,23 +29,25 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
     Structural similarity computed per example, shape [batch, ...].
   """
   if volume_max is None:
-    volume_max = jnp.ones(logits.shape[0])
+    volume_max = torch.ones(logits.shape[0], device=DEVICE)
 
   # NOTE(dsuo): `volume_max` can be 0 if we have a padded batch, but this will
   # lead to NaN values in `ssim`.
-  volume_max = jnp.where(volume_max == 0, jnp.ones_like(volume_max), volume_max)
+  volume_max = torch.where(volume_max == 0,
+                           torch.ones_like(volume_max),
+                           volume_max)
 
   if mean is None:
-    mean = jnp.zeros(logits.shape[0])
+    mean = torch.zeros(logits.shape[0], device=DEVICE)
 
   if std is None:
-    std = jnp.ones(logits.shape[0])
+    std = torch.ones(logits.shape[0], device=DEVICE)
 
-  mean = mean.reshape((-1,) + (1,) * (len(logits.shape) - 1))
-  std = std.reshape((-1,) + (1,) * (len(logits.shape) - 1))
+  mean = mean.view((-1,) + (1,) * (len(logits.shape) - 1))
+  std = std.view((-1,) + (1,) * (len(logits.shape) - 1))
   logits = logits * std + mean
   targets = targets * std + mean
-  ssims = jax.vmap(structural_similarity)(logits, targets, volume_max)
+  ssims = functorch.vmap(structural_similarity)(logits, targets, volume_max)
   return ssims
 
 
@@ -54,8 +62,8 @@ def structural_similarity(im1,
   NOTE(dsuo): modified from skimage.metrics.structural_similarity.
 
   Args:
-    im1: ndarray Images. Any dimensionality with same shape.
-    im2: ndarray Images. Any dimensionality with same shape.
+    im1: Image tensor. Any dimensionality with same shape.
+    im2: Image tensor. Any dimensionality with same shape.
     data_range: float. The data range of the input image (distance
       between minimum and maximum possible values). By default, this is
     win_size: int or None. The side-length of the sliding window used
@@ -66,7 +74,7 @@ def structural_similarity(im1,
     k2: float. Algorithm parameter K2 (see [2]).
 
   Returns:
-    mssim: float
+    mssim: Scalar float tensor.
         The mean structural similarity index over the image.
 
   References
@@ -111,17 +119,21 @@ def structural_similarity(im1,
   pad = (win_size - 1) // 2
 
   # compute (weighted) mean of ssim.
-  return jnp.mean(s.at[pad:-pad, pad:-pad].get())
+  return torch.mean(s[pad:-pad, pad:-pad])
 
 
 def _uniform_filter(im, size=7):
+  pad_size = size // 2
 
   def conv(im):
-    return jnp.convolve(
-        jnp.pad(im, pad_width=size // 2, mode='symmetric'),
-        jnp.ones(size),
-        mode='valid') / size
+    # This function does not seem to work with only two dimensions.
+    padded_im = pad(im.unsqueeze(0), pad_size, padding_mode='symmetric')
+    # Remove the first dim and the padding from the second dim.
+    padded_im = padded_im[0, pad_size:-pad_size]
+    filters = torch.ones(1, 1, size, dtype=padded_im.dtype, device=DEVICE)
+    # Add additional dimension for the number of channels.
+    return F.conv1d(padded_im.unsqueeze(1), filters).squeeze(1) / size
 
-  im = jax.vmap(conv, (0,))(im)
-  im = jax.vmap(conv, (1,))(im)
+  im = conv(im)
+  im = conv(im.T)
   return im.T
