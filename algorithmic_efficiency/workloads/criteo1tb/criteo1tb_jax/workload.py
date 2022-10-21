@@ -23,8 +23,15 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> spec.Tensor:
+    del label_smoothing
+    batch_size = label_batch.shape[0]
+    label_batch = jnp.reshape(label_batch, (batch_size,))
+    logits_batch = jnp.reshape(logits_batch, (batch_size,))
+    mask_batch = jnp.reshape(mask_batch, (batch_size,))
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
+    # This should be unnecessary, but just to be safe.
+    per_example_losses = jnp.reshape(per_example_losses, (batch_size,))
     if mask_batch is not None:
       per_example_losses *= mask_batch
     return per_example_losses
