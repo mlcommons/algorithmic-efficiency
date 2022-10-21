@@ -12,7 +12,7 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax import models
-from algorithmic_efficiency.workloads.fastmri.ssim import ssim
+from algorithmic_efficiency.workloads.fastmri.fastmri_jax.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
