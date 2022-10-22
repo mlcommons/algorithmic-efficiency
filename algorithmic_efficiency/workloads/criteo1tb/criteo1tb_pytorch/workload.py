@@ -32,12 +32,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     label_batch = torch.reshape(label_batch, (batch_size,))
     logits_batch = torch.reshape(logits_batch, (batch_size,))
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits=logits_batch, targets=label_batch)
-    # This should be unnecessary, but just to be safe.
-    per_example_losses = torch.reshape(per_example_losses, (batch_size,))
-    if mask_batch is not None:
-      mask_batch = torch.reshape(mask_batch, (batch_size,))
-      per_example_losses *= mask_batch
+        logits=logits_batch, targets=label_batch, mask_batch=mask_batch)
     return per_example_losses
 
   def _eval_metric(self, logits: spec.Tensor,
@@ -188,8 +183,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         dropout_rate=None,
         aux_dropout_rate=None,
         update_batch_norm=False)
-    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits, batch['targets'])
+    per_example_losses = self.loss_fn(
+        label_batch=batch['targets'],
+        logits_batch=logits,
+        mask_batch=batch['weights'])
     batch_loss_numerator = torch.sum(per_example_losses).cpu().numpy()
     batch_loss_denominator = torch.sum(batch['weights']).cpu().numpy()
     return batch_loss_numerator, batch_loss_denominator
