@@ -16,7 +16,8 @@ _GRAD_CLIP_EPS = 1e-6
     jax.pmap,
     axis_name='batch',
     in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
-    static_broadcasted_argnums=(0, 1))
+    static_broadcasted_argnums=(0, 1),
+    donate_argnums=(2, 3, 4))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        model_state,

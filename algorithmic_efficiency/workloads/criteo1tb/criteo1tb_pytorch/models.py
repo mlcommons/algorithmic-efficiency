@@ -97,7 +97,7 @@ class DlrmSmall(nn.Module):
 
     # top mlp
     # TODO (JB): Write down the formula here instead of the constant.
-    input_dims = 534
+    input_dims = 506
     top_mlp_layers = []
     num_layers_top = len(self.mlp_top_dims)
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):

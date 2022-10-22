@@ -64,7 +64,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self):
-    return 24 * 60
+    return 11 * 60
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

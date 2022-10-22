@@ -31,12 +31,12 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     batch_size = label_batch.shape[0]
     label_batch = torch.reshape(label_batch, (batch_size,))
     logits_batch = torch.reshape(logits_batch, (batch_size,))
-    mask_batch = torch.reshape(mask_batch, (batch_size,))
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     # This should be unnecessary, but just to be safe.
     per_example_losses = torch.reshape(per_example_losses, (batch_size,))
     if mask_batch is not None:
+      mask_batch = torch.reshape(mask_batch, (batch_size,))
       per_example_losses *= mask_batch
     return per_example_losses
 

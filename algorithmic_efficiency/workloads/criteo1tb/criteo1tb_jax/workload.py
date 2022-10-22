@@ -27,13 +27,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     batch_size = label_batch.shape[0]
     label_batch = jnp.reshape(label_batch, (batch_size,))
     logits_batch = jnp.reshape(logits_batch, (batch_size,))
-    mask_batch = jnp.reshape(mask_batch, (batch_size,))
     per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits=logits_batch, targets=label_batch)
-    # This should be unnecessary, but just to be safe.
-    per_example_losses = jnp.reshape(per_example_losses, (batch_size,))
-    if mask_batch is not None:
-      per_example_losses *= mask_batch
+        logits=logits_batch, targets=label_batch, mask_batch=mask_batch)
     return per_example_losses
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
@@ -61,7 +56,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return jax_utils.replicate(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key == 'Dense_4'
+    return param_key == 'Dense_7'  # DO NOT SUBMIT double check
 
   def model_fn(
       self,
@@ -100,8 +95,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         dropout_rate=None,
         aux_dropout_rate=None,
         update_batch_norm=False)
-    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits, batch['targets'])
+    per_example_losses = self.loss_fn(
+        label_batch=batch['targets'],
+        logits_batch=logits,
+        mask_batch=batch['weights'])
     return jnp.sum(per_example_losses)
 
   def _eval_batch(self, params, batch):
