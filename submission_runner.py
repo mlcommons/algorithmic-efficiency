@@ -320,10 +320,14 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
+          total_duration = current_time - global_start_time
           logging.info('Time since start: %.2fs, \tStep: %d, \t%s',
-                       current_time - global_start_time,
+                       total_duration,
                        global_step,
                        latest_eval_result)
+          latest_eval_result['score'] = (
+              train_state['accumulated_submission_time'])
+          latest_eval_result['total_duration'] = total_duration
           eval_results.append((global_step, latest_eval_result))
           train_state['goal_reached'] = workload.has_reached_goal(
               latest_eval_result)
