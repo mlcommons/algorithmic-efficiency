@@ -1,6 +1,6 @@
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
-
+from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
@@ -30,14 +30,11 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
     initialize(model)
-
-    self._param_shapes = {
-        k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()
-    }
+    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._param_types = param_utils.pytorch_param_types(self._param_shapes)    
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)

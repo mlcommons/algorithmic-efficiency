@@ -554,7 +554,7 @@ class GenericRNN(nn.Module):
                 deterministic=deterministic)
         outputs = jnp.concatenate([outputs, backward_outputs], axis=-1)
         cell_idx += 1
-
+      outputs = outputs * (1 - input_paddings[:,:,None])
       inputs = outputs
 
     return outputs
@@ -646,7 +646,6 @@ class BatchRNN(nn.Module):
                        config.dtype,
                        config.batch_norm_momentum,
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
-
     output = LSTM(
         hidden_size=config.encoder_dim // 2,
         bidirectional=config.bidirectional,

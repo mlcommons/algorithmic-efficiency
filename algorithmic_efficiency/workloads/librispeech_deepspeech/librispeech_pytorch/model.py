@@ -165,10 +165,10 @@ class Conv2dSubsampling(nn.Module):
     out_padding = F.conv1d(
         input=torch.cat([
             paddings[:, None, :],
-            torch.zeros(size=(paddings.shape[0], 1, pad_len))
+            torch.zeros(size=(paddings.shape[0], 1, pad_len), device=paddings.device)
         ],
                         dim=2),
-        weight=torch.ones([1, 1, 1]),
+        weight=torch.ones([1, 1, 1], device=paddings.device),
         stride=self.filter_stride[:1])
     out_padding = out_padding.squeeze(dim=1)
     outputs = outputs * (1 - out_padding[:, None, :, None])
@@ -192,93 +192,52 @@ class FeedForwardModule(nn.Module):
     padding_mask = (1 - input_paddings)[:, :, None]
     inputs = self.bn(inputs, input_paddings)
     inputs = self.lin(inputs)
+    inputs = F.relu(inputs)
     inputs = inputs * padding_mask
     inputs = self.dropout(inputs)
 
     return inputs
 
 
-class CustomBatchNorm1d(nn.BatchNorm1d):
-
-  def __init__(self, num_features, momentum, eps):
-    super().__init__(num_features=num_features, momentum=momentum, eps=eps)
-
-  def reset_parameters(self) -> None:
-    self.reset_running_stats()
-    if self.affine:
-      init.zeros_(self.weight)
-      init.zeros_(self.bias)
-
-  def forward(self, input):  # pylint: disable=redefined-builtin
-    self._check_input_dim(input)
-
-    # exponential_average_factor is set to self.momentum
-    # (when it is available) only so that it gets updated
-    # in ONNX graph when this node is exported to ONNX.
-    if self.momentum is None:
-      exponential_average_factor = 0.0
-    else:
-      exponential_average_factor = self.momentum
-
-    if self.training and self.track_running_stats:
-      # TODO: if statement only here to tell the jit to skip emitting
-      # this when it is None
-      if self.num_batches_tracked is not None:  # type: ignore[has-type]
-        self.num_batches_tracked.add_(1)  # type: ignore[has-type]
-        if self.momentum is None:  # use cumulative moving average
-          exponential_average_factor = 1.0 / \
-              float(self.num_batches_tracked)
-        else:  # use exponential moving average
-          exponential_average_factor = self.momentum
-
-    # Decide whether the mini-batch stats should be used for normalization
-    # rather than the buffers. Mini-batch stats are used in training mode,
-    # and in eval mode when buffers are None.
-    if self.training:
-      bn_training = True
-    else:
-      bn_training = (self.running_mean is None) and (self.running_var is None)
-    # Buffers are only updated if they are to be tracked and we are in training
-    # mode. Thus they only need to be passed when the update should occur (i.e.
-    # in training mode when they are tracked), or when buffer stats are used
-    # for normalization (i.e. in eval mode when buffers are not None).
-    return F.batch_norm(
-        input,
-        # If buffers are not to be tracked, ensure that they won't be updated
-        self.running_mean
-        if not self.training or self.track_running_stats else None,
-        self.running_var
-        if not self.training or self.track_running_stats else None,
-        1 + self.weight,
-        self.bias,
-        bn_training,
-        exponential_average_factor,
-        self.eps,
-    )
-
-
 class BatchNorm(nn.Module):
-
   def __init__(self, dim, batch_norm_momentum, batch_norm_epsilon):
     super().__init__()
-    self.bn = CustomBatchNorm1d(
-        num_features=dim, momentum=batch_norm_momentum, eps=batch_norm_epsilon)
+    running_mean = torch.zeros(dim)
+    running_var = torch.ones(dim)
+    self.register_buffer('running_mean', running_mean)
+    self.register_buffer('running_var', running_var)
+    self.scale = nn.Parameter(torch.zeros(dim))
+    self.bias = nn.Parameter(torch.zeros(dim))
+    self.register_buffer('momentum',
+                         torch.FloatTensor([batch_norm_momentum]))
+    self.register_buffer('epsilon',
+                         torch.FloatTensor([batch_norm_epsilon]))
+    self.register_buffer('dim', torch.FloatTensor([dim]))
+    # self.momentum = config.batch_norm_momentum
+    # self.epsilon = config.batch_norm_epsilon
+    # self.dim = config.encoder_dim
 
-  def forward(self, inputs, input_paddings=None):
-    # inputs: ...D
-    #padding: ...
-    *b, d = inputs.shape
-    reduce_size = functools.reduce(lambda x, y: x * y, b)
+  def forward(self, inputs, input_paddings):
+    #inputs: NHD
+    #padding: NH
+    mask = 1 - input_paddings[:, :, None]
+    if self.training:
+      count = mask.sum()
+      masked_inp = inputs.masked_fill(mask == 0, 0)
+      mean = (masked_inp).sum(dim=(0, 1)) / count
+      var = (torch.square(masked_inp - mean)).sum(dim=(0, 1)) / count
 
-    inputs = inputs.reshape(reduce_size, d)
-    if input_paddings is None:
-      input_paddings = torch.zeros(size=b, device=inputs.device)
-    input_paddings = input_paddings.reshape(reduce_size)
-    bn_inp = self.bn(inputs[input_paddings == 0])
-    output = torch.zeros(reduce_size, d, device=inputs.device)
-    output[input_paddings == 0] = bn_inp
-
-    return output.reshape(*b, d)
+      self.running_mean = self.momentum * self.running_mean + (
+          1 - self.momentum) * mean.detach()
+      self.running_var = self.momentum * self.running_var + (
+          1 - self.momentum) * var.detach()
+    else:
+      mean = self.running_mean
+      var = self.running_var
+    v = (1 + self.scale) * torch.rsqrt(var + self.epsilon)
+    bn = (inputs - mean) * v + self.bias
+    output = bn.masked_fill(mask == 0, 0)
+    return output
 
 
 class BatchRNN(nn.Module):
@@ -319,7 +278,7 @@ class BatchRNN(nn.Module):
           torch.zeros(
               size=(outputs.shape[0],
                     inputs.shape[1] - outputs.shape[1],
-                    outputs.shape[2]))
+                    outputs.shape[2]), device=outputs.device)
       ],
                           dim=1)
     return outputs
@@ -365,7 +324,8 @@ class DeepspeechEncoderDecoder(nn.Module):
     output_paddings = input_paddings
 
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
-    outputs, output_paddings = self.specaug(outputs, output_paddings)
+    if self.training:
+      outputs, output_paddings = self.specaug(outputs, output_paddings)
     outputs, output_paddings = self.subsample(outputs, output_paddings)
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:
