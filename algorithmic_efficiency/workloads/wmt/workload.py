@@ -56,7 +56,7 @@ class BaseWmtWorkload(spec.Workload):
   @property
   def num_test_examples(self):
     # wmt14_translate/de-en 'test' split size.
-    return 3003
+    return 3000
 
   @property
   def eval_batch_size(self):
@@ -95,6 +95,8 @@ class BaseWmtWorkload(spec.Workload):
       # Without the '+1' only `num_eval_train_examples-1` examples are used
       # since one example is filtered out in the input pipeline.
       split = f'train[:{self.num_eval_train_examples+1}]'
+    if split == 'test':
+      split = f'test[:{self.num_test_examples}]'
     ds, self._tokenizer = input_pipeline.get_wmt_dataset(
         data_rng,
         split,
