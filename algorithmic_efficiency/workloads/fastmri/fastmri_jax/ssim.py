@@ -1,4 +1,4 @@
-"""Structural similarity index calculation."""
+"""Structural similarity index calculation in Jax."""
 
 import functools
 

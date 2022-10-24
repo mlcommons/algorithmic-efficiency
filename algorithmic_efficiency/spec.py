@@ -319,6 +319,7 @@ class Workload(metaclass=abc.ABCMeta):
         global_step=global_step)
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
+    eval_metrics['validation/num_examples'] = self.num_validation_examples
     # Evaluate on the test set. TODO(znado): always eval on the test set.
     try:
       if self.num_test_examples is not None:
@@ -334,8 +335,10 @@ class Workload(metaclass=abc.ABCMeta):
             global_step=global_step)
         for k, v in test_metrics.items():
           eval_metrics['test/' + k] = v
+        eval_metrics['test/num_examples'] = self.num_test_examples
     except NotImplementedError:
       pass
+
     return eval_metrics
 
 

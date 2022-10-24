@@ -72,14 +72,15 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: bool,
                      repeat_final_dataset: bool):
-    use_mixup = split == 'train'
+    use_mixup = use_randaug = split == 'train'
     return super()._build_dataset(data_rng,
                                   split,
                                   data_dir,
                                   global_batch_size,
                                   cache,
                                   repeat_final_dataset,
-                                  use_mixup)
+                                  use_mixup,
+                                  use_randaug)
 
   @property
   def step_hint(self) -> int:
