@@ -12,11 +12,10 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.interop_utils import jax_to_pytorch
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
     unet
-from algorithmic_efficiency.workloads.fastmri.ssim import ssim
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
 
@@ -176,13 +175,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         dropout_rate=0.0,
         aux_dropout_rate=0.0,
         update_batch_norm=False)
-    ssim_sum = jax_to_pytorch(
-        ssim(
-            outputs.cpu().numpy(),
-            batch['targets'].cpu().numpy(),
-            mean=batch['mean'].cpu().numpy(),
-            std=batch['std'].cpu().numpy(),
-            volume_max=batch['volume_max'].cpu().numpy())).sum()
+    ssim_sum = ssim(
+        outputs,
+        batch['targets'],
+        mean=batch['mean'],
+        std=batch['std'],
+        volume_max=batch['volume_max']).sum()
     loss = self.loss_fn(batch['targets'], outputs).sum()
     return {'ssim': ssim_sum, 'loss': loss, 'weight': batch['weights'].sum()}
 
