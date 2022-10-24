@@ -91,13 +91,13 @@ def _apply_op(
   elif op_name == "Rotate":
     img = F.rotate(img, magnitude, interpolation=interpolation, fill=fill)
   elif op_name == "Brightness":
-    img = F.adjust_brightness(img, 1.0 + magnitude)
+    img = F.adjust_brightness(img, magnitude)
   elif op_name == "Color":
-    img = F.adjust_saturation(img, 1.0 + magnitude)
+    img = F.adjust_saturation(img, magnitude)
   elif op_name == "Contrast":
-    img = F.adjust_contrast(img, 1.0 + magnitude)
+    img = F.adjust_contrast(img, magnitude)
   elif op_name == "Sharpness":
-    img = F.adjust_sharpness(img, 1.0 + magnitude)
+    img = F.adjust_sharpness(img, magnitude)
   elif op_name == "Posterize":
     img = F.posterize(img, int(magnitude))
   elif op_name == "Cutout":
@@ -140,10 +140,10 @@ class RandAugment(torch.nn.Module):
         "TranslateX": (torch.tensor(100), True),
         "TranslateY": (torch.tensor(100), True),
         "Rotate": (torch.tensor(30), True),
-        "Brightness": (torch.tensor(0.1), True),
-        "Color": (torch.tensor(0.1), True),
-        "Contrast": (torch.tensor(0.1), True),
-        "Sharpness": (torch.tensor(0.1), True),
+        "Brightness": (torch.tensor(0.1), False),
+        "Color": (torch.tensor(0.1), False),
+        "Contrast": (torch.tensor(0.1), False),
+        "Sharpness": (torch.tensor(0.1), False),
         "Posterize": (torch.tensor(4), False),
         "Solarize": (torch.tensor(255), False),
         "SolarizeAdd": (torch.tensor(111), False),
