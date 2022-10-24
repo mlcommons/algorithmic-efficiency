@@ -39,7 +39,7 @@ def cutout(img, pad_size):
 def solarize(img: Tensor, threshold: float) -> Tensor:
   img = np.array(img)
   new_img = np.where(img < threshold, img, 255. - img)
-  return PIL.Image.fromarray(new_img)
+  return PIL.Image.fromarray(new_img.astype(np.uint8))
 
 
 def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
