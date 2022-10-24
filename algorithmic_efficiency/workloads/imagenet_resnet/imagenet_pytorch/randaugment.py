@@ -1,3 +1,8 @@
+"""Code for RandAugmentation.
+
+Adapted from:
+https://pytorch.org/vision/stable/_modules/torchvision/transforms/autoaugment.html
+"""
 import math
 from typing import Dict, List, Optional, Tuple
 
@@ -29,6 +34,22 @@ def cutout(img, pad_size):
   img = img.copy()
   PIL.ImageDraw.Draw(img).rectangle(xy, color)
   return img
+
+
+def solarize(img: Tensor, threshold: float) -> Tensor:
+  img = np.array(img)
+  new_img = np.where(img < threshold, img, 255. - img)
+  return PIL.Image.fromarray(new_img)
+
+
+def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
+  threshold = 128
+  img = np.array(img)
+  added_img = img.astype(np.int64) + addition
+  added_img = np.clip(added_img, 0, 255).astype(np.uint8)
+  # added_img = PIL.Image.fromarray(added_image)
+  new_img = np.where(img < threshold, added_img, img)
+  return PIL.Image.fromarray(new_img)
 
 
 def _apply_op(
@@ -103,9 +124,9 @@ def _apply_op(
   elif op_name == "Cutout":
     img = cutout(img, magnitude)
   elif op_name == "SolarizeAdd":
-    img = F.solarize(img, 255 - magnitude)
+    img = solarize_add(img, int(magnitude))
   elif op_name == "Solarize":
-    img = F.solarize(img, magnitude)
+    img = solarize(img, magnitude)
   elif op_name == "AutoContrast":
     img = F.autocontrast(img)
   elif op_name == "Equalize":
@@ -145,8 +166,8 @@ class RandAugment(torch.nn.Module):
         "Contrast": (torch.tensor(0.1), False),
         "Sharpness": (torch.tensor(0.1), False),
         "Posterize": (torch.tensor(4), False),
-        "Solarize": (torch.tensor(255), False),
-        "SolarizeAdd": (torch.tensor(111), False),
+        "Solarize": (torch.tensor(256), False),
+        "SolarizeAdd": (torch.tensor(110), False),
         "AutoContrast": (torch.tensor(0.0), False),
         "Equalize": (torch.tensor(0.0), False),
         "Cutout": (torch.tensor(40.0), False),
