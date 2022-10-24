@@ -25,6 +25,7 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models im
     resnet50
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import randaugment
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -83,7 +84,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           transforms.RandomHorizontalFlip(),
       ]
       if use_randaug:
-        transform_config.append(transforms.RandAugment(magnitude=10))
+        transform_config.append(randaugment.RandAugment(magnitude=10))
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([

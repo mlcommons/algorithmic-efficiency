@@ -1,4 +1,5 @@
-"""Utilities for RandAugmentation.
+"""Code for RandAugmentation.
+
 Adapted from:
 https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugment.py
 """
