@@ -132,25 +132,24 @@ class RandAugment(torch.nn.Module):
     self.interpolation = interpolation
     self.fill = fill
 
-  def _augmentation_space(self,
-                          num_bins: int) -> Dict[str, Tuple[Tensor, bool]]:
+  def _augmentation_space(self) -> Dict[str, Tuple[Tensor, bool]]:
     return {
         # op_name: (magnitudes, signed)
-        "ShearX": (torch.linspace(0.3, 0.3, num_bins), True),
-        "ShearY": (torch.linspace(0.3, 0.3, num_bins), True),
-        "TranslateX": (torch.linspace(100, 100, num_bins), True),
-        "TranslateY": (torch.linspace(100, 100, num_bins), True),
-        "Rotate": (torch.linspace(30.0, 30.0, num_bins), True),
-        "Brightness": (torch.linspace(0.1, 0.1, num_bins), True),
-        "Color": (torch.linspace(0.1, 0.1, num_bins), True),
-        "Contrast": (torch.linspace(0.1, 0.1, num_bins), True),
-        "Sharpness": (torch.linspace(0.1, 0.1, num_bins), True),
-        "Posterize": (torch.linspace(4, 4, num_bins).int(), False),
-        "Solarize": (torch.linspace(255.0, 255.0, num_bins), False),
-        "SolarizeAdd": (torch.linspace(110.0, 110.0, num_bins), False),
+        "ShearX": (torch.tensor(0.3), True),
+        "ShearY": (torch.tensor(0.3), True),
+        "TranslateX": (torch.tensor(100), True),
+        "TranslateY": (torch.tensor(100), True),
+        "Rotate": (torch.tensor(30), True),
+        "Brightness": (torch.tensor(0.1), True),
+        "Color": (torch.tensor(0.1), True),
+        "Contrast": (torch.tensor(0.1), True),
+        "Sharpness": (torch.tensor(0.1), True),
+        "Posterize": (torch.tensor(4), False),
+        "Solarize": (torch.tensor(255), False),
+        "SolarizeAdd": (torch.tensor(111), False),
         "AutoContrast": (torch.tensor(0.0), False),
         "Equalize": (torch.tensor(0.0), False),
-        "Cutout": (torch.linspace(0.0, 40.0, num_bins), False),
+        "Cutout": (torch.tensor(40.0), False),
     }
 
   def forward(self, img: Tensor) -> Tensor:
@@ -162,13 +161,12 @@ class RandAugment(torch.nn.Module):
       elif fill is not None:
         fill = [float(f) for f in fill]
 
-    op_meta = self._augmentation_space(1)
+    op_meta = self._augmentation_space()
     for _ in range(self.num_ops):
       op_index = int(torch.randint(len(op_meta), (1,)).item())
       op_name = list(op_meta.keys())[op_index]
-      magnitudes, signed = op_meta[op_name]
-      magnitude = float(
-          magnitudes[self.magnitude].item()) if magnitudes.ndim > 0 else 0.0
+      magnitude, signed = op_meta[op_name]
+      magnitude = float(magnitude)
       if signed and torch.randint(2, (1,)):
         magnitude *= -1.0
       img = _apply_op(
