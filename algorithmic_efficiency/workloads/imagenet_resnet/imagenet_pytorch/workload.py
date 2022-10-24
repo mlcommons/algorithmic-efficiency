@@ -143,7 +143,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        model = DDP(
+            model,
+            device_ids=[RANK],
+            output_device=RANK,
+            gradient_as_bucket_view=True)
       else:
         model = torch.nn.DataParallel(model)
     return model, None
