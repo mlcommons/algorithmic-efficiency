@@ -4,7 +4,7 @@ Adapted from fastMRI:
 https://github.com/facebookresearch/fastMRI/blob/main/fastmri/models/unet.py
 """
 
-from typing import Any
+from typing import Optional
 
 import torch
 from torch import nn
@@ -26,14 +26,15 @@ class UNet(nn.Module):
                out_chans: int = 1,
                chans: int = 32,
                num_pool_layers: int = 4,
-               dropout: float = 0.0) -> None:
+               dropout: Optional[float] = 0.0) -> None:
     super().__init__()
 
     self.in_chans = in_chans
     self.out_chans = out_chans
     self.chans = chans
     self.num_pool_layers = num_pool_layers
-    self.dropout = dropout
+    if dropout is None:
+      dropout = 0.0
 
     self.down_sample_layers = nn.ModuleList(
         [ConvBlock(in_chans, chans, dropout)])

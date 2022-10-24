@@ -40,9 +40,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
-    self._model = conformer_model.ConformerEncoderDecoder(
+    model = conformer_model.ConformerEncoderDecoder(
         conformer_model.ConformerConfig(
-            residual_dropout_rate=dropout_rate,
+            attention_residual_dropout_rate=dropout_rate,
+            feed_forward_residual_dropout_rate=dropout_rate,
+            conv_residual_dropout_rate=dropout_rate,
             input_dropout_rate=aux_dropout_rate))
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.

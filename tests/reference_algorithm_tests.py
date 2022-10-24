@@ -399,21 +399,9 @@ class ReferenceSubmissionTest(absltest.TestCase):
       references_dir = (
           f'{repo_location}/reference_algorithms/development_algorithms')
       for workload_name in os.listdir(references_dir):
-        if workload_name in [
-            'imagenet_resnet',
-            'criteo1tb',
-            'imagenet_vit',
-            'cifar',
-            'mnist',
-            'librispeech_deepspeech',
-            'ogbg'
-        ]:  # DO NOT SUBMIT
-          continue
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':
             pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
-          elif workload_name == 'wmt':
-            continue
           search_space_path, submission_path = _make_paths(
               repo_location, framework, workload_name)
           if search_space_path is None:
