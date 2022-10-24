@@ -302,7 +302,7 @@ def train_once(
       train_state['training_complete'] = True
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
-      training_state['training_complete'] = True
+      train_state['training_complete'] = True
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
       dist.barrier()
