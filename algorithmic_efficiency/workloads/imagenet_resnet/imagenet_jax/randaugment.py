@@ -1,5 +1,4 @@
 """Utilities for RandAugmentation.
-
 Adapted from:
 https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugment.py
 """
@@ -105,17 +104,12 @@ def cutout(image, pad_size, replace=0):
 
 
 def solarize(image, threshold=128):
-  # For each pixel in the image, select the pixel
-  # if the value is less than the threshold.
-  # Otherwise, subtract 255 from the pixel.
+  """Solarize the input image(s)."""
   return tf.where(image < threshold, image, 255 - image)
 
 
 def solarize_add(image, addition=0, threshold=128):
-  # For each pixel in the image less than threshold
-  # we add 'addition' amount to it and then clip the
-  # pixel value to be between 0 and 255. The value
-  # of 'addition' is between -128 and 128.
+  """Additive solarize the input image(s)."""
   added_image = tf.cast(image, tf.int64) + addition
   added_image = tf.cast(tf.clip_by_value(added_image, 0, 255), tf.uint8)
   return tf.where(image < threshold, added_image, image)
@@ -267,7 +261,7 @@ def sharpness(image, factor):
     # Some augmentation that uses depth-wise conv will cause crashing when
     # training on GPU.
     degenerate = tf.nn.depthwise_conv2d(
-        image, kernel, strides, padding='VALID', rate=[1, 1])
+        image, kernel, strides, padding='VALID', dilations=[1, 1])
   degenerate = tf.clip_by_value(degenerate, 0.0, 255.0)
   degenerate = tf.squeeze(tf.cast(degenerate, tf.uint8), [0])
 
@@ -357,7 +351,7 @@ def unwrap(image, replace):
   flattened_image = tf.reshape(image, [-1, image_shape[2]])
 
   # Find all pixels where the last channel is zero.
-  alpha_channel = flattened_image[:, 3]
+  alpha_channel = tf.expand_dims(flattened_image[..., 3], axis=-1)
 
   replace = tf.concat([replace, tf.ones([1], image.dtype)], 0)
 

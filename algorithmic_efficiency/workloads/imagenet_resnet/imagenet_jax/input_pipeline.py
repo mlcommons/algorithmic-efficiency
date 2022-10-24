@@ -10,7 +10,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_probability as tfp
 
-from algorithmic_efficiency import autoaugment_utils
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import randaugment
 from algorithmic_efficiency import data_utils
 
 IMAGE_SIZE = 224
@@ -175,7 +175,7 @@ def preprocess_for_train(image_bytes,
 
   if use_randaug:
     image = tf.cast(tf.clip_by_value(image, 0, 255), tf.uint8)
-    image = autoaugment_utils.distort_image_with_randaugment(
+    image = randaugment.distort_image_with_randaugment(
         image, randaug_num_layers, randaug_magnitude, rngs[2])
   image = tf.cast(image, tf.float32)
   image = normalize_image(image, mean_rgb, stddev_rgb)
@@ -343,7 +343,8 @@ def create_input_iter(split,
                       cache,
                       repeat_final_dataset,
                       use_mixup,
-                      mixup_alpha):
+                      mixup_alpha,
+                      use_randaug):
   ds = create_split(
       split,
       dataset_builder,
@@ -359,7 +360,8 @@ def create_input_iter(split,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
       use_mixup=use_mixup,
-      mixup_alpha=mixup_alpha)
+      mixup_alpha=mixup_alpha,
+      use_randaug=use_randaug)
   it = map(data_utils.shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.

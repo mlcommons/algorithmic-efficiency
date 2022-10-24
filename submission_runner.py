@@ -495,7 +495,7 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
-    pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
+    pytorch_init(USE_PYTORCH_DDP, RANK, profiler, DEVICE)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # Extend path according to framework.
