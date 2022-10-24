@@ -7,6 +7,8 @@ from jraph import GraphsTuple
 import torch
 from torch import nn
 
+from algorithmic_efficiency import init_utils
+
 
 def _make_mlp(in_dim, hidden_dims, dropout_rate):
   """Creates a MLP with specified dimensions."""
@@ -63,6 +65,10 @@ class GNN(nn.Module):
 
     self.decoder = nn.Linear(
         in_features=self.hidden_dims[-1], out_features=self.num_outputs)
+
+    for m in self.modules():
+      if isinstance(m, nn.Linear):
+        init_utils.pytorch_default_init(m)
 
   def forward(self, graph: GraphsTuple) -> torch.Tensor:
     graph = graph._replace(

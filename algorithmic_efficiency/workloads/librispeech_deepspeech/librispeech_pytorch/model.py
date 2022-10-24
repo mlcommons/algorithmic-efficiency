@@ -121,7 +121,7 @@ class Conv2dSubsampling(nn.Module):
     self.filter_shape = (output_channels, input_channels, 3, 3)
 
     self.kernel = nn.Parameter(
-        torch.nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
+        nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
     self.bias = nn.Parameter(torch.zeros(output_channels))
 
   def get_same_padding(self, input_shape):

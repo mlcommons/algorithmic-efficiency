@@ -97,7 +97,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           inputs,
           input_paddings,
           train=True,
-          rngs=rng,
+          rngs={'dropout' : rng},
           mutable=['batch_stats'])
       return (logits, logit_paddings), new_model_state
     else:
@@ -253,7 +253,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
-
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(
           self._build_input_queue(rng,

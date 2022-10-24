@@ -54,17 +54,20 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: bool,
                      repeat_final_dataset: bool,
-                     use_mixup: bool = False):
+                     use_mixup: bool = False,
+                     use_randaug: bool = False):
     del data_rng
     del cache
     del repeat_final_dataset
     if split == 'test':
+      train_mean = [m / 255 for m in self.train_mean]
+      train_stddev = [s / 255 for s in self.train_stddev]
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
           shard_batch=USE_PYTORCH_DDP,
-          mean_rgb=self.train_mean,
-          stddev_rgb=self.train_stddev)
+          mean_rgb=train_mean,
+          stddev_rgb=train_stddev)
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
@@ -72,13 +75,16 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       raise ValueError('Mixup can only be used for the training split.')
 
     if is_train:
-      transform_config = transforms.Compose([
+      transform_config = [
           transforms.RandomResizedCrop(
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
           transforms.RandomHorizontalFlip(),
-      ])
+      ]
+      if use_randaug:
+        transform_config.append(transforms.RandAugment(magnitude=10))
+      transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),

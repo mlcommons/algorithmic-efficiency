@@ -2,6 +2,8 @@
 
 from typing import Dict, List, Tuple
 
+import torch
+
 from algorithmic_efficiency import spec
 
 
@@ -40,6 +42,10 @@ def update_params(workload: spec.Workload,
   label_smoothing = (
       hyperparameters.label_smoothing if hasattr(hyperparameters,
                                                  'label_smoothing') else 0.0)
+  if hasattr(hyperparameters, 'grad_clip'):
+    grad_clip = hyperparameters.grad_clip
+  else:
+    grad_clip = None
   loss = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
@@ -47,6 +53,9 @@ def update_params(workload: spec.Workload,
       label_smoothing=label_smoothing).mean()
 
   loss.backward()
+  if grad_clip is not None:
+    torch.nn.utils.clip_grad_norm_(
+        current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
 

@@ -187,6 +187,7 @@ def import_workload(workload_path: str,
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
+    global_eval_batch_size: int,
     data_dir: str,
     imagenet_v2_data_dir: str,
     init_optimizer_state: spec.InitOptimizerFn,
@@ -263,6 +264,7 @@ def train_once(
     logging.info('Saving flags to %s', flag_file_name)
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
+    workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = time.time()
   logging.info('Starting training loop.')
@@ -314,18 +316,17 @@ def train_once(
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
-          latest_eval_result = workload.eval_model(global_batch_size,
+          latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
                                                    eval_rng,
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          logging.info('%.2fs \t%d \t%s',
+          logging.info('Time since start: %.2fs, \tStep: %d, \t%s',
                        current_time - global_start_time,
                        global_step,
                        latest_eval_result)
-          train_state['last_eval_time'] = current_time
           eval_results.append((global_step, latest_eval_result))
           train_state['goal_reached'] = workload.has_reached_goal(
               latest_eval_result)
@@ -345,6 +346,7 @@ def train_once(
                 global_step=global_step,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
+          train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
@@ -410,6 +412,12 @@ def score_submission_on_workload(workload: spec.Workload,
   if global_batch_size % N_GPUS != 0:
     raise ValueError(
         'The global batch size has to be divisible by the number of GPUs.')
+  if hasattr(submission_module, 'get_eval_batch_size'):
+    # If the user specifies the eval batch size, use the provided one.
+    global_eval_batch_size = submission_module.get_eval_batch_size(
+        workload_name)
+  else:
+    global_eval_batch_size = workload.eval_batch_size
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -453,6 +461,7 @@ def score_submission_on_workload(workload: spec.Workload,
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, global_batch_size,
+                                     global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
@@ -477,8 +486,8 @@ def score_submission_on_workload(workload: spec.Workload,
     # once and return the total time.
     with profiler.profile('Train'):
       score, _ = train_once(
-          workload, global_batch_size, data_dir,
-          imagenet_v2_data_dir,
+          workload, global_batch_size, global_eval_batch_size,
+          data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
           None, rng, profiler, max_global_steps, log_dir, tokenizer_vocab_path)
   # TODO(znado): record and return other information (number of steps).
