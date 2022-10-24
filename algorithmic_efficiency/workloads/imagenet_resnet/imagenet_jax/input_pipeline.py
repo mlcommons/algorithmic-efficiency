@@ -10,8 +10,9 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_probability as tfp
 
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import randaugment
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
+    randaugment
 
 IMAGE_SIZE = 224
 RESIZE_SIZE = 256
@@ -175,8 +176,10 @@ def preprocess_for_train(image_bytes,
 
   if use_randaug:
     image = tf.cast(tf.clip_by_value(image, 0, 255), tf.uint8)
-    image = randaugment.distort_image_with_randaugment(
-        image, randaug_num_layers, randaug_magnitude, rngs[2])
+    image = randaugment.distort_image_with_randaugment(image,
+                                                       randaug_num_layers,
+                                                       randaug_magnitude,
+                                                       rngs[2])
   image = tf.cast(image, tf.float32)
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)

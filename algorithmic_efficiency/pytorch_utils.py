@@ -18,7 +18,8 @@ def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
   return use_pytorch_ddp, rank, device, n_gpus
 
 
-def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler, device) -> None:
+def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler,
+                 device) -> None:
   # Make sure no GPU memory is preallocated to Jax.
   os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
   # Only use CPU for Jax to avoid memory issues.
