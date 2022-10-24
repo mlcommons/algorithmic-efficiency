@@ -122,7 +122,11 @@ class OgbgWorkload(BaseOgbgWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        model = DDP(
+            model,
+            device_ids=[RANK],
+            output_device=RANK,
+            gradient_as_bucket_view=True)
       else:
         model = torch.nn.DataParallel(model)
     return model, None
