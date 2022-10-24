@@ -385,18 +385,20 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(workload: spec.Workload,
-                                 workload_name: str,
-                                 submission_path: str,
-                                 data_dir: str,
-                                 imagenet_v2_data_dir: str,
-                                 profiler: Profiler,
-                                 tuning_ruleset: str,
-                                 max_global_steps: int,
-                                 tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None,
-                                 tokenizer_vocab_path: Optional[str] = None,):
+def score_submission_on_workload(
+    workload: spec.Workload,
+    workload_name: str,
+    submission_path: str,
+    data_dir: str,
+    imagenet_v2_data_dir: str,
+    profiler: Profiler,
+    tuning_ruleset: str,
+    max_global_steps: int,
+    tuning_search_space: Optional[str] = None,
+    num_tuning_trials: Optional[int] = None,
+    log_dir: Optional[str] = None,
+    tokenizer_vocab_path: Optional[str] = None,
+):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
