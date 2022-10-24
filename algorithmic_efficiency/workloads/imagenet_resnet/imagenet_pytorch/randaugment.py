@@ -14,7 +14,7 @@ from torchvision.transforms import functional as F
 from torchvision.transforms import InterpolationMode
 
 
-def cutout(img, pad_size):
+def cutout(img, pad_size, fill):
   image_width, image_height = img.size
   cutout_center_width = np.random.uniform(image_width)
   cutout_center_height = np.random.uniform(image_height)
@@ -30,9 +30,8 @@ def cutout(img, pad_size):
   y1 = lower_pad
 
   xy = (x0, y0, x1, y1)
-  color = (128, 128, 128)
   img = img.copy()
-  PIL.ImageDraw.Draw(img).rectangle(xy, color)
+  PIL.ImageDraw.Draw(img).rectangle(xy, fill)
   return img
 
 
@@ -47,7 +46,6 @@ def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
   img = np.array(img)
   added_img = img.astype(np.int64) + addition
   added_img = np.clip(added_img, 0, 255).astype(np.uint8)
-  # added_img = PIL.Image.fromarray(added_image)
   new_img = np.where(img < threshold, added_img, img)
   return PIL.Image.fromarray(new_img)
 
@@ -122,7 +120,7 @@ def _apply_op(
   elif op_name == "Posterize":
     img = F.posterize(img, int(magnitude))
   elif op_name == "Cutout":
-    img = cutout(img, magnitude)
+    img = cutout(img, magnitude, fill=fill)
   elif op_name == "SolarizeAdd":
     img = solarize_add(img, int(magnitude))
   elif op_name == "Solarize":
@@ -161,10 +159,10 @@ class RandAugment(torch.nn.Module):
         "TranslateX": (torch.tensor(100), True),
         "TranslateY": (torch.tensor(100), True),
         "Rotate": (torch.tensor(30), True),
-        "Brightness": (torch.tensor(0.1), False),
-        "Color": (torch.tensor(0.1), False),
-        "Contrast": (torch.tensor(0.1), False),
-        "Sharpness": (torch.tensor(0.1), False),
+        "Brightness": (torch.tensor(1.9), False),
+        "Color": (torch.tensor(1.9), False),
+        "Contrast": (torch.tensor(1.9), False),
+        "Sharpness": (torch.tensor(1.9), False),
         "Posterize": (torch.tensor(4), False),
         "Solarize": (torch.tensor(256), False),
         "SolarizeAdd": (torch.tensor(110), False),
@@ -174,7 +172,7 @@ class RandAugment(torch.nn.Module):
     }
 
   def forward(self, img: Tensor) -> Tensor:
-    fill = self.fill
+    fill = self.fill if self.fill is not None else 128
     channels, _, _ = F.get_dimensions(img)
     if isinstance(img, Tensor):
       if isinstance(fill, (int, float)):
