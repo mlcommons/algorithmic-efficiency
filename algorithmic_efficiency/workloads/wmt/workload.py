@@ -59,6 +59,10 @@ class BaseWmtWorkload(spec.Workload):
     return 3003
 
   @property
+  def eval_batch_size(self):
+    return 128
+
+  @property
   def train_mean(self):
     return 0.0
 

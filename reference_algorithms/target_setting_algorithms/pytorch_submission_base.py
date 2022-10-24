@@ -2,6 +2,9 @@
 
 from typing import Dict, List, Tuple
 
+from absl import logging
+import torch
+
 from algorithmic_efficiency import spec
 
 
@@ -20,7 +23,6 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del eval_results
-  del global_step
 
   current_model = current_param_container
   current_model.train()
@@ -40,6 +42,10 @@ def update_params(workload: spec.Workload,
   label_smoothing = (
       hyperparameters.label_smoothing if hasattr(hyperparameters,
                                                  'label_smoothing') else 0.0)
+  if hasattr(hyperparameters, 'grad_clip'):
+    grad_clip = hyperparameters.grad_clip
+  else:
+    grad_clip = None
   loss = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
@@ -47,7 +53,27 @@ def update_params(workload: spec.Workload,
       label_smoothing=label_smoothing).mean()
 
   loss.backward()
+  if grad_clip is not None:
+    torch.nn.utils.clip_grad_norm_(
+        current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
+
+  # Log training metrics - loss, grad_norm, batch_size.
+  if global_step <= 100 or global_step % 500 == 0:
+    with torch.no_grad():
+      parameters = [p for p in current_model.parameters() if p.grad is not None]
+      total_norm = torch.norm(
+          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+    if workload.metrics_logger is not None:
+      workload.metrics_logger.append_scalar_metrics(
+          {
+              'loss': loss.item(),
+              'grad_norm': total_norm.item(),
+          }, global_step)
+    logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
+                 global_step,
+                 loss.item(),
+                 total_norm.item())
 
   return (optimizer_state, current_param_container, new_model_state)

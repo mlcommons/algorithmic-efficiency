@@ -36,6 +36,10 @@ class BaseImagenetResNetWorkload(spec.Workload):
     return 10000  # ImageNet-v2
 
   @property
+  def eval_batch_size(self):
+    return 1024
+
+  @property
   def train_mean(self):
     return [0.485 * 255, 0.456 * 255, 0.406 * 255]
 

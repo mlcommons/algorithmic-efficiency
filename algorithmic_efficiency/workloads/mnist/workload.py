@@ -46,6 +46,10 @@ class BaseMnistWorkload(spec.Workload):
     return 10000
 
   @property
+  def eval_batch_size(self):
+    return 10000
+
+  @property
   def train_mean(self):
     return 0.1307
 

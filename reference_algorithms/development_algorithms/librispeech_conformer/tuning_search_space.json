@@ -1,11 +1,11 @@
 {
-    "base_lr": {"feasible_points": [0.001997160890967695]},
-    "beta1": {"feasible_points": [0.7132833090501531]},
-    "beta2": {"feasible_points": [0.9982642657036925]},
+    "base_lr": {"feasible_points": [0.001997]},
+    "beta1": {"feasible_points": [0.7132]},
+    "beta2": {"feasible_points": [0.9982]},
     "epsilon": {"feasible_points": [1e-9]},
-    "weight_decay": {"feasible_points":[0.026595371563300656]},
+    "weight_decay": {"feasible_points":[0.026595]},
     "grad_clip": {"feasible_points": [5.0]},
-    "warmup_steps" : {"feasible_points": [11500]},
+    "warmup_steps" : {"feasible_points": [10000]},
     "training_steps" : {"feasible_points": [100000]}
 }
 

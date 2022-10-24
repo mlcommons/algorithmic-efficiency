@@ -11,6 +11,8 @@ import tensorflow_datasets as tfds
 import tensorflow_probability as tfp
 
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
+    randaugment
 
 IMAGE_SIZE = 224
 RESIZE_SIZE = 256
@@ -146,7 +148,10 @@ def preprocess_for_train(image_bytes,
                          area_range,
                          dtype=tf.float32,
                          image_size=IMAGE_SIZE,
-                         resize_size=RESIZE_SIZE):
+                         resize_size=RESIZE_SIZE,
+                         use_randaug=False,
+                         randaug_num_layers=2,
+                         randaug_magnitude=10):
   """Preprocesses the given image for training.
 
   Args:
@@ -158,7 +163,7 @@ def preprocess_for_train(image_bytes,
   Returns:
     A preprocessed image `Tensor`.
   """
-  rngs = tf.random.experimental.stateless_split(rng, 2)
+  rngs = tf.random.experimental.stateless_split(rng, 3)
 
   image = _decode_and_random_crop(image_bytes,
                                   rngs[0],
@@ -168,6 +173,14 @@ def preprocess_for_train(image_bytes,
                                   resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = tf.image.stateless_random_flip_left_right(image, seed=rngs[1])
+
+  if use_randaug:
+    image = tf.cast(tf.clip_by_value(image, 0, 255), tf.uint8)
+    image = randaugment.distort_image_with_randaugment(image,
+                                                       randaug_num_layers,
+                                                       randaug_magnitude,
+                                                       rngs[2])
+  image = tf.cast(image, tf.float32)
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
@@ -236,7 +249,10 @@ def create_split(split,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
                  area_range=(0.08, 1.0),
                  use_mixup=False,
-                 mixup_alpha=0.1):
+                 mixup_alpha=0.1,
+                 use_randaug=False,
+                 randaug_num_layers=2,
+                 randaug_magnitude=10):
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
 
   shuffle_rng, preprocess_rng, mixup_rng = jax.random.split(rng, 3)
@@ -254,7 +270,10 @@ def create_split(split,
                                    area_range,
                                    dtype,
                                    image_size,
-                                   resize_size)
+                                   resize_size,
+                                   use_randaug,
+                                   randaug_num_layers,
+                                   randaug_magnitude)
     else:
       image = preprocess_for_eval(example['image'],
                                   mean_rgb,
@@ -327,7 +346,8 @@ def create_input_iter(split,
                       cache,
                       repeat_final_dataset,
                       use_mixup,
-                      mixup_alpha):
+                      mixup_alpha,
+                      use_randaug):
   ds = create_split(
       split,
       dataset_builder,
@@ -343,7 +363,8 @@ def create_input_iter(split,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
       use_mixup=use_mixup,
-      mixup_alpha=mixup_alpha)
+      mixup_alpha=mixup_alpha,
+      use_randaug=use_randaug)
   it = map(data_utils.shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.

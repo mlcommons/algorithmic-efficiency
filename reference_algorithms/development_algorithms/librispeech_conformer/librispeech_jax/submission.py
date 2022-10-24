@@ -181,12 +181,14 @@ def update_params(workload: spec.Workload,
                  grad_norm.mean(),
                  lr)
 
-    if workload.summary_writer is not None:
-      workload.summary_writer.scalar('train_step_ctc_loss',
-                                     loss.mean(),
-                                     global_step)
-      workload.summary_writer.scalar('grad_norm', grad_norm.mean(), global_step)
-      workload.summary_writer.scalar('learning_rate', lr, global_step)
+    if workload.metrics_logger is not None:
+      workload.metrics_logger.append_scalar_metrics(
+          {
+              'train_step_ctc_loss': loss.mean(),
+              'grad_norm': grad_norm.mean(),
+              'learning_rate': lr
+          },
+          global_step)
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 

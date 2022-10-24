@@ -191,11 +191,13 @@ class ResNet(nn.Module):
     self.fc = nn.Linear(512 * block.expansion, num_classes)
 
     for m in self.modules():
-      if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+      if isinstance(m, nn.Conv2d):
         pytorch_default_init(m)
       elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
+    nn.init.normal_(self.fc.weight, std=1e-2)
+    nn.init.constant_(self.fc.bias, 0.)
 
     # Zero-initialize the last BN in each residual branch,
     # so that the residual branch starts with zeros,
