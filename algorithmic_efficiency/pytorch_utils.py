@@ -18,8 +18,7 @@ def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
   return use_pytorch_ddp, rank, device, n_gpus
 
 
-def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler,
-                 device) -> None:
+def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
   # Make sure no GPU memory is preallocated to Jax.
   os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
   # Only use CPU for Jax to avoid memory issues.
@@ -36,7 +35,7 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler,
       tf.config.threading.set_intra_op_parallelism_threads(1)
       tf.config.threading.set_inter_op_parallelism_threads(1)
 
-    torch.cuda.set_device(device)
+    torch.cuda.set_device(rank)
     profiler.set_local_rank(rank)
     # only log once (for local rank == 0)
     if rank != 0:

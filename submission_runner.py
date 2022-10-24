@@ -104,7 +104,7 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/datasets/', 'Dataset location.')
+flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/tensorflow_datasets/',
                     'Dataset location for ImageNet-v2.')
@@ -495,7 +495,7 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
-    pytorch_init(USE_PYTORCH_DDP, RANK, profiler, DEVICE)
+    pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
   # Extend path according to framework.
