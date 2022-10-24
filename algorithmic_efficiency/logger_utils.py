@@ -236,9 +236,10 @@ class MetricLogger(object):
   def append_scalar_metrics(self,
                             metrics: dict,
                             global_step: int,
-                            preemption_count: int) -> None:
+                            preemption_count: int = None) -> None:
     metrics['global_step'] = global_step
-    metrics['preemption_count'] = preemption_count
+    if preemption_count is not None:
+      metrics['preemption_count'] = preemption_count
 
     try:
       with open(self._csv_path, 'r') as csv_file:

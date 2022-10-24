@@ -54,7 +54,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: bool,
                      repeat_final_dataset: bool,
-                     use_mixup: bool = False):
+                     use_mixup: bool = False,
+                     use_randaug: bool = False):
     del data_rng
     del cache
     del repeat_final_dataset
@@ -74,13 +75,16 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       raise ValueError('Mixup can only be used for the training split.')
 
     if is_train:
-      transform_config = transforms.Compose([
+      transform_config = [
           transforms.RandomResizedCrop(
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
           transforms.RandomHorizontalFlip(),
-      ])
+      ]
+      if use_randaug:
+        transform_config.append(transforms.RandAugment(magnitude=10))
+      transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),
