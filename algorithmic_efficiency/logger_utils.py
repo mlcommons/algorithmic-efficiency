@@ -278,7 +278,7 @@ class PassThroughMetricLogger(object):
   def append_scalar_metrics(self,
                             metrics: dict,
                             global_step: int,
-                            preemption_count: int) -> None:
+                            preemption_count: int = None) -> None:
     pass
 
   def finish(self) -> None:
