@@ -18,8 +18,12 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.
 
 def key_transform(k):
   new_key = []
+  bn = False
   for i in k:
+    bn = bn or "BatchNorm" in i
     if 'ModuleList' in i:
+      continue
+    if 'CustomBatchNorm' in i:
       continue
     if 'Linear' in i:
       if 'NonDynamicallyQuantizableLinear' in i:
@@ -31,7 +35,10 @@ def key_transform(k):
     elif 'MHSAwithQS' in i:
       i = i.replace('MHSAwithQS', 'SelfAttention')
     elif 'weight' in i:
-      i = i.replace('weight', 'kernel')
+      if bn:
+        i = i.replace('weight','scale')
+      else:
+        i = i.replace('weight', 'kernel')
     new_key.append(i)
   return tuple(new_key)
 

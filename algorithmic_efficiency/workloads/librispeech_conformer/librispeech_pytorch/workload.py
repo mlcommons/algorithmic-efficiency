@@ -68,8 +68,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
+        self.requires_sync_before_eval = True
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
+        self.requires_sync_before_eval = False
         model = torch.nn.DataParallel(model)
     return model, None
 
@@ -100,10 +102,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     del update_batch_norm
 
     model = params
-    _maybe_update_model_dropout(
-        model,
-        residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
+    # _maybe_update_model_dropout(
+    #     model,
+    #     residual_dropout_rate=dropout_rate,
+    #     input_dropout_rate=aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -233,6 +235,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def sync_sd(self, params):
     sd = params.state_dict()
+    dist.barrier()
     for k in sd:
       dist.all_reduce(sd[k], op=dist.ReduceOp.SUM)
       # Assumes N_GPUS is the world size.
@@ -264,7 +267,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         'num_words': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
-    self.sync_sd(params)
+    if self.requires_sync_before_eval:
+      self.sync_sd(params)
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
 
