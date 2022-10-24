@@ -14,7 +14,12 @@ from torch.nn import functional as F
 from algorithmic_efficiency import init_utils
 
 
-class Unet(nn.Module):
+class UNet(nn.Module):
+  r"""U-Net model from
+    `"U-net: Convolutional networks
+    for biomedical image segmentation"
+    <hhttps://arxiv.org/pdf/1505.04597.pdf>`_.
+    """
 
   def __init__(self,
                in_chans: int = 1,
@@ -137,12 +142,3 @@ class TransposeConvBlock(nn.Module):
 
   def forward(self, x: Tensor) -> Tensor:
     return self.layers(x)
-
-
-def unet(**kwargs: Any) -> Unet:
-  r"""U-Net model from
-    `"U-net: Convolutional networks
-    for biomedical image segmentation"
-    <hhttps://arxiv.org/pdf/1505.04597.pdf>`_.
-    """
-  return Unet(**kwargs)

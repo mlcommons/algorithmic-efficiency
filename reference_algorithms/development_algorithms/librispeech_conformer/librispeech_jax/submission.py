@@ -75,7 +75,7 @@ def l2_regularization(params, l2_decay_rank_threshold):
   Returns:
     weight_l2: the squared l2 norm of all params matching the threshold.
   """
-  weight_penalty_params = jax.tree_leaves(params)
+  weight_penalty_params = jax.tree_util.tree_leaves(params)
   weight_l2 = sum(
       jnp.sum(x**2)
       for x in weight_penalty_params
@@ -99,15 +99,6 @@ def pmapped_train_step(workload,
                        lr):
   optimizer_state.hyperparams['learning_rate'] = lr
 
-  if hasattr(hyperparameters, 'input_dropout_rate'):
-    input_dropout_rate = hyperparameters.input_dropout_rate
-  else:
-    input_dropout_rate = 0.1
-  if hasattr(hyperparameters, 'residual_dropout_rate'):
-    residual_dropout_rate = hyperparameters.residual_dropout_rate
-  else:
-    residual_dropout_rate = 0.1
-
   def _loss_fn(params):
     """loss function used for training."""
     params_rng, dropout_rng = jax.random.split(rng, 2)
@@ -117,8 +108,6 @@ def pmapped_train_step(workload,
         model_state,
         mode=spec.ForwardPassMode.TRAIN,
         rng={'params' : params_rng, 'dropout' : dropout_rng},
-        dropout_rate=residual_dropout_rate,
-        aux_dropout_rate=input_dropout_rate,
         update_batch_norm=True)
 
     loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))

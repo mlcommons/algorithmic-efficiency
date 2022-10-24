@@ -130,7 +130,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return dataloader
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = resnet50()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
@@ -166,14 +173,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del model_state
     del rng
-    del dropout_rate
-    del aux_dropout_rate
 
     model = params
 
@@ -258,8 +260,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
-          dropout_rate=0.0,  # Default for ViT, unused in eval anyways.
-          aux_dropout_rate=None,
           update_batch_norm=False)
       batch_metrics = self._eval_metric(logits, batch['targets'])
       total_metrics = {

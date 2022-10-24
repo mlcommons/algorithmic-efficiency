@@ -11,7 +11,7 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload impo
 
 def _pytree_total_diff(pytree_a, pytree_b):
   pytree_diff = jax.tree_map(lambda a, b: jnp.sum(a - b), pytree_a, pytree_b)
-  pytree_diff = jax.tree_leaves(pytree_diff)
+  pytree_diff = jax.tree_util.tree_leaves(pytree_diff)
   return jnp.sum(jnp.array(pytree_diff))
 
 
