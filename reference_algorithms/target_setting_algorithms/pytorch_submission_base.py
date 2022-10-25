@@ -46,11 +46,11 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  loss = workload.loss_fn(
+  loss = torch.nanmean(workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
       mask_batch=batch.get('weights'),
-      label_smoothing=label_smoothing).mean()
+      label_smoothing=label_smoothing))
 
   loss.backward()
   if grad_clip is not None:

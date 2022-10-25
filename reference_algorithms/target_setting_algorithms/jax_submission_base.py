@@ -40,7 +40,7 @@ def pmapped_train_step(workload,
         dropout_rate=None,
         aux_dropout_rate=None,
         update_batch_norm=True)
-    loss = jnp.mean(
+    loss = jnp.nanmean(
         workload.loss_fn(
             label_batch=batch['targets'],
             logits_batch=logits,

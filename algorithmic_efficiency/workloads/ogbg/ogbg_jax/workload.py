@@ -91,8 +91,10 @@ class OgbgWorkload(BaseOgbgWorkload):
     positive_logits = (logits >= 0)
     relu_logits = jnp.where(positive_logits, logits, 0)
     abs_logits = jnp.where(positive_logits, logits, -logits)
-    return relu_logits - (logits * smoothed_labels) + (
+    losses = relu_logits - (logits * smoothed_labels) + (
         jnp.log(1 + jnp.exp(-abs_logits)))
+    return jnp.where(mask, losses, jnp.nan)
+
 
   def _eval_metric(self, labels, logits, masks):
     per_example_losses = self.loss_fn(labels, logits, masks)

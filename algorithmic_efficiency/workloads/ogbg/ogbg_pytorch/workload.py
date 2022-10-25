@@ -196,8 +196,9 @@ class OgbgWorkload(BaseOgbgWorkload):
     positive_logits = (logits >= 0)
     relu_logits = torch.where(positive_logits, logits, 0)
     abs_logits = torch.where(positive_logits, logits, -logits)
-    return relu_logits - (logits * smoothed_labels) + (
+    losses = relu_logits - (logits * smoothed_labels) + (
         torch.log(1 + torch.exp(-abs_logits)))
+    return torch.where(mask, losses, torch.nan)
 
   def _eval_metric(self, labels, logits, masks):
     per_example_losses = self.loss_fn(labels, logits, masks)
