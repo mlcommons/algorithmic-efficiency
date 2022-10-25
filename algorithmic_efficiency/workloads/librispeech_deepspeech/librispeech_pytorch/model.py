@@ -169,10 +169,10 @@ class Conv2dSubsampling(nn.Module):
     out_padding = F.conv1d(
         input=torch.cat([
             paddings[:, None, :],
-            torch.zeros(size=(paddings.shape[0], 1, pad_len))
+            torch.zeros(size=(paddings.shape[0], 1, pad_len), device=inputs.device)
         ],
                         dim=2),
-        weight=torch.ones([1, 1, 1]),
+        weight=torch.ones([1, 1, 1], device=inputs.device),
         stride=self.filter_stride[:1])
     out_padding = out_padding.squeeze(dim=1)
     outputs = outputs * (1 - out_padding[:, None, :, None])
@@ -327,7 +327,7 @@ class BatchRNN(nn.Module):
           torch.zeros(
               size=(outputs.shape[0],
                     inputs.shape[1] - outputs.shape[1],
-                    outputs.shape[2]))
+                    outputs.shape[2]), device=inputs.device)
       ],
                           dim=1)
     return outputs
