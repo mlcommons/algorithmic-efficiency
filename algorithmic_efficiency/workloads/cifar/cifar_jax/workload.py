@@ -74,7 +74,14 @@ class CifarWorkload(BaseCifarWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=10, dtype=jnp.float32)
     self._model = model
@@ -108,8 +115,6 @@ class CifarWorkload(BaseCifarWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_rate=None,
-        aux_dropout_rate=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 
@@ -120,13 +125,8 @@ class CifarWorkload(BaseCifarWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del mode
-    del dropout_rate
-    del aux_dropout_rate
     del rng
     variables = {'params': params, **model_state}
     if update_batch_norm:

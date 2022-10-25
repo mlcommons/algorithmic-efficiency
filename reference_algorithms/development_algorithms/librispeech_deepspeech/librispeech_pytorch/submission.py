@@ -1,5 +1,7 @@
+"""Training algorithm track submission functions for LibriSpeech."""
 from typing import Dict, Iterator, List, Tuple
 
+import numpy as np
 import torch
 
 from algorithmic_efficiency import spec
@@ -7,8 +9,18 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  batch_sizes = {'ogbg': 32768}
-  return batch_sizes[workload_name]
+  del workload_name
+  return 256
+
+
+def get_learning_rate(step, hyperparams):
+  warmup_steps = hyperparams.warmup_steps
+  if step < warmup_steps:
+    current_lr = (step * hyperparams.base_lr) / warmup_steps
+  else:
+    decay_factor = (1 + np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+    current_lr = hyperparams.base_lr * decay_factor
+  return current_lr
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -16,16 +28,16 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  """Creates an Adam optimizer."""
   del workload
   del model_state
   del rng
-  optimizer_state = {
-      'optimizer':
-          torch.optim.Adam(
-              model_params.parameters(), lr=hyperparameters.learning_rate)
-  }
-  return optimizer_state
+  optimizer = torch.optim.AdamW(
+      params=model_params.parameters(),
+      lr=0.0,
+      betas=(hyperparameters.beta1, hyperparameters.beta2),
+      eps=hyperparameters.epsilon,
+      weight_decay=hyperparameters.weight_decay)
+  return optimizer
 
 
 def update_params(workload: spec.Workload,
@@ -39,34 +51,34 @@ def update_params(workload: spec.Workload,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
-  """Return (updated_optimizer_state, updated_params, updated_model_state)."""
+  """Return (updated_optimizer_state, updated_params)."""
   del current_params_types
-  del loss_type
   del eval_results
-  del global_step
+  del model_state
+  del loss_type
 
+  optimizer_state.zero_grad()
   current_model = current_param_container
-  current_model.train()
-  optimizer_state['optimizer'].zero_grad()
-
-  logits, new_model_state = workload.model_fn(
-      params=current_model,
-      augmented_and_preprocessed_input_batch=batch,
-      model_state=model_state,
-      mode=spec.ForwardPassMode.TRAIN,
-      rng=rng,
+  (logits, logits_padding), _ = workload.model_fn(
+      current_model,
+      batch,
+      None,
+      spec.ForwardPassMode.TRAIN,
+      rng,
       update_batch_norm=True)
 
-  mask = batch['weights']
-  per_example_losses = workload.loss_fn(batch['targets'], logits, mask)
-  loss = torch.where(mask, per_example_losses, 0).sum() / mask.sum()
+  train_ctc_loss = workload.loss_fn(batch['targets'], (logits, logits_padding))
+  train_ctc_loss.backward()
+  grad_clip = hyperparameters.grad_clip
+  for g in optimizer_state.param_groups:
+    g['lr'] = get_learning_rate(global_step, hyperparameters)
+  torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
+  optimizer_state.step()
+  return optimizer_state, current_param_container, None
 
-  loss.backward()
-  optimizer_state['optimizer'].step()
 
-  return optimizer_state, current_param_container, new_model_state
-
-
+# Not allowed to update the model parameters, hyperparameters, global step, or
+# optimzier state.
 def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Dict[str, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,
@@ -77,7 +89,7 @@ def data_selection(workload: spec.Workload,
                    rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
-  Each element of the queue is a batch of training examples and labels.
+    Each element of the queue is a batch of training examples and labels.
   """
   del workload
   del optimizer_state

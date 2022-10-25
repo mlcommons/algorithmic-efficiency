@@ -629,9 +629,9 @@ class Conformer(nn.Module):
     else:
       input_dropout_rate = config.input_dropout_rate
     outputs, output_paddings = Subsample(
-      encoder_dim=config.encoder_dim,
-      input_dropout_rate=input_dropout_rate)(
-      outputs, output_paddings, train)
+        encoder_dim=config.encoder_dim,
+        input_dropout_rate=input_dropout_rate)(
+        outputs, output_paddings, train)
 
     # Run the conformer encoder layers.
     for _ in range(config.num_encoder_layers):

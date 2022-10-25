@@ -55,8 +55,10 @@ WORKLOADS = [
 def test_param_shapes(workload):
   jax_workload, pytorch_workload = get_workload(workload)
   # Compare number of parameter tensors of both models.
-  jax_param_shapes = jax.tree_leaves(jax_workload.param_shapes.unfreeze())
-  pytorch_param_shapes = jax.tree_leaves(pytorch_workload.param_shapes)
+  jax_param_shapes = jax.tree_util.tree_leaves(
+      jax_workload.param_shapes.unfreeze())
+  pytorch_param_shapes = jax.tree_util.tree_leaves(
+      pytorch_workload.param_shapes)
   assert len(jax_param_shapes) == len(pytorch_param_shapes)
   # Check if total number of params deduced from shapes match.
   num_jax_params = 0

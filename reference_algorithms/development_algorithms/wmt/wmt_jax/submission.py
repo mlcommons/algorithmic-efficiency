@@ -108,14 +108,6 @@ def pmapped_train_step(workload,
                        dropout_rng,
                        hyperparameters):
   """Perform a single training step."""
-  if hasattr(hyperparameters, 'dropout_rate'):
-    dropout_rate = hyperparameters.dropout_rate
-  else:
-    dropout_rate = 0.1
-  if hasattr(hyperparameters, 'attention_dropout_rate'):
-    attention_dropout_rate = hyperparameters.attention_dropout_rate
-  else:
-    attention_dropout_rate = 0.1
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -125,8 +117,6 @@ def pmapped_train_step(workload,
         model_state=None,
         mode=spec.ForwardPassMode.TRAIN,
         rng=dropout_rng,
-        dropout_rate=dropout_rate,
-        aux_dropout_rate=attention_dropout_rate,
         update_batch_norm=False)
     targets = batch['targets']
     weights = jnp.where(targets > 0, 1.0, 0.0)

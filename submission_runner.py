@@ -129,7 +129,9 @@ flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-
+flags.DEFINE_integer('max_global_steps',
+                     None,
+                     'Maximum number of update steps.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -196,6 +198,7 @@ def train_once(
     hyperparameters: Optional[spec.Hyperparameters],
     rng: spec.RandomState,
     profiler: Profiler,
+    max_global_steps: int = None,
     log_dir: Optional[str] = None,
     tokenizer_vocab_path: Optional[str] = None
 ) -> Tuple[spec.Timing, spec.Steps]:
@@ -211,7 +214,14 @@ def train_once(
         global_batch_size=global_batch_size)
   logging.info('Initializing model.')
   with profiler.profile('Initializing model'):
-    model_params, model_state = workload.init_model_fn(model_init_rng)
+    dropout_rate = None
+    aux_dropout_rate = None
+    if hasattr(hyperparameters, 'dropout_rate'):
+      dropout_rate = hyperparameters.dropout_rate
+    if hasattr(hyperparameters, 'aux_dropout_rate'):
+      aux_dropout_rate = hyperparameters.aux_dropout_rate
+    model_params, model_state = workload.init_model_fn(
+        model_init_rng, dropout_rate, aux_dropout_rate)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -300,6 +310,8 @@ def train_once(
     except spec.TrainingCompleteError:
       train_state['training_complete'] = True
     global_step += 1
+    if (max_global_steps is not None) and (global_step == max_global_steps):
+      train_state['training_complete'] = True
     if USE_PYTORCH_DDP:
       # Make sure all processes run eval after the same step when using DDP.
       dist.barrier()
@@ -382,17 +394,20 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(workload: spec.Workload,
-                                 workload_name: str,
-                                 submission_path: str,
-                                 data_dir: str,
-                                 imagenet_v2_data_dir: str,
-                                 profiler: Profiler,
-                                 tuning_ruleset: str,
-                                 tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None,
-                                 tokenizer_vocab_path: Optional[str] = None):
+def score_submission_on_workload(
+    workload: spec.Workload,
+    workload_name: str,
+    submission_path: str,
+    data_dir: str,
+    imagenet_v2_data_dir: str,
+    profiler: Profiler,
+    tuning_ruleset: str,
+    max_global_steps: int,
+    tuning_search_space: Optional[str] = None,
+    num_tuning_trials: Optional[int] = None,
+    log_dir: Optional[str] = None,
+    tokenizer_vocab_path: Optional[str] = None,
+):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
@@ -461,7 +476,9 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler,
+                                     hyperparameters, rng,
+                                     profiler,
+                                     max_global_steps,
                                      tuning_dir_name,
                                      tokenizer_vocab_path)
       all_timings.append(timing)
@@ -483,7 +500,7 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, log_dir, tokenizer_vocab_path)
+          None, rng, profiler, max_global_steps, log_dir, tokenizer_vocab_path)
   # TODO(znado): record and return other information (number of steps).
   return score
 
@@ -525,6 +542,7 @@ def main(_):
                                        FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
+                                       FLAGS.max_global_steps,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
                                        experiment_dir_name,
