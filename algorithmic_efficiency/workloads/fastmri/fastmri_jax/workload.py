@@ -19,9 +19,16 @@ from algorithmic_efficiency.workloads.fastmri.workload import \
 
 class FastMRIWorkload(BaseFastMRIWorkload):
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """aux_dropout_rate is unused."""
+    del aux_dropout_rate
     fake_batch = jnp.zeros((13, 320, 320))
-    variables = jax.jit(models.UNet().init)({'params': rng}, fake_batch)
+    self._model = models.UNet(dropout_rate=dropout_rate)
+    variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -38,19 +45,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """aux_dropout_rate is unused."""
     del model_state
-    del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = models.UNet(dropout_rate=dropout_rate).apply(
-        {'params': params},
-        augmented_and_preprocessed_input_batch['inputs'],
-        rngs={'dropout': rng},
-        train=train)
+    logits = self._model.apply({'params': params},
+                               augmented_and_preprocessed_input_batch['inputs'],
+                               rngs={'dropout': rng},
+                               train=train)
     return logits, None
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -82,8 +84,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=rng,
-        dropout_rate=0.0,  # Not relevant for eval.
-        aux_dropout_rate=None,
         update_batch_norm=False)
     ssim_vals = ssim(
         batch['targets'],
