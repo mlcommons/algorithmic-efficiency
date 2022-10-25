@@ -554,7 +554,7 @@ class GenericRNN(nn.Module):
                 deterministic=deterministic)
         outputs = jnp.concatenate([outputs, backward_outputs], axis=-1)
         cell_idx += 1
-      outputs = outputs * (1 - input_paddings[:,:,None])
+      outputs = outputs * (1 - input_paddings[:, :, None])
       inputs = outputs
 
     return outputs

@@ -10,8 +10,9 @@ from typing import Optional, Tuple
 import torch
 from torch import nn
 from torch.nn import init
-from torch.nn.modules._functions import SyncBatchNorm as sync_batch_norm
 import torch.nn.functional as F
+from torch.nn.modules._functions import SyncBatchNorm as sync_batch_norm
+
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     preprocessor
@@ -19,6 +20,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.
     SpecAug
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+
 
 @dataclass
 class DeepspeechConfig:
@@ -171,7 +173,8 @@ class Conv2dSubsampling(nn.Module):
     out_padding = F.conv1d(
         input=torch.cat([
             paddings[:, None, :],
-            torch.zeros(size=(paddings.shape[0], 1, pad_len), device=paddings.device)
+            torch.zeros(
+                size=(paddings.shape[0], 1, pad_len), device=paddings.device)
         ],
                         dim=2),
         weight=torch.ones([1, 1, 1], device=paddings.device),
@@ -210,7 +213,7 @@ class FeedForwardModule(nn.Module):
 
 
 class CustomBatchNorm1d(nn.SyncBatchNorm):
-
+  # pylint: disable=locally-disabled, use-a-generator, line-too-long, redefined-builtin, pointless-string-statement
   def __init__(self, num_features, momentum, eps):
     super().__init__(num_features=num_features, momentum=momentum, eps=eps)
 
@@ -232,27 +235,25 @@ class CustomBatchNorm1d(nn.SyncBatchNorm):
     # (when it is available) only so that it gets updated
     # in ONNX graph when this node is exported to ONNX.
     if self.momentum is None:
-        exponential_average_factor = 0.0
+      exponential_average_factor = 0.0
     else:
-        exponential_average_factor = self.momentum
+      exponential_average_factor = self.momentum
 
     if self.training and self.track_running_stats:
-        assert self.num_batches_tracked is not None
-        self.num_batches_tracked.add_(1)
-        if self.momentum is None:  # use cumulative moving average
-            exponential_average_factor = 1.0 / self.num_batches_tracked.item()
-        else:  # use exponential moving average
-            exponential_average_factor = self.momentum
-
+      assert self.num_batches_tracked is not None
+      self.num_batches_tracked.add_(1)
+      if self.momentum is None:  # use cumulative moving average
+        exponential_average_factor = 1.0 / self.num_batches_tracked.item()
+      else:  # use exponential moving average
+        exponential_average_factor = self.momentum
     r"""
     Decide whether the mini-batch stats should be used for normalization rather than the buffers.
     Mini-batch stats are used in training mode, and in eval mode when buffers are None.
     """
     if self.training:
-        bn_training = True
+      bn_training = True
     else:
-        bn_training = (self.running_mean is None) and (self.running_var is None)
-
+      bn_training = (self.running_mean is None) and (self.running_var is None)
     r"""
     Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
     passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are
@@ -260,46 +261,47 @@ class CustomBatchNorm1d(nn.SyncBatchNorm):
     """
     # If buffers are not to be tracked, ensure that they won't be updated
     running_mean = (
-        self.running_mean if not self.training or self.track_running_stats else None
-    )
+        self.running_mean
+        if not self.training or self.track_running_stats else None)
     running_var = (
-        self.running_var if not self.training or self.track_running_stats else None
-    )
+        self.running_var
+        if not self.training or self.track_running_stats else None)
 
     # Don't sync batchnorm stats in inference mode (model.eval()).
-    need_sync = (bn_training and self.training and USE_PYTORCH_DDP and input.is_cuda)
+    need_sync = (
+        bn_training and self.training and USE_PYTORCH_DDP and input.is_cuda)
     if need_sync:
-        process_group = torch.distributed.group.WORLD
-        if self.process_group:
-            process_group = self.process_group
-        world_size = torch.distributed.get_world_size(process_group)
-        need_sync = world_size > 1
+      process_group = torch.distributed.group.WORLD
+      if self.process_group:
+        process_group = self.process_group
+      world_size = torch.distributed.get_world_size(process_group)
+      need_sync = world_size > 1
 
     # fallback to framework BN when synchronization is not necessary
     if not need_sync:
-        return F.batch_norm(
-            input,
-            running_mean,
-            running_var,
-            1+self.weight,
-            self.bias,
-            bn_training,
-            exponential_average_factor,
-            self.eps,
-        )
+      return F.batch_norm(
+          input,
+          running_mean,
+          running_var,
+          1 + self.weight,
+          self.bias,
+          bn_training,
+          exponential_average_factor,
+          self.eps,
+      )
     else:
-        assert bn_training
-        return sync_batch_norm.apply(
-            input,
-            1+self.weight,
-            self.bias,
-            running_mean,
-            running_var,
-            self.eps,
-            exponential_average_factor,
-            process_group,
-            world_size,
-        )
+      assert bn_training
+      return sync_batch_norm.apply(
+          input,
+          1 + self.weight,
+          self.bias,
+          running_mean,
+          running_var,
+          self.eps,
+          exponential_average_factor,
+          process_group,
+          world_size,
+      )
 
 
 class BatchNorm(nn.Module):
@@ -324,6 +326,7 @@ class BatchNorm(nn.Module):
     output[input_paddings == 0] = bn_inp
 
     return output.reshape(*b, d)
+
 
 class BatchRNN(nn.Module):
 
@@ -363,7 +366,8 @@ class BatchRNN(nn.Module):
           torch.zeros(
               size=(outputs.shape[0],
                     inputs.shape[1] - outputs.shape[1],
-                    outputs.shape[2]), device=outputs.device)
+                    outputs.shape[2]),
+              device=outputs.device)
       ],
                           dim=1)
     return outputs
