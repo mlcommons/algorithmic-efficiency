@@ -58,12 +58,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
+    self.requires_sync_before_eval = False
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         self.requires_sync_before_eval = True
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
-        self.requires_sync_before_eval = False
         model = torch.nn.DataParallel(model)
     return model, None
 
