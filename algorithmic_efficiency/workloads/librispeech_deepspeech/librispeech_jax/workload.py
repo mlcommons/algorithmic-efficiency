@@ -61,14 +61,9 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
     Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
     as input_dropout_rate.
     """
-    model_config = models.DeepspeechConfig(
-        feed_forward_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
-    model = models.Deepspeech(model_config)
     return self._model_fn(params,
                           augmented_and_preprocessed_input_batch,
                           model_state,
                           mode,
                           rng,
-                          update_batch_norm,
-                          model)
+                          update_batch_norm)
