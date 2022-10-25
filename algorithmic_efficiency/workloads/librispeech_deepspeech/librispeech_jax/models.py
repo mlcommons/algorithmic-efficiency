@@ -17,7 +17,6 @@ from flax import struct
 import jax
 import jax.numpy as jnp
 
-
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
@@ -519,7 +518,7 @@ class GenericRNN(nn.Module):
       ]
     if len(initial_states) != num_cells:
       raise ValueError(
-          f'Please provide {self.num_cells} (`num_layers`, *2 if bidirectional) '
+          f'Please provide {self.num_cells} (`num_layers`, *2 if bidirectional)'
           f'initial states.')
 
     # For each layer, apply the forward and optionally the backward RNN cell.
