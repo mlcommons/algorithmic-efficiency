@@ -40,7 +40,14 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     loss = self.loss_fn(logits, targets).sum()
     return {'loss': loss}
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = DlrmSmall(
         vocab_sizes=self.vocab_sizes,
@@ -69,13 +76,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del dropout_rate
-    del aux_dropout_rate
     del update_batch_norm
 
     model = params
@@ -180,8 +183,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
-        dropout_rate=None,
-        aux_dropout_rate=None,
         update_batch_norm=False)
     per_example_losses = self.loss_fn(
         label_batch=batch['targets'],

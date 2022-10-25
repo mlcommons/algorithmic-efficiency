@@ -31,7 +31,14 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         logits=logits_batch, targets=label_batch, mask_batch=mask_batch)
     return per_example_losses
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     self._model = models.DlrmSmall(
         vocab_sizes=self.vocab_sizes,
         total_vocab_sizes=sum(self.vocab_sizes),
@@ -65,15 +72,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del model_state
     del mode
     del rng
-    del dropout_rate
-    del aux_dropout_rate
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']
     targets = augmented_and_preprocessed_input_batch['targets']
@@ -92,8 +94,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model_state=None,
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
-        dropout_rate=None,
-        aux_dropout_rate=None,
         update_batch_norm=False)
     per_example_losses = self.loss_fn(
         label_batch=batch['targets'],

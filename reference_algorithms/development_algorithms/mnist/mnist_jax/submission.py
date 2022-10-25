@@ -61,8 +61,6 @@ def pmapped_update_params(workload: spec.Workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
-        dropout_rate=None,
-        aux_dropout_rate=None,
         update_batch_norm=True)
     loss = workload.loss_fn(batch['targets'], logits_batch)
     return jnp.mean(loss), new_model_state

@@ -59,10 +59,6 @@ def update_params(workload: spec.Workload,
   current_model = current_param_container
   current_param_container.train()
   optimizer_state['optimizer'].zero_grad()
-  if hasattr(hyperparameters, 'dropout_rate'):
-    dropout_rate = hyperparameters.dropout_rate
-  else:
-    dropout_rate = 0.0
 
   outputs_batch, new_model_state = workload.model_fn(
       params=current_model,
@@ -70,8 +66,6 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
-      dropout_rate=dropout_rate,
-      aux_dropout_rate=None,
       update_batch_norm=True)
 
   loss = workload.loss_fn(

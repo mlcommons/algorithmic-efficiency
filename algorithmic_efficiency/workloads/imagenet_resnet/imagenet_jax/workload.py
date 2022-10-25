@@ -36,7 +36,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: Optional[bool] = None,
                      repeat_final_dataset: Optional[bool] = None,
-                     use_mixup: bool = False):
+                     use_mixup: bool = False,
+                     use_randaug: bool = False):
     if split == 'test':
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
@@ -66,7 +67,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         cache=not train if cache is None else cache,
         repeat_final_dataset=repeat_final_dataset,
         use_mixup=use_mixup,
-        mixup_alpha=0.2)
+        mixup_alpha=0.2,
+        use_randaug=use_randaug)
     return ds
 
   def sync_batch_stats(self, model_state):
@@ -79,7 +81,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
@@ -108,8 +117,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         state,
         spec.ForwardPassMode.EVAL,
         rng=rng,
-        dropout_rate=0.0,  # Default for ViT, unused in eval anyways.
-        aux_dropout_rate=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 
@@ -120,14 +127,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del mode
     del rng
-    del dropout_rate
-    del aux_dropout_rate
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(

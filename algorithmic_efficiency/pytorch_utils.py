@@ -1,3 +1,4 @@
+import datetime
 import os
 from typing import Tuple
 
@@ -37,29 +38,12 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
 
     torch.cuda.set_device(rank)
     profiler.set_local_rank(rank)
-    # only log once (for local rank == 0)
+    # Only log once (for local rank == 0).
     if rank != 0:
 
       def logging_pass(*args):
         pass
 
       logging.info = logging_pass
-    # initialize the process group
-    dist.init_process_group('nccl')
-
-
-# torch.nn.functional.dropout will not be affected by this function.
-def maybe_update_dropout(model, dropout_rate):
-  if dropout_rate is None:
-    return
-  for child in list(model.modules()):
-    if isinstance(child, torch.nn.Dropout):
-      child.p = dropout_rate
-
-
-def update_attention_dropout(model, attention_dropout_rate):
-  if attention_dropout_rate is None:
-    return
-  for child in list(model.modules()):
-    if isinstance(child, torch.nn.MultiheadAttention):
-      child.dropout = attention_dropout_rate
+    # Initialize the process group.
+    dist.init_process_group('nccl', timeout=datetime.timedelta(seconds=3600))

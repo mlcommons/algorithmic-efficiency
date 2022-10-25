@@ -70,11 +70,6 @@ def pmapped_train_step(workload,
                        batch,
                        rng):
 
-  if hasattr(hyperparameters, 'dropout_rate'):
-    dropout_rate = hyperparameters.dropout_rate
-  else:
-    dropout_rate = 0.0
-
   def _loss_fn(params):
     """loss function used for training."""
     logits, _ = workload.model_fn(
@@ -83,11 +78,9 @@ def pmapped_train_step(workload,
         model_state=None,
         mode=spec.ForwardPassMode.TRAIN,
         rng=rng,
-        dropout_rate=dropout_rate,
-        aux_dropout_rate=None,
         update_batch_norm=True)
     loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
-    weight_penalty_params = jax.tree_leaves(params)
+    weight_penalty_params = jax.tree_util.tree_leaves(params)
     weight_l2 = sum(jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1)
     weight_penalty = hyperparameters.l2 * 0.5 * weight_l2
     loss = loss + weight_penalty

@@ -59,7 +59,7 @@ WORKLOADS = [
 def test_matching_num_params(workload):
   jax_model, pytorch_model = get_models(workload)
   # Count parameters of both models.
-  num_jax_params = sum(x.size for x in jax.tree_leaves(jax_model))
+  num_jax_params = sum(x.size for x in jax.tree_util.tree_leaves(jax_model))
   num_pytorch_params = sum(
       p.numel() for p in pytorch_model.parameters() if p.requires_grad)
   assert num_jax_params == num_pytorch_params
