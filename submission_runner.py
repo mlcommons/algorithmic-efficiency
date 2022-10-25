@@ -214,7 +214,14 @@ def train_once(
         global_batch_size=global_batch_size)
   logging.info('Initializing model.')
   with profiler.profile('Initializing model'):
-    model_params, model_state = workload.init_model_fn(model_init_rng)
+    dropout_rate = None
+    aux_dropout_rate = None
+    if hasattr(hyperparameters, 'dropout_rate'):
+      dropout_rate = hyperparameters.dropout_rate
+    if hasattr(hyperparameters, 'aux_dropout_rate'):
+      aux_dropout_rate = hyperparameters.aux_dropout_rate
+    model_params, model_state = workload.init_model_fn(
+        model_init_rng, dropout_rate, aux_dropout_rate)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,

@@ -34,9 +34,6 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
-      # There was no dropout rate tuning in the target setting runs.
-      dropout_rate=None,
-      aux_dropout_rate=None,
       update_batch_norm=True)
 
   label_smoothing = (

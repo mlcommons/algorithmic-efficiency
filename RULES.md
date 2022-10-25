@@ -84,7 +84,9 @@ def _build_input_queue(
 
 ```python
 def init_model_fn(
-    rng: RandomState
+    rng: RandomState,
+    dropout_rate: Optional[float] = None,
+    aux_dropout_rate: Optional[float] = None
 ) -> initial model parameters
 ```
 

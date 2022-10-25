@@ -14,7 +14,7 @@ from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
-    unet
+    UNet
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
@@ -97,9 +97,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         batch['volume_max'] = aux_tensors[2][RANK]
       yield batch
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = unet()
+    model = UNet(dropout_rate=dropout_rate)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -120,16 +125,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del aux_dropout_rate
     del update_batch_norm
 
     model = params
-    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -172,8 +173,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         None,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_rate=0.0,
-        aux_dropout_rate=0.0,
         update_batch_norm=False)
     ssim_sum = ssim(
         outputs,

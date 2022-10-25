@@ -1,5 +1,5 @@
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 from absl import flags
 from flax import jax_utils
@@ -22,14 +22,24 @@ FLAGS = flags.FLAGS
 class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
                                     BaseDeepspeechLibrispeechWorkload):
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    model_cls = getattr(models, 'Deepspeech')
-    model = model_cls(models.DeepspeechConfig())
-    self._model = model
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Deepspeech model init function.
+
+    Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
+    as input_dropout_rate.
+    """
+    model_config = models.DeepspeechConfig(
+        feed_forward_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate)
+    self._model = models.Deepspeech(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
-    model_init_fn = jax.jit(functools.partial(model.init, train=False))
+    model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, dropout_rng = jax.random.split(rng, 2)
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
@@ -45,30 +55,3 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
-
-  def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Deepspeech model function.
-
-    Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
-    as input_dropout_rate.
-    """
-    model_config = models.DeepspeechConfig(
-        feed_forward_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
-    model = models.Deepspeech(model_config)
-    return self._model_fn(params,
-                          augmented_and_preprocessed_input_batch,
-                          model_state,
-                          mode,
-                          rng,
-                          update_batch_norm,
-                          model)
