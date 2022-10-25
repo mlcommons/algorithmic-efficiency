@@ -1,5 +1,5 @@
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 from absl import flags
 from flax import jax_utils

@@ -16,8 +16,7 @@ from flax import linen as nn
 from flax import struct
 import jax
 import jax.numpy as jnp
-from ml_collections.config_dict import config_dict
-import numpy as np
+
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
@@ -438,10 +437,10 @@ class GenericRNNSequenceEncoder(nn.Module):
       inputs = flip_sequences(inputs, lengths)
 
     recurrent_dropout_mask = None
-    _, (cell_states, outputs) = self.unroll_cell(initial_state,
-                                                 inputs,
-                                                 recurrent_dropout_mask,
-                                                 deterministic)
+    _, (_, outputs) = self.unroll_cell(initial_state,
+                                       inputs,
+                                       recurrent_dropout_mask,
+                                       deterministic)
 
     if reverse:
       outputs = flip_sequences(outputs, lengths)
@@ -700,13 +699,13 @@ class Deepspeech(nn.Module):
         config=config)(outputs, output_paddings, train)
 
     # Run the lstm layers.
-    for i in range(config.num_lstm_layers):
+    for _ in range(config.num_lstm_layers):
       if config.enable_residual_connections:
         outputs = outputs + BatchRNN(config)(outputs, output_paddings, train)
       else:
         outputs = BatchRNN(config)(outputs, output_paddings, train)
 
-    for j in range(config.num_ffn_layers):
+    for _ in range(config.num_ffn_layers):
       if config.enable_residual_connections:
         outputs = outputs + FeedForwardModule(config=self.config)(
             outputs, output_paddings, train)
