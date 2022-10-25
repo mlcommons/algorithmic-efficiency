@@ -33,7 +33,6 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     as input_dropout_rate.
     """
     torch.random.manual_seed(rng[0])
-    torch.backends.cudnn.benchmark = False
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
             feed_forward_dropout_rate=dropout_rate,
@@ -49,9 +48,9 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
+    self.requires_sync_before_eval = False
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
