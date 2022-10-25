@@ -129,7 +129,9 @@ flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-flags.DEFINE_integer('max_global_steps', None, 'Maximum number of update steps.')
+flags.DEFINE_integer('max_global_steps',
+                     None,
+                     'Maximum number of update steps.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
