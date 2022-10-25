@@ -26,35 +26,35 @@ class UNet(nn.Module):
                out_chans: int = 1,
                chans: int = 32,
                num_pool_layers: int = 4,
-               dropout: Optional[float] = 0.0) -> None:
+               dropout_rate: Optional[float] = 0.0) -> None:
     super().__init__()
 
     self.in_chans = in_chans
     self.out_chans = out_chans
     self.chans = chans
     self.num_pool_layers = num_pool_layers
-    if dropout is None:
-      dropout = 0.0
+    if dropout_rate is None:
+      dropout_rate = 0.0
 
     self.down_sample_layers = nn.ModuleList(
-        [ConvBlock(in_chans, chans, dropout)])
+        [ConvBlock(in_chans, chans, dropout_rate)])
     ch = chans
     for _ in range(num_pool_layers - 1):
-      self.down_sample_layers.append(ConvBlock(ch, ch * 2, dropout))
+      self.down_sample_layers.append(ConvBlock(ch, ch * 2, dropout_rate))
       ch *= 2
-    self.conv = ConvBlock(ch, ch * 2, dropout)
+    self.conv = ConvBlock(ch, ch * 2, dropout_rate)
 
     self.up_conv = nn.ModuleList()
     self.up_transpose_conv = nn.ModuleList()
     for _ in range(num_pool_layers - 1):
       self.up_transpose_conv.append(TransposeConvBlock(ch * 2, ch))
-      self.up_conv.append(ConvBlock(ch * 2, ch, dropout))
+      self.up_conv.append(ConvBlock(ch * 2, ch, dropout_rate))
       ch //= 2
 
     self.up_transpose_conv.append(TransposeConvBlock(ch * 2, ch))
     self.up_conv.append(
         nn.Sequential(
-            ConvBlock(ch * 2, ch, dropout),
+            ConvBlock(ch * 2, ch, dropout_rate),
             nn.Conv2d(ch, self.out_chans, kernel_size=1, stride=1),
         ))
 
@@ -97,27 +97,27 @@ class UNet(nn.Module):
 
 class ConvBlock(nn.Module):
   # A Convolutional Block that consists of two convolution layers each
-  # followed by instance normalization, LeakyReLU activation and dropout.
+  # followed by instance normalization, LeakyReLU activation and dropout_rate.
 
   def __init__(self,
                in_chans: int,
                out_chans: int,
-               dropout: float = 0.0) -> None:
+               dropout_rate: float = 0.0) -> None:
     super().__init__()
 
     self.in_chans = in_chans
     self.out_chans = out_chans
-    self.dropout = dropout
+    self.dropout_rate = dropout_rate
 
     self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
         nn.InstanceNorm2d(out_chans),
         nn.LeakyReLU(negative_slope=0.2, inplace=True),
-        nn.Dropout2d(dropout),
+        nn.Dropout2d(dropout_rate),
         nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
         nn.InstanceNorm2d(out_chans),
         nn.LeakyReLU(negative_slope=0.2, inplace=True),
-        nn.Dropout2d(dropout),
+        nn.Dropout2d(dropout_rate),
     )
 
   def forward(self, x: Tensor) -> Tensor:
