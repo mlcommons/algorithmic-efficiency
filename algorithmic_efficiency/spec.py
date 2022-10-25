@@ -220,14 +220,23 @@ class Workload(metaclass=abc.ABCMeta):
     """Whether a key in ParameterContainer is the output layer parameters."""
 
   # InitModelFn = Callable[
-  #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
+  #     Tuple[RandomState, Optional[float], Optional[float]],
+  #     ParameterContainer]
   @abc.abstractmethod
-  def init_model_fn(
-      self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxiliaryState]:
+  def init_model_fn(self,
+                    rng: RandomState,
+                    dropout_rate: Optional[float] = None,
+                    aux_dropout_rate: Optional[float] = None) -> ModelInitState:
     """Return (initial_params, initial_model_state)."""
 
   # ModelFn = Callable[
-  #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
+  #     Tuple[
+  #         ParameterContainer,
+  #         Dict[str, Tensor],
+  #         ModelAuxiliaryState,
+  #         ForwardPassMode,
+  #         RandomState,
+  #         bool],
   #     Tensor]
   @abc.abstractmethod
   def model_fn(self,
@@ -236,8 +245,6 @@ class Workload(metaclass=abc.ABCMeta):
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
-               dropout_rate: Optional[float],
-               aux_dropout_rate: Optional[float],
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
     # Possible side effect of updating BN.

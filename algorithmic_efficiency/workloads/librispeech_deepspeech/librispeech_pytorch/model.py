@@ -5,7 +5,7 @@ https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.
 
 from dataclasses import dataclass
 import functools
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 from torch import nn
@@ -39,8 +39,10 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
-  input_dropout_rate: float = 0.1
-  feed_forward_dropout_rate: float = 0.1
+  # If None, defaults to 0.1.
+  input_dropout_rate: Optional[float] = 0.1
+  # If None, defaults to 0.1.
+  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -72,10 +74,8 @@ class Subsample(nn.Module):
   def __init__(self, config: DeepspeechConfig):
     super().__init__()
     encoder_dim = config.encoder_dim
-    input_dropout_rate = config.input_dropout_rate
 
     self.encoder_dim = encoder_dim
-    self.input_dropout_rate = input_dropout_rate
 
     self.conv1 = Conv2dSubsampling(
         input_channels=1, output_channels=encoder_dim)
@@ -84,7 +84,11 @@ class Subsample(nn.Module):
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
-    self.dropout = nn.Dropout(p=self.input_dropout_rate)
+    if config.input_dropout_rate is None:
+      input_dropout_rate = 0.1
+    else:
+      input_dropout_rate = config.input_dropout_rate
+    self.dropout = nn.Dropout(p=input_dropout_rate)
 
   def forward(self, inputs, input_paddings):
     output_paddings = input_paddings
@@ -188,7 +192,11 @@ class FeedForwardModule(nn.Module):
         batch_norm_momentum=config.batch_norm_momentum,
         batch_norm_epsilon=config.batch_norm_epsilon)
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
-    self.dropout = nn.Dropout(p=config.feed_forward_dropout_rate)
+    if config.feed_forward_dropout_rate is None:
+      feed_forward_dropout_rate = 0.1
+    else:
+      feed_forward_dropout_rate = config.feed_forward_dropout_rate
+    self.dropout = nn.Dropout(p=feed_forward_dropout_rate)
 
   def forward(self, inputs, input_paddings):
     padding_mask = (1 - input_paddings)[:, :, None]

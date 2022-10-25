@@ -200,10 +200,12 @@ class ViT(nn.Module):
       mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
       num_heads: int = 12,
       rep_size: Union[int, bool] = True,
-      dropout_rate: float = 0.0,
+      dropout_rate: Optional[float] = 0.0,
       head_zeroinit: bool = True,
       dtype: Any = torch.float32) -> None:
     super().__init__()
+    if dropout_rate is None:
+      dropout_rate = 0.0
 
     self.num_classes = num_classes
     self.patch_size = patch_size

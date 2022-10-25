@@ -188,7 +188,13 @@ class FeedForwardModule(nn.Module):
         bias=True)
     self.dropout1 = nn.Dropout(p=config.feed_forward_dropout_rate)
     self.linear2 = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
-    self.dropout2 = nn.Dropout(p=config.feed_forward_residual_dropout_rate)
+
+    if config.feed_forward_residual_dropout_rate is None:
+      feed_forward_residual_dropout_rate = 0.1
+    else:
+      feed_forward_residual_dropout_rate = (
+          config.feed_forward_residual_dropout_rate)
+    self.dropout2 = nn.Dropout(p=feed_forward_residual_dropout_rate)
 
   def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
@@ -453,7 +459,11 @@ class MultiHeadedSelfAttention(nn.Module):
 
     self.ln = LayerNorm(dim=config.encoder_dim)
     self.self_attention = MHSAwithQS(config)
-    self.dropout = nn.Dropout(p=config.attention_residual_dropout_rate)
+    if config.attention_residual_dropout_rate is None:
+      attention_residual_dropout_rate = 0.1
+    else:
+      attention_residual_dropout_rate = config.attention_residual_dropout_rate
+    self.dropout = nn.Dropout(p=attention_residual_dropout_rate)
 
   def forward(self, outputs, paddings):
     outputs = self.ln(outputs)
@@ -532,7 +542,11 @@ class ConvolutionBlock(nn.Module):
         groups=config.encoder_dim)
     self.bn = BatchNorm(config)
     self.lin3 = nn.Linear(config.encoder_dim, config.encoder_dim)
-    self.dropout = nn.Dropout(p=config.conv_residual_dropout_rate)
+    if config.conv_residual_dropout_rate is None:
+      conv_residual_dropout_rate = 0.0
+    else:
+      conv_residual_dropout_rate = config.conv_residual_dropout_rate
+    self.dropout = nn.Dropout(p=conv_residual_dropout_rate)
 
   def forward(self, inputs, input_paddings):
     inputs = self.ln(inputs)
@@ -592,9 +606,12 @@ class ConformerEncoderDecoder(nn.Module):
         time_masks_per_frame=config.time_masks_per_frame,
         use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames
     )
+    if config.input_dropout_rate is None:
+      input_dropout_rate = 0.1
+    else:
+      input_dropout_rate = config.input_dropout_rate
     self.subsample = Subsample(
-        encoder_dim=config.encoder_dim,
-        input_dropout_rate=config.input_dropout_rate)
+        encoder_dim=config.encoder_dim, input_dropout_rate=input_dropout_rate)
     self.conformers = nn.ModuleList(
         [ConformerBlock(config) for _ in range(config.num_encoder_layers)])
 

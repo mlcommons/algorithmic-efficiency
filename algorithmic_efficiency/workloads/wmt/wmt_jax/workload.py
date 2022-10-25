@@ -28,10 +28,6 @@ def _to_host(x):
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
-  def __init__(self) -> None:
-    super().__init__()
-    self._eval_config = models.TransformerConfig(deterministic=True)
-
   def compute_weighted_cross_entropy(self,
                                      logits,
                                      targets,
@@ -70,9 +66,7 @@ class WmtWorkload(BaseWmtWorkload):
     inputs = batch['inputs']
     targets = batch['targets']
     weights = jnp.where(targets > 0, 1.0, 0.0)
-    logits = models.Transformer(self._eval_config).apply({'params': params},
-                                                         inputs,
-                                                         targets)
+    logits = self._eval_model.apply({'params': params}, inputs, targets)
     metrics = self.compute_summed_metrics(logits, targets, weights)
     return metrics
 
@@ -181,14 +175,24 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    rng, init_rng = jax.random.split(rng)
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """aux_dropout_rate is used as attention_dropout_rate."""
+
     init_fake_batch_size = 2
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
 
-    initial_variables = jax.jit(models.Transformer(self._eval_config).init)(
-        init_rng,
+    model_config = models.TransformerConfig(
+        dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
+    self._train_model = models.Transformer(model_config)
+    self._eval_model = models.Transformer(
+        models.TransformerConfig(deterministic=True))
+    initial_variables = jax.jit(self._eval_model.init)(
+        rng,
         jnp.ones(input_shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))
 
@@ -207,18 +211,10 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """aux_dropout_rate is used as attention_dropout_rate."""
     del model_state
     del update_batch_norm
 
-    if mode == spec.ForwardPassMode.TRAIN:
-      model_config = models.TransformerConfig(
-          dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
-    else:
-      model_config = self._eval_config
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)
     targets = augmented_and_preprocessed_input_batch.get('targets', None)
     inputs_positions = augmented_and_preprocessed_input_batch.get(
@@ -229,13 +225,18 @@ class WmtWorkload(BaseWmtWorkload):
         'inputs_segmentation', None)
     targets_segmentations = augmented_and_preprocessed_input_batch.get(
         'targets_segmentation', None)
-    logits_batch = models.Transformer(model_config).apply(
-        {'params': params},
-        inputs,
-        targets,
-        inputs_positions=inputs_positions,
-        targets_positions=targets_positions,
-        inputs_segmentation=inputs_segmentations,
-        targets_segmentation=targets_segmentations,
-        rngs={'dropout': rng})
+
+    if mode == spec.ForwardPassMode.TRAIN:
+      model = self._train_model
+    else:
+      model = self._eval_model
+
+    logits_batch = model.apply({'params': params},
+                               inputs,
+                               targets,
+                               inputs_positions=inputs_positions,
+                               targets_positions=targets_positions,
+                               inputs_segmentation=inputs_segmentations,
+                               targets_segmentation=targets_segmentations,
+                               rngs={'dropout': rng})
     return logits_batch, None
