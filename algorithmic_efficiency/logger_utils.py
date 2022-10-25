@@ -236,7 +236,7 @@ class MetricLogger(object):
   def append_scalar_metrics(self,
                             metrics: dict,
                             global_step: int,
-                            preemption_count: int = None) -> None:
+                            preemption_count: Optional[int] = None) -> None:
     metrics['global_step'] = global_step
     if preemption_count is not None:
       metrics['preemption_count'] = preemption_count
@@ -278,7 +278,7 @@ class PassThroughMetricLogger(object):
   def append_scalar_metrics(self,
                             metrics: dict,
                             global_step: int,
-                            preemption_count: int) -> None:
+                            preemption_count: Optional[int] = None) -> None:
     pass
 
   def finish(self) -> None:

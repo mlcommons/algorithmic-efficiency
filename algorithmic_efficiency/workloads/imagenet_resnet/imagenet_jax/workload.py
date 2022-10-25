@@ -36,7 +36,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: Optional[bool] = None,
                      repeat_final_dataset: Optional[bool] = None,
-                     use_mixup: bool = False):
+                     use_mixup: bool = False,
+                     use_randaug: bool = False):
     if split == 'test':
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
@@ -66,7 +67,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         cache=not train if cache is None else cache,
         repeat_final_dataset=repeat_final_dataset,
         use_mixup=use_mixup,
-        mixup_alpha=0.2)
+        mixup_alpha=0.2,
+        use_randaug=use_randaug)
     return ds
 
   def sync_batch_stats(self, model_state):
