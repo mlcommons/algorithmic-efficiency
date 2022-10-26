@@ -26,3 +26,4 @@ jobs:
         pytest -vx tests/test_num_params.py
         pytest -vx tests/test_param_shapes.py
         pytest -vx tests/test_param_types.py
+        pytest -vx tests/test_ssim.py

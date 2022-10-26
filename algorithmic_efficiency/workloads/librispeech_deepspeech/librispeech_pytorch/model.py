@@ -5,17 +5,21 @@ https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.
 
 from dataclasses import dataclass
 import functools
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 from torch import nn
 from torch.nn import init
 import torch.nn.functional as F
+from torch.nn.modules._functions import SyncBatchNorm as sync_batch_norm
 
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     preprocessor
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import \
     SpecAug
+
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 @dataclass
@@ -37,8 +41,10 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
-  input_dropout_rate: float = 0.1
-  feed_forward_dropout_rate: float = 0.1
+  # If None, defaults to 0.1.
+  input_dropout_rate: Optional[float] = 0.1
+  # If None, defaults to 0.1.
+  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -70,10 +76,8 @@ class Subsample(nn.Module):
   def __init__(self, config: DeepspeechConfig):
     super().__init__()
     encoder_dim = config.encoder_dim
-    input_dropout_rate = config.input_dropout_rate
 
     self.encoder_dim = encoder_dim
-    self.input_dropout_rate = input_dropout_rate
 
     self.conv1 = Conv2dSubsampling(
         input_channels=1, output_channels=encoder_dim)
@@ -82,7 +86,11 @@ class Subsample(nn.Module):
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
-    self.dropout = nn.Dropout(p=self.input_dropout_rate)
+    if config.input_dropout_rate is None:
+      input_dropout_rate = 0.1
+    else:
+      input_dropout_rate = config.input_dropout_rate
+    self.dropout = nn.Dropout(p=input_dropout_rate)
 
   def forward(self, inputs, input_paddings):
     output_paddings = input_paddings
@@ -121,7 +129,7 @@ class Conv2dSubsampling(nn.Module):
     self.filter_shape = (output_channels, input_channels, 3, 3)
 
     self.kernel = nn.Parameter(
-        torch.nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
+        nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
     self.bias = nn.Parameter(torch.zeros(output_channels))
 
   def get_same_padding(self, input_shape):
@@ -165,10 +173,11 @@ class Conv2dSubsampling(nn.Module):
     out_padding = F.conv1d(
         input=torch.cat([
             paddings[:, None, :],
-            torch.zeros(size=(paddings.shape[0], 1, pad_len))
+            torch.zeros(
+                size=(paddings.shape[0], 1, pad_len), device=paddings.device)
         ],
                         dim=2),
-        weight=torch.ones([1, 1, 1]),
+        weight=torch.ones([1, 1, 1], device=paddings.device),
         stride=self.filter_stride[:1])
     out_padding = out_padding.squeeze(dim=1)
     outputs = outputs * (1 - out_padding[:, None, :, None])
@@ -186,20 +195,25 @@ class FeedForwardModule(nn.Module):
         batch_norm_momentum=config.batch_norm_momentum,
         batch_norm_epsilon=config.batch_norm_epsilon)
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
-    self.dropout = nn.Dropout(p=config.feed_forward_dropout_rate)
+    if config.feed_forward_dropout_rate is None:
+      feed_forward_dropout_rate = 0.1
+    else:
+      feed_forward_dropout_rate = config.feed_forward_dropout_rate
+    self.dropout = nn.Dropout(p=feed_forward_dropout_rate)
 
   def forward(self, inputs, input_paddings):
     padding_mask = (1 - input_paddings)[:, :, None]
     inputs = self.bn(inputs, input_paddings)
     inputs = self.lin(inputs)
+    inputs = F.relu(inputs)
     inputs = inputs * padding_mask
     inputs = self.dropout(inputs)
 
     return inputs
 
 
-class CustomBatchNorm1d(nn.BatchNorm1d):
-
+class CustomBatchNorm1d(nn.SyncBatchNorm):
+  # pylint: disable=locally-disabled, use-a-generator, line-too-long, redefined-builtin, pointless-string-statement
   def __init__(self, num_features, momentum, eps):
     super().__init__(num_features=num_features, momentum=momentum, eps=eps)
 
@@ -209,8 +223,13 @@ class CustomBatchNorm1d(nn.BatchNorm1d):
       init.zeros_(self.weight)
       init.zeros_(self.bias)
 
-  def forward(self, input):  # pylint: disable=redefined-builtin
+  def forward(self, input):
+    # currently only GPU input is supported: added check below
+    # if not input.is_cuda:
+    #     raise ValueError("SyncBatchNorm expected input tensor to be on GPU")
+
     self._check_input_dim(input)
+    self._check_non_zero_input_channels(input)
 
     # exponential_average_factor is set to self.momentum
     # (when it is available) only so that it gets updated
@@ -221,40 +240,68 @@ class CustomBatchNorm1d(nn.BatchNorm1d):
       exponential_average_factor = self.momentum
 
     if self.training and self.track_running_stats:
-      # TODO: if statement only here to tell the jit to skip emitting
-      # this when it is None
-      if self.num_batches_tracked is not None:  # type: ignore[has-type]
-        self.num_batches_tracked.add_(1)  # type: ignore[has-type]
-        if self.momentum is None:  # use cumulative moving average
-          exponential_average_factor = 1.0 / \
-              float(self.num_batches_tracked)
-        else:  # use exponential moving average
-          exponential_average_factor = self.momentum
-
-    # Decide whether the mini-batch stats should be used for normalization
-    # rather than the buffers. Mini-batch stats are used in training mode,
-    # and in eval mode when buffers are None.
+      assert self.num_batches_tracked is not None
+      self.num_batches_tracked.add_(1)
+      if self.momentum is None:  # use cumulative moving average
+        exponential_average_factor = 1.0 / self.num_batches_tracked.item()
+      else:  # use exponential moving average
+        exponential_average_factor = self.momentum
+    r"""
+    Decide whether the mini-batch stats should be used for normalization rather than the buffers.
+    Mini-batch stats are used in training mode, and in eval mode when buffers are None.
+    """
     if self.training:
       bn_training = True
     else:
       bn_training = (self.running_mean is None) and (self.running_var is None)
-    # Buffers are only updated if they are to be tracked and we are in training
-    # mode. Thus they only need to be passed when the update should occur (i.e.
-    # in training mode when they are tracked), or when buffer stats are used
-    # for normalization (i.e. in eval mode when buffers are not None).
-    return F.batch_norm(
-        input,
-        # If buffers are not to be tracked, ensure that they won't be updated
+    r"""
+    Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
+    passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are
+    used for normalization (i.e. in eval mode when buffers are not None).
+    """
+    # If buffers are not to be tracked, ensure that they won't be updated
+    running_mean = (
         self.running_mean
-        if not self.training or self.track_running_stats else None,
+        if not self.training or self.track_running_stats else None)
+    running_var = (
         self.running_var
-        if not self.training or self.track_running_stats else None,
-        1 + self.weight,
-        self.bias,
-        bn_training,
-        exponential_average_factor,
-        self.eps,
-    )
+        if not self.training or self.track_running_stats else None)
+
+    # Don't sync batchnorm stats in inference mode (model.eval()).
+    need_sync = (
+        bn_training and self.training and USE_PYTORCH_DDP and input.is_cuda)
+    if need_sync:
+      process_group = torch.distributed.group.WORLD
+      if self.process_group:
+        process_group = self.process_group
+      world_size = torch.distributed.get_world_size(process_group)
+      need_sync = world_size > 1
+
+    # fallback to framework BN when synchronization is not necessary
+    if not need_sync:
+      return F.batch_norm(
+          input,
+          running_mean,
+          running_var,
+          1 + self.weight,
+          self.bias,
+          bn_training,
+          exponential_average_factor,
+          self.eps,
+      )
+    else:
+      assert bn_training
+      return sync_batch_norm.apply(
+          input,
+          1 + self.weight,
+          self.bias,
+          running_mean,
+          running_var,
+          self.eps,
+          exponential_average_factor,
+          process_group,
+          world_size,
+      )
 
 
 class BatchNorm(nn.Module):
@@ -319,7 +366,8 @@ class BatchRNN(nn.Module):
           torch.zeros(
               size=(outputs.shape[0],
                     inputs.shape[1] - outputs.shape[1],
-                    outputs.shape[2]))
+                    outputs.shape[2]),
+              device=outputs.device)
       ],
                           dim=1)
     return outputs
@@ -365,7 +413,8 @@ class DeepspeechEncoderDecoder(nn.Module):
     output_paddings = input_paddings
 
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
-    outputs, output_paddings = self.specaug(outputs, output_paddings)
+    if self.training:
+      outputs, output_paddings = self.specaug(outputs, output_paddings)
     outputs, output_paddings = self.subsample(outputs, output_paddings)
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:

@@ -21,6 +21,8 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
+    randaugment
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
@@ -54,17 +56,20 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                      global_batch_size: int,
                      cache: bool,
                      repeat_final_dataset: bool,
-                     use_mixup: bool = False):
+                     use_mixup: bool = False,
+                     use_randaug: bool = False):
     del data_rng
     del cache
     del repeat_final_dataset
     if split == 'test':
+      train_mean = [m / 255 for m in self.train_mean]
+      train_stddev = [s / 255 for s in self.train_stddev]
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
           shard_batch=USE_PYTORCH_DDP,
-          mean_rgb=self.train_mean,
-          stddev_rgb=self.train_stddev)
+          mean_rgb=train_mean,
+          stddev_rgb=train_stddev)
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
@@ -72,13 +77,16 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       raise ValueError('Mixup can only be used for the training split.')
 
     if is_train:
-      transform_config = transforms.Compose([
+      transform_config = [
           transforms.RandomResizedCrop(
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
           transforms.RandomHorizontalFlip(),
-      ])
+      ]
+      if use_randaug:
+        transform_config.append(randaugment.RandAugment())
+      transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),
@@ -128,7 +136,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return dataloader
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = resnet50()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
@@ -164,14 +179,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del model_state
     del rng
-    del dropout_rate
-    del aux_dropout_rate
 
     model = params
 
@@ -256,8 +266,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
-          dropout_rate=0.0,  # Default for ViT, unused in eval anyways.
-          aux_dropout_rate=None,
           update_batch_norm=False)
       batch_metrics = self._eval_metric(logits, batch['targets'])
       total_metrics = {

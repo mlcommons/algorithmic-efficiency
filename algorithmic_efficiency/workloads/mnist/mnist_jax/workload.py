@@ -33,19 +33,6 @@ class _Model(nn.Module):
     return x
 
 
-def _param_types(param_tree):
-  param_types_dict = {}
-  for name, value in param_tree.items():
-    if isinstance(value, dict):
-      param_types_dict[name] = _param_types(value)
-    else:
-      if 'bias' in name:
-        param_types_dict[name] = spec.ParameterType.BIAS
-      else:
-        param_types_dict[name] = spec.ParameterType.WEIGHT
-  return param_types_dict
-
-
 class MnistWorkload(BaseMnistWorkload):
 
   def _normalize(self, image):
@@ -92,10 +79,18 @@ class MnistWorkload(BaseMnistWorkload):
       ds = itertools.cycle(ds)
     return ds
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
-    initial_params = _Model().init({'params': rng}, init_val,
-                                   train=True)['params']
+    self._model = _Model()
+    initial_params = self._model.init({'params': rng}, init_val,
+                                      train=True)['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(initial_params), None
@@ -107,17 +102,12 @@ class MnistWorkload(BaseMnistWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del model_state
     del rng
-    del dropout_rate
-    del aux_dropout_rate
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits_batch = _Model().apply(
+    logits_batch = self._model.apply(
         {'params': params},
         augmented_and_preprocessed_input_batch['inputs'],
         train=train)
@@ -155,8 +145,6 @@ class MnistWorkload(BaseMnistWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_rate=None,
-        aux_dropout_rate=None,
         update_batch_norm=False)
     accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
     loss = jnp.sum(self.loss_fn(batch['targets'], logits))

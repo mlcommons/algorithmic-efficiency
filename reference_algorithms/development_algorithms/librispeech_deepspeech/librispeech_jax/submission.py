@@ -7,6 +7,7 @@ from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
+import numpy as np
 import optax
 
 from algorithmic_efficiency import spec
@@ -18,6 +19,16 @@ def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
   return 256
+
+
+def get_learning_rate(step, hyperparams):
+  warmup_steps = hyperparams.warmup_steps
+  if step < warmup_steps:
+    current_lr = (step * hyperparams.base_lr) / warmup_steps
+  else:
+    decay_factor = (1 + np.cos(step / hyperparams.training_steps * np.pi)) * 0.5
+    current_lr = hyperparams.base_lr * decay_factor
+  return current_lr
 
 
 def optimizer(hyperparameters: spec.Hyperparameters, num_train_examples: int):
@@ -64,7 +75,7 @@ def l2_regularization(params, l2_decay_rank_threshold):
   Returns:
     weight_l2: the squared l2 norm of all params matching the threshold.
   """
-  weight_penalty_params = jax.tree_leaves(params)
+  weight_penalty_params = jax.tree_util.tree_leaves(params)
   weight_l2 = sum(
       jnp.sum(x**2)
       for x in weight_penalty_params
@@ -88,15 +99,6 @@ def pmapped_train_step(workload,
                        lr):
   optimizer_state.hyperparams['learning_rate'] = lr
 
-  if hasattr(hyperparameters, 'input_dropout_rate'):
-    input_dropout_rate = hyperparameters.input_dropout_rate
-  else:
-    input_dropout_rate = 0.1
-  if hasattr(hyperparameters, 'feed_forward_dropout_rate'):
-    feed_forward_dropout_rate = hyperparameters.feed_forward_dropout_rate
-  else:
-    feed_forward_dropout_rate = 0.1
-
   def _loss_fn(params):
     """loss function used for training."""
     params_rng, dropout_rng = jax.random.split(rng, 2)
@@ -106,8 +108,6 @@ def pmapped_train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         {'params' : params_rng, 'dropout' : dropout_rng},
-        dropout_rate=feed_forward_dropout_rate,
-        aux_dropout_rate=input_dropout_rate,
         update_batch_norm=True)
 
     loss = workload.loss_fn(batch['targets'], (logits, logit_paddings))
@@ -147,12 +147,19 @@ def update_params(workload: spec.Workload,
   del eval_results
   del loss_type
 
-  lr = workload.get_learning_rate(global_step, hyperparameters)
+  lr = get_learning_rate(global_step, hyperparameters)
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(  # pylint: disable=line-too-long
-      workload, opt_update_fn, model_state, optimizer_state,
-      current_param_container, hyperparameters, batch, per_device_rngs, lr)
+  outputs = pmapped_train_step(workload,
+                               opt_update_fn,
+                               model_state,
+                               optimizer_state,
+                               current_param_container,
+                               hyperparameters,
+                               batch,
+                               per_device_rngs,
+                               lr)
+  new_model_state, new_optimizer_state, new_params, loss, grad_norm = outputs
 
   if global_step <= 1000 or global_step % 100 == 0:
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f lr = %0.6f',

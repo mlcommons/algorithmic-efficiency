@@ -132,6 +132,11 @@ class Workload(metaclass=abc.ABCMeta):
     examples.
     """
 
+  def attach_metrics_logger(self, metrics_logger):
+    """Attaches a metric logger to workload."""
+    self.metrics_logger = metrics_logger
+    return
+
   @property
   @abc.abstractmethod
   def target_value(self):
@@ -146,6 +151,11 @@ class Workload(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def num_train_examples(self) -> int:
     """The size of the training set."""
+
+  @property
+  @abc.abstractmethod
+  def eval_batch_size(self) -> int:
+    """The batch size for evaluation."""
 
   @property
   @abc.abstractmethod
@@ -210,14 +220,23 @@ class Workload(metaclass=abc.ABCMeta):
     """Whether a key in ParameterContainer is the output layer parameters."""
 
   # InitModelFn = Callable[
-  #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
+  #     Tuple[RandomState, Optional[float], Optional[float]],
+  #     ParameterContainer]
   @abc.abstractmethod
-  def init_model_fn(
-      self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxiliaryState]:
+  def init_model_fn(self,
+                    rng: RandomState,
+                    dropout_rate: Optional[float] = None,
+                    aux_dropout_rate: Optional[float] = None) -> ModelInitState:
     """Return (initial_params, initial_model_state)."""
 
   # ModelFn = Callable[
-  #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
+  #     Tuple[
+  #         ParameterContainer,
+  #         Dict[str, Tensor],
+  #         ModelAuxiliaryState,
+  #         ForwardPassMode,
+  #         RandomState,
+  #         bool],
   #     Tensor]
   @abc.abstractmethod
   def model_fn(self,
@@ -226,8 +245,6 @@ class Workload(metaclass=abc.ABCMeta):
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
-               dropout_rate: Optional[float],
-               aux_dropout_rate: Optional[float],
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
     # Possible side effect of updating BN.
@@ -309,6 +326,7 @@ class Workload(metaclass=abc.ABCMeta):
         global_step=global_step)
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
+    eval_metrics['validation/num_examples'] = self.num_validation_examples
     # Evaluate on the test set. TODO(znado): always eval on the test set.
     try:
       if self.num_test_examples is not None:
@@ -324,8 +342,10 @@ class Workload(metaclass=abc.ABCMeta):
             global_step=global_step)
         for k, v in test_metrics.items():
           eval_metrics['test/' + k] = v
+        eval_metrics['test/num_examples'] = self.num_test_examples
     except NotImplementedError:
       pass
+
     return eval_metrics
 
 

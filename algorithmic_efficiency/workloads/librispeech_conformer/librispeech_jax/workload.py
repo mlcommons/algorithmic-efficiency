@@ -25,12 +25,26 @@ FLAGS = flags.FLAGS
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    model = models.Conformer(models.ConformerConfig())
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Conformer model init function.
+
+    Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
+    """
+    model_config = models.ConformerConfig(
+        attention_residual_dropout_rate=dropout_rate,
+        conv_residual_dropout_rate=dropout_rate,
+        feed_forward_residual_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate)
+    self._model = models.Conformer(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
-    model_init_fn = jax.jit(functools.partial(model.init, train=False))
+    model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, dropout_rng = jax.random.split(rng, 2)
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
@@ -57,51 +71,21 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Conformer model function.
-
-    Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
-    input_dropout_rate.
-    """
-    model_config = models.ConformerConfig(
-        attention_residual_dropout_rate=dropout_rate,
-        conv_residual_dropout_rate=dropout_rate,
-        feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
-    model = models.Conformer(model_config)
-    return self._model_fn(params,
-                          augmented_and_preprocessed_input_batch,
-                          model_state,
-                          mode,
-                          rng,
-                          update_batch_norm,
-                          model)
-
-  def _model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool,
-      model: nn.Module) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm or is_train_mode:
-      (logits, logit_paddings), new_model_state = model.apply(
+      (logits, logit_paddings), new_model_state = self._model.apply(
           variables,
           inputs,
           input_paddings,
           train=True,
-          rngs=rng,
+          rngs={'dropout' : rng},
           mutable=['batch_stats'])
       return (logits, logit_paddings), new_model_state
     else:
-      logits, logit_paddings = model.apply(
+      logits, logit_paddings = self._model.apply(
           variables,
           inputs,
           input_paddings,
@@ -215,15 +199,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       params: spec.ParameterContainer,
       batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:  # pylint: disable=line-too-long
+      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     (logits, logit_paddings), _ = self.model_fn(
         params,
         batch,
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_rate=0.0,
-        aux_dropout_rate=0.0,
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
@@ -253,7 +235,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
-
     if split not in self._eval_iters:
       self._eval_iters[split] = itertools.cycle(
           self._build_input_queue(rng,

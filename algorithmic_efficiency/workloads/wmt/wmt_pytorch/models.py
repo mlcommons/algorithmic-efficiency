@@ -131,10 +131,14 @@ class Transformer(nn.Module):
                nhead: int = 16,
                d_hid: int = 4096,
                nlayers: int = 6,
-               dropout_rate: float = 0.1,
-               attention_dropout_rate: float = 0.1,
+               dropout_rate: Optional[float] = 0.1,
+               attention_dropout_rate: Optional[float] = 0.1,
                layer_norm_eps: float = 1e-6):
     super().__init__()
+    if dropout_rate is None:
+      dropout_rate = 0.1
+    if attention_dropout_rate is None:
+      attention_dropout_rate = 0.1
     self.pos_encoder = PositionalEncoding(d_model, dropout_rate)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
     self.encoder = Encoder(d_model,
@@ -732,6 +736,22 @@ class MultiheadAttention(nn.MultiheadAttention):
     self.register_parameter('in_proj_weight', None)
 
     self._reset_parameters()
+
+  def _reset_parameters(self):
+    if self._qkv_same_embed_dim:
+      xavier_uniform_(self.in_proj_weight)
+    else:
+      xavier_uniform_(self.q_proj_weight)
+      xavier_uniform_(self.k_proj_weight)
+      xavier_uniform_(self.v_proj_weight)
+
+    if self.in_proj_bias is not None:
+      normal_(self.in_proj_bias, std=1e-6)
+      normal_(self.out_proj.bias, std=1e-6)
+    if self.bias_k is not None:
+      normal_(self.bias_k, std=1e-6)
+    if self.bias_v is not None:
+      normal_(self.bias_v, std=1e-6)
 
   def forward(self,
               query: Tensor,

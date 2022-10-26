@@ -13,7 +13,6 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.interop_utils import jax_to_pytorch
-from algorithmic_efficiency.interop_utils import pytorch_to_jax
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
@@ -78,7 +77,7 @@ class WmtWorkload(BaseWmtWorkload):
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = jax_to_pytorch(flat_ids)
+      flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
@@ -88,7 +87,7 @@ class WmtWorkload(BaseWmtWorkload):
           cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = pytorch_to_jax(flat_logits).squeeze(axis=1)
+      flat_logits = flat_logits.cpu().numpy().squeeze(axis=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
@@ -142,9 +141,15 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_score = bleu.complete_bleu(*bleu_matches)
     return bleu_score
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """aux_dropout_rate is used as attention_dropout_rate."""
     torch.random.manual_seed(rng[0])
-    model = Transformer()
+    model = Transformer(
+        dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -165,19 +170,12 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """aux_dropout_rate is used as attention_dropout_rate."""
     del model_state
     del rng
     del update_batch_norm
 
     model = params
-    # Update all Dropout layers with dropout_rate, then go over and only update
-    # Dropout layers inside MultiheadAttention with aux_dropout_rate.
-    pytorch_utils.maybe_update_dropout(model, dropout_rate)
-    pytorch_utils.update_attention_dropout(model, aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -279,7 +277,5 @@ class WmtWorkload(BaseWmtWorkload):
         mode=spec.ForwardPassMode.EVAL,
         model_state=None,
         rng=None,
-        dropout_rate=0.1,  # Unused for eval.
-        aux_dropout_rate=0.1,  # Unused for eval.
         update_batch_norm=False)
     return self.compute_summed_metrics(logits, targets, weights)

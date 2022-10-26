@@ -12,6 +12,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 
 from algorithmic_efficiency import data_utils
+from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -34,7 +35,12 @@ class _Model(nn.Module):
                      ('layer2',
                       torch.nn.Linear(num_hidden, num_classes, bias=True))]))
 
-  def forward(self, x: spec.Tensor):
+  def reset_parameters(self) -> None:
+    for m in self.net.modules():
+      if isinstance(m, nn.Linear):
+        init_utils.pytorch_default_init(m)
+
+  def forward(self, x: spec.Tensor) -> spec.Tensor:
     x = x.view(x.size()[0], -1)
     return self.net(x)
 
@@ -109,7 +115,14 @@ class MnistWorkload(BaseMnistWorkload):
           'targets': batch['targets'].to(DEVICE, non_blocking=True),
       }
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = _Model()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
@@ -129,14 +142,9 @@ class MnistWorkload(BaseMnistWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del model_state
     del rng
-    del dropout_rate
-    del aux_dropout_rate
     del update_batch_norm
 
     model = params
@@ -184,8 +192,6 @@ class MnistWorkload(BaseMnistWorkload):
         model_state,
         spec.ForwardPassMode.EVAL,
         rng,
-        dropout_rate=None,
-        aux_dropout_rate=None,
         update_batch_norm=False)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.

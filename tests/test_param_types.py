@@ -50,8 +50,9 @@ WORKLOADS = [
 def test_param_types(workload):
   jax_workload, pytorch_workload = get_workload(workload)
   # Compare number of parameter tensors of both models.
-  jax_param_types = jax.tree_leaves(jax_workload.model_params_types)
-  pytorch_param_types = jax.tree_leaves(pytorch_workload.model_params_types)
+  jax_param_types = jax.tree_util.tree_leaves(jax_workload.model_params_types)
+  pytorch_param_types = jax.tree_util.tree_leaves(
+      pytorch_workload.model_params_types)
   assert len(jax_param_types) == len(pytorch_param_types)
 
   def count_param_types(param_types):
