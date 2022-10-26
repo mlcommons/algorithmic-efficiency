@@ -1,6 +1,6 @@
-"""Flax implementation of ResNet V1.
+"""Jax implementation of ResNet V1.
 
-Forked from Flax example which can be found here:
+Adapted from Flax example:
 https://github.com/google/flax/blob/main/examples/imagenet/models.py
 """
 
@@ -9,6 +9,8 @@ from typing import Any, Callable, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
+
+from algorithmic_efficiency import spec
 
 ModuleDef = nn.Module
 
@@ -22,7 +24,7 @@ class ResNetBlock(nn.Module):
   strides: Tuple[int, int] = (1, 1)
 
   @nn.compact
-  def __call__(self, x):
+  def __call__(self, x: spec.Tensor) -> spec.Tensor:
     residual = x
     y = self.conv(self.filters, (3, 3), self.strides)(x)
     y = self.norm()(y)
@@ -48,7 +50,7 @@ class BottleneckResNetBlock(nn.Module):
   strides: Tuple[int, int] = (1, 1)
 
   @nn.compact
-  def __call__(self, x):
+  def __call__(self, x: spec.Tensor) -> spec.Tensor:
     residual = x
     y = self.conv(self.filters, (1, 1))(x)
     y = self.norm()(y)
@@ -69,7 +71,6 @@ class BottleneckResNetBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-  """ResNetV1."""
   stage_sizes: Tuple[int]
   block_cls: ModuleDef
   num_classes: int
@@ -78,7 +79,9 @@ class ResNet(nn.Module):
   act: Callable = nn.relu
 
   @nn.compact
-  def __call__(self, x, update_batch_norm: bool = True):
+  def __call__(self,
+               x: spec.Tensor,
+               update_batch_norm: bool = True) -> spec.Tensor:
     conv = functools.partial(nn.Conv, use_bias=False, dtype=self.dtype)
     norm = functools.partial(
         nn.BatchNorm,
@@ -116,16 +119,5 @@ class ResNet(nn.Module):
 
 ResNet18 = functools.partial(
     ResNet, stage_sizes=(2, 2, 2, 2), block_cls=ResNetBlock)
-ResNet34 = functools.partial(
-    ResNet, stage_sizes=(3, 4, 6, 3), block_cls=ResNetBlock)
 ResNet50 = functools.partial(
     ResNet, stage_sizes=(3, 4, 6, 3), block_cls=BottleneckResNetBlock)
-ResNet101 = functools.partial(
-    ResNet, stage_sizes=(3, 4, 23, 3), block_cls=BottleneckResNetBlock)
-ResNet152 = functools.partial(
-    ResNet, stage_sizes=(3, 8, 36, 3), block_cls=BottleneckResNetBlock)
-ResNet200 = functools.partial(
-    ResNet, stage_sizes=(3, 24, 36, 3), block_cls=BottleneckResNetBlock)
-
-# Used for testing only.
-_ResNet1 = functools.partial(ResNet, stage_sizes=(1,), block_cls=ResNetBlock)

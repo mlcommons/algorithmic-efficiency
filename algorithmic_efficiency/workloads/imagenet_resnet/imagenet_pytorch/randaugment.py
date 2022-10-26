@@ -1,8 +1,9 @@
-"""Code for RandAugmentation.
+"""PyTorch implementation of RandAugmentation.
 
 Adapted from:
 https://pytorch.org/vision/stable/_modules/torchvision/transforms/autoaugment.html
 """
+
 import math
 from typing import Dict, List, Optional, Tuple
 
@@ -10,11 +11,12 @@ import numpy as np
 import PIL
 import torch
 from torch import Tensor
+from algorithmic_efficiency import spec
 from torchvision.transforms import functional as F
 from torchvision.transforms import InterpolationMode
 
 
-def cutout(img, pad_size, fill):
+def cutout(img: spec.Tensor, pad_size: int, fill: float) -> spec.Tensor:
   image_width, image_height = img.size
   x0 = np.random.uniform(image_width)
   y0 = np.random.uniform(image_height)
@@ -30,13 +32,13 @@ def cutout(img, pad_size, fill):
   return img
 
 
-def solarize(img: Tensor, threshold: float) -> Tensor:
+def solarize(img: spec.Tensor, threshold: float) -> spec.Tensor:
   img = np.array(img)
   new_img = np.where(img < threshold, img, 255. - img)
   return PIL.Image.fromarray(new_img.astype(np.uint8))
 
 
-def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
+def solarize_add(img: spec.Tensor, addition: int = 0) -> spec.Tensor:
   threshold = 128
   img = np.array(img)
   added_img = img.astype(np.int64) + addition
@@ -46,19 +48,12 @@ def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
 
 
 def _apply_op(
-    img: Tensor,
+    img: spec.Tensor,
     op_name: str,
     magnitude: float,
     interpolation: InterpolationMode,
-    fill: Optional[List[float]],
-):
+    fill: Optional[List[float]]) -> spec.Tensor:
   if op_name == 'ShearX':
-    # magnitude should be arctan(magnitude)
-    # official autoaug: (1, level, 0, 0, 1, 0)
-    # https://github.com/tensorflow/models/blob/dd02069717128186b88afa8d857ce57d17957f03/research/autoaugment/augmentation_transforms.py#L290
-    # compared to
-    # torchvision:      (1, tan(level), 0, 0, 1, 0)
-    # https://github.com/pytorch/vision/blob/0c2373d0bba3499e95776e7936e207d8a1676e65/torchvision/transforms/functional.py#L976
     img = F.affine(
         img,
         angle=0.0,
@@ -146,7 +141,7 @@ class RandAugment(torch.nn.Module):
     self.interpolation = interpolation
     self.fill = fill
 
-  def _augmentation_space(self) -> Dict[str, Tuple[Tensor, bool]]:
+  def _augmentation_space(self) -> Dict[str, Tuple[spec.Tensor, bool]]:
     return {
         # op_name: (magnitudes, signed)
         'ShearX': (torch.tensor(0.3), True),
@@ -167,7 +162,7 @@ class RandAugment(torch.nn.Module):
         'Cutout': (torch.tensor(40.0), False),
     }
 
-  def forward(self, img: Tensor) -> Tensor:
+  def forward(self, img: spec.Tensor) -> spec.Tensor:
     fill = self.fill if self.fill is not None else 128
     channels, _, _ = F.get_dimensions(img)
     if isinstance(img, Tensor):

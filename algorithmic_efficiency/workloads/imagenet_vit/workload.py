@@ -1,10 +1,12 @@
 """ImageNet ViT workload."""
+
+from typing import Dict
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
 
-def decode_variant(variant):
+def decode_variant(variant: str) -> Dict[str, int]:
   """Converts a string like 'B/32' into a params dict."""
   v, patch = variant.split('/')
 
@@ -59,7 +61,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def max_allowed_runtime_sec(self):
-    return 111600  # 31 hours
+    return 111600  # 31 hours.
 
   @property
   def eval_period_time_sec(self):

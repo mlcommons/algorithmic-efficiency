@@ -118,7 +118,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=12,
+        num_workers=24,
         pin_memory=True,
         collate_fn=data_utils.fast_collate,
         drop_last=is_train)
