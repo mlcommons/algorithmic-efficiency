@@ -1,3 +1,5 @@
+from typing import Dict, Optional, Tuple, Union
+
 import jax
 import numpy as np
 import torch
@@ -7,26 +9,72 @@ from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
+from algorithmic_efficiency import spec
 
-def shard_numpy_ds(xs):
+
+def shard_numpy_ds(
+    xs: Dict[str, spec.Tensor],
+    global_batch_size: Optional[int] = None) -> Dict[str, spec.Tensor]:
   """Prepare tf data for JAX or PyTorch DDP.
 
-  Convert an input batch from tf Tensors to numpy arrays and reshape it to be
-  sharded across devices.
+  Convert an input batch from tf Tensors to numpy arrays, pad it with zeros if
+  the batch size is not divisible by the number of devices, create the
+  corresponding mask, and reshape it to be sharded across devices.
   """
   local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
+  current_batch_size = xs['inputs'].shape[0]
+  remainder_size = current_batch_size % local_device_count
+  if remainder_size != 0:
+    if global_batch_size is not None:
+      pad_size = global_batch_size - current_batch_size
+    else:
+      pad_size = local_device_count - remainder_size
+    targets_shape = tuple(xs['targets'].shape)
+    xs['weights'] = create_mask(targets_shape, pad_size, 'jax')
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     if not isinstance(x, np.ndarray):
       x = x._numpy()  # pylint: disable=protected-access
 
+    # Pad if remainder_size != 0 and x is not value for key 'weights'.
+    if x.shape[0] % local_device_count != 0:
+      x = pad(x, pad_size, 'jax')
+
     # Reshape (global_batch_size, ...) to
     # (local_device_count, per_device_batch_size, ...).
     # Assumes that `global_batch_size % local_device_count == 0`.
-    return x.reshape((local_device_count, -1) + x.shape[1:])
+    return x.reshape((local_device_count, -1, *x.shape[1:]))
 
   return jax.tree_map(_prepare, xs)
+
+
+def pad(tensor: spec.Tensor, pad_size: int, framework: str) -> spec.Tensor:
+  if framework == 'pytorch':
+    padding = torch.zeros(
+        pad_size, *tensor.shape[1:], dtype=tensor.dtype, device=tensor.device)
+    padded_tensor = torch.cat((tensor, padding), dim=0)
+  elif framework == 'jax':
+    padding = np.zeros((pad_size, *tensor.shape[1:]), dtype=tensor.dtype)
+    padded_tensor = np.concatenate((tensor, padding), axis=0)
+  else:
+    raise ValueError(f'Framework has to be pytorch or jax, but is {framework}.')
+  return padded_tensor
+
+
+def create_mask(current_shape: Union[int, Tuple[int, ...]],
+                pad_size: int,
+                framework: str) -> spec.Tensor:
+  if isinstance(current_shape, tuple):
+    if len(current_shape) > 1:
+      pad_size = (pad_size, *current_shape[1:])
+  if framework == 'pytorch':
+    mask = torch.cat((torch.ones(current_shape), torch.zeros(pad_size)), dim=0)
+  elif framework == 'jax':
+    mask = np.concatenate((np.ones(current_shape), np.zeros(pad_size)), axis=0)
+  else:
+    raise ValueError(f'Framework has to be pytorch or jax, but is {framework}.')
+  return mask
 
 
 def mixup_pytorch(batch, alpha=0.2):
