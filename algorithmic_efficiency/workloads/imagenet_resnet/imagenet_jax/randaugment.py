@@ -411,15 +411,6 @@ def _rotate_level_to_arg(level):
   return (level,)
 
 
-def _shrink_level_to_arg(level):
-  """Converts level to ratio by which we shrink the image content."""
-  if level == 0:
-    return (1.0,)  # if level is zero, do not shrink the image
-  # Maximum shrinking ratio is 2.9.
-  level = 2. / (_MAX_LEVEL / level) + 0.9
-  return (level,)
-
-
 def _enhance_level_to_arg(level):
   return ((level / _MAX_LEVEL) * 1.8 + 0.1,)
 
