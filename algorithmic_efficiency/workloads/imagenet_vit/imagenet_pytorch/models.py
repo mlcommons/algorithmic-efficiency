@@ -56,7 +56,7 @@ class MlpBlock(nn.Module):
   def reset_parameters(self) -> None:
     for module in self.modules():
       if isinstance(module, nn.Linear):
-        nn.init.xavier_uniform_(module.weight)
+        nn.init.xavier_uniform_(module.weight.data)
         if module.bias is not None:
           module.bias.data.normal_(std=1e-6)
 
@@ -92,9 +92,9 @@ class SelfAttention(nn.Module):
   def reset_parameters(self) -> None:
     for module in self.modules():
       if isinstance(module, nn.Linear):
-        nn.init.xavier_uniform_(module.weight)
+        nn.init.xavier_uniform_(module.weight.data)
         if module.bias is not None:
-          nn.init.constant_(module.bias, 0.)
+          nn.init.constant_(module.bias.data, 0.)
 
   def transpose_for_scores(self, x: spec.Tensor) -> spec.Tensor:
     new_x_shape = x.size()[:-1] + (self.num_heads, self.head_dim)
@@ -136,10 +136,10 @@ class Encoder1DBlock(nn.Module):
     self.mlp_dim = mlp_dim
     self.num_heads = num_heads
 
-    self.layer_norm0 = nn.LayerNorm(self.width)
+    self.layer_norm0 = nn.LayerNorm(self.width, eps=1e-6)
     self.self_attention1 = SelfAttention(self.width, self.num_heads)
     self.dropout = nn.Dropout(dropout_rate)
-    self.layer_norm2 = nn.LayerNorm(self.width)
+    self.layer_norm2 = nn.LayerNorm(self.width, eps=1e-6)
     self.mlp3 = MlpBlock(self.width, self.mlp_dim, dropout_rate)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
@@ -175,7 +175,7 @@ class Encoder(nn.Module):
         Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout_rate)
         for _ in range(depth)
     ])
-    self.encoder_norm = nn.LayerNorm(self.width)
+    self.encoder_norm = nn.LayerNorm(self.width, eps=1e-6)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
     # Input Encoder
@@ -238,8 +238,6 @@ class ViT(nn.Module):
 
     if self.num_classes:
       self.head = nn.Linear(self.width, self.num_classes)
-    if self.head_zeroinit:
-      self.head.weight.data.zero_()
     self.reset_parameters()
 
   def reset_parameters(self) -> None:
