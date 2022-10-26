@@ -23,6 +23,7 @@ from typing import Optional, Tuple
 from absl import app
 from absl import flags
 from absl import logging
+import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
@@ -420,15 +421,23 @@ def score_submission_on_workload(
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
   global_batch_size = submission_module.get_batch_size(workload_name)
-  if global_batch_size % N_GPUS != 0:
+  # n_gpus has to be set here, because we cannot call the first Jax operation
+  # before pytorch_init().
+  n_gpus = max(N_GPUS, jax.local_device_count())
+  if global_batch_size % n_gpus != 0:
     raise ValueError(
-        'The global batch size has to be divisible by the number of GPUs.')
+        f'The global batch size ({global_batch_size}) has to be divisible by '
+        f'the number of GPUs ({n_gpus}).')
   if hasattr(submission_module, 'get_eval_batch_size'):
     # If the user specifies the eval batch size, use the provided one.
     global_eval_batch_size = submission_module.get_eval_batch_size(
         workload_name)
   else:
     global_eval_batch_size = workload.eval_batch_size
+  if global_eval_batch_size % n_gpus != 0:
+    raise ValueError(
+        f'The global eval batch size ({global_eval_batch_size}) has to be '
+        f'divisible by the number of GPUs ({n_gpus}).')
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
