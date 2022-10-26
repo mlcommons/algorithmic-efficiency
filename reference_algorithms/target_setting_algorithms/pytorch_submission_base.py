@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Tuple
 
-from absl import logging
 import torch
 
 from algorithmic_efficiency import spec
