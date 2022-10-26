@@ -200,10 +200,8 @@ class PrefetchedWrapper:
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
-    self.data_mean = torch.tensor(mean,
-                                  device=device).view(1, 3, 1, 1)
-    self.data_std = torch.tensor(std,
-                                 device=device).view(1, 3, 1, 1)
+    self.data_mean = torch.tensor(mean, device=device).view(1, 3, 1, 1)
+    self.data_std = torch.tensor(std, device=device).view(1, 3, 1, 1)
 
   def __len__(self):
     return len(self.dataloader)
