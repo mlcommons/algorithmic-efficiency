@@ -95,7 +95,6 @@ class OgbgWorkload(BaseOgbgWorkload):
         jnp.log(1 + jnp.exp(-abs_logits)))
     return jnp.where(mask, losses, jnp.nan)
 
-
   def _eval_metric(self, labels, logits, masks):
     per_example_losses = self.loss_fn(labels, logits, masks)
     loss = jnp.sum(jnp.where(masks, per_example_losses, 0)) / jnp.sum(masks)
