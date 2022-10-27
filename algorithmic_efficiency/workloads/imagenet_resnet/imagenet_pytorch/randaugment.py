@@ -11,16 +11,18 @@ import numpy as np
 import PIL
 import torch
 from torch import Tensor
-from algorithmic_efficiency import spec
 from torchvision.transforms import functional as F
 from torchvision.transforms import InterpolationMode
 
+from algorithmic_efficiency import spec
 
-def cutout(img: spec.Tensor, pad_size: int, fill: float) -> spec.Tensor:
+
+def cutout(img: spec.Tensor, pad_size: int) -> spec.Tensor:
   image_width, image_height = img.size
   x0 = np.random.uniform(image_width)
   y0 = np.random.uniform(image_height)
 
+  # Double the pad size to match Jax implementation.
   pad_size = pad_size * 2
   x0 = int(max(0, x0 - pad_size / 2.))
   y0 = int(max(0, y0 - pad_size / 2.))
@@ -28,7 +30,7 @@ def cutout(img: spec.Tensor, pad_size: int, fill: float) -> spec.Tensor:
   y1 = int(min(image_height, y0 + pad_size))
   xy = (x0, y0, x1, y1)
   img = img.copy()
-  PIL.ImageDraw.Draw(img).rectangle(xy, (fill, fill, fill))
+  PIL.ImageDraw.Draw(img).rectangle(xy, (128, 128, 128))
   return img
 
 
@@ -47,13 +49,13 @@ def solarize_add(img: spec.Tensor, addition: int = 0) -> spec.Tensor:
   return PIL.Image.fromarray(new_img)
 
 
-def _apply_op(
-    img: spec.Tensor,
-    op_name: str,
-    magnitude: float,
-    interpolation: InterpolationMode,
-    fill: Optional[List[float]]) -> spec.Tensor:
+def _apply_op(img: spec.Tensor,
+              op_name: str,
+              magnitude: float,
+              interpolation: InterpolationMode,
+              fill: Optional[List[float]]) -> spec.Tensor:
   if op_name == 'ShearX':
+    # Magnitude should be arctan(magnitude).
     img = F.affine(
         img,
         angle=0.0,
@@ -65,8 +67,7 @@ def _apply_op(
         center=[0, 0],
     )
   elif op_name == 'ShearY':
-    # magnitude should be arctan(magnitude)
-    # See above
+    # Magnitude should be arctan(magnitude).
     img = F.affine(
         img,
         angle=0.0,
@@ -110,7 +111,7 @@ def _apply_op(
   elif op_name == 'Posterize':
     img = F.posterize(img, int(magnitude))
   elif op_name == 'Cutout':
-    img = cutout(img, magnitude, fill=fill)
+    img = cutout(img, int(magnitude))
   elif op_name == 'SolarizeAdd':
     img = solarize_add(img, int(magnitude))
   elif op_name == 'Solarize':
@@ -128,6 +129,28 @@ def _apply_op(
   return img
 
 
+def ops_space() -> Dict[str, Tuple[spec.Tensor, bool]]:
+  return {
+      # op_name: (magnitudes, signed)
+      'ShearX': (torch.tensor(0.3), True),
+      'ShearY': (torch.tensor(0.3), True),
+      'TranslateX': (torch.tensor(100), True),
+      'TranslateY': (torch.tensor(100), True),
+      'Rotate': (torch.tensor(30), True),
+      'Brightness': (torch.tensor(1.9), False),
+      'Color': (torch.tensor(1.9), False),
+      'Contrast': (torch.tensor(1.9), False),
+      'Sharpness': (torch.tensor(1.9), False),
+      'Posterize': (torch.tensor(4), False),
+      'Solarize': (torch.tensor(256), False),
+      'SolarizeAdd': (torch.tensor(110), False),
+      'AutoContrast': (torch.tensor(0.0), False),
+      'Equalize': (torch.tensor(0.0), False),
+      'Invert': (torch.tensor(0.0), False),
+      'Cutout': (torch.tensor(40.0), False),
+  }
+
+
 class RandAugment(torch.nn.Module):
 
   def __init__(
@@ -141,27 +164,6 @@ class RandAugment(torch.nn.Module):
     self.interpolation = interpolation
     self.fill = fill
 
-  def _augmentation_space(self) -> Dict[str, Tuple[spec.Tensor, bool]]:
-    return {
-        # op_name: (magnitudes, signed)
-        'ShearX': (torch.tensor(0.3), True),
-        'ShearY': (torch.tensor(0.3), True),
-        'TranslateX': (torch.tensor(100), True),
-        'TranslateY': (torch.tensor(100), True),
-        'Rotate': (torch.tensor(30), True),
-        'Brightness': (torch.tensor(1.9), False),
-        'Color': (torch.tensor(1.9), False),
-        'Contrast': (torch.tensor(1.9), False),
-        'Sharpness': (torch.tensor(1.9), False),
-        'Posterize': (torch.tensor(4), False),
-        'Solarize': (torch.tensor(256), False),
-        'SolarizeAdd': (torch.tensor(110), False),
-        'AutoContrast': (torch.tensor(0.0), False),
-        'Equalize': (torch.tensor(0.0), False),
-        'Invert': (torch.tensor(0.0), False),
-        'Cutout': (torch.tensor(40.0), False),
-    }
-
   def forward(self, img: spec.Tensor) -> spec.Tensor:
     fill = self.fill if self.fill is not None else 128
     channels, _, _ = F.get_dimensions(img)
@@ -171,15 +173,15 @@ class RandAugment(torch.nn.Module):
       elif fill is not None:
         fill = [float(f) for f in fill]
 
-    op_meta = self._augmentation_space()
+    op_meta = ops_space()
     for _ in range(self.num_ops):
       op_index = int(torch.randint(len(op_meta), (1,)).item())
       op_name = list(op_meta.keys())[op_index]
       magnitude, signed = op_meta[op_name]
       magnitude = float(magnitude)
       if signed and torch.randint(2, (1,)):
+        # With 50% prob turn the magnitude negative.
         magnitude *= -1.0
       img = _apply_op(
           img, op_name, magnitude, interpolation=self.interpolation, fill=fill)
-
     return img

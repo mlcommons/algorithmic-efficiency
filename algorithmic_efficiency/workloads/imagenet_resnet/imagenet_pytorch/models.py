@@ -1,4 +1,4 @@
-"""PyTorch implementation of ResNet V1.
+"""PyTorch implementation of ResNet.
 
 Adapted from torchvision:
 https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
