@@ -30,7 +30,9 @@ def shard_numpy_ds(
     else:
       pad_size = local_device_count - remainder_size
     targets_shape = tuple(xs['targets'].shape)
-    xs['weights'] = create_mask(targets_shape, pad_size, 'jax')
+    # We need a 2d mask for WMT.
+    mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
+    xs['weights'] = create_mask(mask_shape, pad_size, 'jax')
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
