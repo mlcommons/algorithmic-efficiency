@@ -122,7 +122,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=8,
+        num_workers=4,
         pin_memory=True,
         collate_fn=data_utils.fast_collate,
         drop_last=is_train,
@@ -254,9 +254,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
           data_rng,
-          split,
-          data_dir,
+          split=split,
           global_batch_size=global_batch_size,
+          data_dir=data_dir,
           cache=is_test,
           repeat_final_dataset=is_test)
 
