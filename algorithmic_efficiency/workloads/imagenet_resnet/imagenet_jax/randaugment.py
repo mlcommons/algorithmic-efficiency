@@ -6,20 +6,16 @@ https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugm
 
 import inspect
 import math
-from typing import List, Tuple
 
 import tensorflow as tf
 from tensorflow_addons import image as contrib_image
-
-from algorithmic_efficiency import spec
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
 _MAX_LEVEL = 10.
 
 
-def blend(image1: spec.Tensor, image2: spec.Tensor,
-          factor: float) -> spec.Tensor:
+def blend(image1, image2, factor):
   """Blend image1 and image2 using 'factor'.
 
   Factor can be above 0.0.  A value of 0.0 means only image1 is used.
@@ -60,7 +56,7 @@ def blend(image1: spec.Tensor, image2: spec.Tensor,
   return tf.cast(tf.clip_by_value(temp, 0.0, 255.0), tf.uint8)
 
 
-def cutout(image: spec.Tensor, pad_size: int, replace: int = 0) -> spec.Tensor:
+def cutout(image, pad_size, replace=0):
   """Apply cutout (https://arxiv.org/abs/1708.04552) to image.
 
   This operation applies a (2*pad_size x 2*pad_size) mask of zeros to
@@ -112,27 +108,25 @@ def cutout(image: spec.Tensor, pad_size: int, replace: int = 0) -> spec.Tensor:
   return image
 
 
-def solarize(image: spec.Tensor, threshold: int = 128) -> spec.Tensor:
+def solarize(image, threshold=128):
   """Solarize the input image(s)."""
   return tf.where(image < threshold, image, 255 - image)
 
 
-def solarize_add(image: spec.Tensor,
-                 addition: int = 0,
-                 threshold: int = 128) -> spec.Tensor:
+def solarize_add(image, addition=0, threshold=128):
   """Additive solarize the input image(s)."""
   added_image = tf.cast(image, tf.int64) + addition
   added_image = tf.cast(tf.clip_by_value(added_image, 0, 255), tf.uint8)
   return tf.where(image < threshold, added_image, image)
 
 
-def color(image: spec.Tensor, factor: float):
+def color(image, factor):
   """Equivalent of PIL Color."""
   degenerate = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
   return blend(degenerate, image, factor)
 
 
-def contrast(image: spec.Tensor, factor: float) -> spec.Tensor:
+def contrast(image, factor):
   """Equivalent of PIL Contrast."""
   degenerate = tf.image.rgb_to_grayscale(image)
   # Cast before calling tf.histogram.
@@ -149,19 +143,19 @@ def contrast(image: spec.Tensor, factor: float) -> spec.Tensor:
   return blend(degenerate, image, factor)
 
 
-def brightness(image: spec.Tensor, factor: float) -> spec.Tensor:
+def brightness(image, factor):
   """Equivalent of PIL Brightness."""
   degenerate = tf.zeros_like(image)
   return blend(degenerate, image, factor)
 
 
-def posterize(image: spec.Tensor, bits: int) -> spec.Tensor:
+def posterize(image, bits):
   """Equivalent of PIL Posterize."""
   shift = 8 - bits
   return tf.bitwise.left_shift(tf.bitwise.right_shift(image, shift), shift)
 
 
-def rotate(image: spec.Tensor, degrees: float, replace: float) -> spec.Tensor:
+def rotate(image, degrees, replace):
   """Rotates the image by degrees either clockwise or counterclockwise.
 
   Args:
@@ -186,21 +180,19 @@ def rotate(image: spec.Tensor, degrees: float, replace: float) -> spec.Tensor:
   return unwrap(image, replace)
 
 
-def translate_x(image: spec.Tensor, pixels: float,
-                replace: float) -> spec.Tensor:
+def translate_x(image, pixels, replace):
   """Equivalent of PIL Translate in X dimension."""
   image = contrib_image.translate(wrap(image), [-pixels, 0])
   return unwrap(image, replace)
 
 
-def translate_y(image: spec.Tensor, pixels: float,
-                replace: float) -> spec.Tensor:
+def translate_y(image, pixels, replace):
   """Equivalent of PIL Translate in Y dimension."""
   image = contrib_image.translate(wrap(image), [0, -pixels])
   return unwrap(image, replace)
 
 
-def shear_x(image: spec.Tensor, level: float, replace: float) -> spec.Tensor:
+def shear_x(image, level, replace):
   """Equivalent of PIL Shearing in X dimension."""
   # Shear parallel to x axis is a projective transform
   # with a matrix form of:
@@ -211,7 +203,7 @@ def shear_x(image: spec.Tensor, level: float, replace: float) -> spec.Tensor:
   return unwrap(image, replace)
 
 
-def shear_y(image: spec.Tensor, level: float, replace: float) -> spec.Tensor:
+def shear_y(image, level, replace):
   """Equivalent of PIL Shearing in Y dimension."""
   # Shear parallel to y axis is a projective transform
   # with a matrix form of:
@@ -222,7 +214,7 @@ def shear_y(image: spec.Tensor, level: float, replace: float) -> spec.Tensor:
   return unwrap(image, replace)
 
 
-def autocontrast(image: spec.Tensor) -> spec.Tensor:
+def autocontrast(image):
   """Implements Autocontrast function from PIL using TF ops.
 
   Args:
@@ -233,7 +225,7 @@ def autocontrast(image: spec.Tensor) -> spec.Tensor:
     uint8.
   """
 
-  def scale_channel(image: spec.Tensor) -> spec.Tensor:
+  def scale_channel(image):
     """Scale the 2D image using the autocontrast rule."""
     # A possibly cheaper version can be done using cumsum/unique_with_counts
     # over the histogram values, rather than iterating over the entire image.
@@ -242,7 +234,7 @@ def autocontrast(image: spec.Tensor) -> spec.Tensor:
     hi = tf.cast(tf.reduce_max(image), tf.float32)
 
     # Scale the image, making the lowest value 0 and the highest value 255.
-    def scale_values(im: spec.Tensor) -> spec.Tensor:
+    def scale_values(im):
       scale = 255.0 / (hi - lo)
       offset = -lo * scale
       im = tf.cast(im, tf.float32) * scale + offset
@@ -261,13 +253,13 @@ def autocontrast(image: spec.Tensor) -> spec.Tensor:
   return image
 
 
-def sharpness(image: spec.Tensor, factor: float) -> spec.Tensor:
+def sharpness(image, factor):
   """Implements Sharpness function from PIL using TF ops."""
   orig_image = image
   image = tf.cast(image, tf.float32)
   # Make image 4D for conv operation.
   image = tf.expand_dims(image, 0)
-  # Smooth PIL Kernel.
+  # SMOOTH PIL Kernel.
   kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
                        dtype=tf.float32,
                        shape=[3, 3, 1, 1]) / 13.
@@ -293,10 +285,10 @@ def sharpness(image: spec.Tensor, factor: float) -> spec.Tensor:
   return blend(result, orig_image, factor)
 
 
-def equalize(image: spec.Tensor) -> spec.Tensor:
+def equalize(image):
   """Implements Equalize function from PIL using TF ops."""
 
-  def scale_channel(im: spec.Tensor, c: int) -> spec.Tensor:
+  def scale_channel(im, c):
     """Scale the data in the channel to implement equalize."""
     im = tf.cast(im[:, :, c], tf.int32)
     # Compute the histogram of the image channel.
@@ -307,7 +299,7 @@ def equalize(image: spec.Tensor) -> spec.Tensor:
     nonzero_histo = tf.reshape(tf.gather(histo, nonzero), [-1])
     step = (tf.reduce_sum(nonzero_histo) - nonzero_histo[-1]) // 255
 
-    def build_lut(histo: spec.Tensor, step: int) -> spec.Tensor:
+    def build_lut(histo, step):
       # Compute the cumulative sum, shifting by step // 2
       # and then normalization by step.
       lut = (tf.cumsum(histo) + (step // 2)) // step
@@ -335,13 +327,13 @@ def equalize(image: spec.Tensor) -> spec.Tensor:
   return image
 
 
-def invert(image: spec.Tensor) -> spec.Tensor:
+def invert(image):
   """Inverts the image pixels."""
   image = tf.convert_to_tensor(image)
   return 255 - image
 
 
-def wrap(image: spec.Tensor) -> spec.Tensor:
+def wrap(image):
   """Returns 'image' with an extra channel set to all 1s."""
   shape = tf.shape(image)
   extended_channel = tf.ones([shape[0], shape[1], 1], image.dtype)
@@ -349,7 +341,7 @@ def wrap(image: spec.Tensor) -> spec.Tensor:
   return extended
 
 
-def unwrap(image: spec.Tensor, replace: spec.Tensor) -> spec.Tensor:
+def unwrap(image, replace):
   """Unwraps an image produced by wrap.
 
   Where there is a 0 in the last channel for every spatial position,
@@ -406,38 +398,38 @@ NAME_TO_FUNC = {
 }
 
 
-def _randomly_negate_tensor(tensor: spec.Tensor) -> spec.Tensor:
+def _randomly_negate_tensor(tensor):
   """With 50% prob turn the tensor negative."""
   should_flip = tf.cast(tf.floor(tf.random.uniform([]) + 0.5), tf.bool)
   final_tensor = tf.cond(should_flip, lambda: tensor, lambda: -tensor)
   return final_tensor
 
 
-def _rotate_level_to_arg(level: float) -> Tuple[float]:
+def _rotate_level_to_arg(level):
   level = (level / _MAX_LEVEL) * 30.
   level = _randomly_negate_tensor(level)
   return (level,)
 
 
-def _enhance_level_to_arg(level: float) -> Tuple[float]:
+def _enhance_level_to_arg(level):
   return ((level / _MAX_LEVEL) * 1.8 + 0.1,)
 
 
-def _shear_level_to_arg(level: float) -> Tuple[float]:
+def _shear_level_to_arg(level):
   level = (level / _MAX_LEVEL) * 0.3
   # Flip level to negative with 50% chance.
   level = _randomly_negate_tensor(level)
   return (level,)
 
 
-def _translate_level_to_arg(level: float, translate_const: int) -> Tuple[float]:
+def _translate_level_to_arg(level, translate_const):
   level = (level / _MAX_LEVEL) * float(translate_const)
   # Flip level to negative with 50% chance.
   level = _randomly_negate_tensor(level)
   return (level,)
 
 
-def level_to_arg(cutout_const: int, translate_const: int) -> dict:
+def level_to_arg(cutout_const, translate_const):
   return {
       'AutoContrast':
           lambda level: (),
@@ -474,37 +466,35 @@ def level_to_arg(cutout_const: int, translate_const: int) -> dict:
   }
 
 
-def _parse_policy_info(name: str,
-                       prob: float,
-                       level: float,
-                       replace_value: List[int],
-                       cutout_const: int,
-                       translate_const: int) -> tuple:
+def _parse_policy_info(name,
+                       prob,
+                       level,
+                       replace_value,
+                       cutout_const,
+                       translate_const):
   """Return the function that corresponds to `name` and update `level` param."""
   func = NAME_TO_FUNC[name]
   args = level_to_arg(cutout_const, translate_const)[name](level)
 
   # Check to see if prob is passed into function. This is used for operations
   # where we alter bboxes independently.
-  if 'prob' in inspect.getfullargspec(func)[0]:
+  if 'prob' in inspect.getargspec(func)[0]:
     args = tuple([prob] + list(args))
 
   # Add in replace arg if it is required for the function that is being called.
-  if 'replace' in inspect.getfullargspec(func)[0]:
+  if 'replace' in inspect.getargspec(func)[0]:
     # Make sure replace is the final argument
-    assert 'replace' == inspect.getfullargspec(func)[0][-1]
+    assert 'replace' == inspect.getargspec(func)[0][-1]
     args = tuple(list(args) + [replace_value])
 
   return (func, prob, args)
 
 
-def distort_image_with_randaugment(image: spec.Tensor,
-                                   num_layers: int,
-                                   magnitude: float,
-                                   key: spec.RandomState) -> spec.Tensor:
+def distort_image_with_randaugment(image, num_layers, magnitude, key):
   """Applies the RandAugment policy to `image`.
 
   RandAugment is from the paper https://arxiv.org/abs/1909.13719,
+
   Args:
     image: `Tensor` of shape [height, width, 3] representing an image.
     num_layers: Integer, the number of augmentation transformations to apply
