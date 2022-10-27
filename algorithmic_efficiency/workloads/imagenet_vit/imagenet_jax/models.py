@@ -1,6 +1,6 @@
-"""A refactored and simplified ViT.
+"""Jax implementation of refactored and simplified ViT.
 
-NOTE: Forked from
+Forked from:
 https://github.com/google/init2winit/blob/master/init2winit/model_lib/vit.py,
 originally from https://github.com/google/big_vision with modifications noted.
 """
@@ -13,7 +13,11 @@ import jax.numpy as jnp
 from algorithmic_efficiency import spec
 
 
-def posemb_sincos_2d(h, w, width, temperature=10_000., dtype=jnp.float32):
+def posemb_sincos_2d(h: int,
+                     w: int,
+                     width: int,
+                     temperature: int = 10_000.,
+                     dtype: jnp.dtype = jnp.float32) -> spec.Tensor:
   """Follows the MoCo v3 logic."""
   y, x = jnp.mgrid[:h, :w]
 
@@ -29,7 +33,7 @@ def posemb_sincos_2d(h, w, width, temperature=10_000., dtype=jnp.float32):
 
 class MlpBlock(nn.Module):
   """Transformer MLP / feed-forward block."""
-  mlp_dim: Optional[int] = None  # Defaults to 4x input dim
+  mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   dropout_rate: float = 0.0
 
   @nn.compact
@@ -50,7 +54,7 @@ class MlpBlock(nn.Module):
 
 class Encoder1DBlock(nn.Module):
   """Single transformer encoder block (MHSA + MLP)."""
-  mlp_dim: Optional[int] = None  # Defaults to 4x input dim
+  mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   dropout_rate: float = 0.0
 
@@ -78,7 +82,7 @@ class Encoder1DBlock(nn.Module):
 class Encoder(nn.Module):
   """Transformer Model Encoder for sequence to sequence translation."""
   depth: int
-  mlp_dim: Optional[int] = None  # Defaults to 4x input dim
+  mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   dropout_rate: float = 0.0
 
@@ -102,14 +106,17 @@ class ViT(nn.Module):
   patch_size: Sequence[int] = (16, 16)
   width: int = 768
   depth: int = 12
-  mlp_dim: Optional[int] = None  # Defaults to 4x input dim
+  mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   rep_size: Union[int, bool] = True
   dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
 
-  def get_posemb(self, seqshape, width, dtype=jnp.float32):
+  def get_posemb(self,
+                 seqshape: tuple,
+                 width: int,
+                 dtype: jnp.dtype = jnp.float32) -> spec.Tensor:
     return posemb_sincos_2d(*seqshape, width, dtype=dtype)
 
   @nn.compact
@@ -145,7 +152,7 @@ class ViT(nn.Module):
     x = jnp.mean(x, axis=1)
 
     if self.rep_size:
-      rep_size = self.width if self.rep_size is True else self.rep_size  # pylint: disable=g-bool-id-comparison
+      rep_size = self.width if self.rep_size is True else self.rep_size
       hid = nn.Dense(rep_size, name='pre_logits')
       x = nn.tanh(hid(x))
 

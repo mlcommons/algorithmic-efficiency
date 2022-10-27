@@ -1,8 +1,8 @@
-"""A refactored and simplified ViT.
+"""PyTorch implementation of refactored and simplified ViT.
 
-NOTE: Adapted from
-https://github.com/huggingface/transformers/tree/main/src/transformers/models/vit
-https://github.com/lucidrains/vit-pytorch
+Adapted from:
+https://github.com/huggingface/transformers/tree/main/src/transformers/models/vit.
+https://github.com/lucidrains/vit-pytorch.
 """
 
 import math
@@ -16,7 +16,7 @@ from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import spec
 
 
-def posemb_sincos_2d(patches, temperature=10_000.):
+def posemb_sincos_2d(patches: spec.Tensor, temperature=10_000.) -> spec.Tensor:
   _, width, h, w = patches.shape
   device = patches.device
   y, x = torch.meshgrid(torch.arange(h, device=device),
@@ -38,7 +38,7 @@ class MlpBlock(nn.Module):
   def __init__(
       self,
       width: int,
-      mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
+      mlp_dim: Optional[int] = None,  # Defaults to 4x input dim.
       dropout_rate: float = 0.0) -> None:
     super().__init__()
 
@@ -178,7 +178,7 @@ class Encoder(nn.Module):
     self.encoder_norm = nn.LayerNorm(self.width, eps=1e-6)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
-    # Input Encoder
+    # Input Encoder.
     for block in self.net:
       x = block(x)
     return self.encoder_norm(x)
@@ -194,10 +194,10 @@ class ViT(nn.Module):
   def __init__(
       self,
       num_classes: int = 1000,
-      patch_size: Tuple[int] = (16, 16),
+      patch_size: Tuple[int, int] = (16, 16),
       width: int = 768,
       depth: int = 12,
-      mlp_dim: Optional[int] = None,  # Defaults to 4x input dim
+      mlp_dim: Optional[int] = None,  # Defaults to 4x input dim.
       num_heads: int = 12,
       rep_size: Union[int, bool] = True,
       dropout_rate: Optional[float] = 0.0,
@@ -218,7 +218,7 @@ class ViT(nn.Module):
     self.dtype = dtype
 
     if self.rep_size:
-      rep_size = self.width if self.rep_size is True else self.rep_size  # pylint: disable=g-bool-id-comparison
+      rep_size = self.width if self.rep_size is True else self.rep_size
       self.pre_logits = nn.Linear(self.width, rep_size)
 
     self.embed = nn.Conv2d(
@@ -257,7 +257,7 @@ class ViT(nn.Module):
     return posemb_sincos_2d(x).type(self.dtype)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
-    # Patch extraction
+    # Patch extraction.
     x = self.embed(x)
 
     # Add posemb before adding extra token.
