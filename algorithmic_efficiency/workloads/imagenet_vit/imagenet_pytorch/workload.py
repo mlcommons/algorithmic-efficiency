@@ -29,7 +29,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = models.ViT(
         dropout_rate=dropout_rate,
