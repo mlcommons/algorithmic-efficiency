@@ -52,7 +52,7 @@ Shape = Union[Tuple[int],
               ShapeTuple]
 ParameterShapeTree = Dict[str, Dict[str, Shape]]
 
-# If necessary, these can be izipped together easily given they have the same
+# If necessary, these can be zipped together easily given they have the same
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.

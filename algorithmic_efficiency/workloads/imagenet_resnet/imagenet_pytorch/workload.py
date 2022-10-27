@@ -4,7 +4,7 @@ import contextlib
 import itertools
 import math
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 import numpy as np
 import torch
@@ -31,7 +31,8 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-def imagenet_v2_to_torch(batch):
+def imagenet_v2_to_torch(
+    batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
   # Slice off the part of the batch for this device and then transpose from
   # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
   new_batch = {}
@@ -49,15 +50,16 @@ def imagenet_v2_to_torch(batch):
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     global_batch_size: int,
-                     cache: bool,
-                     repeat_final_dataset: bool,
-                     use_mixup: bool = False,
-                     use_randaug: bool = False):
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      use_mixup: bool = False,
+      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
     del data_rng
     del cache
     del repeat_final_dataset
@@ -66,7 +68,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           data_dir,
           global_batch_size,
           mean_rgb=self.train_mean,
-          stddev_rgb=self.train_stddev)
+          stddev_rgb=self.train_stddev,
+          image_size=self.center_crop_size,
+          resize_size=self.resize_size)
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
@@ -117,10 +121,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=12,
+        num_workers=4,
         pin_memory=True,
         collate_fn=data_utils.fast_collate,
-        drop_last=is_train)
+        drop_last=is_train,
+        persistent_workers=True)
     dataloader = data_utils.PrefetchedWrapper(dataloader,
                                               DEVICE,
                                               self.train_mean,
@@ -157,7 +162,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['fc.weight', 'fc.bias']
 
-  def _update_batch_norm(self, model, update_batch_norm):
+  def _update_batch_norm(self,
+                         model: spec.ParameterContainer,
+                         update_batch_norm: bool) -> None:
     bn_layers = (nn.BatchNorm1d,
                  nn.BatchNorm2d,
                  nn.BatchNorm3d,
@@ -208,7 +215,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
               mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+              label_smoothing: float = 0.0) -> spec.Tensor:
+    """Cross Entropy Loss."""
     losses = F.cross_entropy(
         logits_batch,
         label_batch,
@@ -219,7 +227,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       losses *= mask_batch
     return losses
 
-  def _eval_metric(self, logits, labels, weights):
+  def _compute_metrics(self,
+                       logits: spec.Tensor,
+                       labels: spec.Tensor,
+                       weights: spec.Tensor) -> Dict[str, spec.Tensor]:
     """Return the mean accuracy and loss as a dict."""
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
@@ -237,7 +248,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
@@ -246,9 +257,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
           data_rng,
-          split,
-          data_dir,
+          split=split,
           global_batch_size=global_batch_size,
+          data_dir=data_dir,
           cache=is_test,
           repeat_final_dataset=is_test)
 
@@ -267,7 +278,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           model_rng,
           update_batch_norm=False)
       weights = batch.get('weights')
-      batch_metrics = self._eval_metric(logits, batch['targets'], weights)
+      batch_metrics = self._compute_metrics(logits, batch['targets'], weights)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
