@@ -273,6 +273,7 @@ def create_split(split,
     if train:
       per_step_preprocess_rng = tf.random.experimental.stateless_fold_in(
           tf.cast(preprocess_rng, tf.int64), example_index)
+
       image = preprocess_for_train(example['image'],
                                    per_step_preprocess_rng,
                                    mean_rgb,
