@@ -42,7 +42,7 @@ class MnistWorkload(BaseMnistWorkload):
                      data_rng: jax.random.PRNGKey,
                      split: str,
                      data_dir: str,
-                     batch_size):
+                     global_batch_size: int):
     # TODO: choose a random split and match with PyTorch.
     if split == 'eval_train':
       tfds_split = f'train[:{self.num_eval_train_examples}]'
@@ -59,10 +59,13 @@ class MnistWorkload(BaseMnistWorkload):
     ds = ds.cache()
     is_train = split == 'train'
     if is_train:
-      ds = ds.shuffle(16 * batch_size, seed=data_rng[0])
+      ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
       ds = ds.repeat()
-    ds = ds.batch(batch_size, drop_remainder=is_train)
-    ds = map(data_utils.shard_numpy_ds, ds)
+    ds = ds.batch(global_batch_size, drop_remainder=is_train)
+    ds = map(
+        functools.partial(
+            data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+        ds)
     return iter(ds)
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -146,8 +149,12 @@ class MnistWorkload(BaseMnistWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
-    loss = jnp.sum(self.loss_fn(batch['targets'], logits))
+    weights = batch.get('weights')
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    accuracy = jnp.sum(
+        (jnp.argmax(logits, axis=-1) == batch['targets']) * weights)
+    loss = jnp.sum(self.loss_fn(batch['targets'], logits, weights))
     metrics = {'accuracy': accuracy, 'loss': loss}
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics
