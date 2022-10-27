@@ -128,6 +128,7 @@ def _make_one_batch_workload(workload_class,
     def __init__(self):
       super().__init__()
       self.summary_writer = None
+      self.metrics_logger = None
       if 'librispeech' in workload_name:
         self.metrics_bundle = _FakeMetricsBundle()
         self.tokenizer = _FakeTokenizer()

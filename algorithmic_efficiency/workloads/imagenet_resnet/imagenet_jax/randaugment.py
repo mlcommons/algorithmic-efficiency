@@ -1,7 +1,7 @@
-"""Utilities for RandAugmentation.
+"""Jax implementation of RandAugmentation.
 
 Adapted from:
-https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugment.py
+https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugment.py.
 """
 
 import inspect
@@ -17,16 +17,19 @@ _MAX_LEVEL = 10.
 
 def blend(image1, image2, factor):
   """Blend image1 and image2 using 'factor'.
+
   Factor can be above 0.0.  A value of 0.0 means only image1 is used.
   A value of 1.0 means only image2 is used.  A value between 0.0 and
   1.0 means we linearly interpolate the pixel values between the two
   images.  A value greater than 1.0 "extrapolates" the difference
   between the two pixel values, and we clip the results to values
   between 0 and 255.
+
   Args:
     image1: An image Tensor of type uint8.
     image2: An image Tensor of type uint8.
     factor: A floating point value above 0.0.
+
   Returns:
     A blended image Tensor of type uint8.
   """
@@ -44,23 +47,23 @@ def blend(image1, image2, factor):
   # Do addition in float.
   temp = tf.cast(image1, tf.float32) + scaled
 
-  # Interpolate
+  # Interpolate.
   if 0.0 < factor < 1.0:
     # Interpolation means we always stay within 0 and 255.
     return tf.cast(temp, tf.uint8)
 
-  # Extrapolate:
-  #
-  # We need to clip and then cast.
+  # Extrapolate.
   return tf.cast(tf.clip_by_value(temp, 0.0, 255.0), tf.uint8)
 
 
 def cutout(image, pad_size, replace=0):
   """Apply cutout (https://arxiv.org/abs/1708.04552) to image.
+
   This operation applies a (2*pad_size x 2*pad_size) mask of zeros to
   a random location within `img`. The pixel values filled in will be of the
   value `replace`. The located where the mask will be applied is randomly
   chosen uniformly over the whole image.
+
   Args:
     image: An image Tensor of type uint8.
     pad_size: Specifies how big the zero mask that will be generated is that
@@ -68,6 +71,7 @@ def cutout(image, pad_size, replace=0):
       (2*pad_size x 2*pad_size).
     replace: What pixel value to fill in the image in the area that has
       the cutout mask applied to it.
+
   Returns:
     An image Tensor that is of type uint8.
   """
@@ -105,17 +109,12 @@ def cutout(image, pad_size, replace=0):
 
 
 def solarize(image, threshold=128):
-  # For each pixel in the image, select the pixel
-  # if the value is less than the threshold.
-  # Otherwise, subtract 255 from the pixel.
+  """Solarize the input image(s)."""
   return tf.where(image < threshold, image, 255 - image)
 
 
 def solarize_add(image, addition=0, threshold=128):
-  # For each pixel in the image less than threshold
-  # we add 'addition' amount to it and then clip the
-  # pixel value to be between 0 and 255. The value
-  # of 'addition' is between -128 and 128.
+  """Additive solarize the input image(s)."""
   added_image = tf.cast(image, tf.int64) + addition
   added_image = tf.cast(tf.clip_by_value(added_image, 0, 255), tf.uint8)
   return tf.where(image < threshold, added_image, image)
@@ -158,6 +157,7 @@ def posterize(image, bits):
 
 def rotate(image, degrees, replace):
   """Rotates the image by degrees either clockwise or counterclockwise.
+
   Args:
     image: An image Tensor of type uint8.
     degrees: Float, a scalar angle in degrees to rotate all images by. If
@@ -165,6 +165,7 @@ def rotate(image, degrees, replace):
       be rotated counterclockwise.
     replace: A one or three value 1D tensor to fill empty pixels caused by
       the rotate operation.
+
   Returns:
     The rotated version of image.
   """
@@ -215,8 +216,10 @@ def shear_y(image, level, replace):
 
 def autocontrast(image):
   """Implements Autocontrast function from PIL using TF ops.
+
   Args:
     image: A 3D uint8 tensor.
+
   Returns:
     The image after it has had autocontrast applied to it and will be of type
     uint8.
@@ -241,7 +244,7 @@ def autocontrast(image):
     result = tf.cond(hi > lo, lambda: scale_values(image), lambda: image)
     return result
 
-  # Assumes RGB for now.  Scales each channel independently
+  # Assumes RGB for now. Scales each channel independently
   # and then stacks the result.
   s1 = scale_channel(image[:, :, 0])
   s2 = scale_channel(image[:, :, 1])
@@ -267,7 +270,7 @@ def sharpness(image, factor):
     # Some augmentation that uses depth-wise conv will cause crashing when
     # training on GPU.
     degenerate = tf.nn.depthwise_conv2d(
-        image, kernel, strides, padding='VALID', rate=[1, 1])
+        image, kernel, strides, padding='VALID', dilations=[1, 1])
   degenerate = tf.clip_by_value(degenerate, 0.0, 255.0)
   degenerate = tf.squeeze(tf.cast(degenerate, tf.uint8), [0])
 
@@ -340,15 +343,18 @@ def wrap(image):
 
 def unwrap(image, replace):
   """Unwraps an image produced by wrap.
+
   Where there is a 0 in the last channel for every spatial position,
   the rest of the three channels in that spatial dimension are grayed
   (set to 128).  Operations like translate and shear on a wrapped
   Tensor will leave 0s in empty locations.  Some transformations look
   at the intensity of values to do preprocessing, and we want these
   empty pixels to assume the 'average' value, rather than pure black.
+
   Args:
     image: A 3D Image Tensor with 4 channels.
     replace: A one or three value 1D tensor to fill empty pixels.
+
   Returns:
     image: A 3D image Tensor with 3 channels.
   """
@@ -357,7 +363,7 @@ def unwrap(image, replace):
   flattened_image = tf.reshape(image, [-1, image_shape[2]])
 
   # Find all pixels where the last channel is zero.
-  alpha_channel = flattened_image[:, 3]
+  alpha_channel = tf.expand_dims(flattened_image[..., 3], axis=-1)
 
   replace = tf.concat([replace, tf.ones([1], image.dtype)], 0)
 
@@ -402,15 +408,6 @@ def _randomly_negate_tensor(tensor):
 def _rotate_level_to_arg(level):
   level = (level / _MAX_LEVEL) * 30.
   level = _randomly_negate_tensor(level)
-  return (level,)
-
-
-def _shrink_level_to_arg(level):
-  """Converts level to ratio by which we shrink the image content."""
-  if level == 0:
-    return (1.0,)  # if level is zero, do not shrink the image
-  # Maximum shrinking ratio is 2.9.
-  level = 2. / (_MAX_LEVEL / level) + 0.9
   return (level,)
 
 
@@ -461,11 +458,11 @@ def level_to_arg(cutout_const, translate_const):
       'ShearY':
           _shear_level_to_arg,
       'Cutout':
-          lambda level: (int((level / _MAX_LEVEL) * cutout_const),),  # pylint:disable=g-long-lambda
+          lambda level: (int((level / _MAX_LEVEL) * cutout_const),),
       'TranslateX':
           lambda level: _translate_level_to_arg(level, translate_const),
       'TranslateY':
-          lambda level: _translate_level_to_arg(level, translate_const),  # pylint:enable=g-long-lambda
+          lambda level: _translate_level_to_arg(level, translate_const),
   }
 
 
@@ -481,36 +478,33 @@ def _parse_policy_info(name,
 
   # Check to see if prob is passed into function. This is used for operations
   # where we alter bboxes independently.
-  # pylint:disable=deprecated-method
-  # pytype:disable=wrong-arg-types
   if 'prob' in inspect.getargspec(func)[0]:
     args = tuple([prob] + list(args))
-  # pytype:enable=wrong-arg-types
 
   # Add in replace arg if it is required for the function that is being called.
-  # pytype:disable=wrong-arg-types
   if 'replace' in inspect.getargspec(func)[0]:
     # Make sure replace is the final argument
     assert 'replace' == inspect.getargspec(func)[0][-1]
     args = tuple(list(args) + [replace_value])
-  # pytype:enable=wrong-arg-types
-  # pylint:enable=deprecated-method
 
   return (func, prob, args)
 
 
 def distort_image_with_randaugment(image, num_layers, magnitude, key):
   """Applies the RandAugment policy to `image`.
+
   RandAugment is from the paper https://arxiv.org/abs/1909.13719,
+
   Args:
     image: `Tensor` of shape [height, width, 3] representing an image.
     num_layers: Integer, the number of augmentation transformations to apply
       sequentially to an image. Represented as (N) in the paper. Usually best
       values will be in the range [1, 3].
     magnitude: Integer, shared magnitude across all augmentation operations.
-      Represented as (M) in the paper. Usually best values are in the range
+      Represented as (M) in the paper. Best values are usually in the range
       [5, 30].
     key: an rng key from tf.random.experimental.stateless_fold_in.
+
   Returns:
     The augmented version of `image`.
   """
@@ -554,9 +548,7 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
                                            translate_const=100)
         image = tf.cond(
             tf.equal(i, op_to_select),
-            # pylint:disable=g-long-lambda
             lambda selected_func=func,
             selected_args=args: selected_func(image, *selected_args),
-            # pylint:enable=g-long-lambda
             lambda: image)
   return image

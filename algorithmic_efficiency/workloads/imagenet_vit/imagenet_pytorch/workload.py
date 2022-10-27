@@ -24,10 +24,17 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 # Make sure we inherit from the ViT base workload first.
 class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model_kwargs = decode_variant('S/16')
-    model = models.ViT(num_classes=1000, **model_kwargs)
+    model = models.ViT(
+        dropout_rate=dropout_rate,
+        num_classes=self._num_classes,
+        **decode_variant('S/16'))
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -48,16 +55,12 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del aux_dropout_rate
     del update_batch_norm
 
     model = params
-    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()

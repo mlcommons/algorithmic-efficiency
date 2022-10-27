@@ -3,10 +3,11 @@
 Forked from the Flax ImageNet Example v0.3.3
 https://github.com/google/flax/tree/v0.3.3/examples/imagenet.
 """
+
 import functools
 import itertools
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -29,21 +30,25 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     global_batch_size: int,
-                     cache: Optional[bool] = None,
-                     repeat_final_dataset: Optional[bool] = None,
-                     use_mixup: bool = False):
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      use_mixup: bool = False,
+      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
     if split == 'test':
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
           shard_batch=True,
           mean_rgb=self.train_mean,
-          stddev_rgb=self.train_stddev)
+          stddev_rgb=self.train_stddev,
+          image_size=self.center_crop_size,
+          resize_size=self.resize_size)
       return itertools.cycle(np_iter)
 
     ds_builder = tfds.builder('imagenet2012:5.1.0', data_dir=data_dir)
@@ -66,10 +71,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         cache=not train if cache is None else cache,
         repeat_final_dataset=repeat_final_dataset,
         use_mixup=use_mixup,
-        mixup_alpha=0.2)
+        mixup_alpha=0.2,
+        use_randaug=use_randaug)
     return ds
 
-  def sync_batch_stats(self, model_state):
+  def sync_batch_stats(
+      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
     """Sync the batch statistics across replicas."""
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics and
@@ -79,7 +86,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     model_cls = getattr(models, 'ResNet50')
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
@@ -101,15 +115,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       axis_name='batch',
       in_axes=(None, 0, 0, 0, 0),
       static_broadcasted_argnums=(0,))
-  def _eval_model(self, params, batch, state, rng):
+  def _eval_model(self,
+                  params: spec.ParameterContainer,
+                  batch: Dict[str, spec.Tensor],
+                  model_state: spec.ModelAuxiliaryState,
+                  rng: spec.RandomState) -> Dict[str, spec.Tensor]:
     logits, _ = self.model_fn(
         params,
         batch,
-        state,
+        model_state,
         spec.ForwardPassMode.EVAL,
         rng=rng,
-        dropout_rate=0.0,  # Default for ViT, unused in eval anyways.
-        aux_dropout_rate=None,
         update_batch_norm=False)
     return self._compute_metrics(logits, batch['targets'])
 
@@ -120,14 +136,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del mode
     del rng
-    del dropout_rate
-    del aux_dropout_rate
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
@@ -150,8 +161,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
               mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    """Cross Entropy Loss"""
+              label_smoothing: float = 0.0) -> spec.Tensor:
+    """Cross Entropy Loss."""
     if label_batch.shape[-1] != self._num_classes:
       one_hot_labels = jax.nn.one_hot(
           label_batch, num_classes=self._num_classes)
@@ -165,9 +176,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       losses *= mask_batch
     return losses
 
-  def _compute_metrics(self, logits, labels):
+  def _compute_metrics(self, logits: spec.Tensor,
+                       labels: spec.Tensor) -> Dict[str, float]:
     loss = jnp.sum(self.loss_fn(labels, logits))
-    # not accuracy, but nr. of correct predictions
+    # Not accuracy, but nr. of correct predictions.
     accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
     metrics = {
         'loss': loss,
@@ -184,7 +196,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
     del global_step
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.

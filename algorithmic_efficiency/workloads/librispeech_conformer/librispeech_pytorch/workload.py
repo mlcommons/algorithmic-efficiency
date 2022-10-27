@@ -25,35 +25,27 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 MAX_INPUT_LENGTH = 320000
 
 
-def _maybe_update_model_dropout(model,
-                                residual_dropout_rate,
-                                input_dropout_rate):
-  for child in list(model.modules()):
-    # Residual dropout.
-    if (isinstance(child, conformer_model.MultiHeadedSelfAttention) and
-        residual_dropout_rate is not None):
-      child.dropout.p = residual_dropout_rate
-    elif (isinstance(child, conformer_model.ConvolutionBlock) and
-          residual_dropout_rate is not None):
-      child.dropout.p = residual_dropout_rate
-    elif (isinstance(child, conformer_model.FeedForwardModule) and
-          residual_dropout_rate is not None):
-      child.dropout2.p = residual_dropout_rate
-    # Input dropout.
-    elif (isinstance(child, conformer_model.Subsample) and
-          input_dropout_rate is not None):
-      child.dropout.p = input_dropout_rate
-
-
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Conformer model init function.
+
+    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
+    """
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
     model = conformer_model.ConformerEncoderDecoder(
-        conformer_model.ConformerConfig())
-    self._model = model
+        conformer_model.ConformerConfig(
+            attention_residual_dropout_rate=dropout_rate,
+            feed_forward_residual_dropout_rate=dropout_rate,
+            conv_residual_dropout_rate=dropout_rate,
+            input_dropout_rate=aux_dropout_rate))
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     # Run the initialization in eval mode to disable BN tracking.
@@ -66,8 +58,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
+    self.requires_sync_before_eval = False
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
+        self.requires_sync_before_eval = True
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
@@ -87,23 +81,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Conformer model function.
-
-    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
-    input_dropout_rate.
-    """
     del model_state
     del rng
     del update_batch_norm
 
     model = params
-    _maybe_update_model_dropout(
-        model,
-        residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
 
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
@@ -233,6 +216,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def sync_sd(self, params):
     sd = params.state_dict()
+    dist.barrier()
     for k in sd:
       dist.all_reduce(sd[k], op=dist.ReduceOp.SUM)
       # Assumes N_GPUS is the world size.
@@ -264,7 +248,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         'num_words': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
-    self.sync_sd(params)
+    if self.requires_sync_before_eval:
+      self.sync_sd(params)
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
 
@@ -274,8 +259,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
-          dropout_rate=0.1,  # Default, unused for eval.
-          aux_dropout_rate=0.1,  # Default, unused for eval.
           update_batch_norm=False)
       decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
       targets, target_paddings = batch['targets']

@@ -1,8 +1,10 @@
 """ImageNet input pipeline.
 
 Forked from Flax example which can be found here:
-https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
+https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py.
 """
+
+from typing import Dict, Iterator, Tuple
 
 from flax import jax_utils
 import jax
@@ -10,22 +12,21 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_probability as tfp
 
-from algorithmic_efficiency import autoaugment_utils
 from algorithmic_efficiency import data_utils
-
-IMAGE_SIZE = 224
-RESIZE_SIZE = 256
-MEAN_RGB = [0.485 * 255, 0.456 * 255, 0.406 * 255]
-STDDEV_RGB = [0.229 * 255, 0.224 * 255, 0.225 * 255]
+from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
+    randaugment
 
 
-def _distorted_bounding_box_crop(image_bytes,
-                                 rng,
-                                 bbox,
-                                 min_object_covered=0.1,
-                                 aspect_ratio_range=(0.75, 1.33),
-                                 area_range=(0.05, 1.0),
-                                 max_attempts=100):
+def _distorted_bounding_box_crop(image_bytes: spec.Tensor,
+                                 rng: spec.RandomState,
+                                 bbox: spec.Tensor,
+                                 min_object_covered: float = 0.1,
+                                 aspect_ratio_range: Tuple[float,
+                                                           float] = (0.75,
+                                                                     1.33),
+                                 area_range: Tuple[float, float] = (0.05, 1.0),
+                                 max_attempts: int = 100) -> spec.Tensor:
   """Generates cropped_image using one of the bboxes randomly distorted.
 
   See `tf.image.sample_distorted_bounding_box` for more documentation.
@@ -47,6 +48,7 @@ def _distorted_bounding_box_crop(image_bytes,
     max_attempts: An optional `int`. Number of attempts at generating a cropped
         region of the image of the specified constraints. After `max_attempts`
         failures, return the entire image.
+
   Returns:
     cropped image `Tensor`
   """
@@ -69,24 +71,24 @@ def _distorted_bounding_box_crop(image_bytes,
   return image
 
 
-def _resize(image, image_size):
+def _resize(image: spec.Tensor, image_size: int) -> spec.Tensor:
   return tf.image.resize([image], [image_size, image_size],
                          method=tf.image.ResizeMethod.BICUBIC)[0]
 
 
-def _at_least_x_are_equal(a, b, x):
+def _at_least_x_are_equal(a: spec.Tensor, b: spec.Tensor, x: float) -> bool:
   """At least `x` of `a` and `b` `Tensors` are equal."""
   match = tf.equal(a, b)
   match = tf.cast(match, tf.int32)
   return tf.greater_equal(tf.reduce_sum(match), x)
 
 
-def _decode_and_random_crop(image_bytes,
-                            rng,
-                            image_size,
-                            aspect_ratio_range,
-                            area_range,
-                            resize_size=RESIZE_SIZE):
+def _decode_and_random_crop(image_bytes: spec.Tensor,
+                            rng: spec.RandomState,
+                            image_size: int,
+                            aspect_ratio_range: Tuple[float, float],
+                            area_range: Tuple[float, float],
+                            resize_size: int) -> spec.Tensor:
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image = _distorted_bounding_box_crop(
@@ -108,7 +110,9 @@ def _decode_and_random_crop(image_bytes,
   return image
 
 
-def _decode_and_center_crop(image_bytes, image_size, resize_size):
+def _decode_and_center_crop(image_bytes: spec.Tensor,
+                            image_size: int,
+                            resize_size: int) -> spec.Tensor:
   """Crops to center of image with padding then scales image_size."""
   shape = tf.io.extract_jpeg_shape(image_bytes)
   image_height = shape[0]
@@ -133,24 +137,26 @@ def _decode_and_center_crop(image_bytes, image_size, resize_size):
   return image
 
 
-def normalize_image(image, mean_rgb, stddev_rgb):
+def normalize_image(image: spec.Tensor,
+                    mean_rgb: Tuple[float, float, float],
+                    stddev_rgb: Tuple[float, float, float]) -> spec.Tensor:
   image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
   image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image
 
 
-def preprocess_for_train(image_bytes,
-                         rng,
-                         mean_rgb,
-                         stddev_rgb,
-                         aspect_ratio_range,
-                         area_range,
-                         dtype=tf.float32,
-                         image_size=IMAGE_SIZE,
-                         resize_size=RESIZE_SIZE,
-                         use_randaug=False,
-                         randaug_num_layers=2,
-                         randaug_magnitude=10):
+def preprocess_for_train(image_bytes: spec.Tensor,
+                         rng: spec.RandomState,
+                         mean_rgb: Tuple[float, float, float],
+                         stddev_rgb: Tuple[float, float, float],
+                         aspect_ratio_range: Tuple[float, float],
+                         area_range: Tuple[float, float],
+                         image_size: int,
+                         resize_size: int,
+                         dtype: tf.DType = tf.float32,
+                         use_randaug: bool = False,
+                         randaug_num_layers: int = 2,
+                         randaug_magnitude: int = 10) -> spec.Tensor:
   """Preprocesses the given image for training.
 
   Args:
@@ -175,20 +181,22 @@ def preprocess_for_train(image_bytes,
 
   if use_randaug:
     image = tf.cast(tf.clip_by_value(image, 0, 255), tf.uint8)
-    image = autoaugment_utils.distort_image_with_randaugment(
-        image, randaug_num_layers, randaug_magnitude, rngs[2])
+    image = randaugment.distort_image_with_randaugment(image,
+                                                       randaug_num_layers,
+                                                       randaug_magnitude,
+                                                       rngs[2])
   image = tf.cast(image, tf.float32)
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
 
 
-def preprocess_for_eval(image_bytes,
-                        mean_rgb,
-                        stddev_rgb,
-                        dtype=tf.float32,
-                        image_size=IMAGE_SIZE,
-                        resize_size=RESIZE_SIZE):
+def preprocess_for_eval(image_bytes: spec.Tensor,
+                        mean_rgb: Tuple[float, float, float],
+                        stddev_rgb: Tuple[float, float, float],
+                        image_size: int,
+                        resize_size: int,
+                        dtype: tf.DType = tf.float32) -> spec.Tensor:
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -209,15 +217,21 @@ def preprocess_for_eval(image_bytes,
 # Modified from
 # github.com/google/init2winit/blob/master/init2winit/dataset_lib/ (cont. below)
 # image_preprocessing.py.
-def mixup_tf(key, inputs, targets, alpha=0.2):
+def mixup_tf(key: spec.RandomState,
+             inputs: spec.Tensor,
+             targets: spec.Tensor,
+             alpha: float = 0.2) -> Tuple[spec.Tensor, spec.Tensor]:
   """Perform mixup https://arxiv.org/abs/1710.09412.
+
   NOTE: Code taken from https://github.com/google/big_vision with variables
   renamed to match `mixup` in this file and logic to synchronize globally.
+
   Args:
     key: The random key to use.
     inputs: inputs to mix.
     targets: targets to mix.
     alpha: the beta/dirichlet concentration parameter, typically 0.1 or 0.2.
+
   Returns:
     Mixed inputs and targets.
   """
@@ -249,7 +263,7 @@ def create_split(split,
                  mixup_alpha=0.1,
                  use_randaug=False,
                  randaug_num_layers=2,
-                 randaug_magnitude=10):
+                 randaug_magnitude=10) -> Iterator[Dict[str, spec.Tensor]]:
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
 
   shuffle_rng, preprocess_rng, mixup_rng = jax.random.split(rng, 3)
@@ -259,15 +273,16 @@ def create_split(split,
     if train:
       per_step_preprocess_rng = tf.random.experimental.stateless_fold_in(
           tf.cast(preprocess_rng, tf.int64), example_index)
+
       image = preprocess_for_train(example['image'],
                                    per_step_preprocess_rng,
                                    mean_rgb,
                                    stddev_rgb,
                                    aspect_ratio_range,
                                    area_range,
-                                   dtype,
                                    image_size,
                                    resize_size,
+                                   dtype,
                                    use_randaug,
                                    randaug_num_layers,
                                    randaug_magnitude)
@@ -275,9 +290,9 @@ def create_split(split,
       image = preprocess_for_eval(example['image'],
                                   mean_rgb,
                                   stddev_rgb,
-                                  dtype,
                                   image_size,
-                                  resize_size)
+                                  resize_size,
+                                  dtype)
     return {'inputs': image, 'targets': example['label']}
 
   ds = dataset_builder.as_dataset(
@@ -329,21 +344,22 @@ def create_split(split,
   return ds
 
 
-def create_input_iter(split,
-                      dataset_builder,
-                      rng,
-                      global_batch_size,
-                      mean_rgb,
-                      stddev_rgb,
-                      image_size,
-                      resize_size,
-                      aspect_ratio_range,
-                      area_range,
-                      train,
-                      cache,
-                      repeat_final_dataset,
-                      use_mixup,
-                      mixup_alpha):
+def create_input_iter(split: str,
+                      dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
+                      rng: spec.RandomState,
+                      global_batch_size: int,
+                      mean_rgb: Tuple[float, float, float],
+                      stddev_rgb: Tuple[float, float, float],
+                      image_size: int,
+                      resize_size: int,
+                      aspect_ratio_range: Tuple[float, float],
+                      area_range: Tuple[float, float],
+                      train: bool,
+                      cache: bool,
+                      repeat_final_dataset: bool,
+                      use_mixup: bool,
+                      mixup_alpha: float,
+                      use_randaug: bool) -> Iterator[Dict[str, spec.Tensor]]:
   ds = create_split(
       split,
       dataset_builder,
@@ -359,7 +375,8 @@ def create_input_iter(split,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
       use_mixup=use_mixup,
-      mixup_alpha=mixup_alpha)
+      mixup_alpha=mixup_alpha,
+      use_randaug=use_randaug)
   it = map(data_utils.shard_numpy_ds, ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.

@@ -22,7 +22,6 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del eval_results
-  del global_step
 
   current_model = current_param_container
   current_model.train()
@@ -34,9 +33,6 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
-      # There was no dropout rate tuning in the target setting runs.
-      dropout_rate=None,
-      aux_dropout_rate=None,
       update_batch_norm=True)
 
   label_smoothing = (
@@ -46,11 +42,12 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  loss = workload.loss_fn(
-      label_batch=batch['targets'],
-      logits_batch=logits_batch,
-      mask_batch=batch.get('weights'),
-      label_smoothing=label_smoothing).mean()
+  loss = torch.nanmean(
+      workload.loss_fn(
+          label_batch=batch['targets'],
+          logits_batch=logits_batch,
+          mask_batch=batch.get('weights'),
+          label_smoothing=label_smoothing))
 
   loss.backward()
   if grad_clip is not None:
