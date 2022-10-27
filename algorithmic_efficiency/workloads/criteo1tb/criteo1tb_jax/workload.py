@@ -16,7 +16,7 @@ from algorithmic_efficiency.workloads.criteo1tb.workload import \
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
   def _per_example_sigmoid_binary_cross_entropy(
-      logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
+      self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     """Computes the sigmoid binary cross entropy per example.
 
     Args:

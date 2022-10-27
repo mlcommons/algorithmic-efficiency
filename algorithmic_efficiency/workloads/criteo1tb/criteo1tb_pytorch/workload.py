@@ -21,7 +21,7 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
   def _per_example_sigmoid_binary_cross_entropy(
-      logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
+      self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     ls = torch.nn.LogSigmoid()
     log_p = ls(logits)
     log_not_p = ls(-logits)
