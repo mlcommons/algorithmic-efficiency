@@ -10,8 +10,6 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import \
-    metrics
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import \
     DlrmSmall
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
@@ -22,13 +20,22 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
+  def _per_example_sigmoid_binary_cross_entropy(
+      logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
+    ls = torch.nn.LogSigmoid()
+    log_p = ls(logits)
+    log_not_p = ls(-logits)
+    per_example_losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
+    per_example_losses = per_example_losses.reshape(len(per_example_losses), -1)
+    return per_example_losses.sum(1)
+
   def loss_fn(self,
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
               mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> spec.Tensor:
     del label_smoothing
-    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
+    per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
       per_example_losses *= mask_batch
@@ -106,6 +113,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                          global_batch_size: int,
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
+    not_train = split != 'train'
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to
@@ -124,33 +132,40 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
             batch['inputs'], dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.float32, device=DEVICE)
-        weights = torch.as_tensor(
-            batch['weights'], dtype=torch.bool, device=DEVICE)
+        if not_train:
+          weights = torch.as_tensor(
+              batch['weights'], dtype=torch.float32, device=DEVICE)
 
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           # During eval, the batch size of the remainder might be different.
-          if split != 'train':
+          if not_train:
             per_device_batch_size = torch.tensor(
                 len(targets[0]), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
+            dist.broadcast(weights, src=0)
+            weights = weights[0]
           dist.broadcast(inputs, src=0)
           inputs = inputs[0]
           dist.broadcast(targets, src=0)
           targets = targets[0]
-          dist.broadcast(weights, src=0)
-          weights = weights[0]
         else:
           inputs = inputs.view(-1, *inputs.shape[2:])
           targets = targets.view(-1, *targets.shape[2:])
-          weights = weights.view(-1, *weights.shape[2:])
+          if not_train:
+            weights = weights.view(-1, *weights.shape[2:])
       else:
         # During eval, the batch size of the remainder might be different.
-        if split != 'train':
+        if not_train:
           per_device_batch_size = torch.empty((1,),
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
+          weights = torch.empty((N_GPUS, per_device_batch_size, 1),
+                                dtype=torch.float32,
+                                device=DEVICE)
+          dist.broadcast(weights, src=0)
+          weights = weights[RANK]
 
         inputs = torch.empty((N_GPUS, per_device_batch_size, 39),
                              dtype=torch.float32,
@@ -162,11 +177,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                               device=DEVICE)
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
-        weights = torch.empty((N_GPUS, per_device_batch_size, 1),
-                              dtype=torch.bool,
-                              device=DEVICE)
-        dist.broadcast(weights, src=0)
-        weights = weights[RANK]
 
       batch = {
           'inputs': inputs,
@@ -175,7 +185,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       }
       yield batch
 
-  def _eval_batch(self, params, batch):
+  def _eval_batch(self,
+                  params: spec.ParameterContainer,
+                  batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     logits, _ = self.model_fn(
         params,
         batch,
@@ -183,8 +195,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         mode=spec.ForwardPassMode.EVAL,
         rng=None,
         update_batch_norm=False)
-    per_example_losses = metrics.per_example_sigmoid_binary_cross_entropy(
-        logits, batch['targets'])
-    batch_loss_numerator = torch.sum(per_example_losses).cpu().numpy()
-    batch_loss_denominator = torch.sum(batch['weights']).cpu().numpy()
-    return batch_loss_numerator, batch_loss_denominator
+    weights = batch.get('weights')
+    if weights is None:
+      weights = torch.ones(len(logits), device=DEVICE)
+    per_example_losses = self.loss_fn(logits, batch['targets'], weights)
+    loss = per_example_losses.sum()
+    return loss
