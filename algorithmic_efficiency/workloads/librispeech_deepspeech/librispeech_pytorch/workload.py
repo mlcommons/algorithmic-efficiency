@@ -36,7 +36,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
             feed_forward_dropout_rate=dropout_rate,
-            input_dropout_rate=aux_dropout_rate))
+            input_dropout_rate=aux_dropout_rate)).eval()
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     t = MAX_INPUT_LENGTH
