@@ -1,7 +1,7 @@
 """Jax implementation of ResNet V1.
 
 Adapted from Flax example:
-https://github.com/google/flax/blob/main/examples/imagenet/models.py
+https://github.com/google/flax/blob/main/examples/imagenet/models.py.
 """
 
 import functools

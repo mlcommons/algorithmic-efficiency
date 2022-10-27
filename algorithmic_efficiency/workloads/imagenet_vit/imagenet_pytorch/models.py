@@ -1,8 +1,8 @@
 """PyTorch implementation of refactored and simplified ViT.
 
 Adapted from:
-https://github.com/huggingface/transformers/tree/main/src/transformers/models/vit
-https://github.com/lucidrains/vit-pytorch
+https://github.com/huggingface/transformers/tree/main/src/transformers/models/vit.
+https://github.com/lucidrains/vit-pytorch.
 """
 
 import math

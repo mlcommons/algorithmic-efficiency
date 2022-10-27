@@ -1,7 +1,7 @@
 """PyTorch implementation of ResNet.
 
 Adapted from torchvision:
-https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py.
 """
 
 import collections

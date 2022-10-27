@@ -1,7 +1,7 @@
 """PyTorch implementation of RandAugmentation.
 
 Adapted from:
-https://pytorch.org/vision/stable/_modules/torchvision/transforms/autoaugment.html
+https://pytorch.org/vision/stable/_modules/torchvision/transforms/autoaugment.html.
 """
 
 import math
