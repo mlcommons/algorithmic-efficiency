@@ -268,10 +268,10 @@ def train_once(
          checkpoint_dir=log_dir)
     meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
-    logging.info('Saving meta data to %s', meta_file_name)
+    logging.info(f'Saving meta data to {meta_file_name}',)
     logger_utils.write_json(meta_file_name, meta_data)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
-    logging.info('Saving flags to %s', flag_file_name)
+    logging.info(f'Saving flags to {flag_file_name}')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
@@ -333,10 +333,9 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          logging.info('Time since start: %.2fs, \tStep: %d, \t%s',
-                       current_time - global_start_time,
-                       global_step,
-                       latest_eval_result)
+          time_since_start = current_time - global_start_time
+          logging.info(f'Time since start: {time_since_start:.2f}s, '
+                       f'\tStep: {global_step}, \t{latest_eval_result}')
           eval_results.append((global_step, latest_eval_result))
           train_state['goal_reached'] = workload.has_reached_goal(
               latest_eval_result)
@@ -463,12 +462,12 @@ def score_submission_on_workload(
       # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
       # number.
       rng, _ = prng.split(rng, 2)
-      logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
+      logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
 
       tuning_dir_name = None
       if log_dir is not None:
-        tuning_dir_name = os.path.join(log_dir, 'trial_' + str(hi + 1))
-        logging.info('Creating tuning directory at %s', tuning_dir_name)
+        tuning_dir_name = os.path.join(log_dir, f'trial_{hi + 1}')
+        logging.info(f'Creating tuning directory at {tuning_dir_name}')
         logger_utils.makedir(tuning_dir_name)
 
         # If existing hyperparameter exists, use saved
@@ -494,10 +493,10 @@ def score_submission_on_workload(
       all_metrics.append(metrics)
     score = min(all_timings)
     for ti in range(num_tuning_trials):
-      logging.info('Tuning trial %d/%d', ti + 1, num_tuning_trials)
-      logging.info('Hyperparameters: %s', tuning_search_space[ti])
-      logging.info('Metrics: %s', all_metrics[ti])
-      logging.info('Timing: %s', all_timings[ti])
+      logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
+      logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
+      logging.info(f'Metrics: {all_metrics[ti]}')
+      logging.info(f'Timing: {all_timings[ti]}')
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
@@ -527,13 +526,13 @@ def main(_):
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
-      workload_metadata['workload_path'] + '_' + FLAGS.framework,
+      workload_metadata['workload_path'] + f'_{FLAGS.framework}',
       'workload.py')
   workload = import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  workload_dir_name = FLAGS.workload + '_' + FLAGS.framework
+  workload_dir_name = f'{FLAGS.workload}_{FLAGS.framework}'
   if FLAGS.experiment_name is None:
     experiment_dir_name = os.path.join(FLAGS.experiment_dir, workload_dir_name)
   else:
@@ -541,7 +540,7 @@ def main(_):
                                        FLAGS.experiment_name,
                                        workload_dir_name)
   experiment_dir_name = os.path.expanduser(experiment_dir_name)
-  logging.info('Creating experiment directory at %s', experiment_dir_name)
+  logging.info(f'Creating experiment directory at {experiment_dir_name}')
   logger_utils.makedir(experiment_dir_name)
 
   score = score_submission_on_workload(workload,
@@ -556,7 +555,7 @@ def main(_):
                                        FLAGS.num_tuning_trials,
                                        experiment_dir_name,
                                        FLAGS.tokenizer_vocab_path)
-  logging.info('Final %s score: %f', FLAGS.workload, score)
+  logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
     logging.info(profiler.summary())
