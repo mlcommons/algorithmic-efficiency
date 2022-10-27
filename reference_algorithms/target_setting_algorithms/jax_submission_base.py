@@ -37,7 +37,7 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = jnp.mean(
+    loss = jnp.nanmean(
         workload.loss_fn(
             label_batch=batch['targets'],
             logits_batch=logits,
