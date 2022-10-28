@@ -169,14 +169,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         targets.long(),
         input_lengths,
         target_lengths).sum()
-    L = target_lengths.sum()
+    L = target_lengths.sum().to(per_seq_loss)
     if USE_PYTORCH_DDP:
       dist.all_reduce(per_seq_loss)
       dist.all_reduce(L)
     average_loss = per_seq_loss / max(L, 1)
     return {
         'loss': per_seq_loss,
-        'lengths': target_lengths,
+        'lengths': L,
         'average_loss': average_loss
     }
 
