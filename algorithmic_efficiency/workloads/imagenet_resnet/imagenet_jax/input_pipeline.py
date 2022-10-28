@@ -4,6 +4,7 @@ Forked from Flax example which can be found here:
 https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py.
 """
 
+import functools
 from typing import Dict, Iterator, Tuple
 
 from flax import jax_utils
@@ -377,7 +378,10 @@ def create_input_iter(split: str,
       use_mixup=use_mixup,
       mixup_alpha=mixup_alpha,
       use_randaug=use_randaug)
-  it = map(data_utils.shard_numpy_ds, ds)
+  it = map(
+      functools.partial(
+          data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+      ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)

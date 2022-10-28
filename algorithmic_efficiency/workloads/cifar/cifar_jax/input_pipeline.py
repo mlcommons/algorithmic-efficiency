@@ -4,6 +4,7 @@ Forked from Flax example which can be found here:
 https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 and adjusted to work for CIFAR10.
 """
+import functools
 
 from flax import jax_utils
 import jax
@@ -253,7 +254,9 @@ def create_input_iter(split,
       num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
-  it = map(shard_numpy_ds, ds)
+  it = map(
+      functools.partial(shard_numpy_ds, global_batch_size=global_batch_size),
+      ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)

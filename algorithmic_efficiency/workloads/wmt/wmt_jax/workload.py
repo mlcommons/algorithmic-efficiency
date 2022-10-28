@@ -66,6 +66,9 @@ class WmtWorkload(BaseWmtWorkload):
     inputs = batch['inputs']
     targets = batch['targets']
     weights = jnp.where(targets > 0, 1.0, 0.0)
+    remainder_mask = batch.get('weights')
+    if remainder_mask is not None:
+      weights = jnp.logical_and(weights, remainder_mask)
     logits = self._eval_model.apply({'params': params}, inputs, targets)
     metrics = self.compute_summed_metrics(logits, targets, weights)
     return metrics
@@ -164,11 +167,17 @@ class WmtWorkload(BaseWmtWorkload):
                                     max_predict_length)
       predicted = _to_host(predicted)
       targets = _to_host(pred_batch['targets'])
+      # Find actual batch size, ignoring the potential padding.
+      weights = pred_batch.get('weights')
+      if weights is not None:
+        weights = _to_host(weights)
+        actual_batch_size = int(weights.sum(0)[0].item())
+      else:
+        actual_batch_size = len(predicted)
       # Iterate through non-padding examples of batch.
-      assert len(predicted) == len(targets)
-      for tar, pred in zip(targets, predicted):
-        references.append(self._decode_tokens(tar))
-        predictions.append(self._decode_tokens(pred))
+      for idx in range(actual_batch_size):
+        references.append(self._decode_tokens(targets[idx]))
+        predictions.append(self._decode_tokens(predicted[idx]))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_score = sacrebleu.corpus_bleu(predictions, [references]).score
