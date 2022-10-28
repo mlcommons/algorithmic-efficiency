@@ -233,7 +233,7 @@ def download_imagenet(dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url
   download_imagenet_v2(dataset_dir)
 
 
-def setup_imagenet(dataset_dir, framework=None)
+def setup_imagenet(dataset_dir, framework=None):
   if framework == 'jax':
     setup_imagenet_jax(dataset_dir)
 
@@ -293,7 +293,7 @@ def setup_imagenet_pytorch(dataset_dir):
   extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_VAL_TAR_FILENAME), 
           os.path.join(imagenet_pytorch_dataset_dir, 'val'))
 
-  cwd=os.path.join(imagenet_pytorch_dataset_dir, 'train'))
+  cwd=os.path.join(imagenet_pytorch_dataset_dir, 'train')
   valprep_command = ['wget', '-qO-', 'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh']
   valprep_process = subprocess.Popen(valprep_command, cwd=cwd, stdout=subprocess.PIPE)
   out = subprocess.check_output(['bash'], cwd=cwd, stdin=valprep_process.stdout)
