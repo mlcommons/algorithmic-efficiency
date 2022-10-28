@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional
 
 import jax
 import numpy as np
@@ -32,15 +32,16 @@ def shard_numpy_ds(
     targets_shape = tuple(xs['targets'].shape)
     # We need a 2d mask for WMT.
     mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
-    xs['weights'] = create_mask(mask_shape, pad_size, 'jax')
+    # Will also be zero-padded.
+    xs['weights'] = np.ones(mask_shape)
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     if not isinstance(x, np.ndarray):
       x = x._numpy()  # pylint: disable=protected-access
 
-    # Pad if remainder_size != 0 and x is not value for key 'weights'.
-    if x.shape[0] % local_device_count != 0:
+    # Pad if remainder_size != 0 (should only be possible during evaluation).
+    if remainder_size != 0:
       x = pad(x, pad_size, 'jax')
 
     # Reshape (global_batch_size, ...) to
@@ -52,31 +53,17 @@ def shard_numpy_ds(
 
 
 def pad(tensor: spec.Tensor, pad_size: int, framework: str) -> spec.Tensor:
+  if len(tensor) > 1:
+    pad_size = (pad_size, *tensor.shape[1:])
   if framework == 'pytorch':
-    padding = torch.zeros(
-        pad_size, *tensor.shape[1:], dtype=tensor.dtype, device=tensor.device)
+    padding = torch.zeros(pad_size, dtype=tensor.dtype, device=tensor.device)
     padded_tensor = torch.cat((tensor, padding), dim=0)
   elif framework == 'jax':
-    padding = np.zeros((pad_size, *tensor.shape[1:]), dtype=tensor.dtype)
+    padding = np.zeros(pad_size, dtype=tensor.dtype)
     padded_tensor = np.concatenate((tensor, padding), axis=0)
   else:
     raise ValueError(f'Framework has to be pytorch or jax, but is {framework}.')
   return padded_tensor
-
-
-def create_mask(current_shape: Union[int, Tuple[int, ...]],
-                pad_size: int,
-                framework: str) -> spec.Tensor:
-  if isinstance(current_shape, tuple):
-    if len(current_shape) > 1:
-      pad_size = (pad_size, *current_shape[1:])
-  if framework == 'pytorch':
-    mask = torch.cat((torch.ones(current_shape), torch.zeros(pad_size)), dim=0)
-  elif framework == 'jax':
-    mask = np.concatenate((np.ones(current_shape), np.zeros(pad_size)), axis=0)
-  else:
-    raise ValueError(f'Framework has to be pytorch or jax, but is {framework}.')
-  return mask
 
 
 def mixup_pytorch(batch, alpha=0.2):
