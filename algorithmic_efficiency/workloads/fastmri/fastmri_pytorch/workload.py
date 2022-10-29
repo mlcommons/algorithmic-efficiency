@@ -52,10 +52,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         tensor_list, aux_tensor_list = [], []
         for key, value in batch.items():
           tensor = torch.as_tensor(value, device=DEVICE)
-          if tensor.dim() == 4:
-            tensor_list.append(tensor)
+          if key == 'weights':
+            weights = tensor.clone()
           else:
-            aux_tensor_list.append(tensor)
+            if tensor.dim() == 4:
+              tensor_list.append(tensor)
+            else:
+              aux_tensor_list.append(tensor)
           batch[key] = (
               tensor[0] if USE_PYTORCH_DDP else tensor.view(
                   -1, *value.shape[2:]))
@@ -66,7 +69,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
             per_device_batch_size = torch.tensor(
                 len(batch['inputs']), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
-            weights = aux_tensor_list.pop(-1)
+            weights = weights if 'weights' in batch else None
+            if weights is None:
+              weights = torch.ones((N_GPUS, per_device_batch_size),
+                                   dtype=torch.float64,
+                                   device=DEVICE)
+              # Has no effect, but without it `batch` has no `weights` key
+              # for RANK == 0, but has one for all others.
+              batch['weights'] = weights[0]
             dist.broadcast(weights, src=0)
           dist.broadcast(torch.stack(tensor_list), src=0)
           dist.broadcast(torch.stack(aux_tensor_list), src=0)
@@ -165,7 +175,10 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       losses *= mask_batch
     return losses
 
-  def _eval_model(self, params, batch, rng):
+  def _eval_model(self,
+                  params: spec.ParameterContainer,
+                  batch: Dict[str, spec.Tensor],
+                  rng: spec.RandomState) -> Dict[str, spec.Tensor]:
     """Return the SSIM and loss as a dict."""
     outputs, _ = self.model_fn(
         params,
@@ -174,14 +187,18 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
+    weights = batch.get('weights')
+    if weights is None:
+      weights = torch.ones(len(outputs), device=DEVICE)
+    weights_sum = weights.sum().to(torch.int)
     ssim_sum = ssim(
-        outputs,
-        batch['targets'],
-        mean=batch['mean'],
-        std=batch['std'],
-        volume_max=batch['volume_max']).sum()
-    loss = self.loss_fn(batch['targets'], outputs).sum()
-    return {'ssim': ssim_sum, 'loss': loss, 'weight': batch['weights'].sum()}
+        outputs[:weights_sum],
+        batch['targets'][:weights_sum],
+        mean=batch['mean'][:weights_sum],
+        std=batch['std'][:weights_sum],
+        volume_max=batch['volume_max'][:weights_sum]).sum()
+    loss = self.loss_fn(batch['targets'], outputs, weights).sum()
+    return {'ssim': ssim_sum, 'loss': loss}
 
   def _eval_model_on_split(self,
                            split: str,
@@ -191,7 +208,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
     del global_step
@@ -208,7 +225,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     total_metrics = {
         'ssim': torch.tensor(0., device=DEVICE),
         'loss': torch.tensor(0., device=DEVICE),
-        'weight': torch.tensor(0., device=DEVICE),
     }
     num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
@@ -220,5 +236,4 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
-    num_examples = total_metrics.pop('weight')
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

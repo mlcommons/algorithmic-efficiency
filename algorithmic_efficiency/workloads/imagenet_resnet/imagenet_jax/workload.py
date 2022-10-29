@@ -44,7 +44,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
-          shard_batch=True,
           mean_rgb=self.train_mean,
           stddev_rgb=self.train_stddev,
           image_size=self.center_crop_size,
@@ -127,7 +126,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         spec.ForwardPassMode.EVAL,
         rng=rng,
         update_batch_norm=False)
-    return self._compute_metrics(logits, batch['targets'])
+    weights = batch.get('weights')
+    return self._compute_metrics(logits, batch['targets'], weights)
 
   def model_fn(
       self,
@@ -176,11 +176,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       losses *= mask_batch
     return losses
 
-  def _compute_metrics(self, logits: spec.Tensor,
-                       labels: spec.Tensor) -> Dict[str, float]:
-    loss = jnp.sum(self.loss_fn(labels, logits))
-    # Not accuracy, but nr. of correct predictions.
-    accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
+  def _compute_metrics(self,
+                       logits: spec.Tensor,
+                       labels: spec.Tensor,
+                       weights: spec.Tensor) -> Dict[str, spec.Tensor]:
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    loss = jnp.sum(self.loss_fn(labels, logits, weights))
+    # not accuracy, but nr. of correct predictions
+    accuracy = jnp.sum((jnp.argmax(logits, -1) == labels) * weights)
     metrics = {
         'loss': loss,
         'accuracy': accuracy,

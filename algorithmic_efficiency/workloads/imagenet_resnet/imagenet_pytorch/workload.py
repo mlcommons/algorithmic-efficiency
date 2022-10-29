@@ -40,7 +40,7 @@ def imagenet_v2_to_torch(
     if USE_PYTORCH_DDP:
       new_v = v[RANK]
     else:
-      new_v = v
+      new_v = v.reshape(-1, *v.shape[2:])
     if k == 'inputs':
       new_v = np.transpose(new_v, (0, 3, 1, 2))
     dtype = torch.long if k == 'targets' else torch.float
@@ -67,7 +67,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
-          shard_batch=USE_PYTORCH_DDP,
           mean_rgb=self.train_mean,
           stddev_rgb=self.train_stddev,
           image_size=self.center_crop_size,
@@ -228,13 +227,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       losses *= mask_batch
     return losses
 
-  def _compute_metrics(self, logits: spec.Tensor,
-                       labels: spec.Tensor) -> Dict[str, spec.Tensor]:
+  def _compute_metrics(self,
+                       logits: spec.Tensor,
+                       labels: spec.Tensor,
+                       weights: spec.Tensor) -> Dict[str, spec.Tensor]:
     """Return the mean accuracy and loss as a dict."""
+    if weights is None:
+      weights = torch.ones(len(logits), device=DEVICE)
     predicted = torch.argmax(logits, 1)
     # not accuracy, but nr. of correct predictions
-    accuracy = (predicted == labels).sum()
-    loss = self.loss_fn(labels, logits).sum()
+    accuracy = ((predicted == labels) * weights).sum()
+    loss = self.loss_fn(labels, logits, weights).sum()
     return {'accuracy': accuracy, 'loss': loss}
 
   def _eval_model_on_split(self,
@@ -274,7 +277,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           spec.ForwardPassMode.EVAL,
           model_rng,
           update_batch_norm=False)
-      batch_metrics = self._compute_metrics(logits, batch['targets'])
+      weights = batch.get('weights')
+      batch_metrics = self._compute_metrics(logits, batch['targets'], weights)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
