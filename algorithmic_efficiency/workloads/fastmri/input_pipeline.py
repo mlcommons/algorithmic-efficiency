@@ -231,5 +231,6 @@ def load_fastmri_split(global_batch_size,
     ds = ds.prefetch(10)
     return map(
         functools.partial(
-            data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size),
+            data_utils.shard_and_maybe_pad_np,
+            global_batch_size=global_batch_size),
         ds)

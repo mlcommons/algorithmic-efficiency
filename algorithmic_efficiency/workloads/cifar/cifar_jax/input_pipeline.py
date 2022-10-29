@@ -255,7 +255,8 @@ def create_input_iter(split,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
   it = map(
-      functools.partial(shard_and_maybe_pad_np, global_batch_size=global_batch_size),
+      functools.partial(
+          shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.

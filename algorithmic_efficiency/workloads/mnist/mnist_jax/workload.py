@@ -64,7 +64,8 @@ class MnistWorkload(BaseMnistWorkload):
     ds = ds.batch(global_batch_size, drop_remainder=is_train)
     ds = map(
         functools.partial(
-            data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size),
+            data_utils.shard_and_maybe_pad_np,
+            global_batch_size=global_batch_size),
         ds)
     return iter(ds)
 
