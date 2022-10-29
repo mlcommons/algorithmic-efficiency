@@ -56,7 +56,7 @@ def value_transform(k, value, jax_value):
   k_str = ''.join(k).lower()
   if 'conv' in k_str and 'kernel' in k_str:
     if 'transpose' in k_str:
-      return value.permute(2, 3, 0, 1)
+      return value.reshape(value.shape[0],value.shape[1],-1).flip(-1).permute(2,0,1).reshape(*jax_value.shape)
     else:
       return value.permute(2, 3, 1, 0)
   elif ('dense' in k_str and 'kernel' in k_str) or ('lstm' in k_str and
@@ -102,7 +102,8 @@ if __name__ == "__main__":
     mode=spec.ForwardPassMode.EVAL,
     rng=jax.random.PRNGKey(0),
     update_batch_norm=False)
-
+  if len(out_p.shape) == 4:
+    out_p = out_p.permute(0,2,3,1)
   print(
       np.abs(np.array(out_j) - out_p.cpu().detach().numpy()).reshape(
           2, -1).max(axis=1))

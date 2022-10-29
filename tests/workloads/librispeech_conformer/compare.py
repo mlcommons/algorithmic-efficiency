@@ -92,7 +92,7 @@ if __name__ == "__main__":
   # Test outputs for identical weights and inputs.
   wave = torch.randn(2, 320000)
   pad = torch.zeros_like(wave)
-  pad[0, 100000:] = 1
+  pad[0, 200000:] = 1
 
   jax_batch = {"inputs": (wave.detach().numpy(), pad.detach().numpy())}
   pyt_batch = {"inputs": (wave, pad)}
@@ -111,6 +111,12 @@ if __name__ == "__main__":
     mode=spec.ForwardPassMode.EVAL,
     rng=jax.random.PRNGKey(0),
     update_batch_norm=False)
+
+  labels = torch.randint(low=0,high=1024,size=(2,256))
+  label_padding = torch.zeros_like(labels)
+  jax_loss = jax_workload.loss_fn((labels.numpy(), label_padding.numpy()), (out_j, out_pad_j))
+  pyt_loss = pyt_workload.loss_fn((labels,label_padding),(out_p, out_pad_p))
+  print(jax_loss, pyt_loss)
 
   out_j = out_j * (1 - out_pad_j[:, :, None])
   out_p = out_p * (1 - out_pad_p[:, :, None])
