@@ -221,7 +221,7 @@ def load_fastmri_split(global_batch_size,
 
   if is_train:
     ds = ds.prefetch(10)
-    iterator = map(data_utils.shard_numpy_ds, ds)
+    iterator = map(data_utils.shard_and_maybe_pad_np, ds)
     return iterator
   else:
     if num_batches:
@@ -231,5 +231,5 @@ def load_fastmri_split(global_batch_size,
     ds = ds.prefetch(10)
     return map(
         functools.partial(
-            data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+            data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size),
         ds)

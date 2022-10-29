@@ -12,8 +12,8 @@ from torch.utils.data import Sampler
 from algorithmic_efficiency import spec
 
 
-def shard_numpy_ds(
-    xs: Dict[str, spec.Tensor],
+def shard_and_maybe_pad_np(
+    batch: Dict[str, spec.Tensor],
     global_batch_size: Optional[int] = None) -> Dict[str, spec.Tensor]:
   """Prepare tf data for JAX or PyTorch DDP.
 
@@ -22,18 +22,18 @@ def shard_numpy_ds(
   corresponding mask, and reshape it to be sharded across devices.
   """
   local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
-  current_batch_size = xs['inputs'].shape[0]
+  current_batch_size = batch['inputs'].shape[0]
   remainder_size = current_batch_size % local_device_count
   if remainder_size != 0:
     if global_batch_size is not None:
       pad_size = global_batch_size - current_batch_size
     else:
       pad_size = local_device_count - remainder_size
-    targets_shape = tuple(xs['targets'].shape)
+    targets_shape = tuple(batch['targets'].shape)
     # We need a 2d mask for WMT.
     mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
     # Will also be zero-padded.
-    xs['weights'] = np.ones(mask_shape)
+    batch['weights'] = np.ones(mask_shape)
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
@@ -49,7 +49,7 @@ def shard_numpy_ds(
     # Assumes that `global_batch_size % local_device_count == 0`.
     return x.reshape((local_device_count, -1, *x.shape[1:]))
 
-  return jax.tree_map(_prepare, xs)
+  return jax.tree_map(_prepare, batch)
 
 
 def pad(tensor: spec.Tensor, pad_size: int, framework: str) -> spec.Tensor:

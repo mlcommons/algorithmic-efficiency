@@ -380,7 +380,7 @@ def create_input_iter(split: str,
       use_randaug=use_randaug)
   it = map(
       functools.partial(
-          data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+          data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
