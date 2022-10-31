@@ -25,11 +25,12 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 class WmtWorkload(BaseWmtWorkload):
   """WMT PyTorch workload."""
 
-  def compute_weighted_cross_entropy(self,
-                                     logits,
-                                     targets,
-                                     weights=None,
-                                     label_smoothing=0.1):
+  def compute_weighted_cross_entropy(
+      self,
+      logits: spec.Tensor,
+      targets: spec.Tensor,
+      weights: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.1) -> spec.Tensor:
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -60,7 +61,12 @@ class WmtWorkload(BaseWmtWorkload):
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
   @torch.no_grad()
-  def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
+  def predict_step(self,
+                   inputs: spec.Tensor,
+                   params: spec.ParameterContainer,
+                   eos_id: int,
+                   max_decode_len: int,
+                   beam_size: int = 4) -> spec.Tensor:
     """Predict translation with fast decoding beam search on a batch."""
     params = params.module if isinstance(params, (DP, DDP)) else params
     params.eval()
@@ -74,7 +80,9 @@ class WmtWorkload(BaseWmtWorkload):
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
       decoder = DP(decoder)
 
-    def tokens_ids_to_logits(flat_ids, flat_cache):
+    def tokens_ids_to_logits(
+        flat_ids: spec.Tensor, flat_cache: Dict[str, spec.Tensor]
+    ) -> Tuple[spec.Tensor, Dict[str, spec.Tensor]]:
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
       flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
@@ -289,7 +297,9 @@ class WmtWorkload(BaseWmtWorkload):
           batch[key] = tensor[n][RANK]
       yield batch
 
-  def eval_step(self, params, batch):
+  def eval_step(self,
+                params: spec.ParameterContainer,
+                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     targets = batch['targets']
     weights = torch.where(targets > 0, 1.0, 0.0)

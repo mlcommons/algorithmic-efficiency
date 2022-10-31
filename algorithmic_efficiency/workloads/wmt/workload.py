@@ -1,6 +1,6 @@
 import math
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from absl import flags
 import jax
@@ -31,51 +31,51 @@ class BaseWmtWorkload(spec.Workload):
     return eval_result['validation/bleu'] > self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 30.879  # TODO(namanagarwal): This will edited again soon.
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     # wmt17_translate/de-en 'train' split size
     return 5906184
 
   @property
-  def num_eval_train_examples(self):
+  def num_eval_train_examples(self) -> int:
     # same as `num_validation_examples`
     return 3000
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     # wmt14_translate/de-en 'validation' split size.
     return 3000
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     # wmt14_translate/de-en 'test' split size.
     return 3003
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 128
 
   @property
-  def train_mean(self):
+  def train_mean(self) -> float:
     return 0.0
 
   @property
-  def train_stddev(self):
+  def train_stddev(self) -> float:
     return 1.0
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 80000
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 14 * 60
 
   @property
@@ -125,6 +125,7 @@ class BaseWmtWorkload(spec.Workload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
+    del global_step
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
@@ -161,7 +162,10 @@ class BaseWmtWorkload(spec.Workload):
 
     return eval_results
 
-  def compute_summed_metrics(self, logits, labels, weights):
+  def compute_summed_metrics(self,
+                             logits: spec.Tensor,
+                             labels: spec.Tensor,
+                             weights: spec.Tensor) -> Dict[str, spec.Tensor]:
     """Compute metrics summed across examples."""
     loss = self.compute_weighted_cross_entropy(logits, labels, weights, 0.0)
     acc_sum, weight_sum = self.compute_weighted_accuracy(
@@ -172,7 +176,9 @@ class BaseWmtWorkload(spec.Workload):
         'denominator': weight_sum,
     }
 
-  def compute_weighted_accuracy(self, logits, targets, weights):
+  def compute_weighted_accuracy(
+      self, logits: spec.Tensor, targets: spec.Tensor,
+      weights: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
     """Compute weighted accuracy for log probs and targets.
 
     Args:
@@ -190,7 +196,7 @@ class BaseWmtWorkload(spec.Workload):
     normalizing_factor = weights.sum()
     return accuracy.sum(), normalizing_factor
 
-  def _decode_tokens(self, toks):
+  def _decode_tokens(self, toks: spec.Tensor) -> spec.Tensor:
     if isinstance(toks, torch.Tensor):
       toks = toks.cpu().numpy()
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
