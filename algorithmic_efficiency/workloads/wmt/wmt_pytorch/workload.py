@@ -41,7 +41,7 @@ class WmtWorkload(BaseWmtWorkload):
        values.
 
     Returns:
-      Tuple of loss for every example and batch normalizing factor.
+      Per-example losses.
     """
     if logits.ndim != targets.ndim + 1:
       raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
