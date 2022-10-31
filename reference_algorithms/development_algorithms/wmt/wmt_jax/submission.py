@@ -108,6 +108,7 @@ def pmapped_train_step(workload,
                        dropout_rng,
                        hyperparameters):
   """Perform a single training step."""
+  del hyperparameters
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -119,9 +120,7 @@ def pmapped_train_step(workload,
         rng=dropout_rng,
         update_batch_norm=False)
     targets = batch['targets']
-    weights = jnp.where(targets > 0, 1.0, 0.0)
-    loss = (workload.loss_fn(targets, logits, label_smoothing=0.1) *
-            weights).sum() / weights.sum()
+    loss = jnp.nanmean(workload.loss_fn(targets, logits, label_smoothing=0.1))
     return loss
 
   grad_fn = jax.value_and_grad(_loss_fn)
