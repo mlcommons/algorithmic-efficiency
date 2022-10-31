@@ -44,8 +44,8 @@ class WmtWorkload(BaseWmtWorkload):
       Tuple of loss for every example and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
-                       (str(logits.shape), str(targets.shape)))
+      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
+                       f'{targets.shape} targets.')
 
     loss_fn = torch.nn.CrossEntropyLoss(
         reduction='none', label_smoothing=label_smoothing)
@@ -54,9 +54,10 @@ class WmtWorkload(BaseWmtWorkload):
 
     # PyTorch loss functions expect the class dim directly after the batch dim.
     loss = loss_fn(logits.transpose(-2, -1), targets)
+    mask = torch.where(targets > 0, 1, 0)
     if weights is not None:
-      loss = loss * weights
-    return loss
+      mask = torch.logical_and(weights, mask)
+    return torch.where(mask.to(torch.bool), loss, torch.nan)
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
@@ -302,10 +303,7 @@ class WmtWorkload(BaseWmtWorkload):
                 batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     targets = batch['targets']
-    weights = torch.where(targets > 0, 1.0, 0.0)
-    remainder_mask = batch.get('weights')
-    if remainder_mask is not None:
-      weights = torch.logical_and(weights, remainder_mask)
+    weights = batch.get('weights')
     logits, _ = self.model_fn(
         params,
         batch,
@@ -313,4 +311,13 @@ class WmtWorkload(BaseWmtWorkload):
         model_state=None,
         rng=None,
         update_batch_norm=False)
-    return self.compute_summed_metrics(logits, targets, weights)
+    loss = self.compute_weighted_cross_entropy(logits, targets, weights, 0.0)
+    mask = torch.where(targets > 0, 1, 0)
+    if weights is not None:
+      mask = torch.logical_and(weights, mask)
+    acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
+    return {
+        'loss': torch.nansum(loss),
+        'accuracy': acc_sum,
+        'denominator': weight_sum,
+    }

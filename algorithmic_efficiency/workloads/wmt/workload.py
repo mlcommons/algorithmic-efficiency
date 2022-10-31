@@ -162,20 +162,6 @@ class BaseWmtWorkload(spec.Workload):
 
     return eval_results
 
-  def compute_summed_metrics(self,
-                             logits: spec.Tensor,
-                             labels: spec.Tensor,
-                             weights: spec.Tensor) -> Dict[str, spec.Tensor]:
-    """Compute metrics summed across examples."""
-    loss = self.compute_weighted_cross_entropy(logits, labels, weights, 0.0)
-    acc_sum, weight_sum = self.compute_weighted_accuracy(
-        logits, labels, weights)
-    return {
-        'loss': loss.sum(),
-        'accuracy': acc_sum,
-        'denominator': weight_sum,
-    }
-
   def compute_weighted_accuracy(
       self, logits: spec.Tensor, targets: spec.Tensor,
       weights: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
@@ -190,8 +176,8 @@ class BaseWmtWorkload(spec.Workload):
       Tuple of scalar summed accuracy and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
-                       (str(logits.shape), str(targets.shape)))
+      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
+                       f'{targets.shape} targets.')
     accuracy = (logits.argmax(-1) == targets) * weights
     normalizing_factor = weights.sum()
     return accuracy.sum(), normalizing_factor

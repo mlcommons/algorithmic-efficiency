@@ -47,18 +47,16 @@ class WmtWorkload(BaseWmtWorkload):
       Tuple of loss for every example and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError(
-          f'Incorrect shapes. Got shape {str(logits.shape)} logits '
-          f'and {str(targets.shape)} targets')
+      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
+                       f'{targets.shape} targets.')
     smoothed_targets = optax.smooth_labels(
         common_utils.onehot(targets, self._vocab_size), label_smoothing)
 
     loss = -jnp.sum(smoothed_targets * nn.log_softmax(logits), axis=-1)
-
+    mask = jnp.where(targets > 0, 1, 0)
     if weights is not None:
-      loss = loss * weights
-
-    return loss
+      mask = jnp.logical_and(weights, mask)
+    return jnp.where(mask.astype(bool), loss, jnp.nan)
 
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
@@ -68,13 +66,18 @@ class WmtWorkload(BaseWmtWorkload):
     """Calculate evaluation metrics on a batch."""
     inputs = batch['inputs']
     targets = batch['targets']
-    weights = jnp.where(targets > 0, 1.0, 0.0)
-    remainder_mask = batch.get('weights')
-    if remainder_mask is not None:
-      weights = jnp.logical_and(weights, remainder_mask)
+    weights = batch.get('weights')
     logits = self._eval_model.apply({'params': params}, inputs, targets)
-    metrics = self.compute_summed_metrics(logits, targets, weights)
-    return metrics
+    loss = self.compute_weighted_cross_entropy(logits, targets, weights, 0.0)
+    mask = jnp.where(targets > 0, 1, 0)
+    if weights is not None:
+      mask = jnp.logical_and(weights, mask)
+    acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
+    return {
+        'loss': jnp.nansum(loss),
+        'accuracy': acc_sum,
+        'denominator': weight_sum,
+    }
 
   def eval_step(self,
                 params: spec.ParameterContainer,
