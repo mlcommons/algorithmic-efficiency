@@ -6,8 +6,8 @@ import torch
 
 from algorithmic_efficiency import spec
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-ctc_loss = torch.nn.CTCLoss(blank=0, reduction="none")
+device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
 
 
 def get_batch_size(workload_name):
@@ -40,7 +40,7 @@ def init_optimizer_state(workload: spec.Workload,
       betas=(hyperparameters.beta1, hyperparameters.beta2),
       eps=hyperparameters.epsilon,
       weight_decay=hyperparameters.weight_decay)
-  return {"optimizer": optimizer}
+  return {'optimizer': optimizer}
 
 
 def update_params(workload: spec.Workload,
@@ -59,7 +59,7 @@ def update_params(workload: spec.Workload,
   del eval_results
   del model_state
   del loss_type
-  optimizer = optimizer_state["optimizer"]
+  optimizer = optimizer_state['optimizer']
   optimizer.zero_grad()
   current_model = current_param_container
   (logits, logits_padding), _ = workload.model_fn(

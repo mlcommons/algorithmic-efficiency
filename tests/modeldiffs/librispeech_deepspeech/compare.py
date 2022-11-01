@@ -1,11 +1,9 @@
 import os
 
 # Disable GPU access for both jax and pytorch.
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-from flax import jax_utils
 import jax
-import numpy as np
 import torch
 
 from algorithmic_efficiency import spec
@@ -13,14 +11,14 @@ from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax.wor
     LibriSpeechDeepSpeechWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.workload import \
     LibriSpeechDeepSpeechWorkload as PytWorkload
-from tests import torch2jax_utils as utils
+from tests.modeldiffs.diff import out_diff
 
 
 def key_transform(k):
   new_key = []
   bn = False
   for i in k:
-    bn = bn or "BatchNorm" in i
+    bn = bn or 'BatchNorm' in i
     if 'ModuleList' in i:
       continue
     if 'CustomBatchNorm' in i:
@@ -85,78 +83,39 @@ def sd_transform(sd):
   return out
 
 
-def value_transform(k, value, jax_value):
-  k_str = ''.join(k).lower()
-  if 'conv' in k_str and 'kernel' in k_str:
-    rank = len(value.shape)
-    if rank == 3:
-      return value.permute(2, 1, 0)
-    elif rank == 4:
-      return value.permute(2, 3, 1, 0)
-    elif rank == 2:
-      return value.t()
-  elif 'attention' in k_str and 'kernel' in k_str:
-    return value.t().reshape(*list(jax_value.shape))
-  elif 'attention' in k_str and 'bias' in k_str:
-    return value.reshape(*list(jax_value.shape))
-  elif ('dense' in k_str and 'kernel' in k_str) or ('lstm' in k_str and
-                                                    'kernel' in k_str):
-    return value.t()
-  return value
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pyt_workload = PytWorkload()
-  jax_params, model_state = jax_workload.init_model_fn(jax.random.PRNGKey(0))
-  pyt_model, _ = pyt_workload.init_model_fn([0])
-  jax_params = jax_utils.unreplicate(jax_params).unfreeze()
-  model_state = jax_utils.unreplicate(model_state)
-
-  # Map and copy params of pytorch_model to jax_model.
-  t2j = utils.Torch2Jax(torch_model=pyt_model, jax_model=jax_params)
-  t2j.key_transform(key_transform)
-  t2j.sd_transform(sd_transform)
-  t2j.value_transform(value_transform)
-  t2j.diff()
-  t2j.update_jax_model()
+  pytorch_workload = PytWorkload()
 
   # Test outputs for identical weights and inputs.
   wave = torch.randn(2, 320000)
   pad = torch.zeros_like(wave)
-  pad[0, 100000:] = 1
+  pad[0, 200000:] = 1
 
-  jax_batch = {"inputs": (wave.detach().numpy(), pad.detach().numpy())}
-  pyt_batch = {"inputs": (wave, pad)}
+  jax_batch = {'inputs': (wave.detach().numpy(), pad.detach().numpy())}
+  pyt_batch = {'inputs': (wave, pad)}
 
-  (out_p, out_pad_p), _ = pyt_workload.model_fn(
-    params = pyt_model,
-    augmented_and_preprocessed_input_batch=pyt_batch,
-    model_state=None,
-    mode=spec.ForwardPassMode.EVAL,
-    rng=None,
-    update_batch_norm=False)
+  pytorch_model_kwargs = dict(
+      augmented_and_preprocessed_input_batch=pyt_batch,
+      model_state=None,
+      mode=spec.ForwardPassMode.EVAL,
+      rng=None,
+      update_batch_norm=False)
 
-  (out_j, out_pad_j), _ = jax_workload.model_fn(params=jax_params,
-    augmented_and_preprocessed_input_batch=jax_batch,
-    model_state={"batch_stats": model_state},
-    mode=spec.ForwardPassMode.EVAL,
-    rng=jax.random.PRNGKey(1),
-    update_batch_norm=False)
+  jax_model_kwargs = dict(
+      augmented_and_preprocessed_input_batch=jax_batch,
+      mode=spec.ForwardPassMode.EVAL,
+      rng=jax.random.PRNGKey(0),
+      update_batch_norm=False)
 
-  out_j = out_j * (1 - out_pad_j[:, :, None])
-  out_p = out_p * (1 - out_pad_p[:, :, None])
-  print(
-      np.abs(np.array(out_j) - out_p.cpu().detach().numpy()).reshape(
-          2, -1).max(axis=1))
-  print(
-      np.abs(np.array(out_j) - out_p.cpu().detach().numpy()).reshape(
-          2, -1).min(axis=1))
-  print(
-      np.abs(np.array(out_pad_j) - out_pad_p.cpu().detach().numpy()).reshape(
-          2, -1).max(axis=1))
-  print(
-      np.abs(np.array(out_pad_j) - out_pad_p.cpu().detach().numpy()).reshape(
-          2, -1).min(axis=1))
+  out_diff(
+      jax_workload=jax_workload,
+      pytorch_workload=pytorch_workload,
+      jax_model_kwargs=jax_model_kwargs,
+      pytorch_model_kwargs=pytorch_model_kwargs,
+      key_transform=key_transform,
+      sd_transform=sd_transform,
+      out_transform=lambda out_outpad: out_outpad[0] *
+      (1 - out_outpad[1][:, :, None]))
