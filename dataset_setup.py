@@ -46,6 +46,7 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 dataset_setup.py --dataset_dir=/data --temp_dir=/tmp/mlcommons_data
+python3 dataset_setup.py --dataset_dir=~/data --all=False --imagenet_train_url=<train_url> --imagenet_val_uril=<val_url>
 """
 import os
 
@@ -136,7 +137,16 @@ flags.DEFINE_integer(
     'num_decompression_threads',
     8,
     'The number of threads to use in parallel when decompressing.')
+
+flags.DEFINE_string(
+  'framework',
+  None,
+  'Can be either jax or pytorch.'
+)
+
 FLAGS = flags.FLAGS
+
+
 
 
 class _Downloader:
@@ -362,8 +372,11 @@ def main(_):
       raise ValueError(
           'Must provide both --imagenet_{train,val}_url to download the '
           'ImageNet dataset. Sign up for the URLs at https://image-net.org/.')
-    # download_imagenet(
-    #     dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url)
+    if FLAGS.framework is None:
+      raise ValueError('Please specify either jax or pytorch framework through framework flag.')
+    download_imagenet(
+        dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url)
+    setup_imagenet(dataset_dir, framework=framework)
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
     # download_librispeech(dataset_dir, tmp_dir)
