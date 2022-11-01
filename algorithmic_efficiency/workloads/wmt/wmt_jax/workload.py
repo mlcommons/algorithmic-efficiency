@@ -33,7 +33,8 @@ class WmtWorkload(BaseWmtWorkload):
       logits: spec.Tensor,
       targets: spec.Tensor,
       weights: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.1) -> spec.Tensor:
+      label_smoothing: float = 0.1
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -44,7 +45,7 @@ class WmtWorkload(BaseWmtWorkload):
        values.
 
     Returns:
-      Per-example losses.
+      (correct scalar average loss, 1-d array of per-example losses)
     """
     if logits.ndim != targets.ndim + 1:
       raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
@@ -52,11 +53,15 @@ class WmtWorkload(BaseWmtWorkload):
     smoothed_targets = optax.smooth_labels(
         common_utils.onehot(targets, self._vocab_size), label_smoothing)
 
-    loss = -jnp.sum(smoothed_targets * nn.log_softmax(logits), axis=-1)
+    per_example_losses = -jnp.sum(
+        smoothed_targets * nn.log_softmax(logits), axis=-1)
     mask = jnp.where(targets > 0, 1, 0)
     if weights is not None:
       mask = jnp.logical_and(weights, mask)
-    return jnp.where(mask.astype(bool), loss, jnp.nan)
+    per_example_losses = jnp.where(mask, per_example_losses, 0.)
+    summed_loss = per_example_losses.sum()
+    n_valid_samples = mask.sum()
+    return summed_loss / n_valid_samples, per_example_losses
 
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
@@ -68,13 +73,14 @@ class WmtWorkload(BaseWmtWorkload):
     targets = batch['targets']
     weights = batch.get('weights')
     logits = self._eval_model.apply({'params': params}, inputs, targets)
-    loss = self.compute_weighted_cross_entropy(logits, targets, weights, 0.0)
+    _, per_example_losses = self.compute_weighted_cross_entropy(
+        logits, targets, weights, 0.0)
     mask = jnp.where(targets > 0, 1, 0)
     if weights is not None:
       mask = jnp.logical_and(weights, mask)
     acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
     return {
-        'loss': jnp.nansum(loss),
+        'loss': jnp.sum(per_example_losses),
         'accuracy': acc_sum,
         'denominator': weight_sum,
     }

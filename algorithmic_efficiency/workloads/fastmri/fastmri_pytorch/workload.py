@@ -162,18 +162,25 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
-    losses = F.l1_loss(
+    per_example_losses = F.l1_loss(
         logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def _eval_model(self,
                   params: spec.ParameterContainer,
@@ -197,7 +204,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         mean=batch['mean'][:weights_sum],
         std=batch['std'][:weights_sum],
         volume_max=batch['volume_max'][:weights_sum]).sum()
-    loss = self.loss_fn(batch['targets'], outputs, weights).sum()
+    _, per_example_losses = self.loss_fn(batch['targets'], outputs, weights)
+    loss = per_example_losses.sum()
     return {'ssim': ssim_sum, 'loss': loss}
 
   def _eval_model_on_split(self,

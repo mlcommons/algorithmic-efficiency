@@ -124,12 +124,13 @@ def loss_fn(
     label_batch: Union[Tuple[Tensor, Tensor], Tensor],
     logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
     mask_batch: Optional[Tensor] = None,
-    label_smoothing: float = 0.0) -> 1d array of losses per example  # differentiable
+    label_smoothing: float = 0.0) -> Tuple[Tensor, Tensor]  # differentiable
 ```
 
 - Unlike in the [Model Track](#model-track), we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
   - The optimizer must work with all values of the enum, which will be provided via a property on the workload object that is provided to all submissions functions.
-- The loss function does **not** include regularization. Instead, regularization can be added by the submissions in the `update_variables` function.
+- The loss function does **not** include regularization. Instead, regularization can be added by the submissions in the `update_params` function.
+- The loss function returns a tuple (correct scalar average loss, 1-d array of per-example losses).
 
 ##### Submission functions
 
@@ -177,21 +178,21 @@ def update_params(
 ```
 
 - `current_param_container` is the same kind of nested structure as used by `model_fn` which constitutes a nested collection of `float32` arrays, each endowed with information about what kind of parameter that array represents stored in a parallel structure of `current_params_types`.
-  - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}
-- `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics
+  - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}.
+- `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics.
 - The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_type` enum/name.
-- The `loss_fn` produces a loss per example, so the submission code is responsible for summing or averaging
-- Allowed to update state for the optimizer
-- Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state)
+- The `loss_fn` produces a loss per example and a correct average loss, which both can be used.
+- Allowed to update state for the optimizer.
+- Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state).
 - The submission can access the target evaluation metric via the `workload` variable.
 - **A call to this function will be considered a step**
-  - The time between a call to this function and the next call to this function will be considered the per-step time
+  - The time between a call to this function and the next call to this function will be considered the per-step time.
 - Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
-  - This will be checked by the spirit jury
+  - This will be checked by the spirit jury.
 - The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
 - Cannot replace the model parameters with pre-trained ones.
   - This will be checked by the spirit jury.
-- This API supports Polyak averaging and similar methods that implement moving averages of model parameters
+- This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
 - Batch norm should work here because the `model_fn` will return updated batch norm moving averages when it is told to with `update_batch_norm`.
 
 ###### Data selection

@@ -58,8 +58,7 @@ def update_params(workload: spec.Workload,
       update_batch_norm=True)
 
   mask = batch['weights']
-  per_example_losses = workload.loss_fn(batch['targets'], logits, mask)
-  loss = torch.where(mask, per_example_losses, 0).sum() / mask.sum()
+  loss, _ = workload.loss_fn(batch['targets'], logits, mask)
 
   loss.backward()
   optimizer_state['optimizer'].step()
