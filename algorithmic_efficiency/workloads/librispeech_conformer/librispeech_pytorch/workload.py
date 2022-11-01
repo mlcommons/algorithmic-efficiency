@@ -174,11 +174,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       dist.all_reduce(per_seq_loss)
       dist.all_reduce(l)
     average_loss = per_seq_loss / max(l, 1)
-    return {
-        'loss': per_seq_loss,
-        'lengths': l,
-        'average_loss': average_loss
-    }
+    return {'loss': per_seq_loss, 'lengths': l, 'average_loss': average_loss}
 
   def loss_fn(self,
               label_batch: Tuple[spec.Tensor, spec.Tensor],
