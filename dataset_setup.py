@@ -180,8 +180,14 @@ class _Downloader:
         self.setup_data_dirs()
 
         if os.path.exists(self.file_path):
-          overwrite = input("File already exists {}.\n Overwrite?".format(file_path))
-          if not overwrite:
+          while True:
+            overwrite = input("File already exists {}.\n Overwrite? (Y/n)".format(self.file_path)).lower()
+            if overwrite in ['y', 'n']:
+              break
+            else:
+              print("Invalid response. Try again.")
+          if overwrite == 'n':
+            logging.info("Skipping download to {}".format(self.file_path))
             return 
     
         with open(self.file_path, "wb") as f:
@@ -190,9 +196,9 @@ class _Downloader:
                 self.progress_bar.update(chunk_size_in_MiB)
                 f.write(chunk)
         self.progress_bar.close()
-        if total_size_in_MiB != 0 and progress_bar.n != total_size_in_MiB:
-            raise Exception("Data from {url} does not match expected size {size}".format(url=self.url,
-            size=total_size_in_MiB))
+        if self.progress_bar.total != 0 and self.progress_bar.n != self.total_size_in_MiB:
+            raise Exception("Download corrupted, size {n} MiB from {url} does not match expected size {size} MiB".format(url=self.url, n=self.progress_bar.n,
+            size=self.progress_bar.total))
 
 
 def download_criteo(dataset_dir, tmp_dir, num_decompression_threads):
@@ -232,28 +238,40 @@ def download_criteo(dataset_dir, tmp_dir, num_decompression_threads):
 
 
 def download_fastmri(
-    dataset_dir,
-    tmp_dir,
-    knee_singlecoil_train_url,
-    knee_singlecoil_val_url):
-  pass
+    data_dir,
+    fastmri_train_url,
+    fastmri_val_url,
+    fastmri_test_url,):
 
+    data_dir = os.path.join(data_dir, 'fastmri')
 
+    # Download fastmri train dataset
+    logging.info('Downloading fastmri train dataset from {}'.format(fastmri_train_url))
+    _Downloader(url=fastmri_train_url, data_dir=data_dir).download()
+
+    # Download fastmri val dataset
+    logging.info("Downloading fastmri val dataset from {}".format(fastmri_val_url))
+    _Downloader(url=fastmri_val_url, data_dir=data_dir).download()
+
+    # Download fastmri test dataset
+    logging.info("Downloading fastmri test dataset from {}".format(fastmri_test_url))
+    _Downloader(url=fastmri_test_url, data_dir=data_dir).download()
+
+def setup_fastmri(data_dir):
+  
 def download_imagenet(dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url):
-  dataset_dir = os.path.join(dataset_dir, 'imagenet')
+  data_dir = os.path.join(dataset_dir, 'imagenet')
 
-  # Download imagnet train set
-  logging.info('Downloading train dataset from {}'.format(imagenet_train_url))
-  train_downloader = _Downloader(url=imagenet_train_url, data_dir=dataset_dir)
-  train_downloader.download()
+  # Download imagnet train dataset
+  logging.info('Downloading imagenet train dataset from {}'.format(imagenet_train_url))
+  _Downloader(url=imagenet_train_url, data_dir=data_dir).download()
 
-  # Download imagenet valid set
-  logging.info('Donwloading validation dataset from {}'.format(imagenet_val_url))
-  valid_downloader = _Downloader(url=imagenet_val_url, data_dir=dataset_dir)
-  valid_downloader.download()
+  # Download imagenet val dataset
+  logging.info('Donwloading imagenet validation dataset from {}'.format(imagenet_val_url))
+  _Downloader(url=imagenet_val_url, data_dir=data_dir).download()
 
   # Download imagenet test set
-  download_imagenet_v2(dataset_dir)
+  download_imagenet_v2(data_dir)
 
 
 def setup_imagenet(dataset_dir, framework=None):
