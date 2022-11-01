@@ -81,6 +81,10 @@ FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar'
 FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar'
 
 
+from datasets import librispeech_preprocess
+from datasets import librispeech_tokenizer
+
+
 flags.DEFINE_boolean(
     'all',
     True,
@@ -156,6 +160,8 @@ flags.DEFINE_string(
   'Can be either jax or pytorch.'
 )
 
+
+flags.DEFINE_boolean('train_tokenizer', True, 'Train Librispeech tokenizer.')
 FLAGS = flags.FLAGS
 
 
@@ -216,21 +222,15 @@ def download_criteo(data_dir, tmp_dir, num_decompression_threads):
     #
     # DOWNLOADING STRAIGHT TO gcsfuse mounted GCS IS 4000x SLOWER!!!!
     #
-    wget_cmd = [
-        'wget',
-        f'--directory-prefix={tmp_criteo_dir}',
-        f'https://storage.googleapis.com/criteo-cail-datasets/day_{day}.gz'
-    ]
+    wget_cmd = (
+        f'wget --directory-prefix={tmp_criteo_dir} '
+        f'https://storage.googleapis.com/criteo-cail-datasets/day_{day}.gz')
+    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
     output_path = os.path.join(criteo_dir, f'day_{day}.csv')
-    unzip_cmd = [
-        'pigz',
-        '-d',
-        '-c',
-        f'-p{num_decompression_threads}',
-        os.path.join(tmp_criteo_dir, f'day_{day}.gz'),
-        f'> {output_path}'
-    ]
-    command_str = ' '.join([*wget_cmd, '&&', *unzip_cmd])
+    unzip_cmd = (
+        f'pigz -d -c -p{num_decompression_threads} {input_path} > '
+        f'{output_path}')
+    command_str = f'{wget_cmd} && {unzip_cmd}'
     logging.info(f'Running Criteo download command:\n{command_str}')
     # Note that shell=True can be dangerous if the user injects code into the
     # --data_dir flag. We do some basic sanitization in main(), but
@@ -362,7 +362,6 @@ def setup_imagenet_pytorch(data_dir):
   valprep_process = subprocess.Popen(valprep_command, cwd=cwd, stdout=subprocess.PIPE)
   out = subprocess.check_output(['bash'], cwd=cwd, stdin=valprep_process.stdout)
   logging.info("Set up imagenet dataset for pytorch framework complete")
-
 
 
 def extract(source, dest):
