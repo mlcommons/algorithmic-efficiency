@@ -297,6 +297,9 @@ def get_wmt_dataset(data_rng,
   if repeat_final_dataset:
     ds = ds.repeat()
 
-  ds = map(data_utils.shard_numpy_ds, ds)
+  ds = map(
+      functools.partial(
+          data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+      ds)
 
   return ds, sp_tokenizer

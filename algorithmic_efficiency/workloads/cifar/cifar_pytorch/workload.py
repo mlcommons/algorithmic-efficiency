@@ -48,9 +48,7 @@ class CifarWorkload(BaseCifarWorkload):
 
     normalize = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[i / 255 for i in self.train_mean],
-            std=[i / 255 for i in self.train_stddev])
+        transforms.Normalize(mean=self.train_mean, std=self.train_stddev)
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
