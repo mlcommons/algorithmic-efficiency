@@ -1,6 +1,6 @@
 # MLCommons™ Algorithmic Efficiency Benchmark Rules
 
-**Version:** 0.0.9 *(Last updated 31 October 2022)*
+**Version:** 0.0.9 *(Last updated 01 November 2022)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
