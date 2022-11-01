@@ -26,10 +26,10 @@ rename = tf.io.gfile.rename
 
 flags.DEFINE_string('input_dir', '', 'Path to the raw training data directory.')
 flags.DEFINE_string('output_dir', '', 'Dir to write the processed data to.')
-flags.DEFINE_string(
-    'tokenizer_vocab_path', '', 'Path to sentence piece tokenizer vocab file.')
+flags.DEFINE_string('tokenizer_vocab_path',
+                    '',
+                    'Path to sentence piece tokenizer vocab file.')
 FLAGS = flags.FLAGS
-
 
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000

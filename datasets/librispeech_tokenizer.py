@@ -21,9 +21,7 @@ rename = tf.io.gfile.rename
 
 Features = Dict[str, tf.Tensor]
 
-
-flags.DEFINE_string(
-    'data_dir', '', 'Path to training data directory.')
+flags.DEFINE_string('data_dir', '', 'Path to training data directory.')
 flags.DEFINE_boolean(
     'train',
     False,
@@ -132,8 +130,8 @@ def run(train, data_dir):
     detokenized = tokenizer.detokenize(tokens).numpy().decode('utf-8')
 
     logging.info('Original input = %s', test_input)
-    logging.info(
-        'Output after after tokenizing and detokenizing = %s', detokenized)
+    logging.info('Output after after tokenizing and detokenizing = %s',
+                 detokenized)
 
     if detokenized == test_input:
       logging.info('Tokenizer working correctly!')
