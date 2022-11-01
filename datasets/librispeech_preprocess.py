@@ -2,8 +2,6 @@
 Modified from https://github.com/lsari/librispeech_100.
 """
 
-from absl import flags
-from absl import logging
 import multiprocessing.dummy
 import os
 from os.path import exists
@@ -11,6 +9,8 @@ import sys
 import threading
 import time
 
+from absl import flags
+from absl import logging
 import numpy as np
 import pandas as pd
 from pydub import AudioSegment

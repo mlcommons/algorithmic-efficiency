@@ -53,15 +53,14 @@ python3 dataset_setup.py --data_dir=~/data --all=False \
 --framework=jax
 """
 import os
+import shutil
+import subprocess
+import tarfile
 
 from absl import app
 from absl import flags
 from absl import logging
-import os
 import requests
-import shutil
-import subprocess
-import tarfile
 import tensorflow_datasets as tfds
 import tqdm
 

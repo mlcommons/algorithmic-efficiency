@@ -4,12 +4,12 @@ Forked from:
 https://github.com/google/flax/blob/b60f7f45b90f8fc42a88b1639c9cc88a40b298d3/examples/lm1b/tokenizer.py
 """
 
-from absl import flags
-from absl import logging
 import os
 import tempfile
 from typing import Dict
 
+from absl import flags
+from absl import logging
 import sentencepiece as spm
 import tensorflow as tf
 import tensorflow_text as tftxt
