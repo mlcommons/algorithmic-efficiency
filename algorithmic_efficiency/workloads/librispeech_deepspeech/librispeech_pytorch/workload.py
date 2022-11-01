@@ -14,13 +14,16 @@ from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch
     DeepspeechConfig
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.model import \
     DeepspeechEncoderDecoder
+from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
+    BaseDeepspeechLibrispeechWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
+                                    BaseDeepspeechLibrispeechWorkload):
 
   def init_model_fn(
       self,
