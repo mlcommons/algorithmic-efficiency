@@ -22,8 +22,10 @@
     - [Benchmarking hardware](#benchmarking-hardware)
     - [Defining target performance](#defining-target-performance)
     - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
+  - [Benchmark Procedure](#benchmark-procedure)
+    - [Multiple Submission](#multiple-submission)
+    - [Licensing](#licensing)
     - [Awards and prize money](#awards-and-prize-money)
-  - [Licensing](#licensing)
 - [Model Track](#model-track)
 
 ## Introduction
@@ -365,16 +367,16 @@ Furthermore, a less computationally expensive subset of the public workloads is 
 
 The public workloads are fully specified with the call for submissions. They contain a diverse set of tasks such as image classification, machine translation, speech recognition, or other typical machine learning tasks. For a single tasks there might be multiple models and therefore multiple public workloads. The entire set of public workloads should have a combined runtime of roughly one week on the [benchmarking hardware](#benchmarking-hardware).
 
-The currently nine public workloads are:
+The currently eight public workloads are:
 
-|                 | Task                          | Dataset     | Model                        | Loss | Metric   |
-|-----------------|-------------------------------|-------------|------------------------------|------|----------|
-| **1<br>2**      | Image classification          | ImageNet    | ResNet-50<br>ViT             | CE   | accuracy |
-| **3**           | Translation                   | WMT         | Transformer                  | CE   | BLEU     |
-| **4<br>5<br>6** | Speech recognition            | LibriSpeech | DeepSpeech<br>Conformer<br>? | CTC  | WER      |
-| **7**           | Binary classification         | Criteo 1TB  | DLRMsmall                    | CE   | CE       |
-| **8**           | Molecular property prediction | OGBG        | GNN                          | CE   | mAP      |
-| **9**           | MRI reconstruction            | fastMRI     | U-Net                        | L1   | SSIM     |
+|            | **Task**                      | **Dataset** | **Model**               | **Loss** | **Metric** | Validation<br>**Target** | Test<br>**Target**   | Maximum<br>**Runtime** |
+|------------|-------------------------------|-------------|-------------------------|----------|------------|--------------------------|----------------------|------------------------|
+| **1**      | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall               | CE       | CE         | 0.124225                 | 0.127                |                        |
+| **2**      | MRI reconstruction            | fastMRI     | U-Net                   | L1       | SSIM       | 0.735102                 | 0.743146             |                        |
+| **3<br>4** | Image classification          | ImageNet    | ResNet-50<br>ViT        | CE       | ER         | 0.22835<br>0.2289        | 0.34595<br>0.3475    |                        |
+| **5<br>6** | Speech recognition            | LibriSpeech | DeepSpeech<br>Conformer | CTC      | WER        | 0.084202<br>0.120674     | 0.050427<br>0.068751 |                        |
+| **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.283801                 | 0.270238             |                        |
+| **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.6446                  | 30.5703              |                        |
 
 #### Held-out workloads
 
@@ -388,7 +390,7 @@ The validation and test target performances on each held-out workload will be de
 
 The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [public](#public-workloads) and [held-out workloads](#held-out-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](#awards-and-prize-money).
 
-The qualification set consists of the same [public workloads](#public-workloads) as mentioned above, except for both workloads on *ImageNet*, the *DeepSpeech* and *Conformer* model on *LibriSpeech*, and the *fastMRI* workload. The remaining four workloads (*WMT*, *LibriSpeech (small)*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [held-out workloads](#held-out-workloads) in the qualification set. The qualification set of workloads should have a combined runtime of roughly 24 hours on the [benchmarking hardware](#benchmarking-hardware).
+The qualification set consists of the same [public workloads](#public-workloads) as mentioned above, except for both workloads on *ImageNet*, both workloads on *LibriSpeech*, and the *fastMRI* workload. The remaining three workloads (*WMT*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [held-out workloads](#held-out-workloads) in the qualification set. The qualification set of workloads aims to have a combined runtime of roughly 24 hours on the [benchmarking hardware](#benchmarking-hardware).
 
 For the [external tuning ruleset](#external-tuning-ruleset), we will only use $1$ study instead of the proposed $5$, when evaluating on the qualification set. The [self-tuning ruleset](#self-tuning-ruleset) will use $5$ studies on the qualification set as well since it is computationally cheaper.
 
@@ -451,15 +453,19 @@ However, we believe that they are fairer and well-supported by research in machi
 
 For a given workload $\bar{w}$, we define the "speedup of a submission $\bar{s}$ over the target-setting reference" as $\frac{t_{\text{ref}, \bar{w}}}{t_{\bar{s}, \bar{w}}}$. For example, if a submission was 2x faster than the target-setting reference, this would be equal to 2. In addition to the raw  $t_{s,w}$ values, we will release the geometric mean of the speedups across all workloads, i.e. $\left(\prod_{w \in \mathcal{W}} \frac{t_{\text{ref}, w}}{t_{\bar{s}, w}}\right)^{\frac{1}{n}}$.
 
-#### Awards and prize money
+### Benchmark Procedure
 
-An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will take into account the [benchmark score](#benchmark-score-using-performance-profiles) on the full benchmark including [held-out workloads](#held-out-workloads). The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
+#### Multiple Submission
 
-The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
+Our benchmark allows multiple submissions by the same submitter. However, we would like to prevent submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the held-out workloads and is not in the spirit of the benchmark.
 
-The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money. A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
+We encourage multiple submissions if they differ substantially. A spirit jury will be responsible for judging whether the submissions are substantially different. This jury will apply stricter scrutiny to submitters with a larger number of submissions. In this context, a submitter refers to an individual (not the general institution or research group they belong to). The total number of submissions by a submitter is the sum of submissions they contributed to.
 
-### Licensing
+##### Requesting Additional Baselines
+
+Submitters can both contribute and request additional baseline algorithms. This includes existing algorithms with different search spaces or learning rate schedules. These baselines will not be eligible for winning the competition or prize money.
+
+#### Licensing
 
 Submitting to the benchmark requires the following legal considerations:
 
@@ -468,6 +474,14 @@ Submitting to the benchmark requires the following legal considerations:
 - A signed trademark license agreement, either the member or the non-member version, as appropriate). These license agreements are available upon request to [support@mlcommons.org](mailto:support@mlcommons.org).
 
 We furthermore require all submissions to be made available open source after the submission deadline under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+#### Awards and prize money
+
+An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will take into account the [benchmark score](#benchmark-score-using-performance-profiles) on the full benchmark including [held-out workloads](#held-out-workloads). The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
+
+The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
+
+The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money. A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
 
 ## Model Track
 
