@@ -64,7 +64,8 @@ class CifarWorkload(BaseCifarWorkload):
         num_batches=num_batches)
     return ds
 
-  def sync_batch_stats(self, model_state):
+  def sync_batch_stats(
+      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
     """Sync the batch statistics across replicas."""
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics and
@@ -116,7 +117,10 @@ class CifarWorkload(BaseCifarWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._compute_metrics(logits, batch['targets'])
+    weights = batch.get('weights')
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    return self._compute_metrics(logits, batch['targets'], weights)
 
   def model_fn(
       self,
@@ -159,10 +163,13 @@ class CifarWorkload(BaseCifarWorkload):
       losses *= mask_batch
     return losses
 
-  def _compute_metrics(self, logits, labels):
-    loss = jnp.sum(self.loss_fn(labels, logits))
+  def _compute_metrics(self,
+                       logits: spec.Tensor,
+                       labels: spec.Tensor,
+                       weights: spec.Tensor) -> Dict[str, spec.Tensor]:
+    loss = jnp.sum(self.loss_fn(labels, logits, weights))
     # Number of correct predictions.
-    accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
+    accuracy = jnp.sum((jnp.argmax(logits, -1) == labels) * weights)
     metrics = {
         'loss': loss,
         'accuracy': accuracy,
@@ -178,7 +185,8 @@ class CifarWorkload(BaseCifarWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
+    del global_step
     data_rng, model_rng = jax.random.split(rng, 2)
     # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)

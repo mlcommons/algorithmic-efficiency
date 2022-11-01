@@ -7,6 +7,7 @@ import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
+from torch.nn import DataParallel as DP
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
@@ -48,7 +49,7 @@ class WmtWorkload(BaseWmtWorkload):
     loss_fn = torch.nn.CrossEntropyLoss(
         reduction='none', label_smoothing=label_smoothing)
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
-      loss_fn = torch.nn.DataParallel(loss_fn)
+      loss_fn = DP(loss_fn)
 
     # PyTorch loss functions expect the class dim directly after the batch dim.
     loss = loss_fn(logits.transpose(-2, -1), targets)
@@ -61,18 +62,17 @@ class WmtWorkload(BaseWmtWorkload):
   @torch.no_grad()
   def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
     """Predict translation with fast decoding beam search on a batch."""
-    params = params.module if isinstance(params, (torch.nn.DataParallel,
-                                                  DDP)) else params
+    params = params.module if isinstance(params, (DP, DDP)) else params
     params.eval()
     encoder = params.encoder
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
-      encoder = torch.nn.DataParallel(encoder)
+      encoder = DP(encoder)
     encoded_inputs = torch.repeat_interleave(
         encoder(inputs), repeats=beam_size, dim=0)
     raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
     decoder = params.decoder
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
-      decoder = torch.nn.DataParallel(decoder)
+      decoder = DP(decoder)
 
     def tokens_ids_to_logits(flat_ids, flat_cache):
       """Token slice to logits from decoder model."""
@@ -124,11 +124,16 @@ class WmtWorkload(BaseWmtWorkload):
                                     decode.EOS_ID,
                                     max_predict_length)
 
+      # Find actual batch size, ignoring the potential padding.
+      weights = pred_batch.get('weights')
+      if weights is not None:
+        actual_batch_size = weights.sum(0)[0].item()
+      else:
+        actual_batch_size = len(predicted)
       # Iterate through non-padding examples of batch.
-      assert len(predicted) == len(targets)
-      for tar, pred in zip(targets, predicted):
-        references.append(self._decode_tokens(tar))
-        predictions.append(self._decode_tokens(pred))
+      for idx in range(actual_batch_size):
+        references.append(self._decode_tokens(targets[idx]))
+        predictions.append(self._decode_tokens(predicted[idx]))
 
     # Calculate BLEU score for translated eval corpus against reference.
     bleu_matches = bleu.bleu_partial(references, predictions)
@@ -157,7 +162,7 @@ class WmtWorkload(BaseWmtWorkload):
       if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
-        model = torch.nn.DataParallel(model)
+        model = DP(model)
     return model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -226,7 +231,10 @@ class WmtWorkload(BaseWmtWorkload):
         tensor_list = []
         for key, value in batch.items():
           tensor = torch.as_tensor(value, dtype=torch.int64, device=DEVICE)
-          tensor_list.append(tensor)
+          if key != 'weights':
+            tensor_list.append(tensor)
+          else:
+            weights = tensor.clone()
           batch[key] = (
               tensor[0] if USE_PYTORCH_DDP else tensor.view(
                   -1, value.shape[-1]))
@@ -237,14 +245,29 @@ class WmtWorkload(BaseWmtWorkload):
             per_device_batch_size = torch.tensor(
                 len(batch['inputs']), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
+            weights = weights if 'weights' in batch else None
+            if weights is None:
+              weights = torch.ones((N_GPUS, per_device_batch_size, 256),
+                                   dtype=torch.int64,
+                                   device=DEVICE)
+              # Has no effect, but without it `batch` has no `weights` key
+              # for RANK == 0, but has one for all others.
+              batch['weights'] = weights[0]
+            dist.broadcast(weights, src=0)
           dist.broadcast(torch.stack(tensor_list), src=0)
       else:
+        batch = {}
         # During eval, the batch size of the remainder might be different.
         if split != 'train':
           per_device_batch_size = torch.empty((1,),
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
+          weights = torch.empty((N_GPUS, per_device_batch_size, 256),
+                                dtype=torch.int64,
+                                device=DEVICE)
+          dist.broadcast(weights, src=0)
+          batch['weights'] = weights[RANK]
         tensor = torch.empty((n_inputs, N_GPUS, per_device_batch_size, 256),
                              dtype=torch.int64,
                              device=DEVICE)
@@ -262,7 +285,6 @@ class WmtWorkload(BaseWmtWorkload):
         # For all eval/test splits.
         else:
           keys = ['inputs', 'targets']
-        batch = {}
         for key, n in zip(keys, range(n_inputs)):
           batch[key] = tensor[n][RANK]
       yield batch
@@ -271,6 +293,9 @@ class WmtWorkload(BaseWmtWorkload):
     """Calculate evaluation metrics on a batch."""
     targets = batch['targets']
     weights = torch.where(targets > 0, 1.0, 0.0)
+    remainder_mask = batch.get('weights')
+    if remainder_mask is not None:
+      weights = torch.logical_and(weights, remainder_mask)
     logits, _ = self.model_fn(
         params,
         batch,

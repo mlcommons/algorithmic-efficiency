@@ -1,7 +1,7 @@
-"""ResNet 50 Model.
+"""PyTorch implementation of ResNet.
 
 Adapted from torchvision:
-https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py.
 """
 
 import collections
@@ -10,10 +10,10 @@ from typing import Any, Callable, List, Optional, Type, Union
 import torch
 from torch import nn
 from torch import Tensor
+import torch.nn.functional as F
 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.init_utils import pytorch_default_init
-
-__all__ = ['ResNet', 'resnet50']
 
 
 def conv3x3(in_planes: int,
@@ -21,7 +21,7 @@ def conv3x3(in_planes: int,
             stride: int = 1,
             groups: int = 1,
             dilation: int = 1) -> nn.Conv2d:
-  """3x3 convolution with padding"""
+  """3x3 convolution with padding."""
   return nn.Conv2d(
       in_planes,
       out_planes,
@@ -34,12 +34,13 @@ def conv3x3(in_planes: int,
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
-  """1x1 convolution"""
+  """1x1 convolution."""
   return nn.Conv2d(
       in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
 class BasicBlock(nn.Module):
+  """ResNet block."""
   expansion: int = 1
 
   def __init__(self,
@@ -59,7 +60,7 @@ class BasicBlock(nn.Module):
     if dilation > 1:
       raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
     # Both self.conv1 and self.downsample layers downsample
-    # the input when stride != 1
+    # the input when stride != 1.
     self.conv1 = conv3x3(inplanes, planes, stride)
     self.bn1 = norm_layer(planes)
     self.relu = nn.ReLU(inplace=True)
@@ -68,7 +69,7 @@ class BasicBlock(nn.Module):
     self.downsample = downsample
     self.stride = stride
 
-  def forward(self, x: Tensor) -> Tensor:
+  def forward(self, x: spec.Tensor) -> spec.Tensor:
     identity = x
 
     out = self.conv1(x)
@@ -88,15 +89,7 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-  # Bottleneck in torchvision places the stride for downsampling at 3x3
-  # convolution(self.conv2) while original implementation places the stride at
-  # the first 1x1 convolution(self.conv1) according to
-  # "Deep residual learning for image recognition"
-  # (https://arxiv.org/abs/1512.03385).
-  # This variant is also known as ResNet V1.5
-  # and improves accuracy according to
-  # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch
-
+  """Bottleneck ResNet block."""
   expansion: int = 4
 
   def __init__(self,
@@ -113,7 +106,7 @@ class Bottleneck(nn.Module):
       norm_layer = nn.BatchNorm2d
     width = int(planes * (base_width / 64.)) * groups
     # Both self.conv2 and self.downsample layers downsample
-    # the input when stride != 1
+    # the input when stride != 1.
     self.conv1 = conv1x1(inplanes, width)
     self.bn1 = norm_layer(width)
     self.conv2 = conv3x3(width, width, stride, groups, dilation)
@@ -166,8 +159,8 @@ class ResNet(nn.Module):
     self.inplanes = 64
     self.dilation = 1
     if replace_stride_with_dilation is None:
-      # each element in the tuple indicates if we should replace
-      # the 2x2 stride with a dilated convolution instead
+      # Each element in the tuple indicates if we should replace
+      # the 2x2 stride with a dilated convolution instead.
       replace_stride_with_dilation = [False, False, False]
     if len(replace_stride_with_dilation) != 3:
       raise ValueError(
@@ -179,7 +172,7 @@ class ResNet(nn.Module):
         3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
     self.bn1 = norm_layer(self.inplanes)
     self.relu = nn.ReLU(inplace=True)
-    self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+    self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0)
     self.layer1 = self._make_layer(block, 64, layers[0])
     self.layer2 = self._make_layer(
         block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
@@ -194,10 +187,10 @@ class ResNet(nn.Module):
       if isinstance(m, nn.Conv2d):
         pytorch_default_init(m)
       elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
-    nn.init.normal_(self.fc.weight, std=1e-2)
-    nn.init.constant_(self.fc.bias, 0.)
+        nn.init.constant_(m.weight.data, 1)
+        nn.init.constant_(m.bias.data, 0)
+    nn.init.normal_(self.fc.weight.data, std=1e-2)
+    nn.init.constant_(self.fc.bias.data, 0.)
 
     # Zero-initialize the last BN in each residual branch,
     # so that the residual branch starts with zeros,
@@ -207,9 +200,9 @@ class ResNet(nn.Module):
     if zero_init_residual:
       for m in self.modules():
         if isinstance(m, Bottleneck):
-          nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+          nn.init.constant_(m.bn3.weight.data, 0)
         elif isinstance(m, BasicBlock):
-          nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
+          nn.init.constant_(m.bn2.weight.data, 0)
 
   def _make_layer(self,
                   block: Type[Union[BasicBlock, Bottleneck]],
@@ -254,10 +247,11 @@ class ResNet(nn.Module):
 
     return nn.Sequential(*layers)
 
-  def forward(self, x: Tensor) -> Tensor:
+  def forward(self, x: spec.Tensor) -> spec.Tensor:
     x = self.conv1(x)
     x = self.bn1(x)
     x = self.relu(x)
+    x = F.pad(x, [0, 1, 0, 1], 'constant', float('-inf'))
     x = self.maxpool(x)
 
     x = self.layer1(x)
@@ -277,8 +271,4 @@ def resnet18(**kwargs: Any) -> ResNet:
 
 
 def resnet50(**kwargs: Any) -> ResNet:
-  r"""ResNet-50 model from
-    `"Deep Residual Learning for Image Recognition"
-    <https://arxiv.org/pdf/1512.03385.pdf>`_.
-    """
   return ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)

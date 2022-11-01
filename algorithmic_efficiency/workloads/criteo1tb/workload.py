@@ -1,13 +1,14 @@
 import math
+import os
 from typing import Dict, Optional, Tuple
 
-from absl import flags
 import jax
+import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
 
-FLAGS = flags.FLAGS
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
@@ -102,6 +103,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
+    del global_step
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
@@ -112,13 +114,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           global_batch_size,
           num_batches,
           repeat_final_dataset=True)
-    total_loss_numerator = 0.
-    total_loss_denominator = 0.
+    loss = 0.0
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
-      batch_loss_numerator, batch_loss_denominator = self._eval_batch(
-          params, eval_batch)
-      total_loss_numerator += batch_loss_numerator
-      total_loss_denominator += batch_loss_denominator
-    mean_loss = total_loss_numerator / total_loss_denominator
+      loss += self._eval_batch(params, eval_batch)
+    if USE_PYTORCH_DDP:
+      dist.all_reduce(loss)
+    mean_loss = loss.item() / num_examples
     return {'loss': mean_loss}

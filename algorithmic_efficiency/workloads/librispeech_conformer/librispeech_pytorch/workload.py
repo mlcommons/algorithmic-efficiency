@@ -168,13 +168,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         logprobs.permute(1, 0, 2),
         targets.long(),
         input_lengths,
-        target_lengths)
-    average_loss = per_seq_loss.sum() / max(target_lengths.sum(), 1)
-    return {
-        'loss': per_seq_loss.sum(),
-        'lengths': target_lengths.sum(),
-        'average_loss': average_loss
-    }
+        target_lengths).sum()
+    l = target_lengths.sum().to(per_seq_loss)
+    if USE_PYTORCH_DDP:
+      dist.all_reduce(per_seq_loss)
+      dist.all_reduce(l)
+    average_loss = per_seq_loss / max(l, 1)
+    return {'loss': per_seq_loss, 'lengths': l, 'average_loss': average_loss}
 
   def loss_fn(self,
               label_batch: Tuple[spec.Tensor, spec.Tensor],

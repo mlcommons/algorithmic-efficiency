@@ -309,7 +309,9 @@ class BatchNorm(nn.Module):
   def __init__(self, dim, batch_norm_momentum, batch_norm_epsilon):
     super().__init__()
     self.bn = CustomBatchNorm1d(
-        num_features=dim, momentum=batch_norm_momentum, eps=batch_norm_epsilon)
+        num_features=dim,
+        momentum=1 - batch_norm_momentum,
+        eps=batch_norm_epsilon)
 
   def forward(self, inputs, input_paddings=None):
     # inputs: ...D
