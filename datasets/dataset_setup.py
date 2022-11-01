@@ -159,12 +159,8 @@ flags.DEFINE_string(
   None,
   'Can be either jax or pytorch.'
 )
-
-
 flags.DEFINE_boolean('train_tokenizer', True, 'Train Librispeech tokenizer.')
 FLAGS = flags.FLAGS
-
-
 
 
 class _Downloader:
@@ -378,8 +374,44 @@ def download_imagenet_v2(data_dir):
       'imagenet_v2/matched-frequency:3.0.0',
       data_dir=data_dir).download_and_prepare()
 
-def download_librispeech(data_dir, tmp_dir):
-  pass
+def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
+  # After extraction the result is a folder named Librispeech containing audio
+  # files in .flac format along with transcripts containing name of audio file
+  # and corresponding transcription.
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+
+  for split in ['dev', 'test']:
+    for version in ['clean', 'other']:
+      wget_cmd = (
+          f'wget --directory-prefix={tmp_librispeech_dir} '
+          f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
+      subprocess.Popen(wget_cmd, shell=True)
+      subprocess.Popen(f'tar xzvf {split}-{version}.tar.gz', shell=True)
+
+  tars = [
+    'raw-metadata.tar.gz',
+    'train-clean-100.tar.gz',
+    'train-clean-360.tar.gz',
+    'train-other-500.tar.gz',
+  ]
+  for tar_filename in tars:
+    wget_cmd = (
+        f'wget --directory-prefix={tmp_librispeech_dir} '
+        f'http://www.openslr.org/resources/12/{tar_filename}')
+    subprocess.Popen(wget_cmd, shell=True)
+    tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
+    subprocess.Popen(f'tar xzvf {tar_path}', shell=True)
+
+  if train_tokenizer:
+    librispeech_tokenizer.run(train=True, data_dir=tmp_librispeech_dir)
+
+    # Preprocess data.
+    tokenizer_vocab_path = os.path.join(tmp_librispeech_dir, 'spm_model.vocab')
+    librispeech_dir = os.path.join(dataset_dir, 'criteo')
+    librispeech_preprocess.run(
+        input_dir=tmp_librispeech_dir,
+        output_dir=librispeech_dir,
+        tokenizer_vocab_path=tokenizer_vocab_path)
 
 
 def download_ogbg(data_dir, tmp_dir):
