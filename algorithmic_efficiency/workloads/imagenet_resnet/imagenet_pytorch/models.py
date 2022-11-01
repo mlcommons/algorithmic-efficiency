@@ -259,7 +259,7 @@ class ResNet(nn.Module):
     x = self.conv1(x)
     x = self.bn1(x)
     x = self.relu(x)
-    x = F.pad(x, [0, 1, 0, 1], "constant", float("-inf"))
+    x = F.pad(x, [0, 1, 0, 1], 'constant', float('-inf'))
     x = self.maxpool(x)
 
     x = self.layer1(x)
