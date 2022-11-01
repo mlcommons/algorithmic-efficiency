@@ -103,7 +103,8 @@ def get_criteo1tb_dataset(split: str,
 
   ds = map(
       functools.partial(
-          data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+          data_utils.shard_and_maybe_pad_np,
+          global_batch_size=global_batch_size),
       ds)
 
   return ds

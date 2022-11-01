@@ -35,13 +35,19 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> spec.Tensor:
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
     per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
       per_example_losses *= mask_batch
-    return per_example_losses
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def init_model_fn(
       self,
@@ -112,7 +118,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = jnp.ones(len(logits))
-    per_example_losses = self.loss_fn(logits, batch['targets'], weights)
+    _, per_example_losses = self.loss_fn(logits, batch['targets'], weights)
     return jnp.sum(per_example_losses)
 
   def _eval_batch(self,

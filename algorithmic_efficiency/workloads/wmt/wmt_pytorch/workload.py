@@ -25,11 +25,13 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 class WmtWorkload(BaseWmtWorkload):
   """WMT PyTorch workload."""
 
-  def compute_weighted_cross_entropy(self,
-                                     logits,
-                                     targets,
-                                     weights=None,
-                                     label_smoothing=0.1):
+  def compute_weighted_cross_entropy(
+      self,
+      logits: spec.Tensor,
+      targets: spec.Tensor,
+      weights: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.1
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -40,11 +42,11 @@ class WmtWorkload(BaseWmtWorkload):
        values.
 
     Returns:
-      Tuple of loss for every example and batch normalizing factor.
+      (correct scalar average loss, 1-d array of per-example losses)
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
-                       (str(logits.shape), str(targets.shape)))
+      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
+                       f'{targets.shape} targets.')
 
     loss_fn = torch.nn.CrossEntropyLoss(
         reduction='none', label_smoothing=label_smoothing)
@@ -52,15 +54,24 @@ class WmtWorkload(BaseWmtWorkload):
       loss_fn = DP(loss_fn)
 
     # PyTorch loss functions expect the class dim directly after the batch dim.
-    loss = loss_fn(logits.transpose(-2, -1), targets)
+    per_example_losses = loss_fn(logits.transpose(-2, -1), targets)
+    mask = torch.where(targets > 0, 1, 0)
     if weights is not None:
-      loss = loss * weights
-    return loss
+      mask = torch.logical_and(weights, mask)
+    per_example_losses = torch.where(mask, per_example_losses, 0.)
+    summed_loss = per_example_losses.sum()
+    n_valid_samples = mask.sum()
+    return summed_loss / n_valid_samples, per_example_losses
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
   @torch.no_grad()
-  def predict_step(self, inputs, params, eos_id, max_decode_len, beam_size=4):
+  def predict_step(self,
+                   inputs: spec.Tensor,
+                   params: spec.ParameterContainer,
+                   eos_id: int,
+                   max_decode_len: int,
+                   beam_size: int = 4) -> spec.Tensor:
     """Predict translation with fast decoding beam search on a batch."""
     params = params.module if isinstance(params, (DP, DDP)) else params
     params.eval()
@@ -74,7 +85,9 @@ class WmtWorkload(BaseWmtWorkload):
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
       decoder = DP(decoder)
 
-    def tokens_ids_to_logits(flat_ids, flat_cache):
+    def tokens_ids_to_logits(
+        flat_ids: spec.Tensor, flat_cache: Dict[str, spec.Tensor]
+    ) -> Tuple[spec.Tensor, Dict[str, spec.Tensor]]:
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
       flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
@@ -289,13 +302,12 @@ class WmtWorkload(BaseWmtWorkload):
           batch[key] = tensor[n][RANK]
       yield batch
 
-  def eval_step(self, params, batch):
+  def eval_step(self,
+                params: spec.ParameterContainer,
+                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     targets = batch['targets']
-    weights = torch.where(targets > 0, 1.0, 0.0)
-    remainder_mask = batch.get('weights')
-    if remainder_mask is not None:
-      weights = torch.logical_and(weights, remainder_mask)
+    weights = batch.get('weights')
     logits, _ = self.model_fn(
         params,
         batch,
@@ -303,4 +315,14 @@ class WmtWorkload(BaseWmtWorkload):
         model_state=None,
         rng=None,
         update_batch_norm=False)
-    return self.compute_summed_metrics(logits, targets, weights)
+    _, per_example_losses = self.compute_weighted_cross_entropy(
+        logits, targets, weights, 0.0)
+    mask = torch.where(targets > 0, 1, 0)
+    if weights is not None:
+      mask = torch.logical_and(weights, mask)
+    acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
+    return {
+        'loss': torch.sum(per_example_losses),
+        'accuracy': acc_sum,
+        'denominator': weight_sum,
+    }
