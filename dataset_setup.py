@@ -46,7 +46,11 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 dataset_setup.py --dataset_dir=/data --temp_dir=/tmp/mlcommons_data
-python3 dataset_setup.py --dataset_dir=~/data --all=False --imagenet_train_url=<train_url> --imagenet_val_uril=<val_url>
+python3 dataset_setup.py --dataset_dir=~/data --all=False \
+--imagenet=True \
+--imagenet_train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar \
+--imagenet_val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar \
+--framework=jax
 """
 import os
 
@@ -87,6 +91,11 @@ flags.DEFINE_boolean(
     False,
     'If --all=false, whether or not to download FastMRI.')
 flags.DEFINE_boolean(
+    'imagenet',
+    False,
+    'If --all=false, whether or not to download Imagenet.'
+)
+flags.DEFINE_boolean(
     'librispeech',
     False,
     'If --all=false, whether or not to download LibriSpeech.')
@@ -107,7 +116,6 @@ flags.DEFINE_string(
     'temp_dir',
     '/tmp',
     'A local path to a folder where temp files can be downloaded.')
-
 flags.DEFINE_string(
     'imagenet_train_url',
     None,
@@ -168,11 +176,14 @@ class _Downloader:
         progress_bar = tqdm.tqdm(total=total_size_in_MiB, unit='MiB', unit_scale=True)
         return progress_bar
 
-    def download(self, overwrite=False):
-        if not overwrite:
-            if os.path.exists(self.file_path):
-                raise FileExistError("File already exists and may be overwritten {}".format(file_path))
+    def download(self):
+        self.setup_data_dirs()
 
+        if os.path.exists(self.file_path):
+          overwrite = input("File already exists {}.\n Overwrite?".format(file_path))
+          if not overwrite:
+            return 
+    
         with open(self.file_path, "wb") as f:
             for chunk in self.response.iter_content(chunk_size=KiB):
                 chunk_size_in_MiB = len(chunk) / MiB
@@ -232,10 +243,12 @@ def download_imagenet(dataset_dir, tmp_dir, imagenet_train_url, imagenet_val_url
   dataset_dir = os.path.join(dataset_dir, 'imagenet')
 
   # Download imagnet train set
+  logging.info('Downloading train dataset from {}'.format(imagenet_train_url))
   train_downloader = _Downloader(url=imagenet_train_url, data_dir=dataset_dir)
-  train_downloader.download(overwrite=False)
+  train_downloader.download()
 
   # Download imagenet valid set
+  logging.info('Donwloading validation dataset from {}'.format(imagenet_val_url))
   valid_downloader = _Downloader(url=imagenet_val_url, data_dir=dataset_dir)
   valid_downloader.download()
 
@@ -290,7 +303,7 @@ def setup_imagenet_pytorch(dataset_dir):
   logging.info('Extracting imagenet train data')
   extract(os.path.join(imagenet_pytorch_dataset_dir, IMAGENET_TRAIN_TAR_FILENAME),
           os.path.join(imagenet_pytorch_dataset_dir, 'train'))
-
+ 
   train_tar_filenames = os.listdir(os.path.join(imagenet_pytorch_dataset_dir, 'train'))
   for tar_filename in train_tar_filenames:
     if tar_filename.endswith('.tar'):
@@ -364,7 +377,9 @@ def main(_):
     #     tmp_dir,
     #     knee_singlecoil_train_url,
     #     knee_singlecoil_val_url)
-  if FLAGS.all or FLAGS.fastmri:
+  if FLAGS.all or FLAGS.imagenet:
+    flags.mark_flag_as_required('imagenet_train_url')
+    flags.mark_flag_as_required('imagenet_val_url')
     logging.info('Downloading ImageNet...')
     imagenet_train_url = FLAGS.imagenet_train_url
     imagenet_val_url = FLAGS.imagenet_val_url
