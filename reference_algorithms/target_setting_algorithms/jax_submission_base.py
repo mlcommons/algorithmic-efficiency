@@ -37,12 +37,11 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = jnp.nanmean(
-        workload.loss_fn(
-            label_batch=batch['targets'],
-            logits_batch=logits,
-            mask_batch=batch.get('weights'),
-            label_smoothing=label_smoothing))
+    loss, _ = workload.loss_fn(
+        label_batch=batch['targets'],
+        logits_batch=logits,
+        mask_batch=batch.get('weights'),
+        label_smoothing=label_smoothing)
     return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)

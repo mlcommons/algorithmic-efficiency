@@ -10,7 +10,7 @@ from flax import jax_utils
 import jax
 import tensorflow as tf
 
-from algorithmic_efficiency.data_utils import shard_numpy_ds
+from algorithmic_efficiency.data_utils import shard_and_maybe_pad_np
 
 IMAGE_SIZE = 32
 MEAN_RGB = [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
@@ -255,7 +255,8 @@ def create_input_iter(split,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
   it = map(
-      functools.partial(shard_numpy_ds, global_batch_size=global_batch_size),
+      functools.partial(
+          shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.

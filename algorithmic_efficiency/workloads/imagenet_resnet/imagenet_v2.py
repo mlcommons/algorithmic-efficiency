@@ -40,6 +40,6 @@ def get_imagenet_v2_iter(data_dir: str,
   ds = ds.map(_decode_example, num_parallel_calls=16)
   ds = ds.batch(global_batch_size)
   shard_pad_fn = functools.partial(
-      data_utils.shard_numpy_ds, global_batch_size=global_batch_size)
+      data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size)
   it = map(shard_pad_fn, iter(ds))
   return it

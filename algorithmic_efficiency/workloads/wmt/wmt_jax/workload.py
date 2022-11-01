@@ -1,6 +1,6 @@
 """WMT workload implemented in Jax."""
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from absl import logging
 from flax import jax_utils
@@ -19,7 +19,7 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import models
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 
-def _to_host(x):
+def _to_host(x: spec.Tensor) -> spec.Tensor:
   """Collect batches from all devices to host and flatten batch dimensions."""
   n_device, n_batch, *remaining_dims = x.shape
   return np.array(x).reshape((n_device * n_batch,) + tuple(remaining_dims))
@@ -28,11 +28,13 @@ def _to_host(x):
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
-  def compute_weighted_cross_entropy(self,
-                                     logits,
-                                     targets,
-                                     weights=None,
-                                     label_smoothing=0.1):
+  def compute_weighted_cross_entropy(
+      self,
+      logits: spec.Tensor,
+      targets: spec.Tensor,
+      weights: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.1
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -43,43 +45,57 @@ class WmtWorkload(BaseWmtWorkload):
        values.
 
     Returns:
-      Tuple of loss for every example and batch normalizing factor.
+      (correct scalar average loss, 1-d array of per-example losses)
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError(
-          f'Incorrect shapes. Got shape {str(logits.shape)} logits '
-          f'and {str(targets.shape)} targets')
+      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
+                       f'{targets.shape} targets.')
     smoothed_targets = optax.smooth_labels(
         common_utils.onehot(targets, self._vocab_size), label_smoothing)
 
-    loss = -jnp.sum(smoothed_targets * nn.log_softmax(logits), axis=-1)
-
+    per_example_losses = -jnp.sum(
+        smoothed_targets * nn.log_softmax(logits), axis=-1)
+    mask = jnp.where(targets > 0, 1, 0)
     if weights is not None:
-      loss = loss * weights
-
-    return loss
+      mask = jnp.logical_and(weights, mask)
+    per_example_losses = jnp.where(mask, per_example_losses, 0.)
+    summed_loss = per_example_losses.sum()
+    n_valid_samples = mask.sum()
+    return summed_loss / n_valid_samples, per_example_losses
 
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
-  def eval_step_pmapped(self, params, batch):
+  def eval_step_pmapped(
+      self, params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     inputs = batch['inputs']
     targets = batch['targets']
-    weights = jnp.where(targets > 0, 1.0, 0.0)
-    remainder_mask = batch.get('weights')
-    if remainder_mask is not None:
-      weights = jnp.logical_and(weights, remainder_mask)
+    weights = batch.get('weights')
     logits = self._eval_model.apply({'params': params}, inputs, targets)
-    metrics = self.compute_summed_metrics(logits, targets, weights)
-    return metrics
+    _, per_example_losses = self.compute_weighted_cross_entropy(
+        logits, targets, weights, 0.0)
+    mask = jnp.where(targets > 0, 1, 0)
+    if weights is not None:
+      mask = jnp.logical_and(weights, mask)
+    acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
+    return {
+        'loss': jnp.sum(per_example_losses),
+        'accuracy': acc_sum,
+        'denominator': weight_sum,
+    }
 
-  def eval_step(self, params, batch):
+  def eval_step(self,
+                params: spec.ParameterContainer,
+                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     replicated_eval_metrics = self.eval_step_pmapped(params, batch)
     return jax.tree_map(lambda x: jnp.sum(x, axis=0), replicated_eval_metrics)
 
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
-  def initialize_cache(self, inputs, max_decode_len=256):
+  def initialize_cache(self,
+                       inputs: spec.Tensor,
+                       max_decode_len: int = 256) -> Dict[str, spec.Tensor]:
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
@@ -93,12 +109,12 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0, 4, 5))
   def predict_step(self,
-                   inputs,
-                   params,
-                   cache,
-                   eos_id,
-                   max_decode_len,
-                   beam_size=4):
+                   inputs: spec.Tensor,
+                   params: spec.ParameterContainer,
+                   cache: Dict[str, spec.Tensor],
+                   eos_id: int,
+                   max_decode_len: int,
+                   beam_size: int = 4) -> spec.Tensor:
     """Predict translation with fast decoding beam search on a batch."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     # Prepare transformer fast-decoder call for beam search: for beam search, we
@@ -114,7 +130,9 @@ class WmtWorkload(BaseWmtWorkload):
         beam_size)
     raw_inputs = decode.flat_batch_beam_expand(inputs, beam_size)
 
-    def tokens_ids_to_logits(flat_ids, flat_cache):
+    def tokens_ids_to_logits(
+        flat_ids: spec.Tensor, flat_cache: Dict[str, spec.Tensor]
+    ) -> Tuple[spec.Tensor, Dict[str, spec.Tensor]]:
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
       flat_logits, new_vars = models.Transformer(config).apply(
@@ -150,10 +168,10 @@ class WmtWorkload(BaseWmtWorkload):
     return beam_seqs[:, -1, 1:]
 
   def translate_and_calculate_bleu(self,
-                                   params,
-                                   ds_iter,
-                                   num_batches,
-                                   max_predict_length: int):
+                                   params: spec.ParameterContainer,
+                                   ds_iter: Iterator,
+                                   num_batches: int,
+                                   max_predict_length: int) -> spec.Tensor:
     """Translates the `predict_ds` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
     references, predictions = [], []
