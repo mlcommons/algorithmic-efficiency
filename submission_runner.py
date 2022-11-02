@@ -129,12 +129,13 @@ flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
 flags.DEFINE_boolean(
     'resume_last_run',
     None,
-    'Whether to resume the last run for the experiment, workload, framework combination.'
+    'Whether to resume the experiment from its last run.'
 )
 flags.DEFINE_boolean(
     'interactive',
     False,
-    'Whether or not the submission runner will request responses through prompts.'
+    'If True, submission runner will prompt user to resume run.'
+    'Alternatively, set --interactive=False and use --resume_last_run.'
 )
 flags.DEFINE_boolean('use_wandb',
                      False,
