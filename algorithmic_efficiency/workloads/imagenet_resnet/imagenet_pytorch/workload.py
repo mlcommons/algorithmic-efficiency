@@ -164,7 +164,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       data_dir: str,
       batch_size: int,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
-    use_randaug = True
     is_train = split == 'train'
     folder = 'train' if 'train' in split else 'val'
 
