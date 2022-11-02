@@ -264,6 +264,7 @@ class PrefetchedWrapper:
       with torch.cuda.stream(stream):
         next_inputs = next_inputs.to(
             self.device, dtype=torch.float,
+            memory_format=torch.channels_last,
             non_blocking=True).sub(self.data_mean).div(self.data_std)
         next_targets = next_targets.to(self.device, non_blocking=True)
 
