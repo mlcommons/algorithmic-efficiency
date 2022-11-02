@@ -126,6 +126,14 @@ flags.DEFINE_string(
     'It is required and the directory should have '
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
+flags.DEFINE_boolean('resume_last_run',
+                     None,
+                     'Whether to resume the experiment from its last run.')
+flags.DEFINE_boolean(
+    'interactive',
+    False,
+    'If True, submission runner will prompt user to resume run.'
+    'Alternatively, set --interactive=False and use --resume_last_run.')
 flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
@@ -532,16 +540,12 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  workload_dir_name = f'{FLAGS.workload}_{FLAGS.framework}'
-  if FLAGS.experiment_name is None:
-    experiment_dir_name = os.path.join(FLAGS.experiment_dir, workload_dir_name)
-  else:
-    experiment_dir_name = os.path.join(FLAGS.experiment_dir,
-                                       FLAGS.experiment_name,
-                                       workload_dir_name)
-  experiment_dir_name = os.path.expanduser(experiment_dir_name)
-  logging.info(f'Creating experiment directory at {experiment_dir_name}')
-  logger_utils.makedir(experiment_dir_name)
+  logging_dir_path = logger_utils.get_log_dir(FLAGS.experiment_dir,
+                                              FLAGS.workload,
+                                              FLAGS.framework,
+                                              FLAGS.experiment_name,
+                                              FLAGS.interactive,
+                                              FLAGS.resume_last_run)
 
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
@@ -553,7 +557,7 @@ def main(_):
                                        FLAGS.max_global_steps,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       experiment_dir_name,
+                                       logging_dir_path,
                                        FLAGS.tokenizer_vocab_path)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
