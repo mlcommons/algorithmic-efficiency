@@ -78,7 +78,7 @@ def write_ffcv_imagenet(data_dir: str,
             {
                 'image':
                     ffcv.fields.RGBImageField(
-                        write_mode='raw',
+                        write_mode='proportion',
                         max_resolution=500,
                         compress_probability=0.50,
                         jpeg_quality=90),
@@ -221,12 +221,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     dataloader = ffcv.loader.Loader(
         os.path.join(data_dir, f'{folder}.ffcv'),
-        batch_size=32,
+        batch_size=ds_iter_batch_size,
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
         num_workers=2,
-        os_cache=True,
         order=order,
         drop_last=True if is_train else False,
         seed=0,
@@ -291,8 +290,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model = resnet50()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    model.to(DEVICE)
     model = model.to(memory_format=torch.channels_last)
+    model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
