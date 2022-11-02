@@ -48,8 +48,8 @@ Example command:
 python3 datasets/dataset_setup.py --data_dir=/data --temp_dir=/tmp/mlcommons_data
 python3 datasets/dataset_setup.py --data_dir=~/data --all=False \
 --imagenet=True \
---imagenet_train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar \
---imagenet_val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar \
+--imagenet_train_url=<train_url> \
+--imagenet_val_url=<val_url>\
 --framework=jax
 """
 import os
