@@ -1,7 +1,7 @@
 """ImageNet workload implemented in PyTorch.
 
 Codes for loading FFCV dataset are adapted from:
-https://github.com/mosaicml/composer/blob/dev/composer/datasets/imagenet.py
+https://github.com/mosaicml/composer/blob/dev/composer/datasets/imagenet.py.
 """
 
 import contextlib
@@ -103,7 +103,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       self,
       split: str,
       data_dir: str,
-      global_batch_size: int,
+      batch_size: int,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
 
     is_train = split == 'train'
@@ -136,11 +136,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     sampler = None
     if USE_PYTORCH_DDP:
-      per_device_batch_size = global_batch_size // N_GPUS
-      ds_iter_batch_size = per_device_batch_size
-    else:
-      ds_iter_batch_size = global_batch_size
-    if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
@@ -149,7 +144,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=ds_iter_batch_size,
+        batch_size=batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,
@@ -167,9 +162,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       self,
       split: str,
       data_dir: str,
-      global_batch_size: int,
+      batch_size: int,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
-
+    use_randaug = True
     is_train = split == 'train'
     folder = 'train' if 'train' in split else 'val'
 
@@ -190,6 +185,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               np.array(self.train_stddev),
               np.float32),
       ]
+      if randaugment:
+        image_pipeline.insert(4, randaugment.RandAugment())
     else:
       order = ffcv.loader.OrderOption.SEQUENTIAL
       cropper = ffcv.fields.rgb_image.CenterCropRGBImageDecoder(
@@ -213,19 +210,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True)
     ]
 
-    if USE_PYTORCH_DDP:
-      per_device_batch_size = global_batch_size // N_GPUS
-      ds_iter_batch_size = per_device_batch_size
-    else:
-      ds_iter_batch_size = global_batch_size
-
     dataloader = ffcv.loader.Loader(
         os.path.join(data_dir, f'{folder}.ffcv'),
-        batch_size=ds_iter_batch_size,
+        batch_size=batch_size,
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
-        num_workers=2,
+        num_workers=1,
+        os_cache=True,
         order=order,
         drop_last=True if is_train else False,
         seed=0,
@@ -259,16 +251,22 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           resize_size=self.resize_size)
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
+    if USE_PYTORCH_DDP:
+      per_device_batch_size = global_batch_size // N_GPUS
+      ds_iter_batch_size = per_device_batch_size
+    else:
+      ds_iter_batch_size = global_batch_size
+
     success = write_ffcv_imagenet(data_dir, split)
     if success:
       dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
-                                            global_batch_size,
+                                            ds_iter_batch_size,
                                             use_randaug)
     else:
       dataloader = self._build_pytorch_dataset(split,
                                                data_dir,
-                                               global_batch_size,
+                                               ds_iter_batch_size,
                                                use_randaug)
 
     dataloader = data_utils.cycle(
