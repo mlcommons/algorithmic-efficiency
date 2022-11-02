@@ -256,13 +256,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       ds_iter_batch_size = global_batch_size
 
-    success = write_ffcv_imagenet(data_dir, split)
-    if success:
+    ffcv_success = write_ffcv_imagenet(data_dir, split)
+    if ffcv_success and split == 'train':
       dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
                                             ds_iter_batch_size,
                                             use_randaug)
     else:
+      # If FFCV is not installed, use the default PyTorch Dataloader.
       dataloader = self._build_pytorch_dataset(split,
                                                data_dir,
                                                ds_iter_batch_size,
