@@ -45,8 +45,8 @@ open at once using `ulimit -n 8192`.
 
 Example command:
 
-python3 dataset_setup.py --data_dir=/data --temp_dir=/tmp/mlcommons_data
-python3 dataset_setup.py --data_dir=~/data --all=False \
+python3 datasets/dataset_setup.py --data_dir=/data --temp_dir=/tmp/mlcommons_data
+python3 datasets/dataset_setup.py --data_dir=~/data --all=False \
 --imagenet=True \
 --imagenet_train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar \
 --imagenet_val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar \
@@ -190,7 +190,7 @@ class _Downloader:
         self.progress_bar.update(chunk_size_in_MiB)
         f.write(chunk)
     self.progress_bar.close()
-    if self.progress_bar.total != 0 and self.progress_bar.n != self.total_size_in_MiB:
+    if self.progress_bar.total != 0 and self.progress_bar.n != self.progress_bar.total:
       raise Exception(
           "Download corrupted, size {n} MiB from {url} does not match expected size {size} MiB"
           .format(

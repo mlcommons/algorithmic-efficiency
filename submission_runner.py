@@ -126,8 +126,16 @@ flags.DEFINE_string(
     'It is required and the directory should have '
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
-flags.DEFINE_boolean('resume_last_run', None, 'Whether to resume the last run for the experiment, workload, framework combination.')
-flags.DEFINE_boolean('interactive', False, 'Whether or not the submission runner will request responses through prompts.')
+flags.DEFINE_boolean(
+    'resume_last_run',
+    None,
+    'Whether to resume the last run for the experiment, workload, framework combination.'
+)
+flags.DEFINE_boolean(
+    'interactive',
+    False,
+    'Whether or not the submission runner will request responses through prompts.'
+)
 flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
@@ -515,7 +523,6 @@ def score_submission_on_workload(
   return score
 
 
-
 def main(_):
   if FLAGS.profile:
     profiler = Profiler()
@@ -535,12 +542,12 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  logging_dir_path = logger_utils.setup_log_dir(FLAGS.experiment_dir, 
-                                                FLAGS.workload, 
-                                                FLAGS.framework, 
-                                                FLAGS.experiment_name, 
+  logging_dir_path = logger_utils.setup_log_dir(FLAGS.experiment_dir,
+                                                FLAGS.workload,
+                                                FLAGS.framework,
+                                                FLAGS.experiment_name,
                                                 FLAGS.interactive,
-                                                FLAGS.resume_last_run) 
+                                                FLAGS.resume_last_run)
 
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,

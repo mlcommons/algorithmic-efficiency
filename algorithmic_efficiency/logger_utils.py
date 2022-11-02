@@ -37,27 +37,30 @@ def get_last_run_dir_index(runs):
   return max(indices)
 
 
-def setup_log_dir(experiment_dir, workload, framework, experiment_name, 
-                  interactive, resume_last_run):
+def setup_log_dir(experiment_dir,
+                  workload,
+                  framework,
+                  experiment_name,
+                  interactive,
+                  resume_last_run):
   if RANK != 0:
     return
-  
-  experiment_dir=os.path.expanduser(experiment_dir)
+
+  experiment_dir = os.path.expanduser(experiment_dir)
 
   workload_dir_name = f'{workload}_{framework}'
 
   if experiment_name is None:
-    experiment_path = os.path.join(experiment_dir, 
-                                  workload_dir_name)
+    experiment_path = os.path.join(experiment_dir, workload_dir_name)
   else:
     experiment_path = os.path.join(experiment_dir,
-                                  experiment_name,
-                                  workload_dir_name)
-  
+                                   experiment_name,
+                                   workload_dir_name)
+
   # Get either a new run dir or previous run dir
   if os.path.exists(experiment_path):
     runs = os.listdir(experiment_path)
-    
+
     if len(runs) != 0:
       if resume_last_run:
         run_dir = f'run_{get_last_run_dir_index(runs)}'
@@ -65,15 +68,17 @@ def setup_log_dir(experiment_dir, workload, framework, experiment_name,
         logging.info("in interactive")
         while True:
           run_dir = input('Found existing runs: {}.\n'
-                        'Enter run name to resume '
-                        'or press ENTER to start new run:'.format(runs))
-          if run_dir in runs or run_dir=='':
+                          'Enter run name to resume '
+                          'or press ENTER to start new run:'.format(runs))
+          if run_dir in runs or run_dir == '':
             break
           print("Please enter valid run. Try again.")
         if run_dir == '':
           run_dir = f'run_{get_last_run_dir_index(runs) + 1}'
       else:
-        raise ValueError("Please specify whether to resume the last run with the --resume_from_last_run flag.")
+        raise ValueError(
+            "Please specify whether to resume the last run with the --resume_from_last_run flag."
+        )
     else:
       run_dir = 'run_0'
   else:
