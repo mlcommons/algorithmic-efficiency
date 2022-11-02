@@ -222,11 +222,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     dataloader = ffcv.loader.Loader(
         os.path.join(data_dir, f'{folder}.ffcv'),
         batch_size=ds_iter_batch_size,
+        # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
-        num_workers=4,
+        num_workers=2,
         order=order,
         drop_last=True if is_train else False,
+        seed=0,
         pipelines={'image': image_pipeline, 'label': label_pipeline},
         batches_ahead=1,
         distributed=USE_PYTORCH_DDP)
