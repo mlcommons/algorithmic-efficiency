@@ -215,7 +215,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
-        num_workers=1,
+        num_workers=4,
         os_cache=True,
         order=order,
         drop_last=True if is_train else False,
