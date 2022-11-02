@@ -107,7 +107,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       global_batch_size: int,
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
-      use_mixup: bool = False,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
     del data_rng
     del cache
@@ -178,7 +177,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       global_batch_size: int,
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
-      use_mixup: bool = False,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
     del data_rng
     del cache
@@ -206,7 +204,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       ]
     else:
       order = ffcv.loader.OrderOption.SEQUENTIAL
-      cropper = ffcv.transforms.CenterCropRGBImageDecoder(
+      cropper = ffcv.fields.rgb_image.CenterCropRGBImageDecoder(
           (self.center_crop_size, self.center_crop_size),
           ratio=self.center_crop_size / self.resize_size)
       image_pipeline = [
@@ -308,6 +306,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
+    model = model.to(memory_format=torch.channels_last)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
