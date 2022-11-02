@@ -63,7 +63,7 @@ def get_log_dir(experiment_dir,
 
     if len(runs) != 0:
       if resume_last_run:
-        run_dir = f'run_{get_last_run_dir_index(runs)}'
+        run_dir = f'run_{_get_last_run_dir_index(runs)}'
       elif interactive:
         logging.info("in interactive")
         while True:
