@@ -184,8 +184,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               np.array(self.train_stddev),
               np.float32),
       ]
-      if randaugment:
-        image_pipeline.insert(4, randaugment.RandAugment())
+      # if randaugment:
+      #   image_pipeline.insert(4, randaugment.RandAugment())
     else:
       order = ffcv.loader.OrderOption.SEQUENTIAL
       cropper = ffcv.fields.rgb_image.CenterCropRGBImageDecoder(
