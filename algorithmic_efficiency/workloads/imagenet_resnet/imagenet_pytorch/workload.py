@@ -179,10 +179,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           ffcv.transforms.ToTensor(),
           ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
           ffcv.transforms.ToTorchImage(),
-          ffcv.transforms.NormalizeImage(
-              np.array(self.train_mean),
-              np.array(self.train_stddev),
-              np.float32),
+          # ffcv.transforms.NormalizeImage(
+          #     np.array(self.train_mean),
+          #     np.array(self.train_stddev),
+          #     np.float32),
+          ffcv.transforms.Convert(np.float32)
       ]
       # if randaugment:
       #   image_pipeline.insert(4, randaugment.RandAugment())
@@ -196,10 +197,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           ffcv.transforms.ToTensor(),
           ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
           ffcv.transforms.ToTorchImage(),
-          ffcv.transforms.NormalizeImage(
-              np.array(self.train_mean),
-              np.array(self.train_stddev),
-              np.float32),
+          # ffcv.transforms.NormalizeImage(
+          #     np.array(self.train_mean),
+          #     np.array(self.train_stddev),
+          #     np.float32),
+          ffcv.transforms.Convert(np.float32)
       ]
 
     label_pipeline = [
