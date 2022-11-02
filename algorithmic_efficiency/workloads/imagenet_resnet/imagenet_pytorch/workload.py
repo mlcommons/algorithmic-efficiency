@@ -263,7 +263,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                                             ds_iter_batch_size,
                                             use_randaug)
     else:
-      # If FFCV is not installed, use the default PyTorch Dataloader.
       dataloader = self._build_pytorch_dataset(split,
                                                data_dir,
                                                ds_iter_batch_size,
