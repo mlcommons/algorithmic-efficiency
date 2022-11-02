@@ -77,7 +77,7 @@ def setup_log_dir(experiment_dir,
           run_dir = f'run_{get_last_run_dir_index(runs) + 1}'
       else:
         raise ValueError(
-            "Please specify whether to resume the last run with the --resume_from_last_run flag."
+            "Please use --resume_from_last_run flag."
         )
     else:
       run_dir = 'run_0'
