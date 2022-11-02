@@ -101,16 +101,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   def _build_pytorch_dataset(
       self,
-      data_rng: spec.RandomState,
       split: str,
       data_dir: str,
       global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
-    del data_rng
-    del cache
-    del repeat_final_dataset
 
     is_train = split == 'train'
 
@@ -171,16 +165,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   def _build_ffcv_dataset(
       self,
-      data_rng: spec.RandomState,
       split: str,
       data_dir: str,
       global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
-    del data_rng
-    del cache
-    del repeat_final_dataset
 
     is_train = split == 'train'
     folder = 'train' if 'train' in split else 'val'
@@ -255,6 +243,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       repeat_final_dataset: Optional[bool] = None,
       use_mixup: bool = False,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
+    del data_rng
+    del cache
+    del repeat_final_dataset
 
     if split == 'test':
       np_iter = imagenet_v2.get_imagenet_v2_iter(
@@ -268,22 +259,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     success = write_ffcv_imagenet(data_dir, split)
     if success:
-      dataloader = self._build_ffcv_dataset(data_rng,
-                                            split,
+      dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
                                             global_batch_size,
-                                            cache,
-                                            repeat_final_dataset,
-                                            use_mixup,
                                             use_randaug)
     else:
-      dataloader = self._build_pytorch_dataset(data_rng,
-                                               split,
+      dataloader = self._build_pytorch_dataset(split,
                                                data_dir,
                                                global_batch_size,
-                                               cache,
-                                               repeat_final_dataset,
-                                               use_mixup,
                                                use_randaug)
 
     dataloader = data_utils.cycle(
