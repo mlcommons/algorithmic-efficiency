@@ -31,13 +31,13 @@ def makedir(dir_name: str, exist_ok: bool = True) -> None:
     os.makedirs(name=dir_name, exist_ok=exist_ok)
 
 
-def get_last_run_dir_index(runs):
+def _get_last_run_dir_index(runs):
   # Run names have format run_{index}
   indices = [int(run.split('_')[1]) for run in runs]
   return max(indices)
 
 
-def setup_log_dir(experiment_dir,
+def get_log_dir(experiment_dir,
                   workload,
                   framework,
                   experiment_name,
@@ -62,7 +62,7 @@ def setup_log_dir(experiment_dir,
 
     if len(runs) != 0:
       if resume_last_run:
-        run_dir = f'run_{get_last_run_dir_index(runs)}'
+        run_dir = f'run_{_get_last_run_dir_index(runs)}'
       elif interactive:
         while True:
           run_dir = input('Found existing runs: {}.\n'
@@ -72,7 +72,7 @@ def setup_log_dir(experiment_dir,
             break
           print('Please enter valid run. Try again.')
         if run_dir == '':
-          run_dir = f'run_{get_last_run_dir_index(runs) + 1}'
+          run_dir = f'run_{_get_last_run_dir_index(runs) + 1}'
       else:
         raise ValueError(
             'Please use --resume_from_last_run flag if --interactive=False.'
