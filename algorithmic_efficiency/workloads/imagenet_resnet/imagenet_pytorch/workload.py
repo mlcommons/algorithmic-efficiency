@@ -221,7 +221,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     dataloader = ffcv.loader.Loader(
         os.path.join(data_dir, f'{folder}.ffcv'),
-        batch_size=128,
+        batch_size=32,
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
