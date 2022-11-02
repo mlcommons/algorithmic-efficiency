@@ -29,6 +29,9 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
   # From the docs: "(...) causes cuDNN to benchmark multiple convolution
   # algorithms and select the fastest."
   torch.backends.cudnn.benchmark = True
+  torch.autograd.profiler.emit_nvtx(False)
+  torch.autograd.profiler.profile(False)
+  torch.autograd.detect_anomaly(False)
 
   if use_pytorch_ddp:
     # Avoid tf input pipeline creating too many threads.
