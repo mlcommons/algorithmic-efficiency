@@ -38,11 +38,11 @@ def _get_last_run_dir_index(runs):
 
 
 def get_log_dir(experiment_dir,
-                  workload,
-                  framework,
-                  experiment_name,
-                  interactive,
-                  resume_last_run):
+                workload,
+                framework,
+                experiment_name,
+                interactive,
+                resume_last_run):
   if RANK != 0:
     return
 
