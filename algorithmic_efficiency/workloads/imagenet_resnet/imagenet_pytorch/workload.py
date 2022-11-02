@@ -226,6 +226,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
         num_workers=2,
+        os_cache=True,
         order=order,
         drop_last=True if is_train else False,
         seed=0,
@@ -291,7 +292,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
-    # model = model.to(memory_format=torch.channels_last)
+    model = model.to(memory_format=torch.channels_last)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
