@@ -291,7 +291,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
-    model = model.to(memory_format=torch.channels_last)
+    # model = model.to(memory_format=torch.channels_last)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
