@@ -105,7 +105,7 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
+flags.DEFINE_string('data_dir', '~/datasets/', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/tensorflow_datasets/',
                     'Dataset location for ImageNet-v2.')
@@ -276,6 +276,9 @@ def train_once(
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
 
+  if USE_PYTORCH_DDP:
+    dist.barrier()
+
   global_start_time = time.time()
   logging.info('Starting training loop.')
   while train_state['is_time_remaining'] and \
@@ -313,9 +316,6 @@ def train_once(
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
-    if USE_PYTORCH_DDP:
-      # Make sure all processes run eval after the same step when using DDP.
-      dist.barrier()
     current_time = time.time()
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
@@ -324,6 +324,9 @@ def train_once(
     # Check if submission is eligible for an untimed eval.
     if ((current_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
+      if USE_PYTORCH_DDP:
+        # Make sure all processes run eval after the same step when using DDP.
+        dist.barrier()
       with profiler.profile('Evaluation'):
         try:
           latest_eval_result = workload.eval_model(global_eval_batch_size,

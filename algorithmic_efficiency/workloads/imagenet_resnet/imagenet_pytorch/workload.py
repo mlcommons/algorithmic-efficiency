@@ -1,7 +1,12 @@
-"""ImageNet workload implemented in PyTorch."""
+"""ImageNet workload implemented in PyTorch.
+
+Codes for loading FFCV dataset are adapted from:
+https://github.com/mosaicml/composer/blob/dev/composer/datasets/imagenet.py
+"""
 
 import contextlib
 import itertools
+import logging
 import math
 import os
 from typing import Dict, Iterator, Optional, Tuple
@@ -28,6 +33,12 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models im
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
+try:
+  import ffcv
+  ffcv_installed = True
+except ImportError:
+  ffcv_installed = False
+
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
@@ -48,9 +59,47 @@ def imagenet_v2_to_torch(
   return new_batch
 
 
+def write_ffcv_imagenet(data_dir: str,
+                        split: str = 'train',
+                        num_workers: int = 8) -> bool:
+  if RANK == 0:
+    if not ffcv_installed:
+      logging.info('FFCV is not installed. Using PyTorch default dataloader.')
+      return False
+    else:
+      folder = 'train' if 'train' in split else 'val'
+      dataset = ImageFolder(os.path.join(data_dir, folder))
+      save_dir = os.path.join(data_dir, f'{folder}.ffcv')
+      if not os.path.exists(save_dir):
+        logging.info(
+            f'Writing dataset in FFCV <file>.ffcv format to {data_dir}.')
+        writer = ffcv.writer.DatasetWriter(
+            save_dir,
+            {
+                'image':
+                    ffcv.fields.RGBImageField(
+                        write_mode='raw',
+                        max_resolution=500,
+                        compress_probability=0.50,
+                        jpeg_quality=90),
+                'label':
+                    ffcv.fields.IntField()
+            },
+            num_workers=num_workers)
+        writer.from_indexed_dataset(dataset, chunksize=100)
+      else:
+        logging.info(
+            f'Found dataset with FFCV <file>.ffcv format in {data_dir}.')
+
+  if USE_PYTORCH_DDP:
+    # Wait for rank 0 to finish conversion.
+    dist.barrier()
+  return True
+
+
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def _build_dataset(
+  def _build_pytorch_dataset(
       self,
       data_rng: spec.RandomState,
       split: str,
@@ -63,19 +112,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del data_rng
     del cache
     del repeat_final_dataset
-    if split == 'test':
-      np_iter = imagenet_v2.get_imagenet_v2_iter(
-          data_dir,
-          global_batch_size,
-          mean_rgb=self.train_mean,
-          stddev_rgb=self.train_stddev,
-          image_size=self.center_crop_size,
-          resize_size=self.resize_size)
-      return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
-    if not is_train and use_mixup:
-      raise ValueError('Mixup can only be used for the training split.')
 
     if is_train:
       transform_config = [
@@ -130,12 +168,131 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                                               DEVICE,
                                               self.train_mean,
                                               self.train_stddev)
+    return dataloader
+
+  def _build_ffcv_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      use_mixup: bool = False,
+      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
+    del data_rng
+    del cache
+    del repeat_final_dataset
+
+    is_train = split == 'train'
+    folder = 'train' if 'train' in split else 'val'
+
+    if is_train:
+      order = ffcv.loader.OrderOption.RANDOM
+      cropper = ffcv.fields.rgb_image.RandomResizedCropRGBImageDecoder(
+          (self.center_crop_size, self.center_crop_size),
+          scale=self.scale_ratio_range,
+          ratio=self.aspect_ratio_range)
+      image_pipeline = [
+          cropper,
+          ffcv.transforms.RandomHorizontalFlip(),
+          ffcv.transforms.ToTensor(),
+          ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
+          ffcv.transforms.ToTorchImage(),
+          ffcv.transforms.NormalizeImage(
+              np.array(self.train_mean),
+              np.array(self.train_stddev),
+              np.float32),
+      ]
+    else:
+      order = ffcv.loader.OrderOption.SEQUENTIAL
+      cropper = ffcv.transforms.CenterCropRGBImageDecoder(
+          (self.center_crop_size, self.center_crop_size),
+          ratio=self.center_crop_size / self.resize_size)
+      image_pipeline = [
+          cropper,
+          ffcv.transforms.ToTensor(),
+          ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
+          ffcv.transforms.ToTorchImage(),
+          ffcv.transforms.NormalizeImage(
+              np.array(self.train_mean),
+              np.array(self.train_stddev),
+              np.float32),
+      ]
+
+    label_pipeline = [
+        ffcv.fields.basics.IntDecoder(),
+        ffcv.transforms.ToTensor(),
+        ffcv.transforms.Squeeze(),
+        ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True)
+    ]
+
+    if USE_PYTORCH_DDP:
+      per_device_batch_size = global_batch_size // N_GPUS
+      ds_iter_batch_size = per_device_batch_size
+    else:
+      ds_iter_batch_size = global_batch_size
+
+    dataloader = ffcv.loader.Loader(
+        os.path.join(data_dir, f'{folder}.ffcv'),
+        batch_size=ds_iter_batch_size,
+        indices=range(self.num_eval_train_examples)
+        if split == 'eval_train' else None,
+        num_workers=4,
+        order=order,
+        drop_last=True if is_train else False,
+        pipelines={'image': image_pipeline, 'label': label_pipeline},
+        batches_ahead=1,
+        distributed=USE_PYTORCH_DDP)
+
+    return dataloader
+
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      use_mixup: bool = False,
+      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
+
+    if split == 'test':
+      np_iter = imagenet_v2.get_imagenet_v2_iter(
+          data_dir,
+          global_batch_size,
+          mean_rgb=self.train_mean,
+          stddev_rgb=self.train_stddev,
+          image_size=self.center_crop_size,
+          resize_size=self.resize_size)
+      return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
+
+    success = write_ffcv_imagenet(data_dir, split)
+    if success:
+      dataloader = self._build_ffcv_dataset(data_rng,
+                                            split,
+                                            data_dir,
+                                            global_batch_size,
+                                            cache,
+                                            repeat_final_dataset,
+                                            use_mixup,
+                                            use_randaug)
+    else:
+      dataloader = self._build_pytorch_dataset(data_rng,
+                                               split,
+                                               data_dir,
+                                               global_batch_size,
+                                               cache,
+                                               repeat_final_dataset,
+                                               use_mixup,
+                                               use_randaug)
+
     dataloader = data_utils.cycle(
         dataloader,
         custom_sampler=USE_PYTORCH_DDP,
         use_mixup=use_mixup,
         mixup_alpha=0.2)
-
     return dataloader
 
   def init_model_fn(
@@ -209,15 +366,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return logits_batch, None
 
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     per_example_losses = F.cross_entropy(
         logits_batch,
