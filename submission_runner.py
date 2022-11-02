@@ -543,7 +543,7 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
-  logging_dir_path = logger_utils.setup_log_dir(FLAGS.experiment_dir,
+  logging_dir_path = logger_utils.get_log_dir(FLAGS.experiment_dir,
                                                 FLAGS.workload,
                                                 FLAGS.framework,
                                                 FLAGS.experiment_name,
