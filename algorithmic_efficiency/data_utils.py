@@ -23,14 +23,16 @@ def shard_and_maybe_pad_np(
   create the corresponding mask, and reshape it to be sharded across devices.
   """
   local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
-  current_batch_size = batch['inputs'][0].shape[0]
+  inputs = batch['inputs']
+  current_batch_size = inputs[0].shape[0] if isinstance(inputs, tuple) else inputs.shape[0]
   remainder_size = current_batch_size % local_device_count
   if remainder_size != 0:
     if global_batch_size is not None:
       pad_size = global_batch_size - current_batch_size
     else:
       pad_size = local_device_count - remainder_size
-    targets_shape = tuple(batch['targets'][0].shape)
+    targets = batch['targets']  
+    targets_shape = tuple(targets[0].shape if isinstance(inputs, tuple) else targets.shape[0])
     # We need a 2d mask for WMT.
     mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
     # The weights will also be padded.
