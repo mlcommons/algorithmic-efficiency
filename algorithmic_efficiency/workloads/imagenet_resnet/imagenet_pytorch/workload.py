@@ -177,15 +177,15 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       image_pipeline = [
           cropper,
           ffcv.transforms.RandomHorizontalFlip(),
-          # ffcv.transforms.ToTensor(),
-          ffcv_utils.ToInputTensor(),
+          ffcv.transforms.ToTensor(),
+          # ffcv_utils.ToInputTensor(),
           # ffcv.transforms.ToTorchImage(channels_last=False),
-          # ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
-          # ffcv.transforms.ToTorchImage(channels_last=False),
-          # ffcv.transforms.NormalizeImage(
-          #     np.array(self.train_mean),
-          #     np.array(self.train_stddev),
-          #     np.float32),
+          ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
+          ffcv.transforms.ToTorchImage(),
+          ffcv.transforms.NormalizeImage(
+              np.array(self.train_mean),
+              np.array(self.train_stddev),
+              np.float32),
       ]
       # if randaugment:
       #   image_pipeline.insert(4, randaugment.RandAugment())
@@ -196,22 +196,20 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           ratio=self.center_crop_size / self.resize_size)
       image_pipeline = [
           cropper,
-          ffcv_utils.ToInputTensor(),
-          # ffcv.transforms.ToTensor(),
-          # ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
-          # ffcv.transforms.ToTorchImage(channels_last=False),
-          # ffcv.transforms.NormalizeImage(
-          #     np.array(self.train_mean),
-          #     np.array(self.train_stddev),
-          #     np.float32),
-          # ffcv.transforms.Convert(torch.float32)
+          ffcv.transforms.ToTensor(),
+          ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
+          ffcv.transforms.ToTorchImage(),
+          ffcv.transforms.NormalizeImage(
+              np.array(self.train_mean),
+              np.array(self.train_stddev),
+              np.float32),
       ]
 
     label_pipeline = [
         ffcv.fields.basics.IntDecoder(),
         ffcv.transforms.ToTensor(),
         ffcv.transforms.Squeeze(),
-        # ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True)
+        ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True)
     ]
 
     dataloader = ffcv.loader.Loader(
@@ -229,10 +227,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batches_ahead=1,
         distributed=USE_PYTORCH_DDP)
 
-    dataloader = data_utils.PrefetchedWrapper(dataloader,
-                                              DEVICE,
-                                              self.train_mean,
-                                              self.train_stddev)
     return dataloader
 
   def _build_dataset(
@@ -353,7 +347,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'].contiguous())
 
     return logits_batch, None
 
