@@ -224,7 +224,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         drop_last=True if is_train else False,
         seed=0,
         pipelines={'image': image_pipeline, 'label': label_pipeline},
-        batches_ahead=2,
+        batches_ahead=1,
         distributed=USE_PYTORCH_DDP)
 
     return dataloader
