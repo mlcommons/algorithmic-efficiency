@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
-
+from algorithmic_efficiency import ffcv_utils
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -78,7 +78,7 @@ def write_ffcv_imagenet(data_dir: str,
             {
                 'image':
                     ffcv.fields.RGBImageField(
-                        write_mode='proportion',
+                        write_mode='raw',
                         max_resolution=500,
                         compress_probability=0.50,
                         jpeg_quality=90),
@@ -150,8 +150,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         num_workers=4,
         pin_memory=True,
         collate_fn=data_utils.fast_collate,
-        drop_last=is_train,
-        persistent_workers=True)
+        drop_last=is_train)
+
     dataloader = data_utils.PrefetchedWrapper(dataloader,
                                               DEVICE,
                                               self.train_mean,
@@ -177,6 +177,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           cropper,
           ffcv.transforms.RandomHorizontalFlip(),
           ffcv.transforms.ToTensor(),
+          # ffcv_utils.ToInputTensor(),
+          # ffcv.transforms.ToTorchImage(channels_last=False),
           ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
           ffcv.transforms.ToTorchImage(),
           ffcv.transforms.NormalizeImage(
@@ -184,8 +186,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               np.array(self.train_stddev),
               np.float32),
       ]
-      if randaugment:
-        image_pipeline.insert(4, randaugment.RandAugment())
+      # if randaugment:
+      #   image_pipeline.insert(4, randaugment.RandAugment())
     else:
       order = ffcv.loader.OrderOption.SEQUENTIAL
       cropper = ffcv.fields.rgb_image.CenterCropRGBImageDecoder(
@@ -215,7 +217,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
-        num_workers=1,
+        num_workers=4,
         os_cache=True,
         order=order,
         drop_last=True if is_train else False,
@@ -256,8 +258,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       ds_iter_batch_size = global_batch_size
 
-    success = write_ffcv_imagenet(data_dir, split)
-    if success:
+    ffcv_success = write_ffcv_imagenet(data_dir, split)
+    # ffcv_success = False
+    if ffcv_success and split == 'train':
+    # if ffcv_success:
       dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
                                             ds_iter_batch_size,
@@ -287,7 +291,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model = resnet50()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    model = model.to(memory_format=torch.channels_last)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
@@ -343,7 +346,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'].contiguous())
 
     return logits_batch, None
 

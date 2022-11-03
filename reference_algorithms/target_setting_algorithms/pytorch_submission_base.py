@@ -25,7 +25,8 @@ def update_params(workload: spec.Workload,
 
   current_model = current_param_container
   current_model.train()
-  optimizer_state['optimizer'].zero_grad()
+  optimizer_state['optimizer'].zero_grad(set_to_none=True)
+  # optimizer_state['optimizer'].zero_grad()
 
   logits_batch, new_model_state = workload.model_fn(
       params=current_model,

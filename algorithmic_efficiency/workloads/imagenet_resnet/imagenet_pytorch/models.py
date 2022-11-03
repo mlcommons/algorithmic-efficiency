@@ -187,10 +187,10 @@ class ResNet(nn.Module):
       if isinstance(m, nn.Conv2d):
         pytorch_default_init(m)
       elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-        nn.init.constant_(m.weight.data, 1)
-        nn.init.constant_(m.bias.data, 0)
-    nn.init.normal_(self.fc.weight.data, std=1e-2)
-    nn.init.constant_(self.fc.bias.data, 0.)
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+    nn.init.normal_(self.fc.weight, std=1e-2)
+    nn.init.constant_(self.fc.bias, 0.)
 
     # Zero-initialize the last BN in each residual branch,
     # so that the residual branch starts with zeros,
@@ -200,9 +200,9 @@ class ResNet(nn.Module):
     if zero_init_residual:
       for m in self.modules():
         if isinstance(m, Bottleneck):
-          nn.init.constant_(m.bn3.weight.data, 0)
+          nn.init.constant_(m.bn3.weight, 0)
         elif isinstance(m, BasicBlock):
-          nn.init.constant_(m.bn2.weight.data, 0)
+          nn.init.constant_(m.bn2.weight, 0)
 
   def _make_layer(self,
                   block: Type[Union[BasicBlock, Bottleneck]],
@@ -251,7 +251,7 @@ class ResNet(nn.Module):
     x = self.conv1(x)
     x = self.bn1(x)
     x = self.relu(x)
-    x = F.pad(x, [0, 1, 0, 1], 'constant', float('-inf'))
+    # x = F.pad(x, [0, 1, 0, 1], 'constant', float('-inf'))
     x = self.maxpool(x)
 
     x = self.layer1(x)
