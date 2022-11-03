@@ -250,8 +250,8 @@ class PrefetchedWrapper:
     return len(self.dataloader)
 
   def __iter__(self):
-    if hasattr(self.dataloader, 'sampler') and isinstance(self.dataloader.sampler,
-                  (DistributedSampler, DistributedEvalSampler)):
+    if hasattr(self.dataloader, 'sampler') and isinstance(
+        self.dataloader.sampler, (DistributedSampler, DistributedEvalSampler)):
       self.dataloader.sampler.set_epoch(self.epoch)
     self.epoch += 1
     return self.prefetched_loader()

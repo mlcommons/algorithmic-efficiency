@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
-from algorithmic_efficiency import ffcv_utils
+
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -177,8 +177,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           cropper,
           ffcv.transforms.RandomHorizontalFlip(),
           ffcv.transforms.ToTensor(),
-          # ffcv_utils.ToInputTensor(),
-          # ffcv.transforms.ToTorchImage(channels_last=False),
           ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
           ffcv.transforms.ToTorchImage(),
           ffcv.transforms.NormalizeImage(
@@ -261,7 +259,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     ffcv_success = write_ffcv_imagenet(data_dir, split)
     # ffcv_success = False
     if ffcv_success and split == 'train':
-    # if ffcv_success:
+      # if ffcv_success:
       dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
                                             ds_iter_batch_size,
@@ -346,7 +344,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'].contiguous())
+      logits_batch = model(
+          augmented_and_preprocessed_input_batch['inputs'].contiguous())
 
     return logits_batch, None
 
