@@ -150,8 +150,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         num_workers=4,
         pin_memory=True,
         collate_fn=data_utils.fast_collate,
-        drop_last=is_train,
-        persistent_workers=True)
+        drop_last=is_train)
 
     dataloader = data_utils.PrefetchedWrapper(dataloader,
                                               DEVICE,
@@ -218,7 +217,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
-        num_workers=3,
+        num_workers=4,
         os_cache=True,
         order=order,
         drop_last=True if is_train else False,
