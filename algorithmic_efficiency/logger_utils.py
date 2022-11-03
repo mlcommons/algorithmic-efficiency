@@ -61,9 +61,9 @@ def get_log_dir(experiment_dir,
     runs = os.listdir(experiment_path)
 
     if len(runs) != 0:
-      if resume_last_run == True:
+      if resume_last_run is True:
         run_dir = f'run_{_get_last_run_dir_index(runs)}'
-      elif resume_last_run == False:
+      elif resume_last_run is False:
         run_dir = f'run_{_get_last_run_dir_index(runs)+1}'
       elif interactive:
         while True:
