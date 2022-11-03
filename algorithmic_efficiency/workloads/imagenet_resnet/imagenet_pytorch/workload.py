@@ -215,13 +215,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         # We always use the same subset of the training data for evaluation.
         indices=range(self.num_eval_train_examples)
         if split == 'eval_train' else None,
-        num_workers=8,
+        num_workers=4,
         os_cache=True,
         order=order,
         drop_last=True if is_train else False,
         seed=0,
         pipelines={'image': image_pipeline, 'label': label_pipeline},
-        batches_ahead=2,
+        batches_ahead=1,
         distributed=USE_PYTORCH_DDP)
 
     return dataloader

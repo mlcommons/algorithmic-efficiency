@@ -10,7 +10,7 @@ from typing import Any, Callable, List, Optional, Type, Union
 import torch
 from torch import nn
 from torch import Tensor
-# import torch.nn.functional as F
+import torch.nn.functional as F
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.init_utils import pytorch_default_init
@@ -251,7 +251,7 @@ class ResNet(nn.Module):
     x = self.conv1(x)
     x = self.bn1(x)
     x = self.relu(x)
-    # x = F.pad(x, [0, 1, 0, 1], 'constant', float('-inf'))
+    x = F.pad(x, [0, 1, 0, 1], 'constant', float('-inf'))
     x = self.maxpool(x)
 
     x = self.layer1(x)
