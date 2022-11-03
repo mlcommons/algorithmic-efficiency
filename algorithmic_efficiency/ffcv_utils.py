@@ -15,11 +15,8 @@ class ToInputTensor(Operation):
 
   def generate_code(self) -> Callable:
     def to_tensor(inp, dst):
-      nump_array = np.asarray(inp, dtype=np.uint8)
-      if nump_array.ndim < 3:
-        nump_array = np.expand_dims(nump_array, axis=-1)
-      nump_array = np.rollaxis(nump_array, 2)
-      return torch.from_numpy(nump_array.copy())
+      return torch.from_numpy(inp.transpose((0, 3, 1, 2)))
+
     return to_tensor
 
   def declare_state_and_memory(self, previous_state: State) -> Tuple[State, Optional[AllocationQuery]]:
