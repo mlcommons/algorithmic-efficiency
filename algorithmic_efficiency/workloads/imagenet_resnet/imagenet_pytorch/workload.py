@@ -290,7 +290,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model = resnet50()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    model = torch.jit.script(model)
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
