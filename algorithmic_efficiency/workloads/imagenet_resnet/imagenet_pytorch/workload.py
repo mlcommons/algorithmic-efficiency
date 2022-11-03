@@ -224,7 +224,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         drop_last=True if is_train else False,
         seed=0,
         pipelines={'image': image_pipeline, 'label': label_pipeline},
-        batches_ahead=1,
+        batches_ahead=2,
         distributed=USE_PYTORCH_DDP)
 
     return dataloader
@@ -261,8 +261,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     ffcv_success = write_ffcv_imagenet(data_dir, split)
     # ffcv_success = False
-    if ffcv_success and split == 'train':
-    # if ffcv_success:
+    # if ffcv_success and split == 'train':
+    if ffcv_success:
       dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
                                             ds_iter_batch_size,
