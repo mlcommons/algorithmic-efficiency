@@ -24,15 +24,17 @@ def shard_and_maybe_pad_np(
   """
   local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
   inputs = batch['inputs']
-  current_batch_size = inputs[0].shape[0] if isinstance(inputs, tuple) else inputs.shape[0]
+  current_batch_size = inputs[0].shape[0] if isinstance(
+      inputs, tuple) else inputs.shape[0]
   remainder_size = current_batch_size % local_device_count
   if remainder_size != 0:
     if global_batch_size is not None:
       pad_size = global_batch_size - current_batch_size
     else:
       pad_size = local_device_count - remainder_size
-    targets = batch['targets']  
-    targets_shape = tuple(targets[0].shape if isinstance(inputs, tuple) else targets.shape[0])
+    targets = batch['targets']
+    targets_shape = tuple(
+        targets[0].shape if isinstance(inputs, tuple) else targets.shape[0])
     # We need a 2d mask for WMT.
     mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
     # The weights will also be padded.
