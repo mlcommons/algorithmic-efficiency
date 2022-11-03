@@ -19,7 +19,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
-
+from algorithmic_efficiency import ffcv_utils
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -152,6 +152,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         collate_fn=data_utils.fast_collate,
         drop_last=is_train,
         persistent_workers=True)
+
     dataloader = data_utils.PrefetchedWrapper(dataloader,
                                               DEVICE,
                                               self.train_mean,
@@ -177,14 +178,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           cropper,
           ffcv.transforms.RandomHorizontalFlip(),
           ffcv.transforms.ToTensor(),
-          ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
           ffcv.transforms.ToTorchImage(channels_last=False),
+          # ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
           # ffcv.transforms.ToTorchImage(channels_last=False),
           # ffcv.transforms.NormalizeImage(
           #     np.array(self.train_mean),
           #     np.array(self.train_stddev),
           #     np.float32),
-          ffcv.transforms.Convert(torch.float32)
       ]
       # if randaugment:
       #   image_pipeline.insert(4, randaugment.RandAugment())
@@ -224,9 +224,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         drop_last=True if is_train else False,
         seed=0,
         pipelines={'image': image_pipeline, 'label': label_pipeline},
-        batches_ahead=2,
+        batches_ahead=1,
         distributed=USE_PYTORCH_DDP)
 
+    dataloader = data_utils.PrefetchedWrapper(dataloader,
+                                              DEVICE,
+                                              self.train_mean,
+                                              self.train_stddev)
     return dataloader
 
   def _build_dataset(
