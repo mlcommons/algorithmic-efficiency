@@ -178,12 +178,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           ffcv.transforms.RandomHorizontalFlip(),
           ffcv.transforms.ToTensor(),
           ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
-          ffcv.transforms.ToTorchImage(),
-          ffcv.transforms.NormalizeImage(
-              np.array(self.train_mean),
-              np.array(self.train_stddev),
-              np.float32),
-          # ffcv.transforms.Convert(np.float32)
+          ffcv.transforms.ToTorchImage(channels_last=False),
+          # ffcv.transforms.ToTorchImage(channels_last=False),
+          # ffcv.transforms.NormalizeImage(
+          #     np.array(self.train_mean),
+          #     np.array(self.train_stddev),
+          #     np.float32),
+          ffcv.transforms.Convert(torch.float32)
       ]
       # if randaugment:
       #   image_pipeline.insert(4, randaugment.RandAugment())
@@ -196,12 +197,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           cropper,
           ffcv.transforms.ToTensor(),
           ffcv.transforms.ToDevice(torch.device(DEVICE), non_blocking=True),
-          ffcv.transforms.ToTorchImage(),
-          ffcv.transforms.NormalizeImage(
-              np.array(self.train_mean),
-              np.array(self.train_stddev),
-              np.float32),
-          # ffcv.transforms.Convert(np.float32)
+          ffcv.transforms.ToTorchImage(channels_last=False),
+          # ffcv.transforms.NormalizeImage(
+          #     np.array(self.train_mean),
+          #     np.array(self.train_stddev),
+          #     np.float32),
+          ffcv.transforms.Convert(torch.float32)
       ]
 
     label_pipeline = [
