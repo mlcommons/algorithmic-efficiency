@@ -274,7 +274,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mean_loss, per_example_losses = self.loss_fn(
           (targets, target_paddings), (logits, logits_padding))
       summed_loss = per_example_losses.sum()
-      lengths = summed_loss / mean_loss
+      lengths = torch.round(summed_loss / mean_loss)
       batch_metrics = {
           'loss': summed_loss,
           'lengths': lengths,
