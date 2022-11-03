@@ -109,7 +109,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                  target_paddings)
     normalizer = jnp.sum(1 - target_paddings)
     normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
-    return normalized_loss
+    return normalized_loss, per_seq_loss
 
   def ctc_loss(self,
                logits: spec.Tensor,
@@ -214,7 +214,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
+    normalized_loss, _ = self.loss_fn(batch['targets'], (logits, logit_paddings))
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
