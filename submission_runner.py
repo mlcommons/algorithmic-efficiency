@@ -353,25 +353,20 @@ def train_once(
                 latest_eval_result,
                 global_step=global_step,
                 preemption_count=preemption_count)
-            checkpoint_utils.save_checkpoint(
-                framework=FLAGS.framework,
-                optimizer_state=optimizer_state,
-                model_params=model_params,
-                model_state=model_state,
-                train_state=train_state,
-                eval_results=eval_results,
-                global_step=global_step,
-                preemption_count=preemption_count,
-                checkpoint_dir=log_dir)
+            # checkpoint_utils.save_checkpoint(
+            #     framework=FLAGS.framework,
+            #     optimizer_state=optimizer_state,
+            #     model_params=model_params,
+            #     model_state=model_state,
+            #     train_state=train_state,
+            #     eval_results=eval_results,
+            #     global_step=global_step,
+            #     preemption_count=preemption_count,
+            #     checkpoint_dir=log_dir)
           train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
-          if 'out of memory' in str(e):
-            logging.warning('error: GPU out of memory during eval during step '
-                            f'{global_step}, error : {str(e)}')
-            if torch.cuda.is_available():
-              torch.cuda.empty_cache()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
@@ -528,6 +523,8 @@ def main(_):
     profiler = PassThroughProfiler()
 
   if FLAGS.framework == 'pytorch':
+    print('initing pytorch')
+    print('torch cuda available = ', torch.cuda.is_available())
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
   workload_metadata = WORKLOADS[FLAGS.workload]

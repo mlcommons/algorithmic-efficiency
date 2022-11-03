@@ -184,7 +184,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     del mask_batch
     del label_smoothing
-    return self._loss_fn(label_batch, logits_batch)['average_loss']
+    return self._loss_fn(label_batch, logits_batch)['average_loss'], None
 
   def greedy_decode(
       self, logits: spec.Tensor,
