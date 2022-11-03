@@ -257,6 +257,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       ds_iter_batch_size = global_batch_size
 
     ffcv_success = write_ffcv_imagenet(data_dir, split)
+    ffcv_success = False
     if ffcv_success:
       dataloader = self._build_ffcv_dataset(split,
                                             data_dir,
