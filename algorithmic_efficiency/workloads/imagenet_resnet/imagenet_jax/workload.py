@@ -157,30 +157,24 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> spec.Tensor:
+    """Cross Entropy Loss."""
     if label_batch.shape[-1] != self._num_classes:
       one_hot_labels = jax.nn.one_hot(
           label_batch, num_classes=self._num_classes)
     else:
       one_hot_labels = label_batch
     smoothed_labels = optax.smooth_labels(one_hot_labels, label_smoothing)
-    per_example_losses = -jnp.sum(
+    losses = -jnp.sum(
         smoothed_labels * jax.nn.log_softmax(logits_batch, axis=-1), axis=-1)
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
-      per_example_losses *= mask_batch
-      n_valid_examples = mask_batch.sum()
-    else:
-      n_valid_examples = len(per_example_losses)
-    summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+      losses *= mask_batch
+    return losses
 
   def _compute_metrics(self,
                        logits: spec.Tensor,
@@ -188,8 +182,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                        weights: spec.Tensor) -> Dict[str, spec.Tensor]:
     if weights is None:
       weights = jnp.ones(len(logits))
-    _, per_example_losses = self.loss_fn(labels, logits, weights)
-    loss = jnp.sum(per_example_losses)
+    loss = jnp.sum(self.loss_fn(labels, logits, weights))
     # not accuracy, but nr. of correct predictions
     accuracy = jnp.sum((jnp.argmax(logits, -1) == labels) * weights)
     metrics = {

@@ -41,7 +41,7 @@ def train_step(workload,
                batch,
                rng):
 
-  def _loss_fn(params):
+  def loss_fn(params):
     logits_batch, new_model_state  = workload.model_fn(
         params,
         batch,
@@ -50,10 +50,15 @@ def train_step(workload,
         rng,
         update_batch_norm=True)
     mask_batch = batch['weights']
-    mean_loss, _ = workload.loss_fn(batch['targets'], logits_batch, mask_batch)
+    per_example_losses = workload.loss_fn(batch['targets'],
+                                          logits_batch,
+                                          mask_batch)
+    mean_loss = (
+        jnp.sum(jnp.where(mask_batch, per_example_losses, 0)) /
+        jnp.sum(mask_batch))
     return mean_loss, new_model_state
 
-  grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
+  grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)
   grad = lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(

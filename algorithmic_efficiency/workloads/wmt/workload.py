@@ -188,16 +188,12 @@ class BaseWmtWorkload(spec.Workload):
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._tokenizer.detokenize(valid_toks).numpy().decode('utf-8')
 
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> spec.Tensor:
     return self.compute_weighted_cross_entropy(
         logits_batch,
         label_batch,

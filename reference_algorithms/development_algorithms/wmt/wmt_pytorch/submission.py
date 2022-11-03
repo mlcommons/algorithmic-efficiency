@@ -119,7 +119,7 @@ def update_params(workload: spec.Workload,
       update_batch_norm=False)
 
   targets = batch['targets']
-  loss, _ = workload.loss_fn(targets, logits, label_smoothing=0.1)
+  loss = torch.nanmean(workload.loss_fn(targets, logits, label_smoothing=0.1))
   loss.backward()
 
   lr = optimizer_state['scheduler'](global_step).item()

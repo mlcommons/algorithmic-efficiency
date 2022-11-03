@@ -62,8 +62,8 @@ def pmapped_update_params(workload: spec.Workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss, _ = workload.loss_fn(batch['targets'], logits_batch)
-    return loss, new_model_state
+    loss = workload.loss_fn(batch['targets'], logits_batch)
+    return jnp.mean(loss), new_model_state
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)

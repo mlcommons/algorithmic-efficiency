@@ -1,6 +1,6 @@
 import itertools
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict
 
 from absl import flags
 import jax
@@ -81,25 +81,17 @@ class BaseOgbgWorkload(spec.Workload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: spec.Tensor,
+              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     per_example_losses = self._binary_cross_entropy_with_mask(
         labels=label_batch,
         logits=logits_batch,
         mask=mask_batch,
         label_smoothing=label_smoothing)
-    if mask_batch is not None:
-      n_valid_examples = mask_batch.sum()
-    else:
-      n_valid_examples = len(per_example_losses)
-    summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return per_example_losses
 
   @property
   def step_hint(self) -> int:

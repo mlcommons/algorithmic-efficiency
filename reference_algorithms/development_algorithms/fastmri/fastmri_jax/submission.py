@@ -79,7 +79,7 @@ def pmapped_train_step(workload,
         mode=spec.ForwardPassMode.TRAIN,
         rng=rng,
         update_batch_norm=True)
-    loss, _ = workload.loss_fn(batch['targets'], logits)
+    loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
     weight_penalty_params = jax.tree_util.tree_leaves(params)
     weight_l2 = sum(jnp.sum(x**2) for x in weight_penalty_params if x.ndim > 1)
     weight_penalty = hyperparameters.l2 * 0.5 * weight_l2

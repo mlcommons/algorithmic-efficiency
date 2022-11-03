@@ -30,8 +30,7 @@ class WmtWorkload(BaseWmtWorkload):
       logits: spec.Tensor,
       targets: spec.Tensor,
       weights: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.1
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+      label_smoothing: float = 0.1) -> spec.Tensor:
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -42,7 +41,7 @@ class WmtWorkload(BaseWmtWorkload):
        values.
 
     Returns:
-      (correct scalar average loss, 1-d array of per-example losses)
+      Per-example losses.
     """
     if logits.ndim != targets.ndim + 1:
       raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
@@ -54,14 +53,11 @@ class WmtWorkload(BaseWmtWorkload):
       loss_fn = DP(loss_fn)
 
     # PyTorch loss functions expect the class dim directly after the batch dim.
-    per_example_losses = loss_fn(logits.transpose(-2, -1), targets)
+    loss = loss_fn(logits.transpose(-2, -1), targets)
     mask = torch.where(targets > 0, 1, 0)
     if weights is not None:
       mask = torch.logical_and(weights, mask)
-    per_example_losses = torch.where(mask, per_example_losses, 0.)
-    summed_loss = per_example_losses.sum()
-    n_valid_samples = mask.sum()
-    return summed_loss / n_valid_samples, per_example_losses
+    return torch.where(mask.to(torch.bool), loss, torch.nan)
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
@@ -315,14 +311,13 @@ class WmtWorkload(BaseWmtWorkload):
         model_state=None,
         rng=None,
         update_batch_norm=False)
-    _, per_example_losses = self.compute_weighted_cross_entropy(
-        logits, targets, weights, 0.0)
+    loss = self.compute_weighted_cross_entropy(logits, targets, weights, 0.0)
     mask = torch.where(targets > 0, 1, 0)
     if weights is not None:
       mask = torch.logical_and(weights, mask)
     acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
     return {
-        'loss': torch.sum(per_example_losses),
+        'loss': torch.nansum(loss),
         'accuracy': acc_sum,
         'denominator': weight_sum,
     }

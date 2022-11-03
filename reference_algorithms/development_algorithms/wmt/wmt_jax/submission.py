@@ -120,7 +120,7 @@ def pmapped_train_step(workload,
         rng=dropout_rng,
         update_batch_norm=False)
     targets = batch['targets']
-    loss, _ = workload.loss_fn(targets, logits, label_smoothing=0.1)
+    loss = jnp.nanmean(workload.loss_fn(targets, logits, label_smoothing=0.1))
     return loss
 
   grad_fn = jax.value_and_grad(_loss_fn)
