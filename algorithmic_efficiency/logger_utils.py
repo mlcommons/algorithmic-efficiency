@@ -79,7 +79,7 @@ def get_log_dir(experiment_dir,
       else:
         raise ValueError(
             f'The flag --interactive=False and --resume_last_run={resume_last_run}.'
-            f'Please use --resume_last_run flag if --interactive=False.')
+            f'Please set --resume_last_run flag if --interactive=False.')
     else:
       run_dir = 'run_0'
   else:
