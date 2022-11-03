@@ -29,21 +29,29 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     per_example_losses = per_example_losses.reshape(len(per_example_losses), -1)
     return per_example_losses.sum(1)
 
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
     per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
       per_example_losses *= mask_batch
-    return per_example_losses
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def _eval_metric(self, logits: spec.Tensor,
                    targets: spec.Tensor) -> Dict[str, int]:
-    loss = self.loss_fn(logits, targets).sum()
+    _, per_example_losses = self.loss_fn(logits, targets)
+    loss = per_example_losses.sum()
     return {'loss': loss}
 
   def init_model_fn(
@@ -198,6 +206,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
-    per_example_losses = self.loss_fn(logits, batch['targets'], weights)
+    _, per_example_losses = self.loss_fn(logits, batch['targets'], weights)
     loss = per_example_losses.sum()
     return loss

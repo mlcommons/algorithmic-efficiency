@@ -264,6 +264,7 @@ def get_wmt_dataset(data_rng,
   else:
     ds_name = 'wmt17_translate/de-en:1.0.0'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
+  dataset_builder.download_and_prepare()
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
 
   # Avoid creating too many threads when using PyTorch DDP.
@@ -298,7 +299,8 @@ def get_wmt_dataset(data_rng,
 
   ds = map(
       functools.partial(
-          data_utils.shard_numpy_ds, global_batch_size=global_batch_size),
+          data_utils.shard_and_maybe_pad_np,
+          global_batch_size=global_batch_size),
       ds)
 
   return ds, sp_tokenizer

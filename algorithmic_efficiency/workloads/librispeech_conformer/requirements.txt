@@ -1,7 +1,0 @@
-librosa
-numpy
-pandas
-tensorflow
-tensorflow_text
-sentencepiece
-
