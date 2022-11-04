@@ -73,7 +73,7 @@ def get_librispeech_dataset(split_name: str,
 
   if is_training:
     ds = ds.repeat()
-  
+
   if split in ['train', 'eval_train']:
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
