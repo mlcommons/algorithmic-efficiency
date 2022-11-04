@@ -68,7 +68,6 @@ class CifarWorkload(BaseCifarWorkload):
         transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
-    random.Random(data_rng[0]).shuffle(indices)
     indices_split = {
         'train': indices[:self.num_train_examples],
         'validation': indices[self.num_train_examples:],

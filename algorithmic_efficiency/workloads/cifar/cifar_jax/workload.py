@@ -48,6 +48,13 @@ class CifarWorkload(BaseCifarWorkload):
     ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
+    assert self.num_train_examples + self.num_validation_examples == 50000
+    if split == 'train':
+      split = f'train[:{self.num_train_examples}]'
+    elif split == 'eval_train':
+      split = f'train[:{self.num_eval_train_examples}]'
+    elif split == 'validation':
+      split = f'train[{self.num_train_examples}:]'
     ds = input_pipeline.create_input_iter(
         split,
         ds_builder,
