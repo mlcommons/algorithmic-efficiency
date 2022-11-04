@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 
 from absl import flags
@@ -31,7 +32,12 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self) -> int:
-    return 256
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(self.num_validation_examples /
+                                    self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
 
   @property
   def num_validation_examples(self) -> int:
@@ -88,7 +94,7 @@ class BaseLibrispeechWorkload(spec.Workload):
       split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
-      split = 'train-clean-100'
+      split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
       split = 'dev-clean+dev-other'
     elif split == 'test':

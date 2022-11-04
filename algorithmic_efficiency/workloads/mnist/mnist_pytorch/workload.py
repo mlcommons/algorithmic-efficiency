@@ -1,13 +1,13 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
+import random
 from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
@@ -52,34 +52,28 @@ class MnistWorkload(BaseMnistWorkload):
                      split: str,
                      data_dir: str,
                      batch_size: int):
-
-    dataloader_split = 'train' if split == 'eval_train' else split
+    train_split = False if split == 'test' else True
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
     dataset = MNIST(
-        data_dir, train=dataloader_split, download=True, transform=transform)
+        data_dir, train=train_split, download=True, transform=transform)
     if split != 'test':
-      if split in ['train', 'validation']:
-        train_dataset, validation_dataset = pytorch_data_utils.random_split(
-            dataset,
-            [self.num_train_examples, self.num_validation_examples],
-            generator=torch.Generator().manual_seed(int(data_rng[0])))
-        if split == 'train':
-          dataset = train_dataset
-        elif split == 'validation':
-          dataset = validation_dataset
+      assert (self.num_eval_train_examples +
+              self.num_validation_examples == 60000)
+      indices = list(range(60000))
+      if split in ['train', 'eval_train']:
+        dataset_indices = indices[:self.num_train_examples]
+      elif split == 'validation':
+        dataset_indices = indices[self.num_train_examples:]
       if split == 'eval_train':
-        dataset, _ = pytorch_data_utils.random_split(
-            dataset,
-            [self.num_eval_train_examples,
-             60000 - self.num_eval_train_examples],
-            generator=torch.Generator().manual_seed(int(data_rng[0])))
-    # TODO: set seeds properly
-    is_train = split == 'train'
+        random.Random(data_rng[0]).shuffle(dataset_indices)
+        dataset_indices = dataset_indices[:self.num_eval_train_examples]
+      dataset = torch.utils.data.Subset(dataset, dataset_indices)
 
     sampler = None
+    is_train = split == 'train'
     if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(

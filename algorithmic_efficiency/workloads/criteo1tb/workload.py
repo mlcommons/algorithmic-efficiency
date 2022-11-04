@@ -24,47 +24,52 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return eval_result['validation/loss'] < self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.124225
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SIGMOID_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     return 4_195_197_692
 
   @property
-  def num_eval_train_examples(self):
-    return 524_288 * 2
+  def num_eval_train_examples(self) -> int:
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(self.num_validation_examples /
+                                    self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     return 89_137_318 // 2
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     return 89_137_318 // 2
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 524_288
 
   @property
-  def train_mean(self):
+  def train_mean(self) -> float:
     return 0.0
 
   @property
-  def train_stddev(self):
+  def train_stddev(self) -> float:
     return 1.0
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 6 * 60 * 60
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 24 * 60
 
   def _build_input_queue(self,
