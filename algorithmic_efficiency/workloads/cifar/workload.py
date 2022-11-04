@@ -22,7 +22,7 @@ class BaseCifarWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self):
-    return 10000
+    return 5000
 
   @property
   def num_validation_examples(self):

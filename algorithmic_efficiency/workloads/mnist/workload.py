@@ -22,31 +22,31 @@ class BaseMnistWorkload(spec.Workload):
     return eval_result['validation/accuracy'] > self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.9
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     return 50000
 
   @property
-  def num_eval_train_examples(self):
+  def num_eval_train_examples(self) -> int:
     return 10000
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     return 10000
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     return 10000
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 10000
 
   @property
@@ -58,11 +58,11 @@ class BaseMnistWorkload(spec.Workload):
     return 0.3081
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 60
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 10
 
   @property

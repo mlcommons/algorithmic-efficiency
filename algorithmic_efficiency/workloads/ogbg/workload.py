@@ -8,6 +8,7 @@ import jax
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg import input_pipeline
+from algorithmic_efficiency.workloads.ogbg import metrics
 
 FLAGS = flags.FLAGS
 
@@ -20,31 +21,31 @@ class BaseOgbgWorkload(spec.Workload):
     return eval_result['validation/mean_average_precision'] > self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.28380056
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     return 350343
 
   @property
-  def num_eval_train_examples(self):
+  def num_eval_train_examples(self) -> int:
     return 43793
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     return 43793
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     return 43793
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 32768
 
   @property
@@ -56,11 +57,11 @@ class BaseOgbgWorkload(spec.Workload):
     raise NotImplementedError
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 12000  # 3h20m
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 4 * 60
 
   def _build_input_queue(self,
@@ -106,7 +107,11 @@ class BaseOgbgWorkload(spec.Workload):
     """Max num steps the target setting algo was given to reach the target."""
     return 60_000
 
-  def _eval_batch(self, params, batch, model_state, rng):
+  def _eval_batch(self,
+                  params: spec.ParameterContainer,
+                  batch: Dict[str, spec.Tensor],
+                  model_state: spec.ModelAuxiliaryState,
+                  rng: spec.RandomState) -> metrics.EvalMetrics:
     logits, _ = self.model_fn(
         params,
         batch,

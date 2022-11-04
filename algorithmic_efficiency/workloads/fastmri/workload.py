@@ -12,31 +12,31 @@ class BaseFastMRIWorkload(spec.Workload):
     return eval_result['validation/ssim'] > self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.7351
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.MEAN_ABSOLUTE_ERROR
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     return 34742
 
   @property
-  def num_eval_train_examples(self):
-    return 3474
-
-  @property
-  def num_validation_examples(self):
+  def num_eval_train_examples(self) -> int:
     return 3554
 
   @property
-  def num_test_examples(self):
+  def num_validation_examples(self) -> int:
+    return 3554
+
+  @property
+  def num_test_examples(self) -> int:
     return 3581
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 256
 
   @property
@@ -56,11 +56,11 @@ class BaseFastMRIWorkload(spec.Workload):
     return (4,)
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 10800  # 3 hours
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 80
 
   @property
