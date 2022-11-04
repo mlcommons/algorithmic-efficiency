@@ -201,7 +201,7 @@ def create_split(split,
   if cache:
     ds = ds.cache()
 
-  if train:
+  if train or split == 'eval_train':
     ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
