@@ -45,8 +45,12 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self) -> int:
-    # same as `num_validation_examples`
-    return 3000
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(
+        self.num_validation_examples / self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
 
   @property
   def num_validation_examples(self) -> int:
@@ -91,10 +95,6 @@ class BaseWmtWorkload(spec.Workload):
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
     is_training = split == 'train'
-    if split == 'eval_train':
-      # Without the '+1' only `num_eval_train_examples-1` examples are used
-      # since one example is filtered out in the input pipeline.
-      split = f'train[:{self.num_eval_train_examples+1}]'
     ds, self._tokenizer = input_pipeline.get_wmt_dataset(
         data_rng,
         split,

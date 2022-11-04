@@ -187,6 +187,7 @@ def load_fastmri_split(global_batch_size,
     h5_paths = sorted(glob.glob(file_pattern))[100:]
 
   is_train = split == 'train'
+  shuffle = is_train or split == 'eval_train'
   ds = tf.data.Dataset.from_tensor_slices(h5_paths)
   ds = ds.interleave(
       _create_generator,
@@ -196,7 +197,7 @@ def load_fastmri_split(global_batch_size,
   ds = ds.cache()
 
   def process_example(example_index, example):
-    if is_train:
+    if shuffle:
       process_rng = tf.cast(jax.random.fold_in(shuffle_rng, 0), tf.int64)
       process_rng = tf.random.experimental.stateless_fold_in(
           process_rng, example_index)
@@ -207,12 +208,13 @@ def load_fastmri_split(global_batch_size,
 
   ds = ds.enumerate().map(process_example, num_parallel_calls=16)
 
-  if is_train:
+  if shuffle:
     ds = ds.shuffle(
         16 * global_batch_size,
         seed=shuffle_rng[0],
         reshuffle_each_iteration=True)
-    ds = ds.repeat()
+    if is_train:
+      ds = ds.repeat()
 
   ds = ds.batch(global_batch_size, drop_remainder=is_train)
 

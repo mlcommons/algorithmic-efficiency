@@ -1,5 +1,6 @@
 import contextlib
 import math
+import random
 from typing import Dict, Optional, Tuple
 
 from absl import logging
@@ -122,13 +123,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
-      split = 'train-clean-100'
+      split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
       split = 'dev-clean+dev-other'
     elif split == 'test':
       split = 'test-clean'
 
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+    if split == 'eval_train':
+      indices = list(range(self.num_train_examples))
+      random.Random(data_rng[0]).shuffle(indices)
+      ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
+
     sampler = None
     if USE_PYTORCH_DDP:
       per_device_batch_size = global_batch_size // N_GPUS

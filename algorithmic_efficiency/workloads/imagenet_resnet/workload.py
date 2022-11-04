@@ -1,5 +1,6 @@
 """ImageNet workload parent class."""
 
+import math
 from typing import Dict, Iterator, Optional, Tuple
 
 from algorithmic_efficiency import spec
@@ -26,7 +27,12 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def num_eval_train_examples(self) -> int:
-    return 50000
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(
+        self.num_validation_examples / self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
 
   @property
   def num_validation_examples(self) -> int:

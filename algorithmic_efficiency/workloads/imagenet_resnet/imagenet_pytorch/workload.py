@@ -4,6 +4,7 @@ import contextlib
 import itertools
 import math
 import os
+import random
 from typing import Dict, Iterator, Optional, Tuple
 
 import numpy as np
@@ -60,7 +61,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       repeat_final_dataset: Optional[bool] = None,
       use_mixup: bool = False,
       use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
-    del data_rng
     del cache
     del repeat_final_dataset
     if split == 'test':
@@ -99,9 +99,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         os.path.join(data_dir, folder), transform=transform_config)
 
     if split == 'eval_train':
-      # We always use the same subset of the training data for evaluation.
-      dataset = torch.utils.data.Subset(dataset,
-                                        range(self.num_eval_train_examples))
+      indices = list(range(self.num_train_examples))
+      random.Random(data_rng[0]).shuffle(indices)
+      dataset = torch.utils.data.Subset(
+          dataset, indices[:self.num_eval_train_examples])
 
     sampler = None
     if USE_PYTORCH_DDP:
