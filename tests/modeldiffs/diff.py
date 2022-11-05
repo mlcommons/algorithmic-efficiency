@@ -16,7 +16,8 @@ def out_diff(jax_workload,
   jax_params, model_state = jax_workload.init_model_fn(jax.random.PRNGKey(0))
   pytorch_model, _ = pytorch_workload.init_model_fn([0])
   jax_params = jax_utils.unreplicate(jax_params).unfreeze()
-  model_state = jax_utils.unreplicate(model_state)
+  if model_state is not None:
+    model_state = jax_utils.unreplicate(model_state)
 
   # Map and copy params of pytorch_model to jax_model.
   t2j = Torch2Jax(torch_model=pytorch_model, jax_model=jax_params)
