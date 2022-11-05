@@ -1,14 +1,15 @@
 """Sentence Piece Tokenizer and ops for tokenizing / de-tokenizing a dataset.
 
-forked from
+Forked from:
 https://github.com/google/flax/blob/b60f7f45b90f8fc42a88b1639c9cc88a40b298d3/examples/lm1b/tokenizer.py
 """
 
-import argparse
 import os
 import tempfile
 from typing import Dict
 
+from absl import flags
+from absl import logging
 import sentencepiece as spm
 import tensorflow as tf
 import tensorflow_text as tftxt
@@ -19,27 +20,13 @@ exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
 
 Features = Dict[str, tf.Tensor]
-parser = argparse.ArgumentParser()
 
-
-def str2bool(v):
-  if isinstance(v, bool):
-    return v
-  if v.lower() in ('yes', 'true', 't', 'y', '1'):
-    return True
-  elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-    return False
-  else:
-    raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-parser.add_argument(
-    '--data_dir', help='path to training data directory', type=str)
-parser.add_argument(
-    '--train',
-    help='whether to train a new tokenizer or load existing one to test',
-    type=str2bool,
-    default=False)
+flags.DEFINE_string('data_dir', '', 'Path to training data directory.')
+flags.DEFINE_boolean(
+    'train',
+    False,
+    'Whether to train a new tokenizer or load existing one to test.')
+FLAGS = flags.FLAGS
 
 
 def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
@@ -56,7 +43,7 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
           trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
                         f'{speaker_folder}-{chapter_folder}.trans.txt')
           if not exists(trans_file):
-            print('path does not exist -> {}'.format(trans_file))
+            logging.info('path does not exist -> %s', trans_file)
             continue
           with open(trans_file, 'r', encoding='UTF-8') as f:
             for l in f:
@@ -66,7 +53,7 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
               if char_count > maxchars:
                 break
 
-              print(line)
+              logging.info(line)
               outfp.write(str.encode(line))
   return outfp
 
@@ -112,49 +99,46 @@ def train_tokenizer(data_dir: str,
   copy_rename_path = abs_model_path + '.rntmp'
   copy(model_fp.name + '.model', copy_rename_path, overwrite=True)
   rename(copy_rename_path, abs_model_path, overwrite=True)
-  print('copied %s to %s', model_fp.name + '.model', abs_model_path)
+  logging.info('Copied %s to %s', model_fp.name + '.model', abs_model_path)
 
   return abs_model_path
 
 
-def load_tokenizer(model_path: str = 'spm_model.vocab',
-                   add_bos: bool = False,
-                   add_eos: bool = True,
-                   reverse: bool = False):
+def load_tokenizer(model_filepath):
   """Load a tf-text SentencePiece tokenizer from given model filepath."""
-  if not exists(model_path):
-    print('tokenizer not found, please train one ....')
+  if not exists(model_filepath):
+    logging.info('Tokenizer not found.')
 
-  with gfile.GFile(model_path, 'rb') as model_fp:
+  with gfile.GFile(model_filepath, 'rb') as model_fp:
     sp_model = model_fp.read()
   sp_tokenizer = tftxt.SentencepieceTokenizer(
-      model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse)
+      model=sp_model, add_bos=False, add_eos=True, reverse=False)
   return sp_tokenizer
 
 
-def main():
-  args = parser.parse_args()
-  print(args)
+def run(train, data_dir):
+  logging.info('Data dir: %s', data_dir)
 
-  print(args.train)
-  print(args.data_dir)
-
-  if args.train:
-    print('train mode invoked')
-    print('passed in data dir = ', args.data_dir)
+  if train:
+    logging.info('Training...')
     splits = ['train-clean-100']
-    train_tokenizer(args.data_dir, splits)
+    train_tokenizer(data_dir, splits)
   else:
-    tokenizer = load_tokenizer()
+    tokenizer = load_tokenizer(os.path.join(data_dir, 'spm_model.vocab'))
     test_input = 'OPEN SOURCE ROCKS'
     tokens = tokenizer.tokenize(test_input)
     detokenized = tokenizer.detokenize(tokens).numpy().decode('utf-8')
 
-    print('original input = ', test_input)
-    print('output after after tokenizing and detokenizing = ', detokenized)
+    logging.info('Original input = %s', test_input)
+    logging.info('Output after after tokenizing and detokenizing = %s',
+                 detokenized)
 
     if detokenized == test_input:
-      print('tokenizer loaded and tested, works correctly!')
+      logging.info('Tokenizer working correctly!')
+
+
+def main():
+  run(FLAGS.train, FLAGS.data_dir)
 
 
 if __name__ == '__main__':

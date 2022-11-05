@@ -1,7 +1,9 @@
 """ImageNet workload implemented in Jax."""
+
 from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
+from flax import linen as nn
 import jax
 import jax.numpy as jnp
 
@@ -19,7 +21,8 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
 # Make sure we inherit from the ViT base workload first.
 class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
-  def initialized(self, key, model):
+  def initialized(self, key: spec.RandomState,
+                  model: nn.Module) -> spec.ModelInitState:
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': key}, jnp.ones(input_shape))
     model_state, params = variables.pop('params')
@@ -70,7 +73,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
     model_state = None
     return super()._eval_model_on_split(split,
                                         num_examples,

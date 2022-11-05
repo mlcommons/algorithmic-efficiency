@@ -11,7 +11,7 @@ import torch.distributed as dist
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, _ = pytorch_setup()
 CheckpointReturn = Tuple[spec.OptimizerState,
                          spec.ParameterContainer,
                          spec.ModelAuxiliaryState,
@@ -96,7 +96,7 @@ def maybe_restore_checkpoint(framework: str,
           checkpoint_state['optimizer_state'][key])
       checkpoint_state['optimizer_state'][key] = optimizer_state[key]
 
-    logging.info('Loaded checkpoint from %s', save_path)
+    logging.info(f'Loaded checkpoint from {save_path}')
   return (checkpoint_state['optimizer_state'],
           checkpoint_state['model_params'],
           checkpoint_state['model_state'],
@@ -151,7 +151,7 @@ def save_checkpoint(framework: str,
         preemption_count=preemption_count)
 
     if framework == 'jax':
-      save_path = os.path.join(checkpoint_dir, 'checkpoint_' + str(global_step))
+      save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
       flax_checkpoints.save_checkpoint(
           checkpoint_dir,
           target=checkpoint_state,
@@ -164,4 +164,4 @@ def save_checkpoint(framework: str,
   if USE_PYTORCH_DDP:
     dist.barrier()
   if RANK == 0:
-    logging.info('Saved checkpoint to %s', save_path)
+    logging.info(f'Saved checkpoint to {save_path}')

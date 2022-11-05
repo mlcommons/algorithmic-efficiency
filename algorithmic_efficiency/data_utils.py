@@ -1,3 +1,5 @@
+from typing import Dict, Iterable, Optional, Tuple
+
 import jax
 import numpy as np
 import torch
@@ -7,29 +9,74 @@ from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
+from algorithmic_efficiency import spec
 
-def shard_numpy_ds(xs):
+
+def shard_and_maybe_pad_np(
+    batch: Dict[str, spec.Tensor],
+    padding_value: int = 0,
+    global_batch_size: Optional[int] = None) -> Dict[str, spec.Tensor]:
   """Prepare tf data for JAX or PyTorch DDP.
 
-  Convert an input batch from tf Tensors to numpy arrays and reshape it to be
-  sharded across devices.
+  Convert an input batch from tf Tensors to numpy arrays, pad it with
+  padding_value if the batch size is not divisible by the number of devices,
+  create the corresponding mask, and reshape it to be sharded across devices.
   """
   local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
+  inputs = batch['inputs']
+  current_batch_size = inputs[0].shape[0] if isinstance(
+      inputs, tuple) else inputs.shape[0]
+  remainder_size = current_batch_size % local_device_count
+  if remainder_size != 0:
+    if global_batch_size is not None:
+      pad_size = global_batch_size - current_batch_size
+    else:
+      pad_size = local_device_count - remainder_size
+    targets = batch['targets']
+    targets_shape = tuple(
+        targets[0].shape if isinstance(inputs, tuple) else targets.shape[0])
+    # We need a 2d mask for WMT.
+    mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
+    # The weights will also be padded.
+    batch['weights'] = np.ones(mask_shape)
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     if not isinstance(x, np.ndarray):
       x = x._numpy()  # pylint: disable=protected-access
 
+    # Pad if remainder_size != 0 (should only be possible during evaluation).
+    if remainder_size != 0:
+      x = pad(x, pad_size, 'jax', padding_value=padding_value)
+
     # Reshape (global_batch_size, ...) to
     # (local_device_count, per_device_batch_size, ...).
     # Assumes that `global_batch_size % local_device_count == 0`.
-    return x.reshape((local_device_count, -1) + x.shape[1:])
+    return x.reshape((local_device_count, -1, *x.shape[1:]))
 
-  return jax.tree_map(_prepare, xs)
+  return jax.tree_map(_prepare, batch)
 
 
-def mixup_pytorch(batch, alpha=0.2):
+def pad(tensor: spec.Tensor,
+        pad_size: int,
+        framework: str,
+        padding_value: int = 0) -> spec.Tensor:
+  if len(tensor) > 1:
+    pad_size = (pad_size, *tensor.shape[1:])
+  if framework == 'pytorch':
+    padding = torch.full(
+        pad_size, padding_value, dtype=tensor.dtype, device=tensor.device)
+    padded_tensor = torch.cat((tensor, padding), dim=0)
+  elif framework == 'jax':
+    padding = np.full(pad_size, padding_value, dtype=tensor.dtype)
+    padded_tensor = np.concatenate((tensor, padding), axis=0)
+  else:
+    raise ValueError(f'Framework has to be pytorch or jax, but is {framework}.')
+  return padded_tensor
+
+
+def mixup_pytorch(batch: Tuple[spec.Tensor, spec.Tensor],
+                  alpha: float = 0.2) -> Tuple[spec.Tensor, spec.Tensor]:
   inputs, targets = batch
   # Transform to one-hot targets.
   targets = F.one_hot(targets, num_classes=1000)
@@ -43,11 +90,11 @@ def mixup_pytorch(batch, alpha=0.2):
 
 
 # github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
-def cycle(iterable,
-          keys=('inputs', 'targets'),
-          custom_sampler=False,
-          use_mixup=False,
-          mixup_alpha=0.2):
+def cycle(iterable: Iterable,
+          keys: Tuple[str, ...] = ('inputs', 'targets'),
+          custom_sampler: bool = False,
+          use_mixup: bool = False,
+          mixup_alpha: float = 0.2):
   iterator = iter(iterable)
   epoch = 0
   while True:

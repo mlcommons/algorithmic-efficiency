@@ -1,7 +1,7 @@
-"""Code for RandAugmentation.
+"""Jax implementation of RandAugmentation.
 
 Adapted from:
-https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugment.py
+https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugment.py.
 """
 
 import inspect
@@ -47,12 +47,12 @@ def blend(image1, image2, factor):
   # Do addition in float.
   temp = tf.cast(image1, tf.float32) + scaled
 
-  # Interpolate
+  # Interpolate.
   if 0.0 < factor < 1.0:
     # Interpolation means we always stay within 0 and 255.
     return tf.cast(temp, tf.uint8)
 
-  # Extrapolate
+  # Extrapolate.
   return tf.cast(tf.clip_by_value(temp, 0.0, 255.0), tf.uint8)
 
 
@@ -244,7 +244,7 @@ def autocontrast(image):
     result = tf.cond(hi > lo, lambda: scale_values(image), lambda: image)
     return result
 
-  # Assumes RGB for now.  Scales each channel independently
+  # Assumes RGB for now. Scales each channel independently
   # and then stacks the result.
   s1 = scale_channel(image[:, :, 0])
   s2 = scale_channel(image[:, :, 1])
@@ -458,11 +458,11 @@ def level_to_arg(cutout_const, translate_const):
       'ShearY':
           _shear_level_to_arg,
       'Cutout':
-          lambda level: (int((level / _MAX_LEVEL) * cutout_const),),  # pylint:disable=g-long-lambda
+          lambda level: (int((level / _MAX_LEVEL) * cutout_const),),
       'TranslateX':
           lambda level: _translate_level_to_arg(level, translate_const),
       'TranslateY':
-          lambda level: _translate_level_to_arg(level, translate_const),  # pylint:enable=g-long-lambda
+          lambda level: _translate_level_to_arg(level, translate_const),
   }
 
 
@@ -478,20 +478,14 @@ def _parse_policy_info(name,
 
   # Check to see if prob is passed into function. This is used for operations
   # where we alter bboxes independently.
-  # pylint:disable=deprecated-method
-  # pytype:disable=wrong-arg-types
   if 'prob' in inspect.getargspec(func)[0]:
     args = tuple([prob] + list(args))
-  # pytype:enable=wrong-arg-types
 
   # Add in replace arg if it is required for the function that is being called.
-  # pytype:disable=wrong-arg-types
   if 'replace' in inspect.getargspec(func)[0]:
     # Make sure replace is the final argument
     assert 'replace' == inspect.getargspec(func)[0][-1]
     args = tuple(list(args) + [replace_value])
-  # pytype:enable=wrong-arg-types
-  # pylint:enable=deprecated-method
 
   return (func, prob, args)
 
@@ -500,13 +494,14 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
   """Applies the RandAugment policy to `image`.
 
   RandAugment is from the paper https://arxiv.org/abs/1909.13719,
+
   Args:
     image: `Tensor` of shape [height, width, 3] representing an image.
     num_layers: Integer, the number of augmentation transformations to apply
       sequentially to an image. Represented as (N) in the paper. Usually best
       values will be in the range [1, 3].
     magnitude: Integer, shared magnitude across all augmentation operations.
-      Represented as (M) in the paper. Usually best values are in the range
+      Represented as (M) in the paper. Best values are usually in the range
       [5, 30].
     key: an rng key from tf.random.experimental.stateless_fold_in.
 
@@ -553,9 +548,7 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
                                            translate_const=100)
         image = tf.cond(
             tf.equal(i, op_to_select),
-            # pylint:disable=g-long-lambda
             lambda selected_func=func,
             selected_args=args: selected_func(image, *selected_args),
-            # pylint:enable=g-long-lambda
             lambda: image)
   return image

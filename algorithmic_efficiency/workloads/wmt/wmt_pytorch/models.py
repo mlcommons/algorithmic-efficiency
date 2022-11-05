@@ -129,7 +129,7 @@ class Transformer(nn.Module):
                ntoken: int = 32000,
                d_model: int = 1024,
                nhead: int = 16,
-               d_hid: int = 4096,
+               d_hid: int = 1024,
                nlayers: int = 6,
                dropout_rate: Optional[float] = 0.1,
                attention_dropout_rate: Optional[float] = 0.1,
@@ -214,7 +214,7 @@ class Encoder(nn.Module):
   def __init__(self,
                d_model: int = 1024,
                nhead: int = 16,
-               d_hid: int = 4096,
+               d_hid: int = 1024,
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
@@ -250,7 +250,7 @@ class Decoder(nn.Module):
   def __init__(self,
                d_model: int = 1024,
                nhead: int = 16,
-               d_hid: int = 4096,
+               d_hid: int = 1024,
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
@@ -376,7 +376,7 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
     d_model: the number of expected features in the input (default=1024).
     nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
-        (default=4096).
+        (default=1024).
     dropout_rate: the dropout_rate value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
        string ("relu" or "gelu") or a unary callable (default=F.relu).
@@ -402,7 +402,7 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
   def __init__(self,
                d_model: int = 1024,
                nhead: int = 16,
-               dim_feedforward: int = 4096,
+               dim_feedforward: int = 1024,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
@@ -439,7 +439,7 @@ class TransformerDecoder(nn.Module):
     d_model: the number of expected features in the input (default=1024).
     nhead: the number of heads in the multiheadattention models (default=16).
     d_hid: the dimension of the feedforward network model
-        (default=4096).
+        (default=1024).
     dropout_rate: the dropout_rate value (default=0.1).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
@@ -529,7 +529,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
     d_model: the number of expected features in the input (default=1024).
     nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
-        (default=4096).
+        (default=1024).
     dropout_rate: the dropout_rate value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
         string ("relu" or "gelu") or a unary callable (default=F.relu).
@@ -557,7 +557,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
   def __init__(self,
                d_model: int = 1024,
                nhead: int = 16,
-               dim_feedforward: int = 4096,
+               dim_feedforward: int = 1024,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,

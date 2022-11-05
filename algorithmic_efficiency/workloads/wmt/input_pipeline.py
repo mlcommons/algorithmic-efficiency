@@ -212,6 +212,7 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset,
 def preprocess_wmt_data(dataset: tf.data.Dataset,
                         data_rng,
                         train: bool,
+                        shuffle: bool,
                         shuffle_buffer_size: int = 1024,
                         max_length: int = 256,
                         global_batch_size: int = 128):
@@ -229,8 +230,10 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
   if max_length > 0:
     dataset = dataset.filter(length_filter(max_length))
 
-  if train:
+  if shuffle:
     dataset = dataset.shuffle(shuffle_buffer_size, seed=data_rng[0])
+
+  if train:
     dataset = dataset.repeat()
     dataset = pack_dataset(dataset, max_length)
     dataset = dataset.batch(global_batch_size, drop_remainder=train)
@@ -239,7 +242,7 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
         global_batch_size,
         padded_shapes={'inputs': max_length, 'targets': max_length},
         padding_values={'inputs': 0, 'targets': 0},
-        drop_remainder=train)
+        drop_remainder=False)
 
   dataset = dataset.prefetch(AUTOTUNE)
   return dataset
@@ -264,6 +267,7 @@ def get_wmt_dataset(data_rng,
   else:
     ds_name = 'wmt17_translate/de-en:1.0.0'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
+  dataset_builder.download_and_prepare()
   ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
 
   # Avoid creating too many threads when using PyTorch DDP.
@@ -283,10 +287,12 @@ def get_wmt_dataset(data_rng,
       ds, vocab_path=vocab_path, vocab_size=vocab_size, max_corpus_chars=10**7)
   ds = ds.map(tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
 
+  shuffle = split in ['train', 'eval_train']
   ds = preprocess_wmt_data(
       ds,
       data_rng,
       train=is_training,
+      shuffle=shuffle,
       global_batch_size=global_batch_size,
       max_length=256)
 
@@ -296,6 +302,10 @@ def get_wmt_dataset(data_rng,
   if repeat_final_dataset:
     ds = ds.repeat()
 
-  ds = map(data_utils.shard_numpy_ds, ds)
+  ds = map(
+      functools.partial(
+          data_utils.shard_and_maybe_pad_np,
+          global_batch_size=global_batch_size),
+      ds)
 
   return ds, sp_tokenizer

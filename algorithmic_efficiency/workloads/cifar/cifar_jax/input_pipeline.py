@@ -4,12 +4,13 @@ Forked from Flax example which can be found here:
 https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 and adjusted to work for CIFAR10.
 """
+import functools
 
 from flax import jax_utils
 import jax
 import tensorflow as tf
 
-from algorithmic_efficiency.data_utils import shard_numpy_ds
+from algorithmic_efficiency.data_utils import shard_and_maybe_pad_np
 
 IMAGE_SIZE = 32
 MEAN_RGB = [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
@@ -165,12 +166,7 @@ def create_split(split,
                  num_batches=None,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
                  area_range=(0.08, 1.0)):
-  """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
-  if split == 'eval_train':
-    split = 'train'
-  elif split == 'validation':
-    split = 'test'
-
+  """Creates a split from the CIFAR-10 dataset using TensorFlow Datasets."""
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 
   def preprocess_example(example):
@@ -205,7 +201,7 @@ def create_split(split,
   if cache:
     ds = ds.cache()
 
-  if train:
+  if train or split == 'eval_train':
     ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
@@ -253,7 +249,10 @@ def create_input_iter(split,
       num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
-  it = map(shard_numpy_ds, ds)
+  it = map(
+      functools.partial(
+          shard_and_maybe_pad_np, global_batch_size=global_batch_size),
+      ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)

@@ -1,13 +1,14 @@
 import math
+import os
 from typing import Dict, Optional, Tuple
 
-from absl import flags
 import jax
+import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
 
-FLAGS = flags.FLAGS
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
@@ -23,47 +24,52 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return eval_result['validation/loss'] < self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.124225
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SIGMOID_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     return 4_195_197_692
 
   @property
-  def num_eval_train_examples(self):
-    return 524_288 * 2
+  def num_eval_train_examples(self) -> int:
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(self.num_validation_examples /
+                                    self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     return 89_137_318 // 2
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     return 89_137_318 // 2
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 524_288
 
   @property
-  def train_mean(self):
+  def train_mean(self) -> float:
     return 0.0
 
   @property
-  def train_stddev(self):
+  def train_stddev(self) -> float:
     return 1.0
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 6 * 60 * 60
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 24 * 60
 
   def _build_input_queue(self,
@@ -102,6 +108,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
+    del global_step
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
@@ -112,13 +119,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           global_batch_size,
           num_batches,
           repeat_final_dataset=True)
-    total_loss_numerator = 0.
-    total_loss_denominator = 0.
+    loss = 0.0
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
-      batch_loss_numerator, batch_loss_denominator = self._eval_batch(
-          params, eval_batch)
-      total_loss_numerator += batch_loss_numerator
-      total_loss_denominator += batch_loss_denominator
-    mean_loss = total_loss_numerator / total_loss_denominator
+      loss += self._eval_batch(params, eval_batch)
+    if USE_PYTORCH_DDP:
+      dist.all_reduce(loss)
+    mean_loss = loss.item() / num_examples
     return {'loss': mean_loss}

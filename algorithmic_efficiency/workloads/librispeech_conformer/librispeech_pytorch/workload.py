@@ -1,5 +1,6 @@
 import contextlib
 import math
+import random
 from typing import Dict, Optional, Tuple
 
 from absl import logging
@@ -70,7 +71,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def init_tokenizer(self, tokenizer_vocab_path):
+  def init_tokenizer(self, tokenizer_vocab_path: str) -> None:
     logging.info('Initializing tokenizer.')
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
 
@@ -114,6 +115,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
     del data_rng
+    del num_batches
     del repeat_final_dataset
     train = False
 
@@ -121,13 +123,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
-      split = 'train-clean-100'
+      split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
       split = 'dev-clean+dev-other'
     elif split == 'test':
       split = 'test-clean'
 
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+    if split == 'eval_train':
+      indices = list(range(self.num_train_examples))
+      random.Random(data_rng[0]).shuffle(indices)
+      ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
+
     sampler = None
     if USE_PYTORCH_DDP:
       per_device_batch_size = global_batch_size // N_GPUS
@@ -185,7 +192,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     del label_smoothing
     return self._loss_fn(label_batch, logits_batch)['average_loss']
 
-  def greedy_decode(self, logits, logit_paddings):
+  def greedy_decode(
+      self, logits: spec.Tensor,
+      logit_paddings: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
     framewise_tokens = logits.max(dim=-1)[1]
     framewise_tokens = framewise_tokens * (1 - logit_paddings)
 
@@ -214,7 +223,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     padding = (fin_result == 0)
     return fin_result, padding
 
-  def sync_sd(self, params):
+  def sync_sd(self, params: spec.ParameterContainer) -> None:
     sd = params.state_dict()
     dist.barrier()
     for k in sd:
@@ -231,7 +240,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int):
+                           global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     data_rng, model_rng = prng.split(rng, 2)

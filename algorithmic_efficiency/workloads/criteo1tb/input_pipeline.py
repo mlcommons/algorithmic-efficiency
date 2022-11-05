@@ -5,6 +5,7 @@ validation and test split (taking the first half for test and second half for
 validation). See here for the NVIDIA example:
 https://github.com/NVIDIA/DeepLearningExamples/blob/4e764dcd78732ebfe105fc05ea3dc359a54f6d5e/PyTorch/Recommendation/DLRM/preproc/run_spark_cpu.sh#L119.
 """
+import functools
 import math
 import os
 from typing import Optional, Sequence
@@ -44,10 +45,7 @@ def get_criteo1tb_dataset(split: str,
         example, record_defaults, field_delim='\t', na_value='-1')
 
     targets = tf.expand_dims(fields[0], axis=1)  # (batch, 1)
-    features = {
-        'targets': targets,
-        'weights': tf.ones_like(targets),
-    }
+    features = {'targets': targets}
 
     num_labels = 1
     num_dense = len(int_defaults)
@@ -103,6 +101,10 @@ def get_criteo1tb_dataset(split: str,
   if repeat_final_dataset:
     ds = ds.repeat()
 
-  ds = map(data_utils.shard_numpy_ds, ds)
+  ds = map(
+      functools.partial(
+          data_utils.shard_and_maybe_pad_np,
+          global_batch_size=global_batch_size),
+      ds)
 
   return ds
