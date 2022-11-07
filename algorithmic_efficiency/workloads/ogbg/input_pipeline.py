@@ -14,8 +14,12 @@ AVG_NODES_PER_GRAPH = 26
 AVG_EDGES_PER_GRAPH = 56
 
 TFDS_SPLIT_NAME = {
-    'train': 'train', 'eval_train': 'train', 'validation': 'validation', 'test':'test'
+    'train': 'train',
+    'eval_train': 'train',
+    'validation': 'validation',
+    'test': 'test'
 }
+
 
 def _load_dataset(split, should_shuffle, data_rng, data_dir):
   """Loads a dataset split from TFDS."""
