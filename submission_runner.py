@@ -368,7 +368,7 @@ def train_once(
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
             dist.barrier()
-          
+
           train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
