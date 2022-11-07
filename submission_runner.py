@@ -276,13 +276,17 @@ def train_once(
          checkpoint_dir=log_dir)
     meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
-    logging.info(f'Saving meta data to {meta_file_name}',)
+    logging.info(f'Saving meta data to {meta_file_name}.')
     logger_utils.write_json(meta_file_name, meta_data)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
-    logging.info(f'Saving flags to {flag_file_name}')
+    logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
+
+  if USE_PYTORCH_DDP:
+    # Make sure all processes start training at the same time.
+    dist.barrier()
 
   global_start_time = time.time()
   logging.info('Starting training loop.')
@@ -321,9 +325,6 @@ def train_once(
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
-    if USE_PYTORCH_DDP:
-      # Make sure all processes run eval after the same step when using DDP.
-      dist.barrier()
     current_time = time.time()
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
@@ -368,8 +369,8 @@ def train_once(
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
-            logging.warning('error: GPU out of memory during eval during step '
-                            f'{global_step}, error : {str(e)}')
+            logging.warning('Error: GPU out of memory during eval during step '
+                            f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
@@ -475,7 +476,7 @@ def score_submission_on_workload(
       tuning_dir_name = None
       if log_dir is not None:
         tuning_dir_name = os.path.join(log_dir, f'trial_{hi + 1}')
-        logging.info(f'Creating tuning directory at {tuning_dir_name}')
+        logging.info(f'Creating tuning directory at {tuning_dir_name}.')
         logger_utils.makedir(tuning_dir_name)
 
         # If existing hyperparameter exists, use saved

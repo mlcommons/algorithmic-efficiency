@@ -85,7 +85,7 @@ def get_log_dir(experiment_dir,
 
   # Setup log dir
   logging_dir_path = os.path.join(experiment_path, run_dir)
-  logging.info(f'Creating experiment run directory at {logging_dir_path}')
+  logging.info(f'Creating experiment run directory at {logging_dir_path}.')
   makedir(logging_dir_path)
   return logging_dir_path
 
@@ -95,14 +95,14 @@ def write_hparams(hparams: spec.Hyperparameters,
   hparams_file_name = os.path.join(tuning_dir, 'hparams.json')
   if os.path.exists(hparams_file_name):
     # If hparams.json already exist, use the previously saved hyperparameters.
-    logging.info('Loading hparams from %s', hparams_file_name)
+    logging.info('Loading hparams from %s.', hparams_file_name)
     with open(hparams_file_name, 'r') as f:
       hparams_dict = json.load(f)
     hparams = collections.namedtuple('Hyperparameters',
                                      hparams_dict)(**hparams_dict)
     return hparams
   else:
-    logging.info('Saving hparams to %s', hparams_file_name)
+    logging.info('Saving hparams to %s.', hparams_file_name)
     if RANK == 0:
       with open(hparams_file_name, 'w') as f:
         f.write(json.dumps(hparams._asdict(), indent=2))

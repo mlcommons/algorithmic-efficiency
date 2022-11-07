@@ -96,7 +96,7 @@ def maybe_restore_checkpoint(framework: str,
           checkpoint_state['optimizer_state'][key])
       checkpoint_state['optimizer_state'][key] = optimizer_state[key]
 
-    logging.info(f'Loaded checkpoint from {save_path}')
+    logging.info(f'Loaded checkpoint from {save_path}.')
   return (checkpoint_state['optimizer_state'],
           checkpoint_state['model_params'],
           checkpoint_state['model_state'],
@@ -161,7 +161,4 @@ def save_checkpoint(framework: str,
       save_path = os.path.join(checkpoint_dir, 'checkpoint')
       torch.save(checkpoint_state, save_path)
 
-  if USE_PYTORCH_DDP:
-    dist.barrier()
-  if RANK == 0:
-    logging.info(f'Saved checkpoint to {save_path}')
+    logging.info(f'Saved checkpoint to {save_path}.')
