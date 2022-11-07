@@ -27,12 +27,12 @@ except ModuleNotFoundError:
 
 def makedir(dir_name: str, exist_ok: bool = True) -> None:
   if RANK == 0:
-    # only one worker should create the required dir
+    # Only one worker should create the required dir.
     os.makedirs(name=dir_name, exist_ok=exist_ok)
 
 
 def _get_last_run_dir_index(runs):
-  # Run names have format run_{index}
+  # Run names have format run_{index}.
   indices = [int(run.split('_')[1]) for run in runs]
   return max(indices)
 
@@ -46,7 +46,7 @@ def get_log_dir(experiment_dir,
   if RANK != 0:
     return
 
-  # Construct path to experiment workload directory
+  # Construct path to experiment workload directory.
   experiment_dir = os.path.expanduser(experiment_dir)
   workload_dir_name = f'{workload}_{framework}'
   if experiment_name is None:
@@ -56,7 +56,7 @@ def get_log_dir(experiment_dir,
                                    experiment_name,
                                    workload_dir_name)
 
-  # Get either a new run dir or previous run dir
+  # Get either a new run dir or previous run dir.
   if os.path.exists(experiment_path):
     runs = os.listdir(experiment_path)
 
@@ -83,7 +83,7 @@ def get_log_dir(experiment_dir,
   else:
     run_dir = 'run_0'
 
-  # Setup log dir
+  # Setup log dir.
   logging_dir_path = os.path.join(experiment_path, run_dir)
   logging.info(f'Creating experiment run directory at {logging_dir_path}.')
   makedir(logging_dir_path)
@@ -347,10 +347,6 @@ class PassThroughMetricLogger(object):
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  if RANK == 0:
-    metrics_logger = MetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
-  else:
-    metrics_logger = PassThroughMetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
+  metrics_logger = MetricLogger(
+      csv_path=csv_path, events_dir=train_dir, configs=configs)
   return metrics_logger

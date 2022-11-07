@@ -377,7 +377,6 @@ def train_once(
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
-    dist.barrier()
     score_tensor = torch.tensor(
         train_state['accumulated_submission_time'], device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
