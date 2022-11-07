@@ -43,13 +43,11 @@ class MnistWorkload(BaseMnistWorkload):
                      split: str,
                      data_dir: str,
                      global_batch_size: int):
-    # TODO: choose a random split and match with PyTorch.
-    if split == 'eval_train':
-      tfds_split = f'train[:{self.num_eval_train_examples}]'
+    shuffle = split in ['train', 'eval_train']
+    if shuffle:
+      tfds_split = f'train[:{self.num_train_examples}]'
     elif split == 'validation':
       tfds_split = f'train[{self.num_train_examples}:]'
-    else:
-      tfds_split = f'train[:{self.num_train_examples}]'
     ds = tfds.load(
         'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.map(lambda x: {
@@ -58,9 +56,10 @@ class MnistWorkload(BaseMnistWorkload):
     })
     ds = ds.cache()
     is_train = split == 'train'
-    if is_train:
+    if shuffle:
       ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
-      ds = ds.repeat()
+      if is_train:
+        ds = ds.repeat()
     ds = ds.batch(global_batch_size, drop_remainder=is_train)
     ds = map(
         functools.partial(

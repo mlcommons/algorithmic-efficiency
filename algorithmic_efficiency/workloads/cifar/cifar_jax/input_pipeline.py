@@ -166,12 +166,7 @@ def create_split(split,
                  num_batches=None,
                  aspect_ratio_range=(0.75, 4.0 / 3.0),
                  area_range=(0.08, 1.0)):
-  """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
-  if split == 'eval_train':
-    split = 'train'
-  elif split == 'validation':
-    split = 'test'
-
+  """Creates a split from the CIFAR-10 dataset using TensorFlow Datasets."""
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 
   def preprocess_example(example):
@@ -206,7 +201,7 @@ def create_split(split,
   if cache:
     ds = ds.cache()
 
-  if train:
+  if train or split == 'eval_train':
     ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
