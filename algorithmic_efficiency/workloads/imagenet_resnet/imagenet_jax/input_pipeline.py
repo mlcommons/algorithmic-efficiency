@@ -18,6 +18,9 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     randaugment
 
+TFDS_SPLIT_NAME = {'train': 'train', 
+                   'train_val': 'train',
+                   'validation': 'validation'}
 
 def _distorted_bounding_box_crop(image_bytes: spec.Tensor,
                                  rng: spec.RandomState,
@@ -211,7 +214,7 @@ def preprocess_for_eval(image_bytes: spec.Tensor,
   image = _decode_and_center_crop(image_bytes, image_size, resize_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = normalize_image(image, mean_rgb, stddev_rgb)
-  image = tf.image.convert_image_dtype(image, dtype=dtype)
+  image = tf.image.convert_image_dtype(image, dtype=dtype)t
   return image
 
 
@@ -297,7 +300,7 @@ def create_split(split,
     return {'inputs': image, 'targets': example['label']}
 
   ds = dataset_builder.as_dataset(
-      split=split, decoders={
+      split=TFDS_SPLIT_NAME[split], decoders={
           'image': tfds.decode.SkipDecoding(),
       })
   options = tf.data.Options()
