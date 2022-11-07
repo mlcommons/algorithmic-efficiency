@@ -364,6 +364,11 @@ def train_once(
                 global_step=global_step,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
+
+          if USE_PYTORCH_DDP:
+            # Make sure all processes finish evaluation at the same time.
+            dist.barrier()
+          
           train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
