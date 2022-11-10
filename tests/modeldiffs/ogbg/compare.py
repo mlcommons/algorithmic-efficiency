@@ -81,7 +81,7 @@ if __name__ == '__main__':
       senders=torch.LongTensor(list(range(5))),
       receivers=torch.LongTensor([(i + 1) % 5 for i in range(5)]))
 
-  jax_batch = {k: np.array(v) for k,v in pyt_batch.items()}
+  jax_batch = {k: np.array(v) for k, v in pyt_batch.items()}
 
   # Test outputs for identical weights and inputs.
   graph_j = jraph.GraphsTuple(**jax_batch)
