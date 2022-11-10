@@ -15,6 +15,13 @@ RANK = pytorch_setup()[1]
 AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 Features = Dict[str, tf.Tensor]
 
+TFDS_SPLIT_NAME = {
+    'train': 'train',
+    'eval_train': 'train',
+    'validation': 'validation',
+    'test': 'test'
+}
+
 
 def normalize_feature_names(ds_info, reverse_translation,
                             features: Features) -> Features:
@@ -268,7 +275,8 @@ def get_wmt_dataset(data_rng,
     ds_name = 'wmt17_translate/de-en:1.0.0'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
   dataset_builder.download_and_prepare()
-  ds = dataset_builder.as_dataset(split=split, shuffle_files=False)
+  ds = dataset_builder.as_dataset(
+      split=TFDS_SPLIT_NAME[split], shuffle_files=False)
 
   # Avoid creating too many threads when using PyTorch DDP.
   if RANK != 0:
