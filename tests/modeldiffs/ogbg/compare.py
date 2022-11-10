@@ -4,7 +4,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 import jax
-import jax.numpy as jnp
+import jraph
 import numpy as np
 import torch
 
@@ -14,7 +14,7 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
     OgbgWorkload as PytWorkload
 from tests.modeldiffs.diff import out_diff
-import jraph
+
 
 def key_transform(k):
   new_key = []
@@ -56,13 +56,13 @@ def sd_transform(sd):
       gn_id = int(gn_id.split('_')[1])
       seq_id = int(seq_id.split('_')[1])
       if 'LayerNorm' in k[3]:
-        new_key = (k[3].replace('0',f'{gn_id*3+seq_id}'),k[4])
+        new_key = (k[3].replace('0', f'{gn_id*3+seq_id}'), k[4])
       else:
-        new_key = (k[3].replace('0',f'{gn_id*3+seq_id+2}'),k[4])
-    elif len(k)==2 and k[0]=='Dense_2':
-      new_key = ('Dense_17',k[1]) 
+        new_key = (k[3].replace('0', f'{gn_id*3+seq_id+2}'), k[4])
+    elif len(k) == 2 and k[0] == 'Dense_2':
+      new_key = ('Dense_17', k[1])
     out[new_key] = sd[k]
-  
+
   return out
 
 
@@ -75,14 +75,13 @@ if __name__ == '__main__':
   pyt_batch = dict(
       n_node=torch.LongTensor([5]),
       n_edge=torch.LongTensor([5]),
-      nodes=torch.randn(5,9),
-      edges=torch.randn(5,3),
-      globals=torch.randn(1,128),
-      senders=torch.LongTensor([i for i in range(5)]),
-      receivers=torch.LongTensor([(i+1)%5 for i in range(5)])
-  )
+      nodes=torch.randn(5, 9),
+      edges=torch.randn(5, 3),
+      globals=torch.randn(1, 128),
+      senders=torch.LongTensor(list(range(5))),
+      receivers=torch.LongTensor([(i + 1) % 5 for i in range(5)]))
 
-  jax_batch = {i:np.array(pyt_batch[i]) for i in pyt_batch}
+  jax_batch = {k: np.array(v) for k,v in pyt_batch.items()}
 
   # Test outputs for identical weights and inputs.
   graph_j = jraph.GraphsTuple(**jax_batch)
