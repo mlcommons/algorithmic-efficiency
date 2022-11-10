@@ -114,24 +114,24 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                          global_batch_size: int,
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
-    del data_rng
     del num_batches
     del repeat_final_dataset
     train = False
-
+    eval_train = False
     if split == 'train':
       split = 'train-clean-100+train-clean-360+train-other-500'
       train = True
     elif split == 'eval_train':
       split = 'train-clean-100+train-clean-360+train-other-500'
+      eval_train = True
     elif split == 'validation':
       split = 'dev-clean+dev-other'
     elif split == 'test':
       split = 'test-clean'
 
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
-    if split == 'eval_train':
-      indices = list(range(self.num_train_examples))
+    if eval_train:
+      indices = list(range(len(ds)))
       random.Random(data_rng[0]).shuffle(indices)
       ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
 
@@ -190,7 +190,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
               label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
     del mask_batch
     del label_smoothing
-    return self._loss_fn(label_batch, logits_batch)['average_loss']
+    l = self._loss_fn(label_batch, logits_batch)
+    return l['average_loss'], None
 
   def greedy_decode(
       self, logits: spec.Tensor,
