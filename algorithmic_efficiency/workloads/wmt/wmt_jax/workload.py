@@ -10,7 +10,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import sacrebleu
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
