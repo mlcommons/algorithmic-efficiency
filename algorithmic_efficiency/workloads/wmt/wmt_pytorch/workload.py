@@ -58,7 +58,8 @@ class WmtWorkload(BaseWmtWorkload):
     mask = torch.where(targets > 0, 1, 0)
     if weights is not None:
       mask = torch.logical_and(weights, mask)
-    per_example_losses = torch.where(mask, per_example_losses, 0.)
+    per_example_losses = torch.where(
+        mask.to(torch.bool), per_example_losses, 0.)
     summed_loss = per_example_losses.sum()
     n_valid_samples = mask.sum()
     return summed_loss / n_valid_samples, per_example_losses
