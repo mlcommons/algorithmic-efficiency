@@ -97,7 +97,7 @@ class ResNet(nn.Module):
             x)
     x = norm(name='BatchNorm_init')(x)
     x = nn.relu(x)
-    x = nn.max_pool(x, (3, 3), strides=(2, 2), padding='SAME')
+    x = nn.max_pool(x, (3, 3), strides=(2, 2), padding=((1, 1), (1, 1)))
     for i, block_size in enumerate(self.stage_sizes):
       for j in range(block_size):
         strides = (2, 2) if i > 0 and j == 0 else (1, 1)
