@@ -50,12 +50,17 @@ def get_log_dir(experiment_dir,
                                    experiment_name,
                                    workload_dir_name)
 
-  if os.path.exists(experiment_path) and not resume_last_run:
-    resume = input(
-        'Found existing experiment dir with the same name: {}. Do you wish '
-        'to resume training from this dir? [y/N]:'.format(experiment_path))
-    if resume.lower() != 'y':
-      sys.exit()
+  if os.path.exists(experiment_path):
+    if resume_last_run:
+      logging.info(
+          f'Resuming from experiment directory {experiment_path} because '
+          '--resume_last_run was set.')
+    else:
+      resume = input(
+          'Found existing experiment dir with the same name: {}. Do you wish '
+          'to resume training from this dir? [y/N]:'.format(experiment_path))
+      if resume.lower() != 'y':
+        sys.exit()
 
   logging.info(f'Creating experiment directory at {experiment_path}')
   makedir(experiment_path)
