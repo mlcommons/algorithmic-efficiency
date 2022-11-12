@@ -324,10 +324,6 @@ class PassThroughMetricLogger(object):
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  if RANK == 0:
-    metrics_logger = MetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
-  else:
-    metrics_logger = PassThroughMetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
+  metrics_logger = MetricLogger(
+      csv_path=csv_path, events_dir=train_dir, configs=configs)
   return metrics_logger

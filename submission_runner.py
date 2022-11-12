@@ -326,6 +326,9 @@ def train_once(
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
+    if USE_PYTORCH_DDP:
+      # Make sure all processes run eval after the same step when using DDP.
+      dist.barrier()
     current_time = time.time()
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
@@ -365,6 +368,11 @@ def train_once(
                 global_step=global_step,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
+
+          if USE_PYTORCH_DDP:
+            # Make sure all processes finish evaluation at the same time.
+            dist.barrier()
+
           train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
@@ -378,7 +386,6 @@ def train_once(
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
-    dist.barrier()
     score_tensor = torch.tensor(
         train_state['accumulated_submission_time'], device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
