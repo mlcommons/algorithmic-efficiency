@@ -10,8 +10,9 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
-    --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
+    --experiment_dir=/home/znado/experiment_dir
 """
+import datetime
 import importlib
 import inspect
 import json
@@ -130,10 +131,10 @@ flags.DEFINE_boolean('resume_last_run',
                      None,
                      'Whether to resume the experiment from its last run.')
 flags.DEFINE_boolean(
-    'interactive',
+    'append_timestamp',
     False,
-    'If True, submission runner will prompt user to resume run.'
-    'Alternatively, set --interactive=False and use --resume_last_run.')
+    'If True, the current datetime will be appended to the experiment name. '
+    'Useful for guaranteeing a unique experiment dir for new runs.')
 flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
@@ -541,11 +542,13 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
+  experiment_name = FLAGS.experiment_name
+  if experiment_name and FLAGS.append_timestamp:
+    experiment_name += datetime.datetime.now().strftime('-%Y%m%d%H%M%S')
   logging_dir_path = logger_utils.get_log_dir(FLAGS.experiment_dir,
                                               FLAGS.workload,
                                               FLAGS.framework,
-                                              FLAGS.experiment_name,
-                                              FLAGS.interactive,
+                                              experiment_name,
                                               FLAGS.resume_last_run)
 
   score = score_submission_on_workload(workload,
@@ -575,4 +578,5 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('framework')
   flags.mark_flag_as_required('submission_path')
   flags.mark_flag_as_required('experiment_dir')
+  flags.mark_flag_as_required('experiment_name')
   app.run(main)

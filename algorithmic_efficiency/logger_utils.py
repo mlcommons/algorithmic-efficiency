@@ -5,6 +5,7 @@ import os.path
 import platform
 import re
 import subprocess
+import sys
 from typing import Any, Optional
 
 from absl import flags
@@ -27,26 +28,19 @@ except ModuleNotFoundError:
 
 def makedir(dir_name: str, exist_ok: bool = True) -> None:
   if RANK == 0:
-    # only one worker should create the required dir
+    # Only one worker should create the required dir.
     os.makedirs(name=dir_name, exist_ok=exist_ok)
-
-
-def _get_last_run_dir_index(runs):
-  # Run names have format run_{index}
-  indices = [int(run.split('_')[1]) for run in runs]
-  return max(indices)
 
 
 def get_log_dir(experiment_dir,
                 workload,
                 framework,
                 experiment_name,
-                interactive,
                 resume_last_run):
   if RANK != 0:
     return
 
-  # Construct path to experiment workload directory
+  # Construct path to experiment workload directory.
   experiment_dir = os.path.expanduser(experiment_dir)
   workload_dir_name = f'{workload}_{framework}'
   if experiment_name is None:
@@ -56,38 +50,21 @@ def get_log_dir(experiment_dir,
                                    experiment_name,
                                    workload_dir_name)
 
-  # Get either a new run dir or previous run dir
   if os.path.exists(experiment_path):
-    runs = os.listdir(experiment_path)
-
-    if len(runs) != 0:
-      if resume_last_run is True:
-        run_dir = f'run_{_get_last_run_dir_index(runs)}'
-      elif resume_last_run is False:
-        run_dir = f'run_{_get_last_run_dir_index(runs)+1}'
-      elif interactive:
-        while True:
-          run_dir = input('Found existing runs: {}.\n'
-                          'Enter run name to resume '
-                          'or press ENTER to start new run:'.format(runs))
-          if run_dir in runs or run_dir == '':
-            break
-          print('Please enter valid run. Try again.')
-        if run_dir == '':
-          run_dir = f'run_{_get_last_run_dir_index(runs) + 1}'
-      else:
-        raise ValueError(
-            'Please set --resume_last_run flag if --interactive=False.')
+    if resume_last_run:
+      logging.info(
+          f'Resuming from experiment directory {experiment_path} because '
+          '--resume_last_run was set.')
     else:
-      run_dir = 'run_0'
-  else:
-    run_dir = 'run_0'
+      resume = input(
+          'Found existing experiment dir with the same name: {}. Do you wish '
+          'to resume training from this dir? [y/N]:'.format(experiment_path))
+      if resume.lower() != 'y':
+        sys.exit()
 
-  # Setup log dir
-  logging_dir_path = os.path.join(experiment_path, run_dir)
-  logging.info(f'Creating experiment run directory at {logging_dir_path}.')
-  makedir(logging_dir_path)
-  return logging_dir_path
+  logging.info(f'Creating experiment directory at {experiment_path}.')
+  makedir(experiment_path)
+  return experiment_path
 
 
 def write_hparams(hparams: spec.Hyperparameters,
