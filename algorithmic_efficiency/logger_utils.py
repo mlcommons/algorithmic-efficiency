@@ -62,7 +62,7 @@ def get_log_dir(experiment_dir,
       if resume.lower() != 'y':
         sys.exit()
 
-  logging.info(f'Creating experiment directory at {experiment_path}')
+  logging.info(f'Creating experiment directory at {experiment_path}.')
   makedir(experiment_path)
   return experiment_path
 
@@ -72,14 +72,14 @@ def write_hparams(hparams: spec.Hyperparameters,
   hparams_file_name = os.path.join(tuning_dir, 'hparams.json')
   if os.path.exists(hparams_file_name):
     # If hparams.json already exist, use the previously saved hyperparameters.
-    logging.info('Loading hparams from %s', hparams_file_name)
+    logging.info('Loading hparams from %s.', hparams_file_name)
     with open(hparams_file_name, 'r') as f:
       hparams_dict = json.load(f)
     hparams = collections.namedtuple('Hyperparameters',
                                      hparams_dict)(**hparams_dict)
     return hparams
   else:
-    logging.info('Saving hparams to %s', hparams_file_name)
+    logging.info('Saving hparams to %s.', hparams_file_name)
     if RANK == 0:
       with open(hparams_file_name, 'w') as f:
         f.write(json.dumps(hparams._asdict(), indent=2))
@@ -324,10 +324,6 @@ class PassThroughMetricLogger(object):
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  if RANK == 0:
-    metrics_logger = MetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
-  else:
-    metrics_logger = PassThroughMetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
+  metrics_logger = MetricLogger(
+      csv_path=csv_path, events_dir=train_dir, configs=configs)
   return metrics_logger
