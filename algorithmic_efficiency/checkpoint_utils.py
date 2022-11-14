@@ -136,7 +136,8 @@ def save_checkpoint(framework: str,
     model_params = model_params.state_dict()
     optimizer_state_dict = {}
     for key in optimizer_state.keys():
-      optimizer_state_dict[key] = optimizer_state[key].state_dict()
+      if hasattr(optimizer_state[key], 'state_dict'):
+        optimizer_state_dict[key] = optimizer_state[key].state_dict()
     opt_state = optimizer_state_dict
 
   checkpoint_state = dict(
