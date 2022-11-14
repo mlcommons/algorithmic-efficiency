@@ -7,7 +7,7 @@ import torch.distributed as dist
 
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
-USE_PYTORCH_DDP, _, DEVICE, _ = pytorch_setup()
+USE_PYTORCH_DDP, _, DEVICE, N_GPUS = pytorch_setup()
 
 
 # Modified (added sync for PyTorch DDP) from
@@ -49,9 +49,24 @@ def corpus_bleu(hypotheses: Sequence[str],
   # Collect corpus stats
   stats = metric._extract_corpus_statistics(hypotheses, references)
 
+  # When using PyTorch DDP, get stats from all processes and concatenate them.
   if USE_PYTORCH_DDP:
-    stats = torch.as_tensor(stats, device=DEVICE)
-    dist.all_reduce(stats)
+    length = torch.tensor(len(stats), dtype=torch.int64, device=DEVICE)
+    all_lengths = [torch.empty_like(length) for _ in range(N_GPUS)]
+    dist.all_gather(all_lengths, length)
+    max_length = max(all_lengths)
+    stats = torch.as_tensor(stats, dtype=torch.int64, device=DEVICE)
+    # If the evaluation dataset cannot be split into N_GPUS equally sized
+    # subsets, we have to pad (with zeros) to be able to use all_gather.
+    if length < max_length:
+      padding_size = max_length - length
+      padding = stats.new_zeros((padding_size, *stats.shape[1:]))
+      stats = torch.cat((stats, padding))
+    all_stats = [torch.empty_like(stats) for _ in range(N_GPUS)]
+    dist.all_gather(all_stats, stats)
+    # Remove padding before concatenating the stats from all processes.
+    stats = torch.cat(
+        [all_stats[i][:length] for i, length in enumerate(all_lengths)])
     stats = stats.cpu().numpy().tolist()
 
   # Compute the actual system score
