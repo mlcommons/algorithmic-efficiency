@@ -48,6 +48,8 @@ class MnistWorkload(BaseMnistWorkload):
       tfds_split = f'train[:{self.num_train_examples}]'
     elif split == 'validation':
       tfds_split = f'train[{self.num_train_examples}:]'
+    else:
+      tfds_split = 'test'
     ds = tfds.load(
         'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.map(lambda x: {

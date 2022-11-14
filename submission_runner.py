@@ -10,8 +10,9 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
-    --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
+    --experiment_dir=/home/znado/experiment_dir
 """
+import datetime
 import importlib
 import inspect
 import json
@@ -130,10 +131,10 @@ flags.DEFINE_boolean('resume_last_run',
                      None,
                      'Whether to resume the experiment from its last run.')
 flags.DEFINE_boolean(
-    'interactive',
+    'append_timestamp',
     False,
-    'If True, submission runner will prompt user to resume run.'
-    'Alternatively, set --interactive=False and use --resume_last_run.')
+    'If True, the current datetime will be appended to the experiment name. '
+    'Useful for guaranteeing a unique experiment dir for new runs.')
 flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
@@ -276,13 +277,17 @@ def train_once(
          checkpoint_dir=log_dir)
     meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
-    logging.info(f'Saving meta data to {meta_file_name}',)
+    logging.info(f'Saving meta data to {meta_file_name}.')
     logger_utils.write_json(meta_file_name, meta_data)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
-    logging.info(f'Saving flags to {flag_file_name}')
+    logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
+
+  if USE_PYTORCH_DDP:
+    # Make sure all processes start training at the same time.
+    dist.barrier()
 
   global_start_time = time.time()
   logging.info('Starting training loop.')
@@ -363,20 +368,24 @@ def train_once(
                 global_step=global_step,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
+
+          if USE_PYTORCH_DDP:
+            # Make sure all processes finish evaluation at the same time.
+            dist.barrier()
+
           train_state['last_eval_time'] = time.time()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
-            logging.warning('error: GPU out of memory during eval during step '
-                            f'{global_step}, error : {str(e)}')
+            logging.warning('Error: GPU out of memory during eval during step '
+                            f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
   if USE_PYTORCH_DDP:
     # Sync final score (accumulated training time); choose highest, i.e. worst.
-    dist.barrier()
     score_tensor = torch.tensor(
         train_state['accumulated_submission_time'], device=DEVICE)
     dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
@@ -475,7 +484,7 @@ def score_submission_on_workload(
       tuning_dir_name = None
       if log_dir is not None:
         tuning_dir_name = os.path.join(log_dir, f'trial_{hi + 1}')
-        logging.info(f'Creating tuning directory at {tuning_dir_name}')
+        logging.info(f'Creating tuning directory at {tuning_dir_name}.')
         logger_utils.makedir(tuning_dir_name)
 
         # If existing hyperparameter exists, use saved
@@ -540,11 +549,13 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'])
 
+  experiment_name = FLAGS.experiment_name
+  if experiment_name and FLAGS.append_timestamp:
+    experiment_name += datetime.datetime.now().strftime('-%Y%m%d%H%M%S')
   logging_dir_path = logger_utils.get_log_dir(FLAGS.experiment_dir,
                                               FLAGS.workload,
                                               FLAGS.framework,
-                                              FLAGS.experiment_name,
-                                              FLAGS.interactive,
+                                              experiment_name,
                                               FLAGS.resume_last_run)
 
   score = score_submission_on_workload(workload,
@@ -574,4 +585,5 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('framework')
   flags.mark_flag_as_required('submission_path')
   flags.mark_flag_as_required('experiment_dir')
+  flags.mark_flag_as_required('experiment_name')
   app.run(main)
