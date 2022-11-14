@@ -58,7 +58,8 @@ class WmtWorkload(BaseWmtWorkload):
     mask = torch.where(targets > 0, 1, 0)
     if weights is not None:
       mask = torch.logical_and(weights, mask)
-    per_example_losses = torch.where(mask, per_example_losses, 0.)
+    per_example_losses = torch.where(
+        mask.to(torch.bool), per_example_losses, 0.)
     summed_loss = per_example_losses.sum()
     n_valid_samples = mask.sum()
     return summed_loss / n_valid_samples, per_example_losses
@@ -149,14 +150,7 @@ class WmtWorkload(BaseWmtWorkload):
         predictions.append(self._decode_tokens(predicted[idx]))
 
     # Calculate BLEU score for translated eval corpus against reference.
-    bleu_matches = bleu.bleu_partial(references, predictions)
-    if USE_PYTORCH_DDP:
-      # Sync matches across devices.
-      for idx, array in enumerate(bleu_matches):
-        tensor = torch.as_tensor(array, device=DEVICE)
-        dist.all_reduce(tensor)
-        bleu_matches[idx] = tensor.cpu().numpy()
-    bleu_score = bleu.complete_bleu(*bleu_matches)
+    bleu_score = bleu.corpus_bleu(predictions, [references]).score
     return bleu_score
 
   def init_model_fn(
