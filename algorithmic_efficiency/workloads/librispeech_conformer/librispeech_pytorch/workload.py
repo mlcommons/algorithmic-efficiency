@@ -164,35 +164,52 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def _loss_fn(
       self,
-      label_batch: Tuple[spec.Tensor, spec.Tensor],
-      logits_batch: Tuple[spec.Tensor, spec.Tensor]
-  ) -> spec.Tensor:  # differentiable
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+  ):  # differentiable
+    """Return detailed loss-dict."""
     targets, target_paddings = label_batch
     logits, logit_paddings = logits_batch
     logprobs = torch.log_softmax(logits, dim=-1)
     input_lengths = torch.einsum('bh->b', 1 - logit_paddings).long()
     target_lengths = torch.einsum('bh->b', 1 - target_paddings).long()
-    per_seq_loss = self.ctc_loss(
+    per_example_losses = self.ctc_loss(
         logprobs.permute(1, 0, 2),
         targets.long(),
         input_lengths,
-        target_lengths).sum()
-    l = target_lengths.sum().to(per_seq_loss)
+        target_lengths)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      per_example_losses *= mask_batch
+      mask_batch = torch.logical_and(mask_batch, target_lengths)
+    else:
+      mask_batch = target_lengths
+    n_valid_examples = mask_batch.sum().to(per_example_losses)
+    summed_loss = per_example_losses.sum()
     if USE_PYTORCH_DDP:
-      dist_nn.all_reduce(per_seq_loss)
-      dist_nn.all_reduce(l)
-    average_loss = per_seq_loss / max(l, 1)
-    return {'loss': per_seq_loss, 'lengths': l, 'average_loss': average_loss}
+      dist_nn.all_reduce(summed_loss)
+      dist_nn.all_reduce(n_valid_examples)
+    n_valid_examples = max(n_valid_examples, 1)
+    return {
+        'loss': per_example_losses,
+        'lengths': mask_batch.sum(),
+        'average_loss': summed_loss / n_valid_examples
+    }
 
-  def loss_fn(self,
-              label_batch: Tuple[spec.Tensor, spec.Tensor],
-              logits_batch: Tuple[spec.Tensor, spec.Tensor],
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    del mask_batch
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
-    l = self._loss_fn(label_batch, logits_batch)
-    return l['average_loss'], None
+    l = self._loss_fn(label_batch, logits_batch, mask_batch)
+    return l['average_loss'], l['loss']
 
   def greedy_decode(
       self, logits: spec.Tensor,
@@ -274,15 +291,17 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       decoded, decoded_paddings = self.greedy_decode(logits, logits_padding)
       targets, target_paddings = batch['targets']
       word_errors, num_words = metrics.compute_wer(
-          decoded=decoded.detach().cpu().numpy(),
-          decoded_paddings=decoded_paddings.detach().cpu().numpy(),
-          targets=targets.detach().cpu().numpy(),
-          target_paddings=target_paddings.detach().cpu().numpy(),
+          decoded=decoded.cpu().numpy(),
+          decoded_paddings=decoded_paddings.cpu().numpy(),
+          targets=targets.cpu().numpy(),
+          target_paddings=target_paddings.cpu().numpy(),
           tokenizer=self.tokenizer)
-      loss = self._loss_fn((targets, target_paddings), (logits, logits_padding))
+      l = self._loss_fn((targets, target_paddings), (logits, logits_padding))
+      summed_loss = l['loss'].sum()
+      lengths = l['lengths']
       batch_metrics = {
-          'loss': loss['loss'],
-          'lengths': loss['lengths'],
+          'loss': summed_loss,
+          'lengths': lengths,
           'word_errors': word_errors,
           'num_words': num_words,
       }

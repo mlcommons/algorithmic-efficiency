@@ -93,23 +93,33 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           mutable=False)
       return (logits, logit_paddings), model_state
 
-  def loss_fn(self,
-              label_batch: Tuple[spec.Tensor, spec.Tensor],
-              logits_batch: Tuple[spec.Tensor, spec.Tensor],
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    del mask_batch
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
     logits, logit_paddings = logits_batch
     targets, target_paddings = label_batch
     logprobs = nn.log_softmax(logits)
-    per_seq_loss = self.ctc_loss(logprobs,
-                                 logit_paddings,
-                                 targets,
-                                 target_paddings)
-    normalizer = jnp.sum(1 - target_paddings)
-    normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
-    return normalized_loss
+    per_example_losses = self.ctc_loss(logprobs,
+                                       logit_paddings,
+                                       targets,
+                                       target_paddings)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      per_example_losses *= mask_batch
+      mask_batch = jnp.logical_and(mask_batch, 1 - target_paddings)
+    else:
+      mask_batch = 1 - target_paddings
+    n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def ctc_loss(self,
                logits: spec.Tensor,
@@ -214,7 +224,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
+    normalized_loss, _ = self.loss_fn(
+        batch['targets'], (logits, logit_paddings))
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
