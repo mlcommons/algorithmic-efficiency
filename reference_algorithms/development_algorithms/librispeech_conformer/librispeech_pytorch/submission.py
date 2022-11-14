@@ -76,7 +76,7 @@ def update_params(workload: spec.Workload,
 
   for g in optimizer.param_groups:
     g['lr'] = get_learning_rate(global_step, hyperparameters)
-  if hasattr(hyperparameters, 'grad_clib'):
+  if hasattr(hyperparameters, 'grad_clip'):
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=hyperparameters.grad_clip)
   optimizer.step()
