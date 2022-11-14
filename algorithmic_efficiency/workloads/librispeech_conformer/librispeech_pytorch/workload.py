@@ -7,6 +7,7 @@ from absl import logging
 import jax
 import torch
 import torch.distributed as dist
+import torch.distributed.nn as dist_nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import data_utils
@@ -178,8 +179,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         target_lengths).sum()
     l = target_lengths.sum().to(per_seq_loss)
     if USE_PYTORCH_DDP:
-      dist.all_reduce(per_seq_loss)
-      dist.all_reduce(l)
+      dist_nn.all_reduce(per_seq_loss)
+      dist_nn.all_reduce(l)
     average_loss = per_seq_loss / max(l, 1)
     return {'loss': per_seq_loss, 'lengths': l, 'average_loss': average_loss}
 
