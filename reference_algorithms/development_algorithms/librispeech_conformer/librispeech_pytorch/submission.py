@@ -62,6 +62,7 @@ def update_params(workload: spec.Workload,
   optimizer = optimizer_state['optimizer']
   optimizer.zero_grad()
   current_model = current_param_container
+
   (logits, logits_padding), _ = workload.model_fn(
       current_model,
       batch,
@@ -70,12 +71,14 @@ def update_params(workload: spec.Workload,
       rng,
       update_batch_norm=True)
 
-  train_ctc_loss = workload.loss_fn(batch['targets'], (logits, logits_padding))
-  train_ctc_loss.backward()
-  grad_clip = hyperparameters.grad_clip
+  loss, _ = workload.loss_fn(batch['targets'], (logits, logits_padding))
+  loss.backward()
+
   for g in optimizer.param_groups:
     g['lr'] = get_learning_rate(global_step, hyperparameters)
-  torch.nn.utils.clip_grad_norm_(current_model.parameters(), max_norm=grad_clip)
+  if hasattr(hyperparameters, 'grad_clip'):
+    torch.nn.utils.clip_grad_norm_(
+        current_model.parameters(), max_norm=hyperparameters.grad_clip)
   optimizer.step()
   return optimizer_state, current_param_container, None
 
