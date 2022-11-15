@@ -77,6 +77,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if not is_train and use_mixup:
       raise ValueError('Mixup can only be used for the training split.')
 
+    normalize = transforms.Normalize(mean=[i / 255. for i in self.train_mean],
+                                     std=[i / 255. for i in self.train_stddev])
+
     if is_train:
       transform_config = [
           transforms.RandomResizedCrop(
@@ -84,6 +87,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
           transforms.RandomHorizontalFlip(),
+          transforms.ToTensor(),
+          normalize
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
@@ -92,6 +97,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),
           transforms.CenterCrop(self.center_crop_size),
+          transforms.ToTensor(),
+          normalize
       ])
 
     folder = 'train' if 'train' in split else 'val'
@@ -124,7 +131,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         sampler=sampler,
         num_workers=4,
         pin_memory=True,
-        collate_fn=data_utils.fast_collate,
+        collate_fn=None,
         drop_last=is_train,
         persistent_workers=True)
     dataloader = data_utils.PrefetchedWrapper(dataloader,
@@ -154,7 +161,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)

@@ -247,8 +247,8 @@ class PrefetchedWrapper:
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
-    self.data_mean = torch.tensor(mean, device=device).view(1, 3, 1, 1)
-    self.data_std = torch.tensor(std, device=device).view(1, 3, 1, 1)
+    # self.data_mean = torch.tensor(mean, device=device).view(1, 3, 1, 1)
+    # self.data_std = torch.tensor(std, device=device).view(1, 3, 1, 1)
 
   def __len__(self):
     return len(self.dataloader)
@@ -268,7 +268,7 @@ class PrefetchedWrapper:
       with torch.cuda.stream(stream):
         next_inputs = next_inputs.to(
             self.device, dtype=torch.float,
-            non_blocking=True).sub(self.data_mean).div(self.data_std)
+            non_blocking=True)
         next_targets = next_targets.to(self.device, non_blocking=True)
 
       if not first:
