@@ -135,9 +135,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         drop_last=is_train,
         persistent_workers=True)
     dataloader = data_utils.PrefetchedWrapper(dataloader,
-                                              DEVICE,
-                                              self.train_mean,
-                                              self.train_stddev)
+                                              DEVICE)
     dataloader = data_utils.cycle(
         dataloader,
         custom_sampler=USE_PYTORCH_DDP,
@@ -161,7 +159,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)

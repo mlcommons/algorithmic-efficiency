@@ -243,12 +243,10 @@ def fast_collate(batch, memory_format=torch.contiguous_format):
 # ConvNets/image_classification/dataloaders.py
 class PrefetchedWrapper:
 
-  def __init__(self, dataloader, device, mean, std, start_epoch=0):
+  def __init__(self, dataloader, device, start_epoch=0):
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
-    # self.data_mean = torch.tensor(mean, device=device).view(1, 3, 1, 1)
-    # self.data_std = torch.tensor(std, device=device).view(1, 3, 1, 1)
 
   def __len__(self):
     return len(self.dataloader)
