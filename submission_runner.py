@@ -551,7 +551,7 @@ def main(_):
 
   experiment_name = FLAGS.experiment_name
   if experiment_name and FLAGS.append_timestamp:
-    experiment_name += datetime.datetime.now().strftime('-%Y%m%d%H%M%S')
+    experiment_name += datetime.datetime.now().strftime('-%Y-%m-%d-%H-%M-%S')
   logging_dir_path = logger_utils.get_log_dir(FLAGS.experiment_dir,
                                               FLAGS.workload,
                                               FLAGS.framework,
