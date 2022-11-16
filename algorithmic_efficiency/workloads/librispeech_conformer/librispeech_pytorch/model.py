@@ -505,7 +505,7 @@ class BatchNorm(nn.Module):
       count = mask.sum()
       masked_inp = inputs.masked_fill(mask == 0, 0)
       mean = (masked_inp).sum(dim=(0, 1)) / count
-      var = (torch.square(masked_inp - mean)).sum(dim=(0, 1)) / count
+      var = (torch.square(masked_inp - mean)*mask).sum(dim=(0, 1)) / count
 
       self.running_mean = self.momentum * self.running_mean + (
           1 - self.momentum) * mean.detach()
