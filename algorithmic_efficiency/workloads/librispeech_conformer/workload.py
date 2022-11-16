@@ -2,7 +2,6 @@ import math
 from typing import Optional
 
 from absl import flags
-import jax
 import torch
 
 from algorithmic_efficiency import data_utils
