@@ -2,11 +2,13 @@ import math
 from typing import Optional
 
 from absl import flags
+import jax
+import torch 
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.librispeech_conformer import \
-    input_pipeline
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import \
+    LibriSpeechDataset
 
 FLAGS = flags.FLAGS
 
@@ -100,17 +102,34 @@ class BaseLibrispeechWorkload(spec.Workload):
     elif split == 'test':
       split = 'test-clean'
 
-    ds = input_pipeline.get_librispeech_dataset(split,
-                                                data_dir,
-                                                data_rng,
-                                                train,
-                                                global_batch_size,
-                                                num_batches)
+    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+    ds_iter_batch_size = global_batch_size
+    sampler = None
 
-    for batch in iter(ds):
-      batch = data_utils.shard_and_maybe_pad_np(
-          batch, padding_value=1, global_batch_size=global_batch_size)
-      yield batch
+    dataloader = torch.utils.data.DataLoader(
+      ds,
+      batch_size=ds_iter_batch_size,
+      shuffle=train,
+      sampler=sampler,
+      num_workers=4,
+      prefetch_factor=10, 
+      pin_memory=False,
+      drop_last=train,)
+
+    dataloader = data_utils.cycle(
+      dataloader, custom_sampler=False, use_mixup=False)
+    
+    for batch in iter(dataloader):
+      inputs, input_paddings = batch['inputs']
+      targets, target_paddings = batch['targets']
+
+      numpy_batch =  {
+        'inputs': (inputs.numpy(), input_paddings.numpy()),
+        'targets': (targets.numpy(), target_paddings.numpy()),
+      }
+
+      padded_batch = data_utils.shard_and_maybe_pad_np(numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+      yield padded_batch
 
   @property
   def step_hint(self) -> int:
