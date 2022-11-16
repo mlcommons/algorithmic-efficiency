@@ -3,7 +3,7 @@ from typing import Optional
 
 from absl import flags
 import jax
-import torch 
+import torch
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
@@ -107,28 +107,30 @@ class BaseLibrispeechWorkload(spec.Workload):
     sampler = None
 
     dataloader = torch.utils.data.DataLoader(
-      ds,
-      batch_size=ds_iter_batch_size,
-      shuffle=train,
-      sampler=sampler,
-      num_workers=4,
-      prefetch_factor=10, 
-      pin_memory=False,
-      drop_last=train,)
+        ds,
+        batch_size=ds_iter_batch_size,
+        shuffle=train,
+        sampler=sampler,
+        num_workers=4,
+        prefetch_factor=10,
+        pin_memory=False,
+        drop_last=train,
+    )
 
     dataloader = data_utils.cycle(
-      dataloader, custom_sampler=False, use_mixup=False)
-    
+        dataloader, custom_sampler=False, use_mixup=False)
+
     for batch in iter(dataloader):
       inputs, input_paddings = batch['inputs']
       targets, target_paddings = batch['targets']
 
-      numpy_batch =  {
-        'inputs': (inputs.numpy(), input_paddings.numpy()),
-        'targets': (targets.numpy(), target_paddings.numpy()),
+      numpy_batch = {
+          'inputs': (inputs.numpy(), input_paddings.numpy()),
+          'targets': (targets.numpy(), target_paddings.numpy()),
       }
 
-      padded_batch = data_utils.shard_and_maybe_pad_np(numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+      padded_batch = data_utils.shard_and_maybe_pad_np(
+          numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
       yield padded_batch
 
   @property
