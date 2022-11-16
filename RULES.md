@@ -440,7 +440,7 @@ An example of a performance profiles plot is shown below, where we plot $\rho_{\
 
 To get a scalar score that is usable for ranking submissions, we will integrate the performance profiles $\rho_{\bar{s}}(\tau)$ of all submissions to get their benchmark score $B_{\bar{s}}$, with
 
-$$B_{\bar{s}} = \frac{1}{r_{\text{max}}} \int_{1}^{r_{\text{max}}} \rho_{\bar{s}}(\tau) \,d\tau \in [0, 1].$$
+$$B_{\bar{s}} = \frac{1}{r_{\text{max}}-1} \int_{1}^{r_{\text{max}}} \rho_{\bar{s}}(\tau) \,d\tau \in [0, 1].$$
 
 The upper limit of the integral is given by the largest finite $r_{s,w}$ in the benchmark, i.e. $r_{\text{max}} = \max_{s \in \mathcal{S}} \left(\max_{w \in \mathcal{W}} \left( \lbrace r_{s,w} : r_{s,w} < \infty \rbrace \right) \right)$. The integral is normalized by the total integration area, with higher benchmark scores being better.
 
