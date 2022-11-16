@@ -158,6 +158,7 @@ def init_optimizer_state(
 
 - Allowed to create state for the optimizer
 - Does not involve the initialization for the model parameters, which in the Training Algorithm Track, is considered a fixed function, see [Model initialization](#model-initialization).
+- The optimizer state is a dictionary (`Dict[str, Any]`). For a PyTorch submission, any value in this dictionary which is a class instance with internal state has to have a `state_dict()` method implemented to be stored correctly at the training checkpoints.
 
 ###### Variable update function
 
