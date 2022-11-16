@@ -136,7 +136,13 @@ def save_checkpoint(framework: str,
     model_params = model_params.state_dict()
     optimizer_state_dict = {}
     for key in optimizer_state.keys():
-      optimizer_state_dict[key] = optimizer_state[key].state_dict()
+      if hasattr(optimizer_state[key], 'state_dict'):
+        optimizer_state_dict[key] = optimizer_state[key].state_dict()
+      else:
+        logging.warning(
+            f'The optimizer state for key {key} is not saved, because '
+            f'{type(optimizer_state[key])} has not implemented a state_dict() '
+            'method.')
     opt_state = optimizer_state_dict
 
   checkpoint_state = dict(

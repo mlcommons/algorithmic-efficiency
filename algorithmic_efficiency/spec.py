@@ -61,7 +61,7 @@ ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
-OptimizerState = Any
+OptimizerState = Dict[str, Any]
 Hyperparameters = Any
 Timing = int
 Steps = int
