@@ -118,17 +118,20 @@ class CifarWorkload(BaseCifarWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
     return model, None
 
-  def _update_batch_norm(self, model, update_batch_norm):
+  def _update_batch_norm(self,
+                         model: spec.ParameterContainer,
+                         update_batch_norm: bool) -> None:
+    bn_layers = (nn.BatchNorm1d,
+                 nn.BatchNorm2d,
+                 nn.BatchNorm3d,
+                 nn.SyncBatchNorm)
     for m in model.modules():
-      if isinstance(
-          m,
-          (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)):
+      if isinstance(m, bn_layers):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)

@@ -74,12 +74,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
-    if not is_train and use_mixup:
-      raise ValueError('Mixup can only be used for the training split.')
-
     normalize = transforms.Normalize(mean=[i / 255. for i in self.train_mean],
                                      std=[i / 255. for i in self.train_stddev])
-
     if is_train:
       transform_config = [
           transforms.RandomResizedCrop(
@@ -88,10 +84,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               ratio=self.aspect_ratio_range),
           transforms.RandomHorizontalFlip(),
           transforms.ToTensor(),
-          normalize
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
+      transform_config.append(normalize)
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
@@ -131,11 +127,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         sampler=sampler,
         num_workers=4,
         pin_memory=True,
-        collate_fn=None,
         drop_last=is_train,
         persistent_workers=True)
-    dataloader = data_utils.PrefetchedWrapper(dataloader,
-                                              DEVICE)
+    dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
         dataloader,
         custom_sampler=USE_PYTORCH_DDP,
@@ -143,6 +137,16 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         mixup_alpha=0.2)
 
     return dataloader
+
+  def sync_batch_stats(
+      self,  model: spec.ParameterContainer,) -> None:
+    dist.barrier()
+    sd = model.state_dict()
+    for k in sd:
+      dist.all_reduce(sd[k], op=dist.ReduceOp.SUM)
+      # Assumes N_GPUS is the world size.
+      sd[k] = sd[k] / N_GPUS
+    model.load_state_dict(sd)
 
   def init_model_fn(
       self,
@@ -229,7 +233,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
-    # mask_batch is assumed to be shape [batch].
+    # `mask_batch` is assumed to be shape [batch].
     if mask_batch is not None:
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
@@ -263,6 +267,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
+    # # Sync batch statistics before evaluation.
+    # self.sync_batch_stats(params)
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       is_test = split == 'test'
