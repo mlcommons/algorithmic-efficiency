@@ -105,6 +105,7 @@ class Workload(metaclass=abc.ABCMeta):
     self._param_shapes: Optional[ParameterShapeTree] = None
     self._param_types: Optional[ParameterTypeTree] = None
     self._eval_iters: Dict[str, Iterator] = {}
+    self.metrics_logger = None
 
   @abc.abstractmethod
   def has_reached_goal(self, eval_result: float) -> bool:

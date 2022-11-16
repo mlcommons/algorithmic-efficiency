@@ -163,12 +163,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)
     return dataloader
 
-    def _loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-    ):  # differentiable
+  def _loss_fn(
+    self,
+    label_batch: spec.Tensor,
+    logits_batch: spec.Tensor,
+    mask_batch: Optional[spec.Tensor] = None,
+  ):  # differentiable
     """Return detailed loss-dict."""
     targets, target_paddings = label_batch
     logits, logit_paddings = logits_batch
