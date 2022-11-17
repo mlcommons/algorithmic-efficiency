@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 from pydub import AudioSegment
 import tensorflow as tf
-import tensorflow_text as tftxt
 
 from datasets import librispeech_tokenizer
 

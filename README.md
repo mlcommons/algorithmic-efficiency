@@ -205,6 +205,7 @@ To print out all offending pylint issues, run the following:
 ```bash
 pylint algorithmic_efficiency
 pylint baselines
+pylint datasets
 pylint reference_algorithms
 pylint submission_runner.py
 pylint tests
