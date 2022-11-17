@@ -125,10 +125,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=8,
+        num_workers=4,
         pin_memory=True,
         drop_last=is_train,
-        persistent_workers=True)
+        # persistent_workers=True
+    )
     dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
         dataloader,
