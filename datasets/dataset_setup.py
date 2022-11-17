@@ -60,16 +60,12 @@ open at once using `ulimit -n 8192`.
 
 Example command:
 
-<<<<<<< HEAD
-python datasets/dataset_setup.py --criteo --data_dir=/home/znado
-=======
-python3 datasets/dataset_setup.py --data_dir=/data --temp_dir=/tmp/mlcommons_data
->>>>>>> main
 python3 datasets/dataset_setup.py --data_dir=~/data --all=False \
---imagenet=True \
---imagenet_train_url=<train_url> \
---imagenet_val_url=<val_url>\
---framework=jax
+  --temp_dir=/tmp/mlcommons_data
+  --imagenet=True \
+  --imagenet_train_url=<train_url> \
+  --imagenet_val_url=<val_url>\
+  --framework=jax
 """
 import os
 import shutil
@@ -88,11 +84,6 @@ FRAMEWORKS = ['pytorch', 'jax']
 KiB = 2**10
 MiB = 2**20
 GiB = 2**30
-<<<<<<< HEAD
-=======
-TiB = 2**40
-PiB = 2**50
->>>>>>> main
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
@@ -105,7 +96,6 @@ from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer
 
 flags.DEFINE_boolean(
-<<<<<<< HEAD
     'interactive_deletion',
     True,
     'If true, user will be prompted before any files are deleted. If false, no '
@@ -113,10 +103,6 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean(
     'all',
     False,
-=======
-    'all',
-    True,
->>>>>>> main
     'Whether or not to download all datasets. If false, can download some '
     'combination of datasets by setting the individual dataset flags below.')
 flags.DEFINE_boolean('criteo',
@@ -190,9 +176,8 @@ def _maybe_prompt_for_deletion(paths, interactive_deletion):
   if not interactive_deletion:
     return
   files_for_deletion = '\n'.join(paths)
-  logging.info(
-      '\n\n\nWARNING: the following temp files will be DELETED:'
-      f'\n{files_for_deletion}')
+  logging.info('\n\n\nWARNING: the following temp files will be DELETED:'
+               f'\n{files_for_deletion}')
   delete_str = input('Confirm deletion? [y/N]: ')
   if delete_str.lower() == 'y':
     del_cmd = 'rm ' + ' '.join(f'"{s}"' for s in paths)
@@ -251,8 +236,10 @@ class _Downloader:
               size=self.progress_bar.total))
 
 
-def download_criteo(
-    data_dir, tmp_dir, num_decompression_threads, interactive_deletion):
+def download_criteo(data_dir,
+                    tmp_dir,
+                    num_decompression_threads,
+                    interactive_deletion):
   criteo_dir = os.path.join(data_dir, 'criteo')
   tmp_criteo_dir = os.path.join(tmp_dir, 'criteo')
   _maybe_mkdir(criteo_dir)
@@ -262,7 +249,6 @@ def download_criteo(
   # Download and unzip.
   for day in range(24):
     logging.info(f'Downloading Criteo day {day}...')
-    # DO NOT SUBMIT
     wget_cmd = (
         f'wget --no-clobber --directory-prefix="{tmp_criteo_dir}" '
         f'https://storage.googleapis.com/criteo-cail-datasets/day_{day}.gz')
@@ -287,7 +273,7 @@ def download_criteo(
       unzipped_paths.append(unzipped_path)
       split_path = os.path.join(criteo_dir, f'day_{day}_')
       split_cmd = ('split -a 3 -d -l 1000000 --additional-suffix=.csv '
-                  f'"{unzipped_path}" "{split_path}"')
+                   f'"{unzipped_path}" "{split_path}"')
       logging.info(f'Running Criteo split command:\n{split_cmd}')
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))
     for p in batch_processes:
@@ -507,30 +493,20 @@ def main(_):
   data_dir = FLAGS.data_dir
   tmp_dir = FLAGS.temp_dir
   num_decompression_threads = FLAGS.num_decompression_threads
-<<<<<<< HEAD
   bad_chars = [';', ' ', '&', '"']
   if any(s in data_dir for s in bad_chars):
     raise ValueError(f'Invalid data_dir: {data_dir}.')
   if any(s in tmp_dir for s in bad_chars):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
-=======
-  if ';' in data_dir or ' ' in data_dir or '&' in data_dir:
-    raise ValueError(f'Invalid data_dir: {data_dir}.')
->>>>>>> main
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo:
     logging.info('Downloading criteo...')
-<<<<<<< HEAD
-    download_criteo(
-        data_dir,
-        tmp_dir,
-        num_decompression_threads,
-        FLAGS.interactive_deletion)
-=======
-    download_criteo(data_dir, tmp_dir, num_decompression_threads)
->>>>>>> main
+    download_criteo(data_dir,
+                    tmp_dir,
+                    num_decompression_threads,
+                    FLAGS.interactive_deletion)
   if FLAGS.all or FLAGS.fastmri:
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
