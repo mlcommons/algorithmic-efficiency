@@ -87,14 +87,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
-      # transform_config.append(normalize)
+      transform_config.append(normalize)
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),
           transforms.CenterCrop(self.center_crop_size),
           transforms.ToTensor(),
-          # normalize
+          normalize
       ])
 
     folder = 'train' if 'train' in split else 'val'
@@ -125,7 +125,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         num_workers=4 if is_train else 0,
         pin_memory=True,
         drop_last=is_train,
-        # persistent_workers=True
+        persistent_workers=True
     )
     dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
