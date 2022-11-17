@@ -125,7 +125,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         num_workers=4 if is_train else 0,
         pin_memory=True,
         drop_last=is_train,
-        persistent_workers=True
+        persistent_workers=is_train
     )
     dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
