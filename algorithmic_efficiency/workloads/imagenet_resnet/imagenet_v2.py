@@ -37,7 +37,7 @@ def get_imagenet_v2_iter(data_dir: str,
                                                resize_size)
     return {'inputs': image, 'targets': example['label']}
 
-  ds = ds.map(_decode_example, num_parallel_calls=4)
+  ds = ds.map(_decode_example)
   ds = ds.batch(global_batch_size)
   shard_pad_fn = functools.partial(
       data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size)
