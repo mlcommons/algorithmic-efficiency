@@ -13,6 +13,8 @@ import tensorflow as tf
 
 from algorithmic_efficiency import data_utils
 
+_NUM_DAY_23_FILES = 179
+
 # Raw vocab sizes from
 # https://cloud.google.com/tpu/docs/tutorials/dlrm-dcn-2.x#run-model.
 _VOCAB_SIZES = [
@@ -90,22 +92,24 @@ def get_criteo1tb_dataset(split: str,
                           num_batches: Optional[int] = None,
                           repeat_final_dataset: bool = False):
   """Get the Criteo 1TB dataset for a given split."""
-  # DO NOT SUBMIT 5x-ing the number of files 2x-ed the runtime??
+  num_test_files = _NUM_DAY_23_FILES // 2 + 1
   if split in ['train', 'eval_train']:
-    file_path = os.path.join(data_dir, 'day_[0-22]_*')
-    # file_path = os.path.join(data_dir, 'day_20_*')
+    file_paths = [os.path.join(data_dir, f'day_{d}_*') for d in range(0, 23)]
+  elif split == 'validation':
+    # Assumes files are of the format day_23_004.tsv.
+    file_paths = [
+        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.tsv')
+        for s in range(num_test_files, _NUM_DAY_23_FILES)
+    ]
   else:
-    file_path = os.path.join(data_dir, 'day_23_*')
+    file_paths = [
+        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.tsv')
+        for s in range(0, num_test_files)
+    ]
 
   is_training = split == 'train'
   ds = tf.data.Dataset.list_files(
-      file_path, shuffle=is_training, seed=shuffle_rng[0])
-  # There should be 180 files for day_23, so we take the first half of them
-  # as the test split and the second half as the validation split.
-  if split == 'test':
-    ds = ds.take(90)
-  elif split == 'validation':
-    ds = ds.skip(90)
+      file_paths, shuffle=is_training, seed=shuffle_rng[0])
 
   ds = ds.interleave(
       tf.data.TextLineDataset,
@@ -120,7 +124,7 @@ def get_criteo1tb_dataset(split: str,
   ds = ds.map(parse_fn, num_parallel_calls=16)
   if is_training:
     ds = ds.repeat()
-  ds = ds.prefetch(tf.data.AUTOTUNE)
+  ds = ds.prefetch(10)
 
   if num_batches is not None:
     ds = ds.take(num_batches)
