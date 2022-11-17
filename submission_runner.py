@@ -198,20 +198,19 @@ def import_workload(workload_path: str,
   return workload_class(**workload_init_kwargs)
 
 
-def train_once(
-    workload: spec.Workload,
-    global_batch_size: int,
-    global_eval_batch_size: int,
-    data_dir: str,
-    imagenet_v2_data_dir: str,
-    init_optimizer_state: spec.InitOptimizerFn,
-    update_params: spec.UpdateParamsFn,
-    data_selection: spec.DataSelectionFn,
-    hyperparameters: Optional[spec.Hyperparameters],
-    rng: spec.RandomState,
-    profiler: Profiler,
-    max_global_steps: int = None,
-    log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(workload: spec.Workload,
+               global_batch_size: int,
+               global_eval_batch_size: int,
+               data_dir: str,
+               imagenet_v2_data_dir: str,
+               init_optimizer_state: spec.InitOptimizerFn,
+               update_params: spec.UpdateParamsFn,
+               data_selection: spec.DataSelectionFn,
+               hyperparameters: Optional[spec.Hyperparameters],
+               rng: spec.RandomState,
+               profiler: Profiler,
+               max_global_steps: int = None,
+               log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -412,18 +411,17 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(
-    workload: spec.Workload,
-    workload_name: str,
-    submission_path: str,
-    data_dir: str,
-    imagenet_v2_data_dir: str,
-    profiler: Profiler,
-    tuning_ruleset: str,
-    max_global_steps: int,
-    tuning_search_space: Optional[str] = None,
-    num_tuning_trials: Optional[int] = None,
-    log_dir: Optional[str] = None):
+def score_submission_on_workload(workload: spec.Workload,
+                                 workload_name: str,
+                                 submission_path: str,
+                                 data_dir: str,
+                                 imagenet_v2_data_dir: str,
+                                 profiler: Profiler,
+                                 tuning_ruleset: str,
+                                 max_global_steps: int,
+                                 tuning_search_space: Optional[str] = None,
+                                 num_tuning_trials: Optional[int] = None,
+                                 log_dir: Optional[str] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)

@@ -188,7 +188,7 @@ To run the below commands, use the versions installed via `pip install -e '.[dev
 
 To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
 ```bash
-yapf -i -r -vv -p algorithmic_efficiency baselines reference_algorithms tests *.py
+yapf -i -r -vv -p algorithmic_efficiency baselines datasets reference_algorithms tests *.py
 ```
 
 To sort all import orderings, run the following:
