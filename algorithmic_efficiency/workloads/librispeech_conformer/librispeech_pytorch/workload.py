@@ -117,21 +117,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                          repeat_final_dataset: bool = False):
     del num_batches
     del repeat_final_dataset
-    train = False
-    eval_train = False
+    train = split == 'train'
     if split == 'train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
-      train = True
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'eval_train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
-      eval_train = True
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
-      split = 'dev-clean+dev-other'
+      ds_split = 'dev-clean+dev-other'
     elif split == 'test':
-      split = 'test-clean'
+      ds_split = 'test-clean'
 
-    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
-    if eval_train:
+    ds = LibriSpeechDataset(split=ds_split, data_dir=data_dir)
+    if split=='eval_train':
       indices = list(range(len(ds)))
       random.Random(data_rng[0]).shuffle(indices)
       ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
@@ -188,6 +185,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     n_valid_examples = mask_batch.sum().to(per_example_losses)
     summed_loss = per_example_losses.sum()
     if USE_PYTORCH_DDP:
+      # Use dist_nn.all_reduce to ensure correct gradient scaling.
       dist_nn.all_reduce(summed_loss)
       dist_nn.all_reduce(n_valid_examples)
     n_valid_examples = max(n_valid_examples, 1)
