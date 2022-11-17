@@ -87,11 +87,10 @@ def get_models(workload):
     mlp_bottom_dims = (512, 256, 128)
     mlp_top_dims = (1024, 1024, 512, 256, 1)
     embed_dim = 128
-    vocab_sizes = tuple([1024 * 128] * 26)
+    vocab_size = 32 * 128 * 1024
     input_shape = (1, 39)
     model_init = JaxDlrmSmall(
-        vocab_sizes=vocab_sizes,
-        total_vocab_sizes=sum(vocab_sizes),
+        vocab_size=vocab_size,
         num_dense_features=13,
         mlp_bottom_dims=mlp_bottom_dims,
         mlp_top_dims=mlp_top_dims,
@@ -100,8 +99,7 @@ def get_models(workload):
                            False)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchDlrmSmall(
-        vocab_sizes=vocab_sizes,
-        total_vocab_sizes=sum(vocab_sizes),
+        vocab_size=vocab_size,
         num_dense_features=13,
         mlp_bottom_dims=mlp_bottom_dims,
         mlp_top_dims=mlp_top_dims,
