@@ -2,8 +2,6 @@
 import functools
 from typing import Dict, List, Tuple
 
-from absl import logging
-import flax
 import jax
 from jax import lax
 import jax.numpy as jnp

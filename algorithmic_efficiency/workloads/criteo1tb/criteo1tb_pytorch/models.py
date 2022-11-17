@@ -113,7 +113,7 @@ class DlrmSmall(nn.Module):
     batch_size = bot_mlp_output.shape[0]
     feature_stack = torch.reshape(bot_mlp_output,
                                   [batch_size, -1, self.embed_dim])
-    idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
+    idx_lookup = torch.reshape(cat_features, [-1]) % self.vocab_size
     embed_features = self.embedding_table(idx_lookup)
     embed_features = torch.reshape(embed_features,
                                    [batch_size, -1, self.embed_dim])

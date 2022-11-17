@@ -4,7 +4,6 @@ import math
 from typing import Dict, Optional, Tuple
 
 from absl import flags
-from absl import logging
 from flax import jax_utils
 import flax.linen as nn
 import jax

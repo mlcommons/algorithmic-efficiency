@@ -6,23 +6,42 @@ validation). See here for the NVIDIA example:
 https://github.com/NVIDIA/DeepLearningExamples/blob/4e764dcd78732ebfe105fc05ea3dc359a54f6d5e/PyTorch/Recommendation/DLRM/preproc/run_spark_cpu.sh#L119.
 """
 import functools
-import math
-import numpy as np
 import os
-from typing import Optional, Sequence
+from typing import Optional
 
-import jax
 import tensorflow as tf
-import torch
 
 from algorithmic_efficiency import data_utils
 
 # Raw vocab sizes from
 # https://cloud.google.com/tpu/docs/tutorials/dlrm-dcn-2.x#run-model.
 _VOCAB_SIZES = [
-    39884406, 39043, 17289, 7420, 20263, 3, 7120, 1543, 63, 38532951, 2953546,
-    403346, 10, 2208, 11938, 155, 4, 976, 14, 39979771, 25641295, 39664984,
-    585935, 12972, 108, 36
+    39884406,
+    39043,
+    17289,
+    7420,
+    20263,
+    3,
+    7120,
+    1543,
+    63,
+    38532951,
+    2953546,
+    403346,
+    10,
+    2208,
+    11938,
+    155,
+    4,
+    976,
+    14,
+    39979771,
+    25641295,
+    39664984,
+    585935,
+    12972,
+    108,
+    36
 ]
 
 

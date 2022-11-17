@@ -39,7 +39,6 @@ from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
-
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
@@ -290,7 +289,7 @@ def train_once(
 
   global_start_time = time.time()
   logging.info('Starting training loop.')
-  while train_state['is_time_remaining'] \
+  while train_state['is_time_remaining'] and \
       not train_state['goal_reached'] and \
       not train_state['training_complete']:
     step_rng = prng.fold_in(rng, global_step)

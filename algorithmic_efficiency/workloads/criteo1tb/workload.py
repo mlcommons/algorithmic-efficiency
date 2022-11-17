@@ -3,11 +3,6 @@ import os
 from typing import Dict, Optional, Tuple
 
 import jax
-<<<<<<< HEAD
-import json
-import tensorflow as tf
-=======
->>>>>>> main
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
@@ -40,6 +35,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   def num_train_examples(self) -> int:
     return 4_195_197_692
 
+  @property
   def num_eval_train_examples(self) -> int:
     # Round up from num_validation_examples (which is the default for
     # num_eval_train_examples) to the next multiple of eval_batch_size, so that
@@ -73,13 +69,8 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return 6 * 60 * 60
 
   @property
-<<<<<<< HEAD
   def eval_period_time_sec(self):
     return 9 * 60
-=======
-  def eval_period_time_sec(self) -> int:
-    return 24 * 60
->>>>>>> main
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

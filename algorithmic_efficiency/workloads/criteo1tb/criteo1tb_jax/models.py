@@ -1,6 +1,5 @@
 """A JAX implementation of DLRM-Small."""
 
-import functools
 from typing import Sequence
 
 import flax.linen as nn
@@ -66,7 +65,8 @@ class DlrmSmall(nn.Module):
           dense_dim,
           kernel_init=jnn.initializers.glorot_uniform(),
           bias_init=jnn.initializers.normal(stddev=jnp.sqrt(1.0 / dense_dim)),
-      )(bot_mlp_input)
+      )(
+          bot_mlp_input)
       bot_mlp_input = nn.relu(bot_mlp_input)
     bot_mlp_output = bot_mlp_input
     batch_size = bot_mlp_output.shape[0]
@@ -81,8 +81,7 @@ class DlrmSmall(nn.Module):
               jnp.sqrt(self.vocab_size))
 
     embedding_table = self.param('embedding_table',
-                                 scaled_init,
-                                 [self.vocab_size, self.embed_dim])
+                                 scaled_init, [self.vocab_size, self.embed_dim])
 
     idx_lookup = jnp.reshape(idx_lookup, [-1])
     embed_features = embedding_table[idx_lookup]

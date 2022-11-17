@@ -28,11 +28,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     log_p = jax.nn.log_sigmoid(logits)
     log_not_p = jax.nn.log_sigmoid(-logits)
     losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
-<<<<<<< HEAD
     return losses
-=======
-    return jnp.sum(losses.reshape(losses.shape[0], -1), axis=-1)
->>>>>>> main
 
   def loss_fn(
       self,
@@ -43,12 +39,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
-<<<<<<< HEAD
     batch_size = label_batch.shape[0]
     label_batch = jnp.reshape(label_batch, (batch_size,))
     logits_batch = jnp.reshape(logits_batch, (batch_size,))
-=======
->>>>>>> main
     per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
@@ -129,14 +122,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = jnp.ones(len(logits))
-<<<<<<< HEAD
     _, per_example_losses = self.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
         mask_batch=weights)
-=======
-    _, per_example_losses = self.loss_fn(logits, batch['targets'], weights)
->>>>>>> main
     return jnp.sum(per_example_losses)
 
   def _eval_batch(self,
@@ -144,9 +133,4 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
-<<<<<<< HEAD
     return self._eval_batch_pmapped(params, batch).sum()
-=======
-    loss = self._eval_batch_pmapped(params, batch).sum()
-    return loss
->>>>>>> main
