@@ -128,7 +128,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       ds_split = 'test-clean'
 
     ds = LibriSpeechDataset(split=ds_split, data_dir=data_dir)
-    if split=='eval_train':
+    if split == 'eval_train':
       indices = list(range(len(ds)))
       random.Random(data_rng[0]).shuffle(indices)
       ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
