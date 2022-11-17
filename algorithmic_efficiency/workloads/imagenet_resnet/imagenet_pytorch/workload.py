@@ -87,7 +87,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
-      transform_config.append(normalize)
+      # transform_config.append(normalize)
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
@@ -125,7 +125,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4,
+        num_workers=8,
         pin_memory=True,
         drop_last=is_train,
         persistent_workers=True)
@@ -137,16 +137,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         mixup_alpha=0.2)
 
     return dataloader
-
-  def sync_batch_stats(
-      self,  model: spec.ParameterContainer,) -> None:
-    dist.barrier()
-    sd = model.state_dict()
-    for k in sd:
-      dist.all_reduce(sd[k], op=dist.ReduceOp.SUM)
-      # Assumes N_GPUS is the world size.
-      sd[k] = sd[k] / N_GPUS
-    model.load_state_dict(sd)
 
   def init_model_fn(
       self,
@@ -250,7 +240,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
     predicted = torch.argmax(logits, 1)
-    # not accuracy, but nr. of correct predictions
+    # Not accuracy, but nr. of correct predictions
     accuracy = ((predicted == labels) * weights).sum()
     _, per_example_losses = self.loss_fn(labels, logits, weights)
     loss = per_example_losses.sum()
@@ -267,8 +257,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
-    # # Sync batch statistics before evaluation.
-    # self.sync_batch_stats(params)
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       is_test = split == 'test'
