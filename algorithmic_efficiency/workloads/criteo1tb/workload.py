@@ -3,8 +3,11 @@ import os
 from typing import Dict, Optional, Tuple
 
 import jax
+<<<<<<< HEAD
 import json
 import tensorflow as tf
+=======
+>>>>>>> main
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
@@ -26,7 +29,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return eval_result['validation/loss'] < self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.124225
 
   @property
@@ -70,8 +73,13 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return 6 * 60 * 60
 
   @property
+<<<<<<< HEAD
   def eval_period_time_sec(self):
     return 9 * 60
+=======
+  def eval_period_time_sec(self) -> int:
+    return 24 * 60
+>>>>>>> main
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

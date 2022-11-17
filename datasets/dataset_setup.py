@@ -4,6 +4,7 @@ If you already have a copy of a dataset(s), you can skip download it and provide
 the path when running your algorithm with submission_runner.py via --data_dir.
 
 Note that in order to avoid potential accidental deletion, this script does NOT
+<<<<<<< HEAD
 delete any intermediate temporary files (such as zip archives) without a user
 confirmation. Deleting temp files is particularly important for Criteo 1TB, as
 there can be multiple copies of the dataset on disk during preprocessing if
@@ -16,6 +17,11 @@ Note that some functions use subprocess.Popen(..., shell=True), which can be
 dangerous if the user injects code into the --data_dir or --temp_dir flags. We
 do some basic sanitization in main(), but submitters should not let untrusted
 users run this script on their systems.
+=======
+delete any intermediate temporary files (such as zip archives). All of these
+files will be downloaded to the provided --temp_dir, and the user can manually
+delete these after downloading has finished.
+>>>>>>> main
 
 If mounting a GCS bucket with gcsfuse, --temp_dir should NOT be a path to the
 GCS bucket, as this can result in *orders of magnitude* slower download speeds
@@ -54,7 +60,11 @@ open at once using `ulimit -n 8192`.
 
 Example command:
 
+<<<<<<< HEAD
 python datasets/dataset_setup.py --criteo --data_dir=/home/znado
+=======
+python3 datasets/dataset_setup.py --data_dir=/data --temp_dir=/tmp/mlcommons_data
+>>>>>>> main
 python3 datasets/dataset_setup.py --data_dir=~/data --all=False \
 --imagenet=True \
 --imagenet_train_url=<train_url> \
@@ -78,6 +88,11 @@ FRAMEWORKS = ['pytorch', 'jax']
 KiB = 2**10
 MiB = 2**20
 GiB = 2**30
+<<<<<<< HEAD
+=======
+TiB = 2**40
+PiB = 2**50
+>>>>>>> main
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
@@ -90,6 +105,7 @@ from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer
 
 flags.DEFINE_boolean(
+<<<<<<< HEAD
     'interactive_deletion',
     True,
     'If true, user will be prompted before any files are deleted. If false, no '
@@ -97,6 +113,10 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean(
     'all',
     False,
+=======
+    'all',
+    True,
+>>>>>>> main
     'Whether or not to download all datasets. If false, can download some '
     'combination of datasets by setting the individual dataset flags below.')
 flags.DEFINE_boolean('criteo',
@@ -487,21 +507,30 @@ def main(_):
   data_dir = FLAGS.data_dir
   tmp_dir = FLAGS.temp_dir
   num_decompression_threads = FLAGS.num_decompression_threads
+<<<<<<< HEAD
   bad_chars = [';', ' ', '&', '"']
   if any(s in data_dir for s in bad_chars):
     raise ValueError(f'Invalid data_dir: {data_dir}.')
   if any(s in tmp_dir for s in bad_chars):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
+=======
+  if ';' in data_dir or ' ' in data_dir or '&' in data_dir:
+    raise ValueError(f'Invalid data_dir: {data_dir}.')
+>>>>>>> main
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo:
     logging.info('Downloading criteo...')
+<<<<<<< HEAD
     download_criteo(
         data_dir,
         tmp_dir,
         num_decompression_threads,
         FLAGS.interactive_deletion)
+=======
+    download_criteo(data_dir, tmp_dir, num_decompression_threads)
+>>>>>>> main
   if FLAGS.all or FLAGS.fastmri:
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
