@@ -44,7 +44,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def eval_batch_size(self) -> int:
-    return 2
+    return 1024
 
   @property
   def train_mean(self) -> Tuple[float, float, float]:
