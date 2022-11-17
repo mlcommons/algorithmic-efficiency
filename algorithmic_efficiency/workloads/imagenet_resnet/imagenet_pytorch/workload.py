@@ -87,7 +87,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
-      # transform_config.append(normalize)
+      transform_config.append(normalize)
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
