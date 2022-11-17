@@ -44,14 +44,14 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
 WORKLOADS = [
-    # 'mnist', DO NOT SUBMIT
-    # 'cifar',
+    'mnist',
+    'cifar',
     'criteo1tb',
-    # 'imagenet_resnet',
-    # 'imagenet_vit',
-    # 'wmt',
-    # 'ogbg',
-    # 'librispeech_conformer',
+    'imagenet_resnet',
+    'imagenet_vit',
+    'wmt',
+    'ogbg',
+    'librispeech_conformer',
 ]
 
 

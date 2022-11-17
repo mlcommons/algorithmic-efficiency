@@ -25,6 +25,10 @@ FLAGS = flags.FLAGS
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
+  def __init__(self, tokenizer_vocab_path=None):
+    super().__init__()
+    self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
+
   def init_model_fn(
       self,
       rng: spec.RandomState,
@@ -60,10 +64,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def init_tokenizer(self, tokenizer_vocab_path):
-    logging.info('Initializing metrics bundle and tokenizer.')
-    self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
-
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -93,30 +93,40 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           mutable=False)
       return (logits, logit_paddings), model_state
 
-  def loss_fn(self,
-              label_batch: Tuple[spec.Tensor, spec.Tensor],
-              logits_batch: Tuple[spec.Tensor, spec.Tensor],
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    del mask_batch
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
     logits, logit_paddings = logits_batch
     targets, target_paddings = label_batch
     logprobs = nn.log_softmax(logits)
-    per_seq_loss = self.ctc_loss(logprobs,
-                                 logit_paddings,
-                                 targets,
-                                 target_paddings)
-    normalizer = jnp.sum(1 - target_paddings)
-    normalized_loss = jnp.sum(per_seq_loss) / jnp.maximum(normalizer, 1)
-    return normalized_loss
+    per_example_losses = self.ctc_loss(logprobs,
+                                       logit_paddings,
+                                       targets,
+                                       target_paddings)
+    # mask_batch is assumed to be shape [batch].
+    if mask_batch is not None:
+      per_example_losses *= mask_batch
+      mask_batch = jnp.logical_and(mask_batch, 1 - target_paddings)
+    else:
+      mask_batch = 1 - target_paddings
+    n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def ctc_loss(self,
-               logits,
-               logit_paddings,
-               labels,
-               label_paddings,
-               blank_id=0):
+               logits: spec.Tensor,
+               logit_paddings: spec.Tensor,
+               labels: spec.Tensor,
+               label_paddings: spec.Tensor,
+               blank_id: int = 0) -> spec.Tensor:
     return optax.ctc_loss(logits,
                           logit_paddings,
                           labels,
@@ -125,14 +135,17 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   # Adapted from lingvo's greedy decoding logic here:
   # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138
-  def sequence_mask(self, lengths, maxlen):
+  def sequence_mask(self, lengths: spec.Tensor, maxlen: int) -> spec.Tensor:
     batch_size = lengths.shape[0]
     a = jnp.ones([batch_size, maxlen])
     b = jnp.cumsum(a, axis=-1)
     c = jnp.less_equal(b, lengths[:, jnp.newaxis]).astype(lengths.dtype)
     return c
 
-  def collapse_and_remove_blanks(self, labels, seq_length, blank_id: int = 0):
+  def collapse_and_remove_blanks(self,
+                                 labels: spec.Tensor,
+                                 seq_length: spec.Tensor,
+                                 blank_id: int = 0) -> spec.Tensor:
     b, t = labels.shape
     # Zap out blank
     blank_mask = 1 - jnp.equal(labels, blank_id)
@@ -182,7 +195,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return (jnp.reshape(flat, new_shape).astype(labels.dtype),
             new_seq_len.astype(seq_length.dtype))
 
-  def greedy_decode(self, logits, logit_paddings):
+  def greedy_decode(
+      self, logits: spec.Tensor,
+      logit_paddings: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
     per_frame_max = jnp.argmax(logits, axis=-1)
     seqlen = jnp.sum(1.0 - logit_paddings, axis=-1)
     hyp, _ = self.collapse_and_remove_blanks(per_frame_max, seqlen, blank_id=0)
@@ -209,7 +224,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
+    normalized_loss, _ = self.loss_fn(
+        batch['targets'], (logits, logit_paddings))
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
@@ -230,6 +246,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            data_dir: str,
                            global_step: int) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    del global_step
     if model_state is not None:
       # Sync batch statistics across replicas before evaluating.
       model_state = self.sync_batch_stats(model_state)
@@ -261,7 +278,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     return computed_metrics
 
-  def sync_batch_stats(self, model_state):
+  def sync_batch_stats(
+      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics and
     # we average them.

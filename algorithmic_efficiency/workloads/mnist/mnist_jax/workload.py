@@ -42,14 +42,14 @@ class MnistWorkload(BaseMnistWorkload):
                      data_rng: jax.random.PRNGKey,
                      split: str,
                      data_dir: str,
-                     batch_size):
-    # TODO: choose a random split and match with PyTorch.
-    if split == 'eval_train':
-      tfds_split = f'train[:{self.num_eval_train_examples}]'
+                     global_batch_size: int):
+    shuffle = split in ['train', 'eval_train']
+    if shuffle:
+      tfds_split = f'train[:{self.num_train_examples}]'
     elif split == 'validation':
       tfds_split = f'train[{self.num_train_examples}:]'
     else:
-      tfds_split = f'train[:{self.num_train_examples}]'
+      tfds_split = 'test'
     ds = tfds.load(
         'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
     ds = ds.map(lambda x: {
@@ -58,11 +58,16 @@ class MnistWorkload(BaseMnistWorkload):
     })
     ds = ds.cache()
     is_train = split == 'train'
-    if is_train:
-      ds = ds.shuffle(16 * batch_size, seed=data_rng[0])
-      ds = ds.repeat()
-    ds = ds.batch(batch_size, drop_remainder=is_train)
-    ds = map(data_utils.shard_numpy_ds, ds)
+    if shuffle:
+      ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
+      if is_train:
+        ds = ds.repeat()
+    ds = ds.batch(global_batch_size, drop_remainder=is_train)
+    ds = map(
+        functools.partial(
+            data_utils.shard_and_maybe_pad_np,
+            global_batch_size=global_batch_size),
+        ds)
     return iter(ds)
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -115,18 +120,26 @@ class MnistWorkload(BaseMnistWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
-    losses = -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    per_example_losses = -jnp.sum(
+        smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   @functools.partial(
       jax.pmap,
@@ -146,8 +159,13 @@ class MnistWorkload(BaseMnistWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    accuracy = jnp.sum(jnp.argmax(logits, axis=-1) == batch['targets'])
-    loss = jnp.sum(self.loss_fn(batch['targets'], logits))
+    weights = batch.get('weights')
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    accuracy = jnp.sum(
+        (jnp.argmax(logits, axis=-1) == batch['targets']) * weights)
+    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
+    loss = jnp.sum(per_example_losses)
     metrics = {'accuracy': accuracy, 'loss': loss}
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics

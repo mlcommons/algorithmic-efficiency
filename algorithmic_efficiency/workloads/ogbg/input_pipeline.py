@@ -13,6 +13,13 @@ import torch
 AVG_NODES_PER_GRAPH = 26
 AVG_EDGES_PER_GRAPH = 56
 
+TFDS_SPLIT_NAME = {
+    'train': 'train',
+    'eval_train': 'train',
+    'validation': 'validation',
+    'test': 'test'
+}
+
 
 def _load_dataset(split, should_shuffle, data_rng, data_dir):
   """Loads a dataset split from TFDS."""
@@ -27,7 +34,7 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
   read_config = tfds.ReadConfig(add_tfds_id=True, shuffle_seed=file_data_rng)
   dataset = tfds.load(
       'ogbg_molpcba:0.1.2',
-      split=split,
+      split=TFDS_SPLIT_NAME[split],
       shuffle_files=should_shuffle,
       read_config=read_config,
       data_dir=data_dir)
@@ -161,9 +168,7 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
 
 
 def get_dataset_iter(split, data_rng, data_dir, global_batch_size):
+  shuffle = split in ['train', 'eval_train']
   ds = _load_dataset(
-      split,
-      should_shuffle=(split == 'train'),
-      data_rng=data_rng,
-      data_dir=data_dir)
+      split, should_shuffle=shuffle, data_rng=data_rng, data_dir=data_dir)
   return _get_batch_iterator(iter(ds), global_batch_size)

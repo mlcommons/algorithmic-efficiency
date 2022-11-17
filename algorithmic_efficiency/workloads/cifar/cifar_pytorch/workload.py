@@ -48,9 +48,7 @@ class CifarWorkload(BaseCifarWorkload):
 
     normalize = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[i / 255 for i in self.train_mean],
-            std=[i / 255 for i in self.train_stddev])
+        transforms.Normalize(mean=self.train_mean, std=self.train_stddev)
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
@@ -70,12 +68,14 @@ class CifarWorkload(BaseCifarWorkload):
         transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
-    random.Random(data_rng[0]).shuffle(indices)
     indices_split = {
         'train': indices[:self.num_train_examples],
         'validation': indices[self.num_train_examples:],
-        'eval_train': indices[:self.num_eval_train_examples]
     }
+    if split == 'eval_train':
+      train_indices = indices_split['train']
+      random.Random(data_rng[0]).shuffle(train_indices)
+      indices_split['eval_train'] = train_indices[:self.num_eval_train_examples]
     if split in indices_split:
       dataset = torch.utils.data.Subset(dataset, indices_split[split])
 
@@ -169,27 +169,35 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    losses = F.cross_entropy(
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+    per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def _eval_metric(self, logits, labels):
     """Return the mean accuracy and loss as a dict."""
     predicted = torch.argmax(logits, 1)
     # not accuracy, but nr. of correct predictions
     accuracy = (predicted == labels).sum()
-    loss = self.loss_fn(labels, logits).sum()
+    _, per_example_losses = self.loss_fn(labels, logits)
+    loss = per_example_losses.sum()
     return {'accuracy': accuracy, 'loss': loss}
 
   def _eval_model_on_split(self,

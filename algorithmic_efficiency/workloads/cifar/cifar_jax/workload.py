@@ -48,6 +48,11 @@ class CifarWorkload(BaseCifarWorkload):
     ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
     ds_builder.download_and_prepare()
     train = split == 'train'
+    assert self.num_train_examples + self.num_validation_examples == 50000
+    if split in ['train', 'eval_train']:
+      split = f'train[:{self.num_train_examples}]'
+    elif split == 'validation':
+      split = f'train[{self.num_train_examples}:]'
     ds = input_pipeline.create_input_iter(
         split,
         ds_builder,
@@ -64,7 +69,8 @@ class CifarWorkload(BaseCifarWorkload):
         num_batches=num_batches)
     return ds
 
-  def sync_batch_stats(self, model_state):
+  def sync_batch_stats(
+      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
     """Sync the batch statistics across replicas."""
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics and
@@ -116,7 +122,10 @@ class CifarWorkload(BaseCifarWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    return self._compute_metrics(logits, batch['targets'])
+    weights = batch.get('weights')
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    return self._compute_metrics(logits, batch['targets'], weights)
 
   def model_fn(
       self,
@@ -146,23 +155,35 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
-    losses = -jnp.sum(smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
+    per_example_losses = -jnp.sum(
+        smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
     # mask_batch is assumed to be shape [batch]
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
-  def _compute_metrics(self, logits, labels):
-    loss = jnp.sum(self.loss_fn(labels, logits))
+  def _compute_metrics(self,
+                       logits: spec.Tensor,
+                       labels: spec.Tensor,
+                       weights: spec.Tensor) -> Dict[str, spec.Tensor]:
+    _, per_example_losses = self.loss_fn(labels, logits, weights)
+    loss = jnp.sum(per_example_losses)
     # Number of correct predictions.
-    accuracy = jnp.sum(jnp.argmax(logits, -1) == labels)
+    accuracy = jnp.sum((jnp.argmax(logits, -1) == labels) * weights)
     metrics = {
         'loss': loss,
         'accuracy': accuracy,
@@ -178,7 +199,8 @@ class CifarWorkload(BaseCifarWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
+    del global_step
     data_rng, model_rng = jax.random.split(rng, 2)
     # Sync batch statistics across replicas before evaluating.
     model_state = self.sync_batch_stats(model_state)

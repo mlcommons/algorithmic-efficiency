@@ -1,7 +1,7 @@
 """MNIST workload parent class."""
 import math
 import os
-from typing import Dict, Tuple
+from typing import Dict
 
 from absl import flags
 from flax import jax_utils
@@ -22,31 +22,36 @@ class BaseMnistWorkload(spec.Workload):
     return eval_result['validation/accuracy'] > self.target_value
 
   @property
-  def target_value(self):
+  def target_value(self) -> float:
     return 0.9
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     return 50000
 
   @property
-  def num_eval_train_examples(self):
+  def num_eval_train_examples(self) -> int:
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(self.num_validation_examples /
+                                    self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
+
+  @property
+  def num_validation_examples(self) -> int:
     return 10000
 
   @property
-  def num_validation_examples(self):
+  def num_test_examples(self) -> int:
     return 10000
 
   @property
-  def num_test_examples(self):
-    return 10000
-
-  @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 10000
 
   @property
@@ -58,11 +63,11 @@ class BaseMnistWorkload(spec.Workload):
     return 0.3081
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 60
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 10
 
   @property
@@ -71,15 +76,6 @@ class BaseMnistWorkload(spec.Workload):
     # workload, but for completeness we provide the number of steps for 10
     # epochs at batch size 64.
     return 7813
-
-  def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      images: spec.Tensor,
-      labels: spec.Tensor,
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    raise NotImplementedError
 
   def _eval_model_on_split(self,
                            split: str,
@@ -91,6 +87,7 @@ class BaseMnistWorkload(spec.Workload):
                            data_dir: str,
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
+    del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
@@ -117,6 +114,4 @@ class BaseMnistWorkload(spec.Workload):
     elif USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
-    if FLAGS.framework == 'pytorch':
-      total_metrics = {k: v.item() for k, v in total_metrics.items()}
-    return {k: float(v / num_examples) for k, v in total_metrics.items()}
+    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

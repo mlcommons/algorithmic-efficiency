@@ -68,8 +68,8 @@ def update_params(workload: spec.Workload,
       rng=rng,
       update_batch_norm=True)
 
-  loss = workload.loss_fn(
-      label_batch=batch['targets'], logits_batch=outputs_batch).mean()
+  loss, _ = workload.loss_fn(
+      label_batch=batch['targets'], logits_batch=outputs_batch)
 
   loss.backward()
   optimizer_state['optimizer'].step()

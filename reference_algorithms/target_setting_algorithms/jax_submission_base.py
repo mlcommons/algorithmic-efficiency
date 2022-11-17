@@ -3,6 +3,7 @@ import functools
 from typing import Dict, List, Tuple
 
 from absl import logging
+import flax
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -38,12 +39,11 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss = jnp.mean(
-        workload.loss_fn(
-            label_batch=batch['targets'],
-            logits_batch=logits,
-            mask_batch=batch.get('weights'),
-            label_smoothing=label_smoothing))
+    loss, _ = workload.loss_fn(
+        label_batch=batch['targets'],
+        logits_batch=logits,
+        mask_batch=batch.get('weights'),
+        label_smoothing=label_smoothing)
     return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
@@ -94,16 +94,11 @@ def update_params(workload: spec.Workload,
       current_param_container, batch, per_device_rngs, grad_clip,
       label_smoothing)
 
-  # Log training metrics - loss, grad_norm, batch_size.
-  if global_step <= 100 or global_step % 500 == 0:
-    if workload.metrics_logger is not None:
-      workload.metrics_logger.append_scalar_metrics(
-          {
-              'loss': loss[0],
-              'grad_norm': grad_norm[0],
-          }, global_step)
-    logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
-                 global_step,
-                 loss[0],
-                 grad_norm[0])
+  # Log loss, grad_norm.
+  if global_step % 100 == 0 and workload.metrics_logger is not None:
+    workload.metrics_logger.append_scalar_metrics(
+        {
+            'loss': loss[0],
+            'grad_norm': grad_norm[0],
+        }, global_step)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state

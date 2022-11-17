@@ -1,13 +1,13 @@
 """MNIST workload implemented in PyTorch."""
 from collections import OrderedDict
 import contextlib
+import random
 from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.utils.data as pytorch_data_utils
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
@@ -52,34 +52,28 @@ class MnistWorkload(BaseMnistWorkload):
                      split: str,
                      data_dir: str,
                      batch_size: int):
-
-    dataloader_split = 'train' if split == 'eval_train' else split
+    train_split = False if split == 'test' else True
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((self.train_mean,), (self.train_stddev,))
     ])
     dataset = MNIST(
-        data_dir, train=dataloader_split, download=True, transform=transform)
+        data_dir, train=train_split, download=True, transform=transform)
     if split != 'test':
-      if split in ['train', 'validation']:
-        train_dataset, validation_dataset = pytorch_data_utils.random_split(
-            dataset,
-            [self.num_train_examples, self.num_validation_examples],
-            generator=torch.Generator().manual_seed(int(data_rng[0])))
-        if split == 'train':
-          dataset = train_dataset
-        elif split == 'validation':
-          dataset = validation_dataset
+      assert (self.num_eval_train_examples +
+              self.num_validation_examples == 60000)
+      indices = list(range(60000))
+      if split in ['train', 'eval_train']:
+        dataset_indices = indices[:self.num_train_examples]
+      elif split == 'validation':
+        dataset_indices = indices[self.num_train_examples:]
       if split == 'eval_train':
-        dataset, _ = pytorch_data_utils.random_split(
-            dataset,
-            [self.num_eval_train_examples,
-             60000 - self.num_eval_train_examples],
-            generator=torch.Generator().manual_seed(int(data_rng[0])))
-    # TODO: set seeds properly
-    is_train = split == 'train'
+        random.Random(data_rng[0]).shuffle(dataset_indices)
+        dataset_indices = dataset_indices[:self.num_eval_train_examples]
+      dataset = torch.utils.data.Subset(dataset, dataset_indices)
 
     sampler = None
+    is_train = split == 'train'
     if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
@@ -164,20 +158,27 @@ class MnistWorkload(BaseMnistWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    losses = F.cross_entropy(
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+    per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
   def _eval_model(
       self,
@@ -196,5 +197,6 @@ class MnistWorkload(BaseMnistWorkload):
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
     accuracy = (predicted == batch['targets']).sum()
-    loss = self.loss_fn(batch['targets'], logits).sum()
+    _, per_example_losses = self.loss_fn(batch['targets'], logits)
+    loss = per_example_losses.sum()
     return {'accuracy': accuracy, 'loss': loss}

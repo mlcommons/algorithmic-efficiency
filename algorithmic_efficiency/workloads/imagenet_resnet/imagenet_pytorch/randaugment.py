@@ -1,8 +1,9 @@
-"""Code for RandAugmentation.
+"""PyTorch implementation of RandAugmentation.
 
 Adapted from:
-https://pytorch.org/vision/stable/_modules/torchvision/transforms/autoaugment.html
+https://pytorch.org/vision/stable/_modules/torchvision/transforms/autoaugment.html.
 """
+
 import math
 from typing import Dict, List, Optional, Tuple
 
@@ -13,35 +14,33 @@ from torch import Tensor
 from torchvision.transforms import functional as F
 from torchvision.transforms import InterpolationMode
 
+from algorithmic_efficiency import spec
 
-def cutout(img, pad_size, fill):
+
+def cutout(img: spec.Tensor, pad_size: int) -> spec.Tensor:
   image_width, image_height = img.size
-  cutout_center_width = np.random.uniform(image_width)
-  cutout_center_height = np.random.uniform(image_height)
+  x0 = np.random.uniform(image_width)
+  y0 = np.random.uniform(image_height)
 
-  lower_pad = max(0, cutout_center_height - pad_size)
-  upper_pad = max(0, image_height - cutout_center_height - pad_size)
-  left_pad = max(0, cutout_center_width - pad_size)
-  right_pad = max(0, image_width - cutout_center_width - pad_size)
-
-  x0 = right_pad
-  y0 = upper_pad
-  x1 = left_pad
-  y1 = lower_pad
-
+  # Double the pad size to match Jax implementation.
+  pad_size = pad_size * 2
+  x0 = int(max(0, x0 - pad_size / 2.))
+  y0 = int(max(0, y0 - pad_size / 2.))
+  x1 = int(min(image_width, x0 + pad_size))
+  y1 = int(min(image_height, y0 + pad_size))
   xy = (x0, y0, x1, y1)
   img = img.copy()
-  PIL.ImageDraw.Draw(img).rectangle(xy, fill)
+  PIL.ImageDraw.Draw(img).rectangle(xy, (128, 128, 128))
   return img
 
 
-def solarize(img: Tensor, threshold: float) -> Tensor:
+def solarize(img: spec.Tensor, threshold: float) -> spec.Tensor:
   img = np.array(img)
   new_img = np.where(img < threshold, img, 255. - img)
   return PIL.Image.fromarray(new_img.astype(np.uint8))
 
 
-def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
+def solarize_add(img: spec.Tensor, addition: int = 0) -> spec.Tensor:
   threshold = 128
   img = np.array(img)
   added_img = img.astype(np.int64) + addition
@@ -50,20 +49,13 @@ def solarize_add(img: Tensor, addition: int = 0) -> Tensor:
   return PIL.Image.fromarray(new_img)
 
 
-def _apply_op(
-    img: Tensor,
-    op_name: str,
-    magnitude: float,
-    interpolation: InterpolationMode,
-    fill: Optional[List[float]],
-):
-  if op_name == "ShearX":
-    # magnitude should be arctan(magnitude)
-    # official autoaug: (1, level, 0, 0, 1, 0)
-    # https://github.com/tensorflow/models/blob/dd02069717128186b88afa8d857ce57d17957f03/research/autoaugment/augmentation_transforms.py#L290
-    # compared to
-    # torchvision:      (1, tan(level), 0, 0, 1, 0)
-    # https://github.com/pytorch/vision/blob/0c2373d0bba3499e95776e7936e207d8a1676e65/torchvision/transforms/functional.py#L976
+def _apply_op(img: spec.Tensor,
+              op_name: str,
+              magnitude: float,
+              interpolation: InterpolationMode,
+              fill: Optional[List[float]]) -> spec.Tensor:
+  if op_name == 'ShearX':
+    # Magnitude should be arctan(magnitude).
     img = F.affine(
         img,
         angle=0.0,
@@ -74,9 +66,8 @@ def _apply_op(
         fill=fill,
         center=[0, 0],
     )
-  elif op_name == "ShearY":
-    # magnitude should be arctan(magnitude)
-    # See above
+  elif op_name == 'ShearY':
+    # Magnitude should be arctan(magnitude).
     img = F.affine(
         img,
         angle=0.0,
@@ -87,7 +78,7 @@ def _apply_op(
         fill=fill,
         center=[0, 0],
     )
-  elif op_name == "TranslateX":
+  elif op_name == 'TranslateX':
     img = F.affine(
         img,
         angle=0.0,
@@ -97,7 +88,7 @@ def _apply_op(
         shear=[0.0, 0.0],
         fill=fill,
     )
-  elif op_name == "TranslateY":
+  elif op_name == 'TranslateY':
     img = F.affine(
         img,
         angle=0.0,
@@ -107,35 +98,57 @@ def _apply_op(
         shear=[0.0, 0.0],
         fill=fill,
     )
-  elif op_name == "Rotate":
+  elif op_name == 'Rotate':
     img = F.rotate(img, magnitude, interpolation=interpolation, fill=fill)
-  elif op_name == "Brightness":
+  elif op_name == 'Brightness':
     img = F.adjust_brightness(img, magnitude)
-  elif op_name == "Color":
+  elif op_name == 'Color':
     img = F.adjust_saturation(img, magnitude)
-  elif op_name == "Contrast":
+  elif op_name == 'Contrast':
     img = F.adjust_contrast(img, magnitude)
-  elif op_name == "Sharpness":
+  elif op_name == 'Sharpness':
     img = F.adjust_sharpness(img, magnitude)
-  elif op_name == "Posterize":
+  elif op_name == 'Posterize':
     img = F.posterize(img, int(magnitude))
-  elif op_name == "Cutout":
-    img = cutout(img, magnitude, fill=fill)
-  elif op_name == "SolarizeAdd":
+  elif op_name == 'Cutout':
+    img = cutout(img, int(magnitude))
+  elif op_name == 'SolarizeAdd':
     img = solarize_add(img, int(magnitude))
-  elif op_name == "Solarize":
+  elif op_name == 'Solarize':
     img = solarize(img, magnitude)
-  elif op_name == "AutoContrast":
+  elif op_name == 'AutoContrast':
     img = F.autocontrast(img)
-  elif op_name == "Equalize":
+  elif op_name == 'Equalize':
     img = F.equalize(img)
-  elif op_name == "Invert":
+  elif op_name == 'Invert':
     img = F.invert(img)
-  elif op_name == "Identity":
+  elif op_name == 'Identity':
     pass
   else:
-    raise ValueError(f"The provided operator {op_name} is not recognized.")
+    raise ValueError(f'The provided operator {op_name} is not recognized.')
   return img
+
+
+def ops_space() -> Dict[str, Tuple[spec.Tensor, bool]]:
+  return {
+      # op_name: (magnitudes, signed)
+      'ShearX': (torch.tensor(0.3), True),
+      'ShearY': (torch.tensor(0.3), True),
+      'TranslateX': (torch.tensor(100), True),
+      'TranslateY': (torch.tensor(100), True),
+      'Rotate': (torch.tensor(30), True),
+      'Brightness': (torch.tensor(1.9), False),
+      'Color': (torch.tensor(1.9), False),
+      'Contrast': (torch.tensor(1.9), False),
+      'Sharpness': (torch.tensor(1.9), False),
+      'Posterize': (torch.tensor(4), False),
+      'Solarize': (torch.tensor(256), False),
+      'SolarizeAdd': (torch.tensor(110), False),
+      'AutoContrast': (torch.tensor(0.0), False),
+      'Equalize': (torch.tensor(0.0), False),
+      'Invert': (torch.tensor(0.0), False),
+      'Cutout': (torch.tensor(40.0), False),
+  }
 
 
 class RandAugment(torch.nn.Module):
@@ -151,27 +164,7 @@ class RandAugment(torch.nn.Module):
     self.interpolation = interpolation
     self.fill = fill
 
-  def _augmentation_space(self) -> Dict[str, Tuple[Tensor, bool]]:
-    return {
-        # op_name: (magnitudes, signed)
-        "ShearX": (torch.tensor(0.3), True),
-        "ShearY": (torch.tensor(0.3), True),
-        "TranslateX": (torch.tensor(100), True),
-        "TranslateY": (torch.tensor(100), True),
-        "Rotate": (torch.tensor(30), True),
-        "Brightness": (torch.tensor(1.9), False),
-        "Color": (torch.tensor(1.9), False),
-        "Contrast": (torch.tensor(1.9), False),
-        "Sharpness": (torch.tensor(1.9), False),
-        "Posterize": (torch.tensor(4), False),
-        "Solarize": (torch.tensor(256), False),
-        "SolarizeAdd": (torch.tensor(110), False),
-        "AutoContrast": (torch.tensor(0.0), False),
-        "Equalize": (torch.tensor(0.0), False),
-        "Cutout": (torch.tensor(40.0), False),
-    }
-
-  def forward(self, img: Tensor) -> Tensor:
+  def forward(self, img: spec.Tensor) -> spec.Tensor:
     fill = self.fill if self.fill is not None else 128
     channels, _, _ = F.get_dimensions(img)
     if isinstance(img, Tensor):
@@ -180,25 +173,15 @@ class RandAugment(torch.nn.Module):
       elif fill is not None:
         fill = [float(f) for f in fill]
 
-    op_meta = self._augmentation_space()
+    op_meta = ops_space()
     for _ in range(self.num_ops):
       op_index = int(torch.randint(len(op_meta), (1,)).item())
       op_name = list(op_meta.keys())[op_index]
       magnitude, signed = op_meta[op_name]
       magnitude = float(magnitude)
       if signed and torch.randint(2, (1,)):
+        # With 50% prob turn the magnitude negative.
         magnitude *= -1.0
       img = _apply_op(
           img, op_name, magnitude, interpolation=self.interpolation, fill=fill)
-
     return img
-
-  def __repr__(self) -> str:
-    s = (f"{self.__class__.__name__}("
-         f"num_ops={self.num_ops}"
-         f", magnitude={self.magnitude}"
-         f", num_magnitude_bins={self.num_magnitude_bins}"
-         f", interpolation={self.interpolation}"
-         f", fill={self.fill}"
-         f")")
-    return s

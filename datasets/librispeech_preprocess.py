@@ -2,7 +2,6 @@
 Modified from https://github.com/lsari/librispeech_100.
 """
 
-import argparse
 import multiprocessing.dummy
 import os
 from os.path import exists
@@ -10,25 +9,27 @@ import sys
 import threading
 import time
 
+from absl import flags
+from absl import logging
 import numpy as np
 import pandas as pd
 from pydub import AudioSegment
 import tensorflow as tf
 import tensorflow_text as tftxt
 
+from datasets import librispeech_tokenizer
+
 gfile = tf.io.gfile
 copy = tf.io.gfile.copy
 exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
-parser = argparse.ArgumentParser()
 
-parser.add_argument(
-    '--data_dir', help='path to training data directory', type=str)
-
-parser.add_argument(
-    '--tokenizer_vocab_path',
-    help='path to sentence piece tokenizer vocab file',
-    type=str)
+flags.DEFINE_string('raw_input_dir', '', 'Path to the raw training data directory.')
+flags.DEFINE_string('output_dir', '', 'Dir to write the processed data to.')
+flags.DEFINE_string('tokenizer_vocab_path',
+                    '',
+                    'Path to sentence piece tokenizer vocab file.')
+FLAGS = flags.FLAGS
 
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
@@ -41,7 +42,7 @@ librispeech_example_counts = {
     'train-other-500': 148688,
     'test-clean': 2620,
     'dev-clean': 2703,
-    'dev-other': 2864
+    'dev-other': 2864,
 }
 
 
@@ -150,30 +151,10 @@ def load_audio(audio_path):
   return audio
 
 
-def load_tokenizer(model_path: str = 'spm_model.vocab',
-                   add_bos: bool = False,
-                   add_eos: bool = True,
-                   reverse: bool = False):
-  """Load a tf-text SentencePiece tokenizer from given model filepath."""
-  if not exists(model_path):
-    print('tokenizer not found, please train one ....')
+def run(input_dir, output_dir, tokenizer_vocab_path):
+  tokenizer = librispeech_tokenizer.load_tokenizer(tokenizer_vocab_path)
+  os.makedirs(output_dir, exist_ok=True)
 
-  with gfile.GFile(model_path, 'rb') as model_fp:
-    sp_model = model_fp.read()
-  sp_tokenizer = tftxt.SentencepieceTokenizer(
-      model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse)
-  return sp_tokenizer
-
-
-def main():
-  args = parser.parse_args()
-  data_dir = args.data_dir
-  tokenizer = load_tokenizer(args.tokenizer_vocab_path)
-
-  save_dir = 'data/'
-  os.makedirs(save_dir, exist_ok=True)
-
-  # put whatever splits required in this list below
   subset_list = [
       'train-clean-100',
       'train-clean-360',
@@ -184,16 +165,20 @@ def main():
       'test-other'
   ]
   for subset in subset_list:
-    print('processing split = ', subset)
-    os.makedirs(save_dir + '/' + subset, exist_ok=True)
-    example_ids, num_entries = preprocess_data(
-        f'{data_dir}/{subset}', tokenizer, subset)
+    logging.info('Processing split = %s...', subset)
+    subset_dir = os.path.join(output_dir, subset)
+    os.makedirs(subset_dir, exist_ok=True)
+    example_ids, num_entries = preprocess_data(subset_dir, tokenizer, subset)
 
     if num_entries != librispeech_example_counts[subset]:
-      raise ValueError('preprocessed dataframe final count not equal to '
+      raise ValueError('Preprocessed dataframe final count not equal to '
                        'expected count: {} vs expected {}'.format(
                            num_entries, librispeech_example_counts[subset]))
-    example_ids.to_csv('data/{}.csv'.format(subset))
+    example_ids.to_csv(os.path.join(output_dir, f'{subset}.csv'))
+
+
+def main():
+  run(FLAGS.input_dir, FLAGS.output_dir, FLAGS.tokenizer_vocab_path)
 
 
 if __name__ == '__main__':
