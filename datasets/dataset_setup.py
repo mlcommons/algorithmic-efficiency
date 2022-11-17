@@ -194,7 +194,7 @@ class _Downloader:
 
   def setup_progress_bar(self):
     total_size_in_bytes = int(self.response.headers.get('Content-length', 0))
-    total_size_in_mib = total_size_in_bytes / (2 ** 20)
+    total_size_in_mib = total_size_in_bytes / (2**20)
     progress_bar = tqdm.tqdm(
         total=total_size_in_mib, unit='MiB', unit_scale=True)
     return progress_bar
@@ -214,8 +214,8 @@ class _Downloader:
         return
 
     with open(self.file_path, 'wb') as f:
-      for chunk in self.response.iter_content(chunk_size=2 ** 10):
-        chunk_size_in_mib = len(chunk) / (2 ** 20)
+      for chunk in self.response.iter_content(chunk_size=2**10):
+        chunk_size_in_mib = len(chunk) / (2**20)
         self.progress_bar.update(chunk_size_in_mib)
         f.write(chunk)
     self.progress_bar.close()
@@ -224,8 +224,9 @@ class _Downloader:
       raise Exception(
           ('Download corrupted, size {n} MiB from {url} does not match '
            'expected size {size} MiB').format(
-                url=self.url, n=self.progress_bar.n,
-                size=self.progress_bar.total))
+               url=self.url,
+               n=self.progress_bar.n,
+               size=self.progress_bar.total))
 
 
 def download_criteo(data_dir,
@@ -532,8 +533,7 @@ def main(_):
     if FLAGS.framework is None:
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
-          'flag.'
-      )
+          'flag.')
     download_imagenet(data_dir, tmp_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
   if FLAGS.all or FLAGS.librispeech:
@@ -545,9 +545,10 @@ def main(_):
   if FLAGS.all or FLAGS.wmt:
     logging.info('Downloading WMT...')
     download_wmt(data_dir)
+
+
 # pylint: enable=logging-format-interpolation
 # pylint: enable=consider-using-with
-
 
 if __name__ == '__main__':
   app.run(main)
