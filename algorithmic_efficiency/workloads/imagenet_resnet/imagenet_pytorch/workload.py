@@ -74,8 +74,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
-    normalize = transforms.Normalize(mean=[i / 255. for i in self.train_mean],
-                                     std=[i / 255. for i in self.train_stddev])
+    normalize = transforms.Normalize(
+        mean=[i / 255. for i in self.train_mean],
+        std=[i / 255. for i in self.train_stddev])
     if is_train:
       transform_config = [
           transforms.RandomResizedCrop(
@@ -115,7 +116,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       ds_iter_batch_size = global_batch_size
     if USE_PYTORCH_DDP:
       sampler = torch.utils.data.distributed.DistributedSampler(
-          dataset, drop_last=is_train, num_replicas=N_GPUS, rank=RANK, shuffle=is_train)
+          dataset,
+          drop_last=is_train,
+          num_replicas=N_GPUS,
+          rank=RANK,
+          shuffle=is_train)
 
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -125,8 +130,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         num_workers=4 if is_train else 0,
         pin_memory=True,
         drop_last=is_train,
-        persistent_workers=is_train
-    )
+        persistent_workers=is_train)
     dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
         dataloader,
@@ -208,13 +212,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     per_example_losses = F.cross_entropy(
         logits_batch,

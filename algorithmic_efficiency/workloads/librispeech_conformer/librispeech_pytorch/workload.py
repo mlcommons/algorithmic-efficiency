@@ -143,7 +143,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       ds_iter_batch_size = global_batch_size
     if USE_PYTORCH_DDP:
       sampler = torch.utils.data.distributed.DistributedSampler(
-          ds, drop_last=is_train, num_replicas=N_GPUS, rank=RANK, shuffle=is_train, seed=0)
+          ds,
+          drop_last=is_train,
+          num_replicas=N_GPUS,
+          rank=RANK,
+          shuffle=is_train,
+          seed=0)
     dataloader = torch.utils.data.DataLoader(
         ds,
         batch_size=ds_iter_batch_size,

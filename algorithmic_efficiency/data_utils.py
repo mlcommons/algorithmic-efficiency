@@ -111,6 +111,7 @@ def cycle(iterable: Iterable,
         iterable.sampler.set_epoch(epoch)
       iterator = iter(iterable)
 
+
 # Inspired by
 # github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
 # ConvNets/image_classification/dataloaders.py
@@ -137,8 +138,7 @@ class PrefetchedWrapper:
     for next_inputs, next_targets in self.dataloader:
       with torch.cuda.stream(stream):
         next_inputs = next_inputs.to(
-            self.device, dtype=torch.float,
-            non_blocking=True)
+            self.device, dtype=torch.float, non_blocking=True)
         next_targets = next_targets.to(self.device, non_blocking=True)
 
       if not first:

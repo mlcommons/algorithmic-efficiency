@@ -76,7 +76,11 @@ class MnistWorkload(BaseMnistWorkload):
     is_train = split == 'train'
     if USE_PYTORCH_DDP:
       sampler = torch.utils.data.distributed.DistributedSampler(
-          dataset, drop_last=is_train, num_replicas=N_GPUS, rank=RANK, shuffle=is_train)
+          dataset,
+          drop_last=is_train,
+          num_replicas=N_GPUS,
+          rank=RANK,
+          shuffle=is_train)
       batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
