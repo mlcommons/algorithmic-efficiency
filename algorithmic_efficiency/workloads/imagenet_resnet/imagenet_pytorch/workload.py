@@ -240,7 +240,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
     predicted = torch.argmax(logits, 1)
-    # Not accuracy, but nr. of correct predictions
+    # Not accuracy, but nr. of correct predictions.
     accuracy = ((predicted == labels) * weights).sum()
     _, per_example_losses = self.loss_fn(labels, logits, weights)
     loss = per_example_losses.sum()
