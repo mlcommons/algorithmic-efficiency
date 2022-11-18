@@ -23,13 +23,9 @@ TFDS_SPLIT_NAME = {
 }
 
 
-def normalize_feature_names(ds_info, reverse_translation,
-                            features: Features) -> Features:
+def normalize_feature_names(ds_info, features: Features) -> Features:
   """Normalizes feature names to 'inputs' and 'targets'."""
-  in_lang, tar_lang = ds_info.supervised_keys
-  input_lang = tar_lang if reverse_translation else in_lang
-  target_lang = in_lang if reverse_translation else tar_lang
-
+  input_lang, target_lang = ds_info.supervised_keys
   features['inputs'] = features.pop(input_lang)
   features['targets'] = features.pop(target_lang)
   return features
@@ -262,7 +258,6 @@ def get_wmt_dataset(data_rng,
                     vocab_size: int,
                     global_batch_size: int,
                     num_batches: Optional[int] = None,
-                    reverse_translation: bool = True,
                     repeat_final_dataset: bool = False,
                     vocab_path: Optional[str] = None):
   """Load and return dataset of batched examples for use during training."""
@@ -285,9 +280,7 @@ def get_wmt_dataset(data_rng,
     ds = ds.with_options(options)
 
   ds = ds.map(
-      functools.partial(normalize_feature_names,
-                        dataset_builder.info,
-                        reverse_translation),
+      functools.partial(normalize_feature_names, dataset_builder.info),
       num_parallel_calls=AUTOTUNE)
 
   # Tokenize data.
