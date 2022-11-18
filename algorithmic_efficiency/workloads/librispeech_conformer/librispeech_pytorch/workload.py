@@ -7,6 +7,7 @@ from absl import logging
 import jax
 import torch
 import torch.distributed as dist
+import torch.distributed.nn as dist_nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import data_utils
@@ -114,24 +115,21 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                          global_batch_size: int,
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
-    del data_rng
     del num_batches
     del repeat_final_dataset
-    train = False
-
+    train = split == 'train'
     if split == 'train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
-      train = True
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'eval_train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
-      split = 'dev-clean+dev-other'
+      ds_split = 'dev-clean+dev-other'
     elif split == 'test':
-      split = 'test-clean'
+      ds_split = 'test-clean'
 
-    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+    ds = LibriSpeechDataset(split=ds_split, data_dir=data_dir)
     if split == 'eval_train':
-      indices = list(range(self.num_train_examples))
+      indices = list(range(len(ds)))
       random.Random(data_rng[0]).shuffle(indices)
       ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
 
@@ -161,17 +159,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)
     return dataloader
 
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
-  def loss_fn(
+  def _loss_fn(
       self,
       label_batch: spec.Tensor,
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
-    del label_smoothing
+  ):  # differentiable
+    """Return detailed loss-dict."""
     targets, target_paddings = label_batch
     logits, logit_paddings = logits_batch
     logprobs = torch.log_softmax(logits, dim=-1)
@@ -188,9 +182,32 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = torch.logical_and(mask_batch, target_lengths)
     else:
       mask_batch = target_lengths
-    n_valid_examples = max(mask_batch.sum(), 1)
+    n_valid_examples = mask_batch.sum().to(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    if USE_PYTORCH_DDP:
+      # Use dist_nn.all_reduce to ensure correct gradient scaling.
+      dist_nn.all_reduce(summed_loss)
+      dist_nn.all_reduce(n_valid_examples)
+    n_valid_examples = max(n_valid_examples, 1)
+    return {
+        'loss': per_example_losses,
+        'lengths': mask_batch.sum(),
+        'average_loss': summed_loss / n_valid_examples
+    }
+
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+    del label_smoothing
+    l = self._loss_fn(label_batch, logits_batch, mask_batch)
+    return l['average_loss'], l['loss']
 
   def greedy_decode(
       self, logits: spec.Tensor,
@@ -277,10 +294,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           targets=targets.cpu().numpy(),
           target_paddings=target_paddings.cpu().numpy(),
           tokenizer=self.tokenizer)
-      mean_loss, per_example_losses = self.loss_fn(
-          (targets, target_paddings), (logits, logits_padding))
-      summed_loss = per_example_losses.sum()
-      lengths = torch.round(summed_loss / mean_loss)
+      l = self._loss_fn((targets, target_paddings), (logits, logits_padding))
+      summed_loss = l['loss'].sum()
+      lengths = l['lengths']
       batch_metrics = {
           'loss': summed_loss,
           'lengths': lengths,
