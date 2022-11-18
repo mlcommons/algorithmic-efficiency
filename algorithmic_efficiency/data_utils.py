@@ -3,11 +3,9 @@ from typing import Dict, Iterable, Optional, Tuple
 import jax
 import numpy as np
 import torch
-import torch.distributed as dist
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
-from torch.utils.data import Sampler
 
 from algorithmic_efficiency import spec
 
