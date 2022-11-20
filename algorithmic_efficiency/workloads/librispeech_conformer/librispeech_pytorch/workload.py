@@ -3,7 +3,6 @@ import math
 import random
 from typing import Dict, Optional, Tuple
 
-from absl import logging
 import jax
 import torch
 import torch.distributed as dist
@@ -28,6 +27,10 @@ MAX_INPUT_LENGTH = 320000
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
+
+  def __init__(self, tokenizer_vocab_path=None):
+    super().__init__()
+    self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
 
   def init_model_fn(
       self,
@@ -71,10 +74,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
-
-  def init_tokenizer(self, tokenizer_vocab_path: str) -> None:
-    logging.info('Initializing tokenizer.')
-    self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
 
   def model_fn(
       self,

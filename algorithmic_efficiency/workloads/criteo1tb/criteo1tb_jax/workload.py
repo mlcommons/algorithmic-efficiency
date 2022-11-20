@@ -28,7 +28,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     log_p = jax.nn.log_sigmoid(logits)
     log_not_p = jax.nn.log_sigmoid(-logits)
     losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
-    return jnp.sum(losses.reshape(losses.shape[0], -1), axis=-1)
+    return losses
 
   def loss_fn(
       self,
@@ -39,9 +39,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
+    batch_size = label_batch.shape[0]
+    label_batch = jnp.reshape(label_batch, (batch_size,))
+    logits_batch = jnp.reshape(logits_batch, (batch_size,))
     per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
+      mask_batch = jnp.reshape(mask_batch, (batch_size,))
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
     else:
@@ -58,8 +62,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     del dropout_rate
     del aux_dropout_rate
     self._model = models.DlrmSmall(
-        vocab_sizes=self.vocab_sizes,
-        total_vocab_sizes=sum(self.vocab_sizes),
+        vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
@@ -67,7 +70,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
     rng, init_rng = jax.random.split(rng)
     init_fake_batch_size = 2
-    input_size = self.num_dense_features + len(self.vocab_sizes)
+    num_categorical_features = 26
+    input_size = self.num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
     target_shape = (init_fake_batch_size, input_size)
 
@@ -81,7 +85,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return jax_utils.replicate(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key == 'Dense_4'
+    return param_key == 'Dense_7'
 
   def model_fn(
       self,
@@ -118,7 +122,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = jnp.ones(len(logits))
-    _, per_example_losses = self.loss_fn(logits, batch['targets'], weights)
+    _, per_example_losses = self.loss_fn(
+        label_batch=batch['targets'],
+        logits_batch=logits,
+        mask_batch=weights)
     return jnp.sum(per_example_losses)
 
   def _eval_batch(self,
@@ -126,5 +133,4 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
-    loss = self._eval_batch_pmapped(params, batch).sum()
-    return loss
+    return self._eval_batch_pmapped(params, batch).sum()

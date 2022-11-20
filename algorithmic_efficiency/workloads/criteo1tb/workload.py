@@ -14,18 +14,18 @@ USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
 
-  vocab_sizes: Tuple[int] = tuple([1024 * 128] * 26)
+  vocab_size: int = 32 * 128 * 1024  # 4_194_304
   num_dense_features: int = 13
-  mlp_bottom_dims: Tuple[int, int] = (128, 128)
-  mlp_top_dims: Tuple[int, int, int] = (256, 128, 1)
-  embed_dim: int = 64
+  mlp_bottom_dims: Tuple[int, int] = (512, 256, 128)
+  mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
+  embed_dim: int = 128
 
   def has_reached_goal(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.target_value
 
   @property
   def target_value(self) -> float:
-    return 0.124225
+    return 0.124225  # NOTE: this will be later revised.
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -46,11 +46,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self) -> int:
-    return 89_137_318 // 2
+    return 89_000_000
 
   @property
   def num_test_examples(self) -> int:
-    return 89_137_318 // 2
+    return 89_274_637
 
   @property
   def eval_batch_size(self) -> int:
@@ -70,7 +70,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self) -> int:
-    return 24 * 60
+    return 9 * 60
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
@@ -79,13 +79,12 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
                          global_batch_size: int,
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
-    del data_rng
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
+        shuffle_rng=data_rng,
         data_dir=data_dir,
-        global_batch_size=global_batch_size,
         num_dense_features=self.num_dense_features,
-        vocab_sizes=self.vocab_sizes,
+        global_batch_size=global_batch_size,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
 
@@ -95,7 +94,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Max num steps the target setting algo was given to reach the target."""
-    return 4000
+    return 8000
 
   def _eval_model_on_split(self,
                            split: str,

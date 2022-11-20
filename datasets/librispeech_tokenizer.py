@@ -21,7 +21,7 @@ rename = tf.io.gfile.rename
 
 Features = Dict[str, tf.Tensor]
 
-flags.DEFINE_string('data_dir', '', 'Path to training data directory.')
+flags.DEFINE_string('input_dir', '', 'Path to training data directory.')
 flags.DEFINE_boolean(
     'train',
     False,
