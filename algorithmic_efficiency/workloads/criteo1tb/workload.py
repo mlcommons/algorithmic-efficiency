@@ -24,8 +24,8 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return eval_result['validation/loss'] < self.target_value
 
   @property
-  def target_value(self):
-    return 0.124225
+  def target_value(self) -> float:
+    return 0.124225  # NOTE: this will be later revised.
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -45,11 +45,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return rounded_up_multiple * self.eval_batch_size
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     return 89_000_000
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     return 89_274_637
 
   @property
@@ -69,7 +69,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return 6 * 60 * 60
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 9 * 60
 
   def _build_input_queue(self,
