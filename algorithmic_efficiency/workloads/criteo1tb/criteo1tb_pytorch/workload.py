@@ -38,9 +38,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     del label_smoothing
+    batch_size = label_batch.shape[0]
+    label_batch = torch.reshape(label_batch, (batch_size,))
+    logits_batch = torch.reshape(logits_batch, (batch_size,))
     per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
         logits=logits_batch, targets=label_batch)
     if mask_batch is not None:
+      mask_batch = torch.reshape(mask_batch, (batch_size,))
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
     else:
@@ -64,8 +68,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = DlrmSmall(
-        vocab_sizes=self.vocab_sizes,
-        total_vocab_sizes=sum(self.vocab_sizes),
+        vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
@@ -206,6 +209,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
-    _, per_example_losses = self.loss_fn(logits, batch['targets'], weights)
+    _, per_example_losses = self.loss_fn(
+        label_batch=batch['targets'],
+        logits_batch=logits,
+        mask_batch=weights)
     loss = per_example_losses.sum()
     return loss
