@@ -105,6 +105,7 @@
 
    ```bash
    pip3 install -e '.[dev]'
+   pre-commit install
    ```
 
    To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
