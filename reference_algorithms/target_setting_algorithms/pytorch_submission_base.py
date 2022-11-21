@@ -1,6 +1,7 @@
 """Batch size and update submission functions in PyTorch."""
 
 from typing import Dict, List, Tuple
+
 from absl import logging
 import torch
 
@@ -51,9 +52,9 @@ def update_params(workload: spec.Workload,
   loss.backward()
 
   with torch.no_grad():
-      parameters = [p for p in current_model.parameters() if p.grad is not None]
-      grad_norm = torch.norm(
-          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+    parameters = [p for p in current_model.parameters() if p.grad is not None]
+    grad_norm = torch.norm(
+        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
 
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(

@@ -1,5 +1,4 @@
 import functools
-import itertools
 import math
 from typing import Dict, Optional, Tuple
 
@@ -11,7 +10,6 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from flax.training import checkpoints as flax_checkpoints
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -254,12 +252,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
-      self._eval_iters[split] =  self._build_input_queue(
-        rng,
-        split,
-        data_dir,
-        global_batch_size,
-        num_batches)
+      self._eval_iters[split] = self._build_input_queue(rng,
+                                                        split,
+                                                        data_dir,
+                                                        global_batch_size,
+                                                        num_batches)
 
     metrics_report = None
     for _ in range(num_batches):
