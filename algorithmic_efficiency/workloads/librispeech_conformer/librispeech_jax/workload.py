@@ -4,7 +4,6 @@ import math
 from typing import Dict, Optional, Tuple
 
 from absl import flags
-from absl import logging
 from flax import jax_utils
 import flax.linen as nn
 import jax
@@ -24,6 +23,10 @@ FLAGS = flags.FLAGS
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
+
+  def __init__(self, tokenizer_vocab_path=None):
+    super().__init__()
+    self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
 
   def init_model_fn(
       self,
@@ -59,10 +62,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
-
-  def init_tokenizer(self, tokenizer_vocab_path: str) -> None:
-    logging.info('Initializing metrics bundle and tokenizer.')
-    self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
 
   def model_fn(
       self,
