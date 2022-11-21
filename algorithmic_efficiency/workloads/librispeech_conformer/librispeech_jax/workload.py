@@ -45,19 +45,16 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         feed_forward_residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate)
     self._model = models.Conformer(model_config)
-    # input_shape = [(320000,), (320000,)]
-    # fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
+    input_shape = [(320000,), (320000,)]
+    fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
-    # model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
+    model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
-    # params_rng, dropout_rng = jax.random.split(rng, 2)
-    # variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
-    #                           *fake_input_batch)
-    restored_params = flax_checkpoints.restore_checkpoint(
-      '/home/smedapati/test2/conformer-diffs3/conformer_diffs/pytorch/ckpts', target=None, prefix='checkpoint')
+    params_rng, dropout_rng = jax.random.split(rng, 2)
+    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
+                              *fake_input_batch)
 
-    model_state = restored_params['batch_stats']
-    params = restored_params['params']
+    model_state, params = variables.pop('params')
 
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
