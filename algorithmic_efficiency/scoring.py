@@ -29,8 +29,9 @@ import itertools
 import operator
 import os
 
-import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 MIN_EVAL_METRICS = [
     'ce_loss',
