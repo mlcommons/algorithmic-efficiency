@@ -32,7 +32,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def target_value(self) -> float:
-    return 30.879  # TODO(namanagarwal): This will edited again soon.
+    return 30.6446
 
   @property
   def loss_type(self) -> spec.LossType:
