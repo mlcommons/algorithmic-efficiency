@@ -88,6 +88,7 @@ def mixup_pytorch(batch: Tuple[spec.Tensor, spec.Tensor],
   targets = weight * targets + (1.0 - weight) * torch.roll(targets, 1, dims=0)
   return (inputs, targets)
 
+
 # github.com/SeungjunNah/DeepDeblur-PyTorch/blob/master/src/data/sampler.py
 class DistributedEvalSampler(Sampler):
   r"""
