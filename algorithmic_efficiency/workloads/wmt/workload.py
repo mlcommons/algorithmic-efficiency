@@ -103,7 +103,6 @@ class BaseWmtWorkload(spec.Workload):
         vocab_size=self._vocab_size,
         global_batch_size=global_batch_size,
         num_batches=num_batches,
-        reverse_translation=True,
         repeat_final_dataset=repeat_final_dataset)
 
     # Separate function is necessary because the code above has to be executed

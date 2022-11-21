@@ -116,9 +116,9 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_string('tokenizer_vocab_path',
+flags.DEFINE_string('librispeech_tokenizer_vocab_path',
                     '',
-                    'Location to read tokenizer from.')
+                    'Location to librispeech tokenizer.')
 
 flags.DEFINE_string(
     'experiment_dir',
@@ -157,7 +157,8 @@ def convert_filepath_to_module(path: str):
 
 def import_workload(workload_path: str,
                     workload_class_name: str,
-                    return_class=False) -> spec.Workload:
+                    return_class=False,
+                    workload_init_kwargs=None) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -172,6 +173,7 @@ def import_workload(workload_path: str,
       `Workload` abstract class in `spec.py`.
     return_class: if true, then the workload class is returned instead of the
       instantiated object. Useful for testing when methods need to be overriden.
+    workload_init_kwargs: kwargs to pass to the workload constructor.
   """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
@@ -193,25 +195,22 @@ def import_workload(workload_path: str,
         'the top scope of the module.')
   if return_class:
     return workload_class
-  return workload_class()
+  return workload_class(**workload_init_kwargs)
 
 
-def train_once(
-    workload: spec.Workload,
-    global_batch_size: int,
-    global_eval_batch_size: int,
-    data_dir: str,
-    imagenet_v2_data_dir: str,
-    init_optimizer_state: spec.InitOptimizerFn,
-    update_params: spec.UpdateParamsFn,
-    data_selection: spec.DataSelectionFn,
-    hyperparameters: Optional[spec.Hyperparameters],
-    rng: spec.RandomState,
-    profiler: Profiler,
-    max_global_steps: int = None,
-    log_dir: Optional[str] = None,
-    tokenizer_vocab_path: Optional[str] = None
-) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(workload: spec.Workload,
+               global_batch_size: int,
+               global_eval_batch_size: int,
+               data_dir: str,
+               imagenet_v2_data_dir: str,
+               init_optimizer_state: spec.InitOptimizerFn,
+               update_params: spec.UpdateParamsFn,
+               data_selection: spec.DataSelectionFn,
+               hyperparameters: Optional[spec.Hyperparameters],
+               rng: spec.RandomState,
+               profiler: Profiler,
+               max_global_steps: int = None,
+               log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -240,8 +239,6 @@ def train_once(
                                            hyperparameters,
                                            opt_init_rng)
   logging.info('Initializing metrics bundle.')
-  if tokenizer_vocab_path:
-    workload.init_tokenizer(tokenizer_vocab_path)
 
   # Bookkeeping.
   train_state = {
@@ -349,6 +346,9 @@ def train_once(
           time_since_start = current_time - global_start_time
           logging.info(f'Time since start: {time_since_start:.2f}s, '
                        f'\tStep: {global_step}, \t{latest_eval_result}')
+          latest_eval_result['score'] = (
+              train_state['accumulated_submission_time'])
+          latest_eval_result['total_duration'] = time_since_start
           eval_results.append((global_step, latest_eval_result))
           train_state['goal_reached'] = workload.has_reached_goal(
               latest_eval_result)
@@ -411,20 +411,17 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(
-    workload: spec.Workload,
-    workload_name: str,
-    submission_path: str,
-    data_dir: str,
-    imagenet_v2_data_dir: str,
-    profiler: Profiler,
-    tuning_ruleset: str,
-    max_global_steps: int,
-    tuning_search_space: Optional[str] = None,
-    num_tuning_trials: Optional[int] = None,
-    log_dir: Optional[str] = None,
-    tokenizer_vocab_path: Optional[str] = None,
-):
+def score_submission_on_workload(workload: spec.Workload,
+                                 workload_name: str,
+                                 submission_path: str,
+                                 data_dir: str,
+                                 imagenet_v2_data_dir: str,
+                                 profiler: Profiler,
+                                 tuning_ruleset: str,
+                                 max_global_steps: int,
+                                 tuning_search_space: Optional[str] = None,
+                                 num_tuning_trials: Optional[int] = None,
+                                 log_dir: Optional[str] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
@@ -471,6 +468,7 @@ def score_submission_on_workload(
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
+      logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
       # Jax implementation this means that rng[0] is all zeros, which means this
@@ -504,8 +502,7 @@ def score_submission_on_workload(
                                      hyperparameters, rng,
                                      profiler,
                                      max_global_steps,
-                                     tuning_dir_name,
-                                     tokenizer_vocab_path)
+                                     tuning_dir_name)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -525,8 +522,7 @@ def score_submission_on_workload(
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, max_global_steps, log_dir, tokenizer_vocab_path)
-  # TODO(znado): record and return other information (number of steps).
+          None, rng, profiler, max_global_steps, log_dir)
   return score
 
 
@@ -545,9 +541,14 @@ def main(_):
       BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + f'_{FLAGS.framework}',
       'workload.py')
+  workload_init_kwargs = {}
+  if FLAGS.librispeech_tokenizer_vocab_path:
+    workload_init_kwargs['tokenizer_vocab_path'] = (
+        FLAGS.librispeech_tokenizer_vocab_path)
   workload = import_workload(
       workload_path=workload_metadata['workload_path'],
-      workload_class_name=workload_metadata['workload_class_name'])
+      workload_class_name=workload_metadata['workload_class_name'],
+      workload_init_kwargs=workload_init_kwargs)
 
   experiment_name = FLAGS.experiment_name
   if experiment_name and FLAGS.append_timestamp:
@@ -568,8 +569,7 @@ def main(_):
                                        FLAGS.max_global_steps,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       logging_dir_path,
-                                       FLAGS.tokenizer_vocab_path)
+                                       logging_dir_path)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:

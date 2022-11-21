@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 from pydub import AudioSegment
 import tensorflow as tf
-import tensorflow_text as tftxt
 
 from datasets import librispeech_tokenizer
 
@@ -24,7 +23,9 @@ copy = tf.io.gfile.copy
 exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
 
-flags.DEFINE_string('input_dir', '', 'Path to the raw training data directory.')
+flags.DEFINE_string('raw_input_dir',
+                    '',
+                    'Path to the raw training data directory.')
 flags.DEFINE_string('output_dir', '', 'Dir to write the processed data to.')
 flags.DEFINE_string('tokenizer_vocab_path',
                     '',

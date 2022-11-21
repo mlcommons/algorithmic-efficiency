@@ -3,7 +3,6 @@ import math
 import random
 from typing import Dict, Optional, Tuple
 
-from absl import logging
 import jax
 import torch
 import torch.distributed as dist
@@ -28,6 +27,10 @@ MAX_INPUT_LENGTH = 320000
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
+
+  def __init__(self, tokenizer_vocab_path=None):
+    super().__init__()
+    self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
 
   def init_model_fn(
       self,
@@ -72,10 +75,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     pass
 
-  def init_tokenizer(self, tokenizer_vocab_path: str) -> None:
-    logging.info('Initializing tokenizer.')
-    self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
-
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -117,22 +116,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                          repeat_final_dataset: bool = False):
     del num_batches
     del repeat_final_dataset
-    train = False
-
-    eval_train = False
+    train = split == 'train'
     if split == 'train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
-      train = True
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'eval_train':
-      eval_train = True
-      split = 'train-clean-100+train-clean-360+train-other-500'
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
-      split = 'dev-clean+dev-other'
+      ds_split = 'dev-clean+dev-other'
     elif split == 'test':
-      split = 'test-clean'
+      ds_split = 'test-clean'
 
-    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
-    if eval_train:
+    ds = LibriSpeechDataset(split=ds_split, data_dir=data_dir)
+    if split == 'eval_train':
       indices = list(range(len(ds)))
       random.Random(data_rng[0]).shuffle(indices)
       ds = torch.utils.data.Subset(ds, indices[:self.num_eval_train_examples])
@@ -164,10 +159,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return dataloader
 
   def _loss_fn(
-    self,
-    label_batch: spec.Tensor,
-    logits_batch: spec.Tensor,
-    mask_batch: Optional[spec.Tensor] = None,
+      self,
+      label_batch: spec.Tensor,
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
   ):  # differentiable
     """Return detailed loss-dict."""
     targets, target_paddings = label_batch
@@ -188,13 +183,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = target_lengths
     n_valid_examples = mask_batch.sum().to(per_example_losses)
     summed_loss = per_example_losses.sum()
-
     if USE_PYTORCH_DDP:
+      # Use dist_nn.all_reduce to ensure correct gradient scaling.
       dist_nn.all_reduce(summed_loss)
       dist_nn.all_reduce(n_valid_examples)
-    
     n_valid_examples = max(n_valid_examples, 1)
-    
     return {
         'loss': per_example_losses,
         'lengths': mask_batch.sum(),

@@ -101,7 +101,9 @@ DataSelectionFn = Callable[[
 
 class Workload(metaclass=abc.ABCMeta):
 
-  def __init__(self) -> None:
+  def __init__(self, *args, **kwargs) -> None:
+    del args
+    del kwargs
     self._param_shapes: Optional[ParameterShapeTree] = None
     self._param_types: Optional[ParameterTypeTree] = None
     self._eval_iters: Dict[str, Iterator] = {}
