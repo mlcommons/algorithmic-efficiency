@@ -89,29 +89,6 @@ def mixup_pytorch(batch: Tuple[spec.Tensor, spec.Tensor],
   return (inputs, targets)
 
 
-# github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
-def cycle(iterable: Iterable,
-          keys: Tuple[str, ...] = ('inputs', 'targets'),
-          custom_sampler: bool = False,
-          use_mixup: bool = False,
-          mixup_alpha: float = 0.2):
-  iterator = iter(iterable)
-  epoch = 0
-  while True:
-    try:
-      batch = next(iterator)
-      if use_mixup:
-        assert keys == ('inputs', 'targets')
-        batch = mixup_pytorch(batch, alpha=mixup_alpha)
-      assert len(keys) == len(batch)
-      yield dict(zip(keys, batch))
-    except StopIteration:
-      if custom_sampler and isinstance(iterable, DataLoader):
-        epoch += 1
-        iterable.sampler.set_epoch(epoch)
-      iterator = iter(iterable)
-
-
 # github.com/SeungjunNah/DeepDeblur-PyTorch/blob/master/src/data/sampler.py
 class DistributedEvalSampler(Sampler):
   r"""
@@ -219,23 +196,27 @@ class DistributedEvalSampler(Sampler):
     self.epoch = epoch
 
 
-# github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
-# ConvNets/image_classification/dataloaders.py
-def fast_collate(batch, memory_format=torch.contiguous_format):
-  imgs = [img[0] for img in batch]
-  targets = torch.tensor([target[1] for target in batch], dtype=torch.int64)
-  w = imgs[0].size[0]
-  h = imgs[0].size[1]
-  tensor = torch.zeros(
-      (len(imgs), 3, h, w),
-      dtype=torch.uint8).contiguous(memory_format=memory_format)
-  for i, img in enumerate(imgs):
-    nump_array = np.asarray(img, dtype=np.uint8)
-    if nump_array.ndim < 3:
-      nump_array = np.expand_dims(nump_array, axis=-1)
-    nump_array = np.rollaxis(nump_array, 2)
-    tensor[i] += torch.from_numpy(nump_array.copy())
-  return tensor, targets
+# github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
+def cycle(iterable: Iterable,
+          keys: Tuple[str, ...] = ('inputs', 'targets'),
+          custom_sampler: bool = False,
+          use_mixup: bool = False,
+          mixup_alpha: float = 0.2):
+  iterator = iter(iterable)
+  epoch = 0
+  while True:
+    try:
+      batch = next(iterator)
+      if use_mixup:
+        assert keys == ('inputs', 'targets')
+        batch = mixup_pytorch(batch, alpha=mixup_alpha)
+      assert len(keys) == len(batch)
+      yield dict(zip(keys, batch))
+    except StopIteration:
+      if custom_sampler and isinstance(iterable, DataLoader):
+        epoch += 1
+        iterable.sampler.set_epoch(epoch)
+      iterator = iter(iterable)
 
 
 # Inspired by
@@ -243,19 +224,16 @@ def fast_collate(batch, memory_format=torch.contiguous_format):
 # ConvNets/image_classification/dataloaders.py
 class PrefetchedWrapper:
 
-  def __init__(self, dataloader, device, mean, std, start_epoch=0):
+  def __init__(self, dataloader, device, start_epoch=0):
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
-    self.data_mean = torch.tensor(mean, device=device).view(1, 3, 1, 1)
-    self.data_std = torch.tensor(std, device=device).view(1, 3, 1, 1)
 
   def __len__(self):
     return len(self.dataloader)
 
   def __iter__(self):
-    if isinstance(self.dataloader.sampler,
-                  (DistributedSampler, DistributedEvalSampler)):
+    if isinstance(self.dataloader.sampler, DistributedSampler):
       self.dataloader.sampler.set_epoch(self.epoch)
     self.epoch += 1
     return self.prefetched_loader()
@@ -267,8 +245,7 @@ class PrefetchedWrapper:
     for next_inputs, next_targets in self.dataloader:
       with torch.cuda.stream(stream):
         next_inputs = next_inputs.to(
-            self.device, dtype=torch.float,
-            non_blocking=True).sub(self.data_mean).div(self.data_std)
+            self.device, dtype=torch.float, non_blocking=True)
         next_targets = next_targets.to(self.device, non_blocking=True)
 
       if not first:

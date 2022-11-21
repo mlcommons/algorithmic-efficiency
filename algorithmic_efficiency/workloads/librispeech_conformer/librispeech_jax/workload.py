@@ -1,5 +1,4 @@
 import functools
-import itertools
 import math
 from typing import Dict, Optional, Tuple
 
@@ -54,6 +53,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                               *fake_input_batch)
 
     model_state, params = variables.pop('params')
+
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
@@ -252,12 +252,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
-      self._eval_iters[split] = itertools.cycle(
-          self._build_input_queue(rng,
-                                  split,
-                                  data_dir,
-                                  global_batch_size,
-                                  num_batches))
+      self._eval_iters[split] = self._build_input_queue(rng,
+                                                        split,
+                                                        data_dir,
+                                                        global_batch_size,
+                                                        num_batches)
 
     metrics_report = None
     for _ in range(num_batches):
