@@ -18,7 +18,7 @@ class SpecAug(nn.Module):
   better word error rates.
   """
   freq_mask_count: int = 1
-  freq_mask_max_bins: int = 15 
+  freq_mask_max_bins: int = 15
   time_mask_count: int = 1
   time_mask_max_frames: int = 50
   time_mask_max_ratio: float = 1.0
