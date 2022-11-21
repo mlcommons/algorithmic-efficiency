@@ -102,22 +102,18 @@ class BaseLibrispeechWorkload(spec.Workload):
       split = 'test-clean'
 
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
-    ds_iter_batch_size = global_batch_size
-    sampler = None
 
-    dataloader = torch.utils.data.DataLoader(
+    dataloader = data_utils.cycle(
+      torch.utils.data.DataLoader(
         ds,
-        batch_size=ds_iter_batch_size,
+        batch_size=global_batch_size,
         shuffle=train,
-        sampler=sampler,
+        sampler=None,
         num_workers=4,
         prefetch_factor=10,
         pin_memory=False,
         drop_last=train,
-    )
-
-    dataloader = data_utils.cycle(
-        dataloader, custom_sampler=False, use_mixup=False)
+    ))
 
     for batch in iter(dataloader):
       inputs, input_paddings = batch['inputs']

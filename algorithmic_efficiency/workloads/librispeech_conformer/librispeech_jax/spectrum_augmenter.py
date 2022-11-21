@@ -25,8 +25,8 @@ class SpecAug(nn.Module):
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = False
 
-  def setup(self):
-    self.rng = self.make_rng('dropout')
+  def next_prng_key(self, name='dropout'):
+    return self.make_rng(name)
 
   def _get_mask(self,
                 batch_size,
@@ -153,7 +153,9 @@ class SpecAug(nn.Module):
   def __call__(self, inputs, paddings):
     lengths = jnp.einsum('bh->b', 1 - paddings).astype(jnp.int32)
 
-    inputs = self._time_mask(inputs, lengths, global_seed=self.rng)
-    inputs = self._frequency_mask(inputs, global_seed=self.rng)
+    prng_key = self.next_prng_key()
+    inputs = self._time_mask(inputs, lengths, global_seed=prng_key)
+    prng_key = self.next_prng_key()
+    inputs = self._frequency_mask(inputs, global_seed=prng_key)
 
     return inputs, paddings
