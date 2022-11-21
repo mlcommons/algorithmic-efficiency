@@ -83,11 +83,10 @@ class CifarWorkload(BaseCifarWorkload):
     if USE_PYTORCH_DDP:
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset,
-            drop_last=is_train,
-            num_replicas=N_GPUS,
-            rank=RANK,
-            shuffle=is_train)
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
+      else:
+        sampler = data_utils.DistributedEvalSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
       batch_size //= N_GPUS
     dataloader = torch.utils.data.DataLoader(
         dataset,
