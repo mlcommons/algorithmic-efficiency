@@ -116,9 +116,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                          repeat_final_dataset: bool = False):
     del num_batches
     del repeat_final_dataset
-    train = split == 'train'
+
+    is_train = False
     if split == 'train':
-      ds_split = 'train-clean-100+train-clean-360+train-other-500'
+      split = 'train-clean-100+train-clean-360+train-other-500'
+      is_train = True
     elif split == 'eval_train':
       ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
@@ -139,20 +141,20 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     else:
       ds_iter_batch_size = global_batch_size
     if USE_PYTORCH_DDP:
-      if train:
+      if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
-            ds, num_replicas=N_GPUS, rank=RANK, shuffle=True, seed=0)
+            ds, num_replicas=N_GPUS, rank=RANK, shuffle=True)
       else:
         sampler = data_utils.DistributedEvalSampler(
             ds, num_replicas=N_GPUS, rank=RANK, shuffle=False)
     dataloader = torch.utils.data.DataLoader(
         ds,
         batch_size=ds_iter_batch_size,
-        shuffle=not USE_PYTORCH_DDP and train,
+        shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,
         pin_memory=True,
-        drop_last=train)
+        drop_last=is_train)
 
     dataloader = data_utils.cycle(
         dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)

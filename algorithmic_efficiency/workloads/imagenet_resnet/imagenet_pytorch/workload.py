@@ -74,9 +74,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
-    if not is_train and use_mixup:
-      raise ValueError('Mixup can only be used for the training split.')
-
+    normalize = transforms.Normalize(
+        mean=[i / 255. for i in self.train_mean],
+        std=[i / 255. for i in self.train_stddev])
     if is_train:
       transform_config = [
           transforms.RandomResizedCrop(
@@ -84,14 +84,18 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
           transforms.RandomHorizontalFlip(),
+          transforms.ToTensor(),
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
+      transform_config.append(normalize)
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),
           transforms.CenterCrop(self.center_crop_size),
+          transforms.ToTensor(),
+          normalize
       ])
 
     folder = 'train' if 'train' in split else 'val'
@@ -117,20 +121,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       else:
         sampler = data_utils.DistributedEvalSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4,
+        num_workers=4 if is_train else 0,
         pin_memory=True,
-        collate_fn=data_utils.fast_collate,
         drop_last=is_train,
-        persistent_workers=True)
-    dataloader = data_utils.PrefetchedWrapper(dataloader,
-                                              DEVICE,
-                                              self.train_mean,
-                                              self.train_stddev)
+        persistent_workers=is_train)
+    dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
         dataloader,
         custom_sampler=USE_PYTORCH_DDP,
@@ -154,7 +155,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
@@ -212,20 +212,18 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
-    # mask_batch is assumed to be shape [batch].
+    # `mask_batch` is assumed to be shape [batch].
     if mask_batch is not None:
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
@@ -242,7 +240,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
     predicted = torch.argmax(logits, 1)
-    # not accuracy, but nr. of correct predictions
+    # Not accuracy, but nr. of correct predictions.
     accuracy = ((predicted == labels) * weights).sum()
     _, per_example_losses = self.loss_fn(labels, logits, weights)
     loss = per_example_losses.sum()
