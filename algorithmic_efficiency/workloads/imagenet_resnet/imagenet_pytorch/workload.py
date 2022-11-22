@@ -83,12 +83,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
-          transforms.RandomHorizontalFlip(),
-          transforms.ToTensor(),
+          transforms.RandomHorizontalFlip()
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
-      transform_config.append(normalize)
+      transform_config.extend([transforms.ToTensor(), normalize])
       transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
