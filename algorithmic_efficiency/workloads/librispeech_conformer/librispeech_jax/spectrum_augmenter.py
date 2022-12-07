@@ -8,6 +8,7 @@ github.com/tensorflow/lingvo/blob/master/lingvo/jax/layers/spectrum_augmenter.py
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+
 import numpy as np
 
 class SpecAug(nn.Module):
@@ -118,18 +119,6 @@ class SpecAug(nn.Module):
         masks_per_frame=self.time_masks_per_frame,
         multiplicity=multiplicity,
         max_ratio=max_ratio)
-
-    # print('block arrays shape = ', block_arrays.shape)
-    # print('block arrays = ', block_arrays)
-
-    # np_block_arrays = {'block_arrays' : np.array(block_arrays)}
-    # np.savez("jnp_block_arrays", **np_block_arrays)
-
-    # npz_file = np.load("jnp_block_arrays.npz")
-
-    # print(npz_file['block_arrays'])
-    # block_arrays = jnp.array(npz_file['block_arrays'])
-    # npz_file.close()
 
     outputs = jnp.einsum('bxy,bx->bxy', inputs, block_arrays)
     return outputs
