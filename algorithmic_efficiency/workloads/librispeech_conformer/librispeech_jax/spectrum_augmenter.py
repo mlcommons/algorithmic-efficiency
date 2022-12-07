@@ -8,7 +8,6 @@ github.com/tensorflow/lingvo/blob/master/lingvo/jax/layers/spectrum_augmenter.py
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
-import numpy as np
 
 
 class SpecAug(nn.Module):
