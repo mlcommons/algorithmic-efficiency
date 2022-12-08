@@ -398,12 +398,12 @@ def train_once(workload: spec.Workload,
               torch.cuda.empty_cache()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  if USE_PYTORCH_DDP:
-    # Sync final score (accumulated training time); choose highest, i.e. worst.
-    score_tensor = torch.tensor(
-        train_state['accumulated_submission_time'], device=DEVICE)
-    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
-    train_state['accumulated_submission_time'] = score_tensor.item()
+  # if USE_PYTORCH_DDP:
+  #   # Sync final score (accumulated training time); choose highest, i.e. worst.
+  #   score_tensor = torch.tensor(
+  #       train_state['accumulated_submission_time'], device=DEVICE)
+  #   dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
+  #   train_state['accumulated_submission_time'] = score_tensor.item()
 
   if log_dir is not None:
     metrics_logger.append_scalar_metrics(
