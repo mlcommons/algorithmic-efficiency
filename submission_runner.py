@@ -10,7 +10,8 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
-    --experiment_dir=/home/znado/experiment_dir
+    --experiment_dir=/home/znado/experiment_dir \
+    --experiment_name=baseline
 """
 import datetime
 import importlib
@@ -285,7 +286,8 @@ def train_once(workload: spec.Workload,
   global_start_time = time.time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
-    global_start_time_tensor = torch.tensor(global_start_time, dtype=torch.float64, device=DEVICE)
+    global_start_time_tensor = torch.tensor(
+        global_start_time, dtype=torch.float64, device=DEVICE)
     dist.all_reduce(global_start_time_tensor, op=dist.ReduceOp.MAX)
     global_start_time = global_start_time_tensor.item()
 
@@ -297,7 +299,8 @@ def train_once(workload: spec.Workload,
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
     if USE_PYTORCH_DDP:
-      start_time_tensor = torch.tensor(start_time, dtype=torch.float64, device=DEVICE)
+      start_time_tensor = torch.tensor(
+          start_time, dtype=torch.float64, device=DEVICE)
       dist.all_reduce(start_time_tensor, op=dist.ReduceOp.MAX)
       start_time = start_time_tensor.item()
 
@@ -332,7 +335,8 @@ def train_once(workload: spec.Workload,
 
     current_time = time.time()
     if USE_PYTORCH_DDP:
-      current_time_tensor = torch.tensor(current_time, dtype=torch.float64, device=DEVICE)
+      current_time_tensor = torch.tensor(
+          current_time, dtype=torch.float64, device=DEVICE)
       dist.all_reduce(current_time_tensor, op=dist.ReduceOp.MAX)
       current_time = current_time_tensor.item()
 
@@ -381,7 +385,10 @@ def train_once(workload: spec.Workload,
           train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
-            last_eval_time_tensor = torch.tensor(train_state['last_eval_time'], dtype=torch.float64, device=DEVICE)
+            last_eval_time_tensor = torch.tensor(
+                train_state['last_eval_time'],
+                dtype=torch.float64,
+                device=DEVICE)
             dist.all_reduce(last_eval_time_tensor, op=dist.ReduceOp.MAX)
             train_state['last_eval_time'] = last_eval_time_tensor.item()
 

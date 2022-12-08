@@ -1,21 +1,22 @@
 """MNIST workload parent class."""
 
+import functools
+import itertools
 import math
 import os
-from typing import Dict, Iterator, Optional, Tuple
-# from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import get_mnist_dataset
+from typing import Dict, Iterator, Optional
+
 from absl import flags
 from flax import jax_utils
 import jax
-import torch
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import torch
 import torch.distributed as dist
-import itertools
+
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-import functools
-from algorithmic_efficiency import data_utils
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ

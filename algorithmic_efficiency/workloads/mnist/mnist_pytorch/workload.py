@@ -2,13 +2,14 @@
 
 from collections import OrderedDict
 import contextlib
-from typing import Dict, Optional, Tuple, Iterator
+import itertools
+from typing import Dict, Iterator, Optional, Tuple
+
 import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-import itertools
 
 from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
@@ -131,13 +132,11 @@ class MnistWorkload(BaseMnistWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     per_example_losses = F.cross_entropy(
         logits_batch,
@@ -167,9 +166,12 @@ class MnistWorkload(BaseMnistWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
+    weights = batch.get('weights')
+    if weights is None:
+      weights = torch.ones(len(logits)).to(DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = (predicted == batch['targets']).sum()
-    _, per_example_losses = self.loss_fn(batch['targets'], logits)
+    accuracy = ((predicted == batch['targets']) * weights).sum()
+    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
     loss = per_example_losses.sum()
     return {'accuracy': accuracy, 'loss': loss}

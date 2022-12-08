@@ -1,7 +1,6 @@
 """MNIST workload implemented in Jax."""
 
 import functools
-import itertools
 from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
@@ -10,53 +9,10 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
-import tensorflow as tf
-import tensorflow_datasets as tfds
 
-from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
-
-
-def normalize(image: spec.Tensor, mean: float, stddev: float) -> spec.Tensor:
-  return (tf.cast(image, tf.float32) - mean) / stddev
-
-
-def get_mnist_dataset(data_rng: jax.random.PRNGKey,
-                      num_train_examples: int,
-                      train_mean: float,
-                      train_stddev: float,
-                      split: str,
-                      data_dir: str,
-                      global_batch_size: int):
-  shuffle = split in ['train', 'eval_train']
-  if shuffle:
-    tfds_split = f'train[:{num_train_examples}]'
-  elif split == 'validation':
-    tfds_split = f'train[{num_train_examples}:]'
-  else:
-    tfds_split = 'test'
-  ds = tfds.load(
-      'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
-  ds = ds.map(
-      lambda x: {
-          'inputs': normalize(x['image'], train_mean, train_stddev),
-          'targets': x['label'],
-      })
-  ds = ds.cache()
-  is_train = split == 'train'
-  if shuffle:
-    ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
-    if is_train:
-      ds = ds.repeat()
-  ds = ds.batch(global_batch_size, drop_remainder=is_train)
-  ds = map(
-      functools.partial(
-          data_utils.shard_and_maybe_pad_np,
-          global_batch_size=global_batch_size),
-      ds)
-  return iter(ds)
 
 
 class _Model(nn.Module):
