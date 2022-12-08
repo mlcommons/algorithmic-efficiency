@@ -282,14 +282,10 @@ def train_once(workload: spec.Workload,
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
 
-  if USE_PYTORCH_DDP:
-    # Make sure all processes start training at the same time.
-    dist.barrier()
-
   global_start_time = time.time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
-    global_start_time_tensor = torch.tensor(global_start_time, device=DEVICE)
+    global_start_time_tensor = torch.tensor(global_start_time, dtype=torch.float64, device=DEVICE)
     dist.all_reduce(global_start_time_tensor, op=dist.ReduceOp.MAX)
     global_start_time = global_start_time_tensor.item()
 
@@ -336,7 +332,7 @@ def train_once(workload: spec.Workload,
 
     current_time = time.time()
     if USE_PYTORCH_DDP:
-      current_time_tensor = torch.tensor(current_time, device=DEVICE)
+      current_time_tensor = torch.tensor(current_time, dtype=torch.float64, device=DEVICE)
       dist.all_reduce(current_time_tensor, op=dist.ReduceOp.MAX)
       current_time = current_time_tensor.item()
 
@@ -385,7 +381,7 @@ def train_once(workload: spec.Workload,
           train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
-            last_eval_time_tensor = torch.tensor(train_state['last_eval_time'], device=DEVICE)
+            last_eval_time_tensor = torch.tensor(train_state['last_eval_time'], dtype=torch.float64, device=DEVICE)
             dist.all_reduce(last_eval_time_tensor, op=dist.ReduceOp.MAX)
             train_state['last_eval_time'] = last_eval_time_tensor.item()
 
@@ -398,12 +394,6 @@ def train_once(workload: spec.Workload,
               torch.cuda.empty_cache()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  # if USE_PYTORCH_DDP:
-  #   # Sync final score (accumulated training time); choose highest, i.e. worst.
-  #   score_tensor = torch.tensor(
-  #       train_state['accumulated_submission_time'], device=DEVICE)
-  #   dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
-  #   train_state['accumulated_submission_time'] = score_tensor.item()
 
   if log_dir is not None:
     metrics_logger.append_scalar_metrics(
