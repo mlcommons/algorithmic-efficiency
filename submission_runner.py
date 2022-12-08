@@ -297,7 +297,7 @@ def train_once(workload: spec.Workload,
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
     if USE_PYTORCH_DDP:
-      start_time_tensor = torch.tensor(start_time, device=DEVICE)
+      start_time_tensor = torch.tensor(start_time, dtype=torch.float64, device=DEVICE)
       dist.all_reduce(start_time_tensor, op=dist.ReduceOp.MAX)
       start_time = start_time_tensor.item()
 
