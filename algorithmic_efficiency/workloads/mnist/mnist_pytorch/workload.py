@@ -1,17 +1,15 @@
 """MNIST workload implemented in PyTorch."""
+
 from collections import OrderedDict
 import contextlib
-import random
-from typing import Any, Dict, Optional, Tuple
-
+from typing import Dict, Optional, Tuple, Iterator
+import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torchvision import transforms
-from torchvision.datasets import MNIST
+import itertools
 
-from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -23,7 +21,7 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class _Model(nn.Module):
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     input_size = 28 * 28
     num_hidden = 128
@@ -45,69 +43,41 @@ class _Model(nn.Module):
     return self.net(x)
 
 
+def mnist_to_torch(batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
+  # Slice off the part of the batch for this device and then transpose from
+  # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
+  new_batch = {}
+  for k, v in batch.items():
+    if USE_PYTORCH_DDP:
+      new_v = v[RANK]
+    else:
+      new_v = v.reshape(-1, *v.shape[2:])
+    if k == 'inputs':
+      new_v = np.transpose(new_v, (0, 3, 1, 2))
+    dtype = torch.long if k == 'targets' else torch.float
+    new_batch[k] = torch.as_tensor(new_v, dtype=dtype, device=DEVICE)
+  return new_batch
+
+
 class MnistWorkload(BaseMnistWorkload):
 
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     batch_size: int):
-    train_split = False if split == 'test' else True
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((self.train_mean,), (self.train_stddev,))
-    ])
-    dataset = MNIST(
-        data_dir, train=train_split, download=True, transform=transform)
-    if split != 'test':
-      assert (self.num_eval_train_examples +
-              self.num_validation_examples == 60000)
-      indices = list(range(60000))
-      if split in ['train', 'eval_train']:
-        dataset_indices = indices[:self.num_train_examples]
-      elif split == 'validation':
-        dataset_indices = indices[self.num_train_examples:]
-      if split == 'eval_train':
-        random.Random(data_rng[0]).shuffle(dataset_indices)
-        dataset_indices = dataset_indices[:self.num_eval_train_examples]
-      dataset = torch.utils.data.Subset(dataset, dataset_indices)
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
 
-    sampler = None
-    is_train = split == 'train'
-    if USE_PYTORCH_DDP:
-      if is_train:
-        sampler = torch.utils.data.distributed.DistributedSampler(
-            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
-      else:
-        sampler = data_utils.DistributedEvalSampler(
-            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
-      batch_size //= N_GPUS
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=not USE_PYTORCH_DDP and is_train,
-        sampler=sampler,
-        num_workers=0,
-        pin_memory=True,
-        drop_last=is_train)
-    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
-
-    return dataloader
-
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key in ['net.layer2.weight', 'net_layer2.bias']
-
-  def _build_input_queue(self,
-                         data_rng,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int) -> Dict[str, Any]:
-    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-      }
+    np_iter = super()._build_input_queue(data_rng,
+                                         split,
+                                         data_dir,
+                                         global_batch_size,
+                                         num_batches,
+                                         repeat_final_dataset)
+    return map(mnist_to_torch, itertools.cycle(np_iter))
 
   def init_model_fn(
       self,
@@ -128,6 +98,9 @@ class MnistWorkload(BaseMnistWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['net.layer2.weight', 'net_layer2.bias']
 
   def model_fn(
       self,
@@ -164,14 +137,14 @@ class MnistWorkload(BaseMnistWorkload):
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+  ) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
-    # mask_batch is assumed to be shape [batch].
+    # `mask_batch` is assumed to be shape [batch].
     if mask_batch is not None:
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
@@ -185,7 +158,7 @@ class MnistWorkload(BaseMnistWorkload):
       params: spec.ParameterContainer,
       batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
     logits, _ = self.model_fn(
         params,

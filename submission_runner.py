@@ -287,6 +287,12 @@ def train_once(workload: spec.Workload,
     dist.barrier()
 
   global_start_time = time.time()
+  if USE_PYTORCH_DDP:
+    # Make sure all processes start training at the same time.
+    global_start_time_tensor = torch.tensor(global_start_time, device=DEVICE)
+    dist.all_reduce(global_start_time_tensor, op=dist.ReduceOp.MAX)
+    global_start_time = global_start_time_tensor.item()
+
   logging.info('Starting training loop.')
   while train_state['is_time_remaining'] and \
       not train_state['goal_reached'] and \
@@ -294,6 +300,10 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
+    if USE_PYTORCH_DDP:
+      start_time_tensor = torch.tensor(start_time, device=DEVICE)
+      dist.all_reduce(start_time_tensor, op=dist.ReduceOp.MAX)
+      start_time = start_time_tensor.item()
 
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
@@ -323,10 +333,13 @@ def train_once(workload: spec.Workload,
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
-    if USE_PYTORCH_DDP:
-      # Make sure all processes run eval after the same step when using DDP.
-      dist.barrier()
+
     current_time = time.time()
+    if USE_PYTORCH_DDP:
+      current_time_tensor = torch.tensor(current_time, device=DEVICE)
+      dist.all_reduce(current_time_tensor, op=dist.ReduceOp.MAX)
+      current_time = current_time_tensor.item()
+
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
@@ -369,11 +382,12 @@ def train_once(workload: spec.Workload,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
 
+          train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
-            dist.barrier()
-
-          train_state['last_eval_time'] = time.time()
+            last_eval_time_tensor = torch.tensor(train_state['last_eval_time'], device=DEVICE)
+            dist.all_reduce(last_eval_time_tensor, op=dist.ReduceOp.MAX)
+            train_state['last_eval_time'] = last_eval_time_tensor.item()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
