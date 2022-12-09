@@ -88,8 +88,10 @@ def gather_beams(nested: Dict[str, Any],
     [batch_size, old_beam_size, ...] --> [batch_size, new_beam_size, ...]
   """
   batch_indices = torch.reshape(
-      torch.arange(batch_size * new_beam_size, device=DEVICE) // new_beam_size,
-      (batch_size, new_beam_size))
+      torch.div(
+          torch.arange(batch_size * new_beam_size, device=DEVICE),
+          new_beam_size,
+          rounding_mode='floor'), (batch_size, new_beam_size))
 
   def gather_fn(x):
     if x.dim() < 2:  # ignore scalars (e.g. cache index)
@@ -284,7 +286,8 @@ def beam_search(
     # --> [batch, 2*beams], [batch, 2*beams]
     topk_log_probs, topk_indices = torch.topk(flat_log_probs, k=beams_to_keep)
     # Recover the beam index by floor division.
-    topk_beam_indices = topk_indices // vocab_size
+    topk_beam_indices = torch.div(
+        topk_indices, vocab_size, rounding_mode='floor')
     # Gather 2*k top beams.
     # --> [batch, 2*beams, length]
     topk_seq = gather_beams(state.live_seqs,
