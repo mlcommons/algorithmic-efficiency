@@ -2,7 +2,6 @@
 
 from collections import OrderedDict
 import contextlib
-import itertools
 from typing import Dict, Iterator, Optional, Tuple
 
 import numpy as np
