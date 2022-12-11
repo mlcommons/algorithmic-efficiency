@@ -47,7 +47,6 @@ def get_mnist_dataset(data_rng: jax.random.PRNGKey,
           'inputs': normalize(x['image'], train_mean, train_stddev),
           'targets': x['label'],
       })
-  ds = ds.cache()
   is_train = split == 'train'
   if shuffle:
     ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
@@ -134,9 +133,7 @@ class BaseMnistWorkload(spec.Workload):
         data_dir=data_dir,
         global_batch_size=global_batch_size)
 
-    if split != 'train':
-      # Note that this stores the entire eval dataset in memory.
-      ds = itertools.cycle(ds)
+    ds = itertools.cycle(ds)
     return ds
 
   @property

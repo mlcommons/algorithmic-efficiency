@@ -39,6 +39,7 @@ from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -286,10 +287,7 @@ def train_once(workload: spec.Workload,
   global_start_time = time.time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
-    global_start_time_tensor = torch.tensor(
-        global_start_time, dtype=torch.float64, device=DEVICE)
-    dist.all_reduce(global_start_time_tensor, op=dist.ReduceOp.MAX)
-    global_start_time = global_start_time_tensor.item()
+    global_start_time = sync_ddp_time(global_start_time, DEVICE)
 
   logging.info('Starting training loop.')
   while train_state['is_time_remaining'] and \
@@ -299,10 +297,7 @@ def train_once(workload: spec.Workload,
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
     if USE_PYTORCH_DDP:
-      start_time_tensor = torch.tensor(
-          start_time, dtype=torch.float64, device=DEVICE)
-      dist.all_reduce(start_time_tensor, op=dist.ReduceOp.MAX)
-      start_time = start_time_tensor.item()
+      start_time = sync_ddp_time(start_time, DEVICE)
 
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
@@ -335,10 +330,7 @@ def train_once(workload: spec.Workload,
 
     current_time = time.time()
     if USE_PYTORCH_DDP:
-      current_time_tensor = torch.tensor(
-          current_time, dtype=torch.float64, device=DEVICE)
-      dist.all_reduce(current_time_tensor, op=dist.ReduceOp.MAX)
-      current_time = current_time_tensor.item()
+      current_time = sync_ddp_time(current_time, DEVICE)
 
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
@@ -385,12 +377,8 @@ def train_once(workload: spec.Workload,
           train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
-            last_eval_time_tensor = torch.tensor(
-                train_state['last_eval_time'],
-                dtype=torch.float64,
-                device=DEVICE)
-            dist.all_reduce(last_eval_time_tensor, op=dist.ReduceOp.MAX)
-            train_state['last_eval_time'] = last_eval_time_tensor.item()
+            train_state['last_eval_time'] = sync_ddp_time(
+                train_state['last_eval_time'], DEVICE)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')

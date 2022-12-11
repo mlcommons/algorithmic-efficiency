@@ -78,7 +78,7 @@ class MnistWorkload(BaseMnistWorkload):
                                          global_batch_size,
                                          num_batches,
                                          repeat_final_dataset)
-    return map(mnist_to_torch, itertools.cycle(np_iter))
+    return map(mnist_to_torch, np_iter)
 
   def init_model_fn(
       self,
