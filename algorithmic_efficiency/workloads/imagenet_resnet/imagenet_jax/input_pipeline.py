@@ -246,7 +246,7 @@ def mixup_tf(key: spec.RandomState,
   gamma_b = tf.random.stateless_gamma((1,), key_b, alpha)
   weight = tf.squeeze(gamma_a / (gamma_a + gamma_b))
   # # Transform to one-hot targets.
-  # targets = tf.one_hot(targets, 1000)
+  targets = tf.one_hot(targets, 1000)
   # # Compute weight for convex combination by sampling from Beta distribution.
   # beta_dist = tfp.distributions.Beta(alpha, alpha)
   # weight = beta_dist.sample(seed=tf.cast(key[0], tf.int32))
