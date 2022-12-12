@@ -1,4 +1,3 @@
-import datetime
 import os
 from typing import Tuple
 
@@ -46,4 +45,10 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
 
       logging.info = logging_pass
     # Initialize the process group.
-    dist.init_process_group('nccl', timeout=datetime.timedelta(seconds=3600))
+    dist.init_process_group('nccl')
+
+
+def sync_ddp_time(time: float, device: torch.device) -> float:
+  time_tensor = torch.tensor(time, dtype=torch.float64, device=device)
+  dist.all_reduce(time_tensor, op=dist.ReduceOp.MAX)
+  return time_tensor.item()

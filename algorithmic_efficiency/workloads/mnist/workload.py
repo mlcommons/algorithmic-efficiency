@@ -1,14 +1,20 @@
 """MNIST workload parent class."""
+
+import functools
+import itertools
 import math
 import os
-from typing import Dict
+from typing import Dict, Iterator, Optional
 
 from absl import flags
 from flax import jax_utils
 import jax
+import tensorflow as tf
+import tensorflow_datasets as tfds
 import torch
 import torch.distributed as dist
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 
@@ -16,9 +22,48 @@ FLAGS = flags.FLAGS
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
+def normalize(image, mean, stddev):
+  return (tf.cast(image, tf.float32) - mean) / stddev
+
+
+def get_mnist_dataset(data_rng: jax.random.PRNGKey,
+                      num_train_examples: int,
+                      train_mean,
+                      train_stddev,
+                      split: str,
+                      data_dir: str,
+                      global_batch_size: int):
+  shuffle = split in ['train', 'eval_train']
+  if shuffle:
+    tfds_split = f'train[:{num_train_examples}]'
+  elif split == 'validation':
+    tfds_split = f'train[{num_train_examples}:]'
+  else:
+    tfds_split = 'test'
+  ds = tfds.load(
+      'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
+  ds = ds.map(
+      lambda x: {
+          'inputs': normalize(x['image'], train_mean, train_stddev),
+          'targets': x['label'],
+      })
+  is_train = split == 'train'
+  if shuffle:
+    ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
+    if is_train:
+      ds = ds.repeat()
+  ds = ds.batch(global_batch_size, drop_remainder=is_train)
+  ds = map(
+      functools.partial(
+          data_utils.shard_and_maybe_pad_np,
+          global_batch_size=global_batch_size),
+      ds)
+  return iter(ds)
+
+
 class BaseMnistWorkload(spec.Workload):
 
-  def has_reached_goal(self, eval_result: float) -> bool:
+  def has_reached_goal(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['validation/accuracy'] > self.target_value
 
   @property
@@ -55,11 +100,11 @@ class BaseMnistWorkload(spec.Workload):
     return 10000
 
   @property
-  def train_mean(self):
+  def train_mean(self) -> float:
     return 0.1307
 
   @property
-  def train_stddev(self):
+  def train_stddev(self) -> float:
     return 0.3081
 
   @property
@@ -70,12 +115,41 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self) -> int:
     return 10
 
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    ds = get_mnist_dataset(
+        data_rng=data_rng,
+        num_train_examples=self.num_train_examples,
+        train_mean=self.train_mean,
+        train_stddev=self.train_stddev,
+        split=split,
+        data_dir=data_dir,
+        global_batch_size=global_batch_size)
+
+    ds = itertools.cycle(ds)
+    return ds
+
   @property
   def step_hint(self) -> int:
     # Note that the target setting algorithms were not actually run on this
     # workload, but for completeness we provide the number of steps for 10
     # epochs at batch size 64.
     return 7813
+
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+    raise NotImplementedError
 
   def _eval_model_on_split(self,
                            split: str,
@@ -111,6 +185,7 @@ class BaseMnistWorkload(spec.Workload):
       }
     if FLAGS.framework == 'jax':
       total_metrics = jax_utils.unreplicate(total_metrics)
+      return {k: float(v / num_examples) for k, v in total_metrics.items()}
     elif USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)

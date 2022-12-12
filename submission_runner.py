@@ -10,7 +10,8 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
-    --experiment_dir=/home/znado/experiment_dir
+    --experiment_dir=/home/znado/experiment_dir \
+    --experiment_name=baseline
 """
 import datetime
 import importlib
@@ -38,6 +39,7 @@ from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -282,11 +284,11 @@ def train_once(workload: spec.Workload,
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
 
+  global_start_time = time.time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
-    dist.barrier()
+    global_start_time = sync_ddp_time(global_start_time, DEVICE)
 
-  global_start_time = time.time()
   logging.info('Starting training loop.')
   while train_state['is_time_remaining'] and \
       not train_state['goal_reached'] and \
@@ -294,6 +296,8 @@ def train_once(workload: spec.Workload,
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
+    if USE_PYTORCH_DDP:
+      start_time = sync_ddp_time(start_time, DEVICE)
 
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
@@ -323,10 +327,11 @@ def train_once(workload: spec.Workload,
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
-    if USE_PYTORCH_DDP:
-      # Make sure all processes run eval after the same step when using DDP.
-      dist.barrier()
+
     current_time = time.time()
+    if USE_PYTORCH_DDP:
+      current_time = sync_ddp_time(current_time, DEVICE)
+
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
@@ -369,11 +374,11 @@ def train_once(workload: spec.Workload,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
 
+          train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
-            dist.barrier()
-
-          train_state['last_eval_time'] = time.time()
+            train_state['last_eval_time'] = sync_ddp_time(
+                train_state['last_eval_time'], DEVICE)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
@@ -384,12 +389,6 @@ def train_once(workload: spec.Workload,
               torch.cuda.empty_cache()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  if USE_PYTORCH_DDP:
-    # Sync final score (accumulated training time); choose highest, i.e. worst.
-    score_tensor = torch.tensor(
-        train_state['accumulated_submission_time'], device=DEVICE)
-    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
-    train_state['accumulated_submission_time'] = score_tensor.item()
 
   if log_dir is not None:
     metrics_logger.append_scalar_metrics(
