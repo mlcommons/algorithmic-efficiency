@@ -9,8 +9,8 @@ import torch
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt import input_pipeline
+from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
 
 VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
