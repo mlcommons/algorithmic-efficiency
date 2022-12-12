@@ -188,8 +188,7 @@ def preprocess_for_train(image_bytes: spec.Tensor,
     image = tf.cast(tf.clip_by_value(image, 0, 255), tf.uint8)
     image = randaugment.distort_image_with_randaugment(image,
                                                        randaug_num_layers,
-                                                       randaug_magnitude,
-                                                       rngs[2])
+                                                       randaug_magnitude)
   image = tf.cast(image, tf.float32)
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
@@ -240,12 +239,18 @@ def mixup_tf(key: spec.RandomState,
   Returns:
     Mixed inputs and targets.
   """
-  # Transform to one-hot targets.
-  targets = tf.one_hot(targets, 1000)
-  # Compute weight for convex combination by sampling from Beta distribution.
-  beta_dist = tfp.distributions.Beta(alpha, alpha)
-  weight = beta_dist.sample(seed=tf.cast(key[0], tf.int32))
-  # Return convex combination of original and shifted inputs and targets.
+  key_a = tf.random.experimental.stateless_fold_in(key, 0)
+  key_b = tf.random.experimental.stateless_fold_in(key_a, 0)
+
+  gamma_a = tf.random.stateless_gamma((1,), key_a, alpha)
+  gamma_b = tf.random.stateless_gamma((1,), key_b, alpha)
+  weight = tf.squeeze(gamma_a / (gamma_a + gamma_b))
+  # # Transform to one-hot targets.
+  # targets = tf.one_hot(targets, 1000)
+  # # Compute weight for convex combination by sampling from Beta distribution.
+  # beta_dist = tfp.distributions.Beta(alpha, alpha)
+  # weight = beta_dist.sample(seed=tf.cast(key[0], tf.int32))
+  # # Return convex combination of original and shifted inputs and targets.
   inputs = weight * inputs + (1.0 - weight) * tf.roll(inputs, 1, axis=0)
   targets = weight * targets + (1.0 - weight) * tf.roll(targets, 1, axis=0)
   return inputs, targets

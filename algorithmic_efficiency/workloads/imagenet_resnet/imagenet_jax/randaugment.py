@@ -490,7 +490,7 @@ def _parse_policy_info(name,
   return (func, prob, args)
 
 
-def distort_image_with_randaugment(image, num_layers, magnitude, key):
+def distort_image_with_randaugment(image, num_layers, magnitude):
   """Applies the RandAugment policy to `image`.
 
   RandAugment is from the paper https://arxiv.org/abs/1909.13719,
@@ -503,7 +503,6 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
     magnitude: Integer, shared magnitude across all augmentation operations.
       Represented as (M) in the paper. Best values are usually in the range
       [5, 30].
-    key: an rng key from tf.random.experimental.stateless_fold_in.
 
   Returns:
     The augmented version of `image`.
@@ -529,20 +528,13 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
   ]
 
   for layer_num in range(num_layers):
-    key = tf.random.experimental.stateless_fold_in(key, layer_num)
-    op_to_select = tf.random.stateless_uniform([],
-                                               seed=key,
-                                               maxval=len(available_ops),
-                                               dtype=tf.int32)
+    op_to_select = tf.random_uniform(
+      [], maxval=len(available_ops), dtype=tf.int32)
     random_magnitude = float(magnitude)
+
     with tf.name_scope('randaug_layer_{}'.format(layer_num)):
       for (i, op_name) in enumerate(available_ops):
-        key = tf.random.experimental.stateless_fold_in(key, i)
-        prob = tf.random.stateless_uniform([],
-                                           seed=key,
-                                           minval=0.2,
-                                           maxval=0.8,
-                                           dtype=tf.float32)
+        prob = tf.random_uniform([], minval=0.2, maxval=0.8, dtype=tf.float32)
         func, _, args = _parse_policy_info(op_name, prob, random_magnitude,
                                            replace_value, cutout_const=40,
                                            translate_const=100)
