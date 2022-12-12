@@ -528,13 +528,13 @@ def distort_image_with_randaugment(image, num_layers, magnitude):
   ]
 
   for layer_num in range(num_layers):
-    op_to_select = tf.random_uniform(
+    op_to_select = tf.random.uniform(
       [], maxval=len(available_ops), dtype=tf.int32)
     random_magnitude = float(magnitude)
 
     with tf.name_scope('randaug_layer_{}'.format(layer_num)):
       for (i, op_name) in enumerate(available_ops):
-        prob = tf.random_uniform([], minval=0.2, maxval=0.8, dtype=tf.float32)
+        prob = tf.random.uniform([], minval=0.2, maxval=0.8, dtype=tf.float32)
         func, _, args = _parse_policy_info(op_name, prob, random_magnitude,
                                            replace_value, cutout_const=40,
                                            translate_const=100)
