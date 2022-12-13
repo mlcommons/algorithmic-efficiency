@@ -39,7 +39,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     """
     model_config = models.ConformerConfig(
         attention_residual_dropout_rate=dropout_rate,
-        conv_residual_dropout_rate=dropout_rate,
         feed_forward_residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate)
     self._model = models.Conformer(model_config)
