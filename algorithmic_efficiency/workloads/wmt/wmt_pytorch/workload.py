@@ -13,9 +13,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.interop_utils import jax_to_pytorch
 from algorithmic_efficiency.workloads.wmt import bleu
-from algorithmic_efficiency.workloads.wmt import decode
+from algorithmic_efficiency.workloads.wmt.wmt_pytorch import decode
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
@@ -91,7 +90,6 @@ class WmtWorkload(BaseWmtWorkload):
     ) -> Tuple[spec.Tensor, Dict[str, spec.Tensor]]:
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
-      flat_ids = jax_to_pytorch(flat_ids).to(DEVICE)
       flat_logits, new_flat_cache = decoder(
           flat_ids,
           encoded_inputs,
@@ -101,7 +99,7 @@ class WmtWorkload(BaseWmtWorkload):
           cache=flat_cache)
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
-      flat_logits = flat_logits.cpu().numpy().squeeze(axis=1)
+      flat_logits = flat_logits.squeeze(dim=1)
       return flat_logits, new_flat_cache
 
     # Using the above-defined single-step decoder function, run a
@@ -113,8 +111,7 @@ class WmtWorkload(BaseWmtWorkload):
         beam_size=beam_size,
         alpha=0.6,
         eos_id=eos_id,
-        max_decode_len=max_decode_len,
-        lax_while=False)
+        max_decode_len=max_decode_len)
 
     # Beam search returns [n_batch, n_beam, n_length + 1] with beam dimension
     # sorted in increasing order of log-probability.
