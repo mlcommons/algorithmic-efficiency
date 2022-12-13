@@ -155,13 +155,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     if label_batch.shape[-1] != self._num_classes:
       one_hot_labels = jax.nn.one_hot(

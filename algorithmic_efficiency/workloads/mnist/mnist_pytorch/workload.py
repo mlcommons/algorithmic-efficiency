@@ -70,7 +70,6 @@ class MnistWorkload(BaseMnistWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-
     np_iter = super()._build_input_queue(data_rng,
                                          split,
                                          data_dir,

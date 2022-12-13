@@ -3,7 +3,6 @@
 import functools
 import itertools
 import math
-import os
 from typing import Dict, Iterator, Optional
 
 from absl import flags
@@ -16,10 +15,11 @@ import torch.distributed as dist
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 
 FLAGS = flags.FLAGS
-USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 
 def normalize(image, mean, stddev):
