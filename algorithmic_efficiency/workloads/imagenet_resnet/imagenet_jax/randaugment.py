@@ -535,7 +535,6 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
                                                maxval=len(available_ops),
                                                dtype=tf.int32)
     random_magnitude = float(magnitude)
-
     with tf.name_scope('randaug_layer_{}'.format(layer_num)):
       for (i, op_name) in enumerate(available_ops):
         key = tf.random.experimental.stateless_fold_in(key, i)
