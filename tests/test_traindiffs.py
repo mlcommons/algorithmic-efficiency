@@ -12,10 +12,7 @@ jax.config.update('jax_platforms', 'cpu')
 FLAGS = flags.FLAGS
 
 WORKLOADS = [
-    'imagenet_resnet',
-    'imagenet_vit',
-    'librispeech_conformer',
-    'fastmri'
+    'imagenet_resnet', 'imagenet_vit', 'librispeech_conformer', 'fastmri'
 ]
 GLOBAL_BATCH_SIZE = 16
 
@@ -28,14 +25,12 @@ class ReferenceSubmissionTest(absltest.TestCase):
       name = f'Testing {workload}'
       jax_logs = '/tmp/jax_log.pkl'
       pyt_logs = '/tmp/pyt_log.pkl'
-      run(
-          f'python3 tests/modeldiffs/train_diff.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}',
+      run(f'python3 tests/modeldiffs/train_diff.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
           check=True)
-      run(
-          f'torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/modeldiffs/train_diff.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}',
+      run(f'torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/modeldiffs/train_diff.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,

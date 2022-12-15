@@ -206,7 +206,9 @@ def _make_one_batch_workload(workload_class,
           sd_transform=compare_module.sd_transform)
         return FrozenDict(**jax_utils.replicate(jax_params)), (FrozenDict(**jax_utils.replicate(model_state)) if model_state is not None else model_state)
       else:
-        return super().init_model_fn([0], dropout_rate=0.0, aux_dropout_rate=0.0)
+        return super().init_model_fn([0],
+                                     dropout_rate=0.0,
+                                     aux_dropout_rate=0.0)
 
     @property
     def num_eval_train_examples(self):
@@ -449,12 +451,12 @@ def main(_):
   workload_name = FLAGS.workload
 
   _test_submission(
-    workload_name,
-    framework,
-    submission_path='reference_algorithms'
-    +f'/target_setting_algorithms/{framework}_adamw.py',
-    data_dir=FLAGS.data_dir,
-    use_fake_input_queue=FLAGS.use_fake_input_queue)
+      workload_name,
+      framework,
+      submission_path='reference_algorithms' +
+      f'/target_setting_algorithms/{framework}_adamw.py',
+      data_dir=FLAGS.data_dir,
+      use_fake_input_queue=FLAGS.use_fake_input_queue)
 
   if USE_PYTORCH_DDP:
     # cleanup
