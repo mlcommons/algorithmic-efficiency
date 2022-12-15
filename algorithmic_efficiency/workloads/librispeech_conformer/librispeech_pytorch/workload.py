@@ -28,9 +28,10 @@ MAX_INPUT_LENGTH = 320000
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def __init__(self, tokenizer_vocab_path=None):
+  def __init__(self, tokenizer_vocab_path=None, use_specaug=True):
     super().__init__()
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
+    self.use_specaug = use_specaug
 
   def init_model_fn(
       self,
@@ -50,7 +51,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             attention_residual_dropout_rate=dropout_rate,
             feed_forward_residual_dropout_rate=dropout_rate,
             conv_residual_dropout_rate=dropout_rate,
-            input_dropout_rate=aux_dropout_rate))
+            input_dropout_rate=aux_dropout_rate,
+            use_specaug=self.use_specaug))
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     # Run the initialization in eval mode to disable BN tracking.
@@ -117,10 +119,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     del num_batches
     del repeat_final_dataset
 
-    is_train = False
+    is_train = split == 'train'
     if split == 'train':
-      split = 'train-clean-100+train-clean-360+train-other-500'
-      is_train = True
+      ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'eval_train':
       ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':

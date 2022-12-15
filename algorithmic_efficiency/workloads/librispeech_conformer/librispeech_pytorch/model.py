@@ -41,6 +41,7 @@ class ConformerConfig:
   input_dropout_rate: float = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
+  use_specaug: bool = True
 
 
 def initialize(m):
@@ -622,7 +623,7 @@ class ConformerEncoderDecoder(nn.Module):
     outputs = inputs
     output_paddings = input_paddings
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
-    if self.training:
+    if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
     outputs, output_paddings = self.subsample(outputs, output_paddings)
     for conformer in self.conformers:

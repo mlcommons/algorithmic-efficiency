@@ -56,6 +56,7 @@ class ConformerConfig:
   input_dropout_rate: Optional[float] = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
+  use_specaug: bool = True
 
 
 class LayerNorm(nn.Module):
@@ -620,7 +621,7 @@ class Conformer(nn.Module):
 
     # Ablate random parts of input along temporal and frequency dimension
     # following the specaug procedure in https://arxiv.org/abs/1904.08779.
-    if train:
+    if train and config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
 
     # Subsample input by a factor of 4 by performing strided convolutions.

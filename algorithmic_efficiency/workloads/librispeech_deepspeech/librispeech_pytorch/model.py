@@ -415,7 +415,7 @@ class DeepspeechEncoderDecoder(nn.Module):
     output_paddings = input_paddings
 
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
-    if self.training:
+    if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
     outputs, output_paddings = self.subsample(outputs, output_paddings)
     for idx in range(self.config.num_lstm_layers):
