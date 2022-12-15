@@ -1,6 +1,6 @@
 """
-Runs 10 steps of SGD for each workload and compares results. 
-Run it as: 
+Runs 10 steps of SGD for each workload and compares results.
+Run it as:
   python3 test_traindiffs.py
 """
 import pickle
