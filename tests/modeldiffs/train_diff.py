@@ -36,10 +36,6 @@ flags.DEFINE_integer(
     ('Global Batch size to use when running an individual workload. Otherwise '
      'a per-device batch size of 2 is used.'))
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
-flags.DEFINE_boolean(
-    'all',
-    False,
-    'Run all workloads instead of using --workload and --framework.')
 flags.DEFINE_string('log_file', '/tmp/log.pkl', 'The log file')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
