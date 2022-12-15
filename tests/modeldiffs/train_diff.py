@@ -1,24 +1,3 @@
-"""Test that each reference submission can run a train and eval step.
-
-This is a brief test that runs the for the workload and reference submission
-code for one train and one eval step for all workloads, without the real data
-iterator because it is not realistic to have all datasets available at testing
-time. For end-to-end tests of submission_runner.py see
-submission_runner_test.py.
-
-Assumes that each reference submission is using the external tuning ruleset and
-that it is defined in:
-# pylint: disable=line-too-long
-"reference_algorithms/development_algorithms/{workload}/{workload}_{framework}/submission.py"
-"reference_algorithms/development_algorithms/{workload}/tuning_search_space.json".
-
-python3 tests/reference_algorithm_tests.py \
-    --workload=criteo1tb \
-    --framework=jax \
-    --global_batch_size=16 \
-    --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
-"""
 import copy
 import functools
 import importlib
