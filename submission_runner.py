@@ -10,8 +10,10 @@ python3 submission_runner.py \
     --tuning_ruleset=external \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
-    --experiment_dir=/home/username/codes/algorithmic-efficiency/experiment_dir
+    --experiment_dir=/home/znado/experiment_dir \
+    --experiment_name=baseline
 """
+import datetime
 import importlib
 import inspect
 import json
@@ -23,6 +25,7 @@ from typing import Optional, Tuple
 from absl import app
 from absl import flags
 from absl import logging
+import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
@@ -36,6 +39,7 @@ from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -114,9 +118,9 @@ flags.DEFINE_enum(
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_string('tokenizer_vocab_path',
+flags.DEFINE_string('librispeech_tokenizer_vocab_path',
                     '',
-                    'Location to read tokenizer from.')
+                    'Location to librispeech tokenizer.')
 
 flags.DEFINE_string(
     'experiment_dir',
@@ -125,11 +129,21 @@ flags.DEFINE_string(
     'It is required and the directory should have '
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
+flags.DEFINE_boolean('resume_last_run',
+                     None,
+                     'Whether to resume the experiment from its last run.')
+flags.DEFINE_boolean(
+    'append_timestamp',
+    False,
+    'If True, the current datetime will be appended to the experiment name. '
+    'Useful for guaranteeing a unique experiment dir for new runs.')
 flags.DEFINE_boolean('use_wandb',
                      False,
                      'Whether to use Weights & Biases logging.')
 flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
-
+flags.DEFINE_integer('max_global_steps',
+                     None,
+                     'Maximum number of update steps.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -145,7 +159,8 @@ def convert_filepath_to_module(path: str):
 
 def import_workload(workload_path: str,
                     workload_class_name: str,
-                    return_class=False) -> spec.Workload:
+                    return_class=False,
+                    workload_init_kwargs=None) -> spec.Workload:
   """Import and add the workload to the registry.
 
   This importlib loading is nice to have because it allows runners to avoid
@@ -160,6 +175,7 @@ def import_workload(workload_path: str,
       `Workload` abstract class in `spec.py`.
     return_class: if true, then the workload class is returned instead of the
       instantiated object. Useful for testing when methods need to be overriden.
+    workload_init_kwargs: kwargs to pass to the workload constructor.
   """
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
@@ -181,24 +197,22 @@ def import_workload(workload_path: str,
         'the top scope of the module.')
   if return_class:
     return workload_class
-  return workload_class()
+  return workload_class(**workload_init_kwargs)
 
 
-def train_once(
-    workload: spec.Workload,
-    global_batch_size: int,
-    global_eval_batch_size: int,
-    data_dir: str,
-    imagenet_v2_data_dir: str,
-    init_optimizer_state: spec.InitOptimizerFn,
-    update_params: spec.UpdateParamsFn,
-    data_selection: spec.DataSelectionFn,
-    hyperparameters: Optional[spec.Hyperparameters],
-    rng: spec.RandomState,
-    profiler: Profiler,
-    log_dir: Optional[str] = None,
-    tokenizer_vocab_path: Optional[str] = None
-) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(workload: spec.Workload,
+               global_batch_size: int,
+               global_eval_batch_size: int,
+               data_dir: str,
+               imagenet_v2_data_dir: str,
+               init_optimizer_state: spec.InitOptimizerFn,
+               update_params: spec.UpdateParamsFn,
+               data_selection: spec.DataSelectionFn,
+               hyperparameters: Optional[spec.Hyperparameters],
+               rng: spec.RandomState,
+               profiler: Profiler,
+               max_global_steps: int = None,
+               log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -211,7 +225,14 @@ def train_once(
         global_batch_size=global_batch_size)
   logging.info('Initializing model.')
   with profiler.profile('Initializing model'):
-    model_params, model_state = workload.init_model_fn(model_init_rng)
+    dropout_rate = None
+    aux_dropout_rate = None
+    if hasattr(hyperparameters, 'dropout_rate'):
+      dropout_rate = hyperparameters.dropout_rate
+    if hasattr(hyperparameters, 'aux_dropout_rate'):
+      aux_dropout_rate = hyperparameters.aux_dropout_rate
+    model_params, model_state = workload.init_model_fn(
+        model_init_rng, dropout_rate, aux_dropout_rate)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -220,8 +241,6 @@ def train_once(
                                            hyperparameters,
                                            opt_init_rng)
   logging.info('Initializing metrics bundle.')
-  if tokenizer_vocab_path:
-    workload.init_tokenizer(tokenizer_vocab_path)
 
   # Bookkeeping.
   train_state = {
@@ -257,15 +276,19 @@ def train_once(
          checkpoint_dir=log_dir)
     meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
-    logging.info('Saving meta data to %s', meta_file_name)
+    logging.info(f'Saving meta data to {meta_file_name}.')
     logger_utils.write_json(meta_file_name, meta_data)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
-    logging.info('Saving flags to %s', flag_file_name)
+    logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
     metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
     workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = time.time()
+  if USE_PYTORCH_DDP:
+    # Make sure all processes start training at the same time.
+    global_start_time = sync_ddp_time(global_start_time, DEVICE)
+
   logging.info('Starting training loop.')
   while train_state['is_time_remaining'] and \
       not train_state['goal_reached'] and \
@@ -273,6 +296,8 @@ def train_once(
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
     start_time = time.time()
+    if USE_PYTORCH_DDP:
+      start_time = sync_ddp_time(start_time, DEVICE)
 
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
@@ -300,10 +325,13 @@ def train_once(
     except spec.TrainingCompleteError:
       train_state['training_complete'] = True
     global_step += 1
-    if USE_PYTORCH_DDP:
-      # Make sure all processes run eval after the same step when using DDP.
-      dist.barrier()
+    if (max_global_steps is not None) and (global_step == max_global_steps):
+      train_state['training_complete'] = True
+
     current_time = time.time()
+    if USE_PYTORCH_DDP:
+      current_time = sync_ddp_time(current_time, DEVICE)
+
     train_state['accumulated_submission_time'] += current_time - start_time
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
@@ -320,10 +348,12 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          logging.info('Time since start: %.2fs, \tStep: %d, \t%s',
-                       current_time - global_start_time,
-                       global_step,
-                       latest_eval_result)
+          time_since_start = current_time - global_start_time
+          logging.info(f'Time since start: {time_since_start:.2f}s, '
+                       f'\tStep: {global_step}, \t{latest_eval_result}')
+          latest_eval_result['score'] = (
+              train_state['accumulated_submission_time'])
+          latest_eval_result['total_duration'] = time_since_start
           eval_results.append((global_step, latest_eval_result))
           train_state['goal_reached'] = workload.has_reached_goal(
               latest_eval_result)
@@ -343,24 +373,22 @@ def train_once(
                 global_step=global_step,
                 preemption_count=preemption_count,
                 checkpoint_dir=log_dir)
+
           train_state['last_eval_time'] = time.time()
+          if USE_PYTORCH_DDP:
+            # Make sure all processes finish evaluation at the same time.
+            train_state['last_eval_time'] = sync_ddp_time(
+                train_state['last_eval_time'], DEVICE)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
-            logging.warning('error: GPU out of memory during eval during step '
-                            f'{global_step}, error : {str(e)}')
+            logging.warning('Error: GPU out of memory during eval during step '
+                            f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
-  if USE_PYTORCH_DDP:
-    # Sync final score (accumulated training time); choose highest, i.e. worst.
-    dist.barrier()
-    score_tensor = torch.tensor(
-        train_state['accumulated_submission_time'], device=DEVICE)
-    dist.all_reduce(score_tensor, op=dist.ReduceOp.MAX)
-    train_state['accumulated_submission_time'] = score_tensor.item()
 
   if log_dir is not None:
     metrics_logger.append_scalar_metrics(
@@ -389,10 +417,10 @@ def score_submission_on_workload(workload: spec.Workload,
                                  imagenet_v2_data_dir: str,
                                  profiler: Profiler,
                                  tuning_ruleset: str,
+                                 max_global_steps: int,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None,
-                                 tokenizer_vocab_path: Optional[str] = None):
+                                 log_dir: Optional[str] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
@@ -405,15 +433,23 @@ def score_submission_on_workload(workload: spec.Workload,
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
   global_batch_size = submission_module.get_batch_size(workload_name)
-  if global_batch_size % N_GPUS != 0:
+  # n_gpus has to be set here, because we cannot call the first Jax operation
+  # before pytorch_init().
+  n_gpus = max(N_GPUS, jax.local_device_count())
+  if global_batch_size % n_gpus != 0:
     raise ValueError(
-        'The global batch size has to be divisible by the number of GPUs.')
+        f'The global batch size ({global_batch_size}) has to be divisible by '
+        f'the number of GPUs ({n_gpus}).')
   if hasattr(submission_module, 'get_eval_batch_size'):
     # If the user specifies the eval batch size, use the provided one.
     global_eval_batch_size = submission_module.get_eval_batch_size(
         workload_name)
   else:
     global_eval_batch_size = workload.eval_batch_size
+  if global_eval_batch_size % n_gpus != 0:
+    raise ValueError(
+        f'The global eval batch size ({global_eval_batch_size}) has to be '
+        f'divisible by the number of GPUs ({n_gpus}).')
 
   if tuning_ruleset == 'external':
     # If the submission runner is responsible for hyperparameter tuning, load in
@@ -431,6 +467,7 @@ def score_submission_on_workload(workload: spec.Workload,
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
+      logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
       # Jax implementation this means that rng[0] is all zeros, which means this
@@ -439,12 +476,12 @@ def score_submission_on_workload(workload: spec.Workload,
       # bit ints, ensuring we can safely use either rng[0] or rng[1] as a random
       # number.
       rng, _ = prng.split(rng, 2)
-      logging.info('--- Tuning run %d/%d ---', hi + 1, num_tuning_trials)
+      logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
 
       tuning_dir_name = None
       if log_dir is not None:
-        tuning_dir_name = os.path.join(log_dir, 'trial_' + str(hi + 1))
-        logging.info('Creating tuning directory at %s', tuning_dir_name)
+        tuning_dir_name = os.path.join(log_dir, f'trial_{hi + 1}')
+        logging.info(f'Creating tuning directory at {tuning_dir_name}.')
         logger_utils.makedir(tuning_dir_name)
 
         # If existing hyperparameter exists, use saved
@@ -461,17 +498,18 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng, profiler,
-                                     tuning_dir_name,
-                                     tokenizer_vocab_path)
+                                     hyperparameters, rng,
+                                     profiler,
+                                     max_global_steps,
+                                     tuning_dir_name)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
     for ti in range(num_tuning_trials):
-      logging.info('Tuning trial %d/%d', ti + 1, num_tuning_trials)
-      logging.info('Hyperparameters: %s', tuning_search_space[ti])
-      logging.info('Metrics: %s', all_metrics[ti])
-      logging.info('Timing: %s', all_timings[ti])
+      logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
+      logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
+      logging.info(f'Metrics: {all_metrics[ti]}')
+      logging.info(f'Timing: {all_timings[ti]}')
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
@@ -483,8 +521,7 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, log_dir, tokenizer_vocab_path)
-  # TODO(znado): record and return other information (number of steps).
+          None, rng, profiler, max_global_steps, log_dir)
   return score
 
 
@@ -501,22 +538,25 @@ def main(_):
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
-      workload_metadata['workload_path'] + '_' + FLAGS.framework,
+      workload_metadata['workload_path'] + f'_{FLAGS.framework}',
       'workload.py')
+  workload_init_kwargs = {}
+  if FLAGS.librispeech_tokenizer_vocab_path:
+    workload_init_kwargs['tokenizer_vocab_path'] = (
+        FLAGS.librispeech_tokenizer_vocab_path)
   workload = import_workload(
       workload_path=workload_metadata['workload_path'],
-      workload_class_name=workload_metadata['workload_class_name'])
+      workload_class_name=workload_metadata['workload_class_name'],
+      workload_init_kwargs=workload_init_kwargs)
 
-  workload_dir_name = FLAGS.workload + '_' + FLAGS.framework
-  if FLAGS.experiment_name is None:
-    experiment_dir_name = os.path.join(FLAGS.experiment_dir, workload_dir_name)
-  else:
-    experiment_dir_name = os.path.join(FLAGS.experiment_dir,
-                                       FLAGS.experiment_name,
-                                       workload_dir_name)
-  experiment_dir_name = os.path.expanduser(experiment_dir_name)
-  logging.info('Creating experiment directory at %s', experiment_dir_name)
-  logger_utils.makedir(experiment_dir_name)
+  experiment_name = FLAGS.experiment_name
+  if experiment_name and FLAGS.append_timestamp:
+    experiment_name += datetime.datetime.now().strftime('-%Y-%m-%d-%H-%M-%S')
+  logging_dir_path = logger_utils.get_log_dir(FLAGS.experiment_dir,
+                                              FLAGS.workload,
+                                              FLAGS.framework,
+                                              experiment_name,
+                                              FLAGS.resume_last_run)
 
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
@@ -525,11 +565,11 @@ def main(_):
                                        FLAGS.imagenet_v2_data_dir,
                                        profiler,
                                        FLAGS.tuning_ruleset,
+                                       FLAGS.max_global_steps,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       experiment_dir_name,
-                                       FLAGS.tokenizer_vocab_path)
-  logging.info('Final %s score: %f', FLAGS.workload, score)
+                                       logging_dir_path)
+  logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
     logging.info(profiler.summary())
@@ -544,4 +584,5 @@ if __name__ == '__main__':
   flags.mark_flag_as_required('framework')
   flags.mark_flag_as_required('submission_path')
   flags.mark_flag_as_required('experiment_dir')
+  flags.mark_flag_as_required('experiment_name')
   app.run(main)

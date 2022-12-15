@@ -114,9 +114,15 @@ class OgbgWorkload(BaseOgbgWorkload):
 
       yield batch
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """aux_dropout_rate is unused."""
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = GNN(self._num_outputs)
+    model = GNN(num_outputs=self._num_outputs, dropout_rate=dropout_rate)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -137,21 +143,14 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Get predicted logits from the network for input graphs.
-
-    aux_dropout_rate is unused.
-    """
+    """Get predicted logits from the network for input graphs."""
     del rng
-    del aux_dropout_rate
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:
       raise ValueError(
           f'Expected model_state to be None, received {model_state}.')
     model = params
-    pytorch_utils.maybe_update_dropout(model, dropout_rate)
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
@@ -196,12 +195,12 @@ class OgbgWorkload(BaseOgbgWorkload):
     positive_logits = (logits >= 0)
     relu_logits = torch.where(positive_logits, logits, 0)
     abs_logits = torch.where(positive_logits, logits, -logits)
-    return relu_logits - (logits * smoothed_labels) + (
+    losses = relu_logits - (logits * smoothed_labels) + (
         torch.log(1 + torch.exp(-abs_logits)))
+    return torch.where(mask, losses, 0.)
 
   def _eval_metric(self, labels, logits, masks):
-    per_example_losses = self.loss_fn(labels, logits, masks)
-    loss = torch.where(masks, per_example_losses, 0).sum() / masks.sum()
+    loss, _ = self.loss_fn(labels, logits, masks)
     return metrics.EvalMetrics.single_from_model_output(
         loss=loss.cpu().numpy(),
         logits=logits.cpu().numpy(),

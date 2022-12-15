@@ -24,19 +24,19 @@ def get_librispeech_dataset(split_name: str,
   ids = []
 
   for split in splits:
-    logging.info('loading split = %s', split)
-    feat_csv = '{}/{}.csv'.format(data_dir, split)
+    logging.info(f'Loading split = {split}.')
+    feat_csv = f'{data_dir}/{split}.csv'
 
     with open(feat_csv, newline='') as csvfile:
       data = list(csv.reader(csvfile))
 
     for example in data[1:]:
-      ids.append('{}/{}'.format(split, example[1]))
+      ids.append(f'{split}/{example[1]}')
 
   def load_data(example_id):
     example_id = example_id.decode('utf-8')
-    audio = np.load('{}/{}_audio.npy'.format(data_dir, example_id))
-    targets = np.load('{}/{}_targets.npy'.format(data_dir, example_id))
+    audio = np.load(f'{data_dir}/{example_id}_audio.npy')
+    targets = np.load(f'{data_dir}/{example_id}_targets.npy')
 
     audio_paddings = np.zeros_like(audio, dtype=np.float32)
     audio_paddings = np.pad(
@@ -73,6 +73,8 @@ def get_librispeech_dataset(split_name: str,
 
   if is_training:
     ds = ds.repeat()
+
+  if split in ['train', 'eval_train']:
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
   ds = ds.batch(global_batch_size, drop_remainder=is_training)

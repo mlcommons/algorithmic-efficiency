@@ -19,7 +19,7 @@ class TransformerConfig:
   num_heads: int = 16
   num_layers: int = 6
   qkv_dim: int = 1024
-  mlp_dim: int = 4096
+  mlp_dim: int = 1024
   max_len: int = 256
   #If None, defaults to 0.1.
   dropout_rate: Optional[float] = 0.1

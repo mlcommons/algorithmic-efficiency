@@ -4,7 +4,8 @@ import contextlib
 import itertools
 import math
 import os
-from typing import Dict, Optional, Tuple
+import random
+from typing import Dict, Iterator, Optional, Tuple
 
 import numpy as np
 import torch
@@ -21,6 +22,8 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
+    randaugment
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
@@ -29,7 +32,8 @@ from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-def imagenet_v2_to_torch(batch):
+def imagenet_v2_to_torch(
+    batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
   # Slice off the part of the batch for this device and then transpose from
   # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
   new_batch = {}
@@ -37,7 +41,7 @@ def imagenet_v2_to_torch(batch):
     if USE_PYTORCH_DDP:
       new_v = v[RANK]
     else:
-      new_v = v
+      new_v = v.reshape(-1, *v.shape[2:])
     if k == 'inputs':
       new_v = np.transpose(new_v, (0, 3, 1, 2))
     dtype = torch.long if k == 'targets' else torch.float
@@ -47,44 +51,50 @@ def imagenet_v2_to_torch(batch):
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     global_batch_size: int,
-                     cache: bool,
-                     repeat_final_dataset: bool,
-                     use_mixup: bool = False):
-    del data_rng
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      use_mixup: bool = False,
+      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
     del cache
     del repeat_final_dataset
     if split == 'test':
-      train_mean = [m / 255 for m in self.train_mean]
-      train_stddev = [s / 255 for s in self.train_stddev]
       np_iter = imagenet_v2.get_imagenet_v2_iter(
           data_dir,
           global_batch_size,
-          shard_batch=USE_PYTORCH_DDP,
-          mean_rgb=train_mean,
-          stddev_rgb=train_stddev)
+          mean_rgb=self.train_mean,
+          stddev_rgb=self.train_stddev,
+          image_size=self.center_crop_size,
+          resize_size=self.resize_size)
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
     is_train = split == 'train'
-    if not is_train and use_mixup:
-      raise ValueError('Mixup can only be used for the training split.')
-
+    normalize = transforms.Normalize(
+        mean=[i / 255. for i in self.train_mean],
+        std=[i / 255. for i in self.train_stddev])
     if is_train:
-      transform_config = transforms.Compose([
+      transform_config = [
           transforms.RandomResizedCrop(
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
-          transforms.RandomHorizontalFlip(),
-      ])
+          transforms.RandomHorizontalFlip()
+      ]
+      if use_randaug:
+        transform_config.append(randaugment.RandAugment())
+      transform_config.extend([transforms.ToTensor(), normalize])
+      transform_config = transforms.Compose(transform_config)
     else:
       transform_config = transforms.Compose([
           transforms.Resize(self.resize_size),
           transforms.CenterCrop(self.center_crop_size),
+          transforms.ToTensor(),
+          normalize
       ])
 
     folder = 'train' if 'train' in split else 'val'
@@ -92,9 +102,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         os.path.join(data_dir, folder), transform=transform_config)
 
     if split == 'eval_train':
-      # We always use the same subset of the training data for evaluation.
+      indices = list(range(self.num_train_examples))
+      random.Random(data_rng[0]).shuffle(indices)
       dataset = torch.utils.data.Subset(dataset,
-                                        range(self.num_eval_train_examples))
+                                        indices[:self.num_eval_train_examples])
 
     sampler = None
     if USE_PYTORCH_DDP:
@@ -109,19 +120,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       else:
         sampler = data_utils.DistributedEvalSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4,
+        num_workers=4 if is_train else 0,
         pin_memory=True,
-        collate_fn=data_utils.fast_collate,
-        drop_last=is_train)
-    dataloader = data_utils.PrefetchedWrapper(dataloader,
-                                              DEVICE,
-                                              self.train_mean,
-                                              self.train_stddev)
+        drop_last=is_train,
+        persistent_workers=is_train)
+    dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(
         dataloader,
         custom_sampler=USE_PYTORCH_DDP,
@@ -130,7 +139,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return dataloader
 
-  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Dropout is unused."""
+    del dropout_rate
+    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = resnet50()
     self._param_shapes = param_utils.pytorch_param_shapes(model)
@@ -138,7 +154,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
@@ -147,7 +162,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['fc.weight', 'fc.bias']
 
-  def _update_batch_norm(self, model, update_batch_norm):
+  def _update_batch_norm(self,
+                         model: spec.ParameterContainer,
+                         update_batch_norm: bool) -> None:
     bn_layers = (nn.BatchNorm1d,
                  nn.BatchNorm2d,
                  nn.BatchNorm3d,
@@ -166,14 +183,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      dropout_rate: Optional[float],
-      aux_dropout_rate: Optional[float],
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    """Dropout is unused."""
     del model_state
     del rng
-    del dropout_rate
-    del aux_dropout_rate
 
     model = params
 
@@ -203,23 +215,34 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
               mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    losses = F.cross_entropy(
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+    per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
-    # mask_batch is assumed to be shape [batch].
+    # `mask_batch` is assumed to be shape [batch].
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
-  def _eval_metric(self, logits, labels):
+  def _compute_metrics(self,
+                       logits: spec.Tensor,
+                       labels: spec.Tensor,
+                       weights: spec.Tensor) -> Dict[str, spec.Tensor]:
     """Return the mean accuracy and loss as a dict."""
+    if weights is None:
+      weights = torch.ones(len(logits), device=DEVICE)
     predicted = torch.argmax(logits, 1)
-    # not accuracy, but nr. of correct predictions
-    accuracy = (predicted == labels).sum()
-    loss = self.loss_fn(labels, logits).sum()
+    # Not accuracy, but nr. of correct predictions.
+    accuracy = ((predicted == labels) * weights).sum()
+    _, per_example_losses = self.loss_fn(labels, logits, weights)
+    loss = per_example_losses.sum()
     return {'accuracy': accuracy, 'loss': loss}
 
   def _eval_model_on_split(self,
@@ -230,7 +253,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int = 0):
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
@@ -239,9 +262,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
           data_rng,
-          split,
-          data_dir,
+          split=split,
           global_batch_size=global_batch_size,
+          data_dir=data_dir,
           cache=is_test,
           repeat_final_dataset=is_test)
 
@@ -258,10 +281,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           model_state,
           spec.ForwardPassMode.EVAL,
           model_rng,
-          dropout_rate=0.0,  # Default for ViT, unused in eval anyways.
-          aux_dropout_rate=None,
           update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, batch['targets'])
+      weights = batch.get('weights')
+      batch_metrics = self._compute_metrics(logits, batch['targets'], weights)
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }

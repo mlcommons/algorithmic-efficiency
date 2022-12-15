@@ -52,7 +52,7 @@ Shape = Union[Tuple[int],
               ShapeTuple]
 ParameterShapeTree = Dict[str, Dict[str, Shape]]
 
-# If necessary, these can be izipped together easily given they have the same
+# If necessary, these can be zipped together easily given they have the same
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
@@ -61,7 +61,7 @@ ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
-OptimizerState = Any
+OptimizerState = Dict[str, Any]
 Hyperparameters = Any
 Timing = int
 Steps = int
@@ -101,10 +101,13 @@ DataSelectionFn = Callable[[
 
 class Workload(metaclass=abc.ABCMeta):
 
-  def __init__(self) -> None:
+  def __init__(self, *args, **kwargs) -> None:
+    del args
+    del kwargs
     self._param_shapes: Optional[ParameterShapeTree] = None
     self._param_types: Optional[ParameterTypeTree] = None
     self._eval_iters: Dict[str, Iterator] = {}
+    self.metrics_logger = None
 
   @abc.abstractmethod
   def has_reached_goal(self, eval_result: float) -> bool:
@@ -220,14 +223,23 @@ class Workload(metaclass=abc.ABCMeta):
     """Whether a key in ParameterContainer is the output layer parameters."""
 
   # InitModelFn = Callable[
-  #     Tuple[ParameterShapeTree, RandomState], ParameterContainer]
+  #     Tuple[RandomState, Optional[float], Optional[float]],
+  #     ParameterContainer]
   @abc.abstractmethod
-  def init_model_fn(
-      self, rng: RandomState) -> Tuple[ParameterContainer, ModelAuxiliaryState]:
+  def init_model_fn(self,
+                    rng: RandomState,
+                    dropout_rate: Optional[float] = None,
+                    aux_dropout_rate: Optional[float] = None) -> ModelInitState:
     """Return (initial_params, initial_model_state)."""
 
   # ModelFn = Callable[
-  #     Tuple[ParameterContainer, Tensor, ForwardPassMode, RandomState, bool],
+  #     Tuple[
+  #         ParameterContainer,
+  #         Dict[str, Tensor],
+  #         ModelAuxiliaryState,
+  #         ForwardPassMode,
+  #         RandomState,
+  #         bool],
   #     Tensor]
   @abc.abstractmethod
   def model_fn(self,
@@ -236,8 +248,6 @@ class Workload(metaclass=abc.ABCMeta):
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
-               dropout_rate: Optional[float],
-               aux_dropout_rate: Optional[float],
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
     """return logits_batch"""
     # Possible side effect of updating BN.
@@ -271,8 +281,8 @@ class Workload(metaclass=abc.ABCMeta):
       label_batch: Union[Tuple[Tensor, Tensor], Tensor],
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
-      label_smoothing: float = 0.0) -> Tensor:  # differentiable
-    """Return 1-d array of per-example losses."""
+      label_smoothing: float = 0.0) -> Tuple[Tensor, Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
 
   @abc.abstractmethod
   def _eval_model_on_split(self,

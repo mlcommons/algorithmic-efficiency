@@ -59,7 +59,7 @@ WORKLOADS = [
 def test_matching_num_params(workload):
   jax_model, pytorch_model = get_models(workload)
   # Count parameters of both models.
-  num_jax_params = sum(x.size for x in jax.tree_leaves(jax_model))
+  num_jax_params = sum(x.size for x in jax.tree_util.tree_leaves(jax_model))
   num_pytorch_params = sum(
       p.numel() for p in pytorch_model.parameters() if p.requires_grad)
   assert num_jax_params == num_pytorch_params
@@ -84,24 +84,26 @@ def get_models(workload):
 
   elif workload == 'criteo1tb':
     # Init Jax model.
+    mlp_bottom_dims = (512, 256, 128)
+    mlp_top_dims = (1024, 1024, 512, 256, 1)
+    embed_dim = 128
+    vocab_size = 32 * 128 * 1024
     input_shape = (1, 39)
     model_init = JaxDlrmSmall(
-        vocab_sizes=tuple([1024 * 128] * 26),
-        total_vocab_sizes=sum(tuple([1024 * 128] * 26)),
+        vocab_size=vocab_size,
         num_dense_features=13,
-        mlp_bottom_dims=(128, 128),
-        mlp_top_dims=(256, 128, 1),
-        embed_dim=64).init
+        mlp_bottom_dims=mlp_bottom_dims,
+        mlp_top_dims=mlp_top_dims,
+        embed_dim=embed_dim).init
     jax_model = model_init(init_rngs, jnp.ones(input_shape, jnp.float32),
                            False)['params']
     # Init PyTorch model.
     pytorch_model = PyTorchDlrmSmall(
-        vocab_sizes=tuple([1024 * 128] * 26),
-        total_vocab_sizes=sum(tuple([1024 * 128] * 26)),
+        vocab_size=vocab_size,
         num_dense_features=13,
-        mlp_bottom_dims=(128, 128),
-        mlp_top_dims=(256, 128, 1),
-        embed_dim=64)
+        mlp_bottom_dims=mlp_bottom_dims,
+        mlp_top_dims=mlp_top_dims,
+        embed_dim=embed_dim)
 
   elif workload == 'imagenet_resnet':
     # Init Jax model.

@@ -6,12 +6,11 @@ from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
 import jax
 import torch
-import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+_, _, DEVICE, _ = pytorch_setup()
 CheckpointReturn = Tuple[spec.OptimizerState,
                          spec.ParameterContainer,
                          spec.ModelAuxiliaryState,
@@ -96,7 +95,7 @@ def maybe_restore_checkpoint(framework: str,
           checkpoint_state['optimizer_state'][key])
       checkpoint_state['optimizer_state'][key] = optimizer_state[key]
 
-    logging.info('Loaded checkpoint from %s', save_path)
+    logging.info(f'Loaded checkpoint from {save_path}.')
   return (checkpoint_state['optimizer_state'],
           checkpoint_state['model_params'],
           checkpoint_state['model_state'],
@@ -126,42 +125,44 @@ def save_checkpoint(framework: str,
                     global_step: int,
                     preemption_count: int,
                     checkpoint_dir: str) -> None:
-  if RANK == 0:
-    if framework == 'jax':
-      model_params = jax.device_get(jax_utils.unreplicate(model_params))
-      opt_state, _ = optimizer_state
-      opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
-      model_state = jax.device_get(jax_utils.unreplicate(model_state))
-    else:
-      if isinstance(model_params, torch.nn.DataParallel):
-        model_params = model_params.module
-      model_params = model_params.state_dict()
-      optimizer_state_dict = {}
-      for key in optimizer_state.keys():
+  if framework == 'jax':
+    model_params = jax.device_get(jax_utils.unreplicate(model_params))
+    opt_state, _ = optimizer_state
+    opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
+    model_state = jax.device_get(jax_utils.unreplicate(model_state))
+  else:
+    if isinstance(model_params, torch.nn.DataParallel):
+      model_params = model_params.module
+    model_params = model_params.state_dict()
+    optimizer_state_dict = {}
+    for key in optimizer_state.keys():
+      if hasattr(optimizer_state[key], 'state_dict'):
         optimizer_state_dict[key] = optimizer_state[key].state_dict()
-      opt_state = optimizer_state_dict
+      else:
+        logging.warning(
+            f'The optimizer state for key {key} is not saved, because '
+            f'{type(optimizer_state[key])} has not implemented a state_dict() '
+            'method.')
+    opt_state = optimizer_state_dict
 
-    checkpoint_state = dict(
-        model_params=model_params,
-        optimizer_state=opt_state,
-        model_state=model_state,
-        train_state=train_state,
-        eval_results=tuple(eval_results),
-        global_step=global_step,
-        preemption_count=preemption_count)
+  checkpoint_state = dict(
+      model_params=model_params,
+      optimizer_state=opt_state,
+      model_state=model_state,
+      train_state=train_state,
+      eval_results=tuple(eval_results),
+      global_step=global_step,
+      preemption_count=preemption_count)
 
-    if framework == 'jax':
-      save_path = os.path.join(checkpoint_dir, 'checkpoint_' + str(global_step))
-      flax_checkpoints.save_checkpoint(
-          checkpoint_dir,
-          target=checkpoint_state,
-          step=global_step,
-          overwrite=True)
-    else:
-      save_path = os.path.join(checkpoint_dir, 'checkpoint')
-      torch.save(checkpoint_state, save_path)
+  if framework == 'jax':
+    save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
+    flax_checkpoints.save_checkpoint(
+        checkpoint_dir,
+        target=checkpoint_state,
+        step=global_step,
+        overwrite=True)
+  else:
+    save_path = os.path.join(checkpoint_dir, 'checkpoint')
+    torch.save(checkpoint_state, save_path)
 
-  if USE_PYTORCH_DDP:
-    dist.barrier()
-  if RANK == 0:
-    logging.info('Saved checkpoint to %s', save_path)
+  logging.info(f'Saved checkpoint to {save_path}.')

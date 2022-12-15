@@ -1,6 +1,6 @@
 import math
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from absl import flags
 import jax
@@ -9,8 +9,8 @@ import torch
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt import decode
 from algorithmic_efficiency.workloads.wmt import input_pipeline
+from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
 
 VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
@@ -31,51 +31,55 @@ class BaseWmtWorkload(spec.Workload):
     return eval_result['validation/bleu'] > self.target_value
 
   @property
-  def target_value(self):
-    return 30.879  # TODO(namanagarwal): This will edited again soon.
+  def target_value(self) -> float:
+    return 30.6446
 
   @property
-  def loss_type(self):
+  def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
   @property
-  def num_train_examples(self):
+  def num_train_examples(self) -> int:
     # wmt17_translate/de-en 'train' split size
     return 5906184
 
   @property
-  def num_eval_train_examples(self):
-    # same as `num_validation_examples`
-    return 3000
+  def num_eval_train_examples(self) -> int:
+    # Round up from num_validation_examples (which is the default for
+    # num_eval_train_examples) to the next multiple of eval_batch_size, so that
+    # we don't have to extract the correctly sized subset of the training data.
+    rounded_up_multiple = math.ceil(self.num_validation_examples /
+                                    self.eval_batch_size)
+    return rounded_up_multiple * self.eval_batch_size
 
   @property
-  def num_validation_examples(self):
+  def num_validation_examples(self) -> int:
     # wmt14_translate/de-en 'validation' split size.
     return 3000
 
   @property
-  def num_test_examples(self):
+  def num_test_examples(self) -> int:
     # wmt14_translate/de-en 'test' split size.
     return 3003
 
   @property
-  def eval_batch_size(self):
+  def eval_batch_size(self) -> int:
     return 128
 
   @property
-  def train_mean(self):
+  def train_mean(self) -> float:
     return 0.0
 
   @property
-  def train_stddev(self):
+  def train_stddev(self) -> float:
     return 1.0
 
   @property
-  def max_allowed_runtime_sec(self):
+  def max_allowed_runtime_sec(self) -> int:
     return 80000
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 14 * 60
 
   @property
@@ -91,10 +95,6 @@ class BaseWmtWorkload(spec.Workload):
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
     is_training = split == 'train'
-    if split == 'eval_train':
-      # Without the '+1' only `num_eval_train_examples-1` examples are used
-      # since one example is filtered out in the input pipeline.
-      split = f'train[:{self.num_eval_train_examples+1}]'
     ds, self._tokenizer = input_pipeline.get_wmt_dataset(
         data_rng,
         split,
@@ -103,7 +103,6 @@ class BaseWmtWorkload(spec.Workload):
         vocab_size=self._vocab_size,
         global_batch_size=global_batch_size,
         num_batches=num_batches,
-        reverse_translation=True,
         repeat_final_dataset=repeat_final_dataset)
 
     # Separate function is necessary because the code above has to be executed
@@ -125,6 +124,7 @@ class BaseWmtWorkload(spec.Workload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
+    del global_step
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
@@ -161,18 +161,9 @@ class BaseWmtWorkload(spec.Workload):
 
     return eval_results
 
-  def compute_summed_metrics(self, logits, labels, weights):
-    """Compute metrics summed across examples."""
-    loss = self.compute_weighted_cross_entropy(logits, labels, weights, 0.0)
-    acc_sum, weight_sum = self.compute_weighted_accuracy(
-        logits, labels, weights)
-    return {
-        'loss': loss.sum(),
-        'accuracy': acc_sum,
-        'denominator': weight_sum,
-    }
-
-  def compute_weighted_accuracy(self, logits, targets, weights):
+  def compute_weighted_accuracy(
+      self, logits: spec.Tensor, targets: spec.Tensor,
+      weights: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
     """Compute weighted accuracy for log probs and targets.
 
     Args:
@@ -184,24 +175,28 @@ class BaseWmtWorkload(spec.Workload):
       Tuple of scalar summed accuracy and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError('Incorrect shapes. Got shape %s logits and %s targets' %
-                       (str(logits.shape), str(targets.shape)))
+      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
+                       f'{targets.shape} targets.')
     accuracy = (logits.argmax(-1) == targets) * weights
     normalizing_factor = weights.sum()
     return accuracy.sum(), normalizing_factor
 
-  def _decode_tokens(self, toks):
+  def _decode_tokens(self, toks: spec.Tensor) -> spec.Tensor:
     if isinstance(toks, torch.Tensor):
       toks = toks.cpu().numpy()
     valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._tokenizer.detokenize(valid_toks).numpy().decode('utf-8')
 
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,  # Dense (not one-hot) labels.
+      label_batch: spec.Tensor,
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> spec.Tensor:
+      label_smoothing: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
     return self.compute_weighted_cross_entropy(
         logits_batch,
         label_batch,

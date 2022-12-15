@@ -25,17 +25,21 @@ def _make_mlp(in_dim, hidden_dims, dropout_rate):
 
 class GNN(nn.Module):
   """Defines a graph network.
+
   The model assumes the input data is a jraph.GraphsTuple without global
   variables. The final prediction will be encoded in the globals.
   """
   latent_dim: int = 256
   hidden_dims: Tuple[int] = (256,)
-  dropout_rate: float = 0.1
   num_message_passing_steps: int = 5
 
-  def __init__(self, num_outputs: int = 128) -> None:
+  def __init__(self,
+               num_outputs: int = 128,
+               dropout_rate: Optional[float] = 0.1) -> None:
     super().__init__()
     self.num_outputs = num_outputs
+    if dropout_rate is None:
+      dropout_rate = 0.1
     # in_features are specifically chosen for the ogbg workload.
     self.node_embedder = nn.Linear(in_features=9, out_features=self.latent_dim)
     self.edge_embedder = nn.Linear(in_features=3, out_features=self.latent_dim)
@@ -52,15 +56,11 @@ class GNN(nn.Module):
 
       graph_network_layers.append(
           GraphNetwork(
-              update_edge_fn=_make_mlp(in_dim,
-                                       self.hidden_dims,
-                                       self.dropout_rate),
-              update_node_fn=_make_mlp(in_dim,
-                                       self.hidden_dims,
-                                       self.dropout_rate),
+              update_edge_fn=_make_mlp(in_dim, self.hidden_dims, dropout_rate),
+              update_node_fn=_make_mlp(in_dim, self.hidden_dims, dropout_rate),
               update_global_fn=_make_mlp(last_in_dim,
                                          self.hidden_dims,
-                                         self.dropout_rate)))
+                                         dropout_rate)))
     self.graph_network = nn.Sequential(*graph_network_layers)
 
     self.decoder = nn.Linear(

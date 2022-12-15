@@ -44,10 +44,6 @@ def update_params(workload: spec.Workload,
   del loss_type
   del eval_results
   del global_step
-  if hasattr(hyperparameters, 'dropout_rate'):
-    dropout_rate = hyperparameters.dropout_rate
-  else:
-    dropout_rate = 0.1
 
   current_model = current_param_container
   current_model.train()
@@ -59,13 +55,10 @@ def update_params(workload: spec.Workload,
       model_state=model_state,
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
-      dropout_rate=dropout_rate,
-      aux_dropout_rate=None,
       update_batch_norm=True)
 
   mask = batch['weights']
-  per_example_losses = workload.loss_fn(batch['targets'], logits, mask)
-  loss = torch.where(mask, per_example_losses, 0).sum() / mask.sum()
+  loss, _ = workload.loss_fn(batch['targets'], logits, mask)
 
   loss.backward()
   optimizer_state['optimizer'].step()

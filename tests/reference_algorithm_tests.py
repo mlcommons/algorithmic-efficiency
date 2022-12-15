@@ -11,6 +11,13 @@ that it is defined in:
 # pylint: disable=line-too-long
 "reference_algorithms/development_algorithms/{workload}/{workload}_{framework}/submission.py"
 "reference_algorithms/development_algorithms/{workload}/tuning_search_space.json".
+
+python3 tests/reference_algorithm_tests.py \
+    --workload=criteo1tb \
+    --framework=jax \
+    --global_batch_size=16 \
+    --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
 """
 import copy
 import functools
@@ -128,6 +135,7 @@ def _make_one_batch_workload(workload_class,
     def __init__(self):
       super().__init__()
       self.summary_writer = None
+      self.metrics_logger = None
       if 'librispeech' in workload_name:
         self.metrics_bundle = _FakeMetricsBundle()
         self.tokenizer = _FakeTokenizer()
@@ -394,7 +402,13 @@ class ReferenceSubmissionTest(absltest.TestCase):
     self_location = os.path.dirname(os.path.realpath(__file__))
     # Example: /home/znado/algorithmic-efficiency
     repo_location = '/'.join(self_location.split('/')[:-1])
+    if FLAGS.tuning_ruleset != 'external':
+      raise ValueError('--tuning_ruleset must be set to "external".')
     if FLAGS.all:
+      if FLAGS.submission_path:
+        raise ValueError('Cannot set --submission_path and --all.')
+      if FLAGS.tuning_search_space:
+        raise ValueError('Cannot set --tuning_search_space and --all.')
       references_dir = (
           f'{repo_location}/reference_algorithms/development_algorithms')
       for workload_name in os.listdir(references_dir):
@@ -418,8 +432,12 @@ class ReferenceSubmissionTest(absltest.TestCase):
       if framework == 'pytorch':
         pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
       workload_name = FLAGS.workload
-      search_space_path, submission_path = _make_paths(
-          repo_location, framework, workload_name)
+      if FLAGS.submission_path and FLAGS.tuning_search_space:
+        search_space_path = FLAGS.tuning_search_space
+        submission_path = FLAGS.submission_path
+      else:
+        search_space_path, submission_path = _make_paths(
+            repo_location, framework, workload_name)
       eval_result = _test_submission(
           workload_name,
           framework,
