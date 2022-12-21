@@ -17,7 +17,13 @@ jax.config.update('jax_platforms', 'cpu')
 FLAGS = flags.FLAGS
 
 WORKLOADS = [
-    'imagenet_resnet', 'imagenet_vit', 'librispeech_conformer', 'fastmri'
+    'imagenet_resnet',
+    'imagenet_vit',
+    'wmt',
+    'librispeech_conformer',
+    'librispeech_deepspeech',
+    'fastmri',
+    'ogbg',
 ]
 GLOBAL_BATCH_SIZE = 16
 
@@ -30,12 +36,12 @@ class ReferenceSubmissionTest(absltest.TestCase):
       name = f'Testing {workload}'
       jax_logs = '/tmp/jax_log.pkl'
       pyt_logs = '/tmp/pyt_log.pkl'
-      run(f'python3 tests/modeldiffs/train_diff.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}',
+      run(f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python3 tests/modeldiffs/train_diff.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
           check=True)
-      run(f'torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/modeldiffs/train_diff.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}',
+      run(f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/modeldiffs/train_diff.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
@@ -55,7 +61,9 @@ class ReferenceSubmissionTest(absltest.TestCase):
           'Eval (jax)',
           'Eval (torch)',
           'Grad Norm (jax)',
-          'Grad Norm (torch)'
+          'Grad Norm (torch)',
+          'Train Loss (jax)',
+          'Train Loss (torch)'
       ]
       fmt = lambda l: '|' + '|'.join(map(lambda x: f'{x:^20s}', l)) + '|'
       header = fmt(header)
@@ -69,7 +77,9 @@ class ReferenceSubmissionTest(absltest.TestCase):
                       jax_results['eval_results'][i][k],
                       pyt_results['eval_results'][i][k],
                       jax_results['scalars'][i]['grad_norm'],
-                      pyt_results['scalars'][i]['grad_norm']
+                      pyt_results['scalars'][i]['grad_norm'],
+                      jax_results['scalars'][i]['loss'],
+                      pyt_results['scalars'][i]['loss'],
                   ])
 
         print(fmt([f'{i}', *row]))

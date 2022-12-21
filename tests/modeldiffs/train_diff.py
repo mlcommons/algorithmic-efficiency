@@ -32,7 +32,7 @@ from tests.modeldiffs import diff as diff_utils
 
 flags.DEFINE_integer(
     'global_batch_size',
-    -1,
+    16,
     ('Global Batch size to use when running an individual workload. Otherwise '
      'a per-device batch size of 2 is used.'))
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
@@ -99,6 +99,11 @@ class _FakeMetricsLogger:
     self.eval_results = []
 
   def append_scalar_metrics(self, scalars, step):
+    if USE_PYTORCH_DDP:
+      for k in sorted(scalars):
+        scalars[k] = torch.FloatTensor([scalars[k]]).to(PYTORCH_DEVICE)
+        dist.all_reduce(scalars[k])
+        scalars[k] = scalars[k].item() / N_GPUS
     if RANK == 0:
       self.scalars.append(scalars)
       self.save()
@@ -128,7 +133,9 @@ def jax_init_optimizer(workload: spec.Workload,
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
 
-  opt_init_fn, opt_update_fn = optax.sgd(learning_rate=0.001)
+  opt_init_fn, opt_update_fn = optax.chain(
+      optax.add_decayed_weights(0),
+      optax.sgd(learning_rate=0.001))
   optimizer_state = opt_init_fn(params_zeros_like)
 
   return jax_utils.replicate(optimizer_state), opt_update_fn
@@ -144,7 +151,8 @@ def pytorch_init_optimizer(workload: spec.Workload,
   del rng
 
   optimizer_state = {
-      'optimizer': torch.optim.SGD(model_params.parameters(), lr=0.001)
+      'optimizer':
+          torch.optim.SGD(model_params.parameters(), lr=0.001, weight_decay=0)
   }
 
   return optimizer_state
@@ -350,16 +358,7 @@ def _test_submission(
     init_optimizer_state = jax_init_optimizer
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
-  get_batch_size = submission_module.get_batch_size
-  global_batch_size = get_batch_size(workload_name)
-  if FLAGS.all:
-    if FLAGS.global_batch_size > 0:
-      raise ValueError('Cannot set --global_batch_size and --all.')
-    global_batch_size = 2 * N_GPUS
-  else:
-    global_batch_size = FLAGS.global_batch_size
-    if FLAGS.global_batch_size < 0:
-      raise ValueError('Must set --global_batch_size.')
+  global_batch_size = FLAGS.global_batch_size
   workload = _make_one_batch_workload(workload_class,
                                       workload_name,
                                       framework,

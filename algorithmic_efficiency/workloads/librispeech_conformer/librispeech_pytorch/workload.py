@@ -188,8 +188,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     summed_loss = per_example_losses.sum()
     if USE_PYTORCH_DDP:
       # Use dist_nn.all_reduce to ensure correct gradient scaling.
-      dist_nn.all_reduce(summed_loss)
-      dist_nn.all_reduce(n_valid_examples)
+      summed_loss = dist_nn.all_reduce(summed_loss)
+      n_valid_examples = dist_nn.all_reduce(n_valid_examples)
     n_valid_examples = max(n_valid_examples, 1)
     return {
         'loss': per_example_losses,
