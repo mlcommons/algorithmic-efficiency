@@ -192,6 +192,8 @@ class MnistWorkload(BaseMnistWorkload):
               mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
+    print("t")
+    print(label_batch.shape)
     per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
