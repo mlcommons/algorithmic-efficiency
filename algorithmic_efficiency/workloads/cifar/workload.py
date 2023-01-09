@@ -1,6 +1,5 @@
 """CIFAR workload parent class."""
 
-import itertools
 import math
 from typing import Dict, Iterator, Optional, Tuple
 
@@ -126,14 +125,15 @@ class BaseCifarWorkload(spec.Workload):
   def eval_period_time_sec(self) -> int:
     return 600  # 10 mins.
 
-  def _build_input_queue(self,
-                         data_rng: spec.RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = None,
-                         repeat_final_dataset: Optional[bool] = None,
-                         num_batches: Optional[int] = None):
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     ds = _build_cifar_dataset(data_rng,
                               self.num_train_examples,
                               self.num_validation_examples,
@@ -147,7 +147,6 @@ class BaseCifarWorkload(spec.Workload):
                               global_batch_size,
                               cache,
                               repeat_final_dataset)
-    ds = itertools.cycle(ds)
     return ds
 
   @property
