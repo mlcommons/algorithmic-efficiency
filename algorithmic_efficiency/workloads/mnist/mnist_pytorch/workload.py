@@ -4,6 +4,7 @@ from collections import OrderedDict
 import contextlib
 from typing import Dict, Iterator, Optional, Tuple
 
+import functorch.compile
 import numpy as np
 import torch
 from torch import nn
@@ -91,6 +92,7 @@ class MnistWorkload(BaseMnistWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
+    model = functorch.compile.memory_efficient_fusion(model)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         model = DDP(model, device_ids=[RANK], output_device=RANK)
