@@ -20,10 +20,6 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipelin
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipeline import \
     resize
 
-TFDS_SPLIT_NAME = {
-    'train': 'train', 'eval_train': 'train', 'validation': 'validation'
-}
-
 
 def _distorted_bounding_box_crop(image: spec.Tensor,
                                  rng: spec.RandomState,
@@ -203,7 +199,7 @@ def create_split(
                                   dtype)
     return {'inputs': image, 'targets': example['label']}
 
-  ds = dataset_builder.as_dataset(split=TFDS_SPLIT_NAME[split])
+  ds = dataset_builder.as_dataset(split=split)
   options = tf.data.Options()
   options.threading.private_threadpool_size = 48
   ds = ds.with_options(options)
