@@ -7,6 +7,7 @@ from typing import Dict, Iterator, Optional, Tuple
 import numpy as np
 import torch
 from torch import nn
+import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -70,37 +71,79 @@ class MnistWorkload(BaseMnistWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    # per_device_batch_size = int(global_batch_size / N_GPUS)
-    #
-    # # Only create and iterate over tf input pipeline in one Python process to
-    # # avoid creating too many threads.
-    # if RANK == 0:
-    #   np_iter = super()._build_input_queue(data_rng,
-    #                                        split,
-    #                                        data_dir,
-    #                                        global_batch_size,
-    #                                        num_batches,
-    #                                        repeat_final_dataset)
-    # while True:
-    #   if RANK == 0:
-    #     batch = next(np_iter)  # pylint: disable=stop-iteration-return
-    #     tensor_list = []
-    #     for key, value in batch.items():
-    #       tensor = torch.as_tensor(value, dtype=torch.int64, device=DEVICE)
-    #       if key != 'weights':
-    #         tensor_list.append(tensor)
-    #       else:
-    #         weights = tensor.clone()
-    #       batch[key] = (
-    #           tensor[0] if USE_PYTORCH_DDP else tensor.view(
-    #               -1, value.shape[-1]))
-    np_iter = super()._build_input_queue(data_rng,
-                                         split,
-                                         data_dir,
-                                         global_batch_size,
-                                         num_batches,
-                                         repeat_final_dataset)
-    return map(mnist_to_torch, np_iter)
+    not_train = split != 'train'
+    per_device_batch_size = int(global_batch_size / N_GPUS)
+
+    # Only create and iterate over tf input pipeline in one Python process to
+    # avoid creating too many threads.
+    if RANK == 0:
+      np_iter = super()._build_input_queue(data_rng,
+                                           split,
+                                           data_dir,
+                                           global_batch_size,
+                                           num_batches,
+                                           repeat_final_dataset)
+    while True:
+      if RANK == 0:
+        batch = next(np_iter)  # pylint: disable=stop-iteration-return
+        inputs = torch.as_tensor(
+            np.transpose(batch['inputs'], (0, 3, 1, 2)),
+            dtype=torch.float32,
+            device=DEVICE)
+        targets = torch.as_tensor(
+            batch['targets'], dtype=torch.long, device=DEVICE)
+        if not_train:
+          weights = torch.as_tensor(
+              batch['weights'], dtype=torch.float32, device=DEVICE)
+
+        # Send batch to other devices when using DDP.
+        if USE_PYTORCH_DDP:
+          # During eval, the batch size of the remainder might be different.
+          if not_train:
+            per_device_batch_size = torch.tensor(
+                len(targets[0]), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
+            dist.broadcast(weights, src=0)
+            weights = weights[0]
+          dist.broadcast(inputs, src=0)
+          inputs = inputs[0]
+          dist.broadcast(targets, src=0)
+          targets = targets[0]
+        else:
+          inputs = inputs.view(-1, *inputs.shape[2:])
+          targets = targets.view(-1, *targets.shape[2:])
+          if not_train:
+            weights = weights.view(-1, *weights.shape[2:])
+      else:
+        # During eval, the batch size of the remainder might be different.
+        if not_train:
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
+          weights = torch.empty((N_GPUS, per_device_batch_size, 1),
+                                dtype=torch.float32,
+                                device=DEVICE)
+          dist.broadcast(weights, src=0)
+          weights = weights[RANK]
+
+        inputs = torch.empty((N_GPUS, per_device_batch_size, 1, 28, 28),
+                             dtype=torch.float32,
+                             device=DEVICE)
+        dist.broadcast(inputs, src=0)
+        inputs = inputs[RANK]
+        targets = torch.empty((N_GPUS, per_device_batch_size, 1),
+                              dtype=torch.long,
+                              device=DEVICE)
+        dist.broadcast(targets, src=0)
+        targets = targets[RANK]
+
+      batch = {
+          'inputs': inputs,
+          'targets': targets,
+          'weights': weights,
+      }
+      yield batch
 
   def init_model_fn(
       self,
