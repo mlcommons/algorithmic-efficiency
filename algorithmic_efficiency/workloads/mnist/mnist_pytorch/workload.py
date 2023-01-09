@@ -133,6 +133,9 @@ class MnistWorkload(BaseMnistWorkload):
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
 
+      print(targets)
+      print(inputs.shape)
+      print(targets.shape)
       batch = {'inputs': inputs, 'targets': targets}
       yield batch
 
