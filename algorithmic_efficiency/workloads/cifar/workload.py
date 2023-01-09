@@ -134,20 +134,20 @@ class BaseCifarWorkload(spec.Workload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    ds = _build_cifar_dataset(data_rng,
-                              self.num_train_examples,
-                              self.num_validation_examples,
-                              self.train_mean,
-                              self.train_stddev,
-                              self.center_crop_size,
-                              self.aspect_ratio_range,
-                              self.scale_ratio_range,
-                              split,
-                              data_dir,
-                              global_batch_size,
-                              cache,
-                              repeat_final_dataset)
-    return ds
+    del num_batches
+    return _build_cifar_dataset(data_rng,
+                                self.num_train_examples,
+                                self.num_validation_examples,
+                                self.train_mean,
+                                self.train_stddev,
+                                self.center_crop_size,
+                                self.aspect_ratio_range,
+                                self.scale_ratio_range,
+                                split,
+                                data_dir,
+                                global_batch_size,
+                                cache,
+                                repeat_final_dataset)
 
   @property
   def step_hint(self) -> int:
@@ -178,7 +178,12 @@ class BaseCifarWorkload(spec.Workload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+          data_rng,
+          split=split,
+          data_dir=data_dir,
+          global_batch_size=global_batch_size,
+          cache=True,
+          repeat_final_dataset=True)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     num_devices = max(torch.cuda.device_count(), jax.local_device_count())
