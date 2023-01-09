@@ -36,7 +36,7 @@ def _build_mnist_dataset(
     data_dir: str,
     global_batch_size: int) -> Iterator[Dict[str, spec.Tensor]]:
   shuffle = split in ['train', 'eval_train']
-  assert num_train_examples + num_validation_examples == 50000
+  assert num_train_examples + num_validation_examples == 60000
   if shuffle:
     tfds_split = f'train[:{num_train_examples}]'
   elif split == 'validation':
