@@ -34,7 +34,9 @@ def _build_mnist_dataset(
     train_stddev: float,
     split: str,
     data_dir: str,
-    global_batch_size: int) -> Iterator[Dict[str, spec.Tensor]]:
+    global_batch_size: int,
+    cache: bool = False,
+    repeat_final_dataset: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
   shuffle = split in ['train', 'eval_train']
   assert num_train_examples + num_validation_examples == 60000
   if shuffle:
@@ -45,17 +47,23 @@ def _build_mnist_dataset(
     tfds_split = 'test'
   ds = tfds.load(
       'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
-  ds = ds.map(
-      lambda x: {
-          'inputs': _normalize(x['image'], train_mean, train_stddev),
-          'targets': x['label'],
-      })
+  ds = ds.map(lambda x: {
+      'inputs': (x['image'], train_mean, train_stddev),
+      'targets': x['label'],
+  })
   is_train = split == 'train'
+
+  if cache:
+    ds = ds.cache()
+
   if shuffle:
+    ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
-    if is_train:
-      ds = ds.repeat()
   ds = ds.batch(global_batch_size, drop_remainder=is_train)
+
+  if repeat_final_dataset:
+    ds = ds.repeat()
+
   ds = map(
       functools.partial(
           data_utils.shard_and_maybe_pad_np,
@@ -127,6 +135,7 @@ class BaseMnistWorkload(spec.Workload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del num_batches
     ds = _build_mnist_dataset(
         data_rng=data_rng,
         num_train_examples=self.num_train_examples,
@@ -135,7 +144,9 @@ class BaseMnistWorkload(spec.Workload):
         train_stddev=self.train_stddev,
         split=split,
         data_dir=data_dir,
-        global_batch_size=global_batch_size)
+        global_batch_size=global_batch_size,
+        cache=cache,
+        repeat_final_dataset=repeat_final_dataset)
     ds = itertools.cycle(ds)
     return ds
 
@@ -168,7 +179,12 @@ class BaseMnistWorkload(spec.Workload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+          data_rng,
+          split,
+          data_dir,
+          global_batch_size=global_batch_size,
+          cache=True,
+          repeat_final_dataset=True)
 
     total_metrics = {
         'accuracy': 0.,
