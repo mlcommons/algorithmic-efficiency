@@ -47,10 +47,11 @@ def _build_mnist_dataset(
     tfds_split = 'test'
   ds = tfds.load(
       'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
-  ds = ds.map(lambda x: {
-      'inputs': (x['image'], train_mean, train_stddev),
-      'targets': x['label'],
-  })
+  ds = ds.map(
+      lambda x: {
+          'inputs': _normalize(x['image'], train_mean, train_stddev),
+          'targets': x['label'],
+      })
   is_train = split == 'train'
 
   if cache:
@@ -179,9 +180,9 @@ class BaseMnistWorkload(spec.Workload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          data_rng,
-          split,
-          data_dir,
+          data_rng=data_rng,
+          split=split,
+          data_dir=data_dir,
           global_batch_size=global_batch_size,
           cache=True,
           repeat_final_dataset=True)
