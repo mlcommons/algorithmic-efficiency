@@ -2,11 +2,12 @@
 
 import itertools
 import math
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from absl import flags
 import jax
 import tensorflow_datasets as tfds
+import torch
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
@@ -97,12 +98,12 @@ class BaseCifarWorkload(spec.Workload):
     return 1024
 
   @property
-  def train_mean(self) -> List[float, float, float]:
-    return [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
+  def train_mean(self) -> Tuple[float, float, float]:
+    return (0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255)
 
   @property
-  def train_stddev(self) -> List[float, float, float]:
-    return [0.24703233 * 255, 0.24348505 * 255, 0.26158768 * 255]
+  def train_stddev(self) -> Tuple[float, float, float]:
+    return (0.24703233 * 255, 0.24348505 * 255, 0.26158768 * 255)
 
   # Data augmentation settings.
   @property
@@ -181,11 +182,16 @@ class BaseCifarWorkload(spec.Workload):
           data_rng, split, data_dir, global_batch_size=global_batch_size)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
+    num_devices = max(torch.cuda.device_count(), jax.local_device_count())
     eval_metrics = {}
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
+      per_device_model_rngs = prng.split(model_rng, num_devices)
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
+      synced_metrics = self._eval_model(params,
+                                        batch,
+                                        model_state,
+                                        per_device_model_rngs)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
