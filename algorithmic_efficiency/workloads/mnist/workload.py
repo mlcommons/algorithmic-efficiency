@@ -29,12 +29,14 @@ def _normalize(image: spec.Tensor, mean: float, stddev: float) -> spec.Tensor:
 def _build_mnist_dataset(
     data_rng: jax.random.PRNGKey,
     num_train_examples: int,
+    num_validation_examples: int,
     train_mean: float,
     train_stddev: float,
     split: str,
     data_dir: str,
     global_batch_size: int) -> Iterator[Dict[str, spec.Tensor]]:
   shuffle = split in ['train', 'eval_train']
+  assert num_train_examples + num_validation_examples == 50000
   if shuffle:
     tfds_split = f'train[:{num_train_examples}]'
   elif split == 'validation':
@@ -128,6 +130,7 @@ class BaseMnistWorkload(spec.Workload):
     ds = _build_mnist_dataset(
         data_rng=data_rng,
         num_train_examples=self.num_train_examples,
+        num_validation_examples=self.num_validation_examples,
         train_mean=self.train_mean,
         train_stddev=self.train_stddev,
         split=split,

@@ -70,6 +70,30 @@ class MnistWorkload(BaseMnistWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    # per_device_batch_size = int(global_batch_size / N_GPUS)
+    #
+    # # Only create and iterate over tf input pipeline in one Python process to
+    # # avoid creating too many threads.
+    # if RANK == 0:
+    #   np_iter = super()._build_input_queue(data_rng,
+    #                                        split,
+    #                                        data_dir,
+    #                                        global_batch_size,
+    #                                        num_batches,
+    #                                        repeat_final_dataset)
+    # while True:
+    #   if RANK == 0:
+    #     batch = next(np_iter)  # pylint: disable=stop-iteration-return
+    #     tensor_list = []
+    #     for key, value in batch.items():
+    #       tensor = torch.as_tensor(value, dtype=torch.int64, device=DEVICE)
+    #       if key != 'weights':
+    #         tensor_list.append(tensor)
+    #       else:
+    #         weights = tensor.clone()
+    #       batch[key] = (
+    #           tensor[0] if USE_PYTORCH_DDP else tensor.view(
+    #               -1, value.shape[-1]))
     np_iter = super()._build_input_queue(data_rng,
                                          split,
                                          data_dir,

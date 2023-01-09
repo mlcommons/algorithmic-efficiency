@@ -55,7 +55,7 @@ def _build_cifar_dataset(
       train=train,
       cache=not train if cache is None else cache,
       repeat_final_dataset=repeat_final_dataset)
-  return iter(ds)
+  return ds
 
 
 class BaseCifarWorkload(spec.Workload):
