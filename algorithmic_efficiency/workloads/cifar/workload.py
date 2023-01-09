@@ -199,6 +199,7 @@ class BaseCifarWorkload(spec.Workload):
     if FLAGS.framework == 'jax':
       eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
                                   eval_metrics)
+      return eval_metrics
     elif USE_PYTORCH_DDP:
       for metric in eval_metrics.values():
         dist.all_reduce(metric)
