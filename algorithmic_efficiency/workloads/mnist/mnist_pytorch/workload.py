@@ -112,20 +112,15 @@ class MnistWorkload(BaseMnistWorkload):
     del model_state
     del rng
     del update_batch_norm
-
     model = params
-
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
-
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
         spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
-
     with contexts[mode]():
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
-
     return logits_batch, None
 
   # Does NOT apply regularization, which is left to the submitter to do in

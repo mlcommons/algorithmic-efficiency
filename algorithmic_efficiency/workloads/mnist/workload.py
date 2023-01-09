@@ -22,17 +22,18 @@ FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 
-def normalize(image, mean, stddev):
+def _normalize(image: spec.Tensor, mean: float, stddev: float) -> spec.Tensor:
   return (tf.cast(image, tf.float32) - mean) / stddev
 
 
-def get_mnist_dataset(data_rng: jax.random.PRNGKey,
-                      num_train_examples: int,
-                      train_mean,
-                      train_stddev,
-                      split: str,
-                      data_dir: str,
-                      global_batch_size: int):
+def _build_mnist_dataset(
+    data_rng: jax.random.PRNGKey,
+    num_train_examples: int,
+    train_mean: float,
+    train_stddev: float,
+    split: str,
+    data_dir: str,
+    global_batch_size: int) -> Iterator[Dict[str, spec.Tensor]]:
   shuffle = split in ['train', 'eval_train']
   if shuffle:
     tfds_split = f'train[:{num_train_examples}]'
@@ -44,7 +45,7 @@ def get_mnist_dataset(data_rng: jax.random.PRNGKey,
       'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
   ds = ds.map(
       lambda x: {
-          'inputs': normalize(x['image'], train_mean, train_stddev),
+          'inputs': _normalize(x['image'], train_mean, train_stddev),
           'targets': x['label'],
       })
   is_train = split == 'train'
@@ -124,7 +125,7 @@ class BaseMnistWorkload(spec.Workload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    ds = get_mnist_dataset(
+    ds = _build_mnist_dataset(
         data_rng=data_rng,
         num_train_examples=self.num_train_examples,
         train_mean=self.train_mean,
@@ -132,7 +133,6 @@ class BaseMnistWorkload(spec.Workload):
         split=split,
         data_dir=data_dir,
         global_batch_size=global_batch_size)
-
     ds = itertools.cycle(ds)
     return ds
 

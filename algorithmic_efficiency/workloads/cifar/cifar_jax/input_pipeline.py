@@ -4,33 +4,43 @@ Forked from Flax example which can be found here:
 https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py
 and adjusted to work for CIFAR10.
 """
+
 import functools
+from typing import Dict, Iterator, Tuple
 
 from flax import jax_utils
 import jax
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.data_utils import shard_and_maybe_pad_np
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipeline import \
+    normalize_image
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipeline import \
+    resize
 
-IMAGE_SIZE = 32
-MEAN_RGB = [0.49139968 * 255, 0.48215827 * 255, 0.44653124 * 255]
-STDDEV_RGB = [0.24703233 * 255, 0.24348505 * 255, 0.26158768 * 255]
+TFDS_SPLIT_NAME = {
+    'train': 'train', 'eval_train': 'train', 'validation': 'validation'
+}
 
 
-def _distorted_bounding_box_crop(image,
-                                 rng,
-                                 bbox,
-                                 min_object_covered=0.1,
-                                 aspect_ratio_range=(0.75, 1.33),
-                                 area_range=(0.05, 1.0),
-                                 max_attempts=100):
+def _distorted_bounding_box_crop(image: spec.Tensor,
+                                 rng: spec.RandomState,
+                                 bbox: spec.Tensor,
+                                 min_object_covered: float = 0.1,
+                                 aspect_ratio_range: Tuple[float,
+                                                           float] = (0.75,
+                                                                     1.33),
+                                 area_range: Tuple[float, float] = (0.05, 1.0),
+                                 max_attempts: int = 100) -> spec.Tensor:
   """Generates cropped_image using one of the bboxes randomly distorted.
 
   See `tf.image.sample_distorted_bounding_box` for more documentation.
 
   Args:
-    image_bytes: `Tensor` of binary image data.
-    rng: a per-example, per-step unique RNG seed.
+    image: `Tensor` of image data.
+    rng: A per-example, per-step unique RNG seed.
     bbox: `Tensor` of bounding boxes arranged `[1, num_boxes, coords]`
         where each coordinate is [0, 1) and the coordinates are arranged
         as `[ymin, xmin, ymax, xmax]`. If num_boxes is 0 then use the whole
@@ -45,8 +55,9 @@ def _distorted_bounding_box_crop(image,
     max_attempts: An optional `int`. Number of attempts at generating a cropped
         region of the image of the specified constraints. After `max_attempts`
         failures, return the entire image.
+
   Returns:
-    cropped image `Tensor`
+    Cropped image `Tensor`.
   """
   shape = tf.shape(image)
   bbox_begin, bbox_size, _ = tf.image.stateless_sample_distorted_bounding_box(
@@ -70,12 +81,11 @@ def _distorted_bounding_box_crop(image,
   return image
 
 
-def _resize(image, image_size):
-  return tf.image.resize([image], [image_size, image_size],
-                         method=tf.image.ResizeMethod.BICUBIC)[0]
-
-
-def _random_crop(image, rng, image_size, aspect_ratio_range, area_range):
+def _random_crop(image: spec.Tensor,
+                 rng: spec.RandomState,
+                 image_size: int,
+                 aspect_ratio_range: Tuple[float, float],
+                 area_range: Tuple[float, float]) -> spec.Tensor:
   """Make a random crop of image_size."""
   bbox = tf.constant([0.0, 0.0, 1.0, 1.0], dtype=tf.float32, shape=[1, 1, 4])
   image_cropped = _distorted_bounding_box_crop(
@@ -86,31 +96,31 @@ def _random_crop(image, rng, image_size, aspect_ratio_range, area_range):
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
       max_attempts=10)
-
-  return _resize(image_cropped, image_size)
-
-
-def normalize_image(image, mean_rgb, stddev_rgb):
-  image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
-  image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
-  return image
+  return resize(image_cropped, image_size)
 
 
-def preprocess_for_train(image,
-                         rng,
-                         mean_rgb,
-                         stddev_rgb,
-                         aspect_ratio_range,
-                         area_range,
-                         dtype=tf.float32,
-                         image_size=IMAGE_SIZE):
+def preprocess_for_train(image: spec.Tensor,
+                         rng: spec.RandomState,
+                         mean_rgb: Tuple[float, float, float],
+                         stddev_rgb: Tuple[float, float, float],
+                         aspect_ratio_range: Tuple[float, float],
+                         area_range: Tuple[float, float],
+                         image_size: int,
+                         dtype: tf.DType = tf.float32) -> spec.Tensor:
   """Preprocesses the given image for training.
 
   Args:
-    image_bytes: `Tensor` representing an image binary of arbitrary size.
-    rng: a per-example, per-step unique RNG seed.
+    image: `Tensor` representing an image.
+    rng: A per-example, per-step unique RNG seed.
+    mean_rgb: A tuple representing the mean of the total training images.
+    stddev_rgb: A tuple representing the standard deviation of the
+        total training images.
+    aspect_ratio_range: An optional tuple of `float`s. The cropped area of the
+        image must have an aspect ratio = width / height within this range.
+    area_range: An optional tuple of `float`s. The cropped area of the image
+        must contain a fraction of the supplied image within in this range.
+    image_size: A size of the image.
     dtype: data type of the image.
-    image_size: image size.
 
   Returns:
     A preprocessed image `Tensor`.
@@ -131,49 +141,49 @@ def preprocess_for_train(image,
   return image
 
 
-def preprocess_for_eval(image,
-                        mean_rgb,
-                        stddev_rgb,
-                        dtype=tf.float32,
-                        image_size=IMAGE_SIZE):
+def preprocess_for_eval(image: spec.Tensor,
+                        mean_rgb: Tuple[float, float, float],
+                        stddev_rgb: Tuple[float, float, float],
+                        image_size: int,
+                        dtype: tf.DType = tf.float32) -> spec.Tensor:
   """Preprocesses the given image for evaluation.
 
   Args:
-    image_bytes: `Tensor` representing an image binary of arbitrary size.
+    image: `Tensor` representing an image.
+    mean_rgb: A tuple representing the mean of the total training images.
+    stddev_rgb: A tuple representing the standard deviation
+        of the total training images.
+    image_size: A size of the image.
     dtype: data type of the image.
-    image_size: image size.
-
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = _resize(image, image_size)
+  image = resize(image, image_size)
   image = tf.reshape(image, [image_size, image_size, 3])
   image = normalize_image(image, mean_rgb, stddev_rgb)
   image = tf.image.convert_image_dtype(image, dtype=dtype)
   return image
 
 
-def create_split(split,
-                 dataset_builder,
-                 rng,
-                 global_batch_size,
-                 train,
-                 image_size,
-                 mean_rgb,
-                 stddev_rgb,
-                 cache=False,
-                 repeat_final_dataset=False,
-                 num_batches=None,
-                 aspect_ratio_range=(0.75, 4.0 / 3.0),
-                 area_range=(0.08, 1.0)):
+def create_split(
+    split: str,
+    dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
+    rng: spec.RandomState,
+    global_batch_size: int,
+    train: bool,
+    image_size: int,
+    mean_rgb: Tuple[float, float, float],
+    stddev_rgb: Tuple[float, float, float],
+    cache: bool = False,
+    repeat_final_dataset: bool = False,
+    aspect_ratio_range: Tuple[float, float] = (0.75, 4.0 / 3.0),
+    area_range: Tuple[float, float] = (0.08, 1.0)
+) -> Iterator[Dict[str, spec.Tensor]]:
   """Creates a split from the CIFAR-10 dataset using TensorFlow Datasets."""
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
 
-  def preprocess_example(example):
+  def preprocess_example(example_index, example):
     dtype = tf.float32
-    # We call ds.enumerate() to get a globally unique per-example, per-step
-    # index that we can fold into the RNG seed.
-    (example_index, example) = example
     if train:
       per_step_preprocess_rng = tf.random.experimental.stateless_fold_in(
           tf.cast(preprocess_rng, tf.int64), example_index)
@@ -183,17 +193,17 @@ def create_split(split,
                                    stddev_rgb,
                                    aspect_ratio_range,
                                    area_range,
-                                   dtype,
-                                   image_size)
+                                   image_size,
+                                   dtype)
     else:
       image = preprocess_for_eval(example['image'],
                                   mean_rgb,
                                   stddev_rgb,
-                                  dtype,
-                                  image_size)
+                                  image_size,
+                                  dtype)
     return {'inputs': image, 'targets': example['label']}
 
-  ds = dataset_builder.as_dataset(split=split)
+  ds = dataset_builder.as_dataset(split=TFDS_SPLIT_NAME[split])
   options = tf.data.Options()
   options.threading.private_threadpool_size = 48
   ds = ds.with_options(options)
@@ -205,14 +215,12 @@ def create_split(split,
     ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
 
-  ds = ds.enumerate().map(
-      lambda i,
-      ex: preprocess_example((i, ex)),
-      num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  # We call ds.enumerate() to get a globally unique per-example, per-step
+  # index that we can fold into the RNG seed.
+  ds = ds.enumerate()
+  ds = ds.map(
+      preprocess_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   ds = ds.batch(global_batch_size, drop_remainder=train)
-
-  if num_batches is not None:
-    ds = ds.take(num_batches)
 
   if repeat_final_dataset:
     ds = ds.repeat()
@@ -222,19 +230,19 @@ def create_split(split,
   return ds
 
 
-def create_input_iter(split,
-                      dataset_builder,
-                      rng,
-                      global_batch_size,
-                      mean_rgb,
-                      stddev_rgb,
-                      image_size,
-                      aspect_ratio_range,
-                      area_range,
-                      train,
-                      cache,
-                      repeat_final_dataset,
-                      num_batches):
+def create_input_iter(
+    split: str,
+    dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
+    rng: spec.RandomState,
+    global_batch_size: int,
+    mean_rgb: Tuple[float, float, float],
+    stddev_rgb: Tuple[float, float, float],
+    image_size: int,
+    aspect_ratio_range: Tuple[float, float],
+    area_range: Tuple[float, float],
+    train: bool,
+    cache: bool,
+    repeat_final_dataset: bool) -> Iterator[Dict[str, spec.Tensor]]:
   ds = create_split(
       split,
       dataset_builder,
@@ -246,15 +254,11 @@ def create_input_iter(split,
       stddev_rgb=stddev_rgb,
       cache=cache,
       repeat_final_dataset=repeat_final_dataset,
-      num_batches=num_batches,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range)
   it = map(
       functools.partial(
           shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
-
-  # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
   it = jax_utils.prefetch_to_device(it, 2)
-
   return it

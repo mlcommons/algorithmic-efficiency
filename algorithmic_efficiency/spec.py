@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
 import jax
+from torch import nn
 import torch.nn.functional as F
 
 
@@ -56,7 +57,8 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterContainer = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+ParameterContainer = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]],
+                           nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
