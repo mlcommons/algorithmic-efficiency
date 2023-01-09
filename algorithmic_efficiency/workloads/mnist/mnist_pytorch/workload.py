@@ -86,11 +86,8 @@ class MnistWorkload(BaseMnistWorkload):
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
-        inputs = batch['inputs'].reshape(-1, *batch['inputs'].shape[2:])
         inputs = torch.as_tensor(
-            np.transpose(inputs, (0, 3, 1, 2)),
-            dtype=torch.float32,
-            device=DEVICE)
+            batch['inputs'], dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.long, device=DEVICE)
 
@@ -121,7 +118,6 @@ class MnistWorkload(BaseMnistWorkload):
         #                       device=DEVICE)
         #   dist.broadcast(weights, src=0)
         #   weights = weights[RANK]
-
         inputs = torch.empty((N_GPUS, per_device_batch_size, 1, 28, 28),
                              dtype=torch.float32,
                              device=DEVICE)
@@ -136,7 +132,7 @@ class MnistWorkload(BaseMnistWorkload):
       print(targets)
       print(inputs.shape)
       print(targets.shape)
-      batch = {'inputs': inputs, 'targets': targets}
+      batch = {'inputs': inputs.permute(0, 3, 1, 2), 'targets': targets}
       yield batch
 
   def init_model_fn(
