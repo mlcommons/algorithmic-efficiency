@@ -44,22 +44,6 @@ class _Model(nn.Module):
     return self.net(x)
 
 
-def mnist_to_torch(batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
-  # Slice off the part of the batch for this device and then transpose from
-  # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
-  new_batch = {}
-  for k, v in batch.items():
-    if USE_PYTORCH_DDP:
-      new_v = v[RANK]
-    else:
-      new_v = v.reshape(-1, *v.shape[2:])
-    if k == 'inputs':
-      new_v = np.transpose(new_v, (0, 3, 1, 2))
-    dtype = torch.long if k == 'targets' else torch.float
-    new_batch[k] = torch.as_tensor(new_v, dtype=dtype, device=DEVICE)
-  return new_batch
-
-
 class MnistWorkload(BaseMnistWorkload):
 
   def _build_input_queue(
@@ -90,7 +74,10 @@ class MnistWorkload(BaseMnistWorkload):
             batch['inputs'], dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.long, device=DEVICE)
-
+        weights = batch.get('weights')
+        if weights is not None:
+          weights = torch.as_tensor(
+              batch['weights'], dtype=torch.bool, device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           # if not_train:
@@ -103,10 +90,14 @@ class MnistWorkload(BaseMnistWorkload):
           inputs = inputs[0]
           dist.broadcast(targets, src=0)
           targets = targets[0]
+          dist.broadcast(weights, src=0)
+          if weights is not None:
+            weights = weights[0]
         else:
           inputs = inputs.view(-1, *inputs.shape[2:])
           targets = targets.view(-1, *targets.shape[2:])
-          # weights = weights.view(-1, *weights.shape[2:])
+          if weights is not None:
+            weights = weights.view(-1, *weights.shape[2:])
       else:
         # if not_train:
         #   per_device_batch_size = torch.empty((1,),
@@ -128,8 +119,18 @@ class MnistWorkload(BaseMnistWorkload):
                               device=DEVICE)
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
+        weights = torch.empty((N_GPUS, per_device_batch_size),
+                              dtype=torch.bool,
+                              device=DEVICE)
+        dist.broadcast(weights, src=0)
+        if weights is not None:
+          weights = weights[RANK]
 
-      batch = {'inputs': inputs.permute(0, 3, 1, 2), 'targets': targets}
+      batch = {
+          'inputs': inputs.permute(0, 3, 1, 2),
+          'targets': targets,
+          'weights': weights
+      }
       yield batch
 
   def init_model_fn(
