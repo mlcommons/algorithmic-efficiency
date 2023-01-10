@@ -74,41 +74,21 @@ class MnistWorkload(BaseMnistWorkload):
             batch['inputs'], dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.long, device=DEVICE)
-        weights = batch.get('weights')
-        if weights is not None:
-          weights = torch.as_tensor(
-              batch['weights'], dtype=torch.bool, device=DEVICE)
+        weights = torch.as_tensor(
+            batch['weights'], dtype=torch.bool, device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
-          # if not_train:
-          #   per_device_batch_size = torch.tensor(
-          #     len(targets[0]), dtype=torch.int32, device=DEVICE)
-          #   dist.broadcast(per_device_batch_size, src=0)
-          #   dist.broadcast(weights, src=0)
-          #   weights = weights[0]
           dist.broadcast(inputs, src=0)
           inputs = inputs[0]
           dist.broadcast(targets, src=0)
           targets = targets[0]
           dist.broadcast(weights, src=0)
-          if weights is not None:
-            weights = weights[0]
+          weights = weights[0]
         else:
           inputs = inputs.view(-1, *inputs.shape[2:])
           targets = targets.view(-1, *targets.shape[2:])
-          if weights is not None:
-            weights = weights.view(-1, *weights.shape[2:])
+          weights = weights.view(-1, *weights.shape[2:])
       else:
-        # if not_train:
-        #   per_device_batch_size = torch.empty((1,),
-        #                                     dtype=torch.int32,
-        #                                     device=DEVICE)
-        #   dist.broadcast(per_device_batch_size, src=0)
-        #   weights = torch.empty((N_GPUS, per_device_batch_size, 1),
-        #                       dtype=torch.float32,
-        #                       device=DEVICE)
-        #   dist.broadcast(weights, src=0)
-        #   weights = weights[RANK]
         inputs = torch.empty((N_GPUS, per_device_batch_size, 28, 28, 1),
                              dtype=torch.float32,
                              device=DEVICE)
@@ -123,8 +103,7 @@ class MnistWorkload(BaseMnistWorkload):
                               dtype=torch.bool,
                               device=DEVICE)
         dist.broadcast(weights, src=0)
-        if weights is not None:
-          weights = weights[RANK]
+        weights = weights[RANK]
 
       batch = {
           'inputs': inputs.permute(0, 3, 1, 2),
