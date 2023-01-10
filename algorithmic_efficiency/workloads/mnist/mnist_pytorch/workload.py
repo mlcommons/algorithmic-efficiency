@@ -118,7 +118,7 @@ class MnistWorkload(BaseMnistWorkload):
         #                       device=DEVICE)
         #   dist.broadcast(weights, src=0)
         #   weights = weights[RANK]
-        inputs = torch.empty((N_GPUS, per_device_batch_size, 1, 28, 28),
+        inputs = torch.empty((N_GPUS, per_device_batch_size, 28, 28, 1),
                              dtype=torch.float32,
                              device=DEVICE)
         dist.broadcast(inputs, src=0)
@@ -129,9 +129,6 @@ class MnistWorkload(BaseMnistWorkload):
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
 
-      print(targets)
-      print(inputs.shape)
-      print(targets.shape)
       batch = {'inputs': inputs.permute(0, 3, 1, 2), 'targets': targets}
       yield batch
 
