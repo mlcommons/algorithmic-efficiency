@@ -4,7 +4,6 @@ from collections import OrderedDict
 import contextlib
 from typing import Dict, Iterator, Optional, Tuple
 
-import numpy as np
 import torch
 from torch import nn
 import torch.distributed as dist
@@ -55,7 +54,6 @@ class MnistWorkload(BaseMnistWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    # not_train = split != 'train'
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to

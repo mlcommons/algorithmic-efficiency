@@ -12,7 +12,7 @@ import torch.distributed as dist
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.cifar.cifar_jax.input_pipeline import \
+from algorithmic_efficiency.workloads.cifar.input_pipeline import \
     create_input_iter
 
 FLAGS = flags.FLAGS

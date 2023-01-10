@@ -14,8 +14,8 @@ from algorithmic_efficiency import spec
 
 def get_batch_size(workload_name):
   # Return the global batch size.
-  del workload_name
-  return 128
+  batch_sizes = {'cifar': 128}
+  return batch_sizes[workload_name]
 
 
 def cosine_decay(lr, step, total_steps):
@@ -27,7 +27,7 @@ def cosine_decay(lr, step, total_steps):
 def create_learning_rate_fn(hparams: spec.Hyperparameters,
                             steps_per_epoch: int):
   """Create learning rate schedule."""
-  base_learning_rate = hparams.learning_rate * get_batch_size('cifar') / 256.
+  base_learning_rate = hparams.learning_rate * get_batch_size('cifar') / 128.
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=base_learning_rate,
@@ -107,6 +107,8 @@ def pmapped_train_step(workload,
   return new_optimizer_state, updated_params, new_model_state
 
 
+# Not allowed to update the model parameters, hyperparameters, global step, or
+# optimzier state.
 def update_params(workload: spec.Workload,
                   current_param_container: spec.ParameterContainer,
                   current_params_types: spec.ParameterTypeTree,
