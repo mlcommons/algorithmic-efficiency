@@ -30,7 +30,7 @@ def maybe_restore_checkpoint(framework: str,
                              preemption_count: int,
                              checkpoint_dir: str) -> CheckpointReturn:
   if framework == 'jax':
-    opt_state, opt_update_fn = optimizer_state
+    opt_state, opt_update_fn, lr_schedule_fn = optimizer_state
   else:
     opt_state, opt_update_fn = optimizer_state, None
 
@@ -127,7 +127,7 @@ def save_checkpoint(framework: str,
                     checkpoint_dir: str) -> None:
   if framework == 'jax':
     model_params = jax.device_get(jax_utils.unreplicate(model_params))
-    opt_state, _ = optimizer_state
+    opt_state, _, _ = optimizer_state
     opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
     model_state = jax.device_get(jax_utils.unreplicate(model_state))
   else:
