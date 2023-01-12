@@ -69,6 +69,7 @@ def update_params(workload: spec.Workload,
           {
               'loss': loss.item(),
               'grad_norm': grad_norm.item(),
+              'learning_rate': optimizer_state['scheduler'].get_last_lr()[0]
           }, global_step)
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
                  global_step,
