@@ -2,6 +2,9 @@
 
 import contextlib
 from typing import Dict, Iterator, Optional, Tuple
+from torchvision.datasets import CIFAR10
+from algorithmic_efficiency import data_utils
+import random
 
 import numpy as np
 import torch
@@ -9,6 +12,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
+from torchvision import transforms
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -20,23 +24,67 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models im
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-def cifar_to_torch(batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
-  # Slice off the part of the batch for this device and then transpose from
-  # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
-  new_batch = {}
-  for k, v in batch.items():
-    if USE_PYTORCH_DDP:
-      new_v = v[RANK]
-    else:
-      new_v = v.reshape(-1, *v.shape[2:])
-    if k == 'inputs':
-      new_v = np.transpose(new_v, (0, 3, 1, 2))
-    dtype = torch.long if k == 'targets' else torch.float
-    new_batch[k] = torch.as_tensor(new_v, dtype=dtype, device=DEVICE)
-  return new_batch
-
-
 class CifarWorkload(BaseCifarWorkload):
+
+  def _build_cifar_dataset(self,
+                     data_rng: spec.RandomState,
+                     split: str,
+                     data_dir: str,
+                     batch_size: int) -> torch.utils.data.DataLoader:
+    is_train = split == 'train'
+
+    normalize = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=self.train_mean, std=self.train_stddev)
+    ])
+    eval_transform_config = normalize
+    train_transform_config = transforms.Compose([
+        transforms.RandomResizedCrop(
+            self.center_crop_size,
+            scale=self.scale_ratio_range,
+            ratio=self.aspect_ratio_range),
+        transforms.RandomHorizontalFlip(),
+        normalize
+    ])
+
+    transform = train_transform_config if is_train else eval_transform_config
+    dataset = CIFAR10(
+        root=data_dir,
+        train=split in ['train', 'eval_train', 'validation'],
+        download=True,
+        transform=transform)
+    assert self.num_train_examples + self.num_validation_examples == 50000
+    indices = list(range(50000))
+    indices_split = {
+        'train': indices[:self.num_train_examples],
+        'validation': indices[self.num_train_examples:],
+    }
+    if split == 'eval_train':
+      train_indices = indices_split['train']
+      random.Random(data_rng[0]).shuffle(train_indices)
+      indices_split['eval_train'] = train_indices[:self.num_eval_train_examples]
+    if split in indices_split:
+      dataset = torch.utils.data.Subset(dataset, indices_split[split])
+
+    sampler = None
+    if USE_PYTORCH_DDP:
+      if is_train:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
+      else:
+        sampler = data_utils.DistributedEvalSampler(
+            dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
+      batch_size //= N_GPUS
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=not USE_PYTORCH_DDP and is_train,
+        sampler=sampler,
+        num_workers=4,
+        pin_memory=True,
+        drop_last=is_train)
+    dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
+    return dataloader
 
   def _build_input_queue(
       self,
@@ -47,61 +95,12 @@ class CifarWorkload(BaseCifarWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    per_device_batch_size = int(global_batch_size / N_GPUS)
-
-    # Only create and iterate over tf input pipeline in one Python process to
-    # avoid creating too many threads.
-    if RANK == 0:
-      np_iter = super()._build_input_queue(data_rng,
-                                           split,
-                                           data_dir,
-                                           global_batch_size,
-                                           num_batches,
-                                           repeat_final_dataset)
-    while True:
-      if RANK == 0:
-        batch = next(np_iter)  # pylint: disable=stop-iteration-return
-        inputs = torch.as_tensor(
-            batch['inputs'], dtype=torch.float32, device=DEVICE)
-        targets = torch.as_tensor(
-            batch['targets'], dtype=torch.long, device=DEVICE)
-        weights = torch.as_tensor(
-            batch['weights'], dtype=torch.bool, device=DEVICE)
-        # Send batch to other devices when using DDP.
-        if USE_PYTORCH_DDP:
-          dist.broadcast(inputs, src=0)
-          inputs = inputs[0]
-          dist.broadcast(targets, src=0)
-          targets = targets[0]
-          dist.broadcast(weights, src=0)
-          weights = weights[0]
-        else:
-          inputs = inputs.view(-1, *inputs.shape[2:])
-          targets = targets.view(-1, *targets.shape[2:])
-          weights = weights.view(-1, *weights.shape[2:])
-      else:
-        inputs = torch.empty((N_GPUS, per_device_batch_size, 32, 32, 3),
-                             dtype=torch.float32,
-                             device=DEVICE)
-        dist.broadcast(inputs, src=0)
-        inputs = inputs[RANK]
-        targets = torch.empty((N_GPUS, per_device_batch_size),
-                              dtype=torch.long,
-                              device=DEVICE)
-        dist.broadcast(targets, src=0)
-        targets = targets[RANK]
-        weights = torch.empty((N_GPUS, per_device_batch_size),
-                              dtype=torch.bool,
-                              device=DEVICE)
-        dist.broadcast(weights, src=0)
-        weights = weights[RANK]
-
-      batch = {
-          'inputs': inputs.permute(0, 3, 1, 2),
-          'targets': targets,
-          'weights': weights
+    it = self._build_cifar_dataset(data_rng, split, data_dir, global_batch_size)
+    for batch in it:
+      yield {
+          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
+          'targets': batch['targets'].to(DEVICE, non_blocking=True),
       }
-      yield batch
 
   def init_model_fn(
       self,

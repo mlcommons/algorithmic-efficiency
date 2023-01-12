@@ -1,7 +1,7 @@
 """CIFAR workload implemented in Jax."""
 
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Iterator
 
 from flax import jax_utils
 from flax import linen as nn
@@ -9,7 +9,8 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
-
+import tensorflow_datasets as tfds
+from algorithmic_efficiency.workloads.cifar.cifar_jax.input_pipeline import create_input_iter
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
@@ -18,6 +19,55 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
 
 
 class CifarWorkload(BaseCifarWorkload):
+
+  def _build_cifar_dataset(
+          self,
+          data_rng: spec.RandomState,
+          split: str,
+          data_dir: str,
+          batch_size: int,
+          cache: Optional[bool] = None,
+          repeat_final_dataset: Optional[bool] = None
+  ) -> Iterator[Dict[str, spec.Tensor]]:
+    ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
+    ds_builder.download_and_prepare()
+    train = split == 'train'
+    assert self.num_train_examples + self.num_validation_examples == 50000
+    if split in ['train', 'eval_train']:
+      split = f'train[:{self.num_train_examples}]'
+    elif split == 'validation':
+      split = f'train[{self.num_train_examples}:]'
+    ds = create_input_iter(
+      split,
+      ds_builder,
+      data_rng,
+      batch_size,
+      self.train_mean,
+      self.train_stddev,
+      self.center_crop_size,
+      self.aspect_ratio_range,
+      self.scale_ratio_range,
+      train=train,
+      cache=not train if cache is None else cache,
+      repeat_final_dataset=repeat_final_dataset)
+    return ds
+
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del num_batches
+    return self._build_cifar_dataset(data_rng,
+                                split,
+                                data_dir,
+                                global_batch_size,
+                                cache,
+                                repeat_final_dataset)
 
   def sync_batch_stats(
       self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:

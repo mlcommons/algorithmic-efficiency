@@ -1,61 +1,20 @@
 """CIFAR workload parent class."""
 
 import math
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Dict, Tuple
 
 from absl import flags
 import jax
-import tensorflow_datasets as tfds
 import torch
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.cifar.input_pipeline import \
-    create_input_iter
+
 
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
-
-
-def _build_cifar_dataset(
-    data_rng: spec.RandomState,
-    num_train_examples: int,
-    num_validation_examples: int,
-    train_mean,
-    train_stddev,
-    center_crop_size,
-    aspect_ratio_range,
-    scale_ratio_range,
-    split: str,
-    data_dir: str,
-    batch_size: int,
-    cache: Optional[bool] = None,
-    repeat_final_dataset: Optional[bool] = None
-) -> Iterator[Dict[str, spec.Tensor]]:
-  ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
-  ds_builder.download_and_prepare()
-  train = split == 'train'
-  assert num_train_examples + num_validation_examples == 50000
-  if split in ['train', 'eval_train']:
-    split = f'train[:{num_train_examples}]'
-  elif split == 'validation':
-    split = f'train[{num_train_examples}:]'
-  ds = create_input_iter(
-      split,
-      ds_builder,
-      data_rng,
-      batch_size,
-      train_mean,
-      train_stddev,
-      center_crop_size,
-      aspect_ratio_range,
-      scale_ratio_range,
-      train=train,
-      cache=not train if cache is None else cache,
-      repeat_final_dataset=repeat_final_dataset)
-  return ds
 
 
 class BaseCifarWorkload(spec.Workload):
@@ -125,30 +84,6 @@ class BaseCifarWorkload(spec.Workload):
   def eval_period_time_sec(self) -> int:
     return 600  # 10 mins.
 
-  def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    del num_batches
-    return _build_cifar_dataset(data_rng,
-                                self.num_train_examples,
-                                self.num_validation_examples,
-                                self.train_mean,
-                                self.train_stddev,
-                                self.center_crop_size,
-                                self.aspect_ratio_range,
-                                self.scale_ratio_range,
-                                split,
-                                data_dir,
-                                global_batch_size,
-                                cache,
-                                repeat_final_dataset)
-
   @property
   def step_hint(self) -> int:
     # Note that the target setting algorithms were not actually run on this
@@ -178,7 +113,7 @@ class BaseCifarWorkload(spec.Workload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          data_rng,
+          data_rng=data_rng,
           split=split,
           data_dir=data_dir,
           global_batch_size=global_batch_size,

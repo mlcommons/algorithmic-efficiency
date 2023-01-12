@@ -89,16 +89,6 @@ UpdateParamsFn = Callable[[
     RandomState
 ],
                           UpdateReturn]
-DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]],
-    OptimizerState,
-    ParameterContainer,
-    LossType,
-    Hyperparameters,
-    int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -123,7 +113,7 @@ class Workload(metaclass=abc.ABCMeta):
                          global_batch_size: int,
                          cache: Optional[bool] = None,
                          repeat_final_dataset: Optional[bool] = None,
-                         num_batches: Optional[int] = None) -> Dict[str, Any]:
+                         num_batches: Optional[int] = None) -> Iterator[Dict[str, Tensor]]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -352,6 +342,19 @@ class Workload(metaclass=abc.ABCMeta):
       pass
 
     return eval_metrics
+
+
+DataSelectionFn = Callable[[
+    Workload,
+    Iterator[Tuple[Tensor, Tensor]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparameters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 class TrainingCompleteError(Exception):
