@@ -1,19 +1,17 @@
 """CIFAR10 workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Iterator, Optional, Tuple
-from torchvision.datasets import CIFAR10
-from algorithmic_efficiency import data_utils
 import random
+from typing import Dict, Iterator, Optional, Tuple
 
-import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.distributed as dist
 from torchvision import transforms
+from torchvision.datasets import CIFAR10
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -27,10 +25,10 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 class CifarWorkload(BaseCifarWorkload):
 
   def _build_cifar_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     batch_size: int) -> torch.utils.data.DataLoader:
+                           data_rng: spec.RandomState,
+                           split: str,
+                           data_dir: str,
+                           batch_size: int) -> torch.utils.data.DataLoader:
     is_train = split == 'train'
 
     normalize = transforms.Compose([
