@@ -54,7 +54,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def target_value(self) -> float:
-    return 0.77171
+    return 0.77309
 
   @property
   def eval_batch_size(self) -> int:

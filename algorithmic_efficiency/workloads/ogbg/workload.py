@@ -22,7 +22,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def target_value(self) -> float:
-    return 0.28380056
+    return 0.28098
 
   @property
   def loss_type(self) -> spec.LossType:
