@@ -11,19 +11,13 @@ sudo groupadd docker
 sudo usermod -aG docker $LOGIN_USER
 newgrp docker
 
-# make sure docker-credential-gcloud is in PATH
-# https://stackoverflow.com/questions/54494386/gcloud-auth-configure-docker-on-gcp-vm-instance-with-ubuntu-not-setup-properly
-sudo ln -s /snap/google-cloud-cli/current/bin/docker-credential-gcloud /usr/local/bin
-
-# make gcloud docker's credential helper
-sudo -u $LOGIN_USER bash -c 'gcloud auth configure-docker --quiet'
-
 # host machine requires nvidia drivers. tensorflow image should contain the rest required
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
 sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
-sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
-sudo apt-get update && sudo apt-get install -y cuda-drivers
+sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
+sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+sudo apt-get update
+sudo apt-get -y install cuda
 
 # install docker
 sudo apt-get update && apt-get install -y \
@@ -43,6 +37,13 @@ curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
 sudo systemctl restart docker
+
+# make sure docker-credential-gcloud is in PATH
+# https://stackoverflow.com/questions/54494386/gcloud-auth-configure-docker-on-gcp-vm-instance-with-ubuntu-not-setup-properly
+sudo ln -s /snap/google-cloud-cli/current/bin/docker-credential-gcloud /usr/local/bin
+
+# make gcloud docker's credential helper
+sudo -u $LOGIN_USER bash -c 'gcloud auth configure-docker --quiet'
 
 # create file which will be checked on next reboot
 touch /home/$LOGIN_USER/.ran-startup-script
