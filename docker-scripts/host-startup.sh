@@ -16,7 +16,7 @@ if test ! -f "$STARTUP_SUCCESS_FILE"; then
 
 	# make sure docker-credential-gcloud is in PATH
 	# https://stackoverflow.com/questions/54494386/gcloud-auth-configure-docker-on-gcp-vm-instance-with-ubuntu-not-setup-properly
-	sudo ln -s /snap/google-cloud-sdk/current/bin/docker-credential-gcloud /usr/local/bin
+	sudo ln -s /snap/google-cloud-cli/current/bin/docker-credential-gcloud /usr/local/bin
 
 	# make gcloud docker's credential helper
 	sudo -u $LOGIN_USER bash -c 'gcloud auth configure-docker --quiet'
@@ -53,6 +53,7 @@ if test ! -f "$STARTUP_SUCCESS_FILE"; then
   docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/mlcommons:ogbg
   docker run -it --gpus all mlcommons:ogbg
 else
-	echo "$STARTUP_SUCCESS_FILE exists. not running startup script!"
+  docker run -it --gpus all mlcommons:ogbg
+  echo "$STARTUP_SUCCESS_FILE exists. not running startup script!"
 fi
 
