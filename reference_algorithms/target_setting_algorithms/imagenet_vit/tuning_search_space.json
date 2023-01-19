@@ -1,27 +1,27 @@
 {
     "learning_rate": {
         "feasible_points": [
-            0.001997
+            0.0008445074561975979
         ]
     },
     "beta1": {
         "feasible_points": [
-            0.7132
+            0.8895758153482813
         ]
     },
     "beta2": {
         "feasible_points": [
-            0.9982
+            0.9978504782314613
         ]
     },
     "warmup_steps": {
         "feasible_points": [
-            14075
+            6999
         ]
     },
     "weight_decay": {
         "feasible_points": [
-            0.026595
+            0.08135402759553023
         ]
     },
     "grad_clip": {
