@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
 import jax
+from torch import nn
 import torch.nn.functional as F
 
 
@@ -56,7 +57,8 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterContainer = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+ParameterContainer = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]],
+                           nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
@@ -87,16 +89,6 @@ UpdateParamsFn = Callable[[
     RandomState
 ],
                           UpdateReturn]
-DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]],
-    OptimizerState,
-    ParameterContainer,
-    LossType,
-    Hyperparameters,
-    int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -114,14 +106,15 @@ class Workload(metaclass=abc.ABCMeta):
     """Return whether or not the workload goal has been reached."""
 
   @abc.abstractmethod
-  def _build_input_queue(self,
-                         data_rng: RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = None,
-                         repeat_final_dataset: Optional[bool] = None,
-                         num_batches: Optional[int] = None) -> Dict[str, Any]:
+  def _build_input_queue(
+      self,
+      data_rng: RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, Tensor]]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -350,6 +343,19 @@ class Workload(metaclass=abc.ABCMeta):
       pass
 
     return eval_metrics
+
+
+DataSelectionFn = Callable[[
+    Workload,
+    Iterator[Tuple[Tensor, Tensor]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparameters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 class TrainingCompleteError(Exception):
