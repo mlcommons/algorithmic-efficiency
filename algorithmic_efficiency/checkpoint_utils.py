@@ -1,3 +1,9 @@
+"""Utilities for checkpointing.
+
+Note: Code adapted from
+https://github.com/google/init2winit/blob/master/init2winit/checkpoint.py.
+"""
+
 import os
 from typing import Sequence, Tuple
 

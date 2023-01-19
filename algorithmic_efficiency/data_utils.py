@@ -1,3 +1,5 @@
+"""Utilities for data processing."""
+
 from typing import Dict, Iterable, Optional, Tuple
 
 import jax

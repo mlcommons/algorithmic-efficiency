@@ -1,15 +1,20 @@
 """Utilities for dealing with parameter-related logic like types and shapes."""
+
+from typing import Dict
+
 import flax
 import jax
+from torch import nn
 
 from algorithmic_efficiency import spec
 
 
-def pytorch_param_shapes(model):
+def pytorch_param_shapes(model: nn.Module) -> Dict[str, spec.ShapeTuple]:
   return {k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()}
 
 
-def pytorch_param_types(param_shapes):
+def pytorch_param_types(
+    param_shapes: Dict[str, spec.ShapeTuple]) -> Dict[str, spec.ParameterType]:
   param_types = {}
   for name in param_shapes.keys():
     if 'bias' in name:
@@ -25,11 +30,13 @@ def pytorch_param_types(param_shapes):
   return param_types
 
 
-def jax_param_shapes(params):
+def jax_param_shapes(
+    params: spec.ParameterContainer) -> spec.ParameterShapeTree:
   return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), params)
 
 
-def jax_param_types(param_shapes, parent_name=''):
+def jax_param_types(param_shapes: spec.ParameterShapeTree,
+                    parent_name: str = '') -> Dict[str, spec.ParameterType]:
   param_types_dict = {}
   for name, value in param_shapes.items():
     if isinstance(value, dict) or isinstance(value, flax.core.FrozenDict):

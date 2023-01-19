@@ -4,7 +4,7 @@ import abc
 import enum
 import functools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
-
+from algorithmic_efficiency.logger_utils import MetricLogger
 from absl import logging
 import jax
 import torch.nn.functional as F
@@ -135,14 +135,14 @@ class Workload(metaclass=abc.ABCMeta):
     examples.
     """
 
-  def attach_metrics_logger(self, metrics_logger):
+  def attach_metrics_logger(self, metrics_logger: MetricLogger) -> None:
     """Attaches a metric logger to workload."""
     self.metrics_logger = metrics_logger
     return
 
   @property
   @abc.abstractmethod
-  def target_value(self):
+  def target_value(self) -> float:
     """The target value to reach."""
 
   @property
@@ -177,12 +177,12 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def train_mean(self):
+  def train_mean(self) -> Any:
     """The mean of the training data."""
 
   @property
   @abc.abstractmethod
-  def train_stddev(self):
+  def train_stddev(self) -> Any:
     """The stddev of the training data."""
 
   @property
@@ -249,7 +249,7 @@ class Workload(metaclass=abc.ABCMeta):
                mode: ForwardPassMode,
                rng: RandomState,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
-    """return logits_batch"""
+    """Return logits_batch"""
     # Possible side effect of updating BN.
 
   def output_activation_fn(self, logits_batch: Tensor,
@@ -411,6 +411,6 @@ def data_selection(workload: Workload,
   pass
 
 
-def get_batch_size(workload_name):
+def get_batch_size(workload_name: str) -> int:
   """Return the global batch size to use for a given workload."""
   pass
