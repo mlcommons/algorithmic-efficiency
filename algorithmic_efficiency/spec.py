@@ -9,8 +9,6 @@ from absl import logging
 import jax
 import torch.nn.functional as F
 
-from algorithmic_efficiency.logger_utils import MetricLogger
-
 
 class LossType(enum.Enum):
   SOFTMAX_CROSS_ENTROPY = 0
@@ -110,7 +108,7 @@ class Workload(metaclass=abc.ABCMeta):
     examples.
     """
 
-  def attach_metrics_logger(self, metrics_logger: MetricLogger) -> None:
+  def attach_metrics_logger(self, metrics_logger) -> None:
     """Attaches a metric logger to workload."""
     self.metrics_logger = metrics_logger
     return

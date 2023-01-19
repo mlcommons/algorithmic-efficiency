@@ -33,7 +33,7 @@ def _signed_to_unsigned(seed: SeedType) -> SeedType:
     return np.array([s + 2**32 if s < 0 else s for s in seed.tolist()])
 
 
-def _fold_in(seed: SeedType, data: Any) -> List[SeedType, Any]:
+def _fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
   rng = np.random.RandomState(seed=_signed_to_unsigned(seed))
   new_seed = rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
   return [new_seed, data]
@@ -58,7 +58,7 @@ def _check_jax_install() -> None:
         '--framework=pytorch to use the Numpy version instead.')
 
 
-def fold_in(seed: SeedType, data: Any) -> List[SeedType, Any]:
+def fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.fold_in(seed, data)
