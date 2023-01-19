@@ -322,11 +322,11 @@ def zipit(generator_fns_or_sweeps: Sequence[Union[_GeneratorFn,
   return hyperparameter_sweep
 
 
-DICT_SEARCH_SPACE = Dict[str, Dict[str, Union[str, float, Sequence]]]
-LIST_SEARCH_SPACE = List[Dict[str, Union[str, float, Sequence]]]
+_DictSearchSpace = Dict[str, Dict[str, Union[str, float, Sequence]]]
+_ListSearchSpace = List[Dict[str, Union[str, float, Sequence]]]
 
 
-def generate_search(search_space: Union[DICT_SEARCH_SPACE, LIST_SEARCH_SPACE],
+def generate_search(search_space: Union[_DictSearchSpace, _ListSearchSpace],
                     num_trials: int) -> List[collections.namedtuple]:
   """Generate a random search with the given bounds and scaling.
 
@@ -380,10 +380,9 @@ def generate_search(search_space: Union[DICT_SEARCH_SPACE, LIST_SEARCH_SPACE],
     hyperparameters = []
     updated_num_trials = min(num_trials, len(search_space))
     if num_trials != len(search_space):
-      logging.info(
-          f'--num_tuning_trials was set to {num_trials}, but {len(search_space)} trial(s) '
-          f'found in the JSON file. Updating --num_tuning_trials to {updated_num_trials}.'
-      )
+      logging.info(f'--num_tuning_trials was set to {num_trials}, but '
+                   f'{len(search_space)} trial(s) found in the JSON file. '
+                   f'Updating --num_tuning_trials to {updated_num_trials}.')
     for trial in search_space:
       hyperparameters.append(named_tuple_class(**trial))
     return hyperparameters[:updated_num_trials]
