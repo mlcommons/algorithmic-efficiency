@@ -5,6 +5,7 @@ echo "This trick works!!"
 python3 check_gpu.py
 echo "Running OGBG"
 
+cd ..
 ls
 # cd algorithmic-efficiency
 
