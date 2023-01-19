@@ -232,7 +232,7 @@ class PrefetchedWrapper:
   def __init__(self,
                dataloader: torch.utils.data.DataLoader,
                device: torch.device,
-               start_epoch: int = 0):
+               start_epoch: int = 0) -> None:
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
