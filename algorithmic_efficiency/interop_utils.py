@@ -1,5 +1,3 @@
-"""Utilities for Jax and Pytorch transfer operations."""
-
 import jax.dlpack
 import torch
 
