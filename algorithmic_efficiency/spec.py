@@ -351,18 +351,6 @@ def init_optimizer_state(workload: Workload,
   pass
 
 
-# def update_params(workload: Workload,
-#                   current_param_container: ParameterContainer,
-#                   current_params_types: ParameterTypeTree,
-#                   model_state: ModelAuxiliaryState,
-#                   hyperparameters: Hyperparameters,
-#                   batch: Dict[str, Tensor],
-#                   loss_type: LossType,
-#                   optimizer_state: OptimizerState,
-#                   eval_results: List[Tuple[int, float]],
-#                   global_step: int,
-#                   rng: RandomState) -> _UpdateReturn:
-
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 UpdateParamsFn = Callable[[
     Workload,
