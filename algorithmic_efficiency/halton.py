@@ -12,6 +12,7 @@ import itertools
 import math
 from typing import Any, Callable, Dict, List, Sequence, Text, Tuple, Union
 
+from absl import logging
 from numpy import random
 
 _SweepSequence = List[Dict[Text, Any]]
@@ -198,7 +199,7 @@ def _generate_double_point(name: Text,
                            min_val: float,
                            max_val: float,
                            scaling: Text,
-                           halton_point: float) -> float:
+                           halton_point: float) -> Tuple[str, float]:
   """Generate a float hyperparameter value from a Halton sequence point."""
   if scaling not in ['linear', 'log']:
     raise ValueError(
@@ -349,7 +350,7 @@ def generate_search(search_space: Union[DICT_SEARCH_SPACE, LIST_SEARCH_SPACE],
     assert len(search_space) > 0
     all_hyperparameter_names = list(search_space[0].keys())
   else:
-    raise AttributeError("tuning_search_space should either be a dict or list.")
+    raise AttributeError('tuning_search_space should either be a dict or list.')
 
   named_tuple_class = collections.namedtuple('Hyperparameters',
                                              all_hyperparameter_names)
@@ -378,6 +379,11 @@ def generate_search(search_space: Union[DICT_SEARCH_SPACE, LIST_SEARCH_SPACE],
   else:
     hyperparameters = []
     updated_num_trials = min(num_trials, len(search_space))
+    if num_trials != len(search_space):
+      logging.info(
+          f'--num_tuning_trials was set to {num_trials}, but {len(search_space)} trial(s) '
+          f'found in the JSON file. Updating --num_tuning_trials to {updated_num_trials}.'
+      )
     for trial in search_space:
       hyperparameters.append(named_tuple_class(**trial))
     return hyperparameters[:updated_num_trials]
