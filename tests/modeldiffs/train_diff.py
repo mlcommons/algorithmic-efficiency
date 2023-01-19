@@ -304,7 +304,7 @@ def _make_one_batch_workload(workload_class,
 
         def to_device(k, v):
           dtype = (
-              torch.long if k == 'targets' else
+              torch.long if (k == 'targets' and workload_name != 'fastmri') else
               torch.bool if k == 'weights' else torch.float)
           if USE_PYTORCH_DDP:
             v = v[RANK]
