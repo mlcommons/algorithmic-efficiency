@@ -106,7 +106,7 @@ flags.DEFINE_string(
     None,
     'The path to the JSON file describing the external tuning search space.')
 flags.DEFINE_integer('num_tuning_trials',
-                     1,
+                     3,
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',

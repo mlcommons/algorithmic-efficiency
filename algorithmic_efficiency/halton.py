@@ -18,7 +18,7 @@ _SweepSequence = List[Dict[Text, Any]]
 _GeneratorFn = Callable[[float], Tuple[Text, float]]
 
 
-def generate_primes(n: int):
+def generate_primes(n: int) -> List[int]:
   """Generate primes less than `n` (except 2) using the Sieve of Sundaram."""
   half_m1 = int((n - 2) / 2)
   sieve = [0] * (half_m1 + 1)
@@ -30,7 +30,7 @@ def generate_primes(n: int):
   return [2 * i + 1 for i in range(1, half_m1 + 1) if sieve[i] == 0]
 
 
-def _is_prime(n: int):
+def _is_prime(n: int) -> bool:
   """Check if `n` is a prime number."""
   return all(n % i != 0 for i in range(2, int(n**0.5) + 1)) and n != 2
 
@@ -38,7 +38,7 @@ def _is_prime(n: int):
 def _generate_dim(num_samples: int,
                   base: int,
                   per_dim_shift: bool,
-                  shuffled_seed_sequence: List[int]):
+                  shuffled_seed_sequence: List[int]) -> List[float]:
   """Generate `num_samples` from a Van der Corput sequence with base `base`.
 
   Args:
@@ -47,7 +47,7 @@ def _generate_dim(num_samples: int,
     per_dim_shift: boolean, if true then each dim in the sequence is shifted by
       a random float (and then passed through fmod(n, 1.0) to keep in the range
       [0, 1)).
-    shuffled_seed_sequence: an optional list of length `base`, used as the input
+    shuffled_seed_sequence: An optional list of length `base`, used as the input
       sequence to generate samples. Useful for deterministic testing.
 
   Returns:
@@ -114,10 +114,10 @@ def generate_sequence(num_samples: int,
       [0, 1)).
     shuffle_sequence: boolean, if true then shuffle the sequence before
       returning.
-    primes: an optional sequence (of length `num_dims`) of prime numbers to use
+    primes: An optional sequence (of length `num_dims`) of prime numbers to use
       as the base for the Van der Corput sequence for each dimension. Useful for
       deterministic testing.
-    shuffled_seed_sequence: an optional list of length `num_dims`, with each
+    shuffled_seed_sequence: An optional list of length `num_dims`, with each
       element being a sequence of length `primes[d]`, used as the input sequence
       to the Van der Corput sequence for each dimension. Useful for
       deterministic testing.
@@ -225,7 +225,7 @@ def _generate_discrete_point(name: str,
 _DiscretePoints = collections.namedtuple('_DiscretePoints', 'feasible_points')
 
 
-def discrete(feasible_points: Sequence[Any]) -> Sequence[Any]:
+def discrete(feasible_points: Sequence[Any]) -> _DiscretePoints:
   return _DiscretePoints(feasible_points)
 
 
@@ -282,11 +282,11 @@ def zipit(generator_fns_or_sweeps: Sequence[Union[_GeneratorFn,
   """Zip together a list of hyperparameter generators.
 
   Args:
-    generator_fns_or_sweeps: a sequence of either:
-      -generator functions that accept a Halton sequence point and return a
+    generator_fns_or_sweeps: A sequence of either:
+      - Generator functions that accept a Halton sequence point and return a
       quasi-ranom sample, such as those returned by halton.uniform() or
       halton.loguniform()
-      -lists of dicts with one key/value such as those returned by
+      - Lists of dicts with one key/value such as those returned by
       halton.sweep()
       We need to support both of these (instead of having halton.sweep() return
       a list of generator functions) so that halton.sweep() can be used directly
@@ -321,27 +321,38 @@ def zipit(generator_fns_or_sweeps: Sequence[Union[_GeneratorFn,
   return hyperparameter_sweep
 
 
-def generate_search(search_space: Dict[str,
-                                       Dict[str, Union[str, float, Sequence]]],
+DICT_SEARCH_SPACE = Dict[str, Dict[str, Union[str, float, Sequence]]]
+LIST_SEARCH_SPACE = List[Dict[str, Union[str, float, Sequence]]]
+
+
+def generate_search(search_space: Union[DICT_SEARCH_SPACE, LIST_SEARCH_SPACE],
                     num_trials: int) -> List[collections.namedtuple]:
   """Generate a random search with the given bounds and scaling.
 
   Args:linear
-    search_space: a dict where the keys are the hyperparameter names, and the
+    search_space: A dict where the keys are the hyperparameter names, and the
       values are a dict of:
         - {"min": x, "max", y, "scaling": z} where x and y are floats and z is
         one of "linear" or "log"
         - {"feasible_points": [...]} for discrete hyperparameters.
+      Alternatively, it can be a list of dict where keys are the hyperparameter
+      names, and the values are hyperparameters.
     num_trials: the number of hyperparameter points to generate.
 
   Returns:
     A list of length `num_trials` of namedtuples, each of which has attributes
     corresponding to the given hyperparameters, and values randomly sampled.
   """
-  all_hyperparameter_names = list(search_space.keys())
+  if isinstance(search_space, dict):
+    all_hyperparameter_names = list(search_space.keys())
+  elif isinstance(search_space, list):
+    assert len(search_space) > 0
+    all_hyperparameter_names = list(search_space[0].keys())
+  else:
+    raise AttributeError("tuning_search_space should either be a dict or list.")
+
   named_tuple_class = collections.namedtuple('Hyperparameters',
                                              all_hyperparameter_names)
-
   # hyper.zipit([
   #     hyper.loguniform('base_learning_rate', hyper.interval(1e-3, 0.1)),
   #     hyper.loguniform('one_minus_momentum', hyper.interval(1e-2, 0.1)),
@@ -349,18 +360,24 @@ def generate_search(search_space: Dict[str,
   #     hyper.uniform('dropout_rate', hyper.interval(0.01, 0.25)),
   # ], length=num_trials)
 
-  hyperparameter_generators = []
-  for name, space in search_space.items():
-    if 'feasible_points' in space:  # Discrete search space.
-      generator_fn = uniform(name, discrete(space['feasible_points']))
-    else:  # Continuous space.
-      if space['scaling'] == 'log':
-        generator_fn = loguniform(name, interval(space['min'], space['max']))
-      else:
-        generator_fn = uniform(name, interval(space['min'], space['max']))
-    hyperparameter_generators.append(generator_fn)
-
-  return [
-      named_tuple_class(**p)
-      for p in zipit(hyperparameter_generators, num_trials)
-  ]
+  if isinstance(search_space, dict):
+    hyperparameter_generators = []
+    for name, space in search_space.items():
+      if 'feasible_points' in space:  # Discrete search space.
+        generator_fn = uniform(name, discrete(space['feasible_points']))
+      else:  # Continuous space.
+        if space['scaling'] == 'log':
+          generator_fn = loguniform(name, interval(space['min'], space['max']))
+        else:
+          generator_fn = uniform(name, interval(space['min'], space['max']))
+      hyperparameter_generators.append(generator_fn)
+    return [
+        named_tuple_class(**p)
+        for p in zipit(hyperparameter_generators, num_trials)
+    ]
+  else:
+    hyperparameters = []
+    updated_num_trials = min(num_trials, len(search_space))
+    for trial in search_space:
+      hyperparameters.append(named_tuple_class(**trial))
+    return hyperparameters[:updated_num_trials]
