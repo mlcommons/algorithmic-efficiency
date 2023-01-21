@@ -18,7 +18,7 @@ from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 class _Model(nn.Module):
 
   @nn.compact
-  def __call__(self, x: spec.Tensor, train: bool):
+  def __call__(self, x: spec.Tensor, train: bool) -> spec.Tensor:
     del train
     input_size = 28 * 28
     num_hidden = 128

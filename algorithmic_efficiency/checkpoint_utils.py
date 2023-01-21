@@ -35,6 +35,29 @@ def maybe_restore_checkpoint(framework: str,
                              global_step: int,
                              preemption_count: int,
                              checkpoint_dir: str) -> CheckpointReturn:
+  """Optionally restores from a checkpoint.
+
+  The checkpoint logic is as follows: if there is a checkpoint in `train_dir`,
+  restore it. Else, don't restore any checkpoint, and just
+  return the passed-in optimizer_state, model_params, model_state, and
+  train_state.
+
+  Args:
+    framework: Current framework (e.g., `jax` or `pytorch`).
+    optimizer_state: Optimizer state.
+    model_params: Model parameters.
+    model_state: Model state such as batch statistics when batch
+      normalization is used.
+    train_state: Training state such as `last_eval_time`.
+    eval_results: Previous evaluation results.
+    global_step: Global step.
+    preemption_count: Number of preemptions.
+    checkpoint_dir: The training directory where we will look for a checkpoint.
+
+  Returns:
+    A tuple of (optimizer_state, model_params, model_state,
+    train_state, eval_results, global_step, preemption_count).
+  """
   if framework == 'jax':
     opt_state, opt_update_fn = optimizer_state
   else:
@@ -114,6 +137,18 @@ def maybe_restore_checkpoint(framework: str,
 def replicate_checkpoint(latest: dict,
                          pytree_keys: Sequence[str],
                          replicate: bool = True) -> dict:
+  """Restores from the provided checkpoint.
+
+  Args:
+    latest: A dict representing the state of the
+      checkpoint we want to restore.
+    pytree_keys: A sequence of keys into `latest` that are pytrees, which will
+      be replicated if replicate=True.
+    replicate: If set, replicate the state across devices.
+
+  Returns:
+    A JAX pytree holding the arrays that need to be replicated/unreplicated.
+  """
   pytree = {k: latest[k] for k in pytree_keys}
   if replicate:
     pytree = jax_utils.replicate(pytree)

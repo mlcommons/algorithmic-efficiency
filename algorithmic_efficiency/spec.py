@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
 import jax
+from torch import nn
 import torch.nn.functional as F
 
 
@@ -56,7 +57,8 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterContainer = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+ParameterContainer = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]],
+                           nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
@@ -350,18 +352,6 @@ def init_optimizer_state(workload: Workload,
   # return initial_optimizer_state
   pass
 
-
-# def update_params(workload: Workload,
-#                   current_param_container: ParameterContainer,
-#                   current_params_types: ParameterTypeTree,
-#                   model_state: ModelAuxiliaryState,
-#                   hyperparameters: Hyperparameters,
-#                   batch: Dict[str, Tensor],
-#                   loss_type: LossType,
-#                   optimizer_state: OptimizerState,
-#                   eval_results: List[Tuple[int, float]],
-#                   global_step: int,
-#                   rng: RandomState) -> _UpdateReturn:
 
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
 UpdateParamsFn = Callable[[

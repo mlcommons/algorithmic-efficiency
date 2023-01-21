@@ -34,13 +34,13 @@ def shard_and_maybe_pad_np(
       pad_size = global_batch_size - current_batch_size
     else:
       pad_size = local_device_count - remainder_size
-    targets = batch['targets']
-    targets_shape = tuple(
-        targets[0].shape if isinstance(targets, tuple) else targets.shape)
-    # We need a 2d mask for WMT.
-    mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
-    # The weights will also be padded.
-    batch['weights'] = np.ones(mask_shape)
+  targets = batch['targets']
+  targets_shape = tuple(
+      targets[0].shape if isinstance(targets, tuple) else targets.shape)
+  # We need a 2d mask for WMT.
+  mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
+  # The weights will also be padded.
+  batch['weights'] = np.ones(mask_shape)
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.

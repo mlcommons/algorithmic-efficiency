@@ -1,0 +1,17 @@
+[
+    {
+      "learning_rate": 1e-3,
+      "one_minus_beta_1": 0.999,
+      "epsilon": 0.9
+    },
+    {
+      "learning_rate": 1e-2,
+      "one_minus_beta_1": 0.99,
+      "epsilon": 0.99
+    },
+      {
+      "learning_rate": 1e-1,
+      "one_minus_beta_1": 0.9,
+      "epsilon": 0.999
+    }
+]
