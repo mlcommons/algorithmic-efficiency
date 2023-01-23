@@ -357,8 +357,9 @@ def train_once(
               train_state['accumulated_submission_time'])
           latest_eval_result['total_duration'] = time_since_start
           eval_results.append((global_step, latest_eval_result))
-          train_state['goal_reached'] = workload.has_reached_validation_target(
-              latest_eval_result)
+          train_state['goal_reached'] = (
+              workload.has_reached_validation_target(latest_eval_result) and
+              workload.has_reached_test_target(latest_eval_result))
 
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
