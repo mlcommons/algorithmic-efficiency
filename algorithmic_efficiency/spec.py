@@ -72,24 +72,6 @@ Steps = int
 ModelAuxiliaryState = Any
 ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 
-UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
-InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparameters, RandomState],
-                           OptimizerState]
-UpdateParamsFn = Callable[[
-    ParameterContainer,
-    ParameterTypeTree,
-    ModelAuxiliaryState,
-    Hyperparameters,
-    Tensor,
-    Tensor,
-    LossType,
-    OptimizerState,
-    List[Tuple[int, float]],
-    int,
-    RandomState
-],
-                          UpdateReturn]
-
 
 class Workload(metaclass=abc.ABCMeta):
 
@@ -102,7 +84,7 @@ class Workload(metaclass=abc.ABCMeta):
     self.metrics_logger = None
 
   @abc.abstractmethod
-  def has_reached_goal(self, eval_result: float) -> bool:
+  def has_reached_goal(self, eval_result: Dict[str, float]) -> bool:
     """Return whether or not the workload goal has been reached."""
 
   @abc.abstractmethod
@@ -114,7 +96,7 @@ class Workload(metaclass=abc.ABCMeta):
       global_batch_size: int,
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, Tensor]]:
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, Any]]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -128,14 +110,14 @@ class Workload(metaclass=abc.ABCMeta):
     examples.
     """
 
-  def attach_metrics_logger(self, metrics_logger):
+  def attach_metrics_logger(self, metrics_logger) -> None:
     """Attaches a metric logger to workload."""
     self.metrics_logger = metrics_logger
     return
 
   @property
   @abc.abstractmethod
-  def target_value(self):
+  def target_value(self) -> float:
     """The target value to reach."""
 
   @property
@@ -170,12 +152,12 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def train_mean(self):
+  def train_mean(self) -> Any:
     """The mean of the training data."""
 
   @property
   @abc.abstractmethod
-  def train_stddev(self):
+  def train_stddev(self) -> Any:
     """The stddev of the training data."""
 
   @property
@@ -242,7 +224,7 @@ class Workload(metaclass=abc.ABCMeta):
                mode: ForwardPassMode,
                rng: RandomState,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
-    """return logits_batch"""
+    """Return logits_batch"""
     # Possible side effect of updating BN.
 
   def output_activation_fn(self, logits_batch: Tensor,
@@ -345,25 +327,21 @@ class Workload(metaclass=abc.ABCMeta):
     return eval_metrics
 
 
-DataSelectionFn = Callable[[
-    Workload,
-    Iterator[Tuple[Tensor, Tensor]],
-    OptimizerState,
-    ParameterContainer,
-    LossType,
-    Hyperparameters,
-    int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
-
-
 class TrainingCompleteError(Exception):
   pass
 
 
 # Training algorithm track submission functions, to be filled in by the
 # submitter.
+
+InitOptimizerFn = Callable[[
+    Workload,
+    ParameterContainer,
+    ModelAuxiliaryState,
+    Hyperparameters,
+    RandomState
+],
+                           OptimizerState]
 
 
 def init_optimizer_state(workload: Workload,
@@ -375,7 +353,21 @@ def init_optimizer_state(workload: Workload,
   pass
 
 
-_UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
+UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
+UpdateParamsFn = Callable[[
+    Workload,
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparameters,
+    Dict[str, Tensor],
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                          UpdateReturn]
 
 
 # Each call to this function is considered a "step".
@@ -394,15 +386,28 @@ def update_params(workload: Workload,
                   optimizer_state: OptimizerState,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: RandomState) -> _UpdateReturn:
+                  rng: RandomState) -> UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
+
+
+DataSelectionFn = Callable[[
+    Workload,
+    Iterator[Dict[str, Any]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparameters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
 def data_selection(workload: Workload,
-                   input_queue: Iterator[Dict[str, Tensor]],
+                   input_queue: Iterator[Dict[str, Any]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
                    model_state: ModelAuxiliaryState,
@@ -417,6 +422,6 @@ def data_selection(workload: Workload,
   pass
 
 
-def get_batch_size(workload_name):
+def get_batch_size(workload_name: str) -> int:
   """Return the global batch size to use for a given workload."""
   pass

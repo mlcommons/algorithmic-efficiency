@@ -21,7 +21,7 @@ import json
 import os
 import struct
 import time
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from absl import app
 from absl import flags
@@ -201,19 +201,20 @@ def import_workload(workload_path: str,
   return workload_class(**workload_init_kwargs)
 
 
-def train_once(workload: spec.Workload,
-               global_batch_size: int,
-               global_eval_batch_size: int,
-               data_dir: str,
-               imagenet_v2_data_dir: str,
-               init_optimizer_state: spec.InitOptimizerFn,
-               update_params: spec.UpdateParamsFn,
-               data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparameters],
-               rng: spec.RandomState,
-               profiler: Profiler,
-               max_global_steps: int = None,
-               log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(
+    workload: spec.Workload,
+    global_batch_size: int,
+    global_eval_batch_size: int,
+    data_dir: str,
+    imagenet_v2_data_dir: str,
+    init_optimizer_state: spec.InitOptimizerFn,
+    update_params: spec.UpdateParamsFn,
+    data_selection: spec.DataSelectionFn,
+    hyperparameters: Optional[spec.Hyperparameters],
+    rng: spec.RandomState,
+    profiler: Profiler,
+    max_global_steps: int = None,
+    log_dir: Optional[str] = None) -> Tuple[spec.Timing, Dict[str, Any]]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
