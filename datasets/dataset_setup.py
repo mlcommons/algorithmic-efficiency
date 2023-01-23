@@ -57,7 +57,7 @@ Example command:
 python3 datasets/dataset_setup.py \
   --data_dir=~/data \
   --temp_dir=/tmp/mlcommons_data
-  --imagenet=True \
+  --imagenet \
   --imagenet_train_url=<train_url> \
   --imagenet_val_url=<val_url>\
   --framework=jax
@@ -242,7 +242,7 @@ def download_criteo(data_dir,
                  f'"{unzipped_path}"')
     command_str = f'{wget_cmd} && {unzip_cmd}'
     logging.info(f'Running Criteo download command:\n{command_str}')
-    # processes.append(subprocess.Popen(command_str, shell=True))
+    processes.append(subprocess.Popen(command_str, shell=True))
   for p in processes:
     p.communicate()
   _maybe_prompt_for_deletion(gz_paths, interactive_deletion)
@@ -414,9 +414,8 @@ def setup_imagenet_pytorch(data_dir):
       ('https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/'
        'valprep.sh')
   ]
-  valprep_process = subprocess.Popen(
-      valprep_command, cwd=cwd, stdout=subprocess.PIPE)
-  subprocess.check_output(['bash'], cwd=cwd, stdin=valprep_process.stdout)
+  valprep_process = subprocess.Popen(valprep_command, shell=True)
+  valprep_process.communicate()
   logging.info('Set up imagenet dataset for pytorch framework complete')
 
 
@@ -437,8 +436,8 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       wget_cmd = (
           f'wget --directory-prefix={tmp_librispeech_dir} '
           f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
-      subprocess.Popen(wget_cmd, shell=True)
-      subprocess.Popen(f'tar xzvf {split}-{version}.tar.gz', shell=True)
+      subprocess.Popen(wget_cmd, shell=True).communicate()
+      subprocess.Popen(f'tar xzvf {split}-{version}.tar.gz', shell=True).communicate()
 
   tars = [
       'raw-metadata.tar.gz',
