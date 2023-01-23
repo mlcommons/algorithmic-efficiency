@@ -23,10 +23,5 @@
         "feasible_points": [
             0.08135402759553023
         ]
-    },
-    "grad_clip": {
-        "feasible_points": [
-            1.0
-        ]
     }
 }
