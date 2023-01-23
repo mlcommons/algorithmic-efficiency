@@ -10,7 +10,8 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   _num_classes: int = 1000
 
-  def has_reached_validation_target(self, eval_result: Dict[str, float]) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value
 
   @property

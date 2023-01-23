@@ -84,7 +84,8 @@ class Workload(metaclass=abc.ABCMeta):
     self.metrics_logger = None
 
   @abc.abstractmethod
-  def has_reached_validation_target(self, eval_result: Dict[str, float]) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     """Return whether or not the workload validation goal has been reached."""
 
   @abc.abstractmethod

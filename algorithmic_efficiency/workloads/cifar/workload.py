@@ -18,7 +18,8 @@ USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 class BaseCifarWorkload(spec.Workload):
 
-  def has_reached_validation_target(self, eval_result: Dict[str, float]) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value
 
   @property
