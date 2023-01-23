@@ -85,7 +85,7 @@ class BaseWmtWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Max num steps the target setting algo was given to reach the target."""
-    return 100_000
+    return 200_000
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
