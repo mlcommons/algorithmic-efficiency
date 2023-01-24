@@ -53,8 +53,12 @@ def decode_variant(variant: str) -> Dict[str, int]:
 class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
-  def target_value(self) -> float:
+  def validation_target_value(self) -> float:
     return 0.77309
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.6568
 
   @property
   def eval_batch_size(self) -> int:

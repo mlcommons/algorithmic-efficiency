@@ -84,8 +84,13 @@ class Workload(metaclass=abc.ABCMeta):
     self.metrics_logger = None
 
   @abc.abstractmethod
-  def has_reached_goal(self, eval_result: Dict[str, float]) -> bool:
-    """Return whether or not the workload goal has been reached."""
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
+    """Return whether or not the workload validation goal has been reached."""
+
+  @abc.abstractmethod
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
+    """Return whether or not the workload test goal has been reached."""
 
   @abc.abstractmethod
   def _build_input_queue(
@@ -117,8 +122,13 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def target_value(self) -> float:
-    """The target value to reach."""
+  def validation_target_value(self) -> float:
+    """The validation target value to reach."""
+
+  @property
+  @abc.abstractmethod
+  def test_target_value(self) -> float:
+    """The test target value to reach."""
 
   @property
   @abc.abstractmethod

@@ -4,8 +4,12 @@ from algorithmic_efficiency.workloads.librispeech_conformer import workload
 class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
 
   @property
-  def target_value(self):
+  def validation_target_value(self):
     return 0.1162
+
+  @property
+  def test_target_value(self):
+    return 0.067976
 
   @property
   def step_hint(self) -> int:
