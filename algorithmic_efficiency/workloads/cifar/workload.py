@@ -26,6 +26,13 @@ class BaseCifarWorkload(spec.Workload):
   def validation_target_value(self) -> float:
     return 0.85
 
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
+    return eval_result['test/accuracy'] > self.validation_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.85
+
   @property
   def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
