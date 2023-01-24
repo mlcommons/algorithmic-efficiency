@@ -1,0 +1,29 @@
+Instructions for building a docker image for OGBG : 
+
+1) cd into algorithmic-efficiency/algorithmic_efficiency/docker/
+2) docker build -t mlcommons:ogbg ./
+
+To Test the built image you can run :
+3) docker run -it mlcommons:ogbg 
+
+If you're building docker image on a GCP VM (recommended) then do 
+
+```
+gcloud auth configure-docker us-central1-docker.pkg.dev
+```
+
+To Push built image to artifact regiistory on GCP do this : 
+
+```
+    docker tag mlcmmons:ogbg  us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/mlcommons:ogbg
+    docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/mlcommons:ogbg
+```
+
+This is required when you deploy the built image on a GCP VM
+
+If you're using cloud build to build docker image you can run : 
+```
+gcloud builds submit     --region=us-west2 --config     cloudbuild.yaml
+```
+
+Recommendation : Use a GCP VM to build mlcommons docker image. Do not use cloudshell to build mlcommons docker images as the cloudshell provisioned machine runs out of storage
