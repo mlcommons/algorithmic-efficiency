@@ -9,12 +9,19 @@ from algorithmic_efficiency.workloads.fastmri import input_pipeline
 
 class BaseFastMRIWorkload(spec.Workload):
 
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/ssim'] > self.target_value
+  def has_reached_validation_target(self, eval_result: float) -> bool:
+    return eval_result['validation/ssim'] > self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 0.7351
+  def validation_target_value(self) -> float:
+    return 0.7344
+
+  def has_reached_test_target(self, eval_result: float) -> bool:
+    return eval_result['test/ssim'] > self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.741685
 
   @property
   def loss_type(self) -> spec.LossType:
