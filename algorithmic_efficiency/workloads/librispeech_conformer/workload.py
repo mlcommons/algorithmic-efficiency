@@ -21,7 +21,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def target_value(self) -> float:
-    return 0.0842
+    return 0.078477
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -131,4 +131,4 @@ class BaseLibrispeechWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Max num steps the target setting algo was given to reach the target."""
-    return 100_000
+    return 200_000

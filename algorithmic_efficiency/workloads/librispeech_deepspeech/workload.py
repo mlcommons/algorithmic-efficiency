@@ -5,7 +5,7 @@ class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
 
   @property
   def target_value(self):
-    return 0.12749866
+    return 0.1162
 
   @property
   def step_hint(self) -> int:
