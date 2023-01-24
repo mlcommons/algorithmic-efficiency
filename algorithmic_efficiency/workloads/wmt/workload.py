@@ -35,7 +35,7 @@ class BaseWmtWorkload(spec.Workload):
     return 30.8491
 
   def has_reached_test_target(self, eval_result: float) -> bool:
-    return eval_result['test/bleu'] < self.test_target_value
+    return eval_result['test/bleu'] > self.test_target_value
 
   @property
   def test_target_value(self) -> float:
