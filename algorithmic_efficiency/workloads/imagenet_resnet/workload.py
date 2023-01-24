@@ -16,7 +16,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.77185  # TODO(namanagarwal): This will edited again soon.
+    return 0.77431
 
   def has_reached_test_target(self, eval_result: float) -> bool:
     return eval_result['test/accuracy'] < self.test_target_value

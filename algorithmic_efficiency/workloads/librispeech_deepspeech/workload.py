@@ -5,7 +5,7 @@ class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
 
   @property
   def validation_target_value(self):
-    return 0.12749866
+    return 0.1162
 
   @property
   def test_target_value(self):

@@ -21,7 +21,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.0842
+    return 0.078477
 
   def has_reached_test_target(self, eval_result: float) -> bool:
     return eval_result['test/wer'] < self.test_target_value
@@ -138,4 +138,4 @@ class BaseLibrispeechWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Max num steps the target setting algo was given to reach the target."""
-    return 100_000
+    return 200_000

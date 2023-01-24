@@ -23,7 +23,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.28380056
+    return 0.28098
 
   def has_reached_test_target(self, eval_result: float) -> bool:
     return eval_result['test/mean_average_precision'] < self.test_target_value

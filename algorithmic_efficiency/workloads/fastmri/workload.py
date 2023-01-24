@@ -14,7 +14,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.7351
+    return 0.7344
 
   def has_reached_test_target(self, eval_result: float) -> bool:
     return eval_result['test/ssim'] < self.test_target_value
