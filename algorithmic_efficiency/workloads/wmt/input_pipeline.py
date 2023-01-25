@@ -271,13 +271,6 @@ def get_wmt_dataset(data_rng,
     ds_name = 'wmt17_translate/de-en:1.0.0'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
 
-  if (USE_PYTORCH_DDP and (RANK == 0))or not USE_PYTORCH_DDP:
-      dataset_builder.download_and_prepare()
-
-  # Block other processes until data is downloaded and prepared
-  if USE_PYTORCH_DDP:
-    dist.barrier()
-
   ds = dataset_builder.as_dataset(
       split=TFDS_SPLIT_NAME[split], shuffle_files=False)
 
