@@ -5,12 +5,13 @@ from typing import Dict, List, Optional, Union
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import torch.distributed as dist
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.wmt import tokenizer
 
-RANK = pytorch_setup()[1]
+USE_PYTORCH_DDP, RANK, _, _ = pytorch_setup()
 # Avoid multithreading in all processes but the first (rank 0).
 AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 Features = Dict[str, tf.Tensor]
@@ -269,7 +270,14 @@ def get_wmt_dataset(data_rng,
   else:
     ds_name = 'wmt17_translate/de-en:1.0.0'
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
-  dataset_builder.download_and_prepare()
+
+  if (USE_PYTORCH_DDP and (RANK == 0))or not USE_PYTORCH_DDP:
+      dataset_builder.download_and_prepare()
+
+  # Block other processes until data is downloaded and prepared
+  if USE_PYTORCH_DDP:
+    dist.barrier()
+
   ds = dataset_builder.as_dataset(
       split=TFDS_SPLIT_NAME[split], shuffle_files=False)
 
