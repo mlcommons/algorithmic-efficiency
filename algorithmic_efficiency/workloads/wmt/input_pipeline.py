@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Union
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import torch.distributed as dist
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
