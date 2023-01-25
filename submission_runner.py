@@ -130,6 +130,11 @@ flags.DEFINE_string(
     'It is required and the directory should have '
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
+flags.DEFINE_boolean(
+    'save_intermediate_checkpoints',
+    True,
+    'Whether to save any intermediate checkpoints. '
+    'If False, it will only keep the latest checkpoint.')
 flags.DEFINE_boolean('resume_last_run',
                      None,
                      'Whether to resume the experiment from its last run.')
@@ -375,7 +380,9 @@ def train_once(
                 eval_results=eval_results,
                 global_step=global_step,
                 preemption_count=preemption_count,
-                checkpoint_dir=log_dir)
+                checkpoint_dir=log_dir,
+                save_intermediate_checkpoints=FLAGS
+                .save_intermediate_checkpoints)
 
           train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
@@ -408,7 +415,8 @@ def train_once(
         eval_results=eval_results,
         global_step=global_step,
         preemption_count=preemption_count,
-        checkpoint_dir=log_dir)
+        checkpoint_dir=log_dir,
+        save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
 
   return train_state['accumulated_submission_time'], metrics
 

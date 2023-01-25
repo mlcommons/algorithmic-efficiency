@@ -10,7 +10,10 @@ from typing import Sequence, Tuple
 from absl import logging
 from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
+from flax.training.checkpoints import latest_checkpoint
 import jax
+import numpy as np
+from tensorflow.io import gfile  # pytype: disable=import-error
 import torch
 
 from algorithmic_efficiency import spec
@@ -37,10 +40,10 @@ def maybe_restore_checkpoint(framework: str,
                              checkpoint_dir: str) -> CheckpointReturn:
   """Optionally restores from a checkpoint.
 
-  The checkpoint logic is as follows: if there is a checkpoint in `train_dir`,
-  restore it. Else, don't restore any checkpoint, and just
-  return the passed-in optimizer_state, model_params, model_state, and
-  train_state.
+  The checkpoint logic is as follows: if there is a checkpoint in
+  `checkpoint_dir`, restore it. Else, don't restore any checkpoint, and
+  just return the passed-in optimizer_state, model_params,
+  model_state, and train_state.
 
   Args:
     framework: Current framework (e.g., `jax` or `pytorch`).
@@ -81,8 +84,8 @@ def maybe_restore_checkpoint(framework: str,
                              'checkpoint_' + str(latest_ckpt['global_step']))
   else:
     latest_ckpt = checkpoint_state
-    save_path = os.path.join(checkpoint_dir, 'checkpoint')
-    if os.path.exists(save_path):
+    save_path = latest_checkpoint(checkpoint_dir)
+    if save_path is not None:
       latest_ckpt = torch.load(save_path, map_location=DEVICE)
 
   # Load_latest_checkpoint() will return checkpoint_state if
@@ -165,7 +168,27 @@ def save_checkpoint(framework: str,
                     eval_results: list,
                     global_step: int,
                     preemption_count: int,
-                    checkpoint_dir: str) -> None:
+                    checkpoint_dir: str,
+                    save_intermediate_checkpoints: bool) -> None:
+  """Save the checkpoint in `checkpoint_dir`.
+
+  Args:
+    framework: Current framework (e.g., `jax` or `pytorch`).
+    optimizer_state: Optimizer state.
+    model_params: Model parameters.
+    model_state: Model state such as batch statistics when batch
+      normalization is used.
+    train_state: Training state such as `last_eval_time`.
+    eval_results: Previous evaluation results.
+    global_step: Global step.
+    preemption_count: Number of preemptions.
+    checkpoint_dir: The training directory where we will look for a checkpoint.
+    save_intermediate_checkpoints: Whether to save intermediate checkpoints.
+
+  Returns:
+    A tuple of (optimizer_state, model_params, model_state,
+    train_state, eval_results, global_step, preemption_count).
+  """
   if framework == 'jax':
     model_params = jax.device_get(jax_utils.unreplicate(model_params))
     opt_state, _ = optimizer_state
@@ -195,15 +218,21 @@ def save_checkpoint(framework: str,
       global_step=global_step,
       preemption_count=preemption_count)
 
+  save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
   if framework == 'jax':
-    save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
     flax_checkpoints.save_checkpoint(
         checkpoint_dir,
         target=checkpoint_state,
         step=global_step,
-        overwrite=True)
+        overwrite=True,
+        keep=np.Inf if save_intermediate_checkpoints else 1)
   else:
-    save_path = os.path.join(checkpoint_dir, 'checkpoint')
+    if not save_intermediate_checkpoints:
+      checkpoint_files = gfile.glob(
+          os.path.join(checkpoint_dir, 'checkpoint_*'))
+      for path in checkpoint_files:
+        logging.info('Removing checkpoint at %s', path)
+        gfile.rmtree(path)
     torch.save(checkpoint_state, save_path)
 
   logging.info(f'Saved checkpoint to {save_path}.')
