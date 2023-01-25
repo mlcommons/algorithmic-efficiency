@@ -21,5 +21,8 @@ def main(_):
   logging.info('Downloading data to %s...', data_dir)
   tfds.builder('ogbg_molpcba:0.1.2', data_dir=data_dir).download_and_prepare()
 
+  for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
+    tfds.builder(ds_name, data_dir=data_dir).download_and_prepare()
+
 if __name__ == '__main__':
   app.run(main)
