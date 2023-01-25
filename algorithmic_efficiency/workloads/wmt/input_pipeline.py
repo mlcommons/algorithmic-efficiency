@@ -11,7 +11,7 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.wmt import tokenizer
 
-USE_PYTORCH_DDP, RANK, _, _ = pytorch_setup()
+RANK = pytorch_setup()[1]
 # Avoid multithreading in all processes but the first (rank 0).
 AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 Features = Dict[str, tf.Tensor]
