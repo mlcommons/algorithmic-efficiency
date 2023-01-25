@@ -1,5 +1,18 @@
 #!/bin/sh
 
+while getopts u:d:f: flag
+do
+    case "${flag}" in
+        u) git_url=${OPTARG};;
+        d) dataset=${OPTARG};;
+        f) framework=${OPTARG};;
+    esac
+done
+
+echo "git url : $git_url";
+echo "dataset: $dataset";
+echo "framework: $framework";
+
 GIT_URL=https://github.com/sourabh2k15/algorithmic-efficiency.git
 
 echo "Setting up machine"
@@ -17,7 +30,7 @@ mkdir -p data/criteo
 mkdir -p experiment_runs/
 
 echo "Setting up algorithmic_efficiency repo"
-git clone $GIT_URL
+git clone $git_url
 cd algorithmic-efficiency/
 
 pip install -e '.[pytorch_cpu]'
@@ -27,8 +40,4 @@ pip install -e '.[full]'
 echo "Setting up data"
 cd ..
 
-# ./google-cloud-sdk/bin/gsutil -m cp -r gs://mlcommons-data/criteo/* data/criteo/
-
-# python3 dataset_setup.py --data_dir=~/data --all=False --criteo
-python3 dataset_setup.py --data_dir=~/data --all=False --ogbg
-# python3 dataset_setup.py --data_dir=~/data --all=False --ogbg
+python3 dataset_setup.py --data_dir=~/data --all=False --$dataset
