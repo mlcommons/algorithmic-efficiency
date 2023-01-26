@@ -187,8 +187,7 @@ def _download_url(url, data_dir):
   response = requests.get(url, stream=True)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
   total_size_in_mib = total_size_in_bytes / (2**20)
-  progress_bar = tqdm.tqdm(
-      total=total_size_in_mib, unit='MiB', unit_scale=True)
+  progress_bar = tqdm.tqdm(total=total_size_in_mib, unit='MiB', unit_scale=True)
   if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 
@@ -209,14 +208,11 @@ def _download_url(url, data_dir):
       progress_bar.update(chunk_size_in_mib)
       f.write(chunk)
   progress_bar.close()
-  if (progress_bar.total != 0 and
-      progress_bar.n != progress_bar.total):
+  if (progress_bar.total != 0 and progress_bar.n != progress_bar.total):
     raise Exception(
         ('Download corrupted, size {n} MiB from {url} does not match '
-          'expected size {size} MiB').format(
-              url=url,
-              n=progress_bar.n,
-              size=progress_bar.total))
+         'expected size {size} MiB').format(
+             url=url, n=progress_bar.n, size=progress_bar.total))
 
 
 def download_criteo(data_dir,
@@ -264,11 +260,10 @@ def download_criteo(data_dir,
     _maybe_prompt_for_deletion(unzipped_paths, interactive_deletion)
 
 
-def download_fastmri(
-    data_dir,
-    fastmri_train_url,
-    fastmri_val_url,
-    fastmri_test_url):
+def download_fastmri(data_dir,
+                     fastmri_train_url,
+                     fastmri_val_url,
+                     fastmri_test_url):
 
   data_dir = os.path.join(data_dir, 'fastmri')
 
@@ -437,7 +432,8 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
           f'wget --directory-prefix={tmp_librispeech_dir} '
           f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
       subprocess.Popen(wget_cmd, shell=True).communicate()
-      subprocess.Popen(f'tar xzvf {split}-{version}.tar.gz', shell=True).communicate()
+      subprocess.Popen(
+          f'tar xzvf {split}-{version}.tar.gz', shell=True).communicate()
 
   tars = [
       'raw-metadata.tar.gz',
