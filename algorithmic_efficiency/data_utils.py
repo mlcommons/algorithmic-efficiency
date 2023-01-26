@@ -1,3 +1,5 @@
+"""Utilities for data processing."""
+
 from typing import Dict, Iterable, Optional, Tuple
 
 import jax
@@ -32,13 +34,13 @@ def shard_and_maybe_pad_np(
       pad_size = global_batch_size - current_batch_size
     else:
       pad_size = local_device_count - remainder_size
-    targets = batch['targets']
-    targets_shape = tuple(
-        targets[0].shape if isinstance(targets, tuple) else targets.shape)
-    # We need a 2d mask for WMT.
-    mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
-    # The weights will also be padded.
-    batch['weights'] = np.ones(mask_shape)
+  targets = batch['targets']
+  targets_shape = tuple(
+      targets[0].shape if isinstance(targets, tuple) else targets.shape)
+  # We need a 2d mask for WMT.
+  mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
+  # The weights will also be padded.
+  batch['weights'] = np.ones(mask_shape)
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
@@ -91,8 +93,7 @@ def mixup_pytorch(batch: Tuple[spec.Tensor, spec.Tensor],
 
 # github.com/SeungjunNah/DeepDeblur-PyTorch/blob/master/src/data/sampler.py
 class DistributedEvalSampler(Sampler):
-  r"""
-  DistributedEvalSampler is different from DistributedSampler.
+  r"""DistributedEvalSampler is different from DistributedSampler.
   It does NOT add extra samples to make it evenly divisible.
   DistributedEvalSampler should NOT be used for training. The distributed
   processes could hang forever.
@@ -107,8 +108,10 @@ class DistributedEvalSampler(Sampler):
   process can pass a :class`~DistributedEvalSampler` instance as
   a :class:`~torch.utils.data.DataLoader` sampler, and load a subset of the
   original dataset that is exclusive to it.
+
   .. note::
     Dataset is assumed to be of constant size.
+
   Arguments:
     dataset: Dataset used for sampling.
     num_replicas (int, optional): Number of processes participating in
@@ -122,12 +125,14 @@ class DistributedEvalSampler(Sampler):
     seed (int, optional): random seed used to shuffle the sampler if
         :attr:`shuffle=True`. This number should be identical across all
         processes in the distributed group. Default: ``0``.
+
   .. warning::
     In distributed mode, calling the :meth`set_epoch(epoch) <set_epoch>`
     method at the beginning of each epoch **before** creating the
     :class:`DataLoader` iterator is necessary to make shuffling work
     properly across multiple epochs. Otherwise, the same ordering will be
     always used.
+
   Example::
     >>> sampler = DistributedSampler(dataset) if is_distributed else None
     >>> loader = DataLoader(dataset, shuffle=(sampler is None),
@@ -139,11 +144,11 @@ class DistributedEvalSampler(Sampler):
   """
 
   def __init__(self,
-               dataset,
-               num_replicas=None,
-               rank=None,
-               shuffle=False,
-               seed=0):
+               dataset: torch.utils.data.Dataset,
+               num_replicas: Optional[int] = None,
+               rank: Optional[int] = None,
+               shuffle: bool = False,
+               seed: int = 0) -> None:
     if num_replicas is None:
       if not dist.is_available():
         raise RuntimeError('Requires distributed package to be available.')
@@ -166,32 +171,32 @@ class DistributedEvalSampler(Sampler):
     self.shuffle = shuffle
     self.seed = seed
 
-  def __iter__(self):
+  def __iter__(self) -> Iterable[int]:
     if self.shuffle:
-      # deterministically shuffle based on epoch and seed
+      # Deterministically shuffle based on epoch and seed.
       g = torch.Generator()
       g.manual_seed(self.seed + self.epoch)
       indices = torch.randperm(len(self.dataset), generator=g).tolist()
     else:
       indices = list(range(len(self.dataset)))
 
-    # subsample
+    # Subsample.
     indices = indices[self.rank:self.total_size:self.num_replicas]
     assert len(indices) == self.num_samples
 
     return iter(indices)
 
-  def __len__(self):
+  def __len__(self) -> int:
     return self.num_samples
 
-  def set_epoch(self, epoch):
-    r"""
-    Sets the epoch for this sampler. When :attr:`shuffle=True`, this
+  def set_epoch(self, epoch: int) -> None:
+    r"""Sets the epoch for this sampler. When :attr:`shuffle=True`, this
     ensures all replicas use a different random ordering for each epoch.
     Otherwise, the next iteration of this sampler will yield the same
     ordering.
-    Arguments:
-        epoch (int): _epoch number.
+
+    Args:
+      epoch: An int indicating epoch number.
     """
     self.epoch = epoch
 
@@ -201,7 +206,7 @@ def cycle(iterable: Iterable,
           keys: Tuple[str, ...] = ('inputs', 'targets'),
           custom_sampler: bool = False,
           use_mixup: bool = False,
-          mixup_alpha: float = 0.2):
+          mixup_alpha: float = 0.2) -> Iterable:
   iterator = iter(iterable)
   epoch = 0
   while True:
@@ -224,21 +229,24 @@ def cycle(iterable: Iterable,
 # ConvNets/image_classification/dataloaders.py
 class PrefetchedWrapper:
 
-  def __init__(self, dataloader, device, start_epoch=0):
+  def __init__(self,
+               dataloader: torch.utils.data.DataLoader,
+               device: torch.device,
+               start_epoch: int = 0) -> None:
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
 
-  def __len__(self):
+  def __len__(self) -> int:
     return len(self.dataloader)
 
-  def __iter__(self):
+  def __iter__(self) -> Iterable[Tuple[spec.Tensor, spec.Tensor]]:
     if isinstance(self.dataloader.sampler, DistributedSampler):
       self.dataloader.sampler.set_epoch(self.epoch)
     self.epoch += 1
     return self.prefetched_loader()
 
-  def prefetched_loader(self):
+  def prefetched_loader(self) -> Iterable[Tuple[spec.Tensor, spec.Tensor]]:
     stream = torch.cuda.Stream()
     first = True
 

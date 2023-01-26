@@ -75,7 +75,16 @@ def _distorted_bounding_box_crop(image_bytes: spec.Tensor,
   return image
 
 
-def _resize(image: spec.Tensor, image_size: int) -> spec.Tensor:
+def resize(image: spec.Tensor, image_size: int) -> spec.Tensor:
+  """Resizes the image given the image size.
+
+  Args:
+    image: `Tensor` of image data.
+    image_size: A size of the image to be reshaped.
+
+  Returns:
+    Resized image 'Tensor'.
+  """
   return tf.image.resize([image], [image_size, image_size],
                          method=tf.image.ResizeMethod.BICUBIC)[0]
 
@@ -109,7 +118,7 @@ def _decode_and_random_crop(image_bytes: spec.Tensor,
   image = tf.cond(
       bad,
       lambda: _decode_and_center_crop(image_bytes, image_size, resize_size),
-      lambda: _resize(image, image_size))
+      lambda: resize(image, image_size))
 
   return image
 
@@ -136,7 +145,7 @@ def _decode_and_center_crop(image_bytes: spec.Tensor,
       padded_center_crop_size
   ])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
-  image = _resize(image, image_size)
+  image = resize(image, image_size)
 
   return image
 
@@ -272,7 +281,6 @@ def create_split(split,
                  randaug_num_layers=2,
                  randaug_magnitude=10) -> Iterator[Dict[str, spec.Tensor]]:
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
-
   shuffle_rng, preprocess_rng, mixup_rng = jax.random.split(rng, 3)
 
   def decode_example(example_index, example):

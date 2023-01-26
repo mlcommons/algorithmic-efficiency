@@ -25,6 +25,7 @@ The two primary inputs to `compute_performance_profiles` are
   The keys in this dictionary should match the workload identifiers used in
   the dictionary of submissions.
 """
+
 import itertools
 import operator
 import os
