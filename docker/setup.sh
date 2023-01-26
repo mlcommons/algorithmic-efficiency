@@ -24,7 +24,7 @@ tar -xf google-cloud-cli-413.0.0-linux-x86_64.tar.gz
 yes | ./google-cloud-sdk/install.sh
 
 echo "Setting up directories"
-mkdir -p data
+mkdir -p data/
 mkdir -p experiment_runs/
 
 echo "Setting up algorithmic_efficiency repo"
