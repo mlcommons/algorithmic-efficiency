@@ -32,7 +32,6 @@ class CifarWorkload(BaseCifarWorkload):
       repeat_final_dataset: Optional[bool] = None
   ) -> Iterator[Dict[str, spec.Tensor]]:
     ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
-    ds_builder.download_and_prepare()
     train = split == 'train'
     assert self.num_train_examples + self.num_validation_examples == 50000
     if split in ['train', 'eval_train']:
