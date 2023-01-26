@@ -16,7 +16,7 @@ echo "framework: $FRAMEWORK";
 echo "Setting up machine"
 apt-get update
 apt-get install -y curl tar
-apt-get install -y git python3 pip
+apt-get install -y git python3 pip wget
 
 echo "Setting up gsutil"
 curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-413.0.0-linux-x86_64.tar.gz
@@ -46,4 +46,4 @@ pip install -e '.[full]'
 echo "Setting up data"
 cd ..
 
-python3 dataset_setup.py --data_dir=~/data --all=False --$DATASET
+yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --$DATASET

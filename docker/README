@@ -31,3 +31,4 @@ To Push built image to artifact registry on GCP do this :
 This is required when you deploy the built image on a GCP VM
 
 Recommendation : Use a GCP CPU VM to build mlcommons docker image. Do not use cloudshell to build mlcommons docker images as the cloudshell provisioned machine runs out of storage
+sudo usermod -aG docker $USER
