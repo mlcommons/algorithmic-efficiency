@@ -51,7 +51,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       return itertools.cycle(np_iter)
 
     ds_builder = tfds.builder('imagenet2012:5.1.0', data_dir=data_dir)
-    ds_builder.download_and_prepare()
     train = split == 'train'
     ds = input_pipeline.create_input_iter(
         split,
