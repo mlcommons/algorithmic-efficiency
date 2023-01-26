@@ -230,7 +230,7 @@ def download_criteo(data_dir,
     logging.info(f'Downloading Criteo day {day}...')
     wget_cmd = (
         f'wget --no-clobber --directory-prefix="{tmp_criteo_dir}" '
-        f'https://storage.googleapis.com/criteo-cail-datasets/day_{day}.gz')
+        f'https://sacriteopcail01.z16.web.core.windows.net/day_{day}.gz')
     input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
     gz_paths.append(input_path)
     unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
