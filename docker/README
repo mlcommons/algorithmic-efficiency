@@ -11,13 +11,13 @@ To Test the built image you can run :
 docker run -it mlcommons:ogbg
 ```
 
-If you want to run docker image in background and run your own commands : 
+If you want to run docker image in background and run your own commands in it's shell : 
 
 ```
 docker run -it -d mlcommons:ogbg
 docker ps # to get container id
 
-docker exec -it <container_id> sh -c "ls" # don't forget quotes for shell substitution to work
+docker exec -it <container_id> /bin/bash 
 ```
 If you're building docker image on a GCP VM (recommended) then do 
 
