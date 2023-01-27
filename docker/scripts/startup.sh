@@ -11,7 +11,9 @@ do
     esac
 done
 
-ls 
+cd ..
+ls
+ 
 echo "Checking GPU presence and CUDA linking"
 
 python3 docker/scripts/check_gpu.py
