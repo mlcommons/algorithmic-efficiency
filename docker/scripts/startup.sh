@@ -11,6 +11,10 @@ do
     esac
 done
 
+cd ..
+yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --criteo
+
+cd algorithmic-efficiency
 echo "Checking GPU presence and CUDA linking"
 
 python3 docker/scripts/check_gpu.py
