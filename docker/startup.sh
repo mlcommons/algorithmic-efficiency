@@ -15,4 +15,4 @@ cd algorithmic-efficiency
 git pull
 
 chmod a+x docker/scripts/startup.sh
-docker/scripts/startup.sh -f $FRAMEWORK -u $GIT_URL -d $DATASET -s $SUBMISSION_PATH -t $TUNING_SEARCH_SPACE -e $EXPERIMENT_NAME -w $WORKLOAD
+docker/scripts/startup.sh -f $FRAMEWORK -s $SUBMISSION_PATH -t $TUNING_SEARCH_SPACE -e $EXPERIMENT_NAME -w $WORKLOAD

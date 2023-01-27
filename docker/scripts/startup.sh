@@ -12,8 +12,9 @@ do
 done
 
 cd ..
+mv day_* data/
 ls
- 
+
 echo "Checking GPU presence and CUDA linking"
 
 python3 docker/scripts/check_gpu.py
