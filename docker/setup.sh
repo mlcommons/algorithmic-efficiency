@@ -46,4 +46,8 @@ pip install -e '.[full]'
 echo "Setting up data"
 cd ..
 
-yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --$DATASET
+if [ "$DATASET" = "criteo" ]; then
+    echo "data setup included in startup script"
+else
+    yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --$DATASET
+fi

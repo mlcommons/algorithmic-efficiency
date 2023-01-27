@@ -32,8 +32,8 @@ To Push built image to artifact registry on GCP do this :
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
     
-    docker tag mlcmmons:ogbg  us-central1-docker.pkg.dev/$PROJECT/$REPO/mlcommons:ogbg
-    docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/mlcommons:ogbg
+    docker tag mlcmmons:criteo  us-central1-docker.pkg.dev/$PROJECT/$REPO/mlcommons:criteo
+    docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/mlcommons:criteo
 ```
 
 This is required when you deploy the built image on a GCP VM
