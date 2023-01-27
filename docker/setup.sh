@@ -46,4 +46,4 @@ pip install -e '.[full]'
 echo "Setting up data"
 cd ..
 
-# yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --$DATASET
+yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --$DATASET

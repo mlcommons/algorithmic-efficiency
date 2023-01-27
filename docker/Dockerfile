@@ -17,7 +17,6 @@ ENV WORKLOAD=$WORKLOAD
 COPY ./docker/setup.sh /
 COPY ./docker/startup.sh /
 COPY ./datasets/dataset_setup.py /
-# COPY ./data/criteo /
 
 RUN /setup.sh -f $FRAMEWORK -u $GIT_URL -d $DATASET
 
