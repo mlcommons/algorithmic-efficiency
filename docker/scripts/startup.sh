@@ -11,10 +11,6 @@ do
     esac
 done
 
-cd ..
-./google-cloud-sdk/bin/gsutil -m cp -r gs://mlcommons-data/criteo/criteo_parts/* data/
-
-cd algorithmic-efficiency
 echo "Checking GPU presence and CUDA linking"
 
 python3 docker/scripts/check_gpu.py
