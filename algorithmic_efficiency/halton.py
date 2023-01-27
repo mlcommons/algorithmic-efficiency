@@ -333,7 +333,7 @@ def generate_search(search_space: Union[_DictSearchSpace, _ListSearchSpace],
   Args:linear
     search_space: A dict where the keys are the hyperparameter names, and the
       values are a dict of:
-        - {"min": x, "max", y, "scaling": z} where x and y are floats and z is
+        - {"min": x, "max": y, "scaling": z} where x and y are floats and z is
         one of "linear" or "log"
         - {"feasible_points": [...]} for discrete hyperparameters.
       Alternatively, it can be a list of dict where keys are the hyperparameter
