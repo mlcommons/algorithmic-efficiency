@@ -13,7 +13,6 @@ done
 
 cd ..
 ./google-cloud-sdk/bin/gsutil -m cp -r gs://mlcommons-data/criteo/criteo_parts/* data/
-# yes | python3 dataset_setup.py --data_dir=~/data --temp_dir=~/data --all=False --criteo
 
 cd algorithmic-efficiency
 echo "Checking GPU presence and CUDA linking"
