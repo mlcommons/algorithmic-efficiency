@@ -183,7 +183,7 @@ class Workload(metaclass=abc.ABCMeta):
   @property
   @abc.abstractmethod
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
+    """Max num steps the baseline algo was given to reach the target."""
 
   @property
   def param_shapes(self):

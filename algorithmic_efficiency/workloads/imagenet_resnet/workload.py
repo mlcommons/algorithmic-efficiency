@@ -124,5 +124,5 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 140_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 186_666
