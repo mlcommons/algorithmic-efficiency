@@ -15,10 +15,11 @@ ENV SUBMISSION_PATH=$SUBMISSION_PATH
 ENV WORKLOAD=$WORKLOAD
 
 COPY ./docker/setup.sh /
-COPY ./docker/startup.sh /
 COPY ./datasets/dataset_setup.py /
 
 RUN /setup.sh -f $FRAMEWORK -u $GIT_URL -d $DATASET
 
-RUN chmod +x startup.sh
-ENTRYPOINT ["sh", "-c", "/startup.sh -f $FRAMEWORK -s $SUBMISSION_PATH -t $TUNING_SEARCH_SPACE -e $EXPERIMENT_NAME -w $WORKLOAD"]
+RUN cd algorithmic-efficiency && git pull
+RUN chmod a+x algorithmic-efficiency/docker/scripts/startup.sh
+
+ENTRYPOINT ["sh", "-c", "algorithmic-efficiency/docker/scripts/startup.sh -f $FRAMEWORK -s $SUBMISSION_PATH -t $TUNING_SEARCH_SPACE -e $EXPERIMENT_NAME -w $WORKLOAD"]
