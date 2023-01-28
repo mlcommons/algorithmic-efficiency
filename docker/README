@@ -11,6 +11,14 @@ To Test the built image you can run :
 docker run -it mlcommons:ogbg
 ```
 
+If you want to run docker image in background and run your own commands in it's shell : 
+
+```
+docker run -it -d mlcommons:ogbg
+docker ps # to get container id
+
+docker exec -it <container_id> /bin/bash 
+```
 If you're building docker image on a GCP VM (recommended) then do 
 
 ```
@@ -29,5 +37,13 @@ To Push built image to artifact registry on GCP do this :
 ```
 
 This is required when you deploy the built image on a GCP VM
+
+How to avoid sudo for docker ?
+
+```
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker
+```
 
 Recommendation : Use a GCP CPU VM to build mlcommons docker image. Do not use cloudshell to build mlcommons docker images as the cloudshell provisioned machine runs out of storage

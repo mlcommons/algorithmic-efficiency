@@ -53,7 +53,7 @@ _VOCAB_SIZES = [
 # https://github.com/facebookresearch/dlrm/blob/fbc37ebe21d4f88f18c6ae01333ada2d025e41cf/dlrm_data_pytorch.py#L298.
 @tf.function
 def _parse_example_fn(num_dense_features, example):
-  """Parser function for pre-processed Criteo TSV records."""
+  """Parser function for pre-processed Criteo CSV records."""
   label_defaults = [[0.0]]
   int_defaults = [[0.0] for _ in range(num_dense_features)]
   categorical_defaults = [['00000000'] for _ in range(len(_VOCAB_SIZES))]
@@ -96,14 +96,14 @@ def get_criteo1tb_dataset(split: str,
   if split in ['train', 'eval_train']:
     file_paths = [os.path.join(data_dir, f'day_{d}_*') for d in range(0, 23)]
   elif split == 'validation':
-    # Assumes files are of the format day_23_004.tsv.
+    # Assumes files are of the format day_23_004.csv.
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.tsv')
+        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.csv')
         for s in range(num_test_files, _NUM_DAY_23_FILES)
     ]
   else:
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.tsv')
+        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.csv')
         for s in range(0, num_test_files)
     ]
 
