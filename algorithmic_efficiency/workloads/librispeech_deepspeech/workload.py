@@ -13,5 +13,5 @@ class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 60_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 80_000

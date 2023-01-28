@@ -27,7 +27,9 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
 
   # Create learning rate schedule.
-  lr_schedule_fn = create_lr_schedule_fn(workload.step_hint, hyperparameters)
+  target_setting_step_hint = int(0.75 * workload.step_hint)
+  lr_schedule_fn = create_lr_schedule_fn(target_setting_step_hint,
+                                         hyperparameters)
 
   # Create optimizer.
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),

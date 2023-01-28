@@ -110,8 +110,8 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 60_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 80_000
 
   def _eval_batch(self,
                   params: spec.ParameterContainer,
