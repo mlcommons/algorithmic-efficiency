@@ -1,15 +1,8 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import (Any,
-                    Callable,
-                    Dict,
-                    Iterator,
-                    List,
-                    NamedTuple,
-                    Optional,
-                    Tuple,
-                    Union)
+from typing import (Any, Callable, Dict, Iterator, List, NamedTuple, Optional,
+                    Tuple, Union)
 
 import chex
 from flax import jax_utils
