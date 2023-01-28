@@ -1,8 +1,19 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import (Any, Callable, Dict, Iterator, List, NamedTuple, Optional,
-                    Tuple, Union)
+
+# isort: off
+# We have to turn off isort here to resolve a conflict between isort and yapf.
+from typing import (Any,
+                    Callable,
+                    Dict,
+                    Iterator,
+                    List,
+                    NamedTuple,
+                    Optional,
+                    Tuple,
+                    Union)
+# isort: on
 
 import chex
 from flax import jax_utils
