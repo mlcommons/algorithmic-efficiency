@@ -32,9 +32,7 @@ def lamb(
 ) -> optax.GradientTransformation:
   """Rescale updates according to the LAMB algorithm.
 
-  References:
-  The original version is here
-  https://arxiv.org/pdf/1904.00962.pdf.
+  References: https://arxiv.org/pdf/1904.00962.pdf.
 
   Args:
     learning_rate: A fixed global scaling factor.
