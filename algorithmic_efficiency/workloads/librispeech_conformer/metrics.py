@@ -113,6 +113,8 @@ def load_tokenizer(model_path: str,
                    add_eos: bool = True,
                    reverse: bool = False):
   """Load a tf-text SentencePiece tokenizer from given model filepath."""
+  if model_path is None:
+    return None
   with gfile.GFile(model_path, 'rb') as model_fp:
     sp_model = model_fp.read()
   sp_tokenizer = tftxt.SentencepieceTokenizer(
@@ -130,6 +132,8 @@ def wer(tokenizer_vocab_path):
     """Computes the mean average precision for a binary classifier on CPU."""
 
     def compute(self):
+      if tokenizer is None:
+        return 0
       values = super().compute()
       # Ensure the arrays are numpy and not jax.numpy.
       values = {k: np.array(v) for k, v in values.items()}

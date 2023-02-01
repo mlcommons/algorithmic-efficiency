@@ -60,7 +60,8 @@ def update_params(workload: spec.Workload,
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
-  optimizer_state['scheduler'].step()
+  if 'scheduler' in optimizer_state:
+    optimizer_state['scheduler'].step()
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:

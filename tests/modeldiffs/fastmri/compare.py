@@ -50,6 +50,7 @@ def sd_transform(sd):
   return sd
 
 
+key_transform = None
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
