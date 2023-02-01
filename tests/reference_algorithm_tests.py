@@ -24,11 +24,14 @@ import functools
 import importlib
 import json
 import os
+import pickle
 
 from absl import flags
 from absl import logging
 from absl.testing import absltest
 import flax
+from flax import jax_utils
+from flax.core.frozen_dict import FrozenDict
 import jax
 from jraph import GraphsTuple
 import numpy as np
@@ -45,21 +48,31 @@ from algorithmic_efficiency.workloads.ogbg import \
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
     _graph_map
 import submission_runner
+from tests.modeldiffs import diff as diff_utils
 
 flags.DEFINE_integer(
     'global_batch_size',
     -1,
     ('Global Batch size to use when running an individual workload. Otherwise '
      'a per-device batch size of 2 is used.'))
+flags.DEFINE_integer(
+    'num_train_steps',
+    1,
+    'Number of steps to train.')
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
+flags.DEFINE_string('log_file', '/tmp/log.pkl', 'The log file')
 flags.DEFINE_boolean(
     'all',
     False,
     'Run all workloads instead of using --workload and --framework.')
+flags.DEFINE_boolean(
+    'identical',
+    False,
+    'Run jax and pytorch with identical weights.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 N_GPUS = max(N_GPUS, jax.local_device_count())
-
+tf.config.set_visible_devices([], 'GPU')
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
     'criteo1tb': ['train/loss', 'validation/loss'],
@@ -80,7 +93,7 @@ def _make_fake_image_batch(batch_shape, data_shape, num_classes):
   examples = np.random.normal(size=(*batch_shape,
                                     *data_shape)).astype(np.float32)
   labels = np.random.randint(0, num_classes, size=batch_shape)
-  masks = np.ones((*batch_shape, *data_shape), dtype=np.float32)
+  masks = np.ones(batch_shape, dtype=np.float32)
   return {'inputs': examples, 'targets': labels, 'weights': masks}
 
 
@@ -115,6 +128,32 @@ class _FakeMetricsCollection:
   def unreplicate(self):
     return self
 
+class _FakeMetricsLogger:
+
+  def __init__(self):
+    self.filename = FLAGS.log_file
+    self.scalars = []
+    self.eval_results = []
+
+  def append_scalar_metrics(self, scalars, step):
+    if USE_PYTORCH_DDP:
+      for k in sorted(scalars):
+        scalars[k] = torch.FloatTensor([scalars[k]]).to(PYTORCH_DEVICE)
+        dist.all_reduce(scalars[k])
+        scalars[k] = scalars[k].item() / N_GPUS
+    if RANK == 0:
+      self.scalars.append(scalars)
+      self.save()
+
+  def append_eval_metrics(self, result):
+    if RANK == 0:
+      self.eval_results.append(result)
+      self.save()
+
+  def save(self):
+    with open(self.filename, 'wb') as f:
+      pickle.dump({'scalars': self.scalars, 'eval_results': self.eval_results},
+                  f)
 
 class _FakeMetricsBundle:
 
@@ -133,12 +172,36 @@ def _make_one_batch_workload(workload_class,
   class _OneEvalBatchWorkload(workload_class):
 
     def __init__(self):
-      super().__init__()
-      self.summary_writer = None
-      self.metrics_logger = None
+      kwargs = {}
       if 'librispeech' in workload_name:
-        self.metrics_bundle = _FakeMetricsBundle()
+        kwargs['use_specaug'] = False
+      self.init_kwargs = kwargs
+      super().__init__(**kwargs)
+      self.summary_writer = None
+      self.metrics_logger = _FakeMetricsLogger()
+      if 'librispeech' in workload_name:
         self.tokenizer = _FakeTokenizer()
+
+    def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
+      # pylint: disable=line-too-long
+      print(FLAGS.identical)
+      if not(FLAGS.identical and os.path.exists(f"tests/modeldiffs/{workload_name}/compare.py")):
+        return super().init_model_fn(rng,
+                                     dropout_rate=dropout_rate,
+                                     aux_dropout_rate=aux_dropout_rate)
+      if framework == 'jax':
+        compare_module = importlib.import_module(
+            f"tests.modeldiffs.{workload_name}.compare")
+        jax_params, model_state, _ = diff_utils.torch2jax(
+          jax_workload=super(),
+          pytorch_workload=compare_module.PytWorkload(**self.init_kwargs),
+          key_transform=compare_module.key_transform,
+          sd_transform=compare_module.sd_transform)
+        return FrozenDict(**jax_utils.replicate(jax_params)), (FrozenDict(**jax_utils.replicate(model_state)) if model_state is not None else model_state)
+      else:
+        return super().init_model_fn([0],
+                                     dropout_rate=0.0,
+                                     aux_dropout_rate=0.0)
 
     @property
     def num_eval_train_examples(self):
@@ -183,15 +246,15 @@ def _make_one_batch_workload(workload_class,
             'weights': np.ones(batch_shape),
         }
       elif workload_name in ['imagenet_resnet', 'imagenet_vit']:
-        if framework == 'jax':
-          data_shape = (224, 224, 3)
-        else:
-          data_shape = (3, 224, 224)
+        data_shape = (224, 224, 3)
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=data_shape, num_classes=1000)
+        if framework == 'pytorch':
+          num_dims = len(fake_batch['inputs'].shape)
+          fake_batch['inputs'] = fake_batch['inputs'].transpose((*range(num_dims-3), num_dims-1, num_dims-3, num_dims-2))
       elif 'librispeech' in workload_name:
         inputs = np.random.normal(size=(*batch_shape, 320000))
-        targets = np.random.normal(size=(*batch_shape, 256))
+        targets = np.random.randint(low=1, high=1024, size=(*batch_shape, 256))
         fake_batch = {
             'inputs': (inputs, np.zeros_like(inputs)),
             'targets': (targets, np.zeros_like(targets)),
@@ -200,16 +263,16 @@ def _make_one_batch_workload(workload_class,
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=(28, 28, 1), num_classes=10)
       elif workload_name == 'ogbg':
-        fake_batch = {
-            'edge_feat': tf.ones((1, 3)),
-            'node_feat': tf.ones((1, 9)),
-            'edge_index': tf.ones((1, 2), dtype=tf.int64),
-            'labels': tf.ones((self._num_outputs,)),
-            'num_nodes': tf.ones((1,), dtype=tf.int64),
-        }
+        tf.random.set_seed(5)
 
         def _fake_iter():
           while True:
+            fake_batch = dict(
+                num_nodes=tf.ones((1,), dtype=tf.int64),
+                edge_index=tf.ones((1, 2), dtype=tf.int64),
+                node_feat=tf.random.normal((1, 9)),
+                edge_feat=tf.random.normal((1, 3)),
+                labels=tf.ones((self._num_outputs,)))
             yield fake_batch
 
         fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
@@ -220,18 +283,33 @@ def _make_one_batch_workload(workload_class,
       elif workload_name == 'wmt':
         max_len = 256
         fake_batch = {
-            'inputs': np.ones((*batch_shape, max_len)),
-            'targets': np.ones((*batch_shape, max_len), dtype=np.int64),
+            'inputs':
+                np.random.randint(
+                    low=0, high=32000, size=(*batch_shape, max_len)),
+            'targets':
+                np.random.randint(
+                    low=0, high=32000, size=(*batch_shape, max_len)),
         }
         self._tokenizer = _FakeTokenizer()
       elif workload_name == 'fastmri':
+        data_shape = (320, 320)
         fake_batch = {
-            'inputs': np.zeros((*batch_shape, 320, 320)),
-            'targets': np.zeros((*batch_shape, 320, 320)),
-            'mean': np.zeros(batch_shape),
-            'std': np.ones(batch_shape),
-            'volume_max': np.zeros(batch_shape),
-            'weights': np.ones(batch_shape),
+            'inputs':
+                _make_fake_image_batch(
+                    batch_shape, data_shape=data_shape, num_classes=1000)
+                ['inputs'],
+            'targets':
+                _make_fake_image_batch(
+                    batch_shape, data_shape=data_shape, num_classes=1000)
+                ['inputs'],
+            'mean':
+                np.zeros(batch_shape),
+            'std':
+                np.ones(batch_shape),
+            'volume_max':
+                np.zeros(batch_shape),
+            'weights':
+                np.ones(batch_shape),
         }
       else:
         raise ValueError(
@@ -243,7 +321,7 @@ def _make_one_batch_workload(workload_class,
 
         def to_device(k, v):
           dtype = (
-              torch.long if k == 'targets' else
+              torch.long if (k == 'targets' and workload_name != 'fastmri') else
               torch.bool if k == 'weights' else torch.float)
           if USE_PYTORCH_DDP:
             v = v[RANK]
@@ -265,8 +343,13 @@ def _make_one_batch_workload(workload_class,
       # the BLEU score.
       if workload_name == 'wmt':
         num_batches *= 2
-      for _ in range(num_batches):
+      for _ in range(num_batches*FLAGS.num_train_steps):
         yield fake_batch
+
+    def eval_model(self, *args, **kwargs):
+      eval_result = super().eval_model(*args, **kwargs)
+      self.metrics_logger.append_eval_metrics(eval_result)
+      return eval_result
 
   return _OneEvalBatchWorkload()
 
@@ -296,8 +379,6 @@ def _test_submission(workload_name,
   init_optimizer_state = submission_module.init_optimizer_state
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
-  get_batch_size = submission_module.get_batch_size
-  global_batch_size = get_batch_size(workload_name)
   if FLAGS.all:
     if FLAGS.global_batch_size > 0:
       raise ValueError('Cannot set --global_batch_size and --all.')
@@ -313,9 +394,12 @@ def _test_submission(workload_name,
                                       use_fake_input_queue)
 
   # Get a sample hyperparameter setting.
-  with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
-    hyperparameters = halton.generate_search(
-        json.load(search_space_file), num_trials=1)[0]
+  hyperparameters = {}
+  if search_space_path!='None':
+    with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
+      hyperparameters = halton.generate_search(
+          json.load(search_space_file), num_trials=1)[0]
+    
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
@@ -338,26 +422,31 @@ def _test_submission(workload_name,
                          hyperparameters,
                          global_step,
                          data_select_rng)
-  _, model_params, model_state = update_params(
-      workload=workload,
-      current_param_container=model_params,
-      current_params_types=workload.model_params_types,
-      model_state=model_state,
-      hyperparameters=hyperparameters,
-      batch=batch,
-      loss_type=workload.loss_type,
-      optimizer_state=optimizer_state,
-      eval_results=[],
-      global_step=global_step,
-      rng=update_rng)
-  eval_result = workload.eval_model(
-      global_batch_size,
-      model_params,
-      model_state,
-      eval_rng,
-      data_dir,
-      imagenet_v2_data_dir=None,
-      global_step=0)
+  if USE_PYTORCH_DDP:
+    torch.cuda.empty_cache()
+    dist.barrier()
+  for _ in range(FLAGS.num_train_steps):
+    optimizer_state, model_params, model_state = update_params(
+        workload=workload,
+        current_param_container=model_params,
+        current_params_types=workload.model_params_types,
+        model_state=model_state,
+        hyperparameters=hyperparameters,
+        batch=batch,
+        loss_type=workload.loss_type,
+        optimizer_state=optimizer_state,
+        eval_results=[],
+        global_step=global_step,
+        rng=update_rng)
+
+    eval_result = workload.eval_model(
+        global_batch_size,
+        model_params,
+        model_state,
+        eval_rng,
+        data_dir,
+        imagenet_v2_data_dir=None,
+        global_step=0)
   _ = workload.eval_model(
       global_batch_size,
       model_params,
