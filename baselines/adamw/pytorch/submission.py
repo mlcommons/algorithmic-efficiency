@@ -92,11 +92,6 @@ def update_params(workload: spec.Workload,
 
   loss.backward()
 
-  with torch.no_grad():
-    parameters = [p for p in current_model.parameters() if p.grad is not None]
-    grad_norm = torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
-
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
@@ -105,6 +100,10 @@ def update_params(workload: spec.Workload,
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:
+    with torch.no_grad():
+      parameters = [p for p in current_model.parameters() if p.grad is not None]
+      grad_norm = torch.norm(
+          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {
@@ -141,15 +140,14 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(
-    workload: spec.Workload,
-    input_queue: Iterator[Dict[str, spec.Tensor]],
-    optimizer_state: spec.OptimizerState,
-    current_param_container: spec.ParameterContainer,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    global_step: int,
-    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
+def data_selection(workload: spec.Workload,
+                   input_queue: Iterator[Dict[str, spec.Tensor]],
+                   optimizer_state: spec.OptimizerState,
+                   current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
+                   hyperparameters: spec.Hyperparameters,
+                   global_step: int,
+                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """

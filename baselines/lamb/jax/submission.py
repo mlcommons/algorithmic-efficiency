@@ -1,7 +1,11 @@
-"""Submission file for a SGD with Nesterov momentum optimizer in Jax."""
+"""Submission file for a LAMB optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import Callable, Dict, Iterator, List, Tuple
+
+# isort: off
+# We have to turn off isort here to resolve a conflict between isort and yapf.
+from typing import (Any, Callable, Dict, Iterator, List, Optional, Tuple, Union)
+# isort: on
 
 from flax import jax_utils
 import jax
@@ -14,77 +18,93 @@ from algorithmic_efficiency import spec
 _GRAD_CLIP_EPS = 1e-6
 
 
+# Forked from
+# https://github.com/deepmind/optax/blob/master/optax/_src/alias.py.
+def lamb(
+    learning_rate: Union[float, optax.Schedule],
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    weight_decay: float = 0.0,
+    weight_decay_mask: Optional[Union[Any, Callable[[optax.Params],
+                                                    Any]]] = None,
+) -> optax.GradientTransformation:
+  """Rescale updates according to the LAMB algorithm.
+
+  References:
+  The original version is here
+  https://arxiv.org/pdf/1904.00962.pdf.
+
+  Args:
+    learning_rate: A fixed global scaling factor.
+    b1: Exponential decay rate to track the first moment of past gradients.
+    b2: Exponential decay rate to track the second moment of past gradients.
+    eps: A small constant applied to denominator outside of the square root
+      (as in the Adam paper) to avoid dividing by zero when rescaling.
+    eps_root: A small constant applied to denominator inside the square root (as
+      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+      instance when computing (meta-)gradients through Adam.
+    weight_decay: Strength of the weight decay regularization.
+    weight_decay_mask: A tree with same structure as (or a prefix of) the params
+      PyTree, or a Callable that returns such a pytree given the params/updates.
+      The leaves should be booleans, `True` for leaves/subtrees you want to
+      apply the weight decay to, and `False` for those you want to skip.
+
+  Returns:
+    An (init_fn, update_fn) tuple.
+  """
+  return optax.chain(
+      optax.scale_by_adam(b1, b2, eps, eps_root),
+      optax.add_decayed_weights(weight_decay, weight_decay_mask),
+      optax.scale_by_trust_ratio(),
+      scale_by_learning_rate(learning_rate))
+
+
+def scale_by_learning_rate(learning_rate, flip_sign=True):
+  m = -1 if flip_sign else 1
+  if callable(learning_rate):
+    return optax.scale_by_schedule(lambda count: m * learning_rate(count))
+  return optax.scale(m * learning_rate)
+
+
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  """Creates a Nesterov optimizer and a learning rate schedule."""
+  """Creates a LAMB optimizer and a learning rate schedule."""
   del model_params
   del model_state
   del rng
 
-  # Create learning rate schedule.
-  lr_schedule_fn = create_lr_schedule_fn(workload.step_hint, hyperparameters)
+  def jax_cosine_warmup(step_hint: int, hyperparameters):
+    # Create learning rate schedule.
+    warmup_fn = optax.linear_schedule(
+        init_value=0.,
+        end_value=hyperparameters.learning_rate,
+        transition_steps=hyperparameters.warmup_steps)
+    cosine_steps = max(step_hint - hyperparameters.warmup_steps, 1)
+    cosine_fn = optax.cosine_decay_schedule(
+        init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
+    schedule_fn = optax.join_schedules(
+        schedules=[warmup_fn, cosine_fn],
+        boundaries=[hyperparameters.warmup_steps])
+    return schedule_fn
 
-  # Create optimizer.
+  # Create optimizer + LR schedule.
+  lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
+  opt_init_fn, opt_update_fn = lamb(
+      learning_rate=lr_schedule_fn,
+      b1=hyperparameters.beta1,
+      b2=hyperparameters.beta2,
+      eps=1e-8,
+      weight_decay=hyperparameters.weight_decay)
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
-  opt_init_fn, opt_update_fn = sgd(
-      learning_rate=lr_schedule_fn,
-      weight_decay=hyperparameters.weight_decay,
-      momentum=hyperparameters.beta1,
-      nesterov=True)
   optimizer_state = opt_init_fn(params_zeros_like)
 
   return jax_utils.replicate(optimizer_state), opt_update_fn
-
-
-def create_lr_schedule_fn(
-    step_hint: int,
-    hyperparameters: spec.Hyperparameters) -> Callable[[int], float]:
-  warmup_fn = optax.linear_schedule(
-      init_value=0.,
-      end_value=hyperparameters.learning_rate,
-      transition_steps=hyperparameters.warmup_steps)
-  decay_steps = step_hint - hyperparameters.warmup_steps
-  polynomial_schedule_fn = optax.polynomial_schedule(
-      init_value=hyperparameters.learning_rate,
-      end_value=hyperparameters.learning_rate * hyperparameters.end_factor,
-      power=1,
-      transition_steps=int(decay_steps * hyperparameters.decay_steps_factor))
-  lr_schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, polynomial_schedule_fn],
-      boundaries=[hyperparameters.warmup_steps])
-  return lr_schedule_fn
-
-
-# Forked from github.com/google/init2winit/blob/master/init2winit/ (cont. below)
-# optimizer_lib/optimizers.py.
-def sgd(learning_rate, weight_decay, momentum=None, nesterov=False):
-  r"""A customizable gradient descent optimizer.
-
-  NOTE: We apply weight decay **before** computing the momentum update.
-  This is equivalent to applying WD after for heavy-ball momentum,
-  but slightly different when using Nesterov acceleration. This is the same as
-  how the Flax optimizers handle weight decay
-  https://flax.readthedocs.io/en/latest/_modules/flax/optim/momentum.html.
-
-  Args:
-    learning_rate: The learning rate. Expected as the positive learning rate,
-      for example `\alpha` in `w -= \alpha * u` (as opposed to `\alpha`).
-    weight_decay: The weight decay hyperparameter.
-    momentum: The momentum hyperparameter.
-    nesterov: Whether or not to use Nesterov momentum.
-
-  Returns:
-    An optax gradient transformation that applies weight decay and then one of a
-    {SGD, Momentum, Nesterov} update.
-  """
-  return optax.chain(
-      optax.add_decayed_weights(weight_decay),
-      optax.sgd(
-          learning_rate=learning_rate, momentum=momentum, nesterov=nesterov))
 
 
 @functools.partial(

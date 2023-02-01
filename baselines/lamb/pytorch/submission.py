@@ -1,4 +1,4 @@
-"""Submission file for an NAdamW optimizer with warmup+cosine LR in PyTorch."""
+"""Submission file for a LAMB optimizer with warmup+cosine LR in PyTorch."""
 
 import math
 from typing import Dict, Iterator, List, Tuple
@@ -13,37 +13,15 @@ from torch.optim.lr_scheduler import SequentialLR
 from algorithmic_efficiency import spec
 
 
-# Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py.
-class NAdamW(torch.optim.Optimizer):
-  r"""Implements NAdamW algorithm.
-
-    See Table 1 in https://arxiv.org/abs/1910.05446 for the implementation of
-    the NAdam algorithm (there is also a comment in the code which highlights
-    the only difference of NAdamW and AdamW).
-    For further details regarding the algorithm we refer to
-    `Decoupled Weight Decay Regularization`_.
-
-    Args:
-      params (iterable): iterable of parameters to optimize or dicts defining
-          parameter groups
-      lr (float, optional): learning rate (default: 1e-3)
-      betas (Tuple[float, float], optional): coefficients used for computing
-          running averages of gradient and its square (default: (0.9, 0.999))
-      eps (float, optional): term added to the denominator to improve
-          numerical stability (default: 1e-8)
-      weight_decay (float, optional): weight decay coefficient (default: 1e-2)
-    .. _Decoupled Weight Decay Regularization:
-        https://arxiv.org/abs/1711.05101
-    .. _On the Convergence of Adam and Beyond:
-        https://openreview.net/forum?id=ryQu7f-RZ
-  """
+# Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py
+class LAMB(torch.optim.Optimizer):
 
   def __init__(self,
                params,
                lr=1e-3,
                betas=(0.9, 0.999),
                eps=1e-8,
-               weight_decay=1e-2):
+               weight_decay=0.0):
     if not 0.0 <= lr:
       raise ValueError(f'Invalid learning rate: {lr}')
     if not 0.0 <= eps:
@@ -69,11 +47,10 @@ class NAdamW(torch.optim.Optimizer):
   @torch.no_grad()
   def step(self, closure=None):
     """Performs a single optimization step.
-
         Args:
           closure (callable, optional): A closure that reevaluates the model
               and returns the loss.
-    """
+        """
     self._cuda_graph_capture_health_check()
 
     loss = None
@@ -113,7 +90,7 @@ class NAdamW(torch.optim.Optimizer):
         exp_avg_sqs.append(state['exp_avg_sq'])
         state_steps.append(state['step'])
 
-      nadamw(
+      adamw(
           params_with_grad,
           grads,
           exp_avgs,
@@ -128,19 +105,16 @@ class NAdamW(torch.optim.Optimizer):
     return loss
 
 
-def nadamw(params: List[Tensor],
-           grads: List[Tensor],
-           exp_avgs: List[Tensor],
-           exp_avg_sqs: List[Tensor],
-           state_steps: List[Tensor],
-           beta1: float,
-           beta2: float,
-           lr: float,
-           weight_decay: float,
-           eps: float) -> None:
-  r"""Functional API that performs NAdamW algorithm computation.
-    See NAdamW class for details.
-  """
+def adamw(params: List[Tensor],
+          grads: List[Tensor],
+          exp_avgs: List[Tensor],
+          exp_avg_sqs: List[Tensor],
+          state_steps: List[Tensor],
+          beta1: float,
+          beta2: float,
+          lr: float,
+          weight_decay: float,
+          eps: float):
 
   if not all(isinstance(t, torch.Tensor) for t in state_steps):
     raise RuntimeError(
@@ -163,10 +137,6 @@ def nadamw(params: List[Tensor],
     exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
     exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
-    # Only difference between NAdamW and AdamW in this implementation.
-    # The official PyTorch implementation of NAdam uses a different algorithm.
-    exp_avg_hat = exp_avg.mul(beta1).add(grad, alpha=1 - beta1)
-
     step = step_t.item()
 
     bias_correction1 = 1 - beta1**step
@@ -176,8 +146,7 @@ def nadamw(params: List[Tensor],
 
     bias_correction2_sqrt = math.sqrt(bias_correction2)
     denom = (exp_avg_sq.sqrt() / bias_correction2_sqrt).add_(eps)
-
-    param.addcdiv_(exp_avg_hat, denom, value=-step_size)
+    param.addcdiv_(exp_avg, denom, value=-step_size)
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -191,7 +160,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   optimizer_state = {
       'optimizer':
-          NAdamW(
+          LAMB(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
               betas=(hyperparameters.beta1, hyperparameters.beta2),
@@ -261,6 +230,11 @@ def update_params(workload: spec.Workload,
 
   loss.backward()
 
+  with torch.no_grad():
+    parameters = [p for p in current_model.parameters() if p.grad is not None]
+    grad_norm = torch.norm(
+        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
@@ -269,10 +243,6 @@ def update_params(workload: spec.Workload,
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:
-    with torch.no_grad():
-      parameters = [p for p in current_model.parameters() if p.grad is not None]
-      grad_norm = torch.norm(
-          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {
@@ -309,14 +279,15 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(workload: spec.Workload,
-                   input_queue: Iterator[Dict[str, spec.Tensor]],
-                   optimizer_state: spec.OptimizerState,
-                   current_param_container: spec.ParameterContainer,
-                   model_state: spec.ModelAuxiliaryState,
-                   hyperparameters: spec.Hyperparameters,
-                   global_step: int,
-                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
+def data_selection(
+    workload: spec.Workload,
+    input_queue: Iterator[Dict[str, spec.Tensor]],
+    optimizer_state: spec.OptimizerState,
+    current_param_container: spec.ParameterContainer,
+    model_state: spec.ModelAuxiliaryState,
+    hyperparameters: spec.Hyperparameters,
+    global_step: int,
+    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """
