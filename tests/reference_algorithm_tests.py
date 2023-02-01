@@ -55,20 +55,16 @@ flags.DEFINE_integer(
     -1,
     ('Global Batch size to use when running an individual workload. Otherwise '
      'a per-device batch size of 2 is used.'))
-flags.DEFINE_integer(
-    'num_train_steps',
-    1,
-    'Number of steps to train.')
+flags.DEFINE_integer('num_train_steps', 1, 'Number of steps to train.')
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 flags.DEFINE_string('log_file', '/tmp/log.pkl', 'The log file')
 flags.DEFINE_boolean(
     'all',
     False,
     'Run all workloads instead of using --workload and --framework.')
-flags.DEFINE_boolean(
-    'identical',
-    False,
-    'Run jax and pytorch with identical weights.')
+flags.DEFINE_boolean('identical',
+                     False,
+                     'Run jax and pytorch with identical weights.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 N_GPUS = max(N_GPUS, jax.local_device_count())
@@ -128,6 +124,7 @@ class _FakeMetricsCollection:
   def unreplicate(self):
     return self
 
+
 class _FakeMetricsLogger:
 
   def __init__(self):
@@ -154,6 +151,7 @@ class _FakeMetricsLogger:
     with open(self.filename, 'wb') as f:
       pickle.dump({'scalars': self.scalars, 'eval_results': self.eval_results},
                   f)
+
 
 class _FakeMetricsBundle:
 
@@ -185,10 +183,10 @@ def _make_one_batch_workload(workload_class,
     def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
       # pylint: disable=line-too-long
       print(FLAGS.identical)
-      if not(FLAGS.identical and os.path.exists(f"tests/modeldiffs/{workload_name}/compare.py")):
-        return super().init_model_fn(rng,
-                                     dropout_rate=dropout_rate,
-                                     aux_dropout_rate=aux_dropout_rate)
+      if not (FLAGS.identical and
+              os.path.exists(f"tests/modeldiffs/{workload_name}/compare.py")):
+        return super().init_model_fn(
+            rng, dropout_rate=dropout_rate, aux_dropout_rate=aux_dropout_rate)
       if framework == 'jax':
         compare_module = importlib.import_module(
             f"tests.modeldiffs.{workload_name}.compare")
@@ -251,7 +249,8 @@ def _make_one_batch_workload(workload_class,
             batch_shape, data_shape=data_shape, num_classes=1000)
         if framework == 'pytorch':
           num_dims = len(fake_batch['inputs'].shape)
-          fake_batch['inputs'] = fake_batch['inputs'].transpose((*range(num_dims-3), num_dims-1, num_dims-3, num_dims-2))
+          fake_batch['inputs'] = fake_batch['inputs'].transpose(
+              (*range(num_dims - 3), num_dims - 1, num_dims - 3, num_dims - 2))
       elif 'librispeech' in workload_name:
         inputs = np.random.normal(size=(*batch_shape, 320000))
         targets = np.random.randint(low=1, high=1024, size=(*batch_shape, 256))
@@ -343,7 +342,7 @@ def _make_one_batch_workload(workload_class,
       # the BLEU score.
       if workload_name == 'wmt':
         num_batches *= 2
-      for _ in range(num_batches*FLAGS.num_train_steps):
+      for _ in range(num_batches * FLAGS.num_train_steps):
         yield fake_batch
 
     def eval_model(self, *args, **kwargs):
@@ -395,11 +394,10 @@ def _test_submission(workload_name,
 
   # Get a sample hyperparameter setting.
   hyperparameters = {}
-  if search_space_path!='None':
+  if search_space_path != 'None':
     with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
       hyperparameters = halton.generate_search(
           json.load(search_space_file), num_trials=1)[0]
-    
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)

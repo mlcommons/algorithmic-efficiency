@@ -31,25 +31,27 @@ GLOBAL_BATCH_SIZE = 16
 class ModelDiffTest(absltest.TestCase):
 
   def test_workload(self):
+    # pylint: disable=line-too-long, unnecessary-lambda-assignment
     """
-    Compares the multi-gpu jax and ddp-pytorch models for each workload and compares the train and eval metrics collected 
+    Compares the multi-gpu jax and ddp-pytorch models for each workload and compares the train and eval metrics collected
     in the corresponding log files. We launch the multi-gpu jax model and the corresponding ddp-pytorch model separately
     using subprocess because ddp-pytorch models are run using torchrun. Secondly, keeping these separate helps avoid
     CUDA OOM errors resulting from the two frameworks competing with each other for GPU memory.
     """
-    # pylint: disable=line-too-long, unnecessary-lambda-assignment
     for workload in WORKLOADS:
       name = f'Testing {workload}'
       jax_logs = '/tmp/jax_log.pkl'
       pyt_logs = '/tmp/pyt_log.pkl'
-      run(f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python3 tests/reference_algorithm_tests.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}'
-      ' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps=10',
+      run(
+          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python3 tests/reference_algorithm_tests.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}'
+          ' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps=10',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
           check=True)
-      run(f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/reference_algorithm_tests.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}'
-      ' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps=10',
+      run(
+          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/reference_algorithm_tests.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}'
+          ' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps=10',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
