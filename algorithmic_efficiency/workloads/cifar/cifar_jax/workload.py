@@ -138,7 +138,7 @@ class CifarWorkload(BaseCifarWorkload):
               mask_batch: Optional[spec.Tensor] = None,
               label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
-    one_hot_targets = jax.nn.one_hot(label_batch, 10)
+    one_hot_targets = jax.nn.one_hot(label_batch, self._num_classes)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
     per_example_losses = -jnp.sum(
         smoothed_targets * nn.log_softmax(logits_batch), axis=-1)

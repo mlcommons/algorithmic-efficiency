@@ -76,8 +76,6 @@ def preprocess_for_eval(image: spec.Tensor,
   Returns:
     A preprocessed image `Tensor`.
   """
-  image = resize(image, image_size)
-  image = tf.reshape(image, [image_size, image_size, 3])
   image = normalize_image(image, mean_rgb, stddev_rgb, dtype=dtype)
   return image
 
