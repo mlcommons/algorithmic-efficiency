@@ -140,18 +140,19 @@ def lamb(params: List[Tensor],
 
     update = exp_avg / denom
     update.div_(bias_correction1)
-    # Perform stepweight decay.
     update.add_(weight_decay * param)
 
     # Scale updates by trust ratio.
     param_norm = torch.linalg.norm(param)
     update_norm = torch.linalg.norm(update)
-    trust_ratio = param_norm / update_norm
 
     # Set trust_ratio to 1 in case where parameters would never be updated.
-    zero_norm = torch.logical_or(param_norm == 0., update_norm == 0.)
-    safe_trust_ratio = torch.where(zero_norm, 1.0, trust_ratio)
-    param.add_(update * safe_trust_ratio, alpha=-lr)
+    if param_norm == 0. or update_norm == 0.:
+      trust_ratio = 1.
+    else:
+      trust_ratio = param_norm / update_norm
+
+    param.add_(update, alpha=-lr * trust_ratio)
 
 
 def init_optimizer_state(workload: spec.Workload,
