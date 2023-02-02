@@ -1,7 +1,7 @@
 """CIFAR workload parent class."""
 
 import math
-from typing import Dict, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from absl import flags
 import jax
@@ -18,6 +18,8 @@ USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 class BaseCifarWorkload(spec.Workload):
 
+  _num_classes: int = 10
+
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value
@@ -27,7 +29,7 @@ class BaseCifarWorkload(spec.Workload):
     return 0.85
 
   def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
-    return eval_result['test/accuracy'] > self.validation_target_value
+    return eval_result['test/accuracy'] > self.test_target_value
 
   @property
   def test_target_value(self) -> float:
@@ -72,16 +74,12 @@ class BaseCifarWorkload(spec.Workload):
 
   # Data augmentation settings.
   @property
-  def scale_ratio_range(self) -> Tuple[float, float]:
-    return (0.08, 1.0)
-
-  @property
-  def aspect_ratio_range(self) -> Tuple[float, float]:
-    return (0.75, 4.0 / 3.0)
-
-  @property
-  def center_crop_size(self) -> int:
+  def crop_size(self) -> int:
     return 32
+
+  @property
+  def padding_size(self) -> int:
+    return 4
 
   @property
   def max_allowed_runtime_sec(self) -> int:
@@ -90,6 +88,39 @@ class BaseCifarWorkload(spec.Workload):
   @property
   def eval_period_time_sec(self) -> int:
     return 600  # 10 mins.
+
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None
+  ) -> Iterator[Dict[str, spec.Tensor]]:
+    raise NotImplementedError
+
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del num_batches
+    if split == 'test':
+      if not cache:
+        raise ValueError('cache must be True for split=test.')
+      if not repeat_final_dataset:
+        raise ValueError('repeat_final_dataset must be True for split=test.')
+    return self._build_dataset(data_rng,
+                               split,
+                               data_dir,
+                               global_batch_size,
+                               cache,
+                               repeat_final_dataset)
 
   @property
   def step_hint(self) -> int:

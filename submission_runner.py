@@ -109,9 +109,9 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
+flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
-                    '~/tensorflow_datasets/',
+                    '~/data',
                     'Dataset location for ImageNet-v2.')
 flags.DEFINE_enum(
     'framework',

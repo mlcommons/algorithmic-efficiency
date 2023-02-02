@@ -45,9 +45,8 @@ class CifarWorkload(BaseCifarWorkload):
         batch_size,
         self.train_mean,
         self.train_stddev,
-        self.center_crop_size,
-        self.aspect_ratio_range,
-        self.scale_ratio_range,
+        self.crop_size,
+        self.padding_size,
         train=train,
         cache=not train if cache is None else cache,
         repeat_final_dataset=repeat_final_dataset)
@@ -90,7 +89,7 @@ class CifarWorkload(BaseCifarWorkload):
     del dropout_rate
     del aux_dropout_rate
     model_cls = getattr(models, 'ResNet18')
-    model = model_cls(num_classes=10, dtype=jnp.float32)
+    model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
     input_shape = (1, 32, 32, 3)
     variables = jax.jit(model.init)({'params': rng},

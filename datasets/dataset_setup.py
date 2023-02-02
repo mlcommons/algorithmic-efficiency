@@ -64,6 +64,7 @@ python3 datasets/dataset_setup.py \
 """
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
+
 import os
 import shutil
 import subprocess
@@ -75,8 +76,6 @@ from absl import logging
 import requests
 import tensorflow_datasets as tfds
 import tqdm
-
-FRAMEWORKS = ['pytorch', 'jax']
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'

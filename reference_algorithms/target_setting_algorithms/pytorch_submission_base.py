@@ -51,11 +51,6 @@ def update_params(workload: spec.Workload,
 
   loss.backward()
 
-  with torch.no_grad():
-    parameters = [p for p in current_model.parameters() if p.grad is not None]
-    grad_norm = torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
-
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
@@ -65,6 +60,11 @@ def update_params(workload: spec.Workload,
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:
+    with torch.no_grad():
+      parameters = [p for p in current_model.parameters() if p.grad is not None]
+      grad_norm = torch.norm(
+          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {
