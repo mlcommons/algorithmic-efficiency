@@ -17,8 +17,6 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.data_utils import shard_and_maybe_pad_np
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipeline import \
     normalize_image
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipeline import \
-    resize
 
 
 def preprocess_for_train(image: spec.Tensor,
@@ -61,7 +59,6 @@ def preprocess_for_train(image: spec.Tensor,
 def preprocess_for_eval(image: spec.Tensor,
                         mean_rgb: Tuple[float, float, float],
                         stddev_rgb: Tuple[float, float, float],
-                        image_size: int,
                         dtype: tf.DType = tf.float32) -> spec.Tensor:
   """Preprocesses the given image for evaluation.
 
@@ -70,7 +67,6 @@ def preprocess_for_eval(image: spec.Tensor,
     mean_rgb: A tuple representing the mean of the total training images.
     stddev_rgb: A tuple representing the standard deviation
         of the total training images.
-    image_size: A size of the image.
     dtype: data type of the image.
 
   Returns:
@@ -112,7 +108,6 @@ def create_split(
       image = preprocess_for_eval(example['image'],
                                   mean_rgb,
                                   stddev_rgb,
-                                  crop_size,
                                   dtype)
     return {'inputs': image, 'targets': example['label']}
 

@@ -9,8 +9,6 @@ python3 datasets/development_dataset_setup.py \
   --data_dir=~/data \
   --framework=jax
 """
-# pylint: disable=logging-format-interpolation
-# pylint: disable=consider-using-with
 
 import os
 
@@ -22,7 +20,7 @@ from torchvision.datasets import CIFAR10
 
 flags.DEFINE_boolean(
     'all',
-    True,
+    False,
     'Whether or not to download all datasets. If false, can download some '
     'combination of datasets by setting the individual dataset flags below.')
 flags.DEFINE_boolean('mnist',
@@ -37,7 +35,7 @@ flags.DEFINE_string(
     '.',
     'The path to the folder where datasets should be downloaded.')
 
-flags.DEFINE_string('framework', 'pytorch', 'Can be either jax or pytorch.')
+flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
 FLAGS = flags.FLAGS
 
 
@@ -76,9 +74,6 @@ def main(_):
     logging.info('Downloading CIFAR...')
     download_cifar(data_dir, FLAGS.framework)
 
-
-# pylint: enable=logging-format-interpolation
-# pylint: enable=consider-using-with
 
 if __name__ == '__main__':
   app.run(main)

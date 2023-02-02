@@ -11,7 +11,9 @@ from flax import linen as nn
 import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import ResNetBlock, BottleneckResNetBlock
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
+    ResNetBlock
+
 ModuleDef = nn.Module
 
 

@@ -12,7 +12,12 @@ from torch import nn
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.init_utils import pytorch_default_init
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import BasicBlock, Bottleneck, conv1x1
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+    BasicBlock
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+    Bottleneck
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+    conv1x1
 
 
 class ResNet(nn.Module):

@@ -15,9 +15,9 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.cifar.cifar_pytorch.models import \
     resnet18
+from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -38,9 +38,7 @@ class CifarWorkload(BaseCifarWorkload):
     is_train = split == 'train'
     normalize = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(
-            mean=self.train_mean,
-            std=self.train_stddev)
+        transforms.Normalize(mean=self.train_mean, std=self.train_stddev)
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
