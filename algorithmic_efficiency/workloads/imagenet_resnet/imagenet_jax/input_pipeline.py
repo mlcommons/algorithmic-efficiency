@@ -154,8 +154,7 @@ def normalize_image(image: spec.Tensor,
                     mean_rgb: Tuple[float, float, float],
                     stddev_rgb: Tuple[float, float, float],
                     dtype=tf.float32) -> spec.Tensor:
-  if image.dtype == tf.uint8:
-    image = tf.image.convert_image_dtype(image, dtype)
+  image = tf.image.convert_image_dtype(image, dtype)
   image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
   image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image

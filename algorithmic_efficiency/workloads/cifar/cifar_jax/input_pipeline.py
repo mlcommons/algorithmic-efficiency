@@ -54,8 +54,7 @@ def preprocess_for_train(image: spec.Tensor,
   image = tf.image.stateless_random_crop(
       image, (crop_size, crop_size, 3), seed=crop_rng)
   image = tf.image.stateless_random_flip_left_right(image, seed=flip_rng)
-  image = normalize_image(image, mean_rgb, stddev_rgb, dtype=tf.float32)
-  image = tf.image.convert_image_dtype(image, dtype=dtype)
+  image = normalize_image(image, mean_rgb, stddev_rgb, dtype=dtype)
   return image
 
 
