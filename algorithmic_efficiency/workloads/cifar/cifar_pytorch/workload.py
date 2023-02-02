@@ -16,7 +16,7 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.cifar.cifar_pytorch.models import \
     resnet18
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
