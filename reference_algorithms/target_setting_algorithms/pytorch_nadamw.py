@@ -165,7 +165,9 @@ def nadamw(params: List[Tensor],
 
     # Only difference between NAdamW and AdamW in this implementation.
     # The official PyTorch implementation of NAdam uses a different algorithm.
-    exp_avg_hat = exp_avg.mul(beta1).add(grad, alpha=1 - beta1)
+    # We undo these ops later on, which could cause numerical issues but saves
+    # us from having to make an extra copy of the gradients.
+    exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
 
     step = step_t.item()
 
@@ -177,7 +179,8 @@ def nadamw(params: List[Tensor],
     bias_correction2_sqrt = math.sqrt(bias_correction2)
     denom = (exp_avg_sq.sqrt() / bias_correction2_sqrt).add_(eps)
 
-    param.addcdiv_(exp_avg_hat, denom, value=-step_size)
+    param.addcdiv_(exp_avg, denom, value=-step_size)
+    exp_avg.sub_(grad, alpha=1 - beta1).div_(beta1)
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -201,6 +204,7 @@ def init_optimizer_state(workload: spec.Workload,
               weight_decay=hyperparameters.weight_decay)
   }
 
+  target_setting_step_hint = int(0.75 * workload.step_hint)
   optimizer_state['scheduler'] = cosine_warmup.pytorch_cosine_warmup(
-      workload.step_hint, hyperparameters, optimizer_state['optimizer'])
+      target_setting_step_hint, hyperparameters, optimizer_state['optimizer'])
   return optimizer_state

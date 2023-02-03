@@ -1,3 +1,5 @@
+"""Utilities for logging."""
+
 import collections
 import json
 import logging
@@ -5,6 +7,7 @@ import os.path
 import platform
 import re
 import subprocess
+import sys
 from typing import Any, Optional
 
 from absl import flags
@@ -27,8 +30,43 @@ except ModuleNotFoundError:
 
 def makedir(dir_name: str, exist_ok: bool = True) -> None:
   if RANK == 0:
-    # only one worker should create the required dir
+    # Only one worker should create the required dir.
     os.makedirs(name=dir_name, exist_ok=exist_ok)
+
+
+def get_log_dir(experiment_dir: str,
+                workload: spec.Workload,
+                framework: str,
+                experiment_name: str,
+                resume_last_run: bool) -> Optional[str]:
+  if RANK != 0:
+    return
+
+  # Construct path to experiment workload directory.
+  experiment_dir = os.path.expanduser(experiment_dir)
+  workload_dir_name = f'{workload}_{framework}'
+  if experiment_name is None:
+    experiment_path = os.path.join(experiment_dir, workload_dir_name)
+  else:
+    experiment_path = os.path.join(experiment_dir,
+                                   experiment_name,
+                                   workload_dir_name)
+
+  if os.path.exists(experiment_path):
+    if resume_last_run:
+      logging.info(
+          f'Resuming from experiment directory {experiment_path} because '
+          '--resume_last_run was set.')
+    else:
+      resume = input(
+          'Found existing experiment dir with the same name: {}. Do you wish '
+          'to resume training from this dir? [y/N]:'.format(experiment_path))
+      if resume.lower() != 'y':
+        sys.exit()
+
+  logging.info(f'Creating experiment directory at {experiment_path}.')
+  makedir(experiment_path)
+  return experiment_path
 
 
 def write_hparams(hparams: spec.Hyperparameters,
@@ -36,21 +74,21 @@ def write_hparams(hparams: spec.Hyperparameters,
   hparams_file_name = os.path.join(tuning_dir, 'hparams.json')
   if os.path.exists(hparams_file_name):
     # If hparams.json already exist, use the previously saved hyperparameters.
-    logging.info('Loading hparams from %s', hparams_file_name)
+    logging.info('Loading hparams from %s.', hparams_file_name)
     with open(hparams_file_name, 'r') as f:
       hparams_dict = json.load(f)
     hparams = collections.namedtuple('Hyperparameters',
                                      hparams_dict)(**hparams_dict)
     return hparams
   else:
-    logging.info('Saving hparams to %s', hparams_file_name)
+    logging.info('Saving hparams to %s.', hparams_file_name)
     if RANK == 0:
       with open(hparams_file_name, 'w') as f:
         f.write(json.dumps(hparams._asdict(), indent=2))
     return hparams
 
 
-def write_json(name: str, log_dict: dict, indent: int = 2):
+def write_json(name: str, log_dict: dict, indent: int = 2) -> None:
   if RANK == 0:
     with open(name, 'w') as f:
       f.write(json.dumps(log_dict, indent=indent))
@@ -267,31 +305,9 @@ class MetricLogger(object):
       wandb.finish()
 
 
-class PassThroughMetricLogger(object):
-
-  def __init__(self,
-               csv_path: str = '',
-               events_dir: Optional[str] = None,
-               configs: Optional[flags.FLAGS] = None) -> None:
-    pass
-
-  def append_scalar_metrics(self,
-                            metrics: dict,
-                            global_step: int,
-                            preemption_count: Optional[int] = None) -> None:
-    pass
-
-  def finish(self) -> None:
-    pass
-
-
 def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS) -> Optional[MetricLogger]:
   csv_path = os.path.join(train_dir, 'measurements.csv')
-  if RANK == 0:
-    metrics_logger = MetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
-  else:
-    metrics_logger = PassThroughMetricLogger(
-        csv_path=csv_path, events_dir=train_dir, configs=configs)
+  metrics_logger = MetricLogger(
+      csv_path=csv_path, events_dir=train_dir, configs=configs)
   return metrics_logger

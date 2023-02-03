@@ -105,6 +105,7 @@
 
    ```bash
    pip3 install -e '.[dev]'
+   pre-commit install
    ```
 
    To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
@@ -144,6 +145,7 @@ python3 submission_runner.py \
     --framework=jax \
     --workload=mnist \
     --experiment_dir=/home/znado \
+    --experiment_name=baseline \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
@@ -155,6 +157,7 @@ python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
     --experiment_dir=/home/znado \
+    --experiment_name=baseline \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
@@ -188,7 +191,7 @@ To run the below commands, use the versions installed via `pip install -e '.[dev
 
 To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
 ```bash
-yapf -i -r -vv -p algorithmic_efficiency baselines reference_algorithms tests *.py
+yapf -i -r -vv -p algorithmic_efficiency baselines datasets reference_algorithms tests *.py
 ```
 
 To sort all import orderings, run the following:
@@ -205,6 +208,7 @@ To print out all offending pylint issues, run the following:
 ```bash
 pylint algorithmic_efficiency
 pylint baselines
+pylint datasets
 pylint reference_algorithms
 pylint submission_runner.py
 pylint tests

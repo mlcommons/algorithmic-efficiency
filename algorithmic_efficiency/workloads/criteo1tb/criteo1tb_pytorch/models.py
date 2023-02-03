@@ -39,8 +39,7 @@ class DlrmSmall(nn.Module):
   """Define a DLRM-Small model.
 
   Parameters:
-    vocab_sizes: list of vocab sizes of embedding tables.
-    total_vocab_sizes: sum of embedding table sizes (for jit compilation).
+    vocab_size: vocab size of embedding table.
     num_dense_features: number of dense features as the bottom mlp input.
     mlp_bottom_dims: dimensions of dense layers of the bottom mlp.
     mlp_top_dims: dimensions of dense layers of the top mlp.
@@ -48,35 +47,25 @@ class DlrmSmall(nn.Module):
   """
 
   def __init__(self,
-               vocab_sizes,
-               total_vocab_sizes,
+               vocab_size,
                num_dense_features=13,
                num_sparse_features=26,
                mlp_bottom_dims=(512, 256, 128),
                mlp_top_dims=(1024, 1024, 512, 256, 1),
-               embed_dim=128):
+               embed_dim=128,
+               dropout_rate=0.0):
     super().__init__()
-    self.vocab_sizes = torch.tensor(vocab_sizes, dtype=torch.int32)
-    self.total_vocab_sizes = total_vocab_sizes
+    self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
     self.num_dense_features = num_dense_features
     self.num_sparse_features = num_sparse_features
     self.mlp_bottom_dims = mlp_bottom_dims
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
 
-    self.register_buffer(
-        'idx_offsets',
-        torch.tensor(
-            [0] + list(torch.cumsum(self.vocab_sizes[:-1], dim=0)),
-            dtype=torch.int32))
-    self.embedding_table = nn.Embedding(self.total_vocab_sizes, self.embed_dim)
+    self.embedding_table = nn.Embedding(self.vocab_size, self.embed_dim)
     self.embedding_table.weight.data.uniform_(0, 1)
     # Scale the initialization to fan_in for each slice.
-    scale = 1.0 / torch.sqrt(self.vocab_sizes)
-    scale = torch.unsqueeze(
-        torch.repeat_interleave(
-            scale, self.vocab_sizes, output_size=self.total_vocab_sizes),
-        dim=-1)
+    scale = 1.0 / torch.sqrt(self.vocab_size)
     self.embedding_table.weight.data = scale * self.embedding_table.weight.data
 
     # bottom mlp
@@ -106,6 +95,8 @@ class DlrmSmall(nn.Module):
       top_mlp_layers.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         top_mlp_layers.append(nn.ReLU(inplace=True))
+      if dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+        top_mlp_layers.append(nn.Dropout(p=dropout_rate))
     self.top_mlp = nn.Sequential(*top_mlp_layers)
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):
@@ -125,10 +116,7 @@ class DlrmSmall(nn.Module):
     batch_size = bot_mlp_output.shape[0]
     feature_stack = torch.reshape(bot_mlp_output,
                                   [batch_size, -1, self.embed_dim])
-    idx_offsets = torch.tile(
-        torch.reshape(self.idx_offsets, [1, -1]), [batch_size, 1])
-    idx_lookup = cat_features + idx_offsets
-    idx_lookup = torch.reshape(idx_lookup, [-1])
+    idx_lookup = torch.reshape(cat_features, [-1]) % self.vocab_size
     embed_features = self.embedding_table(idx_lookup)
     embed_features = torch.reshape(embed_features,
                                    [batch_size, -1, self.embed_dim])

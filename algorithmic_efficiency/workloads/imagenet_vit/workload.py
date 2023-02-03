@@ -1,10 +1,13 @@
 """ImageNet ViT workload."""
+
+from typing import Dict, Iterator, Optional
+
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
 
-def decode_variant(variant):
+def decode_variant(variant: str) -> Dict[str, int]:
   """Converts a string like 'B/32' into a params dict."""
   v, patch = variant.split('/')
 
@@ -50,28 +53,36 @@ def decode_variant(variant):
 class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
-  def target_value(self):
-    return 0.77171
+  def validation_target_value(self) -> float:
+    return 0.77309
 
   @property
-  def eval_batch_size(self):
+  def test_target_value(self) -> float:
+    return 0.6568
+
+  @property
+  def eval_batch_size(self) -> int:
     return 2048
 
   @property
-  def max_allowed_runtime_sec(self):
-    return 111600  # 31 hours
+  def max_allowed_runtime_sec(self) -> int:
+    return 111600  # 31 hours.
 
   @property
-  def eval_period_time_sec(self):
+  def eval_period_time_sec(self) -> int:
     return 7 * 60  # 7 mins.
 
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     global_batch_size: int,
-                     cache: bool,
-                     repeat_final_dataset: bool):
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      use_mixup: bool = False,
+      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
+    # We use mixup and Randaugment for ViT workloads.
     use_mixup = use_randaug = split == 'train'
     return super()._build_dataset(data_rng,
                                   split,
@@ -84,5 +95,5 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 140_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 186_666

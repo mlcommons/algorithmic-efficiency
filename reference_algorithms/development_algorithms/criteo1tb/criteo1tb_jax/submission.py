@@ -15,7 +15,7 @@ from algorithmic_efficiency import spec
 def get_batch_size(workload_name):
   # Return the global batch size.
   del workload_name
-  return 524_288
+  return 524_288 // 2
 
 
 def create_learning_rate_fn(workload: spec.Workload,
@@ -74,16 +74,18 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=False)
-    loss = jnp.mean(workload.loss_fn(batch['targets'], logits))
+    loss, _ = workload.loss_fn(batch['targets'], logits)
     return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn(current_param_container)
-  grad = lax.pmean(grad, axis_name='batch')
+  (loss, new_model_state), grad = grad_fn(current_param_container)
+  (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
+  grad_norm = jnp.sqrt(
+      sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
-  return new_model_state, new_optimizer_state, updated_params
+  return new_model_state, new_optimizer_state, updated_params, loss, grad_norm
 
 
 def update_params(workload: spec.Workload,
@@ -105,9 +107,15 @@ def update_params(workload: spec.Workload,
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
-  new_model_state, new_optimizer_state, new_params = pmapped_train_step(
+  new_model_state, new_optimizer_state, new_params, loss, grad_norm = pmapped_train_step(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, per_device_rngs)
+  if workload.metrics_logger is not None:
+    workload.metrics_logger.append_scalar_metrics(
+        {
+            'loss': loss[0],
+            'grad_norm': grad_norm[0],
+        }, global_step)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

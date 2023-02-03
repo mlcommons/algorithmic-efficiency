@@ -1,13 +1,11 @@
 """CIFAR10 workload implemented in PyTorch."""
 
 import contextlib
-import math
 import random
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 import torch
 from torch import nn
-import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
@@ -17,7 +15,6 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet18
@@ -27,30 +24,16 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def _build_input_queue(self,
-                         data_rng: spec.RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int):
-    it = self._build_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-      }
-
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     batch_size: int):
+  def _build_cifar_dataset(self,
+                           data_rng: spec.RandomState,
+                           split: str,
+                           data_dir: str,
+                           batch_size: int) -> torch.utils.data.DataLoader:
     is_train = split == 'train'
 
     normalize = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[i / 255 for i in self.train_mean],
-            std=[i / 255 for i in self.train_stddev])
+        transforms.Normalize(mean=self.train_mean, std=self.train_stddev)
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
@@ -70,12 +53,14 @@ class CifarWorkload(BaseCifarWorkload):
         transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
-    random.Random(data_rng[0]).shuffle(indices)
     indices_split = {
         'train': indices[:self.num_train_examples],
         'validation': indices[self.num_train_examples:],
-        'eval_train': indices[:self.num_eval_train_examples]
     }
+    if split == 'eval_train':
+      train_indices = indices_split['train']
+      random.Random(data_rng[0]).shuffle(train_indices)
+      indices_split['eval_train'] = train_indices[:self.num_eval_train_examples]
     if split in indices_split:
       dataset = torch.utils.data.Subset(dataset, indices_split[split])
 
@@ -97,11 +82,23 @@ class CifarWorkload(BaseCifarWorkload):
         pin_memory=True,
         drop_last=is_train)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
-
     return dataloader
 
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key in ['fc.weight', 'fc.bias']
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    it = self._build_cifar_dataset(data_rng, split, data_dir, global_batch_size)
+    for batch in it:
+      yield {
+          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
+          'targets': batch['targets'].to(DEVICE, non_blocking=True),
+      }
 
   def init_model_fn(
       self,
@@ -118,17 +115,23 @@ class CifarWorkload(BaseCifarWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
     return model, None
 
-  def _update_batch_norm(self, model, update_batch_norm):
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['fc.weight', 'fc.bias']
+
+  def _update_batch_norm(self,
+                         model: spec.ParameterContainer,
+                         update_batch_norm: bool) -> None:
+    bn_layers = (nn.BatchNorm1d,
+                 nn.BatchNorm2d,
+                 nn.BatchNorm3d,
+                 nn.SyncBatchNorm)
     for m in model.modules():
-      if isinstance(
-          m,
-          (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)):
+      if isinstance(m, bn_layers):
         if not update_batch_norm:
           m.eval()
         m.requires_grad_(update_batch_norm)
@@ -144,27 +147,21 @@ class CifarWorkload(BaseCifarWorkload):
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-
     model = params
-
     if mode == spec.ForwardPassMode.EVAL:
       if update_batch_norm:
         raise ValueError(
             'Batch norm statistics cannot be updated during evaluation.')
       model.eval()
-
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
       self._update_batch_norm(model, update_batch_norm)
-
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
         spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
-
     with contexts[mode]():
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
-
     return logits_batch, None
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -173,60 +170,42 @@ class CifarWorkload(BaseCifarWorkload):
               label_batch: spec.Tensor,
               logits_batch: spec.Tensor,
               mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> spec.Tensor:  # differentiable
-    losses = F.cross_entropy(
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
+    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+    per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
         reduction='none',
         label_smoothing=label_smoothing)
-    # mask_batch is assumed to be shape [batch].
+    # `mask_batch` is assumed to be shape [batch].
     if mask_batch is not None:
-      losses *= mask_batch
-    return losses
+      per_example_losses *= mask_batch
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return summed_loss / n_valid_examples, per_example_losses
 
-  def _eval_metric(self, logits, labels):
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
-    predicted = torch.argmax(logits, 1)
-    # not accuracy, but nr. of correct predictions
-    accuracy = (predicted == labels).sum()
-    loss = self.loss_fn(labels, logits).sum()
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
+    weights = batch.get('weights')
+    if weights is None:
+      weights = torch.ones(len(logits)).to(DEVICE)
+    _, predicted = torch.max(logits.data, 1)
+    # Number of correct predictions.
+    accuracy = ((predicted == batch['targets']) * weights).sum()
+    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
+    loss = per_example_losses.sum()
     return {'accuracy': accuracy, 'loss': loss}
-
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int = 0):
-    """Run a full evaluation of the model."""
-    data_rng, model_rng = prng.split(rng, 2)
-    if split not in self._eval_iters:
-      # These iterators repeat indefinitely.
-      self._eval_iters[split] = self._build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
-
-    total_metrics = {
-        'accuracy': torch.tensor(0., device=DEVICE),
-        'loss': torch.tensor(0., device=DEVICE),
-    }
-    num_batches = int(math.ceil(num_examples / global_batch_size))
-    for _ in range(num_batches):
-      batch = next(self._eval_iters[split])
-      logits, _ = self.model_fn(
-          params,
-          batch,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          model_rng,
-          update_batch_norm=False)
-      batch_metrics = self._eval_metric(logits, batch['targets'])
-      total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
-      }
-    if USE_PYTORCH_DDP:
-      for metric in total_metrics.values():
-        dist.all_reduce(metric)
-    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

@@ -1,205 +1,110 @@
-r"""Parallel BLEU score calculation.
+from itertools import zip_longest
+from typing import Sequence
 
-Modified from https://github.com/google/flax/tree/main/examples/wmt.
+from absl import logging
+import sacrebleu
+import torch
+import torch.distributed as dist
 
-This version of BLEU calculation is derived from the MLPerf transformer
-reference.
-Tries to match SacreBLEU metric reasonably well, but is not identical.
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
-Refs:
-    tokenizer at:
-    https://github.com/tensorflow/models/blob/master/official/transformer/utils/tokenizer.py
-    original preprocessing tokenizer:
-    https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/mteval-v14.pl#L954-L983
-    original t2t code:
-    https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/bleu_hook.py
-
-Usage:
-    refs = '''food bar brown cow
-    blee bloo dog sat
-    or please take me out
-    '''
-    hyps = '''foo bar brown cow
-    blee bloo dog sit
-    please do take me out
-    '''
-    bleu_local(refs.split('\n'), hyps.split('\n'))  # 39.65
-"""
-
-import collections
-import math
-import re
-import sys
-import unicodedata
-
-import numpy as np
-import six
+USE_PYTORCH_DDP, _, DEVICE, N_GPUS = pytorch_setup()
 
 
-class UnicodeRegex(object):
-  """Ad-hoc hack to recognize all punctuation and symbols."""
-
-  def __init__(self):
-    punctuation = self.property_chars('P')
-    self.nondigit_punct_re = re.compile(r'([^\d])([' + punctuation + r'])')
-    self.punct_nondigit_re = re.compile(r'([' + punctuation + r'])([^\d])')
-    self.symbol_re = re.compile('([' + self.property_chars('S') + '])')
-
-  def property_chars(self, prefix):
-    return ''.join(
-        six.unichr(x)
-        for x in range(sys.maxunicode)
-        if unicodedata.category(six.unichr(x)).startswith(prefix))
-
-
-uregex = UnicodeRegex()
-
-
-def bleu_tokenize(string):
-  r"""Tokenize a string following the official BLEU implementation.
-
-  See https://github.com/moses-smt/mosesdecoder/'
-           'blob/master/scripts/generic/mteval-v14.pl#L954-L983
-  In our case, the input string is expected to be just one line
-  and no HTML entities de-escaping is needed.
-  So we just tokenize on punctuation and symbols,
-  except when a punctuation is preceded and followed by a digit
-  (e.g. a comma/dot as a thousand/decimal separator).
-
-  Note that a number (e.g. a year) followed by a dot at the end of sentence
-  is NOT tokenized, i.e. the dot stays with the number because
-  `s/(\p{P})(\P{N})/ $1 $2/g` does not match this case (unless we add a
-  space after each sentence). However, this error is already in the
-  original mteval-v14.pl and we want to be consistent with it.
-
-  Args:
-    string: the input string
-
-  Returns:
-    a list of tokens
+# Modified (added sync for PyTorch DDP) from
+# https://github.com/mjpost/sacrebleu/blob/v1.3.1/sacrebleu.py.
+# Assumes that sacrebleu==1.3.1 is installed.
+def corpus_bleu(sys_stream: Sequence[str],
+                ref_streams: Sequence[str],
+                smooth_method: str = 'exp',
+                smooth_value: float = 0.0,
+                force: bool = False,
+                lowercase: bool = False,
+                tokenize: str = '13a',
+                use_effective_order: bool = False) -> sacrebleu.BLEU:
+  """Produces BLEU scores along with its sufficient statistics from a source
+  against one or more references.
+      :param sys_stream: The system stream (a sequence of segments).
+      :param ref_streams: A list of one or more reference streams
+                          (each a sequence of segments).
+      :param smooth: The smoothing method to use.
+      :param smooth_value: For 'floor' smoothing, the floor to use.
+      :param force: Ignore data that looks already tokenized.
+      :param lowercase: Lowercase the data.
+      :param tokenize: The tokenizer to use.
+      :return: A BLEU object containing everything you'd want.
   """
-  string = uregex.nondigit_punct_re.sub(r'\1 \2 ', string)
-  string = uregex.punct_nondigit_re.sub(r' \1 \2', string)
-  string = uregex.symbol_re.sub(r' \1 ', string)
-  return string.split()
 
+  # Add some robustness to the input arguments
+  if isinstance(sys_stream, str):
+    sys_stream = [sys_stream]
+  if isinstance(ref_streams, str):
+    ref_streams = [[ref_streams]]
 
-def _get_ngrams(segment, max_order):
-  """Extracts all n-grams up to a given maximum order from an input segment.
+  sys_len = 0
+  ref_len = 0
 
-  Args:
-    segment: text segment from which n-grams will be extracted.
-    max_order: maximum length in tokens of the n-grams returned by this methods.
+  correct = [0 for _ in range(sacrebleu.NGRAM_ORDER)]
+  total = [0 for _ in range(sacrebleu.NGRAM_ORDER)]
 
-  Returns:
-    The Counter containing all n-grams up to max_order in segment
-    with a count of how many times each n-gram occurred.
-  """
-  ngram_counts = collections.Counter()
-  for order in range(1, max_order + 1):
-    for i in range(0, len(segment) - order + 1):
-      ngram = tuple(segment[i:i + order])
-      ngram_counts[ngram] += 1
-  return ngram_counts
+  # look for already-tokenized sentences
+  tokenized_count = 0
 
+  fhs = [sys_stream] + ref_streams
+  for lines in zip_longest(*fhs):
+    if None in lines:
+      raise EOFError('Source and reference streams have different lengths!')
 
-def compute_bleu_matches(reference_corpus, translation_corpus, max_order=4):
-  """Computes BLEU match stats of translations against one or more references.
+    if lowercase:
+      lines = [x.lower() for x in lines]
 
-  Args:
-    reference_corpus: list of references for each translation. Each reference
-      should be tokenized into a list of tokens.
-    translation_corpus: list of translations to score. Each translation should
-      be tokenized into a list of tokens.
-    max_order: Maximum n-gram order to use when computing BLEU score.
+    if not (force or tokenize == 'none') and lines[0].rstrip().endswith(' .'):
+      tokenized_count += 1
 
-  Returns:
-    Aggregated n-gram stats for BLEU calculation.
-  """
-  reference_length = 0
-  translation_length = 0
+      if tokenized_count == 100:
+        logging.warning(
+            'That\'s 100 lines that end in a tokenized period (\'.\')')
+        logging.warning('It looks like you forgot to detokenize your test '
+                        'data, which may hurt your score.')
+        logging.warning('If you insist your data is detokenized, '
+                        'or don\'t care, you can suppress this message with '
+                        '\'--force\'.')
 
-  matches_by_order = [0] * max_order
-  possible_matches_by_order = [0] * max_order
+    output, *refs = [sacrebleu.TOKENIZERS[tokenize](x.rstrip()) for x in lines]
 
-  for (references, translations) in zip(reference_corpus, translation_corpus):
-    reference_length += len(references)
-    translation_length += len(translations)
-    ref_ngram_counts = _get_ngrams(references, max_order)
-    translation_ngram_counts = _get_ngrams(translations, max_order)
+    ref_ngrams, _, closest_len = sacrebleu.ref_stats(output, refs)
 
-    overlap = dict((ngram, min(count, translation_ngram_counts[ngram]))
-                   for ngram,
-                   count in ref_ngram_counts.items())
+    sys_len += len(output.split())
+    ref_len += closest_len
 
-    for ngram in overlap:
-      matches_by_order[len(ngram) - 1] += overlap[ngram]
-    for ngram in translation_ngram_counts:
-      possible_matches_by_order[len(ngram) -
-                                1] += translation_ngram_counts[ngram]
+    sys_ngrams = sacrebleu.extract_ngrams(output)
+    for ngram in sys_ngrams.keys():
+      n = len(ngram.split())
+      correct[n - 1] += min(sys_ngrams[ngram], ref_ngrams.get(ngram, 0))
+      total[n - 1] += sys_ngrams[ngram]
 
-  return [
-      np.array(matches_by_order),
-      np.array(possible_matches_by_order),
-      np.array(reference_length),
-      np.array(translation_length)
-  ]
+  # When using PyTorch DDP, get stats from all processes and sum them.
+  if USE_PYTORCH_DDP:
+    # Sum `sys_len` and `ref_len` integers from all processes.
+    sys_len = torch.tensor(sys_len, dtype=torch.int64, device=DEVICE)
+    dist.all_reduce(sys_len)
+    sys_len = sys_len.item()
+    ref_len = torch.tensor(ref_len, dtype=torch.int64, device=DEVICE)
+    dist.all_reduce(ref_len)
+    ref_len = ref_len.item()
+    # Sum `correct` and `total` sequences from all processes.
+    correct = torch.tensor(correct, dtype=torch.int64, device=DEVICE)
+    dist.all_reduce(correct)
+    correct = correct.cpu().numpy().tolist()
+    total = torch.tensor(total, dtype=torch.int64, device=DEVICE)
+    dist.all_reduce(total)
+    total = total.cpu().numpy().tolist()
 
-
-def bleu_partial(ref_lines, hyp_lines, case_sensitive=False):
-  """Compute n-gram statistics for two lists of references and translations."""
-  if len(ref_lines) != len(hyp_lines):
-    raise ValueError('Reference and translation lists have different '
-                     'numbers of lines.')
-  if not case_sensitive:
-    ref_lines = [x.lower() for x in ref_lines]
-    hyp_lines = [x.lower() for x in hyp_lines]
-  ref_tokens = [bleu_tokenize(x) for x in ref_lines]
-  hyp_tokens = [bleu_tokenize(x) for x in hyp_lines]
-  return compute_bleu_matches(ref_tokens, hyp_tokens)
-
-
-def complete_bleu(matches_by_order,
-                  possible_matches_by_order,
-                  reference_length,
-                  translation_length,
-                  max_order=4,
-                  use_bp=True):
-  """Compute BLEU score from aggregated n-gram statistics."""
-  precisions = [0] * max_order
-  smooth = 1.0
-  geo_mean = 0.0
-  for i in range(0, max_order):
-    if possible_matches_by_order[i] > 0:
-      precisions[i] = matches_by_order[i] / possible_matches_by_order[i]
-      if matches_by_order[i] > 0:
-        precisions[i] = matches_by_order[i] / possible_matches_by_order[i]
-      else:
-        smooth *= 2
-        precisions[i] = 1.0 / (smooth * possible_matches_by_order[i])
-    else:
-      precisions[i] = 0.0
-
-  if max(precisions) > 0:
-    p_log_sum = sum(math.log(p) for p in precisions if p)
-    geo_mean = math.exp(p_log_sum / max_order)
-
-  if use_bp:
-    if not reference_length:
-      bp = 1.0
-    else:
-      ratio = translation_length / reference_length
-      if ratio <= 0.0:
-        bp = 0.0
-      elif ratio >= 1.0:
-        bp = 1.0
-      else:
-        bp = math.exp(1 - 1. / ratio)
-  bleu = geo_mean * bp
-  return float(bleu) * 100.0
-
-
-def bleu_local(ref_lines, hyp_lines, case_sensitive=False):
-  """Compute BLEU for two lists of reference and hypothesis translations."""
-  stats = bleu_partial(ref_lines, hyp_lines, case_sensitive=case_sensitive)
-  return complete_bleu(*stats) * 100
+  return sacrebleu.compute_bleu(
+      correct,
+      total,
+      sys_len,
+      ref_len,
+      smooth_method=smooth_method,
+      smooth_value=smooth_value,
+      use_effective_order=use_effective_order)

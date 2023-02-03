@@ -1,5 +1,5 @@
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 from absl import flags
 from flax import jax_utils
@@ -34,6 +34,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
     """
     model_config = models.DeepspeechConfig(
         feed_forward_dropout_rate=dropout_rate,
+        use_specaug=self.use_specaug,
         input_dropout_rate=aux_dropout_rate)
     self._model = models.Deepspeech(model_config)
     input_shape = [(320000,), (320000,)]

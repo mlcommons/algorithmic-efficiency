@@ -7,14 +7,11 @@ import os
 
 import h5py
 import jax
-import numpy as np
 import tensorflow as tf
 
 from algorithmic_efficiency import data_utils
 
-_NUM_TRAIN_H5_FILES = 973
 _TRAIN_DIR = 'knee_singlecoil_train'
-_NUM_VALID_H5_FILES = 199
 _VAL_DIR = 'knee_singlecoil_val'
 _EVAL_SEED = 0
 
@@ -147,14 +144,6 @@ def _create_generator(filename):
       _h5_to_examples, args=(filename,), output_signature=signature)
 
 
-def _pad_zeros_like(global_batch_size, x):
-  shape = x.shape[1:]
-  pad_size = global_batch_size - x.shape[0]
-  padding = tf.zeros((pad_size, *shape), x.dtype)
-  padded_x = tf.concat((x, padding), axis=0)
-  return padded_x
-
-
 def load_fastmri_split(global_batch_size,
                        split,
                        data_dir,
@@ -197,6 +186,8 @@ def load_fastmri_split(global_batch_size,
     file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
     h5_paths = sorted(glob.glob(file_pattern))[100:]
 
+  is_train = split == 'train'
+  shuffle = is_train or split == 'eval_train'
   ds = tf.data.Dataset.from_tensor_slices(h5_paths)
   ds = ds.interleave(
       _create_generator,
@@ -206,7 +197,7 @@ def load_fastmri_split(global_batch_size,
   ds = ds.cache()
 
   def process_example(example_index, example):
-    if split == 'train':
+    if shuffle:
       process_rng = tf.cast(jax.random.fold_in(shuffle_rng, 0), tf.int64)
       process_rng = tf.random.experimental.stateless_fold_in(
           process_rng, example_index)
@@ -217,35 +208,22 @@ def load_fastmri_split(global_batch_size,
 
   ds = ds.enumerate().map(process_example, num_parallel_calls=16)
 
-  if split == 'train':
+  if shuffle:
     ds = ds.shuffle(
         16 * global_batch_size,
         seed=shuffle_rng[0],
         reshuffle_each_iteration=True)
-    ds = ds.repeat()
+    if is_train:
+      ds = ds.repeat()
 
-  ds = ds.batch(global_batch_size, drop_remainder=False)
+  ds = ds.batch(global_batch_size, drop_remainder=is_train)
 
-  if split != 'train':
+  if not is_train:
     ds = ds.cache()
 
-  def finite_iterator(ds):
-    for batch in iter(ds):
-      actual_batch_size = batch['inputs'].shape[0]
-      if actual_batch_size != global_batch_size:
-        batch = jax.tree_map(
-            functools.partial(_pad_zeros_like, global_batch_size), batch)
-        batch['weights'] = np.concatenate(
-            (np.ones((actual_batch_size,)),
-             np.zeros((global_batch_size - actual_batch_size,))))
-      else:
-        batch['weights'] = np.ones((global_batch_size,))
-      batch = data_utils.shard_numpy_ds(batch)
-      yield batch
-
-  if split == 'train':
+  if is_train:
     ds = ds.prefetch(10)
-    iterator = map(data_utils.shard_numpy_ds, ds)
+    iterator = map(data_utils.shard_and_maybe_pad_np, ds)
     return iterator
   else:
     if num_batches:
@@ -253,4 +231,8 @@ def load_fastmri_split(global_batch_size,
     if repeat_final_eval_dataset:
       ds = ds.repeat()
     ds = ds.prefetch(10)
-    return finite_iterator(ds)
+    return map(
+        functools.partial(
+            data_utils.shard_and_maybe_pad_np,
+            global_batch_size=global_batch_size),
+        ds)

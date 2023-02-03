@@ -1,6 +1,5 @@
 """A JAX implementation of DLRM-Small."""
 
-import functools
 from typing import Sequence
 
 import flax.linen as nn
@@ -40,29 +39,26 @@ class DlrmSmall(nn.Module):
   """Define a DLRM-Small model.
 
   Parameters:
-    vocab_sizes: list of vocab sizes of embedding tables.
-    total_vocab_sizes: sum of embedding table sizes (for jit compilation).
+    vocab_size: vocab size of embedding table.
     num_dense_features: number of dense features as the bottom mlp input.
     mlp_bottom_dims: dimensions of dense layers of the bottom mlp.
     mlp_top_dims: dimensions of dense layers of the top mlp.
     embed_dim: embedding dimension.
   """
 
-  vocab_sizes: Sequence[int]
-  total_vocab_sizes: int
-  num_dense_features: int
+  vocab_size: int = 32 * 128 * 1024  # 4_194_304
+  num_dense_features: int = 13
   mlp_bottom_dims: Sequence[int] = (512, 256, 128)
   mlp_top_dims: Sequence[int] = (1024, 1024, 512, 256, 1)
   embed_dim: int = 128
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, train):
-    del train
-
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
-    # bottom mlp
+    # Bottom MLP.
     for dense_dim in self.mlp_bottom_dims:
       bot_mlp_input = nn.Dense(
           dense_dim,
@@ -77,26 +73,14 @@ class DlrmSmall(nn.Module):
                                 [batch_size, -1, self.embed_dim])
 
     # Embedding table look-up.
-    vocab_sizes = jnp.asarray(self.vocab_sizes, dtype=jnp.int32)
-    idx_offsets = jnp.asarray(
-        [0] + list(jnp.cumsum(vocab_sizes[:-1])), dtype=jnp.int32)
-    idx_offsets = jnp.tile(jnp.reshape(idx_offsets, [1, -1]), [batch_size, 1])
-    idx_lookup = cat_features + idx_offsets
-    # Scale the initialization to fan_in for each slice.
-    scale = 1.0 / jnp.sqrt(vocab_sizes)
-    scale = jnp.expand_dims(
-        jnp.repeat(
-            scale, vocab_sizes, total_repeat_length=self.total_vocab_sizes),
-        -1)
+    idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
 
-    def scaled_init(key, shape, scale, init, dtype=jnp.float_):
-      return scale * init(key, shape, dtype)
+    def scaled_init(key, shape, dtype=jnp.float_):
+      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) /
+              jnp.sqrt(self.vocab_size))
 
-    scaled_variance_scaling_init = functools.partial(
-        scaled_init, scale=scale, init=jnn.initializers.uniform(scale=1.0))
     embedding_table = self.param('embedding_table',
-                                 scaled_variance_scaling_init,
-                                 [self.total_vocab_sizes, self.embed_dim])
+                                 scaled_init, [self.vocab_size, self.embed_dim])
 
     idx_lookup = jnp.reshape(idx_lookup, [-1])
     embed_features = embedding_table[idx_lookup]
@@ -119,5 +103,9 @@ class DlrmSmall(nn.Module):
               top_mlp_input)
       if layer_idx < (num_layers_top - 1):
         top_mlp_input = nn.relu(top_mlp_input)
+      if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+        top_mlp_input = nn.Dropout(
+            rate=self.dropout_rate, deterministic=not train)(
+                top_mlp_input)
     logits = top_mlp_input
     return logits

@@ -10,9 +10,6 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import numpy as np
-import torch
-
-from algorithmic_efficiency.interop_utils import jax_to_pytorch
 
 # Constants
 # We assume the default End-of-Sentence token id is 2 (SentencePiece).
@@ -87,11 +84,7 @@ def gather_beams(nested, beam_indices, batch_size, new_beam_size):
   def gather_fn(x):
     if x.ndim < 2:  # ignore scalars (e.g. cache index)
       return x
-    else:
-      if isinstance(x, torch.Tensor):
-        return x[(jax_to_pytorch(batch_indices).long(),
-                  jax_to_pytorch(beam_indices).long())]
-      return x[batch_indices, beam_indices]
+    return x[batch_indices, beam_indices]
 
   return jax.tree_map(gather_fn, nested)
 
@@ -166,8 +159,7 @@ def beam_search(inputs,
                 beam_size=4,
                 alpha=0.6,
                 eos_id=EOS_ID,
-                max_decode_len=None,
-                lax_while=True):
+                max_decode_len=None):
   """Beam search for transformer machine translation.
 
   Args:
@@ -179,7 +171,6 @@ def beam_search(inputs,
     alpha: float: scaling factor for brevity penalty.
     eos_id: int: id of end-of-sentence token for target vocabulary.
     max_decode_len: int: maximum length of decoded translations.
-    lax_while: bool: if True, use jax.lax.while_loop.
 
   Returns:
      Tuple of:
@@ -350,15 +341,9 @@ def beam_search(inputs,
         cache=top_alive_cache)
 
   # Run while loop and get final beam search state.
-  if lax_while:  # For the Jax workload.
-    final_state = lax.while_loop(beam_search_loop_cond_fn,
-                                 beam_search_loop_body_fn,
-                                 beam_search_init_state)
-  else:  # For the PyTorch workload.
-    state = beam_search_init_state
-    while beam_search_loop_cond_fn(state):
-      state = beam_search_loop_body_fn(state)
-    final_state = state
+  final_state = lax.while_loop(beam_search_loop_cond_fn,
+                               beam_search_loop_body_fn,
+                               beam_search_init_state)
 
   # Account for the edge-case where there are no finished sequences for a
   # particular batch item. If so, return live sequences for that batch item.

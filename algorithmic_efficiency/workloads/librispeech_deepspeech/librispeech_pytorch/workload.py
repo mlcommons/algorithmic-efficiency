@@ -14,13 +14,16 @@ from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch
     DeepspeechConfig
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.model import \
     DeepspeechEncoderDecoder
+from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
+    BaseDeepspeechLibrispeechWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
+                                    BaseDeepspeechLibrispeechWorkload):
 
   def init_model_fn(
       self,
@@ -33,11 +36,11 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     as input_dropout_rate.
     """
     torch.random.manual_seed(rng[0])
-    torch.backends.cudnn.benchmark = False
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
             feed_forward_dropout_rate=dropout_rate,
-            input_dropout_rate=aux_dropout_rate))
+            use_specaug=self.use_specaug,
+            input_dropout_rate=aux_dropout_rate)).eval()
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     t = MAX_INPUT_LENGTH
@@ -49,9 +52,9 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
+    self.requires_sync_before_eval = False
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)

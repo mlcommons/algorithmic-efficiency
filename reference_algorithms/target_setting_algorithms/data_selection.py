@@ -22,4 +22,5 @@ def data_selection(
   del hyperparameters
   del global_step
   del rng
-  return next(input_queue)
+  batch = next(input_queue)
+  return batch
