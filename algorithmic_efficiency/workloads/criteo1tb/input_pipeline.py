@@ -108,8 +108,9 @@ def get_criteo1tb_dataset(split: str,
     ]
 
   is_training = split == 'train'
+  shuffle = is_training or split == 'eval_train'
   ds = tf.data.Dataset.list_files(
-      file_paths, shuffle=is_training, seed=shuffle_rng[0])
+      file_paths, shuffle=shuffle, seed=shuffle_rng[0])
 
   ds = ds.interleave(
       tf.data.TextLineDataset,
@@ -117,7 +118,7 @@ def get_criteo1tb_dataset(split: str,
       block_length=global_batch_size // 8,
       num_parallel_calls=128,
       deterministic=False)
-  if is_training:
+  if shuffle:
     ds = ds.shuffle(buffer_size=524_288 * 100, seed=shuffle_rng[1])
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
   parse_fn = functools.partial(_parse_example_fn, num_dense_features)
@@ -129,8 +130,7 @@ def get_criteo1tb_dataset(split: str,
   if num_batches is not None:
     ds = ds.take(num_batches)
 
-  # We do not need a ds.cache() because we will do this anyways with
-  # itertools.cycle in the base workload.
+  # We do not use ds.cache() because the dataset is so large that it would OOM.
   if repeat_final_dataset:
     ds = ds.repeat()
 
