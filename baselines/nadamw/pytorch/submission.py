@@ -191,8 +191,8 @@ def init_optimizer_state(workload: spec.Workload,
           NAdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              betas=(
-                  1.0 - hyperparameters.one_minus_beta1, hyperparameters.beta2),
+              betas=(1.0 - hyperparameters.one_minus_beta1,
+                     hyperparameters.beta2),
               eps=1e-8,
               weight_decay=hyperparameters.weight_decay)
   }
@@ -200,16 +200,11 @@ def init_optimizer_state(workload: spec.Workload,
   def pytorch_cosine_warmup(step_hint: int, hyperparameters, optimizer):
     warmup_steps = int(hyperparameters.warmup_percent * step_hint)
     warmup = LinearLR(
-        optimizer,
-        start_factor=1e-10,
-        end_factor=1.,
-        total_iters=warmup_steps)
+        optimizer, start_factor=1e-10, end_factor=1., total_iters=warmup_steps)
     cosine_steps = max(step_hint - warmup_steps, 1)
     cosine_decay = CosineAnnealingLR(optimizer, T_max=cosine_steps)
     return SequentialLR(
-        optimizer,
-        schedulers=[warmup, cosine_decay],
-        milestones=[warmup_steps])
+        optimizer, schedulers=[warmup, cosine_decay], milestones=[warmup_steps])
 
   optimizer_state['scheduler'] = pytorch_cosine_warmup(
       workload.step_hint, hyperparameters, optimizer_state['optimizer'])

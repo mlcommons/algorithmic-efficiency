@@ -35,8 +35,7 @@ def init_optimizer_state(workload: spec.Workload,
     cosine_fn = optax.cosine_decay_schedule(
         init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
     schedule_fn = optax.join_schedules(
-        schedules=[warmup_fn, cosine_fn],
-        boundaries=[warmup_steps])
+        schedules=[warmup_fn, cosine_fn], boundaries=[warmup_steps])
     return schedule_fn
 
   # Create optimizer + LR schedule.

@@ -55,8 +55,7 @@ def create_lr_schedule_fn(
       power=1,
       transition_steps=int(decay_steps * hyperparameters.decay_steps_factor))
   lr_schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, polynomial_schedule_fn],
-      boundaries=[warmup_steps])
+      schedules=[warmup_fn, polynomial_schedule_fn], boundaries=[warmup_steps])
   return lr_schedule_fn
 
 

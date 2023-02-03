@@ -25,8 +25,8 @@ def init_optimizer_state(workload: spec.Workload,
           torch.optim.AdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              betas=(
-                  1.0 - hyperparameters.one_minus_beta1, hyperparameters.beta2),
+              betas=(1.0 - hyperparameters.one_minus_beta1,
+                     hyperparameters.beta2),
               eps=1e-8,
               weight_decay=hyperparameters.weight_decay)
   }
