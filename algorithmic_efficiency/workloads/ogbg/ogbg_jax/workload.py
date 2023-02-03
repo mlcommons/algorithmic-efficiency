@@ -88,7 +88,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     # Numerically stable implementation of BCE loss.
     # This mimics TensorFlow's tf.nn.sigmoid_cross_entropy_with_logits().
-    positive_logits = (logits >= 0)
+    positive_logits = logits >= 0
     relu_logits = jnp.where(positive_logits, logits, 0)
     abs_logits = jnp.where(positive_logits, logits, -logits)
     losses = relu_logits - (logits * smoothed_labels) + (
