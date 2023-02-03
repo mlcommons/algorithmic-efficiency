@@ -150,9 +150,6 @@ flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_integer('max_global_steps',
                      None,
                      'Maximum number of update steps.')
-flags.DEFINE_integer('seed',
-                     None,
-                     'RNG seed. If unset defaults to machine randomness.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -300,7 +297,7 @@ def train_once(
     global_start_time = sync_ddp_time(global_start_time, DEVICE)
 
   logging.info('Starting training loop.')
-  while train_state['is_time_remaining'] and global_step < 8001 and \
+  while train_state['is_time_remaining'] and \
       not train_state['goal_reached'] and \
       not train_state['training_complete']:
     step_rng = prng.fold_in(rng, global_step)
@@ -347,7 +344,8 @@ def train_once(
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if global_step % 160 == 0:  # DO NOT SUBMIT
+    if ((current_time - train_state['last_eval_time']) >=
+        workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
           latest_eval_result = workload.eval_model(global_eval_batch_size,
@@ -392,13 +390,6 @@ def train_once(
             train_state['last_eval_time'] = sync_ddp_time(
                 train_state['last_eval_time'], DEVICE)
 
-          train_state['last_eval_time'] = time.time()
-          if USE_PYTORCH_DDP:
-            # Make sure all processes finish evaluation at the same time.
-            train_state['last_eval_time'] = sync_ddp_time(
-                train_state['last_eval_time'], DEVICE)
-
-          # torch.cuda.empty_cache()  # DO NOT SUBMIT
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
@@ -440,8 +431,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  max_global_steps: int,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None,
-                                 seed: Optional[int] = None):
+                                 log_dir: Optional[str] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
@@ -487,10 +477,7 @@ def score_submission_on_workload(workload: spec.Workload,
     all_metrics = []
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
-      if seed is None:
-        rng_seed = struct.unpack('I', os.urandom(4))[0]
-      else:
-        rng_seed = seed
+      rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
@@ -592,9 +579,8 @@ def main(_):
                                        FLAGS.max_global_steps,
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
-                                       logging_dir_path,
-                                       FLAGS.seed)
-  logging.info(f'Final {FLAGS.workload} score: {score}')
+                                       logging_dir_path)
+  logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
     logging.info(profiler.summary())
