@@ -16,5 +16,8 @@
   },
   "dropout_rate": {
       "feasible_points": [0.0, 0.1]
+  },
+  "end_factor": {
+    "feasible_points": [1e-3, 1e-2]
   }
 }
