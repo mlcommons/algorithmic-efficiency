@@ -3,7 +3,7 @@
       "min": 2e-2, "max": 5.0, "scaling": "log"
   },
   "one_minus_beta1": {
-      "min": 5e-3, "max": 0.3, "scaling": "log"
+      "feasible_points": [0.1]
   },
   "warmup_percent": {
       "feasible_points": [0.05]
@@ -16,5 +16,8 @@
   },
   "dropout_rate": {
       "feasible_points": [0.0, 0.1]
+  },
+  "end_factor": {
+    "feasible_points": [1e-3, 1e-2]
   }
 }

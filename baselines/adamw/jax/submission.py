@@ -26,23 +26,24 @@ def init_optimizer_state(workload: spec.Workload,
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
+    warmup_steps = int(hyperparameters.warmup_percent * step_hint)
     warmup_fn = optax.linear_schedule(
         init_value=0.,
         end_value=hyperparameters.learning_rate,
-        transition_steps=hyperparameters.warmup_steps)
-    cosine_steps = max(step_hint - hyperparameters.warmup_steps, 1)
+        transition_steps=warmup_steps)
+    cosine_steps = max(step_hint - warmup_steps, 1)
     cosine_fn = optax.cosine_decay_schedule(
         init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
     schedule_fn = optax.join_schedules(
         schedules=[warmup_fn, cosine_fn],
-        boundaries=[hyperparameters.warmup_steps])
+        boundaries=[warmup_steps])
     return schedule_fn
 
   # Create optimizer + LR schedule.
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
   opt_init_fn, opt_update_fn = optax.adamw(
       learning_rate=lr_schedule_fn,
-      b1=hyperparameters.beta1,
+      b1=1.0 - hyperparameters.one_minus_beta1,
       b2=hyperparameters.beta2,
       eps=1e-8,
       weight_decay=hyperparameters.weight_decay)
