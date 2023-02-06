@@ -56,3 +56,6 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass
