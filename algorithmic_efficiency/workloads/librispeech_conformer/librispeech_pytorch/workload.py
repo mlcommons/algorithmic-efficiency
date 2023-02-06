@@ -18,7 +18,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     model as conformer_model
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.libri_dataset import \
+from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
@@ -110,14 +110,16 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return (logits, logits_paddings), None
 
   def _build_input_queue(self,
-                         data_rng: jax.random.PRNGKey,
+                         data_rng: spec.RandomState,
                          split: str,
                          data_dir: str,
                          global_batch_size: int,
-                         num_batches: Optional[int] = None,
-                         repeat_final_dataset: bool = False):
-    del num_batches
+                         cache: Optional[bool] = False,
+                         repeat_final_dataset: Optional[bool] = False,
+                         num_batches: Optional[int] = None):
+    del cache
     del repeat_final_dataset
+    del num_batches
 
     is_train = split == 'train'
     if split == 'train':

@@ -2,7 +2,6 @@ import functools
 import math
 from typing import Dict, Optional, Tuple
 
-from absl import flags
 from flax import jax_utils
 import flax.linen as nn
 import jax
@@ -10,15 +9,17 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import torch
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     models
-
-FLAGS = flags.FLAGS
+from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
+    LibriSpeechDataset
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -27,6 +28,56 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
     self.use_specaug = use_specaug
+
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = False,
+                         repeat_final_dataset: Optional[bool] = False,
+                         num_batches: Optional[int] = None):
+    del data_rng
+    del cache
+    del repeat_final_dataset
+    del num_batches
+    train = False
+    if split == 'train':
+      split = 'train-clean-100+train-clean-360+train-other-500'
+      train = True
+    elif split == 'eval_train':
+      split = 'train-clean-100+train-clean-360+train-other-500'
+    elif split == 'validation':
+      split = 'dev-clean+dev-other'
+    elif split == 'test':
+      split = 'test-clean'
+
+    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+
+    dataloader = data_utils.cycle(
+        torch.utils.data.DataLoader(
+            ds,
+            batch_size=global_batch_size,
+            shuffle=train,
+            sampler=None,
+            num_workers=4,
+            prefetch_factor=10,
+            pin_memory=False,
+            drop_last=train,
+        ))
+
+    for batch in iter(dataloader):
+      inputs, input_paddings = batch['inputs']
+      targets, target_paddings = batch['targets']
+
+      numpy_batch = {
+          'inputs': (inputs.numpy(), input_paddings.numpy()),
+          'targets': (targets.numpy(), target_paddings.numpy()),
+      }
+
+      padded_batch = data_utils.shard_and_maybe_pad_np(
+          numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+      yield padded_batch
 
   def init_model_fn(
       self,
