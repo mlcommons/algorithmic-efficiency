@@ -101,13 +101,12 @@ def pmapped_train_step(workload,
 
   def _loss_fn(params):
     """loss function used for training."""
-    params_rng, dropout_rng = jax.random.split(rng, 2)
     (logits, logit_paddings), new_model_state = workload.model_fn(
         params,
         batch,
         model_state,
         spec.ForwardPassMode.TRAIN,
-        {'params' : params_rng, 'dropout' : dropout_rng},
+        rng,
         update_batch_norm=True)
 
     loss, _ = workload.loss_fn(batch['targets'], (logits, logit_paddings))

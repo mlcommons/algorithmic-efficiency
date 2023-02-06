@@ -182,7 +182,6 @@ def _make_one_batch_workload(workload_class,
 
     def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
       # pylint: disable=line-too-long
-      print(FLAGS.identical)
       if not (FLAGS.identical and
               os.path.exists(f"tests/modeldiffs/{workload_name}/compare.py")):
         return super().init_model_fn(
