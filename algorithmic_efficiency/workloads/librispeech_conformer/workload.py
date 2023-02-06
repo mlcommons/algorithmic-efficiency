@@ -1,6 +1,5 @@
 import math
 
-
 from algorithmic_efficiency import spec
 
 

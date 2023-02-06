@@ -16,10 +16,10 @@ from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
-    model as conformer_model
 from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
+    model as conformer_model
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 

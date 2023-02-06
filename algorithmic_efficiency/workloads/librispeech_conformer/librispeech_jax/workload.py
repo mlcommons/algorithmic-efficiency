@@ -16,10 +16,10 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
-    models
 from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
+    models
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
