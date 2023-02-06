@@ -2,7 +2,6 @@ import math
 import os
 from typing import Dict, Optional, Tuple
 
-from absl import flags
 import jax
 import numpy as np
 import torch
@@ -15,7 +14,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
 VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-FLAGS = flags.FLAGS
 
 
 class BaseWmtWorkload(spec.Workload):

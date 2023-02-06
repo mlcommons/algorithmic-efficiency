@@ -3,7 +3,6 @@
 import math
 from typing import Dict, Tuple
 
-from absl import flags
 import jax
 import torch
 import torch.distributed as dist
@@ -12,7 +11,6 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 
-FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 
