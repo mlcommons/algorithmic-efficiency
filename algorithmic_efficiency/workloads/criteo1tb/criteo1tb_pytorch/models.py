@@ -95,7 +95,8 @@ class DlrmSmall(nn.Module):
       top_mlp_layers.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         top_mlp_layers.append(nn.ReLU(inplace=True))
-      if dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+      if (dropout_rate is not None and dropout_rate > 0.0 and
+          layer_idx == num_layers_top - 2):
         top_mlp_layers.append(nn.Dropout(p=dropout_rate))
     self.top_mlp = nn.Sequential(*top_mlp_layers)
     for module in self.top_mlp.modules():

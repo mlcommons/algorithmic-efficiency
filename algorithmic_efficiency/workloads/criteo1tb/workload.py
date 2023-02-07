@@ -1,5 +1,4 @@
 """Criteo1TB DLRM workload base class."""
-import json
 import math
 import os
 from typing import Dict, Optional, Tuple

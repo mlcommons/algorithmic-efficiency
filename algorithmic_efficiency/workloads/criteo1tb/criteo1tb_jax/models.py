@@ -103,7 +103,8 @@ class DlrmSmall(nn.Module):
               top_mlp_input)
       if layer_idx < (num_layers_top - 1):
         top_mlp_input = nn.relu(top_mlp_input)
-      if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+      if (self.dropout_rate is not None and self.dropout_rate > 0.0 and
+          layer_idx == num_layers_top - 2):
         top_mlp_input = nn.Dropout(
             rate=self.dropout_rate, deterministic=not train)(
                 top_mlp_input)
