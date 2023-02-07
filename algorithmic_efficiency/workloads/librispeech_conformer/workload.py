@@ -16,12 +16,19 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   _num_outputs: int = 1024
 
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/wer'] < self.target_value
+  def has_reached_validation_target(self, eval_result: float) -> bool:
+    return eval_result['validation/wer'] < self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 0.0842
+  def validation_target_value(self) -> float:
+    return 0.078477
+
+  def has_reached_test_target(self, eval_result: float) -> bool:
+    return eval_result['test/wer'] < self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.046696
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -130,5 +137,5 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 100_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 133_333

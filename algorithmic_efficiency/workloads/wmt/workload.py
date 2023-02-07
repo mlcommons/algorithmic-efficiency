@@ -27,12 +27,19 @@ class BaseWmtWorkload(spec.Workload):
     super().__init__()
     self._tokenizer = None
 
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/bleu'] > self.target_value
+  def has_reached_validation_target(self, eval_result: float) -> bool:
+    return eval_result['validation/bleu'] > self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 30.6446
+  def validation_target_value(self) -> float:
+    return 30.8491
+
+  def has_reached_test_target(self, eval_result: float) -> bool:
+    return eval_result['test/bleu'] > self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 30.9973
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -84,8 +91,8 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 100_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 133_333
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

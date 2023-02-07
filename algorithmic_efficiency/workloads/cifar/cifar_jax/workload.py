@@ -1,7 +1,7 @@
 """CIFAR workload implemented in Jax."""
+
 import functools
-import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -13,7 +13,8 @@ import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.cifar.cifar_jax import input_pipeline
+from algorithmic_efficiency.workloads.cifar.cifar_jax.input_pipeline import \
+    create_input_iter
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
     models
@@ -21,39 +22,23 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def _build_input_queue(self,
-                         data_rng: spec.RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = None,
-                         repeat_final_dataset: Optional[bool] = None,
-                         num_batches: Optional[int] = None):
-    return self._build_dataset(data_rng,
-                               split,
-                               data_dir,
-                               global_batch_size,
-                               cache,
-                               repeat_final_dataset,
-                               num_batches)
-
-  def _build_dataset(self,
-                     data_rng: spec.RandomState,
-                     split: str,
-                     data_dir: str,
-                     batch_size: int,
-                     cache: Optional[bool] = None,
-                     repeat_final_dataset: Optional[bool] = None,
-                     num_batches: Optional[int] = None):
+  def _build_cifar_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None
+  ) -> Iterator[Dict[str, spec.Tensor]]:
     ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
-    ds_builder.download_and_prepare()
     train = split == 'train'
     assert self.num_train_examples + self.num_validation_examples == 50000
     if split in ['train', 'eval_train']:
       split = f'train[:{self.num_train_examples}]'
     elif split == 'validation':
       split = f'train[{self.num_train_examples}:]'
-    ds = input_pipeline.create_input_iter(
+    ds = create_input_iter(
         split,
         ds_builder,
         data_rng,
@@ -65,16 +50,32 @@ class CifarWorkload(BaseCifarWorkload):
         self.scale_ratio_range,
         train=train,
         cache=not train if cache is None else cache,
-        repeat_final_dataset=repeat_final_dataset,
-        num_batches=num_batches)
+        repeat_final_dataset=repeat_final_dataset)
     return ds
+
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del num_batches
+    return self._build_cifar_dataset(data_rng,
+                                     split,
+                                     data_dir,
+                                     global_batch_size,
+                                     cache,
+                                     repeat_final_dataset)
 
   def sync_batch_stats(
       self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
     """Sync the batch statistics across replicas."""
     # An axis_name is passed to pmap which can then be used by pmean.
-    # In this case each device has its own version of the batch statistics and
-    # we average them.
+    # In this case each device has its own version of the batch statistics
+    # and we average them.
     avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
     new_model_state = model_state.copy(
         {'batch_stats': avg_fn(model_state['batch_stats'])})
@@ -104,29 +105,6 @@ class CifarWorkload(BaseCifarWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'
 
-  @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
-      static_broadcasted_argnums=(0,))
-  def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    logits, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
-    weights = batch.get('weights')
-    if weights is None:
-      weights = jnp.ones(len(logits))
-    return self._compute_metrics(logits, batch['targets'], weights)
-
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -155,19 +133,17 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+  def loss_fn(self,
+              label_batch: spec.Tensor,
+              logits_batch: spec.Tensor,
+              mask_batch: Optional[spec.Tensor] = None,
+              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
     """Return (correct scalar average loss, 1-d array of per-example losses)."""
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
     per_example_losses = -jnp.sum(
         smoothed_targets * nn.log_softmax(logits_batch), axis=-1)
-    # mask_batch is assumed to be shape [batch]
+    # `mask_batch` is assumed to be shape [batch].
     if mask_batch is not None:
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
@@ -191,41 +167,26 @@ class CifarWorkload(BaseCifarWorkload):
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int = 0) -> Dict[str, float]:
-    del global_step
-    data_rng, model_rng = jax.random.split(rng, 2)
-    # Sync batch statistics across replicas before evaluating.
-    model_state = self.sync_batch_stats(model_state)
-    num_batches = int(math.ceil(num_examples / global_batch_size))
-    # We already repeat the dataset indefinitely in tf.data.
-    if split not in self._eval_iters:
-      self._eval_iters[split] = self._build_input_queue(
-          data_rng,
-          split=split,
-          global_batch_size=global_batch_size,
-          data_dir=data_dir,
-          cache=True,
-          repeat_final_dataset=True,
-          num_batches=num_batches)
-
-    eval_metrics = {}
-    for _ in range(num_batches):
-      batch = next(self._eval_iters[split])
-      # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params, batch, model_state, model_rng)
-      for metric_name, metric_value in synced_metrics.items():
-        if metric_name not in eval_metrics:
-          eval_metrics[metric_name] = 0.0
-        eval_metrics[metric_name] += metric_value
-
-    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
-                                eval_metrics)
-    return eval_metrics
+  @functools.partial(
+      jax.pmap,
+      axis_name='batch',
+      in_axes=(None, 0, 0, 0, None),
+      static_broadcasted_argnums=(0,))
+  def _eval_model(
+      self,
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+    """Return the mean accuracy and loss as a dict."""
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
+    weights = batch.get('weights')
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    return self._compute_metrics(logits, batch['targets'], weights)

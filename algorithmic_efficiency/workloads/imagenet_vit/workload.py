@@ -53,8 +53,12 @@ def decode_variant(variant: str) -> Dict[str, int]:
 class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
-  def target_value(self) -> float:
-    return 0.77171
+  def validation_target_value(self) -> float:
+    return 0.77309
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.6568
 
   @property
   def eval_batch_size(self) -> int:
@@ -91,5 +95,5 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 140_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 186_666

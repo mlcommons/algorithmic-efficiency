@@ -69,6 +69,8 @@ def key_transform(k):
   return tuple(new_key)
 
 
+sd_transform = None
+
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 

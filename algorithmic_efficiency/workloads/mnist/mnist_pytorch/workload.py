@@ -4,9 +4,9 @@ from collections import OrderedDict
 import contextlib
 from typing import Dict, Iterator, Optional, Tuple
 
-import numpy as np
 import torch
 from torch import nn
+import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
@@ -43,22 +43,6 @@ class _Model(nn.Module):
     return self.net(x)
 
 
-def mnist_to_torch(batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
-  # Slice off the part of the batch for this device and then transpose from
-  # [N, H, W, C] to [N, C, H, W]. Only transfer the inputs to GPU.
-  new_batch = {}
-  for k, v in batch.items():
-    if USE_PYTORCH_DDP:
-      new_v = v[RANK]
-    else:
-      new_v = v.reshape(-1, *v.shape[2:])
-    if k == 'inputs':
-      new_v = np.transpose(new_v, (0, 3, 1, 2))
-    dtype = torch.long if k == 'targets' else torch.float
-    new_batch[k] = torch.as_tensor(new_v, dtype=dtype, device=DEVICE)
-  return new_batch
-
-
 class MnistWorkload(BaseMnistWorkload):
 
   def _build_input_queue(
@@ -70,14 +54,61 @@ class MnistWorkload(BaseMnistWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    per_device_batch_size = int(global_batch_size / N_GPUS)
 
-    np_iter = super()._build_input_queue(data_rng,
-                                         split,
-                                         data_dir,
-                                         global_batch_size,
-                                         num_batches,
-                                         repeat_final_dataset)
-    return map(mnist_to_torch, np_iter)
+    # Only create and iterate over tf input pipeline in one Python process to
+    # avoid creating too many threads.
+    if RANK == 0:
+      np_iter = super()._build_input_queue(data_rng,
+                                           split,
+                                           data_dir,
+                                           global_batch_size,
+                                           num_batches,
+                                           repeat_final_dataset)
+    while True:
+      if RANK == 0:
+        batch = next(np_iter)  # pylint: disable=stop-iteration-return
+        inputs = torch.as_tensor(
+            batch['inputs'], dtype=torch.float32, device=DEVICE)
+        targets = torch.as_tensor(
+            batch['targets'], dtype=torch.long, device=DEVICE)
+        weights = torch.as_tensor(
+            batch['weights'], dtype=torch.bool, device=DEVICE)
+        # Send batch to other devices when using DDP.
+        if USE_PYTORCH_DDP:
+          dist.broadcast(inputs, src=0)
+          inputs = inputs[0]
+          dist.broadcast(targets, src=0)
+          targets = targets[0]
+          dist.broadcast(weights, src=0)
+          weights = weights[0]
+        else:
+          inputs = inputs.view(-1, *inputs.shape[2:])
+          targets = targets.view(-1, *targets.shape[2:])
+          weights = weights.view(-1, *weights.shape[2:])
+      else:
+        inputs = torch.empty((N_GPUS, per_device_batch_size, 28, 28, 1),
+                             dtype=torch.float32,
+                             device=DEVICE)
+        dist.broadcast(inputs, src=0)
+        inputs = inputs[RANK]
+        targets = torch.empty((N_GPUS, per_device_batch_size),
+                              dtype=torch.long,
+                              device=DEVICE)
+        dist.broadcast(targets, src=0)
+        targets = targets[RANK]
+        weights = torch.empty((N_GPUS, per_device_batch_size),
+                              dtype=torch.bool,
+                              device=DEVICE)
+        dist.broadcast(weights, src=0)
+        weights = weights[RANK]
+
+      batch = {
+          'inputs': inputs.permute(0, 3, 1, 2),
+          'targets': targets,
+          'weights': weights
+      }
+      yield batch
 
   def init_model_fn(
       self,
@@ -113,20 +144,15 @@ class MnistWorkload(BaseMnistWorkload):
     del model_state
     del rng
     del update_batch_norm
-
     model = params
-
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
-
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
         spec.ForwardPassMode.TRAIN: contextlib.nullcontext
     }
-
     with contexts[mode]():
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
-
     return logits_batch, None
 
   # Does NOT apply regularization, which is left to the submitter to do in

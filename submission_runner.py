@@ -13,6 +13,7 @@ python3 submission_runner.py \
     --experiment_dir=/home/znado/experiment_dir \
     --experiment_name=baseline
 """
+
 import datetime
 import importlib
 import inspect
@@ -20,7 +21,7 @@ import json
 import os
 import struct
 import time
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from absl import app
 from absl import flags
@@ -129,6 +130,11 @@ flags.DEFINE_string(
     'It is required and the directory should have '
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
+flags.DEFINE_boolean(
+    'save_intermediate_checkpoints',
+    True,
+    'Whether to save any intermediate checkpoints. '
+    'If False, it will only keep the latest checkpoint.')
 flags.DEFINE_boolean('resume_last_run',
                      None,
                      'Whether to resume the experiment from its last run.')
@@ -200,19 +206,20 @@ def import_workload(workload_path: str,
   return workload_class(**workload_init_kwargs)
 
 
-def train_once(workload: spec.Workload,
-               global_batch_size: int,
-               global_eval_batch_size: int,
-               data_dir: str,
-               imagenet_v2_data_dir: str,
-               init_optimizer_state: spec.InitOptimizerFn,
-               update_params: spec.UpdateParamsFn,
-               data_selection: spec.DataSelectionFn,
-               hyperparameters: Optional[spec.Hyperparameters],
-               rng: spec.RandomState,
-               profiler: Profiler,
-               max_global_steps: int = None,
-               log_dir: Optional[str] = None) -> Tuple[spec.Timing, spec.Steps]:
+def train_once(
+    workload: spec.Workload,
+    global_batch_size: int,
+    global_eval_batch_size: int,
+    data_dir: str,
+    imagenet_v2_data_dir: str,
+    init_optimizer_state: spec.InitOptimizerFn,
+    update_params: spec.UpdateParamsFn,
+    data_selection: spec.DataSelectionFn,
+    hyperparameters: Optional[spec.Hyperparameters],
+    rng: spec.RandomState,
+    profiler: Profiler,
+    max_global_steps: int = None,
+    log_dir: Optional[str] = None) -> Tuple[spec.Timing, Dict[str, Any]]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -355,8 +362,9 @@ def train_once(workload: spec.Workload,
               train_state['accumulated_submission_time'])
           latest_eval_result['total_duration'] = time_since_start
           eval_results.append((global_step, latest_eval_result))
-          train_state['goal_reached'] = workload.has_reached_goal(
-              latest_eval_result)
+          train_state['goal_reached'] = (
+              workload.has_reached_validation_target(latest_eval_result) and
+              workload.has_reached_test_target(latest_eval_result))
 
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
@@ -372,7 +380,9 @@ def train_once(workload: spec.Workload,
                 eval_results=eval_results,
                 global_step=global_step,
                 preemption_count=preemption_count,
-                checkpoint_dir=log_dir)
+                checkpoint_dir=log_dir,
+                save_intermediate_checkpoints=FLAGS
+                .save_intermediate_checkpoints)
 
           train_state['last_eval_time'] = time.time()
           if USE_PYTORCH_DDP:
@@ -405,7 +415,8 @@ def train_once(workload: spec.Workload,
         eval_results=eval_results,
         global_step=global_step,
         preemption_count=preemption_count,
-        checkpoint_dir=log_dir)
+        checkpoint_dir=log_dir,
+        save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
 
   return train_state['accumulated_submission_time'], metrics
 

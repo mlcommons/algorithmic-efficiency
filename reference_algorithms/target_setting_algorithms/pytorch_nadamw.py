@@ -201,6 +201,7 @@ def init_optimizer_state(workload: spec.Workload,
               weight_decay=hyperparameters.weight_decay)
   }
 
+  target_setting_step_hint = int(0.75 * workload.step_hint)
   optimizer_state['scheduler'] = cosine_warmup.pytorch_cosine_warmup(
-      workload.step_hint, hyperparameters, optimizer_state['optimizer'])
+      target_setting_step_hint, hyperparameters, optimizer_state['optimizer'])
   return optimizer_state

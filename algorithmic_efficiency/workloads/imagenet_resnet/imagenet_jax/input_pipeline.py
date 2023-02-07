@@ -11,7 +11,6 @@ from flax import jax_utils
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import tensorflow_probability as tfp
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
@@ -76,7 +75,16 @@ def _distorted_bounding_box_crop(image_bytes: spec.Tensor,
   return image
 
 
-def _resize(image: spec.Tensor, image_size: int) -> spec.Tensor:
+def resize(image: spec.Tensor, image_size: int) -> spec.Tensor:
+  """Resizes the image given the image size.
+
+  Args:
+    image: `Tensor` of image data.
+    image_size: A size of the image to be reshaped.
+
+  Returns:
+    Resized image 'Tensor'.
+  """
   return tf.image.resize([image], [image_size, image_size],
                          method=tf.image.ResizeMethod.BICUBIC)[0]
 
@@ -110,7 +118,7 @@ def _decode_and_random_crop(image_bytes: spec.Tensor,
   image = tf.cond(
       bad,
       lambda: _decode_and_center_crop(image_bytes, image_size, resize_size),
-      lambda: _resize(image, image_size))
+      lambda: resize(image, image_size))
 
   return image
 
@@ -137,7 +145,7 @@ def _decode_and_center_crop(image_bytes: spec.Tensor,
       padded_center_crop_size
   ])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
-  image = _resize(image, image_size)
+  image = resize(image, image_size)
 
   return image
 
@@ -240,12 +248,15 @@ def mixup_tf(key: spec.RandomState,
   Returns:
     Mixed inputs and targets.
   """
+  key_a = tf.random.experimental.stateless_fold_in(key, 0)
+  key_b = tf.random.experimental.stateless_fold_in(key_a, 0)
+
+  gamma_a = tf.random.stateless_gamma((1,), key_a, alpha)
+  gamma_b = tf.random.stateless_gamma((1,), key_b, alpha)
+  weight = tf.squeeze(gamma_a / (gamma_a + gamma_b))
   # Transform to one-hot targets.
   targets = tf.one_hot(targets, 1000)
-  # Compute weight for convex combination by sampling from Beta distribution.
-  beta_dist = tfp.distributions.Beta(alpha, alpha)
-  weight = beta_dist.sample(seed=tf.cast(key[0], tf.int32))
-  # Return convex combination of original and shifted inputs and targets.
+
   inputs = weight * inputs + (1.0 - weight) * tf.roll(inputs, 1, axis=0)
   targets = weight * targets + (1.0 - weight) * tf.roll(targets, 1, axis=0)
   return inputs, targets
@@ -270,7 +281,6 @@ def create_split(split,
                  randaug_num_layers=2,
                  randaug_magnitude=10) -> Iterator[Dict[str, spec.Tensor]]:
   """Creates a split from the ImageNet dataset using TensorFlow Datasets."""
-
   shuffle_rng, preprocess_rng, mixup_rng = jax.random.split(rng, 3)
 
   def decode_example(example_index, example):

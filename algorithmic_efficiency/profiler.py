@@ -1,7 +1,7 @@
-"""Profiling code for Jax and PyTorch
+"""Profiling code for Jax and PyTorch.
 
 Modified from:
-https://github.com/Lightning-AI/lightning/tree/master/src/pytorch_lightning/profilers
+https://github.com/Lightning-AI/lightning/tree/master/src/pytorch_lightning/profilers.
 """
 
 from collections import defaultdict

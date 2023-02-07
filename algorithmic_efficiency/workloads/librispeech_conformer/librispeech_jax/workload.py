@@ -23,9 +23,10 @@ FLAGS = flags.FLAGS
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def __init__(self, tokenizer_vocab_path=None):
+  def __init__(self, tokenizer_vocab_path=None, use_specaug=True):
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
+    self.use_specaug = use_specaug
 
   def init_model_fn(
       self,
@@ -40,7 +41,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model_config = models.ConformerConfig(
         attention_residual_dropout_rate=dropout_rate,
         feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
+        input_dropout_rate=aux_dropout_rate,
+        use_specaug=self.use_specaug)
     self._model = models.Conformer(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
