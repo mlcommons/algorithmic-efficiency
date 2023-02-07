@@ -52,7 +52,9 @@ class NAdamW(torch.optim.Optimizer):
       raise ValueError(f'Invalid beta parameter at index 1: {betas[1]}')
     if not 0.0 <= weight_decay:
       raise ValueError(f'Invalid weight_decay value: {weight_decay}')
-    defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    defaults = {
+        'lr': lr, 'betas': betas, 'eps': eps, 'weight_decay': weight_decay
+    }
     super().__init__(params, defaults)
 
   def __setstate__(self, state):
@@ -191,23 +193,20 @@ def init_optimizer_state(workload: spec.Workload,
           NAdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              betas=(hyperparameters.beta1, hyperparameters.beta2),
+              betas=(1.0 - hyperparameters.one_minus_beta1,
+                     hyperparameters.beta2),
               eps=1e-8,
               weight_decay=hyperparameters.weight_decay)
   }
 
   def pytorch_cosine_warmup(step_hint: int, hyperparameters, optimizer):
+    warmup_steps = int(hyperparameters.warmup_factor * step_hint)
     warmup = LinearLR(
-        optimizer,
-        start_factor=1e-10,
-        end_factor=1.,
-        total_iters=hyperparameters.warmup_steps)
-    cosine_steps = max(step_hint - hyperparameters.warmup_steps, 1)
+        optimizer, start_factor=1e-10, end_factor=1., total_iters=warmup_steps)
+    cosine_steps = max(step_hint - warmup_steps, 1)
     cosine_decay = CosineAnnealingLR(optimizer, T_max=cosine_steps)
     return SequentialLR(
-        optimizer,
-        schedulers=[warmup, cosine_decay],
-        milestones=[hyperparameters.warmup_steps])
+        optimizer, schedulers=[warmup, cosine_decay], milestones=[warmup_steps])
 
   optimizer_state['scheduler'] = pytorch_cosine_warmup(
       workload.step_hint, hyperparameters, optimizer_state['optimizer'])

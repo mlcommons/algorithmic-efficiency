@@ -22,7 +22,7 @@ def predictions_match_labels(*,
                              **kwargs) -> jnp.ndarray:
   """Returns a binary array indicating where predictions match the labels."""
   del kwargs  # Unused.
-  preds = (logits > 0)
+  preds = logits > 0
   return (preds == labels).astype(jnp.float32)
 
 
