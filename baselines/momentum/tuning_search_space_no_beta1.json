@@ -5,7 +5,7 @@
   "one_minus_beta1": {
       "feasible_points": [0.1]
   },
-  "warmup_percent": {
+  "warmup_factor": {
       "feasible_points": [0.05]
   },
   "weight_decay": {
@@ -16,6 +16,9 @@
   },
   "dropout_rate": {
       "feasible_points": [0.0, 0.1]
+  },
+  "decay_steps_factor": {
+    "feasible_points": [0.9]
   },
   "end_factor": {
     "feasible_points": [1e-3, 1e-2]

@@ -47,7 +47,7 @@ def init_optimizer_state(workload: spec.Workload,
 def create_lr_schedule_fn(
     step_hint: int,
     hyperparameters: spec.Hyperparameters) -> Callable[[int], float]:
-  warmup_steps = int(hyperparameters.warmup_percent * step_hint)
+  warmup_steps = int(hyperparameters.warmup_factor * step_hint)
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=hyperparameters.learning_rate,

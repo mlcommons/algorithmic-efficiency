@@ -5,7 +5,10 @@
   "one_minus_beta1": {
       "min": 4e-3, "max": 0.1, "scaling": "log"
   },
-  "warmup_percent": {
+  "beta2": {
+      "feasible_points": [0.999]
+  },
+  "warmup_factor": {
       "feasible_points": [0.05]
   },
   "weight_decay": {

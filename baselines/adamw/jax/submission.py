@@ -26,7 +26,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
-    warmup_steps = int(hyperparameters.warmup_percent * step_hint)
+    warmup_steps = int(hyperparameters.warmup_factor * step_hint)
     warmup_fn = optax.linear_schedule(
         init_value=0.,
         end_value=hyperparameters.learning_rate,
