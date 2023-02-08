@@ -5,8 +5,8 @@ import random
 from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
-import torch.distributed as dist
 from torch import nn
+import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms

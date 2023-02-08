@@ -3,7 +3,6 @@ import math
 import random
 from typing import Dict, Optional, Tuple
 
-import jax
 import torch
 import torch.distributed as dist
 import torch.distributed.nn as dist_nn

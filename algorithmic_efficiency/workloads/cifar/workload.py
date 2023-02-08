@@ -1,9 +1,9 @@
 """CIFAR workload parent class."""
 
+import abc
 import math
 from typing import Any, Dict, Tuple
 
-import abc
 import jax
 import torch
 
