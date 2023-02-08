@@ -54,13 +54,12 @@ class WmtWorkload(BaseWmtWorkload):
 
     # PyTorch loss functions expect the class dim directly after the batch dim.
     per_example_losses = loss_fn(logits.transpose(-2, -1), targets)
-    mask = torch.where(targets > 0, 1, 0)
-    if weights is not None:
-      mask = torch.logical_and(weights, mask)
+    if weights is None:
+      weights = torch.ones_like(targets)
     per_example_losses = torch.where(
-        mask.to(torch.bool), per_example_losses, 0.)
+        weights.to(torch.bool), per_example_losses, 0.)
     summed_loss = per_example_losses.sum()
-    n_valid_samples = mask.sum()
+    n_valid_samples = weights.sum()
     return summed_loss / n_valid_samples, per_example_losses
 
   # Primary eval / decode step functions.
@@ -217,7 +216,7 @@ class WmtWorkload(BaseWmtWorkload):
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
     per_device_batch_size = int(global_batch_size / N_GPUS)
-    n_inputs = 6 if split == 'train' else 2
+    n_inputs = 7 if split == 'train' else 3
 
     # The input pipeline has to be created in all processes, because
     # self._tokenizer has to be available in every process.
@@ -227,6 +226,10 @@ class WmtWorkload(BaseWmtWorkload):
                                          global_batch_size,
                                          num_batches,
                                          repeat_final_dataset)
+    # We only need np_iter in one Python process.
+    if RANK != 0:
+      del np_iter
+
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
@@ -235,10 +238,7 @@ class WmtWorkload(BaseWmtWorkload):
         tensor_list = []
         for key, value in batch.items():
           tensor = torch.as_tensor(value, dtype=torch.int64, device=DEVICE)
-          if key != 'weights':
-            tensor_list.append(tensor)
-          else:
-            weights = tensor.clone()
+          tensor_list.append(tensor)
           batch[key] = (
               tensor[0] if USE_PYTORCH_DDP else tensor.view(
                   -1, value.shape[-1]))
@@ -249,16 +249,8 @@ class WmtWorkload(BaseWmtWorkload):
             per_device_batch_size = torch.tensor(
                 len(batch['inputs']), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
-            weights = weights if 'weights' in batch else None
-            if weights is None:
-              weights = torch.ones((N_GPUS, per_device_batch_size, 256),
-                                   dtype=torch.int64,
-                                   device=DEVICE)
-              # Has no effect, but without it `batch` has no `weights` key
-              # for RANK == 0, but has one for all others.
-              batch['weights'] = weights[0]
-            dist.broadcast(weights, src=0)
-          dist.broadcast(torch.stack(tensor_list), src=0)
+          # We don't need to broadcast the batch for the device with RANK == 0.
+          dist.broadcast(torch.stack(tensor_list)[:, 1:].contiguous(), src=0)
       else:
         batch = {}
         # During eval, the batch size of the remainder might be different.
@@ -267,12 +259,8 @@ class WmtWorkload(BaseWmtWorkload):
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
-          weights = torch.empty((N_GPUS, per_device_batch_size, 256),
-                                dtype=torch.int64,
-                                device=DEVICE)
-          dist.broadcast(weights, src=0)
-          batch['weights'] = weights[RANK]
-        tensor = torch.empty((n_inputs, N_GPUS, per_device_batch_size, 256),
+        # N_GPUS - 1 since we don't broadcast the batch for RANK == 0.
+        tensor = torch.empty((n_inputs, N_GPUS - 1, per_device_batch_size, 256),
                              dtype=torch.int64,
                              device=DEVICE)
         dist.broadcast(tensor, src=0)
@@ -284,13 +272,15 @@ class WmtWorkload(BaseWmtWorkload):
               'inputs_segmentation',
               'targets',
               'targets_position',
-              'targets_segmentation'
+              'targets_segmentation',
+              'weights'
           ]
         # For all eval/test splits.
         else:
-          keys = ['inputs', 'targets']
+          keys = ['inputs', 'targets', 'weights']
         for key, n in zip(keys, range(n_inputs)):
-          batch[key] = tensor[n][RANK]
+          # RANK - 1 since we don't broadcast the batch for RANK == 0.
+          batch[key] = tensor[n][RANK - 1]
       yield batch
 
   def eval_step(self,
@@ -298,7 +288,7 @@ class WmtWorkload(BaseWmtWorkload):
                 batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     targets = batch['targets']
-    weights = batch.get('weights')
+    weights = batch['weights']
     logits, _ = self.model_fn(
         params,
         batch,
@@ -308,10 +298,8 @@ class WmtWorkload(BaseWmtWorkload):
         update_batch_norm=False)
     _, per_example_losses = self.compute_weighted_cross_entropy(
         logits, targets, weights, 0.0)
-    mask = torch.where(targets > 0, 1, 0)
-    if weights is not None:
-      mask = torch.logical_and(weights, mask)
-    acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
+    acc_sum, weight_sum = self.compute_weighted_accuracy(
+        logits, targets, weights)
     return {
         'loss': torch.sum(per_example_losses),
         'accuracy': acc_sum,

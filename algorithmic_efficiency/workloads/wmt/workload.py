@@ -116,6 +116,11 @@ class BaseWmtWorkload(spec.Workload):
     # when _build_input_queue is called (not when next() is first called on it).
     def _input_queue_generator():
       for batch in iter(ds):
+        weights = batch.get('weights')
+        updated_weights = np.where(batch['targets'] > 0, 1, 0)
+        if weights is not None:
+          updated_weights = np.logical_and(weights, updated_weights)
+        batch['weights'] = updated_weights
         yield batch
 
     return _input_queue_generator()

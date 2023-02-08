@@ -55,12 +55,11 @@ class WmtWorkload(BaseWmtWorkload):
 
     per_example_losses = -jnp.sum(
         smoothed_targets * nn.log_softmax(logits), axis=-1)
-    mask = jnp.where(targets > 0, 1, 0)
-    if weights is not None:
-      mask = jnp.logical_and(weights, mask)
-    per_example_losses = jnp.where(mask, per_example_losses, 0.)
+    if weights is None:
+      weights = jnp.ones_like(targets)
+    per_example_losses = jnp.where(weights, per_example_losses, 0.)
     summed_loss = per_example_losses.sum()
-    n_valid_samples = mask.sum()
+    n_valid_samples = weights.sum()
     return summed_loss / n_valid_samples, per_example_losses
 
   @functools.partial(
@@ -71,14 +70,12 @@ class WmtWorkload(BaseWmtWorkload):
     """Calculate evaluation metrics on a batch."""
     inputs = batch['inputs']
     targets = batch['targets']
-    weights = batch.get('weights')
+    weights = batch['weights']
     logits = self._eval_model.apply({'params': params}, inputs, targets)
     _, per_example_losses = self.compute_weighted_cross_entropy(
         logits, targets, weights, 0.0)
-    mask = jnp.where(targets > 0, 1, 0)
-    if weights is not None:
-      mask = jnp.logical_and(weights, mask)
-    acc_sum, weight_sum = self.compute_weighted_accuracy(logits, targets, mask)
+    acc_sum, weight_sum = self.compute_weighted_accuracy(
+        logits, targets, weights)
     return {
         'loss': jnp.sum(per_example_losses),
         'accuracy': acc_sum,
