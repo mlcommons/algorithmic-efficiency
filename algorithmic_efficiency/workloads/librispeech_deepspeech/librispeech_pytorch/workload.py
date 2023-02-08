@@ -14,16 +14,13 @@ from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch
     DeepspeechConfig
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.model import \
     DeepspeechEncoderDecoder
-from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
-    BaseDeepspeechLibrispeechWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
-                                    BaseDeepspeechLibrispeechWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,
@@ -59,3 +56,6 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    pass

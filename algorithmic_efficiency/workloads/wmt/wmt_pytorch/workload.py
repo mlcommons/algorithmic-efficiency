@@ -1,6 +1,6 @@
 """WMT workload implemented in PyTorch."""
 import contextlib
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from absl import logging
 import jax
@@ -305,3 +305,15 @@ class WmtWorkload(BaseWmtWorkload):
         'accuracy': acc_sum,
         'denominator': weight_sum,
     }
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    if USE_PYTORCH_DDP:
+      for metric in total_metrics.values():
+        dist.all_reduce(metric)
+    total_metrics = {k: v.item() for k, v in total_metrics.items()}
+    eval_denominator = total_metrics.pop('denominator')
+    return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)

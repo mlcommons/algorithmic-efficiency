@@ -1,7 +1,6 @@
 import functools
 from typing import Optional
 
-from absl import flags
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
@@ -13,14 +12,9 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.work
     LibriSpeechConformerWorkload
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax import \
     models
-from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
-    BaseDeepspeechLibrispeechWorkload
-
-FLAGS = flags.FLAGS
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
-                                    BaseDeepspeechLibrispeechWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,

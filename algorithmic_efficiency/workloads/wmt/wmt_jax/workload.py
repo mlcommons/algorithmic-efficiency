@@ -1,6 +1,6 @@
 """WMT workload implemented in Jax."""
 import functools
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 from absl import logging
 from flax import jax_utils
@@ -263,3 +263,11 @@ class WmtWorkload(BaseWmtWorkload):
                                targets_segmentation=targets_segmentations,
                                rngs={'dropout': rng})
     return logits_batch, None
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    eval_denominator = total_metrics.pop('denominator')
+    return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)

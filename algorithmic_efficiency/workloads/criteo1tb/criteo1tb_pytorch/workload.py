@@ -20,6 +20,10 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
+  @property
+  def eval_batch_size(self) -> int:
+    return 65536
+
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     ls = torch.nn.LogSigmoid()
@@ -63,8 +67,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Dropout is unused."""
-    del dropout_rate
+    """Only dropout is used."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = DlrmSmall(
@@ -72,7 +75,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
-        embed_dim=self.embed_dim)
+        embed_dim=self.embed_dim,
+        dropout_rate=dropout_rate)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -136,6 +140,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                            global_batch_size,
                                            num_batches,
                                            repeat_final_dataset)
+    weights = None
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
@@ -189,6 +194,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
 
+      if weights is None:
+        weights = torch.ones(per_device_batch_size, device=DEVICE)
       batch = {
           'inputs': inputs,
           'targets': targets,
