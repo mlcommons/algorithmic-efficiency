@@ -1,7 +1,7 @@
 """MNIST workload implemented in Jax."""
 
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -118,3 +118,9 @@ class MnistWorkload(BaseMnistWorkload):
     metrics = {'accuracy': accuracy, 'loss': loss}
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    return jax.tree_map(lambda x: float(x[0] / num_examples), total_metrics)

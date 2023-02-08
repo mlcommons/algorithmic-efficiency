@@ -1,7 +1,7 @@
 """CIFAR workload implemented in Jax."""
 
 import functools
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -190,3 +190,9 @@ class CifarWorkload(BaseCifarWorkload):
     if weights is None:
       weights = jnp.ones(len(logits))
     return self._compute_metrics(logits, batch['targets'], weights)
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    return jax.tree_map(lambda x: float(x[0] / num_examples), total_metrics)
