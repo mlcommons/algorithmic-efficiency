@@ -206,3 +206,10 @@ class OgbgWorkload(BaseOgbgWorkload):
         logits=logits.cpu().numpy(),
         labels=labels.cpu().numpy(),
         mask=masks.cpu().numpy())
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    return {k: float(v) for k, v in total_metrics.compute().items()}

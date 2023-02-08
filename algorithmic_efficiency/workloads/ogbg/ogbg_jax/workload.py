@@ -1,6 +1,6 @@
 """OGBG workload implemented in Jax."""
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -107,3 +107,11 @@ class OgbgWorkload(BaseOgbgWorkload):
       static_broadcasted_argnums=(0,))
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    total_metrics = total_metrics.reduce()
+    return {k: float(v) for k, v in total_metrics.compute().items()}

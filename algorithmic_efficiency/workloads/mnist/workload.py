@@ -1,16 +1,15 @@
 """MNIST workload parent class."""
 
+import abc
 import functools
 import itertools
 import math
-from typing import Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, Optional
 
-from flax import jax_utils
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
-import torch.distributed as dist
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
@@ -133,6 +132,12 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self) -> int:
     return 10
 
+  @abc.abstractmethod
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+
   def _build_input_queue(
       self,
       data_rng: spec.RandomState,
@@ -209,10 +214,5 @@ class BaseMnistWorkload(spec.Workload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    if FLAGS.framework == 'jax':
-      total_metrics = jax_utils.unreplicate(total_metrics)
-      return {k: float(v / num_examples) for k, v in total_metrics.items()}
-    elif USE_PYTORCH_DDP:
-      for metric in total_metrics.values():
-        dist.all_reduce(metric)
-    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+    return self._normalize_eval_metrics(num_examples, total_metrics)
