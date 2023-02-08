@@ -265,12 +265,13 @@ def _make_one_batch_workload(workload_class,
 
         def _fake_iter():
           while True:
-            fake_batch = dict(
-                num_nodes=tf.ones((1,), dtype=tf.int64),
-                edge_index=tf.ones((1, 2), dtype=tf.int64),
-                node_feat=tf.random.normal((1, 9)),
-                edge_feat=tf.random.normal((1, 3)),
-                labels=tf.ones((self._num_outputs,)))
+            fake_batch = {
+                'num_nodes': tf.ones((1,), dtype=tf.int64),
+                'edge_index': tf.ones((1, 2), dtype=tf.int64),
+                'node_feat': tf.random.normal((1, 9)),
+                'edge_feat': tf.random.normal((1, 3)),
+                'labels': tf.ones((self._num_outputs,)),
+            }
             yield fake_batch
 
         fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
