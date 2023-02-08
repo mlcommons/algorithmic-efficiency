@@ -239,7 +239,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         fin_result.shape[1], device=result.device).view(
             1, -1) < result.count_nonzero(dim=1).view(-1, 1)
     fin_result.view(-1)[idxs[mask != 0]] = result[result != blank_id]
-    padding = (fin_result == 0)
+    padding = fin_result == 0
     return fin_result, padding
 
   def sync_sd(self, params: spec.ParameterContainer) -> None:

@@ -354,12 +354,6 @@ def generate_search(search_space: Union[_DictSearchSpace, _ListSearchSpace],
 
   named_tuple_class = collections.namedtuple('Hyperparameters',
                                              all_hyperparameter_names)
-  # hyper.zipit([
-  #     hyper.loguniform('base_learning_rate', hyper.interval(1e-3, 0.1)),
-  #     hyper.loguniform('one_minus_momentum', hyper.interval(1e-2, 0.1)),
-  #     hyper.loguniform('l2', hyper.interval(1e-5, 1e-3)),
-  #     hyper.uniform('dropout_rate', hyper.interval(0.01, 0.25)),
-  # ], length=num_trials)
 
   if isinstance(search_space, dict):
     hyperparameter_generators = []
