@@ -148,8 +148,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,  # Dense or one-hot labels.
-      logits_batch: spec.Tensor,
+      label_batch: Tuple[spec.Tensor, spec.Tensor],  # (label_batch, padding)
+      logits_batch: Tuple[spec.Tensor, spec.Tensor],  # (logits_batch, padding)
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
     """Evaluate the (masked) loss function at (label_batch, logits_batch).
