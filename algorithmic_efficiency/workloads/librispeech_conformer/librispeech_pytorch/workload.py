@@ -5,7 +5,6 @@ from typing import Dict, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-import torch.distributed.nn as dist_nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import data_utils
@@ -162,13 +161,21 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False)
     return dataloader
 
-  def _loss_fn(
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-  ):  # differentiable
-    """Return detailed loss-dict."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
+    del label_smoothing
     targets, target_paddings = label_batch
     logits, logit_paddings = logits_batch
     logprobs = torch.log_softmax(logits, dim=-1)
@@ -187,30 +194,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = target_lengths
     n_valid_examples = mask_batch.sum().to(per_example_losses)
     summed_loss = per_example_losses.sum()
-    if USE_PYTORCH_DDP:
-      # Use dist_nn.all_reduce to ensure correct gradient scaling.
-      summed_loss = dist_nn.all_reduce(summed_loss)
-      n_valid_examples = dist_nn.all_reduce(n_valid_examples)
     n_valid_examples = max(n_valid_examples, 1)
     return {
-        'loss': per_example_losses,
-        'lengths': mask_batch.sum(),
-        'average_loss': summed_loss / n_valid_examples
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses
     }
-
-  # Does NOT apply regularization, which is left to the submitter to do in
-  # `update_params`.
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
-    del label_smoothing
-    l = self._loss_fn(label_batch, logits_batch, mask_batch)
-    return l['average_loss'], l['loss']
 
   def greedy_decode(
       self, logits: spec.Tensor,
@@ -297,9 +286,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           targets=targets.cpu().numpy(),
           target_paddings=target_paddings.cpu().numpy(),
           tokenizer=self.tokenizer)
-      l = self._loss_fn((targets, target_paddings), (logits, logits_padding))
-      summed_loss = l['loss'].sum()
-      lengths = l['lengths']
+      loss = self.loss_fn((targets, target_paddings), (logits, logits_padding))
+      summed_loss = loss['summed']
+      lengths = loss['n_valid_examples']
       batch_metrics = {
           'loss': summed_loss,
           'lengths': lengths,

@@ -120,12 +120,19 @@ def pmapped_train_step(workload,
         rng=dropout_rng,
         update_batch_norm=False)
     targets = batch['targets']
-    loss, _ = workload.loss_fn(targets, logits, label_smoothing=0.1)
-    return loss
+    weights = batch['weights']
+    loss_dict = workload.loss_fn(targets, logits, weights, label_smoothing=0.1)
+    summed_loss = loss_dict['summed']
+    n_valid_examples = loss_dict['n_valid_examples']
+    return summed_loss, n_valid_examples
 
-  grad_fn = jax.value_and_grad(_loss_fn)
-  _, grad = grad_fn(current_param_container)
-  grad = jax.lax.pmean(grad, axis_name='batch')
+  grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
+  (summed_loss, n_valid_examples), grad = grad_fn(current_param_container)
+  # Get correct global mean loss and grad.
+  (summed_loss, n_valid_examples, grad) = jax.lax.psum(
+      (summed_loss, n_valid_examples, grad), axis_name='batch')
+  grad /= n_valid_examples
+
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)

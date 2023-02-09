@@ -40,6 +40,7 @@ def train_step(workload,
                hyperparameters,
                batch,
                rng):
+  del hyperparameters
 
   def _loss_fn(params):
     logits_batch, new_model_state  = workload.model_fn(
@@ -50,12 +51,19 @@ def train_step(workload,
         rng,
         update_batch_norm=True)
     mask_batch = batch['weights']
-    mean_loss, _ = workload.loss_fn(batch['targets'], logits_batch, mask_batch)
-    return mean_loss, new_model_state
+    loss_dict = workload.loss_fn(batch['targets'], logits_batch, mask_batch)
+    summed_loss = loss_dict['summed']
+    n_valid_examples = loss_dict['n_valid_examples']
+    return summed_loss, (n_valid_examples, new_model_state)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (_, new_model_state), grad = grad_fn(current_param_container)
-  grad = lax.pmean(grad, axis_name='batch')
+  (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
+      current_param_container)
+  # Get correct global mean grad.
+  (summed_loss, n_valid_examples, grad) = lax.psum(
+      (summed_loss, n_valid_examples, grad), axis_name='batch')
+  grad /= n_valid_examples
+
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)

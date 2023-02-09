@@ -29,8 +29,7 @@ class WmtWorkload(BaseWmtWorkload):
       logits: spec.Tensor,
       targets: spec.Tensor,
       weights: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.1
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
+      label_smoothing: float = 0.1) -> Dict[str, spec.Tensor]:  # differentiable
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -41,7 +40,8 @@ class WmtWorkload(BaseWmtWorkload):
        values.
 
     Returns:
-      (correct scalar average loss, 1-d array of per-example losses)
+      {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+      valid examples in batch, 'per_example': 1-d array of per-example losses}
     """
     if logits.ndim != targets.ndim + 1:
       raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
@@ -59,8 +59,12 @@ class WmtWorkload(BaseWmtWorkload):
     per_example_losses = torch.where(
         weights.to(torch.bool), per_example_losses, 0.)
     summed_loss = per_example_losses.sum()
-    n_valid_samples = weights.sum()
-    return summed_loss / n_valid_samples, per_example_losses
+    n_valid_examples = weights.sum()
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses
+    }
 
   # Primary eval / decode step functions.
   # ----------------------------------------------------------------------------
@@ -296,12 +300,12 @@ class WmtWorkload(BaseWmtWorkload):
         model_state=None,
         rng=None,
         update_batch_norm=False)
-    _, per_example_losses = self.compute_weighted_cross_entropy(
-        logits, targets, weights, 0.0)
+    summed_loss = self.compute_weighted_cross_entropy(
+        logits, targets, weights, 0.0)['summed']
     acc_sum, weight_sum = self.compute_weighted_accuracy(
         logits, targets, weights)
     return {
-        'loss': torch.sum(per_example_losses),
+        'loss': summed_loss,
         'accuracy': acc_sum,
         'denominator': weight_sum,
     }

@@ -2,8 +2,12 @@ from typing import Dict, Iterator, List, Tuple
 
 import numpy as np
 import torch
+import torch.distributed.nn as dist_nn
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
 def get_batch_size(workload_name):
@@ -119,7 +123,16 @@ def update_params(workload: spec.Workload,
       update_batch_norm=False)
 
   targets = batch['targets']
-  loss, _ = workload.loss_fn(targets, logits, label_smoothing=0.1)
+  weights = batch['weights']
+  loss_dict = workload.loss_fn(targets, logits, weights, label_smoothing=0.1)
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
+
   loss.backward()
 
   lr = optimizer_state['scheduler'](global_step).item()

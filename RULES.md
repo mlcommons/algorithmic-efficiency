@@ -89,6 +89,7 @@ def _build_input_queue(
 
 ```python
 def init_model_fn(
+    self,
     rng: RandomState,
     dropout_rate: Optional[float] = None,
     aux_dropout_rate: Optional[float] = None
@@ -101,6 +102,7 @@ def init_model_fn(
 
 ```python
 def model_fn(
+    self,
     params: ParameterContainer,
     augmented_and_preprocessed_input_batch: Tensor,
     model_state: ModelAuxiliaryState,
@@ -121,16 +123,19 @@ def model_fn(
 
 ```python
 def loss_fn(
+    self,
+    # Dense or one-hot labels, or a tuple of (tensor, padding) for speech.
     label_batch: Union[Tuple[Tensor, Tensor], Tensor],
     logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
     mask_batch: Optional[Tensor] = None,
-    label_smoothing: float = 0.0) -> Tuple[Tensor, Tensor]  # differentiable
+    label_smoothing: float = 0.0) -> Dict[str, Tensor]  # differentiable
 ```
 
 - Unlike in the [Model Track](#model-track), we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
   - The optimizer must work with all values of the enum, which will be provided via a property on the workload object that is provided to all submissions functions.
 - The loss function does **not** include regularization. Instead, regularization can be added by the submissions in the `update_params` function.
-- The loss function returns a tuple (correct scalar average loss, 1-d array of per-example losses).
+- The loss function returns a dict {'summed': scalar summed loss, 'n_valid_examples': scalar number of valid examples in batch, 'per_example': 1-d array of per-example losses}.
+  Note that the returned quantities are not synced across devices; this can be done by the user in the `update_params` function.
 
 ##### Submission functions
 
@@ -182,7 +187,7 @@ def update_params(
   - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}.
 - `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics.
 - The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_type` enum/name.
-- The `loss_fn` produces a loss per example and a correct average loss, which both can be used.
+- The `loss_fn` produces a loss per example and a summed loss (both only for one device), which both can be used.
 - Allowed to update state for the optimizer.
 - Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state).
 - The submission can access the target evaluation metric via the `workload` variable.

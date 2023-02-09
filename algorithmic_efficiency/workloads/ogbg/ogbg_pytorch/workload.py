@@ -200,9 +200,10 @@ class OgbgWorkload(BaseOgbgWorkload):
     return torch.where(mask, losses, 0.)
 
   def _eval_metric(self, labels, logits, masks):
-    loss, _ = self.loss_fn(labels, logits, masks)
+    loss = self.loss_fn(labels, logits, masks)
+    mean_loss = loss['summed'] / loss['n_valid_examples']
     return metrics.EvalMetrics.single_from_model_output(
-        loss=loss.cpu().numpy(),
+        loss=mean_loss.cpu().numpy(),
         logits=logits.cpu().numpy(),
         labels=labels.cpu().numpy(),
         mask=masks.cpu().numpy())

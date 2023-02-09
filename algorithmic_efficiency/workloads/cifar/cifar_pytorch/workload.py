@@ -167,12 +167,18 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,   # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
@@ -185,7 +191,11 @@ class CifarWorkload(BaseCifarWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses
+    }
 
   def _eval_model(
       self,
@@ -201,15 +211,15 @@ class CifarWorkload(BaseCifarWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
+    targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits)).to(DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = ((predicted == batch['targets']) * weights).sum()
-    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
-    loss = per_example_losses.sum()
-    return {'accuracy': accuracy, 'loss': loss}
+    accuracy = ((predicted == targets) * weights).sum()
+    summed_loss = self.loss_fn(targets, logits, weights)['summed']
+    return {'accuracy': accuracy, 'loss': summed_loss}
 
   def _normalize_eval_metrics(
       self, num_examples: int, total_metrics: Dict[str,
