@@ -1,12 +1,13 @@
+"""WMT workload parent class."""
+
+import abc
 import math
 import os
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-from absl import flags
 import jax
 import numpy as np
 import torch
-import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import input_pipeline
@@ -15,7 +16,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
 VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-FLAGS = flags.FLAGS
 
 
 class BaseWmtWorkload(spec.Workload):
@@ -120,6 +120,12 @@ class BaseWmtWorkload(spec.Workload):
 
     return _input_queue_generator()
 
+  @abc.abstractmethod
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
@@ -151,14 +157,7 @@ class BaseWmtWorkload(spec.Workload):
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
-    if USE_PYTORCH_DDP:
-      for metric in eval_metrics.values():
-        dist.all_reduce(metric)
-    if FLAGS.framework == 'pytorch':
-      eval_metrics = {k: v.item() for k, v in eval_metrics.items()}
-    eval_denominator = eval_metrics.pop('denominator')
-    eval_results = jax.tree_map(lambda x: float(x / eval_denominator),
-                                eval_metrics)
+    eval_results = self._normalize_eval_metrics(num_examples, eval_metrics)
 
     eval_results['bleu'] = self.translate_and_calculate_bleu(
         params=params,

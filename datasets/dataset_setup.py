@@ -181,10 +181,9 @@ def _maybe_prompt_for_deletion(paths, interactive_deletion):
 
 
 def _download_url(url, data_dir):
-  url = url
   data_dir = os.path.expanduser(data_dir)
   file_path = os.path.join(data_dir, url.split('/')[-1])
-  response = requests.get(url, stream=True)
+  response = requests.get(url, stream=True, timeout=600)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
   total_size_in_mib = total_size_in_bytes / (2**20)
   progress_bar = tqdm.tqdm(total=total_size_in_mib, unit='MiB', unit_scale=True)
@@ -209,7 +208,7 @@ def _download_url(url, data_dir):
       f.write(chunk)
   progress_bar.close()
   if (progress_bar.total != 0 and progress_bar.n != progress_bar.total):
-    raise Exception(
+    raise RuntimeError(
         ('Download corrupted, size {n} MiB from {url} does not match '
          'expected size {size} MiB').format(
              url=url, n=progress_bar.n, size=progress_bar.total))
@@ -402,7 +401,6 @@ def setup_imagenet_pytorch(data_dir):
       os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME),
       os.path.join(imagenet_pytorch_data_dir, 'val'))
 
-  cwd = os.path.join(imagenet_pytorch_data_dir, 'train')
   valprep_command = [
       'wget',
       '-qO-',

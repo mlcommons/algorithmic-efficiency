@@ -192,7 +192,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     # Numerically stable implementation of BCE loss.
     # This mimics TensorFlow's tf.nn.sigmoid_cross_entropy_with_logits().
-    positive_logits = (logits >= 0)
+    positive_logits = logits >= 0
     relu_logits = torch.where(positive_logits, logits, 0)
     abs_logits = torch.where(positive_logits, logits, -logits)
     losses = relu_logits - (logits * smoothed_labels) + (
@@ -206,3 +206,10 @@ class OgbgWorkload(BaseOgbgWorkload):
         logits=logits.cpu().numpy(),
         labels=labels.cpu().numpy(),
         mask=masks.cpu().numpy())
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    return {k: float(v) for k, v in total_metrics.compute().items()}

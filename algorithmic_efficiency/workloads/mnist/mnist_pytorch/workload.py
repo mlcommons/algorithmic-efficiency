@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 import contextlib
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
 from torch import nn
@@ -200,3 +200,11 @@ class MnistWorkload(BaseMnistWorkload):
     _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
     loss = per_example_losses.sum()
     return {'accuracy': accuracy, 'loss': loss}
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    if USE_PYTORCH_DDP:
+      for metric in total_metrics.values():
+        dist.all_reduce(metric)
+    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

@@ -15,6 +15,10 @@ from algorithmic_efficiency.workloads.criteo1tb.workload import \
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
+  @property
+  def eval_batch_size(self) -> int:
+    return 524_288
+
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     """Computes the sigmoid binary cross entropy per example.
@@ -58,27 +62,26 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Dropout is unused."""
-    del dropout_rate
+    """Only dropout is used."""
     del aux_dropout_rate
     self._model = models.DlrmSmall(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
-        embed_dim=self.embed_dim)
+        embed_dim=self.embed_dim,
+        dropout_rate=dropout_rate)
 
-    rng, init_rng = jax.random.split(rng)
+    params_rng, dropout_rng = jax.random.split(rng)
     init_fake_batch_size = 2
     num_categorical_features = 26
     input_size = self.num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
-    target_shape = (init_fake_batch_size, input_size)
 
-    initial_variables = jax.jit(self._model.init)(
-        init_rng,
-        jnp.ones(input_shape, jnp.float32),
-        jnp.ones(target_shape, jnp.float32))
+    init_fn = functools.partial(self._model.init, train=False)
+    initial_variables = jax.jit(init_fn)(
+        {'params': params_rng, 'dropout': dropout_rng},
+        jnp.ones(input_shape, jnp.float32))
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -96,12 +99,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
-    del mode
-    del rng
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']
-    targets = augmented_and_preprocessed_input_batch['targets']
-    logits_batch = self._model.apply({'params': params}, inputs, targets)
+    train = mode == spec.ForwardPassMode.TRAIN
+    apply_kwargs = {'train': train}
+    if train:
+      apply_kwargs['rngs'] = {'dropout': rng}
+    logits_batch = self._model.apply({'params': params}, inputs, **apply_kwargs)
     return logits_batch, None
 
   @functools.partial(

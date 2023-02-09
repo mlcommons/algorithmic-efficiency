@@ -219,7 +219,7 @@ def beam_search(
   def beam_search_loop_cond_fn(state: BeamState) -> bool:
     """Beam search loop termination condition."""
     # Have we reached max decoding length?
-    not_at_end = (state.cur_index < max_decode_len - 1)
+    not_at_end = state.cur_index < max_decode_len - 1
 
     # Is no further progress in the beam search possible?
     # Get the best possible scores from alive sequences.

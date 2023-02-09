@@ -25,7 +25,8 @@ def init_optimizer_state(workload: spec.Workload,
           torch.optim.AdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              betas=(hyperparameters.beta1, hyperparameters.beta2),
+              betas=(1.0 - hyperparameters.one_minus_beta1,
+                     hyperparameters.beta2),
               eps=1e-8,
               weight_decay=hyperparameters.weight_decay)
   }
@@ -80,10 +81,7 @@ def update_params(workload: spec.Workload,
   label_smoothing = (
       hyperparameters.label_smoothing if hasattr(hyperparameters,
                                                  'label_smoothing') else 0.0)
-  if hasattr(hyperparameters, 'grad_clip'):
-    grad_clip = hyperparameters.grad_clip
-  else:
-    grad_clip = None
+
   loss, _ = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
@@ -97,7 +95,8 @@ def update_params(workload: spec.Workload,
     grad_norm = torch.norm(
         torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
 
-  if grad_clip is not None:
+  if hasattr(hyperparameters, 'grad_clip'):
+    grad_clip = hyperparameters.grad_clip
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
