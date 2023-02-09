@@ -169,7 +169,7 @@ class CifarWorkload(BaseCifarWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,   # Dense or one-hot labels.
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable

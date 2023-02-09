@@ -300,8 +300,10 @@ class WmtWorkload(BaseWmtWorkload):
         model_state=None,
         rng=None,
         update_batch_norm=False)
-    summed_loss = self.compute_weighted_cross_entropy(
-        logits, targets, weights, 0.0)['summed']
+    summed_loss = self.compute_weighted_cross_entropy(logits,
+                                                      targets,
+                                                      weights,
+                                                      0.0)['summed']
     acc_sum, weight_sum = self.compute_weighted_accuracy(
         logits, targets, weights)
     return {

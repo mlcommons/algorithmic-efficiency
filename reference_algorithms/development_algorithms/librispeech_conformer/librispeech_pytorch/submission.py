@@ -10,7 +10,6 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 USE_PYTORCH_DDP = pytorch_setup()[0]
 
-
 device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
 ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
 

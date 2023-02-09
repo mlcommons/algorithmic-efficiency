@@ -37,7 +37,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,   # Dense or one-hot labels.
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
@@ -225,7 +225,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
-    summed_loss = self.loss_fn(label_batch=batch['targets'],
-                               logits_batch=logits,
-                               mask_batch=weights)['summed']
+    summed_loss = self.loss_fn(
+        label_batch=batch['targets'], logits_batch=logits,
+        mask_batch=weights)['summed']
     return summed_loss
