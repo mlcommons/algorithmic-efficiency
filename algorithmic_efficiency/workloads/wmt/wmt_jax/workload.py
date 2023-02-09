@@ -76,12 +76,14 @@ class WmtWorkload(BaseWmtWorkload):
     targets = batch['targets']
     weights = batch['weights']
     logits = self._eval_model.apply({'params': params}, inputs, targets)
-    _, per_example_losses = self.compute_weighted_cross_entropy(
-        logits, targets, weights, 0.0)
+    summed_loss = self.compute_weighted_cross_entropy(logits,
+                                                      targets,
+                                                      weights,
+                                                      0.0)['summed']
     acc_sum, weight_sum = self.compute_weighted_accuracy(
         logits, targets, weights)
     return {
-        'loss': jnp.sum(per_example_losses),
+        'loss': summed_loss,
         'accuracy': acc_sum,
         'denominator': weight_sum,
     }
