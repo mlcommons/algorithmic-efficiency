@@ -18,7 +18,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer import workload
 from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
-    model as conformer_model
+    models as conformer_model
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
