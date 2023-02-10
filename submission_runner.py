@@ -36,6 +36,7 @@ from algorithmic_efficiency import halton
 from algorithmic_efficiency import logger_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency import early_stopping
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
@@ -113,6 +114,9 @@ flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/tensorflow_datasets/',
                     'Dataset location for ImageNet-v2.')
+flags.DEFINE_string(
+    'early_stopping_config', None,
+    'Stop training when a monitored metric has stopped improving.')
 flags.DEFINE_enum(
     'framework',
     None,
@@ -260,6 +264,9 @@ def train_once(
   global_step = 0
   eval_results = []
   preemption_count = 0
+  early_stop = False
+  early_stop_check = early_stopping.EarlyStopping(
+      FLAGS.early_stopping_config).early_stop_check
 
   # Loggers and checkpoint setup.
   logging.info('Initializing checkpoint and logger.')
@@ -299,6 +306,7 @@ def train_once(
   logging.info('Starting training loop.')
   while train_state['is_time_remaining'] and \
       not train_state['goal_reached'] and \
+      not early_stop and \
       not train_state['training_complete']:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
@@ -365,6 +373,7 @@ def train_once(
           train_state['goal_reached'] = (
               workload.has_reached_validation_target(latest_eval_result) and
               workload.has_reached_test_target(latest_eval_result))
+          early_stop = early_stop_check(latest_eval_result, global_step)
 
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
