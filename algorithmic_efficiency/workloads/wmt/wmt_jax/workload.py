@@ -63,7 +63,7 @@ class WmtWorkload(BaseWmtWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   @functools.partial(
@@ -141,7 +141,7 @@ class WmtWorkload(BaseWmtWorkload):
       flat_logits, new_vars = models.Transformer(config).apply(
           {
               'params': params,
-              'cache': flat_cache
+              'cache': flat_cache,
           },
           encoded_inputs,
           raw_inputs,  # only needed for input padding mask

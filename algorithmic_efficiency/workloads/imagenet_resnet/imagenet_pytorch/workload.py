@@ -83,7 +83,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
-          transforms.RandomHorizontalFlip()
+          transforms.RandomHorizontalFlip(),
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
@@ -94,7 +94,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           transforms.Resize(self.resize_size),
           transforms.CenterCrop(self.center_crop_size),
           transforms.ToTensor(),
-          normalize
+          normalize,
       ])
 
     folder = 'train' if 'train' in split else 'val'
@@ -201,7 +201,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
@@ -238,7 +238,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   def _compute_metrics(self,

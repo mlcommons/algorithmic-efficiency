@@ -84,7 +84,7 @@ def init_optimizer_state(workload: spec.Workload,
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
               betas=(1.0 - hyperparameters.one_minus_beta_1, 0.98),
-              eps=hyperparameters.epsilon)
+              eps=hyperparameters.epsilon),
   }
 
   optimizer_state['scheduler'] = create_learning_rate_scheduler(

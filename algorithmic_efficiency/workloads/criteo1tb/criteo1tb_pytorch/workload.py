@@ -63,7 +63,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   def _eval_metric(self, logits: spec.Tensor,
@@ -122,7 +122,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():

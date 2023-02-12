@@ -177,7 +177,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   def ctc_loss(self,
@@ -213,7 +213,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     # Mask labels that don't equal previous label.
     label_mask = jnp.concatenate([
         jnp.ones_like(labels[:, :1], dtype=jnp.int32),
-        jnp.not_equal(labels[:, 1:], labels[:, :-1])
+        jnp.not_equal(labels[:, 1:], labels[:, :-1]),
     ],
                                  axis=1)
 

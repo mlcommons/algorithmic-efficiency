@@ -32,7 +32,7 @@ def init_optimizer_state(workload: spec.Workload,
               lr=base_lr,
               momentum=hyperparameters.momentum,
               weight_decay=hyperparameters.l2,
-              nesterov=True)
+              nesterov=True),
   }
 
   steps_per_epoch = workload.num_train_examples // batch_size

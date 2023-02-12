@@ -31,7 +31,7 @@ def init_optimizer_state(workload: spec.Workload,
               lr=hyperparameters.learning_rate,
               momentum=1.0 - hyperparameters.one_minus_beta1,
               weight_decay=hyperparameters.weight_decay,
-              nesterov=True)
+              nesterov=True),
   }
 
   # Create learning rate schedule.

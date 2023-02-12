@@ -29,7 +29,7 @@ def init_optimizer_state(workload: spec.Workload,
               model_params.parameters(),
               lr=base_lr,
               weight_decay=hyperparameters.weight_decay,
-              betas=(hyperparameters.beta1, 0.999))
+              betas=(hyperparameters.beta1, 0.999)),
   }
 
   scheduler1 = LinearLR(

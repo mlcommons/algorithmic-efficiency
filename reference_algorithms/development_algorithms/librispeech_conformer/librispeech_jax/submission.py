@@ -180,7 +180,7 @@ def update_params(workload: spec.Workload,
           {
               'train_step_ctc_loss': loss.mean(),
               'grad_norm': grad_norm.mean(),
-              'learning_rate': lr
+              'learning_rate': lr,
           },
           global_step)
 

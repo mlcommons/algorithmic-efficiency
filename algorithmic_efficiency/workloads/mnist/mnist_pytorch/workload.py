@@ -106,7 +106,7 @@ class MnistWorkload(BaseMnistWorkload):
       batch = {
           'inputs': inputs.permute(0, 3, 1, 2),
           'targets': targets,
-          'weights': weights
+          'weights': weights,
       }
       yield batch
 
@@ -149,7 +149,7 @@ class MnistWorkload(BaseMnistWorkload):
       model.eval()
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
     with contexts[mode]():
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
@@ -184,7 +184,7 @@ class MnistWorkload(BaseMnistWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   def _eval_model(

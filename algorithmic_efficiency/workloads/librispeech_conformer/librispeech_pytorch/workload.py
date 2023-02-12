@@ -97,7 +97,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
@@ -198,7 +198,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   def greedy_decode(

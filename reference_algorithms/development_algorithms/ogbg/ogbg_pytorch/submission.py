@@ -27,7 +27,7 @@ def init_optimizer_state(workload: spec.Workload,
   optimizer_state = {
       'optimizer':
           torch.optim.Adam(
-              model_params.parameters(), lr=hyperparameters.learning_rate)
+              model_params.parameters(), lr=hyperparameters.learning_rate),
   }
   return optimizer_state
 

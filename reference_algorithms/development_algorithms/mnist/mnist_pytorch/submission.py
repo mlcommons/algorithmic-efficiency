@@ -27,7 +27,7 @@ def init_optimizer_state(workload: spec.Workload,
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
               betas=(1.0 - hyperparameters.one_minus_beta_1, 0.999),
-              eps=hyperparameters.epsilon)
+              eps=hyperparameters.epsilon),
   }
   return optimizer_state
 

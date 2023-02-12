@@ -97,7 +97,7 @@ class MnistWorkload(BaseMnistWorkload):
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses
+        'per_example': per_example_losses,
     }
 
   @functools.partial(

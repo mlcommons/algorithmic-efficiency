@@ -200,7 +200,7 @@ def init_optimizer_state(workload: spec.Workload,
               betas=(1.0 - hyperparameters.one_minus_beta1,
                      hyperparameters.beta2),
               eps=1e-8,
-              weight_decay=hyperparameters.weight_decay)
+              weight_decay=hyperparameters.weight_decay),
   }
 
   def pytorch_cosine_warmup(step_hint: int, hyperparameters, optimizer):

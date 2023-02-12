@@ -31,7 +31,7 @@ def init_optimizer_state(workload: spec.Workload,
               model_params.parameters(),
               lr=base_lr,
               betas=(hyperparameters.beta1, hyperparameters.beta2),
-              eps=hyperparameters.epsilon)
+              eps=hyperparameters.epsilon),
   }
 
   steps_per_epoch = workload.num_train_examples // batch_size

@@ -29,7 +29,7 @@ def init_optimizer_state(workload: spec.Workload,
           torch.optim.RMSprop(
               model_params.parameters(),
               lr=base_lr,
-              weight_decay=hyperparameters.l2)
+              weight_decay=hyperparameters.l2),
   }
 
   optimizer_state['scheduler'] = StepLR(
