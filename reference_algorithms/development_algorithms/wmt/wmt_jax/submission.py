@@ -131,7 +131,7 @@ def pmapped_train_step(workload,
   # Get correct global mean loss and grad.
   (summed_loss, n_valid_examples, grad) = jax.lax.psum(
       (summed_loss, n_valid_examples, grad), axis_name='batch')
-  grad /= n_valid_examples
+  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
 
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, current_param_container)

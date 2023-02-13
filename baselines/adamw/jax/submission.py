@@ -94,7 +94,7 @@ def pmapped_train_step(workload,
   (summed_loss, n_valid_examples, grad) = lax.psum(
       (summed_loss, n_valid_examples, grad), axis_name='batch')
   loss = summed_loss / n_valid_examples
-  grad /= n_valid_examples
+  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
 
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
