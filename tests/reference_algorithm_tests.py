@@ -288,6 +288,8 @@ def _make_one_batch_workload(workload_class,
             'targets':
                 np.random.randint(
                     low=0, high=32000, size=(*batch_shape, max_len)),
+            'weights':
+                np.random.randint(low=0, high=2, size=(*batch_shape, max_len)),
         }
         self._tokenizer = _FakeTokenizer()
       elif workload_name == 'fastmri':
