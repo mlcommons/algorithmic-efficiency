@@ -253,9 +253,13 @@ def _make_one_batch_workload(workload_class,
       elif 'librispeech' in workload_name:
         inputs = np.random.normal(size=(*batch_shape, 320000))
         targets = np.random.randint(low=1, high=1024, size=(*batch_shape, 256))
+        tgt_pad = np.arange(0, 256)[tuple([None] * len(batch_shape))]
+        tgt_lengths = np.random.randint(
+            low=100, high=256, size=(*batch_shape, 1))
+        tgt_pad = 1 * (tgt_pad > tgt_lengths)
         fake_batch = {
             'inputs': (inputs, np.zeros_like(inputs)),
-            'targets': (targets, np.zeros_like(targets)),
+            'targets': (targets, tgt_pad),
         }
       elif workload_name == 'mnist':
         fake_batch = _make_fake_image_batch(
