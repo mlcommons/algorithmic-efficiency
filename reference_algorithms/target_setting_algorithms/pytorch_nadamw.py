@@ -55,7 +55,9 @@ class NAdamW(torch.optim.Optimizer):
       raise ValueError(f'Invalid beta parameter at index 1: {betas[1]}')
     if not 0.0 <= weight_decay:
       raise ValueError(f'Invalid weight_decay value: {weight_decay}')
-    defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    defaults = {
+        'lr': lr, 'betas': betas, 'eps': eps, 'weight_decay': weight_decay
+    }
     super().__init__(params, defaults)
 
   def __setstate__(self, state):
@@ -198,7 +200,7 @@ def init_optimizer_state(workload: spec.Workload,
               lr=hyperparameters.learning_rate,
               betas=(hyperparameters.beta1, hyperparameters.beta2),
               eps=epsilon,
-              weight_decay=hyperparameters.weight_decay)
+              weight_decay=hyperparameters.weight_decay),
   }
 
   target_setting_step_hint = int(0.75 * workload.step_hint)

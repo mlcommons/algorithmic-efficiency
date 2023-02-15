@@ -2,10 +2,15 @@
 
 import contextlib
 import random
+<<<<<<< HEAD
 from typing import Dict, Optional, Tuple
+=======
+from typing import Any, Dict, Iterator, Optional, Tuple
+>>>>>>> d695dee4d286ef22aab6d2e84501bee298ed0727
 
 import torch
 from torch import nn
+import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
@@ -38,7 +43,7 @@ class CifarWorkload(BaseCifarWorkload):
     is_train = split == 'train'
     normalize = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=self.train_mean, std=self.train_stddev)
+        transforms.Normalize(mean=self.train_mean, std=self.train_stddev),
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
@@ -47,7 +52,7 @@ class CifarWorkload(BaseCifarWorkload):
             padding=self.padding_size,
         ),
         transforms.RandomHorizontalFlip(),
-        normalize
+        normalize,
     ])
 
     transform = train_transform_config if is_train else eval_transform_config
@@ -152,7 +157,7 @@ class CifarWorkload(BaseCifarWorkload):
       self._update_batch_norm(model, update_batch_norm)
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
     with contexts[mode]():
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
@@ -160,12 +165,18 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
@@ -178,7 +189,11 @@ class CifarWorkload(BaseCifarWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def _eval_model(
       self,
@@ -194,12 +209,20 @@ class CifarWorkload(BaseCifarWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
+    targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits)).to(DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
-    accuracy = ((predicted == batch['targets']) * weights).sum()
-    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
-    loss = per_example_losses.sum()
-    return {'accuracy': accuracy, 'loss': loss}
+    accuracy = ((predicted == targets) * weights).sum()
+    summed_loss = self.loss_fn(targets, logits, weights)['summed']
+    return {'accuracy': accuracy, 'loss': summed_loss}
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    if USE_PYTORCH_DDP:
+      for metric in total_metrics.values():
+        dist.all_reduce(metric)
+    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}

@@ -19,7 +19,7 @@ TFDS_SPLIT_NAME = {
     'train': 'train',
     'eval_train': 'train',
     'validation': 'validation',
-    'test': 'test'
+    'test': 'test',
 }
 
 

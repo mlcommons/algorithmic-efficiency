@@ -1,8 +1,12 @@
 from typing import Dict, Iterator, List, Tuple
 
 import torch
+import torch.distributed.nn as dist_nn
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
 def get_batch_size(workload_name):
@@ -23,7 +27,7 @@ def init_optimizer_state(workload: spec.Workload,
   optimizer_state = {
       'optimizer':
           torch.optim.Adam(
-              model_params.parameters(), lr=hyperparameters.learning_rate)
+              model_params.parameters(), lr=hyperparameters.learning_rate),
   }
   return optimizer_state
 
@@ -41,6 +45,7 @@ def update_params(workload: spec.Workload,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
+  del hyperparameters
   del loss_type
   del eval_results
   del global_step
@@ -57,8 +62,14 @@ def update_params(workload: spec.Workload,
       rng=rng,
       update_batch_norm=True)
 
-  mask = batch['weights']
-  loss, _ = workload.loss_fn(batch['targets'], logits, mask)
+  loss_dict = workload.loss_fn(batch['targets'], logits, batch['weights'])
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
 
   loss.backward()
   optimizer_state['optimizer'].step()

@@ -1,42 +1,40 @@
-"""Data loader for pre-processed librispeech data."""
+"""
+Sharing the jax input pipeline slows down the data loading
+and step times.
+"""
 import csv
-from typing import Optional
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
-
-from algorithmic_efficiency import spec
+import torch
 
 
-def get_librispeech_dataset(split_name: str,
-                            data_dir: str,
-                            shuffle_rng: spec.RandomState,
-                            is_training: bool,
-                            global_batch_size: int,
-                            num_batches: Optional[int] = None):
-  """Get the Librispeech  dataset for a given split."""
-  splits = [split_name]
+class LibriSpeechDataset(torch.utils.data.Dataset):
 
-  if split_name.find('+') != -1:
-    splits = split_name.split('+')
+  def __init__(self, split, data_dir):
+    super().__init__()
+    self.data_dir = data_dir
+    splits = split.split('+')
+    ids = []
+    for split in splits:
+      logging.info('Loading split = %s', split)
+      feat_csv = '{}/{}.csv'.format(data_dir, split)
 
-  ids = []
+      with open(feat_csv, newline='') as csvfile:
+        data = list(csv.reader(csvfile))
 
-  for split in splits:
-    logging.info(f'Loading split = {split}.')
-    feat_csv = f'{data_dir}/{split}.csv'
+      for example in data[1:]:
+        ids.append('{}/{}'.format(split, example[1]))
+    self.ids = ids
 
-    with open(feat_csv, newline='') as csvfile:
-      data = list(csv.reader(csvfile))
+  def __len__(self):
+    return len(self.ids)
 
-    for example in data[1:]:
-      ids.append(f'{split}/{example[1]}')
-
-  def load_data(example_id):
-    example_id = example_id.decode('utf-8')
-    audio = np.load(f'{data_dir}/{example_id}_audio.npy')
-    targets = np.load(f'{data_dir}/{example_id}_targets.npy')
+  def __getitem__(self, index):
+    example_id = self.ids[index]
+    data_dir = self.data_dir
+    audio = np.load('{}/{}_audio.npy'.format(data_dir, example_id))
+    targets = np.load('{}/{}_targets.npy'.format(data_dir, example_id))
 
     audio_paddings = np.zeros_like(audio, dtype=np.float32)
     audio_paddings = np.pad(
@@ -48,42 +46,8 @@ def get_librispeech_dataset(split_name: str,
         target_paddings, (0, 256 - target_paddings.shape[0]),
         constant_values=1.0)
     targets = np.pad(targets, (0, 256 - targets.shape[0]), constant_values=0)
-
-    return audio, audio_paddings, targets, target_paddings
-
-  def preprocess(example):
-    example_id = example['ids']
-
-    preprocessed_example = {}
-    audio, audio_paddings, targets, target_paddings = tf.numpy_function(
-        func=load_data,
-        inp=[example_id],
-        Tout=[tf.int64, tf.float32, tf.int32, tf.float32])
-
-    # Make batches of tuples of (tensor, padding)
-    preprocessed_example['inputs'] = (audio, audio_paddings)
-    preprocessed_example['targets'] = (targets, target_paddings)
-
-    return preprocessed_example
-
-  ds = tf.data.Dataset.from_tensor_slices({'ids': ids})
-  ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
-
-  ds = ds.map(preprocess, num_parallel_calls=10)
-
-  if is_training:
-    ds = ds.repeat()
-
-  if split in ['train', 'eval_train']:
-    ds = ds.shuffle(16 * global_batch_size, seed=shuffle_rng[0])
-
-  ds = ds.batch(global_batch_size, drop_remainder=is_training)
-
-  if is_training:
-    ds = ds.repeat()
-
-  if num_batches is not None:
-    ds = ds.take(num_batches)
-
-  ds = ds.prefetch(10)
-  return ds
+    audio = audio.astype(np.float32)
+    audio_paddings = audio_paddings.astype(np.float32)
+    targets = targets.astype(np.float32)
+    target_paddings = target_paddings.astype(np.float32)
+    return (audio, audio_paddings), (targets, target_paddings)

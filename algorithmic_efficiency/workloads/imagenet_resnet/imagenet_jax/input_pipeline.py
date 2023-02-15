@@ -142,7 +142,7 @@ def _decode_and_center_crop(image_bytes: spec.Tensor,
       offset_height,
       offset_width,
       padded_center_crop_size,
-      padded_center_crop_size
+      padded_center_crop_size,
   ])
   image = tf.io.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
   image = resize(image, image_size)

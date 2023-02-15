@@ -52,7 +52,8 @@ class DlrmSmall(nn.Module):
                num_sparse_features=26,
                mlp_bottom_dims=(512, 256, 128),
                mlp_top_dims=(1024, 1024, 512, 256, 1),
-               embed_dim=128):
+               embed_dim=128,
+               dropout_rate=0.0):
     super().__init__()
     self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
     self.num_dense_features = num_dense_features
@@ -94,6 +95,9 @@ class DlrmSmall(nn.Module):
       top_mlp_layers.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         top_mlp_layers.append(nn.ReLU(inplace=True))
+      if (dropout_rate is not None and dropout_rate > 0.0 and
+          layer_idx == num_layers_top - 2):
+        top_mlp_layers.append(nn.Dropout(p=dropout_rate))
     self.top_mlp = nn.Sequential(*top_mlp_layers)
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):

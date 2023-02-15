@@ -2,7 +2,6 @@ import functools
 import math
 from typing import Dict, Optional, Tuple
 
-from absl import flags
 from flax import jax_utils
 import flax.linen as nn
 import jax
@@ -10,15 +9,17 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import torch
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
+from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
+    LibriSpeechDataset
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     models
-
-FLAGS = flags.FLAGS
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -27,6 +28,56 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
     self.use_specaug = use_specaug
+
+  def _build_input_queue(self,
+                         data_rng: spec.RandomState,
+                         split: str,
+                         data_dir: str,
+                         global_batch_size: int,
+                         cache: Optional[bool] = False,
+                         repeat_final_dataset: Optional[bool] = False,
+                         num_batches: Optional[int] = None):
+    del data_rng
+    del cache
+    del repeat_final_dataset
+    del num_batches
+    train = False
+    if split == 'train':
+      split = 'train-clean-100+train-clean-360+train-other-500'
+      train = True
+    elif split == 'eval_train':
+      split = 'train-clean-100+train-clean-360+train-other-500'
+    elif split == 'validation':
+      split = 'dev-clean+dev-other'
+    elif split == 'test':
+      split = 'test-clean'
+
+    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+
+    dataloader = data_utils.cycle(
+        torch.utils.data.DataLoader(
+            ds,
+            batch_size=global_batch_size,
+            shuffle=train,
+            sampler=None,
+            num_workers=4,
+            prefetch_factor=10,
+            pin_memory=False,
+            drop_last=train,
+        ))
+
+    for batch in iter(dataloader):
+      inputs, input_paddings = batch['inputs']
+      targets, target_paddings = batch['targets']
+
+      numpy_batch = {
+          'inputs': (inputs.numpy(), input_paddings.numpy()),
+          'targets': (targets.numpy(), target_paddings.numpy()),
+      }
+
+      padded_batch = data_utils.shard_and_maybe_pad_np(
+          numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+      yield padded_batch
 
   def init_model_fn(
       self,
@@ -97,12 +148,16 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
+      label_batch: Tuple[spec.Tensor, spec.Tensor],  # (label_batch, padding)
+      logits_batch: Tuple[spec.Tensor, spec.Tensor],  # (logits_batch, padding)
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     logits, logit_paddings = logits_batch
     targets, target_paddings = label_batch
@@ -119,7 +174,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = 1 - target_paddings
     n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def ctc_loss(self,
                logits: spec.Tensor,
@@ -154,7 +213,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     # Mask labels that don't equal previous label.
     label_mask = jnp.concatenate([
         jnp.ones_like(labels[:, :1], dtype=jnp.int32),
-        jnp.not_equal(labels[:, 1:], labels[:, :-1])
+        jnp.not_equal(labels[:, 1:], labels[:, :-1]),
     ],
                                  axis=1)
 
@@ -224,8 +283,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss, _ = self.loss_fn(
-        batch['targets'], (logits, logit_paddings))
+    loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
+    normalized_loss = loss['summed'] / loss['n_valid_examples']
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(

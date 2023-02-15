@@ -159,7 +159,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
@@ -192,7 +192,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     # Numerically stable implementation of BCE loss.
     # This mimics TensorFlow's tf.nn.sigmoid_cross_entropy_with_logits().
-    positive_logits = (logits >= 0)
+    positive_logits = logits >= 0
     relu_logits = torch.where(positive_logits, logits, 0)
     abs_logits = torch.where(positive_logits, logits, -logits)
     losses = relu_logits - (logits * smoothed_labels) + (
@@ -200,9 +200,17 @@ class OgbgWorkload(BaseOgbgWorkload):
     return torch.where(mask, losses, 0.)
 
   def _eval_metric(self, labels, logits, masks):
-    loss, _ = self.loss_fn(labels, logits, masks)
+    loss = self.loss_fn(labels, logits, masks)
+    mean_loss = loss['summed'] / loss['n_valid_examples']
     return metrics.EvalMetrics.single_from_model_output(
-        loss=loss.cpu().numpy(),
+        loss=mean_loss.cpu().numpy(),
         logits=logits.cpu().numpy(),
         labels=labels.cpu().numpy(),
         mask=masks.cpu().numpy())
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    return {k: float(v) for k, v in total_metrics.compute().items()}

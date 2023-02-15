@@ -345,8 +345,8 @@ class PositionalEncoding(nn.Module):
         cache = {
             name: {
                 'cache_index':
-                    torch.tensor(0, dtype=torch.long, device=self.pe.device)
-            }
+                    torch.tensor(0, dtype=torch.long, device=self.pe.device),
+            },
         }
       pe = self.pe[0, cache[name]['cache_index'], :]
       cache[name]['cache_index'] += 1
@@ -988,7 +988,7 @@ def multi_head_attention_forward(
                           dtype=v.dtype,
                           device=v.device),
           'cache_index':
-              torch.tensor(0, dtype=torch.long, device=k.device)
+              torch.tensor(0, dtype=torch.long, device=k.device),
       }
     cached_key = cache['cached_key']
     cached_value = cache['cached_value']

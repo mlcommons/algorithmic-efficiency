@@ -9,6 +9,6 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/pycqa/pylint
-    rev: v2.14.5
+    rev: v2.16.1
     hooks:
       - id: pylint

@@ -20,6 +20,10 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
+  @property
+  def eval_batch_size(self) -> int:
+    return 65536
+
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     ls = torch.nn.LogSigmoid()
@@ -29,14 +33,20 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     per_example_losses = per_example_losses.reshape(len(per_example_losses), -1)
     return per_example_losses.sum(1)
 
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     batch_size = label_batch.shape[0]
     label_batch = torch.reshape(label_batch, (batch_size,))
@@ -50,21 +60,23 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def _eval_metric(self, logits: spec.Tensor,
                    targets: spec.Tensor) -> Dict[str, int]:
-    _, per_example_losses = self.loss_fn(logits, targets)
-    loss = per_example_losses.sum()
-    return {'loss': loss}
+    summed_loss = self.loss_fn(logits, targets)['summed']
+    return {'loss': summed_loss}
 
   def init_model_fn(
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Dropout is unused."""
-    del dropout_rate
+    """Only dropout is used."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = DlrmSmall(
@@ -72,7 +84,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
-        embed_dim=self.embed_dim)
+        embed_dim=self.embed_dim,
+        dropout_rate=dropout_rate)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -109,7 +122,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
@@ -136,6 +149,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                                            global_batch_size,
                                            num_batches,
                                            repeat_final_dataset)
+    weights = None
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
@@ -189,6 +203,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
 
+      if weights is None:
+        weights = torch.ones(per_device_batch_size, device=DEVICE)
       batch = {
           'inputs': inputs,
           'targets': targets,
@@ -209,9 +225,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
-    _, per_example_losses = self.loss_fn(
-        label_batch=batch['targets'],
-        logits_batch=logits,
-        mask_batch=weights)
-    loss = per_example_losses.sum()
-    return loss
+    summed_loss = self.loss_fn(
+        label_batch=batch['targets'], logits_batch=logits,
+        mask_batch=weights)['summed']
+    return summed_loss

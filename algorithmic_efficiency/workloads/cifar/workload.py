@@ -1,18 +1,16 @@
 """CIFAR workload parent class."""
 
+import abc
 import math
 from typing import Dict, Iterator, Optional, Tuple
 
-from absl import flags
 import jax
 import torch
-import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 
-FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 
@@ -137,6 +135,12 @@ class BaseCifarWorkload(spec.Workload):
       rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     raise NotImplementedError
 
+  @abc.abstractmethod
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
@@ -174,11 +178,4 @@ class BaseCifarWorkload(spec.Workload):
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    if FLAGS.framework == 'jax':
-      eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
-                                  eval_metrics)
-      return eval_metrics
-    elif USE_PYTORCH_DDP:
-      for metric in eval_metrics.values():
-        dist.all_reduce(metric)
-    return {k: float(v.item() / num_examples) for k, v in eval_metrics.items()}
+    return self._normalize_eval_metrics(num_examples, eval_metrics)

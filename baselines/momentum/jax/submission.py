@@ -33,7 +33,7 @@ def init_optimizer_state(workload: spec.Workload,
   opt_init_fn, opt_update_fn = sgd(
       learning_rate=lr_schedule_fn,
       weight_decay=hyperparameters.weight_decay,
-      momentum=hyperparameters.beta1,
+      momentum=1.0 - hyperparameters.one_minus_beta1,
       nesterov=False)
   optimizer_state = opt_init_fn(params_zeros_like)
 
@@ -43,19 +43,19 @@ def init_optimizer_state(workload: spec.Workload,
 def create_lr_schedule_fn(
     step_hint: int,
     hyperparameters: spec.Hyperparameters) -> Callable[[int], float]:
+  warmup_steps = int(hyperparameters.warmup_factor * step_hint)
   warmup_fn = optax.linear_schedule(
       init_value=0.,
       end_value=hyperparameters.learning_rate,
-      transition_steps=hyperparameters.warmup_steps)
-  decay_steps = step_hint - hyperparameters.warmup_steps
+      transition_steps=warmup_steps)
+  decay_steps = step_hint - warmup_steps
   polynomial_schedule_fn = optax.polynomial_schedule(
       init_value=hyperparameters.learning_rate,
       end_value=hyperparameters.learning_rate * hyperparameters.end_factor,
       power=1,
       transition_steps=int(decay_steps * hyperparameters.decay_steps_factor))
   lr_schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, polynomial_schedule_fn],
-      boundaries=[hyperparameters.warmup_steps])
+      schedules=[warmup_fn, polynomial_schedule_fn], boundaries=[warmup_steps])
   return lr_schedule_fn
 
 
@@ -111,16 +111,24 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss, _ = workload.loss_fn(
+    loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
         mask_batch=batch.get('weights'),
         label_smoothing=label_smoothing)
-    return loss, new_model_state
+    summed_loss = loss_dict['summed']
+    n_valid_examples = loss_dict['n_valid_examples']
+    return summed_loss, (n_valid_examples, new_model_state)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (loss, new_model_state), grad = grad_fn(current_param_container)
-  (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
+  (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
+      current_param_container)
+  # Get correct global mean loss and grad.
+  (summed_loss, n_valid_examples, grad) = lax.psum(
+      (summed_loss, n_valid_examples, grad), axis_name='batch')
+  loss = summed_loss / n_valid_examples
+  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
+
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 

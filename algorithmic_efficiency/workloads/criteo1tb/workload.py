@@ -1,3 +1,4 @@
+"""Criteo1TB DLRM workload base class."""
 import math
 import os
 from typing import Dict, Optional, Tuple
@@ -25,7 +26,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.124225  # NOTE: this will be later revised.
+    return 0.123649
 
   def has_reached_test_target(self, eval_result: float) -> bool:
     return eval_result['test/loss'] < self.test_target_value

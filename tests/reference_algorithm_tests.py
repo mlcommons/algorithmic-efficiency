@@ -182,7 +182,6 @@ def _make_one_batch_workload(workload_class,
 
     def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
       # pylint: disable=line-too-long
-      print(FLAGS.identical)
       if not (FLAGS.identical and
               os.path.exists(f"tests/modeldiffs/{workload_name}/compare.py")):
         return super().init_model_fn(
@@ -254,9 +253,13 @@ def _make_one_batch_workload(workload_class,
       elif 'librispeech' in workload_name:
         inputs = np.random.normal(size=(*batch_shape, 320000))
         targets = np.random.randint(low=1, high=1024, size=(*batch_shape, 256))
+        tgt_pad = np.arange(0, 256)[tuple([None] * len(batch_shape))]
+        tgt_lengths = np.random.randint(
+            low=100, high=256, size=(*batch_shape, 1))
+        tgt_pad = 1 * (tgt_pad > tgt_lengths)
         fake_batch = {
             'inputs': (inputs, np.zeros_like(inputs)),
-            'targets': (targets, np.zeros_like(targets)),
+            'targets': (targets, tgt_pad),
         }
       elif workload_name == 'mnist':
         fake_batch = _make_fake_image_batch(
@@ -266,12 +269,13 @@ def _make_one_batch_workload(workload_class,
 
         def _fake_iter():
           while True:
-            fake_batch = dict(
-                num_nodes=tf.ones((1,), dtype=tf.int64),
-                edge_index=tf.ones((1, 2), dtype=tf.int64),
-                node_feat=tf.random.normal((1, 9)),
-                edge_feat=tf.random.normal((1, 3)),
-                labels=tf.ones((self._num_outputs,)))
+            fake_batch = {
+                'num_nodes': tf.ones((1,), dtype=tf.int64),
+                'edge_index': tf.ones((1, 2), dtype=tf.int64),
+                'node_feat': tf.random.normal((1, 9)),
+                'edge_feat': tf.random.normal((1, 3)),
+                'labels': tf.ones((self._num_outputs,)),
+            }
             yield fake_batch
 
         fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
@@ -288,6 +292,8 @@ def _make_one_batch_workload(workload_class,
             'targets':
                 np.random.randint(
                     low=0, high=32000, size=(*batch_shape, max_len)),
+            'weights':
+                np.random.randint(low=0, high=2, size=(*batch_shape, max_len)),
         }
         self._tokenizer = _FakeTokenizer()
       elif workload_name == 'fastmri':

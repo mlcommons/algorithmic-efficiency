@@ -18,7 +18,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   optimizer_state = {
       'optimizer':
-          torch.optim.SGD(model_params.parameters(), lr=0.001, weight_decay=0)
+          torch.optim.SGD(model_params.parameters(), lr=0.001, weight_decay=0),
   }
 
   return optimizer_state

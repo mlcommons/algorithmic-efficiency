@@ -13,7 +13,7 @@ import tensorflow as tf
 
 from algorithmic_efficiency import data_utils
 
-_NUM_DAY_23_FILES = 179
+_NUM_DAY_23_FILES = 36
 
 # Raw vocab sizes from
 # https://cloud.google.com/tpu/docs/tutorials/dlrm-dcn-2.x#run-model.
@@ -43,7 +43,7 @@ _VOCAB_SIZES = [
     585935,
     12972,
     108,
-    36
+    36,
 ]
 
 
@@ -53,7 +53,7 @@ _VOCAB_SIZES = [
 # https://github.com/facebookresearch/dlrm/blob/fbc37ebe21d4f88f18c6ae01333ada2d025e41cf/dlrm_data_pytorch.py#L298.
 @tf.function
 def _parse_example_fn(num_dense_features, example):
-  """Parser function for pre-processed Criteo CSV records."""
+  """Parser function for pre-processed Criteo TSV records."""
   label_defaults = [[0.0]]
   int_defaults = [[0.0] for _ in range(num_dense_features)]
   categorical_defaults = [['00000000'] for _ in range(len(_VOCAB_SIZES))]
@@ -96,20 +96,21 @@ def get_criteo1tb_dataset(split: str,
   if split in ['train', 'eval_train']:
     file_paths = [os.path.join(data_dir, f'day_{d}_*') for d in range(0, 23)]
   elif split == 'validation':
-    # Assumes files are of the format day_23_004.csv.
+    # Assumes files are of the format day_23_04.
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.csv')
+        os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
         for s in range(num_test_files, _NUM_DAY_23_FILES)
     ]
   else:
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.csv')
+        os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
         for s in range(0, num_test_files)
     ]
 
   is_training = split == 'train'
+  shuffle = is_training or split == 'eval_train'
   ds = tf.data.Dataset.list_files(
-      file_paths, shuffle=is_training, seed=shuffle_rng[0])
+      file_paths, shuffle=shuffle, seed=shuffle_rng[0])
 
   ds = ds.interleave(
       tf.data.TextLineDataset,
@@ -117,7 +118,7 @@ def get_criteo1tb_dataset(split: str,
       block_length=global_batch_size // 8,
       num_parallel_calls=128,
       deterministic=False)
-  if is_training:
+  if shuffle:
     ds = ds.shuffle(buffer_size=524_288 * 100, seed=shuffle_rng[1])
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
   parse_fn = functools.partial(_parse_example_fn, num_dense_features)
@@ -129,8 +130,7 @@ def get_criteo1tb_dataset(split: str,
   if num_batches is not None:
     ds = ds.take(num_batches)
 
-  # We do not need a ds.cache() because we will do this anyways with
-  # itertools.cycle in the base workload.
+  # We do not use ds.cache() because the dataset is so large that it would OOM.
   if repeat_final_dataset:
     ds = ds.repeat()
 
