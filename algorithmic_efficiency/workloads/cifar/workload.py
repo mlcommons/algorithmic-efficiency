@@ -2,7 +2,7 @@
 
 import abc
 import math
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 import jax
 import torch
