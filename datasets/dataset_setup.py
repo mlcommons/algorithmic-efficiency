@@ -507,11 +507,11 @@ def main(_):
                     tmp_dir,
                     num_decompression_threads,
                     FLAGS.interactive_deletion)
-    
+
   if FLAGS.all or FLAGS.mnist:
     logging.info('Downloading MNIST...')
     download_mnist(data_dir)
-    
+
   if FLAGS.all or FLAGS.fastmri:
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
@@ -528,7 +528,7 @@ def main(_):
                      knee_singlecoil_train_url,
                      knee_singlecoil_val_url,
                      knee_singlecoil_test_url)
-    
+
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
     flags.mark_flag_as_required('imagenet_val_url')
@@ -545,19 +545,19 @@ def main(_):
           'flag.')
     download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
-    
+
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
     download_librispeech(data_dir, tmp_dir, train_tokenizer=True)
-    
+
   if FLAGS.all or FLAGS.cifar:
     logging.info('Downloading CIFAR...')
     download_cifar(data_dir, FLAGS.framework)
-    
+
   if FLAGS.all or FLAGS.ogbg:
     logging.info('Downloading OGBG...')
     download_ogbg(data_dir)
-    
+
   if FLAGS.all or FLAGS.wmt:
     logging.info('Downloading WMT...')
     download_wmt(data_dir)
