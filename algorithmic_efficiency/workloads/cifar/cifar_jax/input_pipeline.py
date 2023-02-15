@@ -105,10 +105,7 @@ def create_split(
                                    padding_size,
                                    dtype)
     else:
-      image = preprocess_for_eval(example['image'],
-                                  mean_rgb,
-                                  stddev_rgb,
-                                  dtype)
+      image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb, dtype)
     return {'inputs': image, 'targets': example['label']}
 
   ds = dataset_builder.as_dataset(split=split)
