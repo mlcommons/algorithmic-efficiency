@@ -73,7 +73,7 @@ class ModelDiffTest(absltest.TestCase):
           'Grad Norm (jax)',
           'Grad Norm (torch)',
           'Train Loss (jax)',
-          'Train Loss (torch)'
+          'Train Loss (torch)',
       ]
       fmt = lambda l: '|' + '|'.join(map(lambda x: f'{x:^20s}', l)) + '|'
       header = fmt(header)

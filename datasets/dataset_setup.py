@@ -405,7 +405,7 @@ def setup_imagenet_pytorch(data_dir):
       'wget',
       '-qO-',
       ('https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/'
-       'valprep.sh')
+       'valprep.sh'),
   ]
   valprep_process = subprocess.Popen(valprep_command, shell=True)
   valprep_process.communicate()

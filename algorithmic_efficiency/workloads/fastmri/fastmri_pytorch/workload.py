@@ -150,7 +150,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
@@ -164,12 +164,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     per_example_losses = F.l1_loss(
         logits_batch, label_batch, reduction='none').mean(dim=(1, 2))
@@ -180,7 +184,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def _eval_model(self,
                   params: spec.ParameterContainer,
@@ -194,19 +202,19 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
+    targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(outputs), device=DEVICE)
     weights_sum = weights.sum().to(torch.int)
     ssim_sum = ssim(
         outputs[:weights_sum],
-        batch['targets'][:weights_sum],
+        targets[:weights_sum],
         mean=batch['mean'][:weights_sum],
         std=batch['std'][:weights_sum],
         volume_max=batch['volume_max'][:weights_sum]).sum()
-    _, per_example_losses = self.loss_fn(batch['targets'], outputs, weights)
-    loss = per_example_losses.sum()
-    return {'ssim': ssim_sum, 'loss': loss}
+    summed_loss = self.loss_fn(targets, outputs, weights)['summed']
+    return {'ssim': ssim_sum, 'loss': summed_loss}
 
   def _eval_model_on_split(self,
                            split: str,

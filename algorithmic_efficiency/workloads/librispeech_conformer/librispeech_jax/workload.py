@@ -148,12 +148,16 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
+      label_batch: Tuple[spec.Tensor, spec.Tensor],  # (label_batch, padding)
+      logits_batch: Tuple[spec.Tensor, spec.Tensor],  # (logits_batch, padding)
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     logits, logit_paddings = logits_batch
     targets, target_paddings = label_batch
@@ -170,7 +174,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = 1 - target_paddings
     n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def ctc_loss(self,
                logits: spec.Tensor,
@@ -205,7 +213,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     # Mask labels that don't equal previous label.
     label_mask = jnp.concatenate([
         jnp.ones_like(labels[:, :1], dtype=jnp.int32),
-        jnp.not_equal(labels[:, 1:], labels[:, :-1])
+        jnp.not_equal(labels[:, 1:], labels[:, :-1]),
     ],
                                  axis=1)
 
@@ -275,8 +283,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss, _ = self.loss_fn(
-        batch['targets'], (logits, logit_paddings))
+    loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
+    normalized_loss = loss['summed'] / loss['n_valid_examples']
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(

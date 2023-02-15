@@ -34,14 +34,20 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     losses = -1.0 * (targets * log_p + (1 - targets) * log_not_p)
     return losses
 
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense (not one-hot) labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     batch_size = label_batch.shape[0]
     label_batch = jnp.reshape(label_batch, (batch_size,))
@@ -55,7 +61,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def init_model_fn(
       self,
@@ -126,11 +136,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     weights = batch.get('weights')
     if weights is None:
       weights = jnp.ones(len(logits))
-    _, per_example_losses = self.loss_fn(
-        label_batch=batch['targets'],
-        logits_batch=logits,
-        mask_batch=weights)
-    return jnp.sum(per_example_losses)
+    summed_loss = self.loss_fn(
+        label_batch=batch['targets'], logits_batch=logits,
+        mask_batch=weights)['summed']
+    return summed_loss
 
   def _eval_batch(self,
                   params: spec.ParameterContainer,

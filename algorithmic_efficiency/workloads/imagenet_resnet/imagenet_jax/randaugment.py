@@ -92,7 +92,7 @@ def cutout(image, pad_size, replace=0):
 
   cutout_shape = [
       image_height - (lower_pad + upper_pad),
-      image_width - (left_pad + right_pad)
+      image_width - (left_pad + right_pad),
   ]
   padding_dims = [[lower_pad, upper_pad], [left_pad, right_pad]]
   mask = tf.pad(
@@ -525,7 +525,7 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
       'TranslateX',
       'TranslateY',
       'Cutout',
-      'SolarizeAdd'
+      'SolarizeAdd',
   ]
 
   for layer_num in range(num_layers):

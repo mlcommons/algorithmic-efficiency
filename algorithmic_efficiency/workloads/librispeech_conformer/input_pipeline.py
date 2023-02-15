@@ -14,7 +14,7 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
   def __init__(self, split, data_dir):
     super().__init__()
     self.data_dir = data_dir
-    splits = split.split("+")
+    splits = split.split('+')
     ids = []
     for split in splits:
       logging.info('Loading split = %s', split)

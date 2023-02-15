@@ -3,7 +3,7 @@
 import abc
 import itertools
 import math
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import jax
 
@@ -90,12 +90,16 @@ class BaseOgbgWorkload(spec.Workload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     per_example_losses = self._binary_cross_entropy_with_mask(
         labels=label_batch,
         logits=logits_batch,
@@ -106,7 +110,11 @@ class BaseOgbgWorkload(spec.Workload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   @property
   def step_hint(self) -> int:

@@ -29,7 +29,7 @@ def init_optimizer_state(workload: spec.Workload,
           torch.optim.RMSprop(
               model_params.parameters(),
               lr=base_lr,
-              weight_decay=hyperparameters.l2)
+              weight_decay=hyperparameters.l2),
   }
 
   optimizer_state['scheduler'] = StepLR(
@@ -68,8 +68,9 @@ def update_params(workload: spec.Workload,
       rng=rng,
       update_batch_norm=True)
 
-  loss, _ = workload.loss_fn(
+  loss_dict = workload.loss_fn(
       label_batch=batch['targets'], logits_batch=outputs_batch)
+  loss = loss_dict['summed'] / loss_dict['n_valid_examples']
 
   loss.backward()
   optimizer_state['optimizer'].step()
