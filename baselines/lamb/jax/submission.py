@@ -1,11 +1,7 @@
 """Submission file for a LAMB optimizer with warmup+cosine LR in Jax."""
 
 import functools
-
-# isort: off
-# We have to turn off isort here to resolve a conflict between isort and yapf.
-from typing import (Any, Callable, Dict, Iterator, List, Optional, Tuple, Union)
-# isort: on
+from typing import Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 import jax
@@ -16,47 +12,6 @@ import optax
 from algorithmic_efficiency import spec
 
 _GRAD_CLIP_EPS = 1e-6
-
-
-# Forked from
-# https://github.com/deepmind/optax/blob/master/optax/_src/alias.py.
-def lamb(
-    learning_rate: Union[float, optax.Schedule],
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    weight_decay: float = 0.0,
-    weight_decay_mask: Optional[Union[Any, Callable[[optax.Params],
-                                                    Any]]] = None,
-) -> optax.GradientTransformation:
-  """Rescale updates according to the LAMB algorithm.
-
-  References: https://arxiv.org/pdf/1904.00962.pdf.
-
-  Args:
-    learning_rate: A fixed global scaling factor.
-    b1: Exponential decay rate to track the first moment of past gradients.
-    b2: Exponential decay rate to track the second moment of past gradients.
-    eps: A small constant applied to denominator outside of the square root
-      (as in the Adam paper) to avoid dividing by zero when rescaling.
-    eps_root: A small constant applied to denominator inside the square root (as
-      in RMSProp), to avoid dividing by zero when rescaling. This is needed for
-      instance when computing (meta-)gradients through Adam.
-    weight_decay: Strength of the weight decay regularization.
-    weight_decay_mask: A tree with same structure as (or a prefix of) the params
-      PyTree, or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the weight decay to, and `False` for those you want to skip.
-
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-  return optax.chain(
-      optax.scale_by_adam(b1, b2, eps, eps_root),
-      optax.add_decayed_weights(weight_decay, weight_decay_mask),
-      optax.scale_by_trust_ratio(),
-      scale_by_learning_rate(learning_rate))
 
 
 def scale_by_learning_rate(learning_rate, flip_sign=True):
@@ -92,7 +47,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   # Create optimizer + LR schedule.
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
-  opt_init_fn, opt_update_fn = lamb(
+  opt_init_fn, opt_update_fn = optax.lamb(
       learning_rate=lr_schedule_fn,
       b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
