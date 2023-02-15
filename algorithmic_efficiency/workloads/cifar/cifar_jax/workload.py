@@ -131,15 +131,6 @@ class CifarWorkload(BaseCifarWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-<<<<<<< HEAD
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
-    one_hot_targets = jax.nn.one_hot(label_batch, self._num_classes)
-=======
   def loss_fn(
       self,
       label_batch: spec.Tensor,  # Dense or one-hot labels.
@@ -152,8 +143,7 @@ class CifarWorkload(BaseCifarWorkload):
     valid examples in batch, 'per_example': 1-d array of per-example losses}
     (not synced across devices).
     """
-    one_hot_targets = jax.nn.one_hot(label_batch, 10)
->>>>>>> d695dee4d286ef22aab6d2e84501bee298ed0727
+    one_hot_targets = jax.nn.one_hot(label_batch, self._num_classes)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
     per_example_losses = -jnp.sum(
         smoothed_targets * nn.log_softmax(logits_batch), axis=-1)

@@ -2,11 +2,7 @@
 
 import contextlib
 import random
-<<<<<<< HEAD
-from typing import Dict, Optional, Tuple
-=======
-from typing import Any, Dict, Iterator, Optional, Tuple
->>>>>>> d695dee4d286ef22aab6d2e84501bee298ed0727
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import nn
