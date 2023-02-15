@@ -1,7 +1,7 @@
 """MNIST workload implemented in Jax."""
 
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -71,12 +71,18 @@ class MnistWorkload(BaseMnistWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     one_hot_targets = jax.nn.one_hot(label_batch, 10)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
     per_example_losses = -jnp.sum(
@@ -88,7 +94,11 @@ class MnistWorkload(BaseMnistWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   @functools.partial(
       jax.pmap,
@@ -113,8 +123,13 @@ class MnistWorkload(BaseMnistWorkload):
       weights = jnp.ones(len(logits))
     accuracy = jnp.sum(
         (jnp.argmax(logits, axis=-1) == batch['targets']) * weights)
-    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
-    loss = jnp.sum(per_example_losses)
-    metrics = {'accuracy': accuracy, 'loss': loss}
+    summed_loss = self.loss_fn(batch['targets'], logits, weights)['summed']
+    metrics = {'accuracy': accuracy, 'loss': summed_loss}
     metrics = lax.psum(metrics, axis_name='batch')
     return metrics
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    return jax.tree_map(lambda x: float(x[0] / num_examples), total_metrics)

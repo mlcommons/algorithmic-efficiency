@@ -39,10 +39,10 @@ class MlpBlock(nn.Module):
   @nn.compact
   def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
     """Applies Transformer MlpBlock module."""
-    inits = dict(
-        kernel_init=nn.initializers.xavier_uniform(),
-        bias_init=nn.initializers.normal(stddev=1e-6),
-    )
+    inits = {
+        'kernel_init': nn.initializers.xavier_uniform(),
+        'bias_init': nn.initializers.normal(stddev=1e-6),
+    }
 
     d = x.shape[2]
     x = nn.Dense(self.mlp_dim or 4 * d, **inits)(x)

@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
   jax_batch = {
       'inputs': inp_tokens.detach().numpy(),
-      'targets': tgt_tokens.detach().numpy()
+      'targets': tgt_tokens.detach().numpy(),
   }
   pyt_batch = {'inputs': inp_tokens, 'targets': tgt_tokens}
 

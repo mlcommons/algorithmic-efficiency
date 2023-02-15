@@ -25,9 +25,9 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.mode
     Conformer as JaxConformer
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.models import \
     ConformerConfig as JaxConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
     ConformerConfig as PytorchConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
     ConformerEncoderDecoder as PytorchConformer
 from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP

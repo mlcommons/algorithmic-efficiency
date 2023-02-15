@@ -18,7 +18,7 @@ def _make_mlp(in_dim, hidden_dims, dropout_rate):
         nn.Linear(in_features=in_dim, out_features=dim),
         nn.LayerNorm(dim),
         nn.ReLU(),
-        nn.Dropout(dropout_rate)
+        nn.Dropout(dropout_rate),
     ])
   return nn.Sequential(*layers)
 

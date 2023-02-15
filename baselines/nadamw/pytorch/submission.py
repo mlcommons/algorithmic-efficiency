@@ -6,11 +6,15 @@ from typing import Dict, Iterator, List, Tuple
 from absl import logging
 import torch
 from torch import Tensor
+import torch.distributed.nn as dist_nn
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.lr_scheduler import LinearLR
 from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
 # Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py.
@@ -54,7 +58,9 @@ class NAdamW(torch.optim.Optimizer):
       raise ValueError(f'Invalid beta parameter at index 1: {betas[1]}')
     if not 0.0 <= weight_decay:
       raise ValueError(f'Invalid weight_decay value: {weight_decay}')
-    defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    defaults = {
+        'lr': lr, 'betas': betas, 'eps': eps, 'weight_decay': weight_decay
+    }
     super().__init__(params, defaults)
 
   def __setstate__(self, state):
@@ -194,23 +200,20 @@ def init_optimizer_state(workload: spec.Workload,
           NAdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              betas=(hyperparameters.beta1, hyperparameters.beta2),
+              betas=(1.0 - hyperparameters.one_minus_beta1,
+                     hyperparameters.beta2),
               eps=1e-8,
-              weight_decay=hyperparameters.weight_decay)
+              weight_decay=hyperparameters.weight_decay),
   }
 
   def pytorch_cosine_warmup(step_hint: int, hyperparameters, optimizer):
+    warmup_steps = int(hyperparameters.warmup_factor * step_hint)
     warmup = LinearLR(
-        optimizer,
-        start_factor=1e-10,
-        end_factor=1.,
-        total_iters=hyperparameters.warmup_steps)
-    cosine_steps = max(step_hint - hyperparameters.warmup_steps, 1)
+        optimizer, start_factor=1e-10, end_factor=1., total_iters=warmup_steps)
+    cosine_steps = max(step_hint - warmup_steps, 1)
     cosine_decay = CosineAnnealingLR(optimizer, T_max=cosine_steps)
     return SequentialLR(
-        optimizer,
-        schedulers=[warmup, cosine_decay],
-        milestones=[hyperparameters.warmup_steps])
+        optimizer, schedulers=[warmup, cosine_decay], milestones=[warmup_steps])
 
   optimizer_state['scheduler'] = pytorch_cosine_warmup(
       workload.step_hint, hyperparameters, optimizer_state['optimizer'])
@@ -253,11 +256,19 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  loss, _ = workload.loss_fn(
+
+  loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
       mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing)
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
 
   loss.backward()
 

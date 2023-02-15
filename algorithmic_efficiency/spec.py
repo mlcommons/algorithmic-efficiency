@@ -266,8 +266,13 @@ class Workload(metaclass=abc.ABCMeta):
       label_batch: Union[Tuple[Tensor, Tensor], Tensor],
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
-      label_smoothing: float = 0.0) -> Tuple[Tensor, Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
 
   @abc.abstractmethod
   def _eval_model_on_split(self,

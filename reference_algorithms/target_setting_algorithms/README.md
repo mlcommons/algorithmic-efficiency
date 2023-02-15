@@ -55,7 +55,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 ```
 
 ## ImageNet-Resnet
-Target was set using Nesterov with a linear warmup and linear decay LR schedule.
+Target was set using Heavy-ball Momentum with a linear warmup and linear decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \

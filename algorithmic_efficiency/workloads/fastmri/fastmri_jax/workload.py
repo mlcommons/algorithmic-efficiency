@@ -59,12 +59,16 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     per_example_losses = jnp.mean(
         jnp.abs(logits_batch - label_batch),
@@ -76,7 +80,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   @functools.partial(
       jax.pmap,
@@ -95,21 +103,21 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         mode=spec.ForwardPassMode.EVAL,
         rng=rng,
         update_batch_norm=False)
+    targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
       weights = jnp.ones(len(logits))
     ssim_vals = ssim(
         logits,
-        batch['targets'],
+        targets,
         mean=batch['mean'],
         std=batch['std'],
         volume_max=batch['volume_max'])
     ssim_sum = jnp.sum(ssim_vals * weights)
-    _, per_example_losses = self.loss_fn(batch['targets'], logits, weights)
-    loss = jnp.sum(per_example_losses)
+    summed_loss = self.loss_fn(targets, logits, weights)['summed']
     metrics = {
         'ssim': ssim_sum,
-        'loss': loss,
+        'loss': summed_loss,
     }
     metrics = jax.lax.psum(metrics, axis_name='batch')
     return metrics

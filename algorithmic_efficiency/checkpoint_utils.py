@@ -68,14 +68,15 @@ def maybe_restore_checkpoint(framework: str,
 
   uninitialized_global_step = -1
   uninitialized_preemption_count = -1
-  checkpoint_state = dict(
-      model_params=model_params,
-      optimizer_state=opt_state,
-      model_state=model_state,
-      train_state=train_state,
-      eval_results=None,
-      global_step=uninitialized_global_step,
-      preemption_count=uninitialized_preemption_count)
+  checkpoint_state = {
+      'model_params': model_params,
+      'optimizer_state': opt_state,
+      'model_state': model_state,
+      'train_state': train_state,
+      'eval_results': None,
+      'global_step': uninitialized_global_step,
+      'preemption_count': uninitialized_preemption_count,
+  }
 
   if framework == 'jax':
     latest_ckpt = flax_checkpoints.restore_checkpoint(
@@ -90,7 +91,7 @@ def maybe_restore_checkpoint(framework: str,
 
   # Load_latest_checkpoint() will return checkpoint_state if
   # checkpoint_dir does not exist or if it exists and contains no checkpoints.
-  found_checkpoint = (latest_ckpt['global_step'] != uninitialized_global_step)
+  found_checkpoint = latest_ckpt['global_step'] != uninitialized_global_step
 
   if not found_checkpoint:
     return (optimizer_state,
@@ -209,14 +210,15 @@ def save_checkpoint(framework: str,
             'method.')
     opt_state = optimizer_state_dict
 
-  checkpoint_state = dict(
-      model_params=model_params,
-      optimizer_state=opt_state,
-      model_state=model_state,
-      train_state=train_state,
-      eval_results=tuple(eval_results),
-      global_step=global_step,
-      preemption_count=preemption_count)
+  checkpoint_state = {
+      'model_params': model_params,
+      'optimizer_state': opt_state,
+      'model_state': model_state,
+      'train_state': train_state,
+      'eval_results': tuple(eval_results),
+      'global_step': global_step,
+      'preemption_count': preemption_count,
+  }
 
   save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
   if framework == 'jax':

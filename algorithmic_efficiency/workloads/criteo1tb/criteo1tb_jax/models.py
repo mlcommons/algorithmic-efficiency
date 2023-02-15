@@ -51,11 +51,10 @@ class DlrmSmall(nn.Module):
   mlp_bottom_dims: Sequence[int] = (512, 256, 128)
   mlp_top_dims: Sequence[int] = (1024, 1024, 512, 256, 1)
   embed_dim: int = 128
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, train):
-    del train
-
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
@@ -104,5 +103,10 @@ class DlrmSmall(nn.Module):
               top_mlp_input)
       if layer_idx < (num_layers_top - 1):
         top_mlp_input = nn.relu(top_mlp_input)
+      if (self.dropout_rate is not None and self.dropout_rate > 0.0 and
+          layer_idx == num_layers_top - 2):
+        top_mlp_input = nn.Dropout(
+            rate=self.dropout_rate, deterministic=not train)(
+                top_mlp_input)
     logits = top_mlp_input
     return logits
