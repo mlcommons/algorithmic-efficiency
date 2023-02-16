@@ -291,8 +291,7 @@ class MHSAwithQS(nn.MultiheadAttention):
             to ignore for the purpose of attention (i.e. treat as "padding"). For unbatched `query`, shape should be :math:`(S)`.
             Binary and byte masks are supported.
             For a binary mask, a ``True`` value indicates that the corresponding ``key`` value will be ignored for
-            the purpose of attention. For a byte mask, a non-zero value indicates that the corresponding ``key``
-            value will be ignored.
+            the purpose of attention. For a float mask, it will be directly added to the corresponding ``key`` value.
         need_weights: If specified, returns ``attn_output_weights`` in addition to ``attn_outputs``.
             Default: ``True``.
         attn_mask: If specified, a 2D or 3D mask preventing attention to certain positions. Must be of shape
@@ -315,13 +314,19 @@ class MHSAwithQS(nn.MultiheadAttention):
         - **attn_output_weights** - Only returned when ``need_weights=True``. If ``average_attn_weights=True``,
           returns attention weights averaged across heads of shape :math:`(L, S)` when input is unbatched or
           :math:`(N, L, S)`, where :math:`N` is the batch size, :math:`L` is the target sequence length, and
-          :math:`S` is the source sequence length. If ``average_weights=False``, returns attention weights per
+          :math:`S` is the source sequence length. If ``average_attn_weights=False``, returns attention weights per
           head of shape :math:`(\text{num\_heads}, L, S)` when input is unbatched or :math:`(N, \text{num\_heads}, L, S)`.
 
         .. note::
             `batch_first` argument is ignored for unbatched inputs.
         """
     is_batched = query.dim() == 3
+    if key_padding_mask is not None:
+      _kpm_dtype = key_padding_mask.dtype
+      if _kpm_dtype != torch.bool and not torch.is_floating_point(
+          key_padding_mask):
+        raise AssertionError(
+            "only bool and floating types of key_padding_mask are supported")
     why_not_fast_path = ''
     if not is_batched:
       why_not_fast_path = f"input not batched; expected query.dim() of 3 but got {query.dim()}"
@@ -353,6 +358,10 @@ class MHSAwithQS(nn.MultiheadAttention):
       why_not_fast_path = "attn_mask was not None"
     elif query.is_nested and key_padding_mask is not None:
       why_not_fast_path = "key_padding_mask is not supported with NestedTensor input"
+    elif self.num_heads % 2 == 1:
+      why_not_fast_path = "num_heads is odd"
+    elif torch.is_autocast_enabled():
+      why_not_fast_path = "autocast is enabled"
 
     if not why_not_fast_path:
       tensor_args = (
@@ -368,11 +377,11 @@ class MHSAwithQS(nn.MultiheadAttention):
       # generator expressions.
       if torch.overrides.has_torch_function(tensor_args):
         why_not_fast_path = "some Tensor argument has_torch_function"
-      elif not all([(x.is_cuda or 'cpu' in str(x.device)) for x in tensor_args
-                   ]):
+      elif not all([(x is None or x.is_cuda or 'cpu' in str(x.device))
+                    for x in tensor_args]):
         why_not_fast_path = "some Tensor argument is neither CUDA nor CPU"
       elif torch.is_grad_enabled() and any(
-          [x.requires_grad for x in tensor_args]):
+          [x is not None and x.requires_grad for x in tensor_args]):
         why_not_fast_path = (
             "grad is enabled and at least one of query or the "
             "input/output projection weights or biases requires_grad")
@@ -399,7 +408,9 @@ class MHSAwithQS(nn.MultiheadAttention):
             self.out_proj.bias,
             key_padding_mask if key_padding_mask is not None else attn_mask,
             need_weights,
-            average_attn_weights)
+            average_attn_weights,
+            1 if key_padding_mask is not None else 
+            0 if attn_mask is not None else None)
     any_nested = query.is_nested or key.is_nested or value.is_nested
     assert not any_nested, ("MultiheadAttention does not support NestedTensor outside of its fast path. " +
                             f"The fast path was not hit because {why_not_fast_path}")
