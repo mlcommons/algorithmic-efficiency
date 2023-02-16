@@ -1,11 +1,19 @@
 """Submission file for Adafactor in PyTorch."""
 
+from functools import partial
 from typing import Dict, Iterator, List, Tuple
 
 from absl import logging
 import torch
+import torch.distributed.nn as dist_nn
+from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -13,7 +21,7 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  """Creates a Nesterov optimizer and a learning rate schedule."""
+  """Creates an Adafactor optimizer and a learning rate schedule."""
   del model_state
   del rng
 
@@ -25,9 +33,21 @@ def init_optimizer_state(workload: spec.Workload,
               lr=hyperparameters.learning_rate,
               beta1=hyperparameters.beta1,
               decay_adam=hyperparameters.decay_adam,
-              weight_decay=hyperparameters.weight_decay)
+              weight_decay=hyperparameters.weight_decay),
   }
-
+  optimizer = optimizer_state['optimizer']
+  warmup = LinearLR(
+      optimizer,
+      start_factor=1e-10,
+      end_factor=1.,
+      total_iters=hyperparameters.warmup_steps)
+  target_setting_step_hint = int(0.75 * workload.step_hint)
+  cosine_steps = max(target_setting_step_hint - hyperparameters.warmup_steps, 1)
+  cosine_decay = CosineAnnealingLR(optimizer, T_max=cosine_steps)
+  optimizer_state['scheduler'] = SequentialLR(
+      optimizer,
+      schedulers=[warmup, cosine_decay],
+      milestones=[hyperparameters.warmup_steps])
   return optimizer_state
 
 
@@ -58,12 +78,19 @@ class Adafactor(torch.optim.Optimizer):
         exclude_from_layerwise_adaptation=None,
         per_var_learning_summary=False,
         sort_factored_second_moment_dims=False,
+        # Unused because sort_factored_second_moment_dims=False.
         min_dim_size_to_factor=128,
         multiply_by_parameter_scale=False,
+        # Unused because multiply_by_parameter_scale=False.
         epsilon2_param_scale_reg=1e-3,
         maybe_inf_to_nan=True,
     )
     super().__init__(params, defaults)
+
+  def inf_to_nan(self, group, x):
+    if group["maybe_inf_to_nan"]:
+      x = torch.nan_to_num(x, nan=torch.nan, posinf=torch.nan, neginf=torch.nan)
+    return x
 
   def step(self, closure=None):
     """
@@ -77,10 +104,12 @@ class Adafactor(torch.optim.Optimizer):
       loss = closure()
 
     for group in self.param_groups:
+      inf_to_nan = partial(self.inf_to_nan, group)
       for p in group["params"]:
         if p.grad is None:
           continue
         grad = p.grad.data
+        grad = inf_to_nan(grad)
         if grad.dtype in {torch.float16, torch.bfloat16}:
           grad = grad.float()
         if grad.is_sparse:
@@ -118,40 +147,44 @@ class Adafactor(torch.optim.Optimizer):
         beta1 = group["beta1"]
         beta2 = group["decay_adam"]
 
-        bias_correction1 = 1 - beta1**state["step"]
-        bias_correction2 = 1 - beta2**state["step"]
+        t = state["step"]
+        beta2t = beta2 * (1. - beta2**(t - 1.)) / (1. - beta2**t)
 
-        exp_avg = state["exp_avg"]
-        exp_avg.mul_(beta1).add_(grad, alpha=(1 - beta1))
-
-        exp_avg_sq_update = (grad**2)
+        exp_avg_sq_update = (grad**2) + group["epsilon1_grad_sq_reg"]
         if factored:
           exp_avg_sq_row = state["exp_avg_sq_row"]
           exp_avg_sq_col = state["exp_avg_sq_col"]
 
-          exp_avg_sq_row.mul_(beta2).add_(
-              exp_avg_sq_update.mean(dim=-1), alpha=(1.0 - beta2))
-          exp_avg_sq_col.mul_(beta2).add_(
-              exp_avg_sq_update.mean(dim=-2), alpha=(1.0 - beta2))
+          exp_avg_sq_row.mul_(beta2t).add_(
+              exp_avg_sq_update.mean(dim=-1), alpha=(1.0 - beta2t))
+          exp_avg_sq_col.mul_(beta2t).add_(
+              exp_avg_sq_update.mean(dim=-2), alpha=(1.0 - beta2t))
 
-          r_factor = (exp_avg_sq_row /
-                      exp_avg_sq_row.mean(dim=-1, keepdim=True)).unqueeze(-1)
-          c_factor = (exp_avg_sq_col).unsqueeze(-2)
-          denom = (r_factor * c_factor) / bias_correction2
+          r_factor = inf_to_nan(
+              exp_avg_sq_row /
+              exp_avg_sq_row.mean(dim=-1, keepdim=True)).unsqueeze(-1)
+          c_factor = inf_to_nan(exp_avg_sq_col).unsqueeze(-2)
+          denom = (r_factor * c_factor)
         else:
           exp_avg_sq = state["exp_avg_sq"]
 
-          exp_avg_sq.mul_(beta2).add_(exp_avg_sq_update, alpha=(1.0 - beta2))
-          denom = exp_avg_sq / bias_correction2
+          exp_avg_sq.mul_(beta2t).add_(exp_avg_sq_update, alpha=(1.0 - beta2t))
+          denom = exp_avg_sq
 
-        denom = denom.sqrt() + group["epsilon1_grad_sq_reg"]
-        update = exp_avg / denom
-        update = update / bias_correction1 * lr
+        denom = denom.sqrt()
+        update = grad / denom
+        # Clip the update based on RMS.
+        clipping_denom = inf_to_nan(torch.square(update).mean().sqrt() \
+        /group["clip_threshold"]).clamp(min=1.0)
+        update = update / clipping_denom * lr
+        # Momentum
+        exp_avg = state["exp_avg"]
+        exp_avg.mul_(beta1).add_(update, alpha=(1 - beta1))
 
         if group["weight_decay"] != 0:
           p_data_fp32.add_(p_data_fp32, alpha=(-group["weight_decay"] * lr))
 
-        p_data_fp32.add_(-update)
+        p_data_fp32.add_(-exp_avg)
 
         if p.data.dtype in {torch.float16, torch.bfloat16}:
           p.data.copy_(p_data_fp32)
@@ -190,15 +223,19 @@ def update_params(workload: spec.Workload,
   label_smoothing = (
       hyperparameters.label_smoothing if hasattr(hyperparameters,
                                                  'label_smoothing') else 0.0)
-  if hasattr(hyperparameters, 'grad_clip'):
-    grad_clip = hyperparameters.grad_clip
-  else:
-    grad_clip = None
-  loss, _ = workload.loss_fn(
+
+  loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
       mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing)
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
 
   loss.backward()
 
@@ -207,7 +244,8 @@ def update_params(workload: spec.Workload,
     grad_norm = torch.norm(
         torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
 
-  if grad_clip is not None:
+  if hasattr(hyperparameters, 'grad_clip'):
+    grad_clip = hyperparameters.grad_clip
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
