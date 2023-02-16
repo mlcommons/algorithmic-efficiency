@@ -156,19 +156,19 @@ class Adafactor(torch.optim.Optimizer):
           exp_avg_sq_col = state["exp_avg_sq_col"]
 
           exp_avg_sq_row.mul_(beta2t).add_(
-              exp_avg_sq_update.mean(dim=-1), alpha=(1.0 - beta2t))
+              exp_avg_sq_update.mean(dim=-1), alpha=1.0 - beta2t)
           exp_avg_sq_col.mul_(beta2t).add_(
-              exp_avg_sq_update.mean(dim=-2), alpha=(1.0 - beta2t))
+              exp_avg_sq_update.mean(dim=-2), alpha=1.0 - beta2t)
 
           r_factor = inf_to_nan(
               exp_avg_sq_row /
               exp_avg_sq_row.mean(dim=-1, keepdim=True)).unsqueeze(-1)
           c_factor = inf_to_nan(exp_avg_sq_col).unsqueeze(-2)
-          denom = (r_factor * c_factor)
+          denom = r_factor * c_factor
         else:
           exp_avg_sq = state["exp_avg_sq"]
 
-          exp_avg_sq.mul_(beta2t).add_(exp_avg_sq_update, alpha=(1.0 - beta2t))
+          exp_avg_sq.mul_(beta2t).add_(exp_avg_sq_update, alpha=1.0 - beta2t)
           denom = exp_avg_sq
 
         denom = denom.sqrt()
@@ -179,10 +179,10 @@ class Adafactor(torch.optim.Optimizer):
         update = update / clipping_denom * lr
         # Momentum
         exp_avg = state["exp_avg"]
-        exp_avg.mul_(beta1).add_(update, alpha=(1 - beta1))
+        exp_avg.mul_(beta1).add_(update, alpha=1 - beta1)
 
         if group["weight_decay"] != 0:
-          p_data_fp32.add_(p_data_fp32, alpha=(-group["weight_decay"] * lr))
+          p_data_fp32.add_(p_data_fp32, alpha=-group["weight_decay"] * lr)
 
         p_data_fp32.add_(-exp_avg)
 
