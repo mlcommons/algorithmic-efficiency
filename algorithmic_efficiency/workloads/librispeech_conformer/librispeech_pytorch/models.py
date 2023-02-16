@@ -254,7 +254,7 @@ class QueryScaler(nn.Module):
 
 
 class MHSAwithQS(nn.MultiheadAttention):
-  # pylint: disable=locally-disabled, use-a-generator, line-too-long
+  # pylint: disable=locally-disabled, use-a-generator, line-too-long, invalid-name
   def __init__(self, config: ConformerConfig):
     super().__init__(
         embed_dim=config.encoder_dim,
@@ -409,7 +409,7 @@ class MHSAwithQS(nn.MultiheadAttention):
             key_padding_mask if key_padding_mask is not None else attn_mask,
             need_weights,
             average_attn_weights,
-            1 if key_padding_mask is not None else 
+            1 if key_padding_mask is not None else
             0 if attn_mask is not None else None)
     any_nested = query.is_nested or key.is_nested or value.is_nested
     assert not any_nested, ("MultiheadAttention does not support NestedTensor outside of its fast path. " +
