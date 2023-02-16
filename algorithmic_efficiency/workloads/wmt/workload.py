@@ -116,6 +116,11 @@ class BaseWmtWorkload(spec.Workload):
     # when _build_input_queue is called (not when next() is first called on it).
     def _input_queue_generator():
       for batch in iter(ds):
+        weights = batch.get('weights')
+        updated_weights = np.where(batch['targets'] > 0, 1, 0)
+        if weights is not None:
+          updated_weights = np.logical_and(weights, updated_weights)
+        batch['weights'] = updated_weights
         yield batch
 
     return _input_queue_generator()
@@ -197,12 +202,16 @@ class BaseWmtWorkload(spec.Workload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     return self.compute_weighted_cross_entropy(
         logits_batch,
         label_batch,

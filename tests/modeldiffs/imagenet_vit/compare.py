@@ -41,7 +41,7 @@ def key_transform(k):
             'Linear_0': 'query',
             'Linear_1': 'key',
             'Linear_2': 'value',
-            'Linear_3': 'out'
+            'Linear_3': 'out',
         }[i]
       else:
         i = i.replace('Linear', 'Dense')

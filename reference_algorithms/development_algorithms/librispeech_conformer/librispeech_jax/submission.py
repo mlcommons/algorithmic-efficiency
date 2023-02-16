@@ -108,13 +108,19 @@ def pmapped_train_step(workload,
         mode=spec.ForwardPassMode.TRAIN,
         rng=rng,
         update_batch_norm=True)
-
-    loss, _ = workload.loss_fn(batch['targets'], (logits, logit_paddings))
-    return loss, new_model_state
+    loss_dict = workload.loss_fn(batch['targets'], (logits, logit_paddings))
+    summed_loss = loss_dict['summed']
+    n_valid_examples = loss_dict['n_valid_examples']
+    return summed_loss, (n_valid_examples, new_model_state)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (loss, new_model_state), grad = grad_fn(current_param_container)
-  loss, grad = lax.pmean((loss, grad), axis_name='batch')
+  (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
+      current_param_container)
+  # Get correct global mean loss and grad.
+  (summed_loss, n_valid_examples, grad) = lax.psum(
+      (summed_loss, n_valid_examples, grad), axis_name='batch')
+  loss = summed_loss / n_valid_examples
+  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
 
   grad_clip = hyperparameters.grad_clip
   grad_norm = jnp.sqrt(l2_regularization(grad, 0))
@@ -174,7 +180,7 @@ def update_params(workload: spec.Workload,
           {
               'train_step_ctc_loss': loss.mean(),
               'grad_norm': grad_norm.mean(),
-              'learning_rate': lr
+              'learning_rate': lr,
           },
           global_step)
 

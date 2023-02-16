@@ -5,9 +5,13 @@ from typing import Callable, Dict, Iterator, List, Tuple
 from absl import logging
 import optax
 import torch
+import torch.distributed.nn as dist_nn
 from torch.optim.lr_scheduler import LambdaLR
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -27,7 +31,7 @@ def init_optimizer_state(workload: spec.Workload,
               lr=hyperparameters.learning_rate,
               momentum=1.0 - hyperparameters.one_minus_beta1,
               weight_decay=hyperparameters.weight_decay,
-              nesterov=False)
+              nesterov=False),
   }
 
   # Create learning rate schedule.
@@ -98,11 +102,19 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  loss, _ = workload.loss_fn(
+
+  loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
       mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing)
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
 
   loss.backward()
 

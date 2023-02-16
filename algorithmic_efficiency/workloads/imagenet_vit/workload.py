@@ -21,7 +21,7 @@ def decode_variant(variant: str) -> Dict[str, int]:
           'L': 1024,
           'H': 1280,
           'g': 1408,
-          'G': 1664
+          'G': 1664,
       }[v],
       'depth': {
           'Ti': 12,
@@ -31,7 +31,7 @@ def decode_variant(variant: str) -> Dict[str, int]:
           'L': 24,
           'H': 32,
           'g': 40,
-          'G': 48
+          'G': 48,
       }[v],
       'mlp_dim': {
           'Ti': 768,
@@ -41,12 +41,12 @@ def decode_variant(variant: str) -> Dict[str, int]:
           'L': 4096,
           'H': 5120,
           'g': 6144,
-          'G': 8192
+          'G': 8192,
       }[v],
       'num_heads': {
           'Ti': 3, 'S': 6, 'M': 8, 'B': 12, 'L': 16, 'H': 16, 'g': 16, 'G': 16
       }[v],
-      'patch_size': (int(patch), int(patch))
+      'patch_size': (int(patch), int(patch)),
   }
 
 

@@ -92,7 +92,7 @@ def train_tokenizer(data_dir: str,
       f'--vocab_size={vocab_size}',
       f'--character_coverage={character_coverage}',
       f'--model_prefix={model_fp.name}',
-      f'--model_type={model_type}'
+      f'--model_type={model_type}',
   ])
   spm.SentencePieceTrainer.Train(argstr)
 

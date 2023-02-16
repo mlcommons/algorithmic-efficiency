@@ -56,19 +56,19 @@ WORKLOADS = {
     },
     'criteo1tb': {
         'workload_path': 'criteo1tb/criteo1tb',
-        'workload_class_name': 'Criteo1TbDlrmSmallWorkload'
+        'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
     },
     'fastmri': {
         'workload_path': 'fastmri/fastmri',
-        'workload_class_name': 'FastMRIWorkload'
+        'workload_class_name': 'FastMRIWorkload',
     },
     'imagenet_resnet': {
         'workload_path': 'imagenet_resnet/imagenet',
-        'workload_class_name': 'ImagenetResNetWorkload'
+        'workload_class_name': 'ImagenetResNetWorkload',
     },
     'imagenet_vit': {
         'workload_path': 'imagenet_vit/imagenet',
-        'workload_class_name': 'ImagenetVitWorkload'
+        'workload_class_name': 'ImagenetVitWorkload',
     },
     'librispeech_conformer': {
         'workload_path': 'librispeech_conformer/librispeech',
