@@ -63,7 +63,7 @@ ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
-OptimizerState = Dict[str, Any]
+OptimizerState = Union[Dict[str, Any], Tuple[Any, Any]]
 Hyperparameters = Any
 Timing = int
 Steps = int
@@ -386,7 +386,7 @@ UpdateParamsFn = Callable[[
 
 
 # Each call to this function is considered a "step".
-# Can raise a TrainingCompleteError if it believe it has achieved the goal and
+# Can raise a TrainingCompleteError if it believes it has achieved the goal and
 # wants to end the run and receive a final free eval. It will not be restarted,
 # and if has not actually achieved the goal then it will be considered as not
 # achieved the goal and get an infinite time score. Most submissions will likely
