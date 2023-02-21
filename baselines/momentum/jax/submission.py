@@ -76,6 +76,7 @@ def sgd(learning_rate, weight_decay, momentum=None, nesterov=False):
     weight_decay: The weight decay hyperparameter.
     momentum: The momentum hyperparameter.
     nesterov: Whether or not to use Nesterov momentum.
+
   Returns:
     An optax gradient transformation that applies weight decay and then one of a
     {SGD, Momentum, Nesterov} update.
@@ -212,15 +213,14 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(
-    workload: spec.Workload,
-    input_queue: Iterator[Dict[str, spec.Tensor]],
-    optimizer_state: spec.OptimizerState,
-    current_param_container: spec.ParameterContainer,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    global_step: int,
-    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
+def data_selection(workload: spec.Workload,
+                   input_queue: Iterator[Dict[str, spec.Tensor]],
+                   optimizer_state: spec.OptimizerState,
+                   current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
+                   hyperparameters: spec.Hyperparameters,
+                   global_step: int,
+                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """
