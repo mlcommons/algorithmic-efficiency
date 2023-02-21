@@ -15,8 +15,6 @@ import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.data_utils import shard_and_maybe_pad_np
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.input_pipeline import \
-    normalize_image
 
 
 def preprocess_for_train(image: spec.Tensor,
@@ -73,6 +71,16 @@ def preprocess_for_eval(image: spec.Tensor,
     A preprocessed image `Tensor`.
   """
   image = normalize_image(image, mean_rgb, stddev_rgb, dtype=dtype)
+  return image
+
+
+def normalize_image(image: spec.Tensor,
+                    mean_rgb: Tuple[float, float, float],
+                    stddev_rgb: Tuple[float, float, float],
+                    dtype=tf.float32) -> spec.Tensor:
+  image = tf.image.convert_image_dtype(image, dtype)
+  image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
+  image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
   return image
 
 
