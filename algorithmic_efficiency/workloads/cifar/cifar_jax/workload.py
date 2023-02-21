@@ -13,11 +13,10 @@ import tensorflow_datasets as tfds
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads.cifar.cifar_jax import models
 from algorithmic_efficiency.workloads.cifar.cifar_jax.input_pipeline import \
     create_input_iter
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax import \
-    models
 
 
 class CifarWorkload(BaseCifarWorkload):
@@ -45,9 +44,8 @@ class CifarWorkload(BaseCifarWorkload):
         batch_size,
         self.train_mean,
         self.train_stddev,
-        self.center_crop_size,
-        self.aspect_ratio_range,
-        self.scale_ratio_range,
+        self.crop_size,
+        self.padding_size,
         train=train,
         cache=not train if cache is None else cache,
         repeat_final_dataset=repeat_final_dataset)
@@ -90,7 +88,7 @@ class CifarWorkload(BaseCifarWorkload):
     del dropout_rate
     del aux_dropout_rate
     model_cls = getattr(models, 'ResNet18')
-    model = model_cls(num_classes=10, dtype=jnp.float32)
+    model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
     input_shape = (1, 32, 32, 3)
     variables = jax.jit(model.init)({'params': rng},
@@ -145,7 +143,7 @@ class CifarWorkload(BaseCifarWorkload):
     valid examples in batch, 'per_example': 1-d array of per-example losses}
     (not synced across devices).
     """
-    one_hot_targets = jax.nn.one_hot(label_batch, 10)
+    one_hot_targets = jax.nn.one_hot(label_batch, self._num_classes)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
     per_example_losses = -jnp.sum(
         smoothed_targets * nn.log_softmax(logits_batch), axis=-1)

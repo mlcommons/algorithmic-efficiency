@@ -43,7 +43,7 @@ def _build_mnist_dataset(
   else:
     tfds_split = 'test'
   ds = tfds.load(
-      'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
+      'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
   ds = ds.map(
       lambda x: {
           'inputs': _normalize(x['image'], train_mean, train_stddev),
@@ -78,14 +78,14 @@ class BaseMnistWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.9
+    return 0.97
 
   def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
-    return eval_result['test/accuracy'] > self.validation_target_value
+    return eval_result['test/accuracy'] > self.test_target_value
 
   @property
   def test_target_value(self) -> float:
-    return 0.9
+    return 0.97
 
   @property
   def loss_type(self) -> spec.LossType:

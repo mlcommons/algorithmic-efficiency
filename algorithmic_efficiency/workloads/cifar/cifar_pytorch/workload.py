@@ -2,7 +2,7 @@
 
 import contextlib
 import random
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from torch import nn
@@ -16,32 +16,37 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.cifar.cifar_pytorch.models import \
     resnet18
+from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def _build_cifar_dataset(self,
-                           data_rng: spec.RandomState,
-                           split: str,
-                           data_dir: str,
-                           batch_size: int) -> torch.utils.data.DataLoader:
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None
+  ) -> torch.utils.data.DataLoader:
+    del cache
+    del repeat_final_dataset
     is_train = split == 'train'
-
     normalize = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=self.train_mean, std=self.train_stddev),
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
-        transforms.RandomResizedCrop(
-            self.center_crop_size,
-            scale=self.scale_ratio_range,
-            ratio=self.aspect_ratio_range),
+        transforms.RandomCrop(
+            size=self.crop_size,
+            padding=self.padding_size,
+        ),
         transforms.RandomHorizontalFlip(),
         normalize,
     ])
@@ -67,39 +72,28 @@ class CifarWorkload(BaseCifarWorkload):
 
     sampler = None
     if USE_PYTORCH_DDP:
+      per_device_batch_size = global_batch_size // N_GPUS
+      ds_iter_batch_size = per_device_batch_size
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
       else:
         sampler = data_utils.DistributedEvalSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
-      batch_size //= N_GPUS
+    else:
+      ds_iter_batch_size = global_batch_size
+
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=batch_size,
+        batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,
         pin_memory=True,
         drop_last=is_train)
+    dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
     return dataloader
-
-  def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    it = self._build_cifar_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-      }
 
   def init_model_fn(
       self,
@@ -110,7 +104,7 @@ class CifarWorkload(BaseCifarWorkload):
     del dropout_rate
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = resnet18(num_classes=10)
+    model = resnet18(num_classes=self._num_classes)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
