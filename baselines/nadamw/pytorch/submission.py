@@ -17,14 +17,16 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
-# Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py
+# Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py.
 class NAdamW(torch.optim.Optimizer):
   r"""Implements NAdamW algorithm.
+
     See Table 1 in https://arxiv.org/abs/1910.05446 for the implementation of
     the NAdam algorithm (there is also a comment in the code which highlights
     the only difference of NAdamW and AdamW).
     For further details regarding the algorithm we refer to
     `Decoupled Weight Decay Regularization`_.
+
     Args:
       params (iterable): iterable of parameters to optimize or dicts defining
           parameter groups
@@ -38,7 +40,7 @@ class NAdamW(torch.optim.Optimizer):
         https://arxiv.org/abs/1711.05101
     .. _On the Convergence of Adam and Beyond:
         https://openreview.net/forum?id=ryQu7f-RZ
-    """
+  """
 
   def __init__(self,
                params,
@@ -73,10 +75,11 @@ class NAdamW(torch.optim.Optimizer):
   @torch.no_grad()
   def step(self, closure=None):
     """Performs a single optimization step.
+
         Args:
           closure (callable, optional): A closure that reevaluates the model
               and returns the loss.
-        """
+    """
     self._cuda_graph_capture_health_check()
 
     loss = None
@@ -140,10 +143,10 @@ def nadamw(params: List[Tensor],
            beta2: float,
            lr: float,
            weight_decay: float,
-           eps: float):
+           eps: float) -> None:
   r"""Functional API that performs NAdamW algorithm computation.
     See NAdamW class for details.
-    """
+  """
 
   if not all(isinstance(t, torch.Tensor) for t in state_steps):
     raise RuntimeError(
@@ -156,13 +159,13 @@ def nadamw(params: List[Tensor],
     exp_avg_sq = exp_avg_sqs[i]
     step_t = state_steps[i]
 
-    # update step
+    # Update step.
     step_t += 1
 
-    # Perform stepweight decay
+    # Perform stepweight decay.
     param.mul_(1 - lr * weight_decay)
 
-    # Decay the first and second moment running average coefficient
+    # Decay the first and second moment running average coefficient.
     exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
     exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
@@ -269,11 +272,6 @@ def update_params(workload: spec.Workload,
 
   loss.backward()
 
-  with torch.no_grad():
-    parameters = [p for p in current_model.parameters() if p.grad is not None]
-    grad_norm = torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
-
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
@@ -282,6 +280,10 @@ def update_params(workload: spec.Workload,
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:
+    with torch.no_grad():
+      parameters = [p for p in current_model.parameters() if p.grad is not None]
+      grad_norm = torch.norm(
+          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {
@@ -318,15 +320,14 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(
-    workload: spec.Workload,
-    input_queue: Iterator[Dict[str, spec.Tensor]],
-    optimizer_state: spec.OptimizerState,
-    current_param_container: spec.ParameterContainer,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    global_step: int,
-    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
+def data_selection(workload: spec.Workload,
+                   input_queue: Iterator[Dict[str, spec.Tensor]],
+                   optimizer_state: spec.OptimizerState,
+                   current_param_container: spec.ParameterContainer,
+                   model_state: spec.ModelAuxiliaryState,
+                   hyperparameters: spec.Hyperparameters,
+                   global_step: int,
+                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """
