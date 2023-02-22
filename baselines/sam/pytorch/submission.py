@@ -105,8 +105,7 @@ def init_optimizer_state(workload: spec.Workload,
   base_optimizer = torch.optim.AdamW
   optimizer_state = {
       'optimizer':
-          SAM(
-              model_params.parameters(),
+          SAM(model_params.parameters(),
               base_optimizer=base_optimizer,
               rho=hyperparameters.rho,
               lr=hyperparameters.learning_rate,

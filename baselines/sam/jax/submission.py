@@ -110,8 +110,7 @@ def init_optimizer_state(workload: spec.Workload,
     cosine_fn = optax.cosine_decay_schedule(
         init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
     schedule_fn = optax.join_schedules(
-        schedules=[warmup_fn, cosine_fn],
-        boundaries=[warmup_steps])
+        schedules=[warmup_fn, cosine_fn], boundaries=[warmup_steps])
     return schedule_fn
 
   # Create base optimizer + LR schedule.
@@ -124,9 +123,12 @@ def init_optimizer_state(workload: spec.Workload,
       weight_decay=hyperparameters.weight_decay)
 
   # Create SAM update fn.
+  grad_clip = (
+      hyperparameters.grad_clip
+      if hasattr(hyperparameters, 'grad_clip') else None)
   opt_init_fn, opt_update_fn = sharpness_aware_minimization(
       rho=hyperparameters.rho,
-      grad_clip=hyperparameters.grad_clip,
+      grad_clip=grad_clip,
       batch_axis_name='batch',
       base_opt_init_fn=opt_init_fn,
       base_opt_update_fn=opt_update_fn)
