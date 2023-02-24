@@ -1,4 +1,5 @@
 import contextlib
+import functools
 import math
 import random
 from typing import Dict, Optional, Tuple
@@ -85,7 +86,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
-    del update_batch_norm
 
     model = params
 
@@ -94,6 +94,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
+      model.apply(
+          functools.partial(
+              pytorch_utils.update_batch_norm_fn,
+              update_batch_norm=update_batch_norm))
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
