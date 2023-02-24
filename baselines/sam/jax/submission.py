@@ -62,23 +62,22 @@ def sharpness_aware_minimization(
   def update_fn(updates, state, grad_fn_params_tuple):
     (grad_fn, params) = grad_fn_params_tuple
 
-    # Updates here have been synced (mean) across devices before being
-    # sent to the optimizer. We again take the correct mean of the gradients computed
-    # on the noised parameters in the same order as on the original
-    # gradients and with the same 1e-6 epsilon that is used when clipping the
-    # gradients.
+    # Updates here have been synced (mean) across devices before being sent to
+    # the optimizer. We again take the correct mean of the gradients computed on
+    # the noised parameters in the same order as on the original gradients and
+    # with the same 1e-6 epsilon that is used when clipping the gradients.
     updates = dual_vector(updates)
     noised_params = jax.tree_util.tree_map(
         lambda p, u: p + rho * u, params, updates)
     (_, (n_valid_examples, _)), updates = grad_fn(noised_params)
     # Get correct global mean grad.
-    (n_valid_examples, updates) = lax.psum(
-        (n_valid_examples, updates), axis_name='batch')
+    (n_valid_examples, updates) = lax.psum((n_valid_examples, updates),
+                                           axis_name='batch')
     updates = jax.tree_map(lambda x: x / n_valid_examples, updates)
 
-    updates_norm = jnp.sqrt(
-        sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(updates)))
     if grad_clip:
+      updates_norm = jnp.sqrt(
+          sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(updates)))
       scaled_updates = jax.tree_map(
           lambda x: x / (updates_norm + _GRAD_CLIP_EPS) * grad_clip, updates)
       updates = jax.lax.cond(updates_norm > grad_clip,
@@ -179,7 +178,8 @@ def pmapped_train_step(workload,
     return summed_loss, (n_valid_examples, new_model_state)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  second_grad_fn = jax.value_and_grad(functools.partial(_loss_fn, update_batch_norm=False), has_aux=True)
+  second_grad_fn = jax.value_and_grad(
+      functools.partial(_loss_fn, update_batch_norm=False), has_aux=True)
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
       current_param_container)
   # Get correct global mean loss and grad.
@@ -190,11 +190,6 @@ def pmapped_train_step(workload,
 
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
-
-  if grad_clip is not None:
-    grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
-    grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
-    grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(
       grad, optimizer_state, (second_grad_fn, current_param_container))

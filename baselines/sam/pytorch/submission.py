@@ -206,7 +206,8 @@ def update_params(workload: spec.Workload,
           {
               'loss': logging_loss.item(),
               'grad_norm': grad_norm.item(),
-          }, global_step)
+          },
+          global_step)
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
                  global_step,
                  logging_loss.item(),
