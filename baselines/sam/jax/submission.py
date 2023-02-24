@@ -62,16 +62,19 @@ def sharpness_aware_minimization(
   def update_fn(updates, state, grad_fn_params_tuple):
     (grad_fn, params) = grad_fn_params_tuple
 
-    # Updates here have been pmean-ed across devices in Trainer before being
-    # sent to the optimizer. We again pmean the gradients computed on the noised
-    # parameters in the same order as how Trainer does on the original
+    # Updates here have been synced (mean) across devices before being
+    # sent to the optimizer. We again take the correct mean of the gradients computed
+    # on the noised parameters in the same order as on the original
     # gradients and with the same 1e-6 epsilon that is used when clipping the
     # gradients.
     updates = dual_vector(updates)
     noised_params = jax.tree_util.tree_map(
         lambda p, u: p + rho * u, params, updates)
-    _, updates = grad_fn(noised_params)
-    updates = jax.lax.pmean(updates, axis_name=batch_axis_name)
+    (_, (n_valid_examples, _)), updates = grad_fn(noised_params)
+    # Get correct global mean grad.
+    (n_valid_examples, updates) = lax.psum(
+        (n_valid_examples, updates), axis_name='batch')
+    updates = jax.tree_map(lambda x: x / n_valid_examples, updates)
 
     updates_norm = jnp.sqrt(
         sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(updates)))
@@ -157,7 +160,7 @@ def pmapped_train_step(workload,
                        grad_clip,
                        label_smoothing):
 
-  def _loss_fn(params):
+  def _loss_fn(params, update_batch_norm=True):
     """Loss function used for training."""
     logits, new_model_state = workload.model_fn(
         params,
@@ -165,7 +168,7 @@ def pmapped_train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
-        update_batch_norm=True)
+        update_batch_norm=update_batch_norm)
     loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
@@ -176,6 +179,7 @@ def pmapped_train_step(workload,
     return summed_loss, (n_valid_examples, new_model_state)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
+  second_grad_fn = jax.value_and_grad(functools.partial(_loss_fn, update_batch_norm=False), has_aux=True)
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
       current_param_container)
   # Get correct global mean loss and grad.
@@ -193,7 +197,7 @@ def pmapped_train_step(workload,
     grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(
-      grad, optimizer_state, (grad_fn, current_param_container))
+      grad, optimizer_state, (second_grad_fn, current_param_container))
   updated_params = optax.apply_updates(current_param_container, updates)
   return new_optimizer_state, updated_params, new_model_state, loss, grad_norm
 

@@ -179,16 +179,18 @@ def update_params(workload: spec.Workload,
   # First backward pass.
   loss, _ = _loss_fn(current_model, update_batch_norm=True)
   loss.backward()
+
+  logging_loss = loss.clone().detach()
+  with torch.no_grad():
+    parameters = [p for p in current_model.parameters() if p.grad is not None]
+    grad_norm = torch.norm(
+        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+
   optimizer_state['optimizer'].first_step(zero_grad=True)
 
   # Second forward-backward pass.
   loss, new_model_state = _loss_fn(current_model, update_batch_norm=False)
   loss.backward()
-
-  with torch.no_grad():
-    parameters = [p for p in current_model.parameters() if p.grad is not None]
-    grad_norm = torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
 
   if hasattr(hyperparameters, 'grad_clip'):
     grad_clip = hyperparameters.grad_clip
@@ -202,12 +204,12 @@ def update_params(workload: spec.Workload,
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {
-              'loss': loss.item(),
+              'loss': logging_loss.item(),
               'grad_norm': grad_norm.item(),
           }, global_step)
     logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
                  global_step,
-                 loss.item(),
+                 logging_loss.item(),
                  grad_norm.item())
 
   return (optimizer_state, current_param_container, new_model_state)
