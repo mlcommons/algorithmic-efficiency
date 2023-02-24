@@ -70,7 +70,8 @@ def update_batch_norm_fn(module: spec.ParameterContainer,
     if not update_batch_norm:
       module.eval()
       module.momentum_backup = module.momentum
-      module.momentum = 0.
+      # module.momentum can be float or torch.Tensor.
+      module.momentum = 0. * module.momentum_backup
     elif hasattr(module, 'momentum_backup'):
       module.momentum = module.momentum_backup
     module.track_running_stats = update_batch_norm
