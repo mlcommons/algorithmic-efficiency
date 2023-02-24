@@ -203,7 +203,7 @@ class DistributedEvalSampler(Sampler):
     self.epoch = epoch
 
 
-# github.com/pytorch/pytorch/issues/23900#issuecomment-518858050
+# Modified from github.com/pytorch/pytorch/issues/23900#issuecomment-518858050.
 def cycle(iterable: Iterable,
           keys: Tuple[str, ...] = ('inputs', 'targets'),
           custom_sampler: bool = False,
