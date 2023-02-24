@@ -14,7 +14,7 @@
             0
         ]
     },
-    "warmup_steps": {
+    "warmup_factor": {
         "feasible_points": [
             0
         ]
