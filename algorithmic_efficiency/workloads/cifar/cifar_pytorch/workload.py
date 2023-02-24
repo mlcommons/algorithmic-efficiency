@@ -16,7 +16,6 @@ from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-
 from algorithmic_efficiency.workloads.cifar.cifar_pytorch.models import \
     resnet18
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
