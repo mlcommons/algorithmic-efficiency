@@ -18,8 +18,8 @@ from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-import algorithmic_efficiency.pytorch_utils as pytorch_utils
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
@@ -183,9 +183,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
-      model.apply(functools.partial(
-          pytorch_utils.update_batch_norm_fn,
-          update_batch_norm=update_batch_norm))
+      model.apply(
+          functools.partial(
+              pytorch_utils.update_batch_norm_fn,
+              update_batch_norm=update_batch_norm))
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,

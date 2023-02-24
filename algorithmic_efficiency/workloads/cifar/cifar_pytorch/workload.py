@@ -14,8 +14,8 @@ from torchvision.datasets import CIFAR10
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-import algorithmic_efficiency.pytorch_utils as pytorch_utils
 from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet18

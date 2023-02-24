@@ -54,6 +54,7 @@ class MnistWorkload(BaseMnistWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del cache
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to

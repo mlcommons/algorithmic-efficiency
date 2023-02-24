@@ -72,7 +72,7 @@ def sharpness_aware_minimization(
     (_, (n_valid_examples, _)), updates = grad_fn(noised_params)
     # Get correct global mean grad.
     (n_valid_examples, updates) = lax.psum((n_valid_examples, updates),
-                                           axis_name='batch')
+                                           axis_name=batch_axis_name)
     updates = jax.tree_map(lambda x: x / n_valid_examples, updates)
 
     if grad_clip:
