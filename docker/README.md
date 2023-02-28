@@ -50,17 +50,17 @@ If debugging_mode is `'true'` the main process on the container will persist aft
 This run command is for developers who manually want to run a sumbission or look around.
 
 ### Interacting with the container
-You can find the container IDs of running containers by running:
+To find the container IDs of running containers run:
 ```
 docker ps 
 ```
 
-To see the status of the data download or submission runner, run: 
+To see the status of the data download or submission runner run: 
 ```
 docker logs <container_id> 
 ```
 
-To enter a bash session in the container, run:
+To enter a bash session in the container run:
 ```
 docker exec -it <container_id> /bin/bash
 ```
@@ -80,7 +80,7 @@ To Push built image to artifact registry on GCP do this :
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
     
-    docker tag algo_efficiency_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/mlcommons:ogbg
+    docker tag algo_efficiency_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/algorithmic_efficiency_image:latest
     docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/algo_efficiency_image:latest
 ```
 
