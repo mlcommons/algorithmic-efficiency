@@ -43,7 +43,7 @@ fi
 # python3 docker/scripts/check_gpu.py
 
 # Optionally run workload
-if $SUBMISSION_PATH
+if ${SUBMISSION_PATH}
 then
 cd algorithmic-efficiency
 python3 submission_runner.py \
