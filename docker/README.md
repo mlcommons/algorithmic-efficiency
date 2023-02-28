@@ -94,6 +94,14 @@ This is required when you deploy the built image on a GCP VM
 
 ### Container Optimized OS VMs (for internal algorithmic-efficiency devs)
 Todo: add instructions on making VM w cloud-init.
+#### Mounting GPUs
+Todo
+
+#### Permissions for Google Cloud Container Registry
+Todo
+
+#### cloud-init script
+Todo
 
 ## Other Tips and tricks
 
