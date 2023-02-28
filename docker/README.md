@@ -2,6 +2,12 @@
 
 ## General 
 
+### Prerequisites
+You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
+
+If you are working with a GCP VM w Container Optimized OS setup, you will have to mount the NVIDIA drivers and devices on 
+`docker run` command (see below).
+
 ### Building Image
 
 From `algorithmic-efficiency/docker/scripts` run:
@@ -15,6 +21,7 @@ To run the docker container that will download data and run a submisison run:
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
 -v $HOME_DIR/experiment_runs/:/experiment_runs \
+--gpus all \
 base_image:latest \
 -d <dataset> \
 -f <framework> \
@@ -33,6 +40,7 @@ To run a docker container that will only download data:
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
 -v $HOME_DIR/experiment_runs/:/experiment_runs \
+--gpus all
 base_image:latest \
 -d <dataset> \
 -f <framework> \
@@ -59,14 +67,15 @@ docker exec -it <container_id> /bin/bash
 
 ## GCP Integration 
 
-If you're building docker image on a GCP VM (recommended) then do 
+### Google Cloud Container Registry (for internal algorithmic-efficiency devs)
+If you'd like to maintain images on the Google Cloud Container Registry read this section.
+You will have to use an authentication helper to set up permissions to access the repository:
 ```
     ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
     gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
 ```
 
 To Push built image to artifact registry on GCP do this : 
-
 ```
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
@@ -82,6 +91,9 @@ To pull the latest image to GCP run:
     docker pull us-central1-docker.pkg.dev/$PROJECT/algo_efficiency_image:latest
 ```
 This is required when you deploy the built image on a GCP VM
+
+### Container Optimized OS VMs (for internal algorithmic-efficiency devs)
+Todo: add instructions on making VM w cloud-init.
 
 ## Other Tips and tricks
 
