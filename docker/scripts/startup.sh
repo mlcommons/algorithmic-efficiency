@@ -45,6 +45,7 @@ fi
 # Optionally run workload
 if ${SUBMISSION_PATH}
 then
+LOG_FILE="${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/run.log"
 cd algorithmic-efficiency
 python3 submission_runner.py \
     --framework=${FRAMEWORK}  \
@@ -54,7 +55,7 @@ python3 submission_runner.py \
     --data_dir=${DATA_DIR} \
     --num_tuning_trials=1  \
     --experiment_dir=${EXPERIMENT_DIR}  \
-    --experiment_name=${EXPERIMENT_NAME}  \
+    --experiment_name=${EXPERIMENT_NAME}  2>&1 | tee ${LOG_FILE}
 
 ./google-cloud-sdk/bin/ gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/* gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
 fi

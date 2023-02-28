@@ -569,6 +569,8 @@ def main(_):
                                               experiment_name,
                                               FLAGS.resume_last_run)
 
+  logging.get_absl_handler().use_absl_log_file('absl_logging', '/opt/log/')
+
   score = score_submission_on_workload(workload,
                                        FLAGS.workload,
                                        FLAGS.submission_path,
