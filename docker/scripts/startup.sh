@@ -32,7 +32,7 @@ else
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/"
 fi
 
-# Copy data from MLCommons bucket if data does not downloaded yet
+# Copy data from MLCommons bucket if data has not been downloaded yet
 if [ ! -d ${DATA_DIR} ]
 then
     mkdir -p ${DATA_DIR}
