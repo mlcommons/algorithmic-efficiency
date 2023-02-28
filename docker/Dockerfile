@@ -15,7 +15,7 @@ RUN tar -xf google-cloud-cli-413.0.0-linux-x86_64.tar.gz
 RUN yes | ./google-cloud-sdk/install.sh
 
 # Directory setup for input and output
-RUN echo "Todo: mount directories Setting up directories"
+RUN echo "Setting up directories for data and experiment_runs"
 RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
 
