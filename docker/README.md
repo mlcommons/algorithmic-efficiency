@@ -47,7 +47,7 @@ base_image:latest \
 -b <debugging_mode> \
 ```
 If debugging_mode is `'true'` the main process on the container will persist after finishing the data download.
-This run command is for developers who manually want to run a sumbission.
+This run command is for developers who manually want to run a sumbission or look around.
 
 ### Interacting with the container
 You can find the container IDs of running containers by running:
@@ -68,7 +68,7 @@ docker exec -it <container_id> /bin/bash
 ## GCP Integration 
 
 ### Google Cloud Container Registry (for internal algorithmic-efficiency devs)
-If you'd like to maintain images on the Google Cloud Container Registry read this section.
+If you'd like to maintain or use images stored the Google Cloud Container Registry read this section.
 You will have to use an authentication helper to set up permissions to access the repository:
 ```
     ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
