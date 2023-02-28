@@ -45,8 +45,9 @@ fi
 # Optionally run workload
 if ${SUBMISSION_PATH}
 then
-LOG_FILE="logs/${EXPERIMENT_NAME}/submission.log
-
+LOG_DIR="logs/${EXPERIMENT_NAME}"
+LOG_FILE="$LOG_DIR/submission.log
+mkdir -p ${LOG_DIR}
 cd algorithmic-efficiency
 python3 submission_runner.py \
     --framework=${FRAMEWORK}  \
