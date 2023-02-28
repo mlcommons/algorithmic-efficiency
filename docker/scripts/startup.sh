@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 # Defaults
 DEBUG_MODE="false"
