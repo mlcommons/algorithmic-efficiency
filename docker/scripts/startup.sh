@@ -40,12 +40,13 @@ then
 fi 
 
 # Check GPU requirements and run experiment
-# python3 docker/scripts/check_gpu.py
+# python3 scripts/check_gpu.py
 
 # Optionally run workload
 if ${SUBMISSION_PATH}
 then
-LOG_FILE="${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/submission.log"
+LOG_FILE="logs/${EXPERIMENT_NAME}/submission.log
+
 cd algorithmic-efficiency
 python3 submission_runner.py \
     --framework=${FRAMEWORK}  \
@@ -58,6 +59,8 @@ python3 submission_runner.py \
     --experiment_name=${EXPERIMENT_NAME}  2>&1 | tee ${LOG_FILE}
 
 ./google-cloud-sdk/bin/ gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/* gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
+./google-cloud-sdk/bin/ gsutil -m cp -r ${LOG_FILE} gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
+
 fi
 
 # Keep main process running in debug mode to avoid the container from stopping
