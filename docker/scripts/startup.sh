@@ -66,8 +66,8 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME}  2>&1 | tee ${LOG_FILE}
 
-    ./google-cloud-sdk/bin/ gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/* gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
-    ./google-cloud-sdk/bin/ gsutil -m cp -r ${LOG_FILE} gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
+    /google-cloud-sdk/bin/ gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/* gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
+    /google-cloud-sdk/bin/ gsutil -m cp -r ${LOG_FILE} gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
 
 fi
 
