@@ -3,7 +3,7 @@
 # Defaults
 DEBUG_MODE="false"
 
-while getopts d:f:s:t:e:w:b: flag
+while getopts d:f:s:t:e:w:b:m: flag
 do
     case "${flag}" in
         d) DATASET=${OPTARG};;
@@ -13,6 +13,7 @@ do
         e) EXPERIMENT_NAME=${OPTARG};;
         w) WORKLOAD=${OPTARG};;
         b) DEBUG_MODE=${OPTARG};;
+        m) MAX_STEPS=${OPTARG};;
     esac
 done
 
@@ -64,7 +65,8 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
         --data_dir=${DATA_DIR} \
         --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
-        --experiment_name=${EXPERIMENT_NAME}  2>&1 | tee ${LOG_FILE}
+        --experiment_name=${EXPERIMENT_NAME} \
+        --max_global_steps=${MAX_STEPS}  2>&1 | tee ${LOG_FILE}
 
     /google-cloud-sdk/bin/ gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/* gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
     /google-cloud-sdk/bin/ gsutil -m cp -r ${LOG_FILE} gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
