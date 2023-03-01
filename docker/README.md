@@ -80,15 +80,15 @@ To Push built image to artifact registry on GCP do this :
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
     
-    docker tag algo_efficiency_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/algorithmic_efficiency_image:latest
-    docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/algo_efficiency_image:latest
+    docker tag base_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
+    docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
 ```
 
 To pull the latest image to GCP run:
 ```
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
-    docker pull us-central1-docker.pkg.dev/$PROJECT/algo_efficiency_image:latest
+    docker pull us-central1-docker.pkg.dev/$PROJECT/base_image:latest
 ```
 This is required when you deploy the built image on a GCP VM
 
