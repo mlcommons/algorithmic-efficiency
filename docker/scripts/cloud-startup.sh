@@ -29,6 +29,7 @@ sudo systemctl restart docker
 # Run gcloud credential helper for Google Container Repository
 echo "Running gcloud credential helper"
 yes | gcloud auth configure-docker us-central1-docker.pkg.dev
+sleep 30
 
 # Pull latest algorithmic efficiency image
 echo "Pulling docker image"
