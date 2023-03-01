@@ -22,9 +22,11 @@ ROOT_DATA_DIR="/data"
 EXPERIMENT_BUCKET="gs://mlcommons-runs"
 EXPERIMENT_DIR="/experiment_runs"
 
-if [ "${FRAMEWORK}" == "pytorch" ]
-then 
-    TORCH_RUN_COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8"
+if [ "${FRAMEWORK}" == "jax" ]
+then
+    COMMAND_PREFIX="python3"
+else 
+    COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8"
 fi
 
 if [ "${DATASET}" == "imagenet" ]
@@ -54,7 +56,7 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
-    ${TORCH_RUN_COMMAND_PREFIX} python3 submission_runner.py \
+    ${COMMAND_PREFIX} submission_runner.py \
         --framework=${FRAMEWORK}  \
         --workload=${WORKLOAD} \
         --submission_path=${SUBMISSION_PATH}  \
