@@ -1,3 +1,7 @@
+# Startup script for Google Click to Deploy Deep Learning VM 
+# This script will install the NVIDIA drivers, NVIDIA Container Toolkit and 
+# pull docker image base_image:latest from mlcommons-docker-repo (internal access only).
+
 # Overwrite NVIDIA driver versions and reinstall NVIDIA drivers for CUDA 11.7 
 sudo chmod 777 /opt/deeplearning/driver-version.sh
 sudo echo "export DRIVER_VERSION=515.65.01" > /opt/deeplearning/driver-version.sh
