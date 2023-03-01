@@ -46,7 +46,7 @@ fi
 # Check GPU requirements and run experiment
 # python3 scripts/check_gpu.py
 
-# Optionally run workload
+# Optionally run workload if SUBMISSION_PATH is set
 if [ ! -z ${SUBMISSION_PATH+x} ]
     then
     LOG_DIR="/logs"
