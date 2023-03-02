@@ -288,7 +288,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
-        normalized_loss=normalized_loss,
+        loss_dict=loss,
         decoded=decoded,
         decoded_paddings=decoded_paddings,
         targets=targets,

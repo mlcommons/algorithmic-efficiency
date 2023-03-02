@@ -19,8 +19,8 @@ def average_ctc_loss():
     weight: np.float32
 
     @classmethod
-    def from_model_output(cls, normalized_loss, **_):
-      return cls(total=normalized_loss, weight=1.0)
+    def from_model_output(cls, loss_dict, **_):
+      return cls(total=loss_dict['summed'], weight=loss_dict['n_valid_examples'])
 
     def merge(self, other):
       return type(self)(
