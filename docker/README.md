@@ -68,7 +68,7 @@ docker exec -it <container_id> /bin/bash
 ## GCP Integration
 If you want to run containers on GCP VMs or store and retrieve Docker images from the Google Cloud Container Registry, please read ahead.
 
-### Google Cloud Container Registry (for internal algorithmic-efficiency devs)
+### Google Cloud Container Registry 
 If you'd like to maintain or use images stored the Google Cloud Container Registry read this section.
 You will have to use an authentication helper to set up permissions to access the repository:
 ```
@@ -91,7 +91,6 @@ To pull the latest image to GCP run:
     REPO=mlcommons-docker-repo
     docker pull us-central1-docker.pkg.dev/$PROJECT/base_image:latest
 ```
-This is required when you deploy the built image on a GCP VM
 
 ### Setting up a Linux VM
 If you'd like to use a Linux VM, you will have to install the correct GPU drivers and the NVIDIA Docker toolkit.
