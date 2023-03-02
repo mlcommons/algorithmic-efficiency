@@ -20,7 +20,8 @@ def average_ctc_loss():
 
     @classmethod
     def from_model_output(cls, loss_dict, **_):
-      return cls(total=loss_dict['summed'], weight=loss_dict['n_valid_examples'])
+      return cls(
+          total=loss_dict['summed'], weight=loss_dict['n_valid_examples'])
 
     def merge(self, other):
       return type(self)(

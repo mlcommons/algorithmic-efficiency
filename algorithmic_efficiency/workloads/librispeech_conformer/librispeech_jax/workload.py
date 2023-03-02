@@ -284,7 +284,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
     loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
-    normalized_loss = loss['summed'] / loss['n_valid_examples']
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
