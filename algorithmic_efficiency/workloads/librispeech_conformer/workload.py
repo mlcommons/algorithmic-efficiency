@@ -53,12 +53,12 @@ class BaseLibrispeechWorkload(spec.Workload):
     return 256
 
   @property
-  def train_mean(self) -> float:
-    return 0.0
+  def train_mean(self):
+    raise NotImplementedError
 
   @property
-  def train_stddev(self) -> float:
-    return 1.0
+  def train_stddev(self):
+    raise NotImplementedError
 
   @property
   def max_allowed_runtime_sec(self) -> int:
