@@ -65,7 +65,8 @@ To enter a bash session in the container run:
 docker exec -it <container_id> /bin/bash
 ```
 
-## GCP Integration 
+## GCP Integration
+If you want to run containers on GCP VMs or store and retrieve Docker images from the Google Cloud Container Registry, please read ahead.
 
 ### Google Cloud Container Registry (for internal algorithmic-efficiency devs)
 If you'd like to maintain or use images stored the Google Cloud Container Registry read this section.
@@ -92,16 +93,36 @@ To pull the latest image to GCP run:
 ```
 This is required when you deploy the built image on a GCP VM
 
-### Container Optimized OS VMs (for internal algorithmic-efficiency devs)
-Todo: add instructions on making VM w cloud-init.
-#### Mounting GPUs
-Todo
+### Setting up a Linux VM
+If you'd like to use a Linux VM, you will have to install the correct GPU drivers and the NVIDIA Docker toolkit.
+I recommmend to use the Deep Learning VM image from Google Click to Deploy. Further instructions are based on that.
 
-#### Permissions for Google Cloud Container Registry
-Todo
+#### Installing GPU Drivers
+You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the
+NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+
+#### Authentication for Google Cloud Container Registry
+To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
+Use the gcloud credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
+
+### Setting up a Container Optimized OS VMs on GCP
+You may want use a [Container Optimized OS](https://cloud.google.com/container-optimized-os/docs) to run submissions. 
+However, the Container Optimized OS does not support CUDA 11.7. If you go down this route,
+please adjust the base image in the Dockerfile to CUDA 11.6. 
+We don't guarantee compatibility of the `algorithmic_efficiency` package with CUDA 11.6 though.
+
+#### Installing GPU Drivers
+To install NVIDIA GPU drivers on container optimized OS you can use the `cos` installer.
+Follow instructions [here](https://cloud.google.com/container-optimized-os/docs/how-to/run-gpus)
+
+#### Authentication for Google Cloud Container Registry
+To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
+Use a standalone credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
 
 #### cloud-init script
-Todo
+You can automate installation GPU Drivers and uthentication for Cloud Container Registry with a cloud-init script, by passing
+the content of the script as `user-data` in the VMs metadata.
+
 
 ## Other Tips and tricks
 
