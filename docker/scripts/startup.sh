@@ -36,7 +36,7 @@ then
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/${FRAMEWORK}"
 else
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}"
-    DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/"
+    DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}"
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
