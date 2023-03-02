@@ -55,22 +55,22 @@ def edit_distance(source, target):
   for i in range(num_source_words + 1):
     for j in range(num_target_words + 1):
       # If first string is empty, only option is to
-      # insert all words of second string
+      # insert all words of second string.
       if i == 0:
         distance[i][j] = j  # Min. operations = j
 
       # If second string is empty, only option is to
-      # remove all characters of second string
+      # remove all characters of second string.
       elif j == 0:
         distance[i][j] = i  # Min. operations = i
 
       # If last characters are same, ignore last char
-      # and recur for remaining string
+      # and recur for remaining string.
       elif source[i - 1] == target[j - 1]:
         distance[i][j] = distance[i - 1][j - 1]
 
       # If last character are different, consider all
-      # possibilities and find minimum
+      # possibilities and find minimum.
       else:
         distance[i][j] = 1 + min(
             distance[i][j - 1],  # Insert

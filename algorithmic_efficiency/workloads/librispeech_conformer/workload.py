@@ -1,4 +1,5 @@
 import math
+from typing import Any, Dict, Iterator, Optional
 
 from algorithmic_efficiency import spec
 
@@ -7,14 +8,15 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   _num_outputs: int = 1024
 
-  def has_reached_validation_target(self, eval_result: float) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     return eval_result['validation/wer'] < self.validation_target_value
 
   @property
   def validation_target_value(self) -> float:
     return 0.078477
 
-  def has_reached_test_target(self, eval_result: float) -> bool:
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['test/wer'] < self.test_target_value
 
   @property
