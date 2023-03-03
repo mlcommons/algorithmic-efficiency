@@ -53,6 +53,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       split = 'test-clean'
 
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+    print('test trigger')
 
     dataloader = data_utils.cycle(
         torch.utils.data.DataLoader(
