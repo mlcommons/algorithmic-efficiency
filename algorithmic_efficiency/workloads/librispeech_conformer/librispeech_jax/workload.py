@@ -53,7 +53,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       split = 'test-clean'
 
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
-    print('test trigger')
 
     dataloader = data_utils.cycle(
         torch.utils.data.DataLoader(
@@ -67,7 +66,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             drop_last=train,
         ))
 
-    print('fully useless print')
 
     for batch in iter(dataloader):
       inputs, input_paddings = batch['inputs']
