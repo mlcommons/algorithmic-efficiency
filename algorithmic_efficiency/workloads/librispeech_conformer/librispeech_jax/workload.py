@@ -66,7 +66,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             drop_last=train,
         ))
 
-
     for batch in iter(dataloader):
       inputs, input_paddings = batch['inputs']
       targets, target_paddings = batch['targets']
