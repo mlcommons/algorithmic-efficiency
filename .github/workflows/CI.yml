@@ -27,3 +27,6 @@ jobs:
         pytest -vx tests/test_param_shapes.py
         pytest -vx tests/test_param_types.py
         pytest -vx tests/test_ssim.py
+    - name: Run criteo1tb jax test
+      run: |
+        python3 tests/reference_algorithm_tests.py --workload=criteo1tb     --framework=jax     --global_batch_size=16     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
