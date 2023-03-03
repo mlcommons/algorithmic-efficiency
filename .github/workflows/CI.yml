@@ -23,8 +23,7 @@ jobs:
     - name: Run pytest
       run: |
         pytest -vx tests/version_test.py
-        python3 tests/reference_algorithm_tests.py     --workload=criteo1tb     --framework=jax     --global_batch_size=16     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json        # pytest -vx tests/workloads/imagenet_resnet/imagenet_jax/workload_test.py
-        # pytest -vx tests/test_num_params.py
-        # pytest -vx tests/test_param_shapes.py
-        # pytest -vx tests/test_param_types.py
-        # pytest -vx tests/test_ssim.py
+        pytest -vx tests/test_num_params.py
+        pytest -vx tests/test_param_shapes.py
+        pytest -vx tests/test_param_types.py
+        pytest -vx tests/test_ssim.py
