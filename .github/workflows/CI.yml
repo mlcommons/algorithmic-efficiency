@@ -19,6 +19,7 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[wmt]
         pip install .[ogbg]
+        pip install .[criteo1tb]
     - name: Run pytest
       run: |
         pytest -vx tests/version_test.py

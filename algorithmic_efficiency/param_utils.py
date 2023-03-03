@@ -10,6 +10,7 @@ from algorithmic_efficiency import spec
 
 
 def pytorch_param_shapes(model: nn.Module) -> Dict[str, spec.ShapeTuple]:
+  print('maybe this will trigger tests')
   return {k: spec.ShapeTuple(v.shape) for k, v in model.named_parameters()}
 
 
