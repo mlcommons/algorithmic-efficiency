@@ -52,8 +52,9 @@ fi
 # Optionally run workload if SUBMISSION_PATH is set
 if [ ! -z ${SUBMISSION_PATH+x} ]
     then
-    LOG_DIR="/logs"
-    LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_submission.log"
+    NOW=$(date +"%m-%d-%Y-%H-%M-%S")
+    LOG_DIR="/logs_"
+    LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_${NOW}.log"
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
@@ -68,8 +69,8 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
         --experiment_name=${EXPERIMENT_NAME} \
         --max_global_steps=${MAX_STEPS}  2>&1 | tee ${LOG_FILE}
 
-    sudo cp ${LOG_FILE} ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
     /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
+    /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} gs://${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
 
 fi
 
