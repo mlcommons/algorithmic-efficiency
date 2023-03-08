@@ -183,7 +183,7 @@ class CifarWorkload(BaseCifarWorkload):
       per_example_losses *= mask_batch
       n_valid_examples = mask_batch.sum()
     else:
-      n_valid_examples = len(per_example_losses)
+      n_valid_examples = torch.tensor(len(per_example_losses))
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
