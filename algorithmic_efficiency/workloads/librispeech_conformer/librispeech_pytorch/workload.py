@@ -194,10 +194,10 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = target_lengths
     n_valid_examples = mask_batch.sum().to(per_example_losses)
     summed_loss = per_example_losses.sum()
-    n_valid_examples = torch.tensor(max(n_valid_examples, 1))
+    n_valid_examples = max(n_valid_examples, 1)
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE)
         'per_example': per_example_losses,
     }
 

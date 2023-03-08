@@ -19,3 +19,4 @@ algorithmic_efficiency/workloads/librispeech_conformer/work_dir
 *.csv
 *.vocab
 wandb/
+*.txt
