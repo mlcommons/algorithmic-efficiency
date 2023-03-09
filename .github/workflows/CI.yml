@@ -97,21 +97,21 @@ jobs:
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=criteo1tb_test     --framework=jax     --global_batch_size=1     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
-  # criteo_pytorch:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: Set up Python 3.9
-  #     uses: actions/setup-python@v2
-  #     with:
-  #       python-version: 3.9
-  #   - name: Install Modules and Run
-  #     run: |
-  #       pip install .[jax_cpu]
-  #       pip install .[pytorch_cpu]
-  #       pip install .[full]
-  #       pip install -e .
-  #       python tests/reference_algorithm_tests.py --workload=criteo1tb     --framework=pytorch     --global_batch_size=1     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
+  criteo_pytorch:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install Modules and Run
+      run: |
+        pip install .[jax_cpu]
+        pip install .[pytorch_cpu]
+        pip install .[full]
+        pip install -e .
+        python tests/reference_algorithm_tests.py --workload=criteo1tb     --framework=pytorch     --global_batch_size=1     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
   speech_jax:
     runs-on: ubuntu-latest
     steps:
