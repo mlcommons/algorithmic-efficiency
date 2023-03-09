@@ -20,7 +20,7 @@ You can run a container that will download data to the host VM (if not already d
 
 The container entrypoint script provides the following flags:
 - `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo' or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
-- `-f` framework: can be either 'pytorch' or 'jax'. This flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
+- `-f` framework: can be either 'pytorch' or 'jax'. If you just want to download data, this flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
 - `-s` submission_path: path to submission file on container filesystem. If this flag is set the container will run a submission, so it is required for running a submission. 
 - `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
 - `-e` experiment_name: name of experiment.
