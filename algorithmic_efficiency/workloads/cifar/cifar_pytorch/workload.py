@@ -176,7 +176,7 @@ class CifarWorkload(BaseCifarWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 

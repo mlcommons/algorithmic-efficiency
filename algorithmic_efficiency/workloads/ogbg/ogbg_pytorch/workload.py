@@ -60,8 +60,12 @@ class OgbgWorkload(BaseOgbgWorkload):
     valid examples in batch, 'per_example': 1-d array of per-example losses}
     (not synced across devices).
     """
-    loss_dict = super().loss_fn(label_batch, logits_batch, mask_batch, label_smoothing)
-    loss_dict['n_valid_examples'] = torch.tensor(loss_dict['n_valid_examples'], device=DEVICE)
+    loss_dict = super().loss_fn(label_batch,
+                                logits_batch,
+                                mask_batch,
+                                label_smoothing)
+    loss_dict['n_valid_examples'] = torch.as_tensor(
+        loss_dict['n_valid_examples'], device=DEVICE)
     return loss_dict
 
   def _build_input_queue(self,
