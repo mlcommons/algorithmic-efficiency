@@ -46,6 +46,24 @@ def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
 
 class OgbgWorkload(BaseOgbgWorkload):
 
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
+    loss_dict = super().loss_fn(label_batch, logits_batch, mask_batch, label_smoothing)
+    loss_dict['n_valid_examples'] = torch.tensor(loss_dict['n_valid_examples'], device=DEVICE)
+    return loss_dict
+
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,
