@@ -86,7 +86,7 @@ class BaseOgbgWorkload(spec.Workload):
       dataset_iter = itertools.cycle(dataset_iter)
     return dataset_iter
 
-    # Does NOT apply regularization, which is left to the submitter to do in
+  # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
       self,
