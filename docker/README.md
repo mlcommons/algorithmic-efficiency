@@ -29,7 +29,7 @@ The container entrypoint script provides the following flags:
 
 
 ### Starting container w end-to-end submission runner
-To run the docker container that will download (if not found host) data and run a submisison run:
+To run the docker container that will download data (if not found host) and run a submisison run:
 ```
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
