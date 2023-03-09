@@ -33,7 +33,7 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
 
   read_config = tfds.ReadConfig(add_tfds_id=True, shuffle_seed=file_data_rng)
   dataset = tfds.load(
-      'ogbg_molpcba:0.1.2',
+      'ogbg_molpcba:0.1.3',
       split=TFDS_SPLIT_NAME[split],
       shuffle_files=should_shuffle,
       read_config=read_config,
