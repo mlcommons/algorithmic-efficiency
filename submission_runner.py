@@ -58,6 +58,10 @@ WORKLOADS = {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
     },
+    'criteo1tb_test': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
+    },
     'fastmri': {
         'workload_path': 'fastmri/fastmri',
         'workload_class_name': 'FastMRIWorkload',
