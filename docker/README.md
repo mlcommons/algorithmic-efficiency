@@ -5,7 +5,7 @@
 ### Prerequisites
 You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
 
-If you are working with a GCP VM w Container Optimized OS setup, you will have to mount the NVIDIA drivers and devices on 
+If you are working with a GCP VM with Container Optimized OS setup, you will have to mount the NVIDIA drivers and devices on 
 `docker run` command (see below).
 
 ### Building Image
@@ -15,8 +15,21 @@ From `algorithmic-efficiency/docker/scripts` run:
 docker build -t algo_effiency_image .
 ```
 
+### Container Entry Point Flags
+You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is required if `-d` is 'imagenet'). If you want to run a submission you will have to pass the `-s`, `-t`, `-e`, `-w` flags.
+
+The container entrypoint script provides the following flags:
+- `-d` <dataset>: can be 'imagenet', 'fastmri', 'librispeech', 'criteo' or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for runnign a submission.
+- `-f` <framework>: can be either pytorch or jax. This flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required to submission.
+- `-s` <submission_path>: path to submission file on container filesystem. If this flag is set the container will run a submission, so it is required when running a submission. 
+- `-t` <tuning_search_space>: path to file containing tuning search space on container filesystem. Required for running a submission.
+- `-e` <experiment_name>: name of experiment.
+- `-w` <workload>: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg'. Required for running a submission.
+- `-b` <debugging_mode>: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist after finishing the submission runner. 
+
+
 ### Starting container w end-to-end submission runner
-To run the docker container that will download data and run a submisison run:
+To run the docker container that will download (if not found host) data and run a submisison run:
 ```
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
@@ -31,11 +44,10 @@ base_image:latest \
 -w <workload> \
 -b <debugging_mode> \
 ```
-If debugging_mode is `'true'` the main process on the container will persist after finishing the submission runner.
-This will print the container ID to the terminal. 
+This will print the container ID to the terminal.
 
 ### Starting a container w automated data download
-To run a docker container that will only download data:
+To run a docker container that will only download data (if not found on host):
 ```
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
@@ -94,7 +106,7 @@ To pull the latest image to GCP run:
 
 ### Setting up a Linux VM
 If you'd like to use a Linux VM, you will have to install the correct GPU drivers and the NVIDIA Docker toolkit.
-I recommmend to use the Deep Learning VM image from Google Click to Deploy. Further instructions are based on that.
+We recommmend to use the Deep Learning VM image from Google Click to Deploy. Further instructions are based on that.
 
 #### Installing GPU Drivers
 You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the
@@ -119,7 +131,7 @@ To access the Google Cloud Container Registry, you will have to authenticate to 
 Use a standalone credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
 
 #### cloud-init script
-You can automate installation GPU Drivers and uthentication for Cloud Container Registry with a cloud-init script, by passing
+You can automate installation GPU Drivers and authentication for Cloud Container Registry with a cloud-init script, by passing
 the content of the script as `user-data` in the VMs metadata.
 
 
