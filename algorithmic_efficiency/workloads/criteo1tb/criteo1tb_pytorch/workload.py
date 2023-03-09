@@ -220,3 +220,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         label_batch=batch['targets'], logits_batch=logits,
         mask_batch=weights)['summed']
     return summed_loss
+
+
+class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
+  vocab_size: int = 32 * 128 * 16
