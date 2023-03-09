@@ -16,7 +16,7 @@ docker build -t algo_effiency_image .
 ```
 
 ### Container Entry Point Flags
-You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet' or 'wmt'). If you want to run a submission the `-d`, `-f`, `-s`, `-t`, `-e`, `-w` flags are all required to locate the data and run the submission script.
+You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet'). If you want to run a submission the `-d`, `-f`, `-s`, `-t`, `-e`, `-w` flags are all required to locate the data and run the submission script.
 
 The container entrypoint script provides the following flags:
 - `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
@@ -46,7 +46,7 @@ base_image:latest \
 ```
 This will print the container ID to the terminal.
 
-### Starting a container w automated data download
+### Starting a container with automated data download
 To run a docker container that will only download data (if not found on host):
 ```
 docker run -t -d \
