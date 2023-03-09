@@ -62,7 +62,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 
