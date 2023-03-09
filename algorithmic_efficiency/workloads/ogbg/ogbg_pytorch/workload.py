@@ -60,21 +60,9 @@ class OgbgWorkload(BaseOgbgWorkload):
     valid examples in batch, 'per_example': 1-d array of per-example losses}
     (not synced across devices).
     """
-    per_example_losses = self._binary_cross_entropy_with_mask(
-        labels=label_batch,
-        logits=logits_batch,
-        mask=mask_batch,
-        label_smoothing=label_smoothing)
-    if mask_batch is not None:
-      n_valid_examples = mask_batch.sum()
-    else:
-      n_valid_examples = len(per_example_losses)
-    summed_loss = per_example_losses.sum()
-    return {
-        'summed': summed_loss,
-        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
-        'per_example': per_example_losses,
-    }
+    loss_dict = super().loss_fn(label_batch, logits_batch, mask_batch, label_smoothing)
+    loss_dict['n_valid_examples'] = torch.tensor(loss_dict['n_valid_examples'], device=DEVICE)
+    return loss_dict
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,

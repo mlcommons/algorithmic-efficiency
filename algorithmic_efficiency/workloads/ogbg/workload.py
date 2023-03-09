@@ -16,7 +16,7 @@ from algorithmic_efficiency.workloads.ogbg import metrics
 class BaseOgbgWorkload(spec.Workload):
 
   _num_outputs: int = 128
-
+  
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result[
         'validation/mean_average_precision'] > self.validation_target_value
@@ -85,6 +85,36 @@ class BaseOgbgWorkload(spec.Workload):
       # Note that this stores the entire val dataset in memory.
       dataset_iter = itertools.cycle(dataset_iter)
     return dataset_iter
+
+    # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
+    per_example_losses = self._binary_cross_entropy_with_mask(
+        labels=label_batch,
+        logits=logits_batch,
+        mask=mask_batch,
+        label_smoothing=label_smoothing)
+    if mask_batch is not None:
+      n_valid_examples = mask_batch.sum()
+    else:
+      n_valid_examples = len(per_example_losses)
+    summed_loss = per_example_losses.sum()
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
+        'per_example': per_example_losses,
+    }
 
   @property
   def step_hint(self) -> int:
