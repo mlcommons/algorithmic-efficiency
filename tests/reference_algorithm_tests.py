@@ -72,6 +72,7 @@ tf.config.set_visible_devices([], 'GPU')
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
     'criteo1tb': ['train/loss', 'validation/loss'],
+    'criteo1tb_test': ['train/loss', 'validation/loss'],
     'fastmri': ['train/ssim', 'validation/ssim'],
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
     'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
@@ -236,7 +237,7 @@ def _make_one_batch_workload(workload_class,
           data_shape = (3, 32, 32)
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=data_shape, num_classes=10)
-      elif workload_name == 'criteo1tb':
+      elif workload_name == 'criteo1tb' or workload_name == 'criteo1tb_test':
         targets = np.ones(batch_shape)
         targets[0] = 0
         fake_batch = {
