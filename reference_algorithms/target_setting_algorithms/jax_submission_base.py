@@ -101,7 +101,7 @@ def update_params(workload: spec.Workload,
       label_smoothing)
 
   # Log loss, grad_norm.
-  if global_step < 10 and global_step % 100 == 0 and workload.metrics_logger is not None:
+  if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
         {
             'loss': loss[0],
