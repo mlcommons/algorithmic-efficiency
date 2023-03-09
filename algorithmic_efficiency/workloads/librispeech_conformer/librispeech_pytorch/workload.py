@@ -197,7 +197,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     n_valid_examples = max(n_valid_examples, 1)
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 
