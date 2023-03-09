@@ -25,7 +25,7 @@ The container entrypoint script provides the following flags:
 - `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
 - `-e` experiment_name: name of experiment. Required for running a submission.
 - `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo'. Required for running a submission.
-- `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist after finishing the submission runner. 
+- `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist.
 
 
 ### Starting container w end-to-end submission runner
@@ -45,6 +45,8 @@ base_image:latest \
 -b <debugging_mode> \
 ```
 This will print the container ID to the terminal.
+If debugging_mode is `'true'` the main process on the container will persist after finishing the submission runner.
+
 
 ### Starting a container with automated data download
 To run a docker container that will only download data (if not found on host):
