@@ -183,7 +183,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': len(n_valid_examples),
         'per_example': per_example_losses,
     }
 
