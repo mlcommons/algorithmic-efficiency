@@ -64,11 +64,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                   -1, *value.shape[2:]))
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
-          # During eval, the batch size of the remainder might be different.
           if split != 'train':
-            per_device_batch_size = torch.tensor(
-                len(batch['inputs']), dtype=torch.int32, device=DEVICE)
-            dist.broadcast(per_device_batch_size, src=0)
             weights = weights if 'weights' in batch else None
             if weights is None:
               weights = torch.ones((N_GPUS, per_device_batch_size),
@@ -82,12 +78,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
           dist.broadcast(torch.stack(aux_tensor_list), src=0)
       else:
         batch = {}
-        # During eval, the batch size of the remainder might be different.
         if split != 'train':
-          per_device_batch_size = torch.empty((1,),
-                                              dtype=torch.int32,
-                                              device=DEVICE)
-          dist.broadcast(per_device_batch_size, src=0)
           weights = torch.empty((N_GPUS, per_device_batch_size),
                                 dtype=torch.float64,
                                 device=DEVICE)
@@ -186,7 +177,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 

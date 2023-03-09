@@ -7,7 +7,12 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 
+from algorithmic_efficiency import spec
 from algorithmic_efficiency.profiler import Profiler
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
+    BatchNorm as ConformerBatchNorm
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
+    BatchNorm as DeepspeechBatchNorm
 
 
 def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
@@ -52,3 +57,21 @@ def sync_ddp_time(time: float, device: torch.device) -> float:
   time_tensor = torch.tensor(time, dtype=torch.float64, device=device)
   dist.all_reduce(time_tensor, op=dist.ReduceOp.MAX)
   return time_tensor.item()
+
+
+def update_batch_norm_fn(module: spec.ParameterContainer,
+                         update_batch_norm: bool) -> None:
+  bn_layers = (
+      torch.nn.modules.batchnorm._BatchNorm,  # PyTorch BN base class.
+      ConformerBatchNorm,  # Custom BN class for conformer model.
+      DeepspeechBatchNorm,  # Custom BN class for deepspeech model.
+  )
+  if isinstance(module, bn_layers):
+    if not update_batch_norm:
+      module.eval()
+      module.momentum_backup = module.momentum
+      # module.momentum can be float or torch.Tensor.
+      module.momentum = 0. * module.momentum_backup
+    elif hasattr(module, 'momentum_backup'):
+      module.momentum = module.momentum_backup
+    module.track_running_stats = update_batch_norm

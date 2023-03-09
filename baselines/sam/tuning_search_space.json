@@ -4,7 +4,7 @@
             0
         ]
     },
-    "beta1": {
+    "one_minus_beta1": {
         "feasible_points": [
             0
         ]
@@ -20,6 +20,11 @@
         ]
     },
     "weight_decay": {
+        "feasible_points": [
+            0
+        ]
+    },
+    "rho": {
         "feasible_points": [
             0
         ]

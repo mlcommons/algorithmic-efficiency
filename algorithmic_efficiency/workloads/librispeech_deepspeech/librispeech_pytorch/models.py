@@ -4,6 +4,7 @@ https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.
 """
 
 from dataclasses import dataclass
+import os
 from typing import Optional, Tuple
 
 import torch
@@ -11,13 +12,12 @@ from torch import nn
 import torch.distributed.nn as dist_nn
 import torch.nn.functional as F
 
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
     preprocessor
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import \
     SpecAug
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
 
 @dataclass
