@@ -3,7 +3,7 @@
 import abc
 import itertools
 import math
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import jax
 
