@@ -19,13 +19,13 @@ docker build -t algo_effiency_image .
 You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is required if `-d` is 'imagenet'). If you want to run a submission you will have to pass the `-s`, `-t`, `-e`, `-w` flags.
 
 The container entrypoint script provides the following flags:
-- `-d` <dataset>: can be 'imagenet', 'fastmri', 'librispeech', 'criteo' or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for runnign a submission.
-- `-f` <framework>: can be either pytorch or jax. This flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required to submission.
-- `-s` <submission_path>: path to submission file on container filesystem. If this flag is set the container will run a submission, so it is required when running a submission. 
-- `-t` <tuning_search_space>: path to file containing tuning search space on container filesystem. Required for running a submission.
-- `-e` <experiment_name>: name of experiment.
-- `-w` <workload>: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg'. Required for running a submission.
-- `-b` <debugging_mode>: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist after finishing the submission runner. 
+- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo' or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for runnign a submission.
+- `-f` framework: can be either 'pytorch' or 'jax'. This flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
+- `-s` submission_path: path to submission file on container filesystem. If this flag is set the container will run a submission, so it is required for running a submission. 
+- `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
+- `-e` experiment_name: name of experiment.
+- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg'. Required for running a submission.
+- `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist after finishing the submission runner. 
 
 
 ### Starting container w end-to-end submission runner
@@ -59,7 +59,7 @@ base_image:latest \
 -b <debugging_mode> \
 ```
 If debugging_mode is `'true'` the main process on the container will persist after finishing the data download.
-This run command is for developers who manually want to run a sumbission or look around.
+This run command is useful if you manually want to run a sumbission or look around.
 
 ### Interacting with the container
 To find the container IDs of running containers run:
