@@ -15,7 +15,7 @@ jobs:
       run: |
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
-        pip install .[fastmri]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=fastmri     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
         python tests/reference_algorithm_tests.py --workload=fastmri     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
@@ -30,7 +30,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[wmt]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=wmt     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
   wmt_pytorch:
@@ -44,7 +44,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[pytorch_cpu]
-        pip install .[wmt]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=wmt     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
   imagenet_jax:
@@ -86,7 +86,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[criteo1tb]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=criteo1tb     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
   criteo_pytorch:
@@ -100,7 +100,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[pytorch_cpu]
-        pip install .[criteo1tb]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=criteo1tb     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
   speech_jax:
@@ -115,7 +115,7 @@ jobs:
       run: |
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
-        pip install .[librispeech_conformer]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
         python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
@@ -130,7 +130,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[pytorch_cpu]
-        pip install .[librispeech_conformer]
+        pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
         python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
