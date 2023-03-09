@@ -16,15 +16,15 @@ docker build -t algo_effiency_image .
 ```
 
 ### Container Entry Point Flags
-You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet'). If you want to run a submission you will have to pass the `-s`, `-t`, `-e`, `-w` flags.
+You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet' or 'wmt'). If you want to run a submission the `-d`, `-f`, `-s`, `-t`, `-e`, `-w` flags are all required to locate the data and run the submission script.
 
 The container entrypoint script provides the following flags:
-- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo' or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
+- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
 - `-f` framework: can be either 'pytorch' or 'jax'. If you just want to download data, this flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
 - `-s` submission_path: path to submission file on container filesystem. If this flag is set, the container will run a submission, so it is required for running a submission. 
 - `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
 - `-e` experiment_name: name of experiment. Required for running a submission.
-- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg'. Required for running a submission.
+- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri'. Required for running a submission.
 - `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist after finishing the submission runner. 
 
 
