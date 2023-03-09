@@ -480,7 +480,7 @@ def download_mnist(data_dir):
 
 
 def download_ogbg(data_dir):
-  tfds.builder('ogbg_molpcba:0.1.2', data_dir=data_dir).download_and_prepare()
+  tfds.builder('ogbg_molpcba:0.1.3', data_dir=data_dir).download_and_prepare()
 
 
 def download_wmt(data_dir):
