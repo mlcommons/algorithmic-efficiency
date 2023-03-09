@@ -53,7 +53,7 @@ fi
 if [ ! -z ${SUBMISSION_PATH+x} ]
     then
     NOW=$(date +"%m-%d-%Y-%H-%M-%S")
-    LOG_DIR="/logs_"
+    LOG_DIR="/logs"
     LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_${NOW}.log"
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
