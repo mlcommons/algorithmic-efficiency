@@ -1,6 +1,7 @@
 """ImageNet workload implemented in PyTorch."""
 
 import contextlib
+import functools
 import itertools
 import math
 import os
@@ -9,7 +10,6 @@ from typing import Dict, Iterator, Optional, Tuple
 
 import numpy as np
 import torch
-from torch import nn
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -18,8 +18,8 @@ from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
@@ -29,7 +29,7 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models im
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 def imagenet_v2_to_torch(
@@ -162,20 +162,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['fc.weight', 'fc.bias']
 
-  def _update_batch_norm(self,
-                         model: spec.ParameterContainer,
-                         update_batch_norm: bool) -> None:
-    bn_layers = (nn.BatchNorm1d,
-                 nn.BatchNorm2d,
-                 nn.BatchNorm3d,
-                 nn.SyncBatchNorm)
-    for m in model.modules():
-      if isinstance(m, bn_layers):
-        if not update_batch_norm:
-          m.eval()
-        m.requires_grad_(update_batch_norm)
-        m.track_running_stats = update_batch_norm
-
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -197,7 +183,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
-      self._update_batch_norm(model, update_batch_norm)
+      model.apply(
+          functools.partial(
+              pytorch_utils.update_batch_norm_fn,
+              update_batch_norm=update_batch_norm))
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
@@ -237,7 +226,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': torch.tensor(n_valid_examples, device=DEVICE),
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 

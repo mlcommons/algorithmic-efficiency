@@ -60,8 +60,12 @@ class OgbgWorkload(BaseOgbgWorkload):
     valid examples in batch, 'per_example': 1-d array of per-example losses}
     (not synced across devices).
     """
-    loss_dict = super().loss_fn(label_batch, logits_batch, mask_batch, label_smoothing)
-    loss_dict['n_valid_examples'] = torch.tensor(loss_dict['n_valid_examples'], device=DEVICE)
+    loss_dict = super().loss_fn(label_batch,
+                                logits_batch,
+                                mask_batch,
+                                label_smoothing)
+    loss_dict['n_valid_examples'] = torch.as_tensor(
+        loss_dict['n_valid_examples'], device=DEVICE)
     return loss_dict
 
   def _build_input_queue(self,
@@ -91,11 +95,6 @@ class OgbgWorkload(BaseOgbgWorkload):
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           dist.broadcast_object_list([graph], src=0, device=DEVICE)
-          # During eval, the batch size of the remainder might be different.
-          if split != 'train':
-            per_device_batch_size = torch.tensor(
-                len(targets[0]), dtype=torch.int32, device=DEVICE)
-            dist.broadcast(per_device_batch_size, src=0)
           dist.broadcast(targets, src=0)
           targets = targets[0]
           dist.broadcast(weights, src=0)
@@ -107,12 +106,6 @@ class OgbgWorkload(BaseOgbgWorkload):
         graph = [None]
         dist.broadcast_object_list(graph, src=0, device=DEVICE)
         graph = graph[0]
-        # During eval, the batch size of the remainder might be different.
-        if split != 'train':
-          per_device_batch_size = torch.empty((1,),
-                                              dtype=torch.int32,
-                                              device=DEVICE)
-          dist.broadcast(per_device_batch_size, src=0)
         targets = torch.empty(
             (N_GPUS, per_device_batch_size, self._num_outputs), device=DEVICE)
         dist.broadcast(targets, src=0)
@@ -201,7 +194,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     # To prevent propagation of NaNs during grad().
     # We mask over the loss for invalid targets later.
-    labels = torch.where(mask, labels, -1)
+    labels = torch.where(mask.to(torch.bool), labels, -1)
 
     # Apply label_smoothing.
     num_classes = labels.shape[-1]
@@ -215,7 +208,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     abs_logits = torch.where(positive_logits, logits, -logits)
     losses = relu_logits - (logits * smoothed_labels) + (
         torch.log(1 + torch.exp(-abs_logits)))
-    return torch.where(mask, losses, 0.)
+    return torch.where(mask.to(torch.bool), losses, 0.)
 
   def _eval_metric(self, labels, logits, masks):
     loss = self.loss_fn(labels, logits, masks)
