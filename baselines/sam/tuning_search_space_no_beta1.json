@@ -3,7 +3,7 @@
         "min": 1e-4, "max": 1e-2, "scaling": "log"
     },
     "one_minus_beta1": {
-        "min": 5e-2, "max": 0.43, "scaling": "log"
+        "feasible_points": [0.1]
     },
     "beta2": {
         "feasible_points": [0.999]
