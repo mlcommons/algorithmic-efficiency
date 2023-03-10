@@ -169,8 +169,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                        target_paddings)
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
-      per_example_losses *= mask_batch
       mask_batch = jnp.logical_and(mask_batch, 1 - target_paddings)
+      per_example_losses *= mask_batch
     else:
       mask_batch = 1 - target_paddings
     n_valid_examples = jnp.maximum(mask_batch.sum(), 1)

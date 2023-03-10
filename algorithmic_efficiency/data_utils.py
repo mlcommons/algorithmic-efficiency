@@ -42,7 +42,7 @@ def shard_and_maybe_pad_np(
   # Get weights from batch if there are any.
   weights = batch.get('weights')
   # The weights will also be padded.
-  mask = np.zeros(mask_shape) if padding_value == 1 else np.ones(mask_shape)
+  mask = np.ones(mask_shape)
   batch['weights'] = mask if weights is None else weights
 
   def _prepare(x):
