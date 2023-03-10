@@ -77,7 +77,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
       padded_batch = data_utils.shard_and_maybe_pad_np(
           numpy_batch, padding_value=1, global_batch_size=global_batch_size)
-      print(padded_batch['weights'])
       yield padded_batch
 
   def init_model_fn(
@@ -170,7 +169,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
       mask_batch = jnp.logical_and(mask_batch, 1 - target_paddings)
-      per_example_losses *= mask_batch
+      per_example_losses *= mask_batch[:, 0]
     else:
       mask_batch = 1 - target_paddings
     n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
