@@ -76,7 +76,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       }
 
       padded_batch = data_utils.shard_and_maybe_pad_np(
-          numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+          numpy_batch, padding_value=1, global_batch_size=global_batch_size)
       print(padded_batch['weights'])
       yield padded_batch
 
