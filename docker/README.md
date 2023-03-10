@@ -103,7 +103,7 @@ To pull the latest image to GCP run:
 ```
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
-    docker pull us-central1-docker.pkg.dev/$PROJECT/base_image:latest
+    docker pull us-central1-docker.pkg.dev/$PROJECT/$REPObase_image:latest
 ```
 
 ### Setting up a Linux VM
