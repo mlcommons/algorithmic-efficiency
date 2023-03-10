@@ -35,8 +35,7 @@ def shard_and_maybe_pad_np(
     else:
       pad_size = local_device_count - remainder_size
   targets = batch['targets']
-  targets_shape = tuple(
-      targets[0].shape if isinstance(targets, tuple) else targets.shape)
+  
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
