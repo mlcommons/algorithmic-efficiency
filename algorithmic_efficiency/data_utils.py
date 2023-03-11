@@ -34,7 +34,6 @@ def shard_and_maybe_pad_np(
       pad_size = global_batch_size - current_batch_size
     else:
       pad_size = local_device_count - remainder_size
-  targets = batch['targets']
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
