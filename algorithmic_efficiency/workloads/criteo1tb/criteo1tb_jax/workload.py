@@ -147,3 +147,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
     return self._eval_batch_pmapped(params, batch).sum()
+
+
+class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
+  vocab_size: int = 32 * 128 * 16

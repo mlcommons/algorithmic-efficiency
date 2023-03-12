@@ -1,7 +1,7 @@
-"""Submission file for a LAMB optimizer with warmup+cosine LR in Jax."""
+"""Submission file for a SAM optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -14,11 +14,81 @@ from algorithmic_efficiency import spec
 _GRAD_CLIP_EPS = 1e-6
 
 
-def scale_by_learning_rate(learning_rate, flip_sign=True):
-  m = -1 if flip_sign else 1
-  if callable(learning_rate):
-    return optax.scale_by_schedule(lambda count: m * learning_rate(count))
-  return optax.scale(m * learning_rate)
+# Copied from the official SAM GitHub repository. Note how it doesn't add an
+# epsilon to the gradient norm before normalizing the gradients.
+def dual_vector(y: jnp.ndarray) -> jnp.ndarray:
+  """Returns the solution of max_x y^T x s.t.
+  ||x||_2 <= 1.
+  Args:
+    y: A pytree of numpy ndarray, vector y in the equation above.
+  """
+  gradient_norm = jnp.sqrt(
+      sum(jnp.sum(jnp.square(e)) for e in jax.tree_util.tree_leaves(y)))
+  normalized_gradient = jax.tree_map(lambda x: x / gradient_norm, y)
+  return normalized_gradient
+
+
+# github.com/google/init2winit/blob/master/init2winit/optimizer_lib/
+# sharpness_aware_minimization.py
+def sharpness_aware_minimization(
+    rho: float,
+    grad_clip: Optional[float],
+    batch_axis_name: str,
+    base_opt_init_fn,
+    base_opt_update_fn,
+) -> optax.GradientTransformation:
+  """Implementation of Sharpness Aware Minimization (SAM).
+  Paper: https://arxiv.org/abs/2010.01412
+  Code: https://github.com/google-research/sam
+  References:
+    Foret et al, 2021: https://arxiv.org/abs/2010.01412
+  Args:
+    rho: The size of the neighborhood for the sharpness aware minimization
+      gradient updates. Defaults to 0.1.
+    grad_clip: The optional value to clip the updates by. Defaults to None.
+    batch_axis_name: the name of the axis to pmap over. Used to run a pmean
+      before applying the optimizer update.
+    base_opt_init_fn: The initialization function for the base optimizer used to
+      generate updates given the total gradient.
+    base_opt_update_fn: The update function for the base optimizer used to
+      generate updates given the total gradient.
+  Returns:
+    The corresponding `GradientTransformation`.
+  """
+
+  def init_fn(params):
+    return base_opt_init_fn(params)
+
+  def update_fn(updates, state, grad_fn_params_tuple):
+    (grad_fn, params) = grad_fn_params_tuple
+
+    # Updates here have been synced (mean) across devices before being sent to
+    # the optimizer. We again take the correct mean of the gradients computed on
+    # the noised parameters in the same order as on the original gradients and
+    # with the same 1e-6 epsilon that is used when clipping the gradients.
+    updates = dual_vector(updates)
+    noised_params = jax.tree_util.tree_map(
+        lambda p, u: p + rho * u, params, updates)
+    (_, (n_valid_examples, _)), updates = grad_fn(noised_params)
+    # Get correct global mean grad.
+    (n_valid_examples, updates) = lax.psum((n_valid_examples, updates),
+                                           axis_name=batch_axis_name)
+    updates = jax.tree_map(lambda x: x / n_valid_examples, updates)
+
+    if grad_clip:
+      updates_norm = jnp.sqrt(
+          sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(updates)))
+      scaled_updates = jax.tree_map(
+          lambda x: x / (updates_norm + _GRAD_CLIP_EPS) * grad_clip, updates)
+      updates = jax.lax.cond(updates_norm > grad_clip,
+                             lambda _: scaled_updates,
+                             lambda _: updates,
+                             None)
+    updates, state = base_opt_update_fn(updates, state, params)
+
+    return updates, state
+
+  return optax.GradientTransformation(init_fn, update_fn)
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -26,7 +96,7 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  """Creates a LAMB optimizer and a learning rate schedule."""
+  """Creates a SAM optimizer (with AdamW base) and a learning rate schedule."""
   del model_params
   del model_state
   del rng
@@ -45,14 +115,27 @@ def init_optimizer_state(workload: spec.Workload,
         schedules=[warmup_fn, cosine_fn], boundaries=[warmup_steps])
     return schedule_fn
 
-  # Create optimizer + LR schedule.
+  # Create base optimizer + LR schedule.
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
-  opt_init_fn, opt_update_fn = optax.lamb(
+  opt_init_fn, opt_update_fn = optax.adamw(
       learning_rate=lr_schedule_fn,
-      b1=hyperparameters.beta1,
+      b1=1.0 - hyperparameters.one_minus_beta1,
       b2=hyperparameters.beta2,
       eps=1e-8,
       weight_decay=hyperparameters.weight_decay)
+
+  # Create SAM update fn.
+  grad_clip = (
+      hyperparameters.grad_clip
+      if hasattr(hyperparameters, 'grad_clip') else None)
+  opt_init_fn, opt_update_fn = sharpness_aware_minimization(
+      rho=hyperparameters.rho,
+      grad_clip=grad_clip,
+      batch_axis_name='batch',
+      base_opt_init_fn=opt_init_fn,
+      base_opt_update_fn=opt_update_fn)
+
+  # Initialize optimizer state.
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
@@ -76,7 +159,7 @@ def pmapped_train_step(workload,
                        grad_clip,
                        label_smoothing):
 
-  def _loss_fn(params):
+  def _loss_fn(params, update_batch_norm=True):
     """Loss function used for training."""
     logits, new_model_state = workload.model_fn(
         params,
@@ -84,27 +167,32 @@ def pmapped_train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
-        update_batch_norm=True)
-    loss, _ = workload.loss_fn(
+        update_batch_norm=update_batch_norm)
+    loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
         mask_batch=batch.get('weights'),
         label_smoothing=label_smoothing)
-    return loss, new_model_state
+    summed_loss = loss_dict['summed']
+    n_valid_examples = loss_dict['n_valid_examples']
+    return summed_loss, (n_valid_examples, new_model_state)
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (loss, new_model_state), grad = grad_fn(current_param_container)
-  (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
+  second_grad_fn = jax.value_and_grad(
+      functools.partial(_loss_fn, update_batch_norm=False), has_aux=True)
+  (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
+      current_param_container)
+  # Get correct global mean loss and grad.
+  (summed_loss, n_valid_examples, grad) = lax.psum(
+      (summed_loss, n_valid_examples, grad), axis_name='batch')
+  loss = summed_loss / n_valid_examples
+  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
+
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 
-  if grad_clip is not None:
-    grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
-    grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
-    grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
-
-  updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-                                               current_param_container)
+  updates, new_optimizer_state = opt_update_fn(
+      grad, optimizer_state, (second_grad_fn, current_param_container))
   updated_params = optax.apply_updates(current_param_container, updates)
   return new_optimizer_state, updated_params, new_model_state, loss, grad_norm
 
@@ -178,14 +266,15 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(workload: spec.Workload,
-                   input_queue: Iterator[Dict[str, spec.Tensor]],
-                   optimizer_state: spec.OptimizerState,
-                   current_param_container: spec.ParameterContainer,
-                   model_state: spec.ModelAuxiliaryState,
-                   hyperparameters: spec.Hyperparameters,
-                   global_step: int,
-                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
+def data_selection(
+    workload: spec.Workload,
+    input_queue: Iterator[Dict[str, spec.Tensor]],
+    optimizer_state: spec.OptimizerState,
+    current_param_container: spec.ParameterContainer,
+    model_state: spec.ModelAuxiliaryState,
+    hyperparameters: spec.Hyperparameters,
+    global_step: int,
+    rng: spec.RandomState) -> Tuple[spec.Tensor, spec.Tensor, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """
