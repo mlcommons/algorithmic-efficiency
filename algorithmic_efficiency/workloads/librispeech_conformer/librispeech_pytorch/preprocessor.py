@@ -1,7 +1,7 @@
+"""This is a pytorch implementation mirroring:
+https://github.com/google/init2winit/blob/master/init2winit/model_lib/librispeech_preprocessor.py.
 """
-This is a pytorch implementation mirroring:
-https://github.com/google/init2winit/blob/master/init2winit/model_lib/librispeech_preprocessor.py
-"""
+
 from dataclasses import dataclass
 import math
 from typing import Any, Optional, Union
@@ -495,8 +495,7 @@ class SpectrogramFrontend(nn.Module):
 
 
 class MelFilterbankFrontend(nn.Module):
-  """Layer to compute log mel spectograms from input audio signals.
-      """
+  """Layer to compute log mel spectograms from input audio signals."""
 
   def __init__(self,
                config: PreprocessorConfig = None,

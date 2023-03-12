@@ -1,8 +1,10 @@
+"""Conformer workload implemented in PyTorch."""
+
 import contextlib
 import functools
 import math
 import random
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -27,7 +29,9 @@ MAX_INPUT_LENGTH = 320000
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def __init__(self, tokenizer_vocab_path=None, use_specaug=True):
+  def __init__(self,
+               tokenizer_vocab_path: Optional[str] = None,
+               use_specaug: bool = True) -> None:
     super().__init__()
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
     self.use_specaug = use_specaug
@@ -74,7 +78,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key in ['lin.weight', 'lin.bias']
 
   def model_fn(
       self,
@@ -88,10 +92,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     del rng
 
     model = params
-
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
-
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
       model.apply(
@@ -103,22 +105,21 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         spec.ForwardPassMode.EVAL: torch.no_grad,
         spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
-
     with contexts[mode]():
       inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
       logits, logits_paddings = model(inputs.to(DEVICE),
                                       input_paddings.to(DEVICE))
-
     return (logits, logits_paddings), None
 
-  def _build_input_queue(self,
-                         data_rng: spec.RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = False,
-                         repeat_final_dataset: Optional[bool] = False,
-                         num_batches: Optional[int] = None):
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     del cache
     del repeat_final_dataset
     del num_batches
@@ -130,7 +131,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       ds_split = 'train-clean-100+train-clean-360+train-other-500'
     elif split == 'validation':
       ds_split = 'dev-clean+dev-other'
-    elif split == 'test':
+    else:
       ds_split = 'test-clean'
 
     ds = LibriSpeechDataset(split=ds_split, data_dir=data_dir)
@@ -211,8 +212,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     framewise_tokens = logits.max(dim=-1)[1]
     framewise_tokens = framewise_tokens * (1 - logit_paddings)
 
-    # add sentinel because unique_consecutive will flatten array
-    # and then compute the unique
+    # Add sentinel because unique_consecutive will flatten array
+    # and then compute the unique.
     framewise_tokens = torch.cat(
         [framewise_tokens, -torch.ones_like(framewise_tokens[:, 0:1])], dim=1)
     _, indices = torch.unique_consecutive(framewise_tokens, return_inverse=True)
@@ -220,11 +221,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     result = torch.zeros_like(framewise_tokens)
     result = result.scatter_(1, indices, framewise_tokens)
 
-    # replace the sentinel column with 0s and remove it
+    # Replace the sentinel column with 0s and remove it.
     result[result == -1] = 0
     result = result[:, :-1]
 
-    # remove blanks (id = 0)
+    # Remove blanks (id = 0).
     blank_id = 0
     fin_result = torch.zeros_like(result)
     idxs = torch.arange(
@@ -253,7 +254,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int) -> Dict[str, float]:
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     data_rng, model_rng = prng.split(rng, 2)

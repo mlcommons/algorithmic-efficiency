@@ -58,4 +58,4 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     return model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key in ['lin.weight', 'lin.bias']
