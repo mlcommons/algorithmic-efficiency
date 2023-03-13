@@ -164,6 +164,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           if not_train:
+            # During eval, the batch size of the remainder might be different.
+            per_device_batch_size = torch.tensor(
+                len(targets[0]), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
             dist.broadcast(weights, src=0)
             weights = weights[0]
           dist.broadcast(inputs, src=0)
@@ -177,6 +181,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
             weights = weights.view(-1, *weights.shape[2:])
       else:
         if not_train:
+          # During eval, the batch size of the remainder might be different.
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
           weights = torch.empty((N_GPUS, per_device_batch_size, 1),
                                 dtype=torch.float32,
                                 device=DEVICE)
