@@ -55,7 +55,7 @@ class CifarWorkload(BaseCifarWorkload):
     dataset = CIFAR10(
         root=data_dir,
         train=split in ['train', 'eval_train', 'validation'],
-        download=True,
+        download=False,
         transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
