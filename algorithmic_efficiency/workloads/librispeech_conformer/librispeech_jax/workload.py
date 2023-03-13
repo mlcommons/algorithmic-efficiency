@@ -1,6 +1,6 @@
 import functools
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
 import flax.linen as nn
@@ -24,19 +24,87 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax impo
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def __init__(self, tokenizer_vocab_path=None, use_specaug=True):
+  def __init__(self,
+               tokenizer_vocab_path: Optional[str] = None,
+               use_specaug: bool = True) -> None:
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
     self.use_specaug = use_specaug
 
-  def _build_input_queue(self,
-                         data_rng: spec.RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = False,
-                         repeat_final_dataset: Optional[bool] = False,
-                         num_batches: Optional[int] = None):
+  def init_model_fn(
+      self,
+      rng: spec.RandomState,
+      dropout_rate: Optional[float] = None,
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Conformer model init function.
+
+    Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
+    input_dropout_rate.
+    """
+    model_config = models.ConformerConfig(
+        attention_residual_dropout_rate=dropout_rate,
+        feed_forward_residual_dropout_rate=dropout_rate,
+        input_dropout_rate=aux_dropout_rate,
+        use_specaug=self.use_specaug)
+    self._model = models.Conformer(model_config)
+    input_shape = [(320000,), (320000,)]
+    fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
+
+    model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
+
+    params_rng, dropout_rng = jax.random.split(rng, 2)
+    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
+                              *fake_input_batch)
+
+    model_state, params = variables.pop('params')
+
+    self._param_shapes = param_utils.jax_param_shapes(params)
+    self._param_types = param_utils.jax_param_types(self._param_shapes)
+    model_state = jax_utils.replicate(model_state)
+    params = jax_utils.replicate(params)
+    return params, model_state
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key == 'Dense_0'
+
+  def model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    variables = {'params': params, **model_state}
+    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+    is_train_mode = mode == spec.ForwardPassMode.TRAIN
+    if update_batch_norm or is_train_mode:
+      (logits, logit_paddings), new_model_state = self._model.apply(
+          variables,
+          inputs,
+          input_paddings,
+          train=True,
+          rngs={'dropout' : rng},
+          mutable=['batch_stats'])
+      return (logits, logit_paddings), new_model_state
+    else:
+      logits, logit_paddings = self._model.apply(
+          variables,
+          inputs,
+          input_paddings,
+          train=False,
+          mutable=False)
+      return (logits, logit_paddings), model_state
+
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     del data_rng
     del cache
     del repeat_final_dataset
@@ -78,71 +146,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       padded_batch = data_utils.shard_and_maybe_pad_np(
           numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
       yield padded_batch
-
-  def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Conformer model init function.
-
-    Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
-    input_dropout_rate.
-    """
-    model_config = models.ConformerConfig(
-        attention_residual_dropout_rate=dropout_rate,
-        feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate,
-        use_specaug=self.use_specaug)
-    self._model = models.Conformer(model_config)
-    input_shape = [(320000,), (320000,)]
-    fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
-
-    model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
-
-    params_rng, dropout_rng = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
-                              *fake_input_batch)
-
-    model_state, params = variables.pop('params')
-
-    self._param_shapes = param_utils.jax_param_shapes(params)
-    self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_utils.replicate(model_state)
-    params = jax_utils.replicate(params)
-    return params, model_state
-
-  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
-
-  def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    variables = {'params': params, **model_state}
-    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
-    is_train_mode = mode == spec.ForwardPassMode.TRAIN
-    if update_batch_norm or is_train_mode:
-      (logits, logit_paddings), new_model_state = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=True,
-          rngs={'dropout' : rng},
-          mutable=['batch_stats'])
-      return (logits, logit_paddings), new_model_state
-    else:
-      logits, logit_paddings = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=False,
-          mutable=False)
-      return (logits, logit_paddings), model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
@@ -193,7 +196,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                           blank_id)
 
   # Adapted from lingvo's greedy decoding logic here:
-  # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138
+  # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138.
   def sequence_mask(self, lengths: spec.Tensor, maxlen: int) -> spec.Tensor:
     batch_size = lengths.shape[0]
     a = jnp.ones([batch_size, maxlen])
@@ -206,7 +209,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                  seq_length: spec.Tensor,
                                  blank_id: int = 0) -> spec.Tensor:
     b, t = labels.shape
-    # Zap out blank
+    # Zap out blank.
     blank_mask = 1 - jnp.equal(labels, blank_id)
     labels = (labels * blank_mask).astype(labels.dtype)
 
@@ -222,7 +225,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     seq_mask = self.sequence_mask(seq_length, maxlen=maxlen)
     label_mask = label_mask * seq_mask
 
-    # remove repetitions from the labels
+    # Remove repetitions from the labels.
     ulabels = label_mask * labels
 
     # Count masks for new sequence lengths.
@@ -245,7 +248,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     flat = jnp.zeros(flat_idx_mask.shape).astype(labels.dtype)
     flat = flat.at[indices].set(updates)
     # 0'th position in the flat array gets clobbered by later padded updates,
-    # so reset it here to its original value
+    # so reset it here to its original value.
     flat = flat.at[0].set(updates[0])
 
     # Reshape back to square batch.
@@ -302,7 +305,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int) -> Dict[str, float]:
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     if model_state is not None:
@@ -311,11 +314,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
-      self._eval_iters[split] = self._build_input_queue(rng,
-                                                        split,
-                                                        data_dir,
-                                                        global_batch_size,
-                                                        num_batches)
+      self._eval_iters[split] = self._build_input_queue(
+          rng, split, data_dir, global_batch_size, num_batches=num_batches)
 
     metrics_report = None
     for _ in range(num_batches):

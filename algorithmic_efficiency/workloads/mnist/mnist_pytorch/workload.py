@@ -73,8 +73,13 @@ class MnistWorkload(BaseMnistWorkload):
             batch['inputs'], dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.long, device=DEVICE)
-        weights = torch.as_tensor(
-            batch['weights'], dtype=torch.bool, device=DEVICE)
+        if 'weights' in batch:
+          weights = torch.as_tensor(
+              batch['weights'], dtype=torch.bool, device=DEVICE)
+        else:
+          weights = torch.ones((batch['targets'].shape[-1],),
+                               dtype=torch.bool,
+                               device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           dist.broadcast(inputs, src=0)
@@ -119,17 +124,25 @@ class MnistWorkload(BaseMnistWorkload):
     """Dropout is unused."""
     del dropout_rate
     del aux_dropout_rate
+
+    if hasattr(self, '_model'):
+      if isinstance(self._model, (DDP, torch.nn.DataParallel)):
+        self._model.module.reset_parameters()
+      else:
+        self._model.reset_parameters()
+      return self._model, None
+
     torch.random.manual_seed(rng[0])
-    model = _Model()
-    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._model = _Model()
+    self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    model.to(DEVICE)
+    self._model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        self._model = DDP(self._model, device_ids=[RANK], output_device=RANK)
       else:
-        model = torch.nn.DataParallel(model)
-    return model, None
+        self._model = torch.nn.DataParallel(self._model)
+    return self._model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['net.layer2.weight', 'net_layer2.bias']
@@ -205,7 +218,7 @@ class MnistWorkload(BaseMnistWorkload):
     targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
-      weights = torch.ones(len(logits)).to(DEVICE)
+      weights = torch.ones(len(logits), device=DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
     accuracy = ((predicted == targets) * weights).sum()

@@ -54,11 +54,11 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def train_mean(self):
-    return [0., 0., 0.]
+    raise NotImplementedError
 
   @property
   def train_stddev(self):
-    return [1., 1., 1.]
+    raise NotImplementedError
 
   @property
   def center_fractions(self):

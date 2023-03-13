@@ -26,7 +26,6 @@ class ResNet(nn.Module):
                block: Type[Union[BasicBlock, Bottleneck]],
                layers: List[int],
                num_classes: int = 10,
-               zero_init_residual: bool = True,
                groups: int = 1,
                width_per_group: int = 64,
                replace_stride_with_dilation: Optional[List[bool]] = None,
@@ -60,7 +59,9 @@ class ResNet(nn.Module):
     self.layer4 = self._make_layer(
         block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
     self.fc = nn.Linear(512 * block.expansion, num_classes)
+    self.reset_parameters()
 
+  def reset_parameters(self) -> None:
     for m in self.modules():
       if isinstance(m, nn.Conv2d):
         pytorch_default_init(m)
@@ -75,12 +76,11 @@ class ResNet(nn.Module):
     # and each residual block behaves like an identity.
     # This improves the model by 0.2~0.3% according to
     # https://arxiv.org/abs/1706.02677.
-    if zero_init_residual:
-      for m in self.modules():
-        if isinstance(m, Bottleneck):
-          nn.init.constant_(m.bn3.weight, 0)
-        elif isinstance(m, BasicBlock):
-          nn.init.constant_(m.bn2.weight, 0)
+    for m in self.modules():
+      if isinstance(m, Bottleneck):
+        nn.init.constant_(m.bn3.weight, 0)
+      elif isinstance(m, BasicBlock):
+        nn.init.constant_(m.bn2.weight, 0)
 
   def _make_layer(self,
                   block: Type[Union[BasicBlock, Bottleneck]],
