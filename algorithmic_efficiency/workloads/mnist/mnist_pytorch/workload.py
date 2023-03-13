@@ -217,7 +217,7 @@ class MnistWorkload(BaseMnistWorkload):
     targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
-      weights = torch.ones(len(logits)).to(DEVICE)
+      weights = torch.ones(len(logits), device=DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
     accuracy = ((predicted == targets) * weights).sum()

@@ -43,7 +43,7 @@ def _build_mnist_dataset(
   else:
     tfds_split = 'test'
   ds = tfds.load(
-      'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir, download=True)
+      'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
   ds = ds.map(
       lambda x: {
           'inputs': _normalize(x['image'], train_mean, train_stddev),
