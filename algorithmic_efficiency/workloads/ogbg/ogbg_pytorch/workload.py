@@ -95,6 +95,11 @@ class OgbgWorkload(BaseOgbgWorkload):
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           dist.broadcast_object_list([graph], src=0, device=DEVICE)
+          # During eval, the batch size of the remainder might be different.
+          if split != 'train':
+            per_device_batch_size = torch.tensor(
+                len(targets[0]), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
           dist.broadcast(targets, src=0)
           targets = targets[0]
           dist.broadcast(weights, src=0)
@@ -106,6 +111,12 @@ class OgbgWorkload(BaseOgbgWorkload):
         graph = [None]
         dist.broadcast_object_list(graph, src=0, device=DEVICE)
         graph = graph[0]
+        # During eval, the batch size of the remainder might be different.
+        if split != 'train':
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
         targets = torch.empty(
             (N_GPUS, per_device_batch_size, self._num_outputs), device=DEVICE)
         dist.broadcast(targets, src=0)

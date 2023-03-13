@@ -248,10 +248,21 @@ class WmtWorkload(BaseWmtWorkload):
                   -1, value.shape[-1]))
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
+          # During eval, the batch size of the remainder might be different.
+          if split != 'train':
+            per_device_batch_size = torch.tensor(
+                len(batch['inputs']), dtype=torch.int32, device=DEVICE)
+            dist.broadcast(per_device_batch_size, src=0)
           # We don't need to broadcast the batch for the device with RANK == 0.
           dist.broadcast(torch.stack(tensor_list)[:, 1:].contiguous(), src=0)
       else:
         batch = {}
+        # During eval, the batch size of the remainder might be different.
+        if split != 'train':
+          per_device_batch_size = torch.empty((1,),
+                                              dtype=torch.int32,
+                                              device=DEVICE)
+          dist.broadcast(per_device_batch_size, src=0)
         # N_GPUS - 1 since we don't broadcast the batch for RANK == 0.
         tensor = torch.empty((n_inputs, N_GPUS - 1, per_device_batch_size, 256),
                              dtype=torch.int64,
