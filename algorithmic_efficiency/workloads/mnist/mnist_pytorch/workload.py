@@ -77,8 +77,9 @@ class MnistWorkload(BaseMnistWorkload):
           weights = torch.as_tensor(
               batch['weights'], dtype=torch.bool, device=DEVICE)
         else:
-          weights = torch.ones(
-            (batch['targets'].shape[-1],), dtype=torch.bool, device=DEVICE)
+          weights = torch.ones((batch['targets'].shape[-1],),
+                               dtype=torch.bool,
+                               device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           dist.broadcast(inputs, src=0)
@@ -125,7 +126,8 @@ class MnistWorkload(BaseMnistWorkload):
     del aux_dropout_rate
 
     if hasattr(self, '_model'):
-      if isinstance(self._model, DDP) or isinstance(self._model, torch.nn.DataParallel):
+      if isinstance(self._model, DDP) or isinstance(self._model,
+                                                    torch.nn.DataParallel):
         self._model.module.reset_parameters()
       else:
         self._model.reset_parameters()

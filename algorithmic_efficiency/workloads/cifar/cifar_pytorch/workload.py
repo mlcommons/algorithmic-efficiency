@@ -105,7 +105,8 @@ class CifarWorkload(BaseCifarWorkload):
     del aux_dropout_rate
 
     if hasattr(self, '_model'):
-      if isinstance(self._model, DDP) or isinstance(self._model, torch.nn.DataParallel):
+      if isinstance(self._model, DDP) or isinstance(self._model,
+                                                    torch.nn.DataParallel):
         self._model.module.reset_parameters()
       else:
         self._model.reset_parameters()
