@@ -252,7 +252,6 @@ def train_once(
                                            hyperparameters,
                                            opt_init_rng)
   logging.info('Initializing metrics bundle.')
-
   # Bookkeeping.
   train_state = {
       'goal_reached': False,

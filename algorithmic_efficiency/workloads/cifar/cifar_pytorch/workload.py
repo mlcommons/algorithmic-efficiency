@@ -55,7 +55,7 @@ class CifarWorkload(BaseCifarWorkload):
     dataset = CIFAR10(
         root=data_dir,
         train=split in ['train', 'eval_train', 'validation'],
-        download=True,
+        download=False,
         transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
@@ -103,17 +103,25 @@ class CifarWorkload(BaseCifarWorkload):
     """Dropout is unused."""
     del dropout_rate
     del aux_dropout_rate
+
+    if hasattr(self, '_model'):
+      if isinstance(self._model, (DDP, torch.nn.DataParallel)):
+        self._model.module.reset_parameters()
+      else:
+        self._model.reset_parameters()
+      return self._model, None
+
     torch.random.manual_seed(rng[0])
-    model = resnet18(num_classes=self._num_classes)
-    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._model = resnet18(num_classes=self._num_classes)
+    self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    model.to(DEVICE)
+    self._model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        self._model = DDP(self._model, device_ids=[RANK], output_device=RANK)
       else:
-        model = torch.nn.DataParallel(model)
-    return model, None
+        self._model = torch.nn.DataParallel(self._model)
+    return self._model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['fc.weight', 'fc.bias']
@@ -197,7 +205,7 @@ class CifarWorkload(BaseCifarWorkload):
     targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
-      weights = torch.ones(len(logits)).to(DEVICE)
+      weights = torch.ones(len(logits), device=DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
     accuracy = ((predicted == targets) * weights).sum()
