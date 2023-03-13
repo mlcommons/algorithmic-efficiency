@@ -253,6 +253,9 @@ def train_once(
                                            opt_init_rng)
   logging.info('Initializing metrics bundle.')
 
+  model_params, _ = workload.init_model_fn(
+    model_init_rng, dropout_rate, aux_dropout_rate)
+
   # Bookkeeping.
   train_state = {
       'goal_reached': False,
