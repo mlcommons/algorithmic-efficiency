@@ -94,7 +94,7 @@ You will have to use an authentication helper to set up permissions to access th
     gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
 ```
 
-To Push built image to artifact registry on GCP do this : 
+To push built image to artifact registry on GCP do this : 
 ```
     PROJECT=training-algorithms-external
     REPO=mlcommons-docker-repo
