@@ -84,7 +84,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         batch = {}
         if split != 'train':
           # During eval, the batch size of the remainder might be different.
-          per_device_batch_size = torch.empty((1,),
+          per_device_batch_size = torch.empty((),
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
