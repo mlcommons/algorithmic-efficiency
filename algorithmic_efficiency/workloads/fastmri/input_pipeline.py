@@ -194,7 +194,8 @@ def load_fastmri_split(global_batch_size,
       cycle_length=32,
       block_length=64,
       num_parallel_calls=16)
-  ds = ds.cache()
+  if is_train:
+    ds = ds.cache()
 
   def process_example(example_index, example):
     if shuffle:
@@ -218,9 +219,6 @@ def load_fastmri_split(global_batch_size,
 
   ds = ds.batch(global_batch_size, drop_remainder=is_train)
 
-  if not is_train:
-    ds = ds.cache()
-
   if is_train:
     ds = ds.prefetch(10)
     iterator = map(data_utils.shard_and_maybe_pad_np, ds)
@@ -228,6 +226,7 @@ def load_fastmri_split(global_batch_size,
   else:
     if num_batches:
       ds = ds.take(num_batches)
+    ds = ds.cache()
     if repeat_final_eval_dataset:
       ds = ds.repeat()
     ds = ds.prefetch(10)
