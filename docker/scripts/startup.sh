@@ -43,7 +43,7 @@ fi
 if [ ! -d ${DATA_DIR} ]
 then
     mkdir -p ${DATA_DIR}
-    ./google-cloud-sdk/bin/gsutil -m cp -r ${DATA_BUCKET}/* ${DATA_DIR}
+    ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET}/* ${DATA_DIR}
 fi 
 
 # Check GPU requirements and run experiment
