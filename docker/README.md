@@ -10,9 +10,9 @@ If you are working with a GCP VM with Container Optimized OS setup, you will hav
 
 ### Building Image
 
-From `algorithmic-efficiency/docker/scripts` run:
+From `algorithmic-efficiency/docker/` run:
 ```
-docker build -t algo_effiency_image .
+docker build -t <docker_image_name> .
 ```
 
 ### Container Entry Point Flags
