@@ -1,7 +1,7 @@
 FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
-# ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
-ARG GIT_URL=https://github.com/priyakasimbeg/algorithmic-efficiency.git
+ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
+# ARG GIT_URL=https://github.com/priyakasimbeg/algorithmic-efficiency.git
 
 # Installing machine packages
 RUN echo "Setting up machine"
@@ -22,7 +22,7 @@ RUN mkdir -p experiment_runs/
 
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
-RUN git clone $GIT_URL && cd algorithmic-efficiency 
+RUN git clone $GIT_URL && cd algorithmic-efficiency && git checkout b705ae8
 
 RUN cd algorithmic-efficiency && pip install -e '.[full]'
 RUN cd algorithmic-efficiency && pip install -e '.[wandb]'

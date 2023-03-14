@@ -57,6 +57,16 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
     LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_${NOW}.log"
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
+
+    # Define special flags for imagenet and librispeech workloads
+    if [[ ${DATASET} == 'imagenet' ]]
+    then 
+        SPECIAL_FLAGS="--imagenet_v2_data_dir=${DATA_DIR}"
+    elif [[ ${DATASET} == 'librispeech' ]]
+    then 
+        SPECIAL_FLAGS="--librispeech_tokenizer_vocab_path=${DATA_DIR}/spm_model.vocab"
+    fi 
+    
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
     ${COMMAND_PREFIX} submission_runner.py \
         --framework=${FRAMEWORK}  \
@@ -67,7 +77,9 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
         --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
-        --max_global_steps=${MAX_STEPS}  2>&1 | tee ${LOG_FILE}
+        --max_global_steps=${MAX_STEPS}  \
+        ${SPECIAL_FLAGS} \
+        2>&1 | tee ${LOG_FILE}
 
     /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
     /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}
