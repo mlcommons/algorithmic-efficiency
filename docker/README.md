@@ -34,8 +34,10 @@ To run the docker container that will download data (if not found host) and run 
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
 -v $HOME_DIR/experiment_runs/:/experiment_runs \
+-v $HOME_DIR/experiment_runs/logs:/logs \
 --gpus all \
-base_image:latest \
+--ipc=host \
+<docker_image_name> \
 -d <dataset> \
 -f <framework> \
 -s <submission_path> \
@@ -54,8 +56,10 @@ To run a docker container that will only download data (if not found on host):
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
 -v $HOME_DIR/experiment_runs/:/experiment_runs \
---gpus all
-base_image:latest \
+-v $HOME_DIR/experiment_runs/logs:/logs \
+--gpus all \
+--ipc=host \
+<docker_image_name> \
 -d <dataset> \
 -f <framework> \
 -b <debugging_mode> \
