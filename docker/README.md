@@ -87,27 +87,27 @@ docker exec -it <container_id> /bin/bash
 If you want to run containers on GCP VMs or store and retrieve Docker images from the Google Cloud Container Registry, please read ahead.
 
 ### Google Cloud Container Registry 
-If you'd like to maintain or use images stored the Google Cloud Container Registry read this section.
+If you'd like to maintain or use images stored on our Google Cloud Container Registry read this section.
 You will have to use an authentication helper to set up permissions to access the repository:
 ```
-    ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
-    gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
+ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
+gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
 ```
 
 To push built image to artifact registry on GCP do this : 
 ```
-    PROJECT=training-algorithms-external
-    REPO=mlcommons-docker-repo
-    
-    docker tag base_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
-    docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
+PROJECT=training-algorithms-external
+REPO=mlcommons-docker-repo
+
+docker tag base_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
+docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
 ```
 
 To pull the latest image to GCP run:
 ```
-    PROJECT=training-algorithms-external
-    REPO=mlcommons-docker-repo
-    docker pull us-central1-docker.pkg.dev/$PROJECT/$REPObase_image:latest
+PROJECT=training-algorithms-external
+REPO=mlcommons-docker-repo
+docker pull us-central1-docker.pkg.dev/$PROJECT/$REPObase_image:latest
 ```
 
 ### Setting up a Linux VM
