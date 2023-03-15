@@ -25,6 +25,7 @@ The container entrypoint script provides the following flags:
 - `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
 - `-e` experiment_name: name of experiment. Required for running a submission.
 - `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo'. Required for running a submission.
+- `-m` max_steps: maximum number of steps to run the workload for. Optional.
 - `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true` the main process on the container will persist.
 
 

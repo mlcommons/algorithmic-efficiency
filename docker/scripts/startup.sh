@@ -59,6 +59,12 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
 
+    # Optionally define max steps flag for submission runner 
+    if [ ! -z ${MAX_STEPS+x} ]
+    then 
+        MAX_STEPS_FLAG="--max_global_steps=${MAX_STEPS}"
+    fi
+
     # Define special flags for imagenet and librispeech workloads
     if [[ ${DATASET} == 'imagenet' ]]
     then 
@@ -78,7 +84,7 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
         --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
-        --max_global_steps=${MAX_STEPS}  \
+        ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         2>&1 | tee ${LOG_FILE}
 
