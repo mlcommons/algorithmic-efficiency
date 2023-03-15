@@ -51,7 +51,7 @@ fi
 # python3 scripts/check_gpu.py
 
 # Optionally run workload if SUBMISSION_PATH is set
-if [ ! -z ${SUBMISSION_PATH+x} ]
+if [[ ! -z ${SUBMISSION_PATH+x} ]]
     then
     NOW=$(date +"%m-%d-%Y-%H-%M-%S")
     LOG_DIR="/logs"
@@ -60,7 +60,7 @@ if [ ! -z ${SUBMISSION_PATH+x} ]
     cd algorithmic-efficiency
 
     # Optionally define max steps flag for submission runner 
-    if [ ! -z ${MAX_STEPS+x} ]
+    if [[ ! -z ${MAX_STEPS+x} ]]
     then 
         MAX_STEPS_FLAG="--max_global_steps=${MAX_STEPS}"
     fi
