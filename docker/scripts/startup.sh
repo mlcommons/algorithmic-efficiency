@@ -43,8 +43,9 @@ fi
 if [ ! -d ${DATA_DIR} ]
 then
     mkdir -p ${DATA_DIR}
-    ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
 fi 
+./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
+
 
 # Check GPU requirements and run experiment
 # python3 scripts/check_gpu.py
