@@ -47,7 +47,7 @@ docker run -t -d \
 -b <debugging_mode> \
 ```
 This will print the container ID to the terminal.
-If debugging_mode is `'true'` the main process on the container will persist after finishing the submission runner.
+If debugging_mode is `true` the main process on the container will persist after finishing the submission runner.
 
 
 ### Starting a container with automated data download
