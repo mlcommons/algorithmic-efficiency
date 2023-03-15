@@ -23,14 +23,14 @@ ROOT_DATA_DIR="/data"
 EXPERIMENT_BUCKET="gs://mlcommons-runs"
 EXPERIMENT_DIR="/experiment_runs"
 
-if [ "${FRAMEWORK}" == "jax" ]
+if [[ "${FRAMEWORK}" == "jax" ]]
 then
     COMMAND_PREFIX="python3"
 else 
     COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8"
 fi
 
-if [ "${DATASET}" == "imagenet" ]
+if [[ "${DATASET}" == "imagenet" ]]
 then 
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}/${FRAMEWORK}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/${FRAMEWORK}"
@@ -40,7 +40,7 @@ else
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
-if [ ! -d ${DATA_DIR} ]
+if [[ ! -d ${DATA_DIR} ]]
 then
     mkdir -p ${DATA_DIR}
 fi 
