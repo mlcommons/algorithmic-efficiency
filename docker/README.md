@@ -10,13 +10,13 @@ If you are working with a GCP VM with Container Optimized OS setup, you will hav
 
 ### Building Image
 
-From `algorithmic-efficiency/docker/scripts` run:
+From `algorithmic-efficiency/docker/` run:
 ```
-docker build -t algo_effiency_image .
+docker build -t <docker_image_name> .
 ```
 
 ### Container Entry Point Flags
-You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet' or 'wmt'). If you want to run a submission the `-d`, `-f`, `-s`, `-t`, `-e`, `-w` flags are all required to locate the data and run the submission script.
+You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet'). If you want to run a submission the `-d`, `-f`, `-s`, `-t`, `-e`, `-w` flags are all required to locate the data and run the submission script.
 
 The container entrypoint script provides the following flags:
 - `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
@@ -25,7 +25,8 @@ The container entrypoint script provides the following flags:
 - `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
 - `-e` experiment_name: name of experiment. Required for running a submission.
 - `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo'. Required for running a submission.
-- `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true'` the main process on the container will persist after finishing the submission runner. 
+- `-m` max_steps: maximum number of steps to run the workload for. Optional.
+- `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true` the main process on the container will persist.
 
 
 ### Starting container w end-to-end submission runner
@@ -34,8 +35,10 @@ To run the docker container that will download data (if not found host) and run 
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
 -v $HOME_DIR/experiment_runs/:/experiment_runs \
+-v $HOME_DIR/experiment_runs/logs:/logs \
 --gpus all \
-base_image:latest \
+--ipc=host \
+<docker_image_name> \
 -d <dataset> \
 -f <framework> \
 -s <submission_path> \
@@ -45,20 +48,24 @@ base_image:latest \
 -b <debugging_mode> \
 ```
 This will print the container ID to the terminal.
+If debugging_mode is `true` the main process on the container will persist after finishing the submission runner.
 
-### Starting a container w automated data download
+
+### Starting a container with automated data download
 To run a docker container that will only download data (if not found on host):
 ```
 docker run -t -d \
 -v $HOME_DIR/data/:/data/ \
 -v $HOME_DIR/experiment_runs/:/experiment_runs \
---gpus all
-base_image:latest \
+-v $HOME_DIR/experiment_runs/logs:/logs \
+--gpus all \
+--ipc=host \
+<docker_image_name> \
 -d <dataset> \
 -f <framework> \
 -b <debugging_mode> \
 ```
-If debugging_mode is `'true'` the main process on the container will persist after finishing the data download.
+If debugging_mode is `true` the main process on the container will persist after finishing the data download.
 This run command is useful if you manually want to run a sumbission or look around.
 
 ### Interacting with the container
@@ -81,27 +88,27 @@ docker exec -it <container_id> /bin/bash
 If you want to run containers on GCP VMs or store and retrieve Docker images from the Google Cloud Container Registry, please read ahead.
 
 ### Google Cloud Container Registry 
-If you'd like to maintain or use images stored the Google Cloud Container Registry read this section.
+If you'd like to maintain or use images stored on our Google Cloud Container Registry read this section.
 You will have to use an authentication helper to set up permissions to access the repository:
 ```
-    ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
-    gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
+ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
+gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
 ```
 
-To Push built image to artifact registry on GCP do this : 
+To push built image to artifact registry on GCP do this : 
 ```
-    PROJECT=training-algorithms-external
-    REPO=mlcommons-docker-repo
-    
-    docker tag base_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
-    docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
+PROJECT=training-algorithms-external
+REPO=mlcommons-docker-repo
+
+docker tag base_image:latest us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
+docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
 ```
 
 To pull the latest image to GCP run:
 ```
-    PROJECT=training-algorithms-external
-    REPO=mlcommons-docker-repo
-    docker pull us-central1-docker.pkg.dev/$PROJECT/base_image:latest
+PROJECT=training-algorithms-external
+REPO=mlcommons-docker-repo
+docker pull us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
 ```
 
 ### Setting up a Linux VM
