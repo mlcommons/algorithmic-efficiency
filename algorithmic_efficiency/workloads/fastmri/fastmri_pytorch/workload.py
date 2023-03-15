@@ -84,7 +84,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         batch = {}
         if split != 'train':
           # During eval, the batch size of the remainder might be different.
-          per_device_batch_size = torch.empty((1,),
+          per_device_batch_size = torch.empty((),
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
@@ -229,6 +229,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del model_state
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
+    num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
@@ -236,13 +237,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
           split,
           data_dir,
           global_batch_size=global_batch_size,
-          repeat_final_dataset=True)
+          repeat_final_dataset=True,
+          num_batches=num_batches)
 
     total_metrics = {
         'ssim': torch.tensor(0., device=DEVICE),
         'loss': torch.tensor(0., device=DEVICE),
     }
-    num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       batch_metrics = self._eval_model(params, batch, model_rng)

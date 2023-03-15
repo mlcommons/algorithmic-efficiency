@@ -583,7 +583,7 @@ def main(_):
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
                                        logging_dir_path)
-  logging.info(f'Final {FLAGS.workload} score: {score}')
+  logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
     logging.info(profiler.summary())
