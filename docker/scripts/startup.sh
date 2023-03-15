@@ -94,7 +94,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
 fi
 
 # Keep main process running in debug mode to avoid the container from stopping
-if [ ${DEBUG_MODE} == 'true' ]
+if [[ ${DEBUG_MODE} == 'true' ]]
 then 
     while true
     do 
