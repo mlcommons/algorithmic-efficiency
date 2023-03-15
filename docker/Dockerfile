@@ -1,7 +1,6 @@
 FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
 ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
-# ARG GIT_URL=https://github.com/priyakasimbeg/algorithmic-efficiency.git
 
 # Installing machine packages
 RUN echo "Setting up machine"
