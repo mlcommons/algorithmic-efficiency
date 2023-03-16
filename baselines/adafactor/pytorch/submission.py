@@ -31,7 +31,7 @@ def init_optimizer_state(workload: spec.Workload,
           Adafactor(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              beta1=1-hyperparameters.one_minus_beta1,
+              beta1=1 - hyperparameters.one_minus_beta1,
               decay_adam=hyperparameters.beta2,
               weight_decay=hyperparameters.weight_decay),
   }
