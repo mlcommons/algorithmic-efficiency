@@ -1,7 +1,0 @@
-{
-    "decay_adam": {"feasible_points": [0.99]},
-    "beta1": {"feasible_points": [0.9]},
-    "weight_decay": {"feasible_points": [1e-5]},
-    "learning_rate": {"feasible_points": [1e-3]},
-    "warmup_steps": {"feasible_points": [9999]}
-}

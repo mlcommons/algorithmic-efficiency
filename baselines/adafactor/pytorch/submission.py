@@ -31,8 +31,8 @@ def init_optimizer_state(workload: spec.Workload,
           Adafactor(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              beta1=hyperparameters.beta1,
-              decay_adam=hyperparameters.decay_adam,
+              beta1=1-hyperparameters.one_minus_beta1,
+              decay_adam=hyperparameters.beta2,
               weight_decay=hyperparameters.weight_decay),
   }
   optimizer = optimizer_state['optimizer']
@@ -41,8 +41,7 @@ def init_optimizer_state(workload: spec.Workload,
       start_factor=1e-10,
       end_factor=1.,
       total_iters=hyperparameters.warmup_steps)
-  target_setting_step_hint = int(0.75 * workload.step_hint)
-  cosine_steps = max(target_setting_step_hint - hyperparameters.warmup_steps, 1)
+  cosine_steps = max(workload.step_hint - hyperparameters.warmup_steps, 1)
   cosine_decay = CosineAnnealingLR(optimizer, T_max=cosine_steps)
   optimizer_state['scheduler'] = SequentialLR(
       optimizer,
