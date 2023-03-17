@@ -85,7 +85,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate)
+        dropout_rate=dropout_rate,
+        use_layer_norm=self.use_layer_norm)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -233,3 +234,15 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
   vocab_size: int = 32 * 128 * 16
+
+
+class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+  use_layer_norm = True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.124027
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126468

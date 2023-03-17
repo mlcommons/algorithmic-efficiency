@@ -46,7 +46,6 @@ from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
-
 flags.DEFINE_string(
     'submission_path',
     None,
@@ -112,6 +111,7 @@ flags.DEFINE_integer('max_global_steps',
                      None,
                      'Maximum number of update steps.')
 FLAGS = flags.FLAGS
+
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 

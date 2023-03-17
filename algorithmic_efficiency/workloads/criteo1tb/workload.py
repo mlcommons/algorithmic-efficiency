@@ -20,6 +20,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   mlp_bottom_dims: Tuple[int, int] = (512, 256, 128)
   mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
   embed_dim: int = 128
+  use_layer_norm: bool = False
 
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value
