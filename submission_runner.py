@@ -16,7 +16,6 @@ python3 submission_runner.py \
 
 import datetime
 import importlib
-import inspect
 import json
 import os
 import struct
@@ -36,6 +35,7 @@ from algorithmic_efficiency import halton
 from algorithmic_efficiency import logger_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
+from algorithmic_efficiency import workload_utils
 from algorithmic_efficiency.profiler import PassThroughProfiler
 from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
@@ -46,50 +46,6 @@ from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
-# TODO(znado): make a nicer registry of workloads that lookup in.
-BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
-
-# Workload_path will be appended by '_pytorch' or '_jax' automatically.
-WORKLOADS = {
-    'cifar': {
-        'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
-    },
-    'criteo1tb': {
-        'workload_path': 'criteo1tb/criteo1tb',
-        'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
-    },
-    'criteo1tb_test': {
-        'workload_path': 'criteo1tb/criteo1tb',
-        'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
-    },
-    'fastmri': {
-        'workload_path': 'fastmri/fastmri',
-        'workload_class_name': 'FastMRIWorkload',
-    },
-    'imagenet_resnet': {
-        'workload_path': 'imagenet_resnet/imagenet',
-        'workload_class_name': 'ImagenetResNetWorkload',
-    },
-    'imagenet_vit': {
-        'workload_path': 'imagenet_vit/imagenet',
-        'workload_class_name': 'ImagenetVitWorkload',
-    },
-    'librispeech_conformer': {
-        'workload_path': 'librispeech_conformer/librispeech',
-        'workload_class_name': 'LibriSpeechConformerWorkload',
-    },
-    'librispeech_deepspeech': {
-        'workload_path': 'librispeech_deepspeech/librispeech',
-        'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
-    },
-    'mnist': {
-        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
-    },
-    'ogbg': {
-        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
-    },
-    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
-}
 
 flags.DEFINE_string(
     'submission_path',
@@ -99,7 +55,8 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'workload',
     None,
-    help=f'The name of the workload to run.\n Choices: {list(WORKLOADS.keys())}'
+    'The name of the workload to run.\n Choices: '
+    f'{workload_utils.workload_names()}'
 )
 flags.DEFINE_enum(
     'tuning_ruleset',
@@ -156,58 +113,6 @@ flags.DEFINE_integer('max_global_steps',
                      'Maximum number of update steps.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
-
-def convert_filepath_to_module(path: str):
-  base, extension = os.path.splitext(path)
-
-  if extension != '.py':
-    raise ValueError(f'Path: {path} must be a python file (*.py)')
-
-  return base.replace('/', '.')
-
-
-def import_workload(workload_path: str,
-                    workload_class_name: str,
-                    return_class=False,
-                    workload_init_kwargs=None) -> spec.Workload:
-  """Import and add the workload to the registry.
-
-  This importlib loading is nice to have because it allows runners to avoid
-  installing the dependencies of all the supported frameworks. For example, if
-  a submitter only wants to write Jax code, the try/except below will catch
-  the import errors caused if they do not have the PyTorch dependencies
-  installed on their system.
-
-  Args:
-    workload_path: the path to the `workload.py` file to load.
-    workload_class_name: the name of the Workload class that implements the
-      `Workload` abstract class in `spec.py`.
-    return_class: if true, then the workload class is returned instead of the
-      instantiated object. Useful for testing when methods need to be overriden.
-    workload_init_kwargs: kwargs to pass to the workload constructor.
-  """
-
-  # Remove the trailing '.py' and convert the filepath to a Python module.
-  workload_path = convert_filepath_to_module(workload_path)
-
-  # Import the workload module.
-  workload_module = importlib.import_module(workload_path)
-  # Get everything defined in the workload module (including our class).
-  workload_module_members = inspect.getmembers(workload_module)
-  workload_class = None
-  for name, value in workload_module_members:
-    if name == workload_class_name:
-      workload_class = value
-      break
-  if workload_class is None:
-    raise ValueError(
-        f'Could not find member {workload_class_name} in {workload_path}. '
-        'Make sure the Workload class is spelled correctly and defined in '
-        'the top scope of the module.')
-  if return_class:
-    return workload_class
-  return workload_class(**workload_init_kwargs)
 
 
 def train_once(
@@ -440,7 +345,8 @@ def score_submission_on_workload(workload: spec.Workload,
   imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = convert_filepath_to_module(submission_path)
+  submission_module_path = workload_utils.convert_filepath_to_module(
+      submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
@@ -548,20 +454,8 @@ def main(_):
   if FLAGS.framework == 'pytorch':
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
-  workload_metadata = WORKLOADS[FLAGS.workload]
-  # Extend path according to framework.
-  workload_metadata['workload_path'] = os.path.join(
-      BASE_WORKLOADS_DIR,
-      workload_metadata['workload_path'] + f'_{FLAGS.framework}',
-      'workload.py')
-  workload_init_kwargs = {}
-  if FLAGS.librispeech_tokenizer_vocab_path:
-    workload_init_kwargs['tokenizer_vocab_path'] = (
-        FLAGS.librispeech_tokenizer_vocab_path)
-  workload = import_workload(
-      workload_path=workload_metadata['workload_path'],
-      workload_class_name=workload_metadata['workload_class_name'],
-      workload_init_kwargs=workload_init_kwargs)
+  workload = workload_utils.get_workload(
+      FLAGS.workload, FLAGS.framework, FLAGS.librispeech_tokenizer_vocab_path)
 
   experiment_name = FLAGS.experiment_name
   if experiment_name and FLAGS.append_timestamp:
