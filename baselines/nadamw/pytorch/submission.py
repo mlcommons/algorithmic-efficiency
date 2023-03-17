@@ -185,7 +185,7 @@ def nadamw(params: List[Tensor],
     bias_correction2_sqrt = math.sqrt(bias_correction2)
     denom = (exp_avg_sq.sqrt() / bias_correction2_sqrt).add_(eps)
 
-    param.addcdiv_(exp_avg_hat, denom, value=-step_size)
+    param.addcdiv_(exp_avg, denom, value=-step_size)
     exp_avg.sub_(grad, alpha=1 - beta1).div_(beta1)
 
 
