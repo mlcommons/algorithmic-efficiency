@@ -20,10 +20,11 @@ class DLRMResNet(nn.Module):
 
   vocab_size: int = 32 * 128 * 1024  # 4_194_304
   num_dense_features: int = 13
-  mlp_bottom_dims: Sequence[int] = (512, 256, 128)
-  mlp_top_dims: Sequence[int] = (1024, 1024, 512, 256, 1)
+  mlp_bottom_dims: Sequence[int] = (256, 256, 256)
+  mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
   embed_dim: int = 128
   dropout_rate: float = 0.0
+  use_layer_norm: bool = False  # Unused.
 
   @nn.compact
   def __call__(self, x, train):

@@ -10,8 +10,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import \
-    DlrmSmall
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import models
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
 
@@ -79,7 +78,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     """Only dropout is used."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = DlrmSmall(
+    if self.use_resnet:
+      model_class = models.DLRMResNet
+    else:
+      model_class = models.DlrmSmall
+    model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
@@ -236,8 +239,22 @@ class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
   vocab_size: int = 32 * 128 * 16
 
 
-class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
   use_layer_norm = True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.123744
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126152
+
+
+class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+  use_resnet = True
+  mlp_bottom_dims = (256, 256, 256)
+  mlp_top_dims = (256, 256, 256, 256, 1)
 
   @property
   def validation_target_value(self) -> float:

@@ -74,7 +74,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """Only dropout is used."""
     del aux_dropout_rate
-    self._model = models.DlrmSmall(
+    if self.use_resnet:
+      model_class = models.DLRMResNet
+    else:
+      model_class = models.DlrmSmall
+    self._model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
@@ -154,8 +158,22 @@ class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
   vocab_size = 32 * 128 * 16
 
 
-class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
   use_layer_norm = True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.123744
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126152
+
+
+class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+  use_resnet = True
+  mlp_bottom_dims = (256, 256, 256)
+  mlp_top_dims = (256, 256, 256, 256, 1)
 
   @property
   def validation_target_value(self) -> float:
