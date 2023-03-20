@@ -154,12 +154,12 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         inputs = torch.as_tensor(
-            batch['inputs'], dtype=torch.float32, device=DEVICE)
+            batch.get('inputs'), dtype=torch.float32, device=DEVICE)
         targets = torch.as_tensor(
-            batch['targets'], dtype=torch.float32, device=DEVICE)
+            batch.get('targets'), dtype=torch.float32, device=DEVICE)
         if not_train:
           weights = torch.as_tensor(
-              batch['weights'], dtype=torch.float32, device=DEVICE)
+              batch.get('weights'), dtype=torch.float32, device=DEVICE)
 
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
