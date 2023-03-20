@@ -162,7 +162,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           if weights is not None:
             weights = torch.as_tensor(weights,
                                       dtype=torch.float32,
-                                      device=DEVICE)         
+                                      device=DEVICE)
 
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
