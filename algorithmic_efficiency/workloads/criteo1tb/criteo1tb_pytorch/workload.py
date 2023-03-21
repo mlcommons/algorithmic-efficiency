@@ -161,8 +161,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           weights = batch.get('weights')
           if weights is None:
             weights = torch.ones((N_GPUS, per_device_batch_size, 1),
-                                  dtype=torch.float32,
-                                  device=DEVICE)
+                                 dtype=torch.float32,
+                                 device=DEVICE)
           else:
             weights = torch.as_tensor(
                 weights, dtype=torch.float32, device=DEVICE)
