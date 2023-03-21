@@ -160,7 +160,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         if not_train:
           weights = batch.get('weights')
           if weights is None:
-            weights = torch.ones((N_GPUS, per_device_batch_size, 1), 
+            weights = torch.ones((N_GPUS, per_device_batch_size, 1),
                                   dtype=torch.float32,
                                   device=DEVICE)
           else:
