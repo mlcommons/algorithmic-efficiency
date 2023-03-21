@@ -170,6 +170,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
             per_device_batch_size = torch.tensor(
                 len(targets[0]), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
+            breakpoint()
             dist.broadcast(weights, src=0)
             weights = weights[0]
           dist.broadcast(inputs, src=0)
