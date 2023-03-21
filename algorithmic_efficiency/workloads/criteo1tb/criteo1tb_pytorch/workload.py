@@ -160,9 +160,12 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         if not_train:
           weights = batch.get('weights')
           if weights is None:
-            weights = torch.ones((N_GPUS, per_device_batch_size, 1), dtype=torch.float32, device=DEVICE)
+            weights = torch.ones((N_GPUS, per_device_batch_size, 1), 
+                                  dtype=torch.float32,
+                                  device=DEVICE)
           else:
-            weights = torch.as_tensor(weights, dtype=torch.float32, device=DEVICE)
+            weights = torch.as_tensor(
+                weights, dtype=torch.float32, device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           if not_train:
