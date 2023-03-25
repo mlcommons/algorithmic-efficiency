@@ -1,4 +1,5 @@
 """Criteo1TB DLRM workload base class."""
+import abc
 import math
 import os
 from typing import Dict, Optional, Tuple
@@ -20,8 +21,16 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   mlp_bottom_dims: Tuple[int, int] = (512, 256, 128)
   mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
   embed_dim: int = 128
-  use_layer_norm: bool = False
-  use_resnet: bool = False
+
+  @property
+  @abc.abstractmethod
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+
+  @property
+  @abc.abstractmethod
+  def use_resnet(self) -> bool:
+    """Whether or not to use residual connections in the model."""
 
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value

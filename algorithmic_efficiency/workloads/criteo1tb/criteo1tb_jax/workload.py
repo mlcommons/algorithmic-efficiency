@@ -19,6 +19,16 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def eval_batch_size(self) -> int:
     return 524_288
 
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return False
+
+  @property
+  def use_resnet(self) -> bool:
+    """Whether or not to use residual connections in the model."""
+    return False
+
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     """Computes the sigmoid binary cross entropy per example.
@@ -159,7 +169,11 @@ class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
-  use_layer_norm = True
+
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return True
 
   @property
   def validation_target_value(self) -> float:
@@ -171,9 +185,13 @@ class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
-  use_resnet = True
   mlp_bottom_dims = (256, 256, 256)
   mlp_top_dims = (256, 256, 256, 256, 1)
+
+  @property
+  def use_resnet(self) -> bool:
+    """Whether or not to use residual connections in the model."""
+    return True
 
   @property
   def validation_target_value(self) -> float:
