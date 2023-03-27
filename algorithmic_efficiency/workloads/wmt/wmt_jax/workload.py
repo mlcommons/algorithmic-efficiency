@@ -216,7 +216,11 @@ class WmtWorkload(BaseWmtWorkload):
     target_shape = (init_fake_batch_size, 256)
 
     model_config = models.TransformerConfig(
-        dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
+        dropout_rate=dropout_rate,
+        attention_dropout_rate=aux_dropout_rate,
+        use_post_layer_norm=self.use_post_layer_norm,
+        use_gated_gelu=self.use_gated_gelu,
+        attention_temperature=self.attention_temperature)
     self._train_model = models.Transformer(model_config)
     self._eval_model = models.Transformer(
         models.TransformerConfig(deterministic=True))
@@ -277,3 +281,25 @@ class WmtWorkload(BaseWmtWorkload):
     del num_examples
     eval_denominator = total_metrics.pop('denominator')
     return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)
+
+
+class WmtAttentionTemperatureWorkload(WmtWorkload):
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.0 # DO NOT SUBMIT todo znado find value
+
+
+# DO NOT SUBMIT znado check if name is gated gelu?
+class WmtGatedGeluWorkload(WmtWorkload):
+
+  @property
+  def use_gated_gelu(self) -> bool:
+    return True
+
+
+class WmtPostLayerNormWorkload(WmtWorkload):
+
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return True

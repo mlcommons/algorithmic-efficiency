@@ -23,6 +23,18 @@ class BaseWmtWorkload(spec.Workload):
 
   _vocab_size: int = 32000
 
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return False
+
+  @property
+  def use_gated_gelu(self) -> bool:
+    return False
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.0
+
   def __init__(self) -> None:
     super().__init__()
     self._tokenizer = None

@@ -133,7 +133,11 @@ class Transformer(nn.Module):
                nlayers: int = 6,
                dropout_rate: Optional[float] = 0.1,
                attention_dropout_rate: Optional[float] = 0.1,
-               layer_norm_eps: float = 1e-6):
+               layer_norm_eps: float = 1e-6,
+               use_post_layer_norm: bool = False,
+               use_gated_gelu: bool = False,
+               attention_temperature: float = 1.0):
+               # DO NOT SUBMIT znado use passed variant hparams
     super().__init__()
     if dropout_rate is None:
       dropout_rate = 0.1

@@ -15,7 +15,7 @@ from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import bleu
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch import decode
-from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import Transformer
+from algorithmic_efficiency.workloads.wmt.wmt_pytorch import models
 from algorithmic_efficiency.workloads.wmt.workload import BaseWmtWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
@@ -160,8 +160,12 @@ class WmtWorkload(BaseWmtWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """aux_dropout_rate is used as attention_dropout_rate."""
     torch.random.manual_seed(rng[0])
-    model = Transformer(
-        dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
+    model = models.Transformer(
+        dropout_rate=dropout_rate,
+        attention_dropout_rate=aux_dropout_rate,
+        use_post_layer_norm=self.use_post_layer_norm,
+        use_gated_gelu=self.use_gated_gelu,
+        attention_temperature=self.attention_temperature)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -323,3 +327,25 @@ class WmtWorkload(BaseWmtWorkload):
     total_metrics = {k: v.item() for k, v in total_metrics.items()}
     eval_denominator = total_metrics.pop('denominator')
     return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)
+
+
+class WmtAttentionTemperatureWorkload(WmtWorkload):
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.0 # DO NOT SUBMIT todo znado find value
+
+
+# DO NOT SUBMIT znado check if name is gated gelu?
+class WmtGatedGeluWorkload(WmtWorkload):
+
+  @property
+  def use_gated_gelu(self) -> bool:
+    return True
+
+
+class WmtPostLayerNormWorkload(WmtWorkload):
+
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return True

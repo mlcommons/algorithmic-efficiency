@@ -62,7 +62,7 @@ _WORKLOAD_CLASS_NAMES = {
     'wmt': 'WmtWorkload',
     'wmt_attn_temp': 'WmtAttentionTemperatureWorkload',
     'wmt_glu_tanh': 'WmtGluWorkload',
-    'wmt_post_ln': 'WmtLayerNormWorkload',
+    'wmt_post_ln': 'WmtPostLayerNormWorkload',
 }
 
 
