@@ -12,7 +12,7 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg import metrics
-from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import GNN
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch import models
 from algorithmic_efficiency.workloads.ogbg.workload import BaseOgbgWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
@@ -144,7 +144,10 @@ class OgbgWorkload(BaseOgbgWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = GNN(num_outputs=self._num_outputs, dropout_rate=dropout_rate)
+    model = models.GNN(
+        num_outputs=self._num_outputs,
+        dropout_rate=dropout_rate,
+        activation_fn_name=self.activation_fn_name)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -236,3 +239,22 @@ class OgbgWorkload(BaseOgbgWorkload):
     """Normalize eval metrics."""
     del num_examples
     return {k: float(v) for k, v in total_metrics.compute().items()}
+
+
+class OgbgGeluWorkload(OgbgWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'gelu'
+
+
+class OgbgSiluWorkload(OgbgWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'silu'
+
+class OgbgModelSizeWorkload(OgbgWorkload):
+  pass

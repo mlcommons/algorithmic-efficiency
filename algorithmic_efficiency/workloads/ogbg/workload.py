@@ -17,6 +17,11 @@ class BaseOgbgWorkload(spec.Workload):
 
   _num_outputs: int = 128
 
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'relu'
+
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result[
         'validation/mean_average_precision'] > self.validation_target_value

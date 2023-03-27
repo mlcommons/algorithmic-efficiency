@@ -15,7 +15,7 @@ def _make_embed(latent_dim):
   return make_fn
 
 
-def _make_mlp(hidden_dims, dropout):
+def _make_mlp(hidden_dims, dropout, activation_fn):
   """Creates a MLP with specified dimensions."""
 
   @jraph.concatenated_args
@@ -24,7 +24,7 @@ def _make_mlp(hidden_dims, dropout):
     for dim in hidden_dims:
       x = nn.Dense(features=dim)(x)
       x = nn.LayerNorm()(x)
-      x = nn.relu(x)
+      x = activation_fn(x)
       x = dropout(x)
     return x
 
@@ -42,6 +42,7 @@ class GNN(nn.Module):
   # If None, defaults to 0.1.
   dropout_rate: Optional[float] = 0.1
   num_message_passing_steps: int = 5
+  activation_fn_name: str = 'relu'
 
   @nn.compact
   def __call__(self, graph, train):
@@ -59,11 +60,24 @@ class GNN(nn.Module):
         embed_edge_fn=_make_embed(self.latent_dim))
     graph = embedder(graph)
 
+    if self.activation_fn_name == 'relu':
+      activation_fn = nn.relu
+    elif self.activation_fn_name == 'gelu':
+      activation_fn = nn.gelu
+    elif self.activation_fn_name == 'silu':
+      activation_fn = nn.silu
+    else:
+      raise ValueError(
+          f'Invalid activation function name: {self.activation_fn_name}')
+
     for _ in range(self.num_message_passing_steps):
       net = jraph.GraphNetwork(
-          update_edge_fn=_make_mlp(self.hidden_dims, dropout=dropout),
-          update_node_fn=_make_mlp(self.hidden_dims, dropout=dropout),
-          update_global_fn=_make_mlp(self.hidden_dims, dropout=dropout))
+          update_edge_fn=_make_mlp(
+              self.hidden_dims, dropout=dropout, activation_fn=activation_fn),
+          update_node_fn=_make_mlp(
+              self.hidden_dims, dropout=dropout, activation_fn=activation_fn),
+          update_global_fn=_make_mlp(
+              self.hidden_dims, dropout=dropout, activation_fn=activation_fn))
 
       graph = net(graph)
 

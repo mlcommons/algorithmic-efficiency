@@ -10,14 +10,14 @@ from torch import nn
 from algorithmic_efficiency import init_utils
 
 
-def _make_mlp(in_dim, hidden_dims, dropout_rate):
+def _make_mlp(in_dim, hidden_dims, dropout_rate, activation_fn):
   """Creates a MLP with specified dimensions."""
   layers = []
   for dim in hidden_dims:
     layers.extend([
         nn.Linear(in_features=in_dim, out_features=dim),
         nn.LayerNorm(dim),
-        nn.ReLU(),
+        activation_fn(),
         nn.Dropout(dropout_rate),
     ])
   return nn.Sequential(*layers)
@@ -35,7 +35,8 @@ class GNN(nn.Module):
 
   def __init__(self,
                num_outputs: int = 128,
-               dropout_rate: Optional[float] = 0.1) -> None:
+               dropout_rate: Optional[float] = 0.1,
+               activation_fn_name: str = 'relu') -> None:
     super().__init__()
     self.num_outputs = num_outputs
     if dropout_rate is None:
@@ -43,6 +44,16 @@ class GNN(nn.Module):
     # in_features are specifically chosen for the ogbg workload.
     self.node_embedder = nn.Linear(in_features=9, out_features=self.latent_dim)
     self.edge_embedder = nn.Linear(in_features=3, out_features=self.latent_dim)
+
+    if activation_fn_name == 'relu':
+      activation_fn = nn.ReLU
+    elif activation_fn_name == 'gelu':
+      activation_fn = nn.GeLU
+    elif activation_fn_name == 'silu':
+      activation_fn = nn.Silu
+    else:
+      raise ValueError(
+          f'Invalid activation function name: {self.activation_fn_name}')
 
     graph_network_layers = []
     for st in range(self.num_message_passing_steps):
@@ -56,11 +67,12 @@ class GNN(nn.Module):
 
       graph_network_layers.append(
           GraphNetwork(
-              update_edge_fn=_make_mlp(in_dim, self.hidden_dims, dropout_rate),
-              update_node_fn=_make_mlp(in_dim, self.hidden_dims, dropout_rate),
-              update_global_fn=_make_mlp(last_in_dim,
-                                         self.hidden_dims,
-                                         dropout_rate)))
+              update_edge_fn=_make_mlp(
+                  in_dim, self.hidden_dims, dropout_rate, activation_fn),
+              update_node_fn=_make_mlp(
+                  in_dim, self.hidden_dims, dropout_rate, activation_fn),
+              update_global_fn=_make_mlp(
+                  last_in_dim, self.hidden_dims, dropout_rate, activation_fn)))
     self.graph_network = nn.Sequential(*graph_network_layers)
 
     self.decoder = nn.Linear(

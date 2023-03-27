@@ -15,7 +15,8 @@ _WORKLOAD_CLASS_NAMES = {
     'criteo1tb': 'Criteo1TbDlrmSmallWorkload',
     'criteo1tb_layer_norm': 'Criteo1TbDlrmSmallLayerNormWorkload',
     'criteo1tb_resnet': 'Criteo1TbDlrmSmallResNetWorkload',
-    'criteo1tb_test': 'Criteo1TbDlrmSmallTestWorkload',  # Testing only.
+    # Testing only.
+    'criteo1tb_test': 'Criteo1TbDlrmSmallTestWorkload',
 
     # FastMRI.
     'fastmri': 'FastMRIWorkload',
@@ -33,7 +34,7 @@ _WORKLOAD_CLASS_NAMES = {
     'imagenet_vit': 'ImagenetVitWorkload',
     'imagenet_vit_glu': 'ImagenetVitGluWorkload',
     'imagenet_vit_map': 'ImagenetVitMapWorkload',
-    'imagenet_vit_post': 'ImagenetVitLayerNormWorkload',
+    'imagenet_vit_post': 'ImagenetVitPostLayerNormWorkload',
 
     # LibriSpeech Conformer.
     'librispeech_conformer': 'LibriSpeechConformerWorkload',
