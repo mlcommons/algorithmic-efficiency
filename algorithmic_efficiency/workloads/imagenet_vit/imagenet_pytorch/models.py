@@ -129,12 +129,13 @@ class Encoder1DBlock(nn.Module):
                width: int,
                mlp_dim: Optional[int] = None,
                num_heads: int = 12,
-               dropout_rate: float = 0.0) -> None:
+               dropout_rate: float = 0.0,
+               use_post_layer_norm: bool = False) -> None:
     super().__init__()
-
     self.width = width
     self.mlp_dim = mlp_dim
     self.num_heads = num_heads
+    self.use_post_layer_norm = use_post_layer_norm
 
     self.layer_norm0 = nn.LayerNorm(self.width, eps=1e-6)
     self.self_attention1 = SelfAttention(self.width, self.num_heads)
@@ -143,15 +144,24 @@ class Encoder1DBlock(nn.Module):
     self.mlp3 = MlpBlock(self.width, self.mlp_dim, dropout_rate)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
-    y = self.layer_norm0(x)
+    # DO NOT SUBMIT TODO(znado): use use_post_layer_norm
+    if self.use_post_layer_norm:
+      y = x
+    else:
+      y = self.layer_norm0(x)
     y = self.self_attention1(y)
     y = self.dropout(y)
     x = x + y
-
-    y = self.layer_norm2(x)
+    if self.use_post_layer_norm:
+      x = self.layer_norm0(x)
+      y = x
+    else:
+      y = self.layer_norm2(x)
     y = self.mlp3(y)
     y = self.dropout(y)
     x = x + y
+    if self.use_post_layer_norm:
+      x = self.layer_norm2(x)
     return x
 
 
@@ -163,7 +173,8 @@ class Encoder(nn.Module):
                width: int,
                mlp_dim: Optional[int] = None,
                num_heads: int = 12,
-               dropout_rate: float = 0.0) -> None:
+               dropout_rate: float = 0.0,
+               use_post_layer_norm: bool = False) -> None:
     super().__init__()
 
     self.depth = depth
@@ -172,7 +183,8 @@ class Encoder(nn.Module):
     self.num_heads = num_heads
 
     self.net = nn.ModuleList([
-        Encoder1DBlock(self.width, self.mlp_dim, self.num_heads, dropout_rate)
+        Encoder1DBlock(
+            self.width, self.mlp_dim, self.num_heads, dropout_rate, use_post_layer_norm)
         for _ in range(depth)
     ])
     self.encoder_norm = nn.LayerNorm(self.width, eps=1e-6)
@@ -202,7 +214,9 @@ class ViT(nn.Module):
       rep_size: Union[int, bool] = True,
       dropout_rate: Optional[float] = 0.0,
       head_zeroinit: bool = True,
-      dtype: Any = torch.float32) -> None:
+      dtype: Any = torch.float32,
+      use_global_avg_pool: bool = True,
+      use_post_layer_norm: bool = False) -> None:
     super().__init__()
     if dropout_rate is None:
       dropout_rate = 0.0
@@ -216,6 +230,7 @@ class ViT(nn.Module):
     self.rep_size = rep_size
     self.head_zeroinit = head_zeroinit
     self.dtype = dtype
+    self.use_global_avg_pool = use_global_avg_pool
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size
@@ -234,7 +249,8 @@ class ViT(nn.Module):
         width=self.width,
         mlp_dim=self.mlp_dim,
         num_heads=self.num_heads,
-        dropout_rate=dropout_rate)
+        dropout_rate=dropout_rate,
+        use_post_layer_norm=use_post_layer_norm)
 
     if self.num_classes:
       self.head = nn.Linear(self.width, self.num_classes)
@@ -270,7 +286,10 @@ class ViT(nn.Module):
 
     x = self.dropout(x)
     x = self.encoder(x)
-    x = torch.mean(x, dim=1)
+    if self.use_global_avg_pool:
+      x = torch.mean(x, dim=1)
+    else:
+      x = TODO(znado)
 
     if self.rep_size:
       x = torch.tanh(self.pre_logits(x))

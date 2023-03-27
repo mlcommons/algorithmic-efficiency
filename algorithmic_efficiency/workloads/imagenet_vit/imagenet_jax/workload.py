@@ -37,6 +37,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     self._model = models.ViT(
         dropout_rate=dropout_rate,
         num_classes=self._num_classes,
+        use_global_avg_pool=self.use_global_avg_pool,
+        use_post_layer_norm=self.use_post_layer_norm,
         **decode_variant('S/16'))
     params, model_state = self.initialized(rng, self._model)
     self._param_shapes = param_utils.jax_param_shapes(params)
@@ -83,3 +85,18 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                                         rng,
                                         data_dir,
                                         global_step)
+
+
+class ImagenetVitMapWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_global_avg_pool(self) -> bool:
+    return False
+
+
+class ImagenetVitPostLayerNormWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return True
+

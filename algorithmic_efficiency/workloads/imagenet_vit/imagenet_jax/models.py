@@ -57,10 +57,15 @@ class Encoder1DBlock(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   dropout_rate: float = 0.0
+  use_post_layer_norm: bool = False
 
   @nn.compact
   def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
-    y = nn.LayerNorm(name='LayerNorm_0')(x)
+    # DO NOT SUBMIT znado check post layer norm
+    if self.use_post_layer_norm:
+      y = x
+    else:
+      y = nn.LayerNorm(name='LayerNorm_0')(x)
     y = nn.SelfAttention(
         num_heads=self.num_heads,
         kernel_init=nn.initializers.xavier_uniform(),
@@ -69,13 +74,18 @@ class Encoder1DBlock(nn.Module):
             y)
     y = nn.Dropout(rate=self.dropout_rate)(y, train)
     x = x + y
-
-    y = nn.LayerNorm(name='LayerNorm_2')(x)
+    if self.use_post_layer_norm:
+      x = nn.LayerNorm(name='LayerNorm_0')(x)
+      y = x
+    else:
+      y = nn.LayerNorm(name='LayerNorm_2')(x)
     y = MlpBlock(
         mlp_dim=self.mlp_dim, dropout_rate=self.dropout_rate,
         name='MlpBlock_3')(y, train)
     y = nn.Dropout(rate=self.dropout_rate)(y, train)
     x = x + y
+    if self.use_post_layer_norm:
+      x = nn.LayerNorm(name='LayerNorm_2')(x)
     return x
 
 
@@ -85,6 +95,7 @@ class Encoder(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   dropout_rate: float = 0.0
+  use_post_layer_norm: bool = False
 
   @nn.compact
   def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
@@ -94,7 +105,8 @@ class Encoder(nn.Module):
           name=f'encoderblock_{lyr}',
           mlp_dim=self.mlp_dim,
           num_heads=self.num_heads,
-          dropout_rate=self.dropout_rate)
+          dropout_rate=self.dropout_rate,
+          use_post_layer_norm=self.use_post_layer_norm)
       x = block(x, train)
     return nn.LayerNorm(name='encoder_norm')(x)
 
@@ -112,6 +124,8 @@ class ViT(nn.Module):
   dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
+  use_global_avg_pool: bool = True
+  use_post_layer_norm: bool = False
 
   def get_posemb(self,
                  seqshape: tuple,
@@ -127,8 +141,7 @@ class ViT(nn.Module):
         self.patch_size,
         strides=self.patch_size,
         padding='VALID',
-        name='embedding')(
-            x)
+        name='embedding')(x)
 
     n, h, w, c = x.shape
     x = jnp.reshape(x, [n, h * w, c])
@@ -146,10 +159,14 @@ class ViT(nn.Module):
         mlp_dim=self.mlp_dim,
         num_heads=self.num_heads,
         dropout_rate=dropout_rate,
+        use_post_layer_norm=self.use_post_layer_norm,
         name='Transformer')(
             x, train=not train)
 
-    x = jnp.mean(x, axis=1)
+    if self.use_global_avg_pool:
+      x = jnp.mean(x, axis=1)
+    else:
+      x = TODO(znado)
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size

@@ -53,6 +53,14 @@ def decode_variant(variant: str) -> Dict[str, int]:
 class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
+  def use_global_avg_pool(self) -> bool:
+    return True
+
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return False
+
+  @property
   def validation_target_value(self) -> float:
     return 0.77309
 

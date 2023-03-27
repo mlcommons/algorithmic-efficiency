@@ -34,6 +34,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     model = models.ViT(
         dropout_rate=dropout_rate,
         num_classes=self._num_classes,
+        use_global_avg_pool=self.use_global_avg_pool,
+        use_post_layer_norm=self.use_post_layer_norm,
         **decode_variant('S/16'))
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
@@ -77,3 +79,17 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
+
+
+class ImagenetVitMapWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_global_avg_pool(self) -> bool:
+    return False
+
+
+class ImagenetVitPostLayerNormWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return True
