@@ -9,6 +9,26 @@ from algorithmic_efficiency.workloads.fastmri import input_pipeline
 
 class BaseFastMRIWorkload(spec.Workload):
 
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return False
+
+  @property
+  def use_tanh(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return False
+
+  @property
+  def num_pool_layers(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return 4
+
+  @property
+  def num_channels(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return 32
+
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/ssim'] > self.validation_target_value
 

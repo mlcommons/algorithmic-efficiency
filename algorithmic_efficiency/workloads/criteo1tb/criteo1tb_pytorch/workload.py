@@ -23,16 +23,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def eval_batch_size(self) -> int:
     return 65536
 
-  @property
-  def use_layer_norm(self) -> bool:
-    """Whether or not to use LayerNorm in the model."""
-    return False
-
-  @property
-  def use_resnet(self) -> bool:
-    """Whether or not to use residual connections in the model."""
-    return False
-
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
     ls = torch.nn.LogSigmoid()

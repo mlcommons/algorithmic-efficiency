@@ -27,7 +27,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     fake_batch = jnp.zeros((13, 320, 320))
-    self._model = models.UNet(dropout_rate=dropout_rate)
+    self._model = models.UNet(
+        num_pool_layers=self.num_pool_layers,
+        num_channels=self.num_channels,
+        use_tanh=self.use_tanh,
+        use_layer_norm=self.use_layer_norm,
+        dropout_rate=dropout_rate)
     variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
@@ -156,3 +161,33 @@ class FastMRIWorkload(BaseFastMRIWorkload):
           k: v + synced_metrics[k][0] for k, v in total_metrics.items()
       }
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+
+class FastMRIModelSizeWorkload(FastMRIWorkload):
+
+  @property
+  def num_pool_layers(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return 3
+
+  @property
+  def num_channels(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return 64
+
+
+class FastMRITanhWorkload(FastMRIWorkload):
+
+  @property
+  def use_tanh(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return True
+
+
+class FastMRILayerNormWorkload(FastMRIWorkload):
+
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return True
+
