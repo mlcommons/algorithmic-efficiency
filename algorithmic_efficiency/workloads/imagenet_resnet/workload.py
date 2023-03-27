@@ -10,6 +10,15 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   _num_classes: int = 1000
 
+  @property
+  def batch_norm_scale_init(self) -> float:
+    return 0.0
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'relu'
+
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value

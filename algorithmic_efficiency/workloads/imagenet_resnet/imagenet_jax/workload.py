@@ -91,7 +91,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del dropout_rate
     del aux_dropout_rate
     model_cls = getattr(models, 'ResNet50')
-    model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
+    model = model_cls(
+        num_classes=self._num_classes,
+        dtype=jnp.float32,
+        activation_fn_name=self.activation_fn_name,
+        batch_norm_scale_init=self.batch_norm_scale_init)
     self._model = model
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': rng},
@@ -247,3 +251,26 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
                                 eval_metrics)
     return eval_metrics
+
+
+class ImagenetResNetBatchNormScaleWorkload(ImagenetResNetWorkload):
+
+  @property
+  def batch_norm_scale_init(self) -> float:
+    return 8.0
+
+
+class ImagenetResNetSiluWorkload(ImagenetResNetWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'silu
+
+
+class ImagenetResNetGeluWorkload(ImagenetResNetWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'gelu'

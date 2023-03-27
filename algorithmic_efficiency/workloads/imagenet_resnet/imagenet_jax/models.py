@@ -48,6 +48,7 @@ class BottleneckResNetBlock(nn.Module):
   norm: ModuleDef
   act: Callable
   strides: Tuple[int, int] = (1, 1)
+  batch_norm_scale_init: float = 0.0
 
   @nn.compact
   def __call__(self, x: spec.Tensor) -> spec.Tensor:
@@ -59,7 +60,7 @@ class BottleneckResNetBlock(nn.Module):
     y = self.norm()(y)
     y = self.act(y)
     y = self.conv(self.filters * 4, (1, 1))(y)
-    y = self.norm(scale_init=nn.initializers.zeros)(y)
+    y = self.norm(scale_init=nn.initializers.constant(batch_norm_scale_init))(y)
 
     if residual.shape != y.shape or self.strides != (1, 1):
       residual = self.conv(
@@ -76,7 +77,8 @@ class ResNet(nn.Module):
   num_classes: int
   num_filters: int = 64
   dtype: Any = jnp.float32
-  act: Callable = nn.relu
+  activation_fn_name: str = 'relu'
+  batch_norm_scale_init: float = 0.0
 
   @nn.compact
   def __call__(self,
@@ -89,6 +91,16 @@ class ResNet(nn.Module):
         momentum=0.9,
         epsilon=1e-5,
         dtype=self.dtype)
+
+    if self.activation_fn_name == 'relu':
+      activation_fn = nn.relu
+    elif self.activation_fn_name == 'gelu':
+      activation_fn = nn.gelu
+    elif self.activation_fn_name == 'silu':
+      activation_fn = nn.silu
+    else:
+      raise ValueError(
+          f'Invalid activation function name: {self.activation_fn_name}')
 
     x = conv(
         self.num_filters, (7, 7), (2, 2),
@@ -106,8 +118,8 @@ class ResNet(nn.Module):
             strides=strides,
             conv=conv,
             norm=norm,
-            act=self.act)(
-                x)
+            act=activation_fn,
+            batch_norm_scale_init=self.batch_norm_scale_init)(x)
     x = jnp.mean(x, axis=(1, 2))
     x = nn.Dense(
         self.num_classes,

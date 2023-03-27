@@ -41,6 +41,7 @@ def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
 class BasicBlock(nn.Module):
   """ResNet block."""
   expansion: int = 1
+  activation_fn: Any # TODO(znado) figure out pytype DO NOT SUBMIT
 
   def __init__(self,
                inplanes: int,
@@ -62,7 +63,6 @@ class BasicBlock(nn.Module):
     # the input when stride != 1.
     self.conv1 = conv3x3(inplanes, planes, stride)
     self.bn1 = norm_layer(planes)
-    self.relu = nn.ReLU(inplace=True)
     self.conv2 = conv3x3(planes, planes)
     self.bn2 = norm_layer(planes)
     self.downsample = downsample
@@ -73,7 +73,7 @@ class BasicBlock(nn.Module):
 
     out = self.conv1(x)
     out = self.bn1(out)
-    out = self.relu(out)
+    out = self.activation_fn(out)
 
     out = self.conv2(out)
     out = self.bn2(out)
@@ -82,14 +82,14 @@ class BasicBlock(nn.Module):
       identity = self.downsample(x)
 
     out += identity
-    out = self.relu(out)
-
+    out = self.activation_fn(out)
     return out
 
 
 class Bottleneck(nn.Module):
   """Bottleneck ResNet block."""
   expansion: int = 4
+  activation_fn: Any # TODO(znado) figure out pytype DO NOT SUBMIT
 
   def __init__(self,
                inplanes: int,
@@ -112,7 +112,6 @@ class Bottleneck(nn.Module):
     self.bn2 = norm_layer(width)
     self.conv3 = conv1x1(width, planes * self.expansion)
     self.bn3 = norm_layer(planes * self.expansion)
-    self.relu = nn.ReLU(inplace=True)
     self.downsample = downsample
     self.stride = stride
 
@@ -121,11 +120,11 @@ class Bottleneck(nn.Module):
 
     out = self.conv1(x)
     out = self.bn1(out)
-    out = self.relu(out)
+    out = self.activation_fn(out)
 
     out = self.conv2(out)
     out = self.bn2(out)
-    out = self.relu(out)
+    out = self.activation_fn(out)
 
     out = self.conv3(out)
     out = self.bn3(out)
@@ -134,8 +133,7 @@ class Bottleneck(nn.Module):
       identity = self.downsample(x)
 
     out += identity
-    out = self.relu(out)
-
+    out = self.activation_fn(out)
     return out
 
 
@@ -149,7 +147,9 @@ class ResNet(nn.Module):
                groups: int = 1,
                width_per_group: int = 64,
                replace_stride_with_dilation: Optional[List[bool]] = None,
-               norm_layer: Optional[Callable[..., nn.Module]] = None) -> None:
+               norm_layer: Optional[Callable[..., nn.Module]] = None,
+               activation_fn_name: str = 'relu',
+               batch_norm_scale_init: float = 0.0) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -170,7 +170,15 @@ class ResNet(nn.Module):
     self.conv1 = nn.Conv2d(
         3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
     self.bn1 = norm_layer(self.inplanes)
-    self.relu = nn.ReLU(inplace=True)
+    if self.activation_fn_name == 'relu':
+      self.activation_fn = nn.ReLU(inplace=True)
+    elif self.activation_fn_name == 'gelu':
+      self.activation_fn = nn.GeLU(inplace=True)
+    elif self.activation_fn_name == 'silu':
+      self.activation_fn = nn.SiLu(inplace=True)
+    else:
+      raise ValueError(
+          f'Invalid activation function name: {self.activation_fn_name}')
     self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
     self.layer1 = self._make_layer(block, 64, layers[0])
     self.layer2 = self._make_layer(
@@ -232,7 +240,8 @@ class ResNet(nn.Module):
               self.groups,
               self.base_width,
               previous_dilation,
-              norm_layer))
+              norm_layer,
+              activation_fn=self.activation_fn))
     self.inplanes = planes * block.expansion
     for _ in range(1, blocks):
       layers.append(
@@ -242,14 +251,15 @@ class ResNet(nn.Module):
               groups=self.groups,
               base_width=self.base_width,
               dilation=self.dilation,
-              norm_layer=norm_layer))
+              norm_layer=norm_layer,
+              activation_fn=self.activation_fn))
 
     return nn.Sequential(*layers)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
     x = self.conv1(x)
     x = self.bn1(x)
-    x = self.relu(x)
+    x = self.activation_fn(x)
     x = self.maxpool(x)
 
     x = self.layer1(x)

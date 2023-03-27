@@ -24,8 +24,8 @@ import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
     randaugment
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
-    resnet50
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
+    models
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
@@ -148,7 +148,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del dropout_rate
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = resnet50()
+    model = models.resnet50(
+        activation_fn_name=self.activation_fn_name,
+        batch_norm_scale_init=self.batch_norm_scale_init)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -289,3 +291,26 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+
+class ImagenetResNetBatchNormScaleWorkload(ImagenetResNetWorkload):
+
+  @property
+  def batch_norm_scale_init(self) -> float:
+    return 8.0
+
+
+class ImagenetResNetSiluWorkload(ImagenetResNetWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'silu
+
+
+class ImagenetResNetGeluWorkload(ImagenetResNetWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'gelu'
