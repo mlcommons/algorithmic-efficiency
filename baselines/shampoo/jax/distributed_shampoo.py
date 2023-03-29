@@ -1286,17 +1286,17 @@ def unbatch(batched_values):
 
 def distributed_shampoo(
     learning_rate,
-    block_size,
+    block_size=1024,
     beta1=0.9,
     beta2=0.999,
-    diagonal_epsilon=1e-10,
+    diagonal_epsilon=1e-8,
     matrix_epsilon=1e-6,
     weight_decay=0.0,
-    start_preconditioning_step=5,
-    preconditioning_compute_steps=1,
+    start_preconditioning_step=101,
+    preconditioning_compute_steps=20,
     statistics_compute_steps=1,
     best_effort_shape_interpretation=True,
-    graft_type=GraftingType.SGD,
+    graft_type=GraftingType.RMSPROP_NORMALIZED,
     nesterov=True,
     exponent_override=0,
     # Pass pmap 'batch axis name' in pmap mode.
@@ -1309,11 +1309,11 @@ def distributed_shampoo(
     shard_optimizer_states=False,
     ###
     ### Experimental memory reduction mode
-    best_effort_memory_usage_reduction=False,
+    best_effort_memory_usage_reduction=True,
     ###
     inverse_failure_threshold=0.1,
-    moving_average_for_momentum=False,
-    skip_preconditioning_dim_size_gt=4096,
+    moving_average_for_momentum=True,
+    skip_preconditioning_dim_size_gt=2048,
     clip_by_scaled_gradient_norm=None,
     precision=lax.Precision.HIGHEST,
     tensordot_precision=None,
@@ -1328,7 +1328,7 @@ def distributed_shampoo(
     decoupled_weight_decay=False,
     generate_training_metrics=True,
     reuse_preconditioner=False,
-    eigh=False,
+    eigh=True,
 ):
   """Distributed Shampoo optimizer.
 
