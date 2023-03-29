@@ -33,7 +33,7 @@ def init_optimizer_state(workload: spec.Workload,
   opt_init_fn, opt_update_fn = sgd(
       learning_rate=lr_schedule_fn,
       weight_decay=hyperparameters.weight_decay,
-      momentum=1.0 - hyperparameters.one_minus_,
+      momentum=1.0 - hyperparameters.one_minus_beta1,
       nesterov=True)
   optimizer_state = opt_init_fn(params_zeros_like)
 
