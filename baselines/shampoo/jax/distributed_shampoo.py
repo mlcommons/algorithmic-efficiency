@@ -51,7 +51,7 @@ import optax
 # Dtype for inverse-pth root routine
 # Switch to f64 if you have hardware that supports it. Enable the jax flag
 # jax_enable_x64 for this to work, otherwise it will default to float32.
-_MAT_INV_PTH_ROOT_DTYPE = jnp.float64
+_MAT_INV_PTH_ROOT_DTYPE = jnp.float64  # pylint: disable=invalid-name
 
 # Small epsilon to avoid divide by zero.
 _EPSILON = 1e-25
@@ -611,7 +611,7 @@ def matrix_inverse_pth_root(
                  lobpcg_topk_precondition)
     search_dirs = jnp.concatenate(
         (jnp.eye(lobpcg_topk_precondition), jnp.zeros(pad_shape)), axis=0)
-    eigvals, eigvecs, lobpcg_iters = linalg.lobpcg_standard(
+    eigvals, eigvecs, lobpcg_iters = linalg.lobpcg_standard(  # pylint: disable=unbalanced-tuple-unpacking
         matrix, search_dirs,
         lobpcg_topk_precondition if lobpcg_max_iter == 0 else lobpcg_max_iter)
     lobpcg_diagnostics = LOBPCGDiagnostics.create(
