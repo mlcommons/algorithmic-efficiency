@@ -1948,8 +1948,8 @@ def distributed_shampoo(
     if generate_training_metrics:
       new_local_stats_flat = _add_metrics_into_local_stats(
           new_local_stats_flat, metrics, ~perform_step)
-    new_local_stats = jax.tree_util.tree_unflatten(
-        treedef, new_local_stats_flat)
+    new_local_stats = jax.tree_util.tree_unflatten(treedef,
+                                                   new_local_stats_flat)
     errors = metrics.inverse_pth_root_errors
     errors = errors.reshape((-1, 1, 1))
     predicate = jnp.logical_or(
