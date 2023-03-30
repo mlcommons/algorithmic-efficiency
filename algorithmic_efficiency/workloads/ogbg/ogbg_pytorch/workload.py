@@ -225,7 +225,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     loss = self.loss_fn(labels, logits, masks)
     mean_loss = loss['summed'] / loss['n_valid_examples']
     return metrics.EvalMetrics.single_from_model_output(
-        loss=mean_loss.cpu().numpy(),
+        loss=loss['per_example'].cpu().numpy(),
         logits=logits.cpu().numpy(),
         labels=labels.cpu().numpy(),
         mask=masks.cpu().numpy())

@@ -16,7 +16,7 @@ def _make_mlp(in_dim, hidden_dims, dropout_rate):
   for dim in hidden_dims:
     layers.extend([
         nn.Linear(in_features=in_dim, out_features=dim),
-        nn.LayerNorm(dim),
+        nn.LayerNorm(dim,eps=1e-6),
         nn.ReLU(),
         nn.Dropout(dropout_rate),
     ])
