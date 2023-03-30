@@ -72,6 +72,7 @@ tf.config.set_visible_devices([], 'GPU')
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
     'criteo1tb': ['train/loss', 'validation/loss'],
+    'criteo1tb_test': ['train/loss', 'validation/loss'],
     'fastmri': ['train/ssim', 'validation/ssim'],
     'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
     'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
@@ -97,8 +98,11 @@ def _pytorch_map(inputs):
   if USE_PYTORCH_DDP:
     return jax.tree_map(
         lambda a: torch.as_tensor(a[RANK], device=PYTORCH_DEVICE), inputs)
-  return jax.tree_map(lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE),
-                      inputs)
+  return jax.tree_map(
+      lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE).view(-1, a.shape[-1])
+      if len(a.shape) == 3 else torch.as_tensor(a, device=PYTORCH_DEVICE).view(
+          -1),
+      inputs)
 
 
 class _FakeTokenizer:
@@ -183,22 +187,21 @@ def _make_one_batch_workload(workload_class,
     def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
       # pylint: disable=line-too-long
       if not (FLAGS.identical and
-              os.path.exists(f"tests/modeldiffs/{workload_name}/compare.py")):
+              os.path.exists(f'tests/modeldiffs/{workload_name}/compare.py')):
         return super().init_model_fn(
             rng, dropout_rate=dropout_rate, aux_dropout_rate=aux_dropout_rate)
       if framework == 'jax':
         compare_module = importlib.import_module(
-            f"tests.modeldiffs.{workload_name}.compare")
+            f'tests.modeldiffs.{workload_name}.compare')
         jax_params, model_state, _ = diff_utils.torch2jax(
           jax_workload=super(),
           pytorch_workload=compare_module.PytWorkload(**self.init_kwargs),
           key_transform=compare_module.key_transform,
           sd_transform=compare_module.sd_transform)
-        return FrozenDict(**jax_utils.replicate(jax_params)), (FrozenDict(**jax_utils.replicate(model_state)) if model_state is not None else model_state)
-      else:
-        return super().init_model_fn([0],
-                                     dropout_rate=0.0,
-                                     aux_dropout_rate=0.0)
+        return (FrozenDict(**jax_utils.replicate(jax_params)),
+                FrozenDict(**jax_utils.replicate(model_state))
+                if model_state is not None else model_state)
+      return super().init_model_fn([0], dropout_rate=0.0, aux_dropout_rate=0.0)
 
     @property
     def num_eval_train_examples(self):
@@ -234,7 +237,7 @@ def _make_one_batch_workload(workload_class,
           data_shape = (3, 32, 32)
         fake_batch = _make_fake_image_batch(
             batch_shape, data_shape=data_shape, num_classes=10)
-      elif workload_name == 'criteo1tb':
+      elif workload_name == 'criteo1tb' or workload_name == 'criteo1tb_test':
         targets = np.ones(batch_shape)
         targets[0] = 0
         fake_batch = {
@@ -283,6 +286,8 @@ def _make_one_batch_workload(workload_class,
         fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
           fake_batch['inputs'] = _graph_map(_pytorch_map, fake_batch['inputs'])
+          fake_batch['targets'] = _pytorch_map(fake_batch['targets'])
+          fake_batch['weights'] = _pytorch_map(fake_batch['weights'])
       elif workload_name == 'wmt':
         max_len = 256
         fake_batch = {

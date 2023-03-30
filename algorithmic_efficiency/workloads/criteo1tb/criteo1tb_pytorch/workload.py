@@ -62,7 +62,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 
@@ -158,13 +158,18 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.float32, device=DEVICE)
         if not_train:
-          weights = torch.as_tensor(
-              batch['weights'], dtype=torch.float32, device=DEVICE)
-
+          weights = batch.get('weights')
+          if weights is None:
+            weights = torch.ones((N_GPUS, per_device_batch_size, 1),
+                                 dtype=torch.float32,
+                                 device=DEVICE)
+          else:
+            weights = torch.as_tensor(
+                weights, dtype=torch.float32, device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
-          # During eval, the batch size of the remainder might be different.
           if not_train:
+            # During eval, the batch size of the remainder might be different.
             per_device_batch_size = torch.tensor(
                 len(targets[0]), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
@@ -180,8 +185,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           if not_train:
             weights = weights.view(-1, *weights.shape[2:])
       else:
-        # During eval, the batch size of the remainder might be different.
         if not_train:
+          # During eval, the batch size of the remainder might be different.
           per_device_batch_size = torch.empty((1,),
                                               dtype=torch.int32,
                                               device=DEVICE)
@@ -229,3 +234,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         label_batch=batch['targets'], logits_batch=logits,
         mask_batch=weights)['summed']
     return summed_loss
+
+
+class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
+  vocab_size: int = 32 * 128 * 16

@@ -1,25 +1,36 @@
-FROM nvidia/cuda:11.6.0-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
-ARG DATASET=criteo
-ARG FRAMEWORK=jax
-ARG GIT_URL=https://github.com/sourabh2k15/algorithmic-efficiency.git
-ARG SUBMISSION_PATH=reference_algorithms/target_setting_algorithms/jax_adamw.py
-ARG TUNING_SEARCH_SPACE=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
-ARG EXPERIMENT_NAME=docker_criteo
-ARG WORKLOAD=criteo1tb
+ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
 
-ENV FRAMEWORK=$FRAMEWORK
-ENV TUNING_SEARCH_SPACE=$TUNING_SEARCH_SPACE
-ENV EXPERIMENT_NAME=$EXPERIMENT_NAME
-ENV SUBMISSION_PATH=$SUBMISSION_PATH
-ENV WORKLOAD=$WORKLOAD
+# Installing machine packages
+RUN echo "Setting up machine"
+RUN apt-get update
+RUN apt-get install -y curl tar
+RUN apt-get install -y git python3 pip wget
 
-COPY ./docker/setup.sh /
-COPY ./datasets/dataset_setup.py /
+# Install GCP tools
+RUN echo "Setting up gsutil"
+RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-413.0.0-linux-x86_64.tar.gz
+RUN tar -xf google-cloud-cli-413.0.0-linux-x86_64.tar.gz
+RUN yes | ./google-cloud-sdk/install.sh
 
-RUN /setup.sh -f $FRAMEWORK -u $GIT_URL -d $DATASET
+# Directory setup for input and output
+RUN echo "Setting up directories for data and experiment_runs"
+RUN mkdir -p data/
+RUN mkdir -p experiment_runs/
 
-RUN cd algorithmic-efficiency && git pull
-RUN chmod a+x algorithmic-efficiency/docker/scripts/startup.sh
+# Install Algorithmic efficiency repo
+RUN echo "Setting up algorithmic_efficiency repo"
+RUN git clone $GIT_URL && cd algorithmic-efficiency && git checkout aa9a68a
 
-ENTRYPOINT ["sh", "-c", "algorithmic-efficiency/docker/scripts/startup.sh -f $FRAMEWORK -s $SUBMISSION_PATH -t $TUNING_SEARCH_SPACE -e $EXPERIMENT_NAME -w $WORKLOAD"]
+RUN cd algorithmic-efficiency && pip install -e '.[full]'
+RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
+
+RUN cd algorithmic-efficiency && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+RUN cd algorithmic-efficiency && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+
+# Todo: remove this, this is temporary for developing
+COPY scripts/startup.sh /algorithmic-efficiency/docker/scripts/startup.sh
+RUN chmod a+x /algorithmic-efficiency/docker/scripts/startup.sh
+
+ENTRYPOINT ["bash", "algorithmic-efficiency/docker/scripts/startup.sh"]

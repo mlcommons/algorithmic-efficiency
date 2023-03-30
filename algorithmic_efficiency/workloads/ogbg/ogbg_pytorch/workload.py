@@ -46,6 +46,28 @@ def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:
 
 class OgbgWorkload(BaseOgbgWorkload):
 
+  # Does NOT apply regularization, which is left to the submitter to do in
+  # `update_params`.
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
+    loss_dict = super().loss_fn(label_batch,
+                                logits_batch,
+                                mask_batch,
+                                label_smoothing)
+    loss_dict['n_valid_examples'] = torch.as_tensor(
+        loss_dict['n_valid_examples'], device=DEVICE)
+    return loss_dict
+
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,
@@ -183,7 +205,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     # To prevent propagation of NaNs during grad().
     # We mask over the loss for invalid targets later.
-    labels = torch.where(mask, labels, -1)
+    labels = torch.where(mask.to(torch.bool), labels, -1)
 
     # Apply label_smoothing.
     num_classes = labels.shape[-1]
@@ -197,7 +219,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     abs_logits = torch.where(positive_logits, logits, -logits)
     losses = relu_logits - (logits * smoothed_labels) + (
         torch.log(1 + torch.exp(-abs_logits)))
-    return torch.where(mask, losses, 0.)
+    return torch.where(mask.to(torch.bool), losses, 0.)
 
   def _eval_metric(self, labels, logits, masks):
     loss = self.loss_fn(labels, logits, masks)

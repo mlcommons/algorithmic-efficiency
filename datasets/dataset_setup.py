@@ -64,6 +64,7 @@ python3 datasets/dataset_setup.py \
 """
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
+
 import os
 import shutil
 import subprocess
@@ -74,9 +75,8 @@ from absl import flags
 from absl import logging
 import requests
 import tensorflow_datasets as tfds
+from torchvision.datasets import CIFAR10
 import tqdm
-
-FRAMEWORKS = ['pytorch', 'jax']
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
@@ -98,9 +98,13 @@ flags.DEFINE_boolean(
     False,
     'Whether or not to download all datasets. If false, can download some '
     'combination of datasets by setting the individual dataset flags below.')
+
 flags.DEFINE_boolean('criteo',
                      False,
                      'If --all=false, whether or not to download Criteo.')
+flags.DEFINE_boolean('cifar',
+                     False,
+                     'If --all=false, whether or not to download CIFAR-10.')
 flags.DEFINE_boolean('fastmri',
                      False,
                      'If --all=false, whether or not to download FastMRI.')
@@ -110,6 +114,9 @@ flags.DEFINE_boolean('imagenet',
 flags.DEFINE_boolean('librispeech',
                      False,
                      'If --all=false, whether or not to download LibriSpeech.')
+flags.DEFINE_boolean('mnist',
+                     False,
+                     'If --all=false, whether or not to download MNIST.')
 flags.DEFINE_boolean('ogbg',
                      False,
                      'If --all=false, whether or not to download OGBG.')
@@ -257,6 +264,16 @@ def download_criteo(data_dir,
     for p in batch_processes:
       p.communicate()
     _maybe_prompt_for_deletion(unzipped_paths, interactive_deletion)
+
+
+def download_cifar(data_dir, framework):
+  if framework == 'jax':
+    tfds.builder('cifar10:3.0.2', data_dir=data_dir).download_and_prepare()
+  elif framework == 'pytorch':
+    CIFAR10(root=data_dir, train=True, download=True)
+    CIFAR10(root=data_dir, train=False, download=True)
+  else:
+    raise ValueError('Invalid value for framework: {}'.format(framework))
 
 
 def download_fastmri(data_dir,
@@ -458,8 +475,12 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
         tokenizer_vocab_path=tokenizer_vocab_path)
 
 
+def download_mnist(data_dir):
+  tfds.builder('mnist', data_dir=data_dir).download_and_prepare()
+
+
 def download_ogbg(data_dir):
-  tfds.builder('ogbg_molpcba:0.1.2', data_dir=data_dir).download_and_prepare()
+  tfds.builder('ogbg_molpcba:0.1.3', data_dir=data_dir).download_and_prepare()
 
 
 def download_wmt(data_dir):
@@ -486,6 +507,11 @@ def main(_):
                     tmp_dir,
                     num_decompression_threads,
                     FLAGS.interactive_deletion)
+
+  if FLAGS.all or FLAGS.mnist:
+    logging.info('Downloading MNIST...')
+    download_mnist(data_dir)
+
   if FLAGS.all or FLAGS.fastmri:
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
@@ -502,6 +528,7 @@ def main(_):
                      knee_singlecoil_train_url,
                      knee_singlecoil_val_url,
                      knee_singlecoil_test_url)
+
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
     flags.mark_flag_as_required('imagenet_val_url')
@@ -518,12 +545,19 @@ def main(_):
           'flag.')
     download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
+
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
     download_librispeech(data_dir, tmp_dir, train_tokenizer=True)
+
+  if FLAGS.all or FLAGS.cifar:
+    logging.info('Downloading CIFAR...')
+    download_cifar(data_dir, FLAGS.framework)
+
   if FLAGS.all or FLAGS.ogbg:
     logging.info('Downloading OGBG...')
     download_ogbg(data_dir)
+
   if FLAGS.all or FLAGS.wmt:
     logging.info('Downloading WMT...')
     download_wmt(data_dir)

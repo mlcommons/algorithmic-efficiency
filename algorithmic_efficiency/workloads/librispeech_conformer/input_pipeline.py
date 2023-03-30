@@ -1,7 +1,7 @@
-"""
-Sharing the jax input pipeline slows down the data loading
+"""Sharing the jax input pipeline slows down the data loading
 and step times.
 """
+
 import csv
 
 from absl import logging

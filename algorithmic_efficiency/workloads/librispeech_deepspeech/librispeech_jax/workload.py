@@ -49,4 +49,4 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key == 'Dense_0'

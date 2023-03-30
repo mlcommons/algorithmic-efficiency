@@ -64,8 +64,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
                   -1, *value.shape[2:]))
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
-          # During eval, the batch size of the remainder might be different.
           if split != 'train':
+            # During eval, the batch size of the remainder might be different.
             per_device_batch_size = torch.tensor(
                 len(batch['inputs']), dtype=torch.int32, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
@@ -82,9 +82,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
           dist.broadcast(torch.stack(aux_tensor_list), src=0)
       else:
         batch = {}
-        # During eval, the batch size of the remainder might be different.
         if split != 'train':
-          per_device_batch_size = torch.empty((1,),
+          # During eval, the batch size of the remainder might be different.
+          per_device_batch_size = torch.empty((),
                                               dtype=torch.int32,
                                               device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
@@ -186,7 +186,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 
@@ -229,6 +229,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del model_state
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
+    num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
@@ -236,13 +237,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
           split,
           data_dir,
           global_batch_size=global_batch_size,
-          repeat_final_dataset=True)
+          repeat_final_dataset=True,
+          num_batches=num_batches)
 
     total_metrics = {
         'ssim': torch.tensor(0., device=DEVICE),
         'loss': torch.tensor(0., device=DEVICE),
     }
-    num_batches = int(math.ceil(num_examples / global_batch_size))
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       batch_metrics = self._eval_model(params, batch, model_rng)

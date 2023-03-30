@@ -1,6 +1,5 @@
-"""
-This is a pytorch implementation mirroring:
-https://github.com/google/init2winit/blob/master/init2winit/model_lib/spectrum_augmenter.py
+"""This is a pytorch implementation mirroring:
+https://github.com/google/init2winit/blob/master/init2winit/model_lib/spectrum_augmenter.py.
 """
 
 import torch

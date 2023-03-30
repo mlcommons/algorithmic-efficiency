@@ -58,6 +58,10 @@ WORKLOADS = {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
     },
+    'criteo1tb_test': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
+    },
     'fastmri': {
         'workload_path': 'fastmri/fastmri',
         'workload_class_name': 'FastMRIWorkload',
@@ -109,9 +113,9 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_string('data_dir', '~/tensorflow_datasets/', 'Dataset location.')
+flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
-                    '~/tensorflow_datasets/',
+                    '~/data',
                     'Dataset location for ImageNet-v2.')
 flags.DEFINE_enum(
     'framework',
@@ -248,7 +252,6 @@ def train_once(
                                            hyperparameters,
                                            opt_init_rng)
   logging.info('Initializing metrics bundle.')
-
   # Bookkeeping.
   train_state = {
       'goal_reached': False,
@@ -580,7 +583,7 @@ def main(_):
                                        FLAGS.tuning_search_space,
                                        FLAGS.num_tuning_trials,
                                        logging_dir_path)
-  logging.info(f'Final {FLAGS.workload} score: {score}')
+  logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
     logging.info(profiler.summary())

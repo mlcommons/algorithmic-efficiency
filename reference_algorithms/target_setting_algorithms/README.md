@@ -9,7 +9,7 @@ ROOT_DIR=/home/znado
 ```
 
 ## Criteo
-Target was set using AdamW with a linear warmup cosine decay LR schedule.
+Target was set using NAdamW with a linear warmup cosine decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -32,7 +32,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 ```
 
 ## FastMRI
-Target was set using NAdamW with a linear warmup cosine decay LR schedule.
+Target was set using Nesterov with a linear warmup and linear decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -105,7 +105,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 ```
 
 ## Librispeech-Conformer
-Target was set using AdamW with a linear warmup cosine decay LR schedule.
+Target was set using NAdamW with a linear warmup cosine decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -174,7 +174,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 ```
 
 ## WMT
-Target was set using AdamW with a linear warmup cosine decay LR schedule.
+Target was set using NAdamW with a linear warmup cosine decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \

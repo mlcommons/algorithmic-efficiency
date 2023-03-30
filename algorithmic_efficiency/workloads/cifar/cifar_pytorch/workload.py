@@ -1,11 +1,11 @@
 """CIFAR10 workload implemented in PyTorch."""
 
 import contextlib
+import functools
 import random
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
-from torch import nn
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -14,34 +14,39 @@ from torchvision.datasets import CIFAR10
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+from algorithmic_efficiency.workloads.cifar.cifar_pytorch.models import \
     resnet18
+from algorithmic_efficiency.workloads.cifar.workload import BaseCifarWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 class CifarWorkload(BaseCifarWorkload):
 
-  def _build_cifar_dataset(self,
-                           data_rng: spec.RandomState,
-                           split: str,
-                           data_dir: str,
-                           batch_size: int) -> torch.utils.data.DataLoader:
+  def _build_dataset(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None
+  ) -> torch.utils.data.DataLoader:
+    del cache
+    del repeat_final_dataset
     is_train = split == 'train'
-
     normalize = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=self.train_mean, std=self.train_stddev),
     ])
     eval_transform_config = normalize
     train_transform_config = transforms.Compose([
-        transforms.RandomResizedCrop(
-            self.center_crop_size,
-            scale=self.scale_ratio_range,
-            ratio=self.aspect_ratio_range),
+        transforms.RandomCrop(
+            size=self.crop_size,
+            padding=self.padding_size,
+        ),
         transforms.RandomHorizontalFlip(),
         normalize,
     ])
@@ -50,7 +55,7 @@ class CifarWorkload(BaseCifarWorkload):
     dataset = CIFAR10(
         root=data_dir,
         train=split in ['train', 'eval_train', 'validation'],
-        download=True,
+        download=False,
         transform=transform)
     assert self.num_train_examples + self.num_validation_examples == 50000
     indices = list(range(50000))
@@ -67,39 +72,28 @@ class CifarWorkload(BaseCifarWorkload):
 
     sampler = None
     if USE_PYTORCH_DDP:
+      per_device_batch_size = global_batch_size // N_GPUS
+      ds_iter_batch_size = per_device_batch_size
       if is_train:
         sampler = torch.utils.data.distributed.DistributedSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True)
       else:
         sampler = data_utils.DistributedEvalSampler(
             dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False)
-      batch_size //= N_GPUS
+    else:
+      ds_iter_batch_size = global_batch_size
+
     dataloader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=batch_size,
+        batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
         num_workers=4,
         pin_memory=True,
         drop_last=is_train)
+    dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
     dataloader = data_utils.cycle(dataloader, custom_sampler=USE_PYTORCH_DDP)
     return dataloader
-
-  def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    it = self._build_cifar_dataset(data_rng, split, data_dir, global_batch_size)
-    for batch in it:
-      yield {
-          'inputs': batch['inputs'].to(DEVICE, non_blocking=True),
-          'targets': batch['targets'].to(DEVICE, non_blocking=True),
-      }
 
   def init_model_fn(
       self,
@@ -109,34 +103,28 @@ class CifarWorkload(BaseCifarWorkload):
     """Dropout is unused."""
     del dropout_rate
     del aux_dropout_rate
+
+    if hasattr(self, '_model'):
+      if isinstance(self._model, (DDP, torch.nn.DataParallel)):
+        self._model.module.reset_parameters()
+      else:
+        self._model.reset_parameters()
+      return self._model, None
+
     torch.random.manual_seed(rng[0])
-    model = resnet18(num_classes=10)
-    self._param_shapes = param_utils.pytorch_param_shapes(model)
+    self._model = resnet18(num_classes=self._num_classes)
+    self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
-    model.to(DEVICE)
+    self._model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        self._model = DDP(self._model, device_ids=[RANK], output_device=RANK)
       else:
-        model = torch.nn.DataParallel(model)
-    return model, None
+        self._model = torch.nn.DataParallel(self._model)
+    return self._model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['fc.weight', 'fc.bias']
-
-  def _update_batch_norm(self,
-                         model: spec.ParameterContainer,
-                         update_batch_norm: bool) -> None:
-    bn_layers = (nn.BatchNorm1d,
-                 nn.BatchNorm2d,
-                 nn.BatchNorm3d,
-                 nn.SyncBatchNorm)
-    for m in model.modules():
-      if isinstance(m, bn_layers):
-        if not update_batch_norm:
-          m.eval()
-        m.requires_grad_(update_batch_norm)
-        m.track_running_stats = update_batch_norm
 
   def model_fn(
       self,
@@ -156,7 +144,10 @@ class CifarWorkload(BaseCifarWorkload):
       model.eval()
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
-      self._update_batch_norm(model, update_batch_norm)
+      model.apply(
+          functools.partial(
+              pytorch_utils.update_batch_norm_fn,
+              update_batch_norm=update_batch_norm))
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
         spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
@@ -193,7 +184,7 @@ class CifarWorkload(BaseCifarWorkload):
     summed_loss = per_example_losses.sum()
     return {
         'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
 
@@ -214,7 +205,7 @@ class CifarWorkload(BaseCifarWorkload):
     targets = batch['targets']
     weights = batch.get('weights')
     if weights is None:
-      weights = torch.ones(len(logits)).to(DEVICE)
+      weights = torch.ones(len(logits), device=DEVICE)
     _, predicted = torch.max(logits.data, 1)
     # Number of correct predictions.
     accuracy = ((predicted == targets) * weights).sum()
