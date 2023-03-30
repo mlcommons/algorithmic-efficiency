@@ -301,9 +301,11 @@ def train_once(
     global_start_time = sync_ddp_time(global_start_time, DEVICE)
 
   logging.info('Starting training loop.')
+  goals_reached = (
+      train_state['validation_goal_reached'] and
+      train_state['test_goal_reached'])
   while train_state['is_time_remaining'] and \
-      not train_state['validation_goal_reached'] and \
-      not train_state['test_goal_reached'] and \
+      not goals_reached and \
       not train_state['training_complete']:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
