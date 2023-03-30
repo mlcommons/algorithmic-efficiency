@@ -377,12 +377,9 @@ class MHSAwithQS(nn.MultiheadAttention):
             "grad is enabled and at least one of query or the "
             "input/output projection weights or biases requires_grad")
       if not why_not_fast_path:
-        # Scale the query bias parameter and the query vector
-        query = self.qs(
-            query.view(query.shape[0],
-                       query.shape[1],
-                       self.num_heads,
-                       self.embed_dim // self.num_heads)).view(*query.shape)
+        # Scale the query bias parameter and the query projection weight
+        in_proj_weight = self.qs(self.in_proj_weight[:self.embed_dim].view(self.num_heads,self.embed_dim//self.num_heads,-1).transpose(1,2)).transpose(1,2).view(*self.in_proj_weight[:self.embed_dim].shape)
+        in_proj_weight = torch.cat([in_proj_weight,self.in_proj_weight[self.embed_dim:]])
         in_proj_bias = self.in_proj_bias + 0
         in_proj_bias[:self.embed_dim] = self.qs(
             self.in_proj_bias[:self.embed_dim].view(
@@ -393,7 +390,7 @@ class MHSAwithQS(nn.MultiheadAttention):
             value,
             self.embed_dim,
             self.num_heads,
-            self.in_proj_weight,
+            in_proj_weight,
             in_proj_bias,
             self.out_proj.weight,
             self.out_proj.bias,
@@ -427,19 +424,16 @@ class MHSAwithQS(nn.MultiheadAttention):
           q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
           v_proj_weight=self.v_proj_weight, average_attn_weights=average_attn_weights)
     else:
-      # Scale the query bias parameter and the query vector
-      query = self.qs(
-          query.view(query.shape[0],
-                     query.shape[1],
-                     self.num_heads,
-                     self.embed_dim // self.num_heads)).view(*query.shape)
+      # Scale the query bias parameter and the query projection weight
+      in_proj_weight = self.qs(self.in_proj_weight[:self.embed_dim].view(self.num_heads,self.embed_dim//self.num_heads,-1).transpose(1,2)).transpose(1,2).view(*self.in_proj_weight[:self.embed_dim].shape)
+      in_proj_weight = torch.cat([in_proj_weight,self.in_proj_weight[self.embed_dim:]])
       in_proj_bias = self.in_proj_bias + 0
       in_proj_bias[:self.embed_dim] = self.qs(
           self.in_proj_bias[:self.embed_dim].view(
               self.num_heads, self.embed_dim // self.num_heads)).view(-1)
       attn_output, attn_output_weights = F.multi_head_attention_forward(
           query, key, value, self.embed_dim, self.num_heads,
-          self.in_proj_weight, in_proj_bias,
+          in_proj_weight, in_proj_bias,
           self.bias_k, self.bias_v, self.add_zero_attn,
           self.dropout, self.out_proj.weight, self.out_proj.bias,
           training=self.training,
