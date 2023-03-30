@@ -273,11 +273,21 @@ def _make_one_batch_workload(workload_class,
         def _fake_iter():
           while True:
             fake_batch = {
-                'num_nodes': tf.ones((1,), dtype=tf.int64),
-                'edge_index': tf.ones((1, 2), dtype=tf.int64),
-                'node_feat': tf.random.normal((1, 9)),
-                'edge_feat': tf.random.normal((1, 3)),
-                'labels': tf.cast(tf.random.uniform((self._num_outputs,),minval=0,maxval=2,dtype=tf.int32),tf.float32),
+                'num_nodes':
+                    tf.ones((1,), dtype=tf.int64),
+                'edge_index':
+                    tf.ones((1, 2), dtype=tf.int64),
+                'node_feat':
+                    tf.random.normal((1, 9)),
+                'edge_feat':
+                    tf.random.normal((1, 3)),
+                'labels':
+                    tf.cast(
+                        tf.random.uniform((self._num_outputs,),
+                                          minval=0,
+                                          maxval=2,
+                                          dtype=tf.int32),
+                        tf.float32),
             }
             yield fake_batch
 
