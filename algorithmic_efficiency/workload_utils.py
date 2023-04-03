@@ -39,7 +39,7 @@ _WORKLOAD_CLASS_NAMES = {
     # LibriSpeech Conformer.
     'librispeech_conformer': 'LibriSpeechConformerWorkload',
     'librispeech_conformer_attn_temperature': 'LibriSpeechConformerAttentionTemperatureWorkload',
-    'librispeech_conformer_decoder_pre_no_post': 'LibriSpeechConformerLnWorkload',
+    'librispeech_conformer_decoder_pre_no_post': 'LibriSpeechConformerLayerNormWorkload',
     'librispeech_conformer_gelu': 'LibriSpeechConformerGeluWorkload',
 
     # LibriSpeech Deepspeech.

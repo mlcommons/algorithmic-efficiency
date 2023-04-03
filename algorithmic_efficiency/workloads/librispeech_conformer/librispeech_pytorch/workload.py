@@ -20,7 +20,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer import workload
 from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch import \
-    models as conformer_model
+    models
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
@@ -49,13 +49,20 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
-    model = conformer_model.ConformerEncoderDecoder(
-        conformer_model.ConformerConfig(
+    if self.use_gelu:
+      activation_function_name = 'gelu'
+    else:
+      activation_function_name = 'swish'
+    model = models.ConformerEncoderDecoder(
+        models.ConformerConfig(
             attention_residual_dropout_rate=dropout_rate,
             feed_forward_residual_dropout_rate=dropout_rate,
             conv_residual_dropout_rate=dropout_rate,
             input_dropout_rate=aux_dropout_rate,
-            use_specaug=self.use_specaug))
+            use_specaug=self.use_specaug,
+            attention_temperature=self.attention_temperature,
+            use_post_layer_norm=self.use_post_layer_norm,
+            activation_function_name=activation_function_name))
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     # Run the initialization in eval mode to disable BN tracking.
@@ -64,7 +71,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     wave = torch.randn((2, t))
     pad = torch.zeros_like(wave)
     _ = model(wave, pad)
-    conformer_model.initialize(model)
+    models.initialize(model)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -314,3 +321,25 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             float(total_metrics['word_errors'].item() /
                   total_metrics['num_words'].item()),
     }
+
+
+class LibriSpeechConformerAttentionTemperatureWorkload(
+    LibriSpeechConformerWorkload):
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.6
+
+
+class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
+
+  property
+  def use_post_layer_norm(self) -> bool:
+    return True
+
+
+class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
+
+  @property
+  def use_gelu(self) -> bool:
+    return True

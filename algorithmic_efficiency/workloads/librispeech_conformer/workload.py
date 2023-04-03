@@ -8,6 +8,18 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   _num_outputs: int = 1024
 
+  property
+  def use_post_layer_norm(self) -> bool:
+    return False
+
+  @property
+  def use_gelu(self) -> bool:
+    return False
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.0
+
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
     return eval_result['validation/wer'] < self.validation_target_value

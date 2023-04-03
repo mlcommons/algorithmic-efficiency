@@ -42,6 +42,9 @@ class ConformerConfig:
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
+  attention_temperature: float = 1.0
+  activation_function_name: str = 'swish'
+  use_post_layer_norm: bool = False
 
 
 def initialize(m):
@@ -162,12 +165,13 @@ class Conv2dSubsampling(nn.Module):
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
     pad_len = (input_length + stride - 1) // stride * stride - input_length
-    padded_paddings = torch.cat([
-        paddings[:, None, :],
-        torch.zeros(
-            size=(paddings.shape[0], 1, pad_len), device=paddings.device)
-    ],
-                                dim=2)
+    padded_paddings = torch.cat(
+        [
+            paddings[:, None, :],
+            torch.zeros(
+                size=(paddings.shape[0], 1, pad_len), device=paddings.device)
+        ],
+        dim=2)
     out_padding = F.conv1d(
         input=padded_paddings,
         weight=torch.ones([1, 1, 1], device=paddings.device),
@@ -200,7 +204,16 @@ class FeedForwardModule(nn.Module):
   def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
-    inputs = F.silu(inputs)
+    if self.config.activation_function_name == 'swish':
+      activation_fn = F.silu
+    elif self.config.activation_function_name == 'gelu':
+      activation_fn = F.gelu
+    else:
+      raise ValueError(
+          'Only "swish" and "gelu" are supported '
+          'config.activation_function_name values, recieved '
+          f'{self.config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = self.dropout1(inputs)
     inputs = inputs * padding_mask
     inputs = self.linear2(inputs)
@@ -263,6 +276,7 @@ class MHSAwithQS(nn.MultiheadAttention):
         bias=True,
         batch_first=True)
     self.qs = QueryScaler(dim=config.encoder_dim // config.num_attention_heads)
+    self.attention_temperature = config.attention_temperature
 
   def forward(self,
               query,
@@ -456,6 +470,8 @@ class MHSAwithQS(nn.MultiheadAttention):
           training=self.training,
           key_padding_mask=key_padding_mask, need_weights=need_weights,
           attn_mask=attn_mask, average_attn_weights=average_attn_weights)
+    # DO NOT SUBMIT znado confirm this is the correct place
+    attn_output *= self.attention_temperature
     if self.batch_first and is_batched:
       return attn_output.transpose(1, 0), attn_output_weights
     else:
@@ -571,7 +587,16 @@ class ConvolutionBlock(nn.Module):
     inputs = inputs.permute(0, 2, 1)
 
     inputs = self.bn(inputs, input_paddings)
-    inputs = F.silu(inputs)
+    if self.config.activation_function_name == 'swish':
+      activation_fn = F.silu
+    elif self.config.activation_function_name == 'gelu':
+      activation_fn = F.gelu
+    else:
+      raise ValueError(
+          'Only "swish" and "gelu" are supported '
+          'config.activation_function_name values, recieved '
+          f'{self.config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = self.lin3(inputs)
 
     inputs = self.dropout(inputs)
@@ -587,7 +612,9 @@ class ConformerBlock(nn.Module):
     self.mhsa = MultiHeadedSelfAttention(config)
     self.conv = ConvolutionBlock(config)
     self.ff2 = FeedForwardModule(config)
-    self.ln = LayerNorm(dim=config.encoder_dim)
+    self.ln = None
+    if config.use_post_layer_norm:
+      self.ln = LayerNorm(dim=config.encoder_dim)
 
   def forward(self, inputs, input_paddings):
     padding_mask = 1 - input_paddings[:, :, None]
@@ -595,7 +622,8 @@ class ConformerBlock(nn.Module):
     inputs = inputs + self.mhsa(inputs, input_paddings)
     inputs = inputs + self.conv(inputs, input_paddings)
     inputs = inputs + 0.5 * self.ff2(inputs, padding_mask)
-    inputs = self.ln(inputs)
+    if self.ln:
+      inputs = self.ln(inputs)
     return inputs
 
 

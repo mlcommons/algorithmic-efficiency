@@ -41,11 +41,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
     input_dropout_rate.
     """
+    if self.use_gelu:
+      activation_function_name = 'gelu'
+    else:
+      activation_function_name = 'swish'
     model_config = models.ConformerConfig(
         attention_residual_dropout_rate=dropout_rate,
         feed_forward_residual_dropout_rate=dropout_rate,
         input_dropout_rate=aux_dropout_rate,
-        use_specaug=self.use_specaug)
+        use_specaug=self.use_specaug,
+        attention_temperature=self.attention_temperature,
+        use_post_layer_norm=self.use_post_layer_norm,
+        activation_function_name=activation_function_name)
     self._model = models.Conformer(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
@@ -344,3 +351,25 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     new_model_state = model_state.copy(
         {'batch_stats': avg_fn(model_state['batch_stats'])})
     return new_model_state
+
+
+class LibriSpeechConformerAttentionTemperatureWorkload(
+    LibriSpeechConformerWorkload):
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.6
+
+
+class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
+
+  property
+  def use_post_layer_norm(self) -> bool:
+    return True
+
+
+class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
+
+  @property
+  def use_gelu(self) -> bool:
+    return True
