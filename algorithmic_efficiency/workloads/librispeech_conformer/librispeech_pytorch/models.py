@@ -267,10 +267,9 @@ class MHSAwithQS(nn.MultiheadAttention):
   def _scaled_in_proj_weight(self):
     # Scale the query projection weight.
     qs_input = self.in_proj_weight[:self.embed_dim].view(
-        self.num_heads, self.embed_dim // self.num_heads,
-        -1).transpose(1, 2)
+        self.num_heads, self.embed_dim // self.num_heads, -1).transpose(1, 2)
     in_proj_queryW_scaled = self.qs(qs_input).transpose(
-            1, 2).view(*self.in_proj_weight[:self.embed_dim].shape)
+        1, 2).view(*self.in_proj_weight[:self.embed_dim].shape)
     in_proj_weight = torch.cat(
         [in_proj_queryW_scaled, self.in_proj_weight[self.embed_dim:]])
     return in_proj_weight
