@@ -330,16 +330,16 @@ It is not allowed to compute any kind of pairwise metrics between the fixed work
 </details>
 <br>
 
-Valid submissions must rely on new algorithmic or mathematical ideas and should not use software engineering approaches to speed up primitive operations in `PyTorch`, `JAX`, their dependencies, the operating system, or the hardware.
+Valid submissions must rely on new algorithmic or mathematical ideas and should not use software engineering approaches to speed up primitive operations in `PyTorch`, `JAX`, their dependencies, the operating system, or the hardware. We recognize that the way a method is implemented will impact its performance in the benchmark. It is generally acceptable to make clever, judicious, and efficient use of public APIs in `JAX` and/or `PyTorch` from within the submission function APIs. It is not acceptable to use these APIs to optimize the internals of primitive operations and standard dependencies in ways that could generally benefit any submission.
 
 <details>
 <summary>Examples:</summary>
 
+- Submitters are allowed to use `CUDA` streams to schedule operations, e.g., transfering data between CPU and GPU, or among GPUs, while performing other computations.
+- Submitters are not allowed to use `CUDA` streams or asynchronous operations (e.g., spawning additional threads) to perform additional computations that run during the [untimed evaluations](#evaluation-during-training).
 - Submitters are not allowed to use faster GPU kernels than other submitters by writing their own, using `TVM`, or using a different version of `cuDNN`/`cuBLAS`.
 - Submitters are not allowed to skip or reduce system or framework overhead, such as modifying `JAX` to skip internal steps like pytree flattening/unflattening.
-- Submitters are not allowed to reorder the schedule of operations, such as using `CUDA` streams to parallelize GPU kernels.
 - Submitters are not allowed to introduce new compiler optimizations, such as modifying `XLA` to perform more or less kernel fusion.
-- Submitters are not allowed to have a load-balancing algorithm to vary the amount of work performed on the CPU, GPU, OS subsystems, or compute units such as Tensor cores.
 - In general, submissions can make clever, judicious, and efficient use of public APIs in `JAX` and/or `PyTorch` but should not be trying to optimize the internals of primitive operations and standard dependencies.
 
 </details>
