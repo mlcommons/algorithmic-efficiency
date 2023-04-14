@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Benchmark Rules
 
-**Version:** 0.0.13 *(Last updated 28 February 2023)*
+**Version:** 0.0.14 *(Last updated 14 April 2023)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -335,12 +335,11 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 <details>
 <summary>Examples:</summary>
 
-- Submitters are allowed to use `CUDA` streams to schedule operations, e.g., transfering data between CPU and GPU, or among GPUs, while performing other computations.
-- Submitters are not allowed to use `CUDA` streams or asynchronous operations (e.g., spawning additional threads) to perform additional computations that run during the [untimed evaluations](#evaluation-during-training).
-- Submitters are not allowed to use faster GPU kernels than other submitters by writing their own, using `TVM`, or using a different version of `cuDNN`/`cuBLAS`.
-- Submitters are not allowed to skip or reduce system or framework overhead, such as modifying `JAX` to skip internal steps like pytree flattening/unflattening.
-- Submitters are not allowed to introduce new compiler optimizations, such as modifying `XLA` to perform more or less kernel fusion.
-- In general, submissions can make clever, judicious, and efficient use of public APIs in `JAX` and/or `PyTorch` but should not be trying to optimize the internals of primitive operations and standard dependencies.
+- Submissions are allowed to use `CUDA` streams to schedule operations, e.g., transfering data between CPU and GPU, or among GPUs, while performing other computations.
+- Submissions are not allowed to use `CUDA` streams or asynchronous operations (e.g., spawning additional threads) to perform additional computations that run during the [untimed evaluations](#evaluation-during-training).
+- Submissions are not allowed to use faster GPU kernels than other submitters by writing their own, using `TVM`, or using a different version of `cuDNN`/`cuBLAS`.
+- Submissions are not allowed to skip or reduce system or framework overhead, such as modifying `JAX` to skip internal steps like pytree flattening/unflattening.
+- Submissions are not allowed to introduce new compiler optimizations, such as modifying `XLA` to perform more or less kernel fusion.
 
 </details>
 
