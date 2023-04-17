@@ -445,16 +445,17 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
-                                 imagenet_v2_data_dir: str,
-                                 profiler: Profiler,
                                  tuning_ruleset: str,
-                                 max_global_steps: int,
+                                 profiler: Optional[Profiler] = None,
+                                 max_global_steps: Optional[int] = None,
+                                 imagenet_v2_data_dir: Optional[str] = None,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
-  imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
+  if imagenet_v2_data_dir:
+    imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
@@ -589,17 +590,17 @@ def main(_):
                                               experiment_name,
                                               FLAGS.resume_last_run)
 
-  score = score_submission_on_workload(workload,
-                                       FLAGS.workload,
-                                       FLAGS.submission_path,
-                                       FLAGS.data_dir,
-                                       FLAGS.imagenet_v2_data_dir,
-                                       profiler,
-                                       FLAGS.tuning_ruleset,
-                                       FLAGS.max_global_steps,
-                                       FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials,
-                                       logging_dir_path)
+  score = score_submission_on_workload(workload=workload,
+                                       workload_name=FLAGS.workload,
+                                       submission_path=FLAGS.submission_path,
+                                       data_dir=FLAGS.data_dir,
+                                       tuning_ruleset=FLAGS.tuning_ruleset,
+                                       profiler=profiler,
+                                       max_global_steps=FLAGS.max_global_steps,
+                                       imagenet_v2_data_dir=FLAGS.imagenet_v2_data_dir,
+                                       tuning_search_space=FLAGS.tuning_search_space,
+                                       num_tuning_trials=FLAGS.num_tuning_trials,
+                                       log_dir=logging_dir_path)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
