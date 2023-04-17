@@ -262,7 +262,6 @@ def train_once(
       'last_eval_time': 0,
       'training_complete': False,
       'accumulated_submission_time': 0,
-      'training_complete': False,
       'accumulated_eval_time': 0,
       'accumulated_logging_time': 0,
   }
@@ -367,7 +366,7 @@ def train_once(
         try:
           eval_start_time = time.time()
           if USE_PYTORCH_DDP:
-            eval_start_time = sync_ddp_time(eval_step_end_time, DEVICE)
+            eval_start_time = sync_ddp_time(eval_start_time, DEVICE)
           latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
@@ -430,7 +429,7 @@ def train_once(
                   .save_intermediate_checkpoints)
           logging_end_time = time.time()
           if USE_PYTORCH_DDP:
-            logging_end_time = sync_ddp_time(checkpoint_end_time, DEVICE)
+            logging_end_time = sync_ddp_time(logging_end_time, DEVICE)
 
           train_state['last_eval_time'] = logging_end_time
           train_state[
