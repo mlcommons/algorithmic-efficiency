@@ -354,8 +354,8 @@ def train_once(
     if USE_PYTORCH_DDP:
       train_step_end_time = sync_ddp_time(train_step_end_time, DEVICE)
 
-    train_state[
-        'accumulated_submission_time'] += train_step_end_time - train_step_start_time
+    train_state['accumulated_submission_time'] += (
+        train_step_end_time - train_step_start_time)
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
