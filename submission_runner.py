@@ -354,7 +354,7 @@ def train_once(
         workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']) or (global_step == 1):
+        workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
           latest_eval_result = workload.eval_model(global_eval_batch_size,
