@@ -314,11 +314,12 @@ def train_once(
   while train_state['is_time_remaining'] and \
       not goals_reached and \
       not train_state['training_complete']:
-    
+
+    train_step_start_time = time.time()
+
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
-  
-    train_step_start_time = time.time()
+
     if USE_PYTORCH_DDP:
       train_step_start_time = sync_ddp_time(train_step_start_time, DEVICE)
     with profiler.profile('Data selection'):
