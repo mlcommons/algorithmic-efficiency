@@ -13,7 +13,6 @@ python3 submission_runner.py \
     --experiment_dir=/home/znado/experiment_dir \
     --experiment_name=baseline
 """
-import psutil
 import datetime
 import importlib
 import inspect
@@ -493,8 +492,7 @@ def score_submission_on_workload(workload: spec.Workload,
     all_metrics = []
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
-      # rng_seed = struct.unpack('I', os.urandom(4))[0]
-      rng_seed = 1
+      rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
