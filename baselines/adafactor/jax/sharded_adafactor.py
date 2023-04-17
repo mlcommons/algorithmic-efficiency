@@ -417,6 +417,8 @@ class _ShardedAdafactorHelper:
       raise ValueError(f'decay_method {self._decay_method} not supported.')
 
     learning_rate = self._learning_rate
+    if callable(learning_rate):
+      learning_rate = learning_rate(count)
 
     update_scale = learning_rate
     old_val = param
