@@ -13,6 +13,7 @@ python3 submission_runner.py \
     --experiment_dir=/home/znado/experiment_dir \
     --experiment_name=baseline
 """
+
 import datetime
 import importlib
 import inspect
@@ -224,8 +225,9 @@ def train_once(
     max_global_steps: int = None,
     log_dir: Optional[str] = None) -> Tuple[spec.Timing, Dict[str, Any]]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
+
   # Workload setup.
-  logging.info(f'Initializing dataset.')
+  logging.info('Initializing dataset.')
   with profiler.profile('Initializing dataset'):
     input_queue = workload._build_input_queue(
         data_rng,
@@ -290,21 +292,23 @@ def train_once(
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
-    metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
+    metrics_logger = logger_utils.set_up_loggers(log_dir,
+                                                 flags.FLAGS,
+                                                 hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
-  # Get global start time
+
   global_start_time = time.time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
     global_start_time = sync_ddp_time(global_start_time, DEVICE)
 
   logging.info('Starting training loop.')
+  goals_reached = (
+      train_state['validation_goal_reached'] and
+      train_state['test_goal_reached'])
   while train_state['is_time_remaining'] and \
-      not train_state['validation_goal_reached'] and \
-      not train_state['test_goal_reached'] and \
-      not train_state['training_complete']:      
-    if USE_PYTORCH_DDP:
-      start_time = sync_ddp_time(start_time, DEVICE)
+      not goals_reached and \
+      not train_state['training_complete']:
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
   
@@ -320,7 +324,6 @@ def train_once(
                              hyperparameters,
                              global_step,
                              data_select_rng)
-    
     try:
       with profiler.profile('Update parameters'):
         optimizer_state, model_params, model_state = update_params(
@@ -349,7 +352,6 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
-
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']) or (global_step == 1):
@@ -375,7 +377,6 @@ def train_once(
             # Make sure all processes finish evaluation at the same time.
             train_state['last_eval_time'] = sync_ddp_time(
                 train_state['last_eval_time'], DEVICE)
-
           
           # Add times to eval results for logging
           latest_eval_result['score'] = (train_state['acccumulated_submission_time'])
@@ -387,23 +388,22 @@ def train_once(
                        f'\tStep: {global_step}, \t{latest_eval_result}')
           eval_results.append((global_step, latest_eval_result))
           if log_dir is not None:
-           metrics_logger.append_scalar_metrics(
-               latest_eval_result,
-               global_step=global_step,
-               preemption_count=preemption_count)
-          # Disable checkpointing
-          checkpoint_utils.save_checkpoint(
-              framework=FLAGS.framework,
-              optimizer_state=optimizer_state,
-              model_params=model_params,
-              model_state=model_state,
-              train_state=train_state,
-              eval_results=eval_results,
-              global_step=global_step,
-              preemption_count=preemption_count,
-              checkpoint_dir=log_dir,
-              save_intermediate_checkpoints=FLAGS
-              .save_intermediate_checkpoints)
+            metrics_logger.append_scalar_metrics(
+                latest_eval_result,
+                global_step=global_step,
+                preemption_count=preemption_count)
+            checkpoint_utils.save_checkpoint(
+                framework=FLAGS.framework,
+                optimizer_state=optimizer_state,
+                model_params=model_params,
+                model_state=model_state,
+                train_state=train_state,
+                eval_results=eval_results,
+                global_step=global_step,
+                preemption_count=preemption_count,
+                checkpoint_dir=log_dir,
+                save_intermediate_checkpoints=FLAGS
+                .save_intermediate_checkpoints)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
@@ -412,7 +412,7 @@ def train_once(
                             f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
-  
+
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
   if log_dir is not None:
