@@ -372,15 +372,14 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
           # Save last eval time
-          train_state['last_eval_time'] = time.time()
+          eval_end_time = time.time()
           if USE_PYTORCH_DDP:
             # Make sure all processes finish evaluation at the same time.
-            train_state['last_eval_time'] = sync_ddp_time(
-                train_state['last_eval_time'], DEVICE)
+            eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
           
           # Add times to eval results for logging
           latest_eval_result['score'] = (train_state['acccumulated_submission_time'])
-          latest_eval_result['total_duration'] = train_state['last_eval_time'] - global_start_time
+          latest_eval_result['total_duration'] = eval_end_time - global_start_time
           latest_eval_result['accumulated_submission_time'] = train_state['accumulated_submission_time']
           
           time_since_start = latest_eval_result['total_duration']
@@ -404,6 +403,12 @@ def train_once(
                 checkpoint_dir=log_dir,
                 save_intermediate_checkpoints=FLAGS
                 .save_intermediate_checkpoints)
+
+          train_state['last_eval_time'] = time.time()
+          if USE_PYTORCH_DDP:
+            # Make sure all processes finish evaluation at the same time.
+            train_state['last_eval_time'] = sync_ddp_time(
+                train_state['last_eval_time'], DEVICE)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
