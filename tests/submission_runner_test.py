@@ -16,7 +16,6 @@ from absl.testing import parameterized
 import submission_runner
 from algorithmic_efficiency.profiler import PassThroughProfiler
 
-
 FLAGS = flags.FLAGS
 # Needed to avoid UnparsedFlagAccessError
 # (see https://github.com/google/model_search/pull/8).
@@ -69,7 +68,8 @@ class SubmissionRunnerTest(parameterized.TestCase):
         tuning_search_space=tuning_search_space,
         num_tuning_trials=1,
         profiler=PassThroughProfiler(),
-        max_global_steps=500,)
+        max_global_steps=500,
+    )
     logging.info(score)
 
   def test_convert_filepath_to_module(self):
