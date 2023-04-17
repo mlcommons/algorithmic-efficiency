@@ -14,6 +14,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import submission_runner
+from algorithmic_efficiency.profiler import PassThroughProfiler
+
 
 FLAGS = flags.FLAGS
 # Needed to avoid UnparsedFlagAccessError
@@ -56,8 +58,8 @@ class SubmissionRunnerTest(parameterized.TestCase):
         'workload.py')
     workload_obj = submission_runner.import_workload(
         workload_path=workload_metadata['workload_path'],
-        workload_class_name=workload_metadata['workload_class_name'])
-
+        workload_class_name=workload_metadata['workload_class_name'],
+        workload_init_kwargs={})
     score = submission_runner.score_submission_on_workload(
         workload_obj,
         workload,
@@ -65,7 +67,9 @@ class SubmissionRunnerTest(parameterized.TestCase):
         data_dir='~/tensorflow_datasets',  # The default in TFDS.
         tuning_ruleset='external',
         tuning_search_space=tuning_search_space,
-        num_tuning_trials=1)
+        num_tuning_trials=1,
+        profiler=PassThroughProfiler(),
+        max_global_steps=500,)
     logging.info(score)
 
   def test_convert_filepath_to_module(self):

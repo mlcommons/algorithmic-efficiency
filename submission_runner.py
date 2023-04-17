@@ -378,7 +378,7 @@ def train_once(
             eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
           
           # Add times to eval results for logging
-          latest_eval_result['score'] = (train_state['acccumulated_submission_time'])
+          latest_eval_result['score'] = (train_state['accumulated_submission_time'])
           latest_eval_result['total_duration'] = eval_end_time - global_start_time
           latest_eval_result['accumulated_submission_time'] = train_state['accumulated_submission_time']
           
