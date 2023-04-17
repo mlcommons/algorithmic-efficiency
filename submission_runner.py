@@ -292,7 +292,9 @@ def train_once(
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
-    metrics_logger = logger_utils.set_up_loggers(log_dir, flags.FLAGS)
+    metrics_logger = logger_utils.set_up_loggers(log_dir,
+                                                 flags.FLAGS,
+                                                 hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = time.time()
