@@ -25,7 +25,6 @@ https://github.com/google/init2winit/master/init2winit/optimizer_lib/pax_adafact
 """
 
 import dataclasses
-
 import functools
 import re
 from typing import Any, NamedTuple, Optional, Tuple, Union
