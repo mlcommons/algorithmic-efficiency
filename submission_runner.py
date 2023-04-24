@@ -433,7 +433,8 @@ def train_once(
 
           train_state['last_eval_time'] = logging_end_time
           train_state[
-              'accumulated_logging_time'] += logging_end_time - logging_start_time
+              'accumulated_logging_time'] += (
+                logging_end_time - logging_start_time)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
