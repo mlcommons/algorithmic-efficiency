@@ -30,6 +30,10 @@ echo "Configuring Docker daemon to recognize and install NVIDIA Container Runtim
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 
+# Override libcmalloc
+sudo apt-get install libtcmalloc-minimal4
+sudo export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
+
 # Run gcloud credential helper for Google Container Repository
 echo "Running gcloud credential helper"
 yes | gcloud auth configure-docker us-central1-docker.pkg.dev
