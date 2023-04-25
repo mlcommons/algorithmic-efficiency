@@ -223,7 +223,9 @@ def train_once(
     rng: spec.RandomState,
     profiler: Profiler,
     max_global_steps: int = None,
-    log_dir: Optional[str] = None) -> Tuple[spec.Timing, Dict[str, Any]]:
+    log_dir: Optional[str] = None,
+    save_checkpoints: Optional[bool] = True
+) -> Tuple[spec.Timing, Dict[str, Any]]:
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -258,8 +260,10 @@ def train_once(
       'test_goal_reached': False,
       'is_time_remaining': True,
       'last_eval_time': 0,
-      'accumulated_submission_time': 0,
       'training_complete': False,
+      'accumulated_submission_time': 0,
+      'accumulated_eval_time': 0,
+      'accumulated_logging_time': 0,
   }
   global_step = 0
   eval_results = []
@@ -309,12 +313,14 @@ def train_once(
   while train_state['is_time_remaining'] and \
       not goals_reached and \
       not train_state['training_complete']:
+
+    train_step_start_time = time.time()
+
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
-    start_time = time.time()
-    if USE_PYTORCH_DDP:
-      start_time = sync_ddp_time(start_time, DEVICE)
 
+    if USE_PYTORCH_DDP:
+      train_step_start_time = sync_ddp_time(train_step_start_time, DEVICE)
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -344,19 +350,23 @@ def train_once(
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
 
-    current_time = time.time()
+    train_step_end_time = time.time()
     if USE_PYTORCH_DDP:
-      current_time = sync_ddp_time(current_time, DEVICE)
+      train_step_end_time = sync_ddp_time(train_step_end_time, DEVICE)
 
-    train_state['accumulated_submission_time'] += current_time - start_time
+    train_state['accumulated_submission_time'] += (
+        train_step_end_time - train_step_start_time)
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((current_time - train_state['last_eval_time']) >=
+    if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
+          eval_start_time = time.time()
+          if USE_PYTORCH_DDP:
+            eval_start_time = sync_ddp_time(eval_start_time, DEVICE)
           latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
@@ -364,43 +374,66 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          time_since_start = current_time - global_start_time
-          logging.info(f'Time since start: {time_since_start:.2f}s, '
-                       f'\tStep: {global_step}, \t{latest_eval_result}')
-          latest_eval_result['score'] = (
-              train_state['accumulated_submission_time'])
-          latest_eval_result['total_duration'] = time_since_start
-          eval_results.append((global_step, latest_eval_result))
+          # Check if targets reached
           train_state['validation_goal_reached'] = (
               workload.has_reached_validation_target(latest_eval_result) or
               train_state['validation_goal_reached'])
           train_state['test_goal_reached'] = (
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
+          # Save last eval time
+          eval_end_time = time.time()
+          if USE_PYTORCH_DDP:
+            eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
 
+          # Accumulate eval time
+          train_state[
+              'accumulated_eval_time'] += eval_end_time - eval_start_time
+
+          # Add times to eval results for logging
+          latest_eval_result['score'] = (
+              train_state['accumulated_submission_time'])
+          latest_eval_result[
+              'total_duration'] = eval_end_time - global_start_time
+          latest_eval_result['accumulated_submission_time'] = train_state[
+              'accumulated_submission_time']
+          latest_eval_result['accumulated_eval_time'] = train_state[
+              'accumulated_eval_time']
+          latest_eval_result['accumulated_logging_time'] = train_state[
+              'accumulated_logging_time']
+          time_since_start = latest_eval_result['total_duration']
+          logging.info(f'Time since start: {time_since_start:.2f}s, '
+                       f'\tStep: {global_step}, \t{latest_eval_result}')
+          eval_results.append((global_step, latest_eval_result))
+
+          logging_start_time = time.time()
+          if USE_PYTORCH_DDP:
+            logging_start_time = sync_ddp_time(logging_start_time, DEVICE)
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
                 global_step=global_step,
                 preemption_count=preemption_count)
-            checkpoint_utils.save_checkpoint(
-                framework=FLAGS.framework,
-                optimizer_state=optimizer_state,
-                model_params=model_params,
-                model_state=model_state,
-                train_state=train_state,
-                eval_results=eval_results,
-                global_step=global_step,
-                preemption_count=preemption_count,
-                checkpoint_dir=log_dir,
-                save_intermediate_checkpoints=FLAGS
-                .save_intermediate_checkpoints)
-
-          train_state['last_eval_time'] = time.time()
+            if save_checkpoints:
+              checkpoint_utils.save_checkpoint(
+                  framework=FLAGS.framework,
+                  optimizer_state=optimizer_state,
+                  model_params=model_params,
+                  model_state=model_state,
+                  train_state=train_state,
+                  eval_results=eval_results,
+                  global_step=global_step,
+                  preemption_count=preemption_count,
+                  checkpoint_dir=log_dir,
+                  save_intermediate_checkpoints=FLAGS
+                  .save_intermediate_checkpoints)
+          logging_end_time = time.time()
           if USE_PYTORCH_DDP:
-            # Make sure all processes finish evaluation at the same time.
-            train_state['last_eval_time'] = sync_ddp_time(
-                train_state['last_eval_time'], DEVICE)
+            logging_end_time = sync_ddp_time(logging_end_time, DEVICE)
+
+          train_state['last_eval_time'] = logging_end_time
+          train_state['accumulated_logging_time'] += (
+              logging_end_time - logging_start_time)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
@@ -437,16 +470,17 @@ def score_submission_on_workload(workload: spec.Workload,
                                  workload_name: str,
                                  submission_path: str,
                                  data_dir: str,
-                                 imagenet_v2_data_dir: str,
-                                 profiler: Profiler,
                                  tuning_ruleset: str,
-                                 max_global_steps: int,
+                                 profiler: Optional[Profiler] = None,
+                                 max_global_steps: Optional[int] = None,
+                                 imagenet_v2_data_dir: Optional[str] = None,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
-  imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
+  if imagenet_v2_data_dir:
+    imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
   submission_module_path = convert_filepath_to_module(submission_path)
@@ -581,17 +615,18 @@ def main(_):
                                               experiment_name,
                                               FLAGS.resume_last_run)
 
-  score = score_submission_on_workload(workload,
-                                       FLAGS.workload,
-                                       FLAGS.submission_path,
-                                       FLAGS.data_dir,
-                                       FLAGS.imagenet_v2_data_dir,
-                                       profiler,
-                                       FLAGS.tuning_ruleset,
-                                       FLAGS.max_global_steps,
-                                       FLAGS.tuning_search_space,
-                                       FLAGS.num_tuning_trials,
-                                       logging_dir_path)
+  score = score_submission_on_workload(
+      workload=workload,
+      workload_name=FLAGS.workload,
+      submission_path=FLAGS.submission_path,
+      data_dir=FLAGS.data_dir,
+      tuning_ruleset=FLAGS.tuning_ruleset,
+      profiler=profiler,
+      max_global_steps=FLAGS.max_global_steps,
+      imagenet_v2_data_dir=FLAGS.imagenet_v2_data_dir,
+      tuning_search_space=FLAGS.tuning_search_space,
+      num_tuning_trials=FLAGS.num_tuning_trials,
+      log_dir=logging_dir_path)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
