@@ -75,7 +75,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
     fi 
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
-    ${COMMAND_PREFIX} submission_runner.py \
+    COMMAND="${COMMAND_PREFIX} submission_runner.py \
         --framework=${FRAMEWORK}  \
         --workload=${WORKLOAD} \
         --submission_path=${SUBMISSION_PATH}  \
@@ -86,7 +86,9 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         --experiment_name=${EXPERIMENT_NAME} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
-        2>&1 | tee ${LOG_FILE}
+        2>&1 | tee ${LOG_FILE}"
+    echo $COMMAND
+    $COMMAND 
 
     /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
     /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
