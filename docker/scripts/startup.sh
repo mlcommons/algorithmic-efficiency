@@ -15,6 +15,7 @@ do
         b) DEBUG_MODE=${OPTARG};;
         m) MAX_STEPS=${OPTARG};;
         o) OVERWRITE=${OPTARG};;
+        c) SAVE_CHECKPOINTS=${OPTARG};;
     esac
 done
 
@@ -72,6 +73,11 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         OVERWRITE="False"
     fi
 
+    if [[ ! -z ${SAVE_CHECKPOINTS+x} ]]
+    then 
+        SAVE_CHECKPOINTS="False"
+    fi
+
     # Define special flags for imagenet and librispeech workloads
     if [[ ${DATASET} == 'imagenet' ]]
     then 
@@ -92,6 +98,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
+        --save_checkpoints=${SAVE_CHECKPOINTS}
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} 2>&1 | tee -a ${LOG_FILE}"
     echo $COMMAND > ${LOG_FILE}
