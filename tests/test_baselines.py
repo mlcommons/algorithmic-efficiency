@@ -20,7 +20,7 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-MAX_GLOBAL_STEPS = 5
+MAX_GLOBAL_STEPS = 500
 
 baselines = [
     'adafactor',
@@ -77,7 +77,7 @@ class BaselineTest(parameterized.TestCase):
         tuning_search_space=tuning_search_space,
         num_tuning_trials=1,
         profiler=PassThroughProfiler(),
-        max_global_steps=500,
+        max_global_steps=MAX_GLOBAL_STEPS,
     )
     logging.info(score)
 
