@@ -85,9 +85,9 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
         ${MAX_STEPS_FLAG}  \
-        ${SPECIAL_FLAGS}"
+        ${SPECIAL_FLAGS} 2>&1 | tee ${LOG_FILE}"
     echo $COMMAND
-    $COMMAND 2>&1 | tee ${LOG_FILE}
+    eval $COMMAND
 
     /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
     /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
