@@ -154,6 +154,9 @@ flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_integer('max_global_steps',
                      None,
                      'Maximum number of update steps.')
+flags.DEFINE_boolean('overwrite',
+                    False, 
+                    'Whether to overwrite the experiment with identical experiment_dir and experiment_name.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -476,7 +479,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  imagenet_v2_data_dir: Optional[str] = None,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None):
+                                 log_dir: Optional[str] = None,
+                                 overwrite: Optional[bool] = False):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
