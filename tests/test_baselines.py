@@ -45,8 +45,8 @@ for f in frameworks:
             testcase_name=f'{b}_{f}',
             workload='mnist',
             framework=f'{f}',
-            submission_path=(f'baselines/{b}/{f}/submission.py'),
-            tuning_search_space=(f'baselines/{b}/tuning_search_space.json')))
+            submission_path=f'baselines/{b}/{f}/submission.py',
+            tuning_search_space=f'baselines/{b}/tuning_search_space.json'))
 
 
 class BaselineTest(parameterized.TestCase):
