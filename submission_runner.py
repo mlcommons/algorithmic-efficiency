@@ -154,12 +154,15 @@ flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_integer('max_global_steps',
                      None,
                      'Maximum number of update steps.')
-flags.DEFINE_boolean('overwrite',
-                    False, 
-                    'Whether to overwrite the experiment with identical experiment_dir and experiment_name.')
+flags.DEFINE_boolean(
+    'overwrite',
+    False,
+    'Whether to overwrite the experiment with identical experiment_dir and'
+    'experiment_name.'
+)
 flags.DEFINE_boolean('save_checkpoints',
-                    True, 
-                    'Whether or not to checkpoint the model at every eval.')
+                     True,
+                     'Whether or not to checkpoint the model at every eval.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -586,7 +589,8 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, max_global_steps, log_dir, save_checkpoints=save_checkpoints)
+          None, rng, profiler, max_global_steps, log_dir,
+          save_checkpoints=save_checkpoints)
   return score
 
 

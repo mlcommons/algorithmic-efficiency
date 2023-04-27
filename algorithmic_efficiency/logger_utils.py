@@ -34,12 +34,14 @@ def makedir(dir_name: str, exist_ok: bool = True) -> None:
     os.makedirs(name=dir_name, exist_ok=exist_ok)
 
 
-def get_log_dir(experiment_dir: str,
-                workload: spec.Workload,
-                framework: str,
-                experiment_name: str,
-                resume_last_run: bool,
-                overwrite: bool,) -> Optional[str]:
+def get_log_dir(
+    experiment_dir: str,
+    workload: spec.Workload,
+    framework: str,
+    experiment_name: str,
+    resume_last_run: bool,
+    overwrite: bool,
+) -> Optional[str]:
   if RANK != 0:
     return
 
@@ -56,9 +58,9 @@ def get_log_dir(experiment_dir: str,
   if os.path.exists(experiment_path):
     if overwrite:
       logging.info(
-        f'Removing existing experiment directory {experiment_path} because'
-        '--overwrite was set.')
-        shutil.rmtree(experiment_path)
+          f'Removing existing experiment directory {experiment_path} because '
+          '--overwrite was set.')
+      shutil.rmtree(experiment_path)
     elif resume_last_run:
       logging.info(
           f'Resuming from experiment directory {experiment_path} because '
