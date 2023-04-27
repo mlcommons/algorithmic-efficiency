@@ -1,8 +1,7 @@
 import functools
 import math
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
-from absl import flags
 from flax import jax_utils
 import flax.linen as nn
 import jax
@@ -10,22 +9,27 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import torch
 
+from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
+from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline import \
+    LibriSpeechDataset
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     models
-
-FLAGS = flags.FLAGS
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
-  def __init__(self, tokenizer_vocab_path=None):
+  def __init__(self,
+               tokenizer_vocab_path: Optional[str] = None,
+               use_specaug: bool = True) -> None:
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
+    self.use_specaug = use_specaug
 
   def init_model_fn(
       self,
@@ -40,7 +44,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model_config = models.ConformerConfig(
         attention_residual_dropout_rate=dropout_rate,
         feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate)
+        input_dropout_rate=aux_dropout_rate,
+        use_specaug=self.use_specaug)
     self._model = models.Conformer(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
@@ -60,7 +65,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key == 'Dense_0'
 
   def model_fn(
       self,
@@ -91,16 +96,71 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           mutable=False)
       return (logits, logit_paddings), model_state
 
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del data_rng
+    del cache
+    del repeat_final_dataset
+    del num_batches
+    train = False
+    if split == 'train':
+      split = 'train-clean-100+train-clean-360+train-other-500'
+      train = True
+    elif split == 'eval_train':
+      split = 'train-clean-100+train-clean-360+train-other-500'
+    elif split == 'validation':
+      split = 'dev-clean+dev-other'
+    elif split == 'test':
+      split = 'test-clean'
+
+    ds = LibriSpeechDataset(split=split, data_dir=data_dir)
+
+    dataloader = data_utils.cycle(
+        torch.utils.data.DataLoader(
+            ds,
+            batch_size=global_batch_size,
+            shuffle=train,
+            sampler=None,
+            num_workers=4,
+            prefetch_factor=10,
+            pin_memory=False,
+            drop_last=train,
+        ))
+
+    for batch in iter(dataloader):
+      inputs, input_paddings = batch['inputs']
+      targets, target_paddings = batch['targets']
+
+      numpy_batch = {
+          'inputs': (inputs.numpy(), input_paddings.numpy()),
+          'targets': (targets.numpy(), target_paddings.numpy()),
+      }
+
+      padded_batch = data_utils.shard_and_maybe_pad_np(
+          numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+      yield padded_batch
+
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
-      logits_batch: spec.Tensor,
+      label_batch: Tuple[spec.Tensor, spec.Tensor],  # (label_batch, padding)
+      logits_batch: Tuple[spec.Tensor, spec.Tensor],  # (logits_batch, padding)
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     del label_smoothing
     logits, logit_paddings = logits_batch
     targets, target_paddings = label_batch
@@ -117,7 +177,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mask_batch = 1 - target_paddings
     n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
+    }
 
   def ctc_loss(self,
                logits: spec.Tensor,
@@ -132,7 +196,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                           blank_id)
 
   # Adapted from lingvo's greedy decoding logic here:
-  # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138
+  # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138.
   def sequence_mask(self, lengths: spec.Tensor, maxlen: int) -> spec.Tensor:
     batch_size = lengths.shape[0]
     a = jnp.ones([batch_size, maxlen])
@@ -145,14 +209,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                                  seq_length: spec.Tensor,
                                  blank_id: int = 0) -> spec.Tensor:
     b, t = labels.shape
-    # Zap out blank
+    # Zap out blank.
     blank_mask = 1 - jnp.equal(labels, blank_id)
     labels = (labels * blank_mask).astype(labels.dtype)
 
     # Mask labels that don't equal previous label.
     label_mask = jnp.concatenate([
         jnp.ones_like(labels[:, :1], dtype=jnp.int32),
-        jnp.not_equal(labels[:, 1:], labels[:, :-1])
+        jnp.not_equal(labels[:, 1:], labels[:, :-1]),
     ],
                                  axis=1)
 
@@ -161,7 +225,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     seq_mask = self.sequence_mask(seq_length, maxlen=maxlen)
     label_mask = label_mask * seq_mask
 
-    # remove repetitions from the labels
+    # Remove repetitions from the labels.
     ulabels = label_mask * labels
 
     # Count masks for new sequence lengths.
@@ -184,7 +248,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     flat = jnp.zeros(flat_idx_mask.shape).astype(labels.dtype)
     flat = flat.at[indices].set(updates)
     # 0'th position in the flat array gets clobbered by later padded updates,
-    # so reset it here to its original value
+    # so reset it here to its original value.
     flat = flat.at[0].set(updates[0])
 
     # Reshape back to square batch.
@@ -222,12 +286,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         update_batch_norm=False)
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
-    normalized_loss, _ = self.loss_fn(
-        batch['targets'], (logits, logit_paddings))
+    loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
 
     targets, target_paddings = batch['targets']
     return self.metrics_bundle.gather_from_model_output(
-        normalized_loss=normalized_loss,
+        loss_dict=loss,
         decoded=decoded,
         decoded_paddings=decoded_paddings,
         targets=targets,
@@ -242,7 +305,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            model_state: spec.ModelAuxiliaryState,
                            rng: spec.RandomState,
                            data_dir: str,
-                           global_step: int) -> Dict[str, float]:
+                           global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     if model_state is not None:
@@ -251,11 +314,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
-      self._eval_iters[split] = self._build_input_queue(rng,
-                                                        split,
-                                                        data_dir,
-                                                        global_batch_size,
-                                                        num_batches)
+      self._eval_iters[split] = self._build_input_queue(
+          rng, split, data_dir, global_batch_size, num_batches=num_batches)
 
     metrics_report = None
     for _ in range(num_batches):

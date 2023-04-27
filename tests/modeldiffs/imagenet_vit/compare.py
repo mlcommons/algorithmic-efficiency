@@ -41,7 +41,7 @@ def key_transform(k):
             'Linear_0': 'query',
             'Linear_1': 'key',
             'Linear_2': 'value',
-            'Linear_3': 'out'
+            'Linear_3': 'out',
         }[i]
       else:
         i = i.replace('Linear', 'Dense')
@@ -68,6 +68,8 @@ def key_transform(k):
     new_key.append(i)
   return tuple(new_key)
 
+
+sd_transform = None
 
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable

@@ -1,8 +1,9 @@
 """Utilities for initializing parameters.
 
 Note: Code adapted from
-https://github.com/google/jax/blob/main/jax/_src/nn/initializers.py
+https://github.com/google/jax/blob/main/jax/_src/nn/initializers.py.
 """
+
 import math
 
 from torch import nn

@@ -1,0 +1,26 @@
+{
+  "learning_rate": {
+      "min": 2e-2, "max": 5.0, "scaling": "log"
+  },
+  "one_minus_beta1": {
+      "feasible_points": [0.1]
+  },
+  "warmup_factor": {
+      "feasible_points": [0.05]
+  },
+  "weight_decay": {
+      "min": 1e-7, "max": 5e-5, "scaling": "log"
+  },
+  "label_smoothing": {
+      "feasible_points": [0.1, 0.2]
+  },
+  "dropout_rate": {
+      "feasible_points": [0.0, 0.1]
+  },
+  "decay_steps_factor": {
+    "feasible_points": [0.9]
+  },
+  "end_factor": {
+    "feasible_points": [1e-3, 1e-2]
+  }
+}

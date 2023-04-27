@@ -1,3 +1,5 @@
+"""Utilities for logging."""
+
 import collections
 import json
 import logging
@@ -32,11 +34,11 @@ def makedir(dir_name: str, exist_ok: bool = True) -> None:
     os.makedirs(name=dir_name, exist_ok=exist_ok)
 
 
-def get_log_dir(experiment_dir,
-                workload,
-                framework,
-                experiment_name,
-                resume_last_run):
+def get_log_dir(experiment_dir: str,
+                workload: spec.Workload,
+                framework: str,
+                experiment_name: str,
+                resume_last_run: bool) -> Optional[str]:
   if RANK != 0:
     return
 
@@ -77,16 +79,15 @@ def write_hparams(hparams: spec.Hyperparameters,
       hparams_dict = json.load(f)
     hparams = collections.namedtuple('Hyperparameters',
                                      hparams_dict)(**hparams_dict)
-    return hparams
   else:
     logging.info('Saving hparams to %s.', hparams_file_name)
     if RANK == 0:
       with open(hparams_file_name, 'w') as f:
         f.write(json.dumps(hparams._asdict(), indent=2))
-    return hparams
+  return hparams
 
 
-def write_json(name: str, log_dict: dict, indent: int = 2):
+def write_json(name: str, log_dict: dict, indent: int = 2) -> None:
   if RANK == 0:
     with open(name, 'w') as f:
       f.write(json.dumps(log_dict, indent=indent))
@@ -257,7 +258,8 @@ class MetricLogger(object):
   def __init__(self,
                csv_path: str = '',
                events_dir: Optional[str] = None,
-               configs: Optional[flags.FLAGS] = None) -> None:
+               configs: Optional[flags.FLAGS] = None,
+               hyperparameters: Optional[spec.Hyperparameters] = None) -> None:
     self._measurements = {}
     self._csv_path = csv_path
     self.use_wandb = configs.use_wandb
@@ -268,6 +270,7 @@ class MetricLogger(object):
         wandb.init(
             dir=events_dir, tags=[flags.FLAGS.workload, flags.FLAGS.framework])
         wandb.config.update(configs)
+        wandb.config.update(hyperparameters._asdict())
 
   def append_scalar_metrics(self,
                             metrics: dict,
@@ -303,27 +306,13 @@ class MetricLogger(object):
       wandb.finish()
 
 
-class PassThroughMetricLogger(object):
-
-  def __init__(self,
-               csv_path: str = '',
-               events_dir: Optional[str] = None,
-               configs: Optional[flags.FLAGS] = None) -> None:
-    pass
-
-  def append_scalar_metrics(self,
-                            metrics: dict,
-                            global_step: int,
-                            preemption_count: Optional[int] = None) -> None:
-    pass
-
-  def finish(self) -> None:
-    pass
-
-
 def set_up_loggers(train_dir: str,
-                   configs: flags.FLAGS) -> Optional[MetricLogger]:
+                   configs: flags.FLAGS,
+                   hyperparameters: spec.Hyperparameters) -> MetricLogger:
   csv_path = os.path.join(train_dir, 'measurements.csv')
   metrics_logger = MetricLogger(
-      csv_path=csv_path, events_dir=train_dir, configs=configs)
+      csv_path=csv_path,
+      events_dir=train_dir,
+      configs=configs,
+      hyperparameters=hyperparameters)
   return metrics_logger

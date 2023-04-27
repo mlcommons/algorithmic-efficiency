@@ -1,7 +1,7 @@
+"""This is a pytorch implementation mirroring:
+https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.py.
 """
-This is a pytorch implementation mirroring:
-https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.py
-"""
+
 from dataclasses import dataclass
 import math
 from typing import Tuple
@@ -41,6 +41,7 @@ class ConformerConfig:
   input_dropout_rate: float = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
+  use_specaug: bool = True
 
 
 def initialize(m):
@@ -253,7 +254,7 @@ class QueryScaler(nn.Module):
 
 
 class MHSAwithQS(nn.MultiheadAttention):
-  # pylint: disable=locally-disabled, use-a-generator, line-too-long
+  # pylint: disable=locally-disabled, use-a-generator, line-too-long, invalid-name
   def __init__(self, config: ConformerConfig):
     super().__init__(
         embed_dim=config.encoder_dim,
@@ -262,6 +263,24 @@ class MHSAwithQS(nn.MultiheadAttention):
         bias=True,
         batch_first=True)
     self.qs = QueryScaler(dim=config.encoder_dim // config.num_attention_heads)
+
+  def _scaled_in_proj_weight(self):
+    # Scale the query projection weight.
+    qs_input = self.in_proj_weight[:self.embed_dim].view(
+        self.num_heads, self.embed_dim // self.num_heads, -1).transpose(1, 2)
+    in_proj_queryW_scaled = self.qs(qs_input).transpose(
+        1, 2).view(*self.in_proj_weight[:self.embed_dim].shape)
+    in_proj_weight = torch.cat(
+        [in_proj_queryW_scaled, self.in_proj_weight[self.embed_dim:]])
+    return in_proj_weight
+
+  def _scaled_in_proj_bias(self):
+    # Scale the query bias.
+    in_proj_queryb_scaled = self.qs(self.in_proj_bias[:self.embed_dim].view(
+        self.num_heads, self.embed_dim // self.num_heads)).view(-1)
+    in_proj_bias = torch.cat(
+        [in_proj_queryb_scaled, self.in_proj_bias[self.embed_dim:]])
+    return in_proj_bias
 
   def forward(self,
               query,
@@ -290,8 +309,7 @@ class MHSAwithQS(nn.MultiheadAttention):
             to ignore for the purpose of attention (i.e. treat as "padding"). For unbatched `query`, shape should be :math:`(S)`.
             Binary and byte masks are supported.
             For a binary mask, a ``True`` value indicates that the corresponding ``key`` value will be ignored for
-            the purpose of attention. For a byte mask, a non-zero value indicates that the corresponding ``key``
-            value will be ignored.
+            the purpose of attention. For a float mask, it will be directly added to the corresponding ``key`` value.
         need_weights: If specified, returns ``attn_output_weights`` in addition to ``attn_outputs``.
             Default: ``True``.
         attn_mask: If specified, a 2D or 3D mask preventing attention to certain positions. Must be of shape
@@ -314,13 +332,19 @@ class MHSAwithQS(nn.MultiheadAttention):
         - **attn_output_weights** - Only returned when ``need_weights=True``. If ``average_attn_weights=True``,
           returns attention weights averaged across heads of shape :math:`(L, S)` when input is unbatched or
           :math:`(N, L, S)`, where :math:`N` is the batch size, :math:`L` is the target sequence length, and
-          :math:`S` is the source sequence length. If ``average_weights=False``, returns attention weights per
+          :math:`S` is the source sequence length. If ``average_attn_weights=False``, returns attention weights per
           head of shape :math:`(\text{num\_heads}, L, S)` when input is unbatched or :math:`(N, \text{num\_heads}, L, S)`.
 
         .. note::
             `batch_first` argument is ignored for unbatched inputs.
         """
     is_batched = query.dim() == 3
+    if key_padding_mask is not None:
+      _kpm_dtype = key_padding_mask.dtype
+      if _kpm_dtype != torch.bool and not torch.is_floating_point(
+          key_padding_mask):
+        raise AssertionError(
+            "only bool and floating types of key_padding_mask are supported")
     why_not_fast_path = ''
     if not is_batched:
       why_not_fast_path = f"input not batched; expected query.dim() of 3 but got {query.dim()}"
@@ -352,6 +376,10 @@ class MHSAwithQS(nn.MultiheadAttention):
       why_not_fast_path = "attn_mask was not None"
     elif query.is_nested and key_padding_mask is not None:
       why_not_fast_path = "key_padding_mask is not supported with NestedTensor input"
+    elif self.num_heads % 2 == 1:
+      why_not_fast_path = "num_heads is odd"
+    elif torch.is_autocast_enabled():
+      why_not_fast_path = "autocast is enabled"
 
     if not why_not_fast_path:
       tensor_args = (
@@ -367,38 +395,33 @@ class MHSAwithQS(nn.MultiheadAttention):
       # generator expressions.
       if torch.overrides.has_torch_function(tensor_args):
         why_not_fast_path = "some Tensor argument has_torch_function"
-      elif not all([(x.is_cuda or 'cpu' in str(x.device)) for x in tensor_args
-                   ]):
+      elif not all([(x is None or x.is_cuda or 'cpu' in str(x.device))
+                    for x in tensor_args]):
         why_not_fast_path = "some Tensor argument is neither CUDA nor CPU"
       elif torch.is_grad_enabled() and any(
-          [x.requires_grad for x in tensor_args]):
+          [x is not None and x.requires_grad for x in tensor_args]):
         why_not_fast_path = (
             "grad is enabled and at least one of query or the "
             "input/output projection weights or biases requires_grad")
       if not why_not_fast_path:
-        # Scale the query bias parameter and the query vector
-        query = self.qs(
-            query.view(query.shape[0],
-                       query.shape[1],
-                       self.num_heads,
-                       self.embed_dim // self.num_heads)).view(*query.shape)
-        in_proj_bias = self.in_proj_bias + 0
-        in_proj_bias[:self.embed_dim] = self.qs(
-            self.in_proj_bias[:self.embed_dim].view(
-                self.num_heads, self.embed_dim // self.num_heads)).view(-1)
+        # Scale the query bias parameter and the query projection weight.
+        in_proj_weight = self._scaled_in_proj_weight()
+        in_proj_bias = self._scaled_in_proj_bias()
         return torch._native_multi_head_attention(
             query,
             key,
             value,
             self.embed_dim,
             self.num_heads,
-            self.in_proj_weight,
+            in_proj_weight,
             in_proj_bias,
             self.out_proj.weight,
             self.out_proj.bias,
             key_padding_mask if key_padding_mask is not None else attn_mask,
             need_weights,
-            average_attn_weights)
+            average_attn_weights,
+            1 if key_padding_mask is not None else
+            0 if attn_mask is not None else None)
     any_nested = query.is_nested or key.is_nested or value.is_nested
     assert not any_nested, ("MultiheadAttention does not support NestedTensor outside of its fast path. " +
                             f"The fast path was not hit because {why_not_fast_path}")
@@ -426,19 +449,12 @@ class MHSAwithQS(nn.MultiheadAttention):
           q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
           v_proj_weight=self.v_proj_weight, average_attn_weights=average_attn_weights)
     else:
-      # Scale the query bias parameter and the query vector
-      query = self.qs(
-          query.view(query.shape[0],
-                     query.shape[1],
-                     self.num_heads,
-                     self.embed_dim // self.num_heads)).view(*query.shape)
-      in_proj_bias = self.in_proj_bias + 0
-      in_proj_bias[:self.embed_dim] = self.qs(
-          self.in_proj_bias[:self.embed_dim].view(
-              self.num_heads, self.embed_dim // self.num_heads)).view(-1)
+      # Scale the query bias parameter and the query projection weight.
+      in_proj_weight = self._scaled_in_proj_weight()
+      in_proj_bias = self._scaled_in_proj_bias()
       attn_output, attn_output_weights = F.multi_head_attention_forward(
           query, key, value, self.embed_dim, self.num_heads,
-          self.in_proj_weight, in_proj_bias,
+          in_proj_weight, in_proj_bias,
           self.bias_k, self.bias_v, self.add_zero_attn,
           self.dropout, self.out_proj.weight, self.out_proj.bias,
           training=self.training,
@@ -622,7 +638,7 @@ class ConformerEncoderDecoder(nn.Module):
     outputs = inputs
     output_paddings = input_paddings
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
-    if self.training:
+    if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
     outputs, output_paddings = self.subsample(outputs, output_paddings)
     for conformer in self.conformers:

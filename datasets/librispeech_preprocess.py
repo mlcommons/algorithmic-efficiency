@@ -163,7 +163,7 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
       'dev-clean',
       'dev-other',
       'test-clean',
-      'test-other'
+      'test-other',
   ]
   for subset in subset_list:
     logging.info('Processing split = %s...', subset)

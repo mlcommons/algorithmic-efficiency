@@ -1,4 +1,5 @@
 """Training algorithm track submission functions for CIFAR10."""
+
 from typing import Dict, Iterator, List, Tuple
 
 import torch
@@ -24,14 +25,14 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  base_lr = hyperparameters.learning_rate * get_batch_size('cifar') / 256.
+  base_lr = hyperparameters.learning_rate * get_batch_size('cifar') / 128.
   optimizer_state = {
       'optimizer':
           torch.optim.SGD(
               model_params.parameters(),
               lr=base_lr,
               momentum=hyperparameters.momentum,
-              weight_decay=hyperparameters.l2)
+              weight_decay=hyperparameters.l2),
   }
 
   scheduler1 = LinearLR(
@@ -81,8 +82,9 @@ def update_params(workload: spec.Workload,
       rng=rng,
       update_batch_norm=True)
 
-  loss, _ = workload.loss_fn(
+  loss_dict = workload.loss_fn(
       label_batch=batch['targets'], logits_batch=logits_batch)
+  loss = loss_dict['summed'] / loss_dict['n_valid_examples']
 
   loss.backward()
   optimizer_state['optimizer'].step()

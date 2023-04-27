@@ -3,8 +3,12 @@ from typing import Dict, Iterator, List, Tuple
 
 import numpy as np
 import torch
+import torch.distributed.nn as dist_nn
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
 ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
@@ -71,7 +75,15 @@ def update_params(workload: spec.Workload,
       rng,
       update_batch_norm=True)
 
-  loss, _ = workload.loss_fn(batch['targets'], (logits, logits_padding))
+  loss_dict = workload.loss_fn(batch['targets'], (logits, logits_padding))
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
+
   loss.backward()
 
   for g in optimizer.param_groups:

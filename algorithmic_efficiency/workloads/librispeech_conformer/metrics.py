@@ -19,8 +19,9 @@ def average_ctc_loss():
     weight: np.float32
 
     @classmethod
-    def from_model_output(cls, normalized_loss, **_):
-      return cls(total=normalized_loss, weight=1.0)
+    def from_model_output(cls, loss_dict, **_):
+      return cls(
+          total=loss_dict['summed'], weight=loss_dict['n_valid_examples'])
 
     def merge(self, other):
       return type(self)(
@@ -55,22 +56,22 @@ def edit_distance(source, target):
   for i in range(num_source_words + 1):
     for j in range(num_target_words + 1):
       # If first string is empty, only option is to
-      # insert all words of second string
+      # insert all words of second string.
       if i == 0:
         distance[i][j] = j  # Min. operations = j
 
       # If second string is empty, only option is to
-      # remove all characters of second string
+      # remove all characters of second string.
       elif j == 0:
         distance[i][j] = i  # Min. operations = i
 
       # If last characters are same, ignore last char
-      # and recur for remaining string
+      # and recur for remaining string.
       elif source[i - 1] == target[j - 1]:
         distance[i][j] = distance[i - 1][j - 1]
 
       # If last character are different, consider all
-      # possibilities and find minimum
+      # possibilities and find minimum.
       else:
         distance[i][j] = 1 + min(
             distance[i][j - 1],  # Insert
@@ -113,6 +114,8 @@ def load_tokenizer(model_path: str,
                    add_eos: bool = True,
                    reverse: bool = False):
   """Load a tf-text SentencePiece tokenizer from given model filepath."""
+  if model_path is None:
+    return None
   with gfile.GFile(model_path, 'rb') as model_fp:
     sp_model = model_fp.read()
   sp_tokenizer = tftxt.SentencepieceTokenizer(
@@ -130,6 +133,8 @@ def wer(tokenizer_vocab_path):
     """Computes the mean average precision for a binary classifier on CPU."""
 
     def compute(self):
+      if tokenizer is None:
+        return 0
       values = super().compute()
       # Ensure the arrays are numpy and not jax.numpy.
       values = {k: np.array(v) for k, v in values.items()}

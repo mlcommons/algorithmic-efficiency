@@ -151,7 +151,8 @@ def init_optimizer_state(workload: spec.Workload,
   del model_state
   del rng
 
-  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(workload.step_hint,
+  target_setting_step_hint = int(0.75 * workload.step_hint)
+  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(target_setting_step_hint,
                                                    hyperparameters)
 
   # Create optimizer.

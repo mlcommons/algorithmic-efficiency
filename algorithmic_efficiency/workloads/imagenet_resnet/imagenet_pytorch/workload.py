@@ -1,6 +1,7 @@
 """ImageNet workload implemented in PyTorch."""
 
 import contextlib
+import functools
 import itertools
 import math
 import os
@@ -9,7 +10,6 @@ from typing import Dict, Iterator, Optional, Tuple
 
 import numpy as np
 import torch
-from torch import nn
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -18,8 +18,8 @@ from torchvision.datasets.folder import ImageFolder
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 from algorithmic_efficiency.workloads.imagenet_resnet import imagenet_v2
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch import \
@@ -29,7 +29,7 @@ from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models im
 from algorithmic_efficiency.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 
 def imagenet_v2_to_torch(
@@ -83,7 +83,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
               self.center_crop_size,
               scale=self.scale_ratio_range,
               ratio=self.aspect_ratio_range),
-          transforms.RandomHorizontalFlip()
+          transforms.RandomHorizontalFlip(),
       ]
       if use_randaug:
         transform_config.append(randaugment.RandAugment())
@@ -94,7 +94,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           transforms.Resize(self.resize_size),
           transforms.CenterCrop(self.center_crop_size),
           transforms.ToTensor(),
-          normalize
+          normalize,
       ])
 
     folder = 'train' if 'train' in split else 'val'
@@ -162,20 +162,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['fc.weight', 'fc.bias']
 
-  def _update_batch_norm(self,
-                         model: spec.ParameterContainer,
-                         update_batch_norm: bool) -> None:
-    bn_layers = (nn.BatchNorm1d,
-                 nn.BatchNorm2d,
-                 nn.BatchNorm3d,
-                 nn.SyncBatchNorm)
-    for m in model.modules():
-      if isinstance(m, bn_layers):
-        if not update_batch_norm:
-          m.eval()
-        m.requires_grad_(update_batch_norm)
-        m.track_running_stats = update_batch_norm
-
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -197,11 +183,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
-      self._update_batch_norm(model, update_batch_norm)
+      model.apply(
+          functools.partial(
+              pytorch_utils.update_batch_norm_fn,
+              update_batch_norm=update_batch_norm))
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
@@ -211,12 +200,18 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
-  def loss_fn(self,
-              label_batch: spec.Tensor,
-              logits_batch: spec.Tensor,
-              mask_batch: Optional[spec.Tensor] = None,
-              label_smoothing: float = 0.0) -> Tuple[spec.Tensor, spec.Tensor]:
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+  def loss_fn(
+      self,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
+      logits_batch: spec.Tensor,
+      mask_batch: Optional[spec.Tensor] = None,
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     per_example_losses = F.cross_entropy(
         logits_batch,
         label_batch,
@@ -229,7 +224,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
-    return summed_loss / n_valid_examples, per_example_losses
+    return {
+        'summed': summed_loss,
+        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
+        'per_example': per_example_losses,
+    }
 
   def _compute_metrics(self,
                        logits: spec.Tensor,
@@ -241,9 +240,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     predicted = torch.argmax(logits, 1)
     # Not accuracy, but nr. of correct predictions.
     accuracy = ((predicted == labels) * weights).sum()
-    _, per_example_losses = self.loss_fn(labels, logits, weights)
-    loss = per_example_losses.sum()
-    return {'accuracy': accuracy, 'loss': loss}
+    summed_loss = self.loss_fn(labels, logits, weights)['summed']
+    return {'accuracy': accuracy, 'loss': summed_loss}
 
   def _eval_model_on_split(self,
                            split: str,

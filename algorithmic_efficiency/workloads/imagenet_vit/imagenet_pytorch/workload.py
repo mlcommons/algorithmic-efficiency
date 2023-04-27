@@ -70,7 +70,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext
+        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():

@@ -19,12 +19,13 @@ The two primary inputs to `compute_performance_profiles` are
   {
     'workload_identifier': {
       'target': VALUE,
-      'metric': 'valid/error_rate'
+      'metric': 'valid/error_rate',
     }
   }
   The keys in this dictionary should match the workload identifiers used in
   the dictionary of submissions.
 """
+
 import itertools
 import operator
 import os

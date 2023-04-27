@@ -17,7 +17,7 @@ TFDS_SPLIT_NAME = {
     'train': 'train',
     'eval_train': 'train',
     'validation': 'validation',
-    'test': 'test'
+    'test': 'test',
 }
 
 
@@ -33,7 +33,7 @@ def _load_dataset(split, should_shuffle, data_rng, data_dir):
 
   read_config = tfds.ReadConfig(add_tfds_id=True, shuffle_seed=file_data_rng)
   dataset = tfds.load(
-      'ogbg_molpcba:0.1.2',
+      'ogbg_molpcba:0.1.3',
       split=TFDS_SPLIT_NAME[split],
       shuffle_files=should_shuffle,
       read_config=read_config,
@@ -158,7 +158,7 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
       yield {
           'inputs': graphs_shards,
           'targets': labels_shards,
-          'weights': weights_shards
+          'weights': weights_shards,
       }
 
       count = 0

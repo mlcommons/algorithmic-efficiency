@@ -1,4 +1,5 @@
 """Training algorithm track submission functions for MNIST."""
+
 from typing import Dict, Iterator, List, Tuple
 
 import torch
@@ -17,14 +18,16 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  del rng
   del model_state
   del workload
-
+  del rng
   optimizer_state = {
       'optimizer':
           torch.optim.Adam(
-              model_params.parameters(), lr=hyperparameters.learning_rate)
+              model_params.parameters(),
+              lr=hyperparameters.learning_rate,
+              betas=(1.0 - hyperparameters.one_minus_beta_1, 0.999),
+              eps=hyperparameters.epsilon),
   }
   return optimizer_state
 
@@ -48,8 +51,9 @@ def update_params(workload: spec.Workload,
   del global_step
 
   current_model = current_param_container
-  current_param_container.train()
-  optimizer_state['optimizer'].zero_grad()
+  current_model.train()
+  for param in current_model.parameters():
+    param.grad = None
 
   output, new_model_state = workload.model_fn(
       params=current_model,
@@ -59,8 +63,9 @@ def update_params(workload: spec.Workload,
       rng=rng,
       update_batch_norm=True)
 
-  loss, _ = workload.loss_fn(label_batch=batch['targets'], logits_batch=output)
-
+  loss_dict = workload.loss_fn(
+      label_batch=batch['targets'], logits_batch=output)
+  loss = loss_dict['summed'] / loss_dict['n_valid_examples']
   loss.backward()
   optimizer_state['optimizer'].step()
 

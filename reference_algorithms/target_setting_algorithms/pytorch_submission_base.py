@@ -4,8 +4,12 @@ from typing import Dict, List, Tuple
 
 from absl import logging
 import torch
+import torch.distributed.nn as dist_nn
 
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
 def update_params(workload: spec.Workload,
@@ -43,27 +47,36 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  loss, _ = workload.loss_fn(
+
+  loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits_batch,
       mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing)
+  summed_loss = loss_dict['summed']
+  n_valid_examples = loss_dict['n_valid_examples']
+  if USE_PYTORCH_DDP:
+    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
+    summed_loss = dist_nn.all_reduce(summed_loss)
+    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
+  loss = summed_loss / n_valid_examples
 
   loss.backward()
-
-  with torch.no_grad():
-    parameters = [p for p in current_model.parameters() if p.grad is not None]
-    grad_norm = torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
 
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(
         current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
-  optimizer_state['scheduler'].step()
+  if 'scheduler' in optimizer_state:
+    optimizer_state['scheduler'].step()
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:
+    with torch.no_grad():
+      parameters = [p for p in current_model.parameters() if p.grad is not None]
+      grad_norm = torch.norm(
+          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
           {

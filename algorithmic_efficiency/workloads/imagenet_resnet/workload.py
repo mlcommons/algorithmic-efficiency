@@ -10,12 +10,20 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   _num_classes: int = 1000
 
-  def has_reached_goal(self, eval_result: Dict[str, float]) -> bool:
-    return eval_result['validation/accuracy'] > self.target_value
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
+    return eval_result['validation/accuracy'] > self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 0.77185  # TODO(namanagarwal): This will edited again soon.
+  def validation_target_value(self) -> float:
+    return 0.77431
+
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
+    return eval_result['test/accuracy'] > self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.6565
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -23,7 +31,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def num_train_examples(self) -> int:
-    return 1281167
+    return 1_281_167
 
   @property
   def num_eval_train_examples(self) -> int:
@@ -36,11 +44,11 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self) -> int:
-    return 50000
+    return 50_000
 
   @property
   def num_test_examples(self) -> int:
-    return 10000  # ImageNet-v2.
+    return 10_000  # ImageNet-v2.
 
   @property
   def eval_batch_size(self) -> int:
@@ -116,5 +124,5 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 140_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 186_666

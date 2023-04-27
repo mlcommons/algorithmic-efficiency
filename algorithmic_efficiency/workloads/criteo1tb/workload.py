@@ -1,3 +1,4 @@
+"""Criteo1TB DLRM workload base class."""
 import math
 import os
 from typing import Dict, Optional, Tuple
@@ -20,12 +21,19 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
   embed_dim: int = 128
 
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/loss'] < self.target_value
+  def has_reached_validation_target(self, eval_result: float) -> bool:
+    return eval_result['validation/loss'] < self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 0.124225  # NOTE: this will be later revised.
+  def validation_target_value(self) -> float:
+    return 0.123649
+
+  def has_reached_test_target(self, eval_result: float) -> bool:
+    return eval_result['test/loss'] < self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126053
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -57,12 +65,12 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return 524_288
 
   @property
-  def train_mean(self) -> float:
-    return 0.0
+  def train_mean(self):
+    raise NotImplementedError
 
   @property
-  def train_stddev(self) -> float:
-    return 1.0
+  def train_stddev(self):
+    raise NotImplementedError
 
   @property
   def max_allowed_runtime_sec(self) -> int:
@@ -70,7 +78,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def eval_period_time_sec(self) -> int:
-    return 9 * 60
+    return 2 * 60
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
@@ -93,8 +101,8 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 8000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 10_666
 
   def _eval_model_on_split(self,
                            split: str,

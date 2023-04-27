@@ -78,10 +78,10 @@ def corpus_bleu(sys_stream: Sequence[str],
     ref_len += closest_len
 
     sys_ngrams = sacrebleu.extract_ngrams(output)
-    for ngram in sys_ngrams.keys():
+    for ngram, sys_ngram in sys_ngrams.items():
       n = len(ngram.split())
-      correct[n - 1] += min(sys_ngrams[ngram], ref_ngrams.get(ngram, 0))
-      total[n - 1] += sys_ngrams[ngram]
+      correct[n - 1] += min(sys_ngram, ref_ngrams.get(ngram, 0))
+      total[n - 1] += sys_ngram
 
   # When using PyTorch DDP, get stats from all processes and sum them.
   if USE_PYTORCH_DDP:

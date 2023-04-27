@@ -1,7 +1,6 @@
 import functools
 from typing import Optional
 
-from absl import flags
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
@@ -13,14 +12,9 @@ from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.work
     LibriSpeechConformerWorkload
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax import \
     models
-from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
-    BaseDeepspeechLibrispeechWorkload
-
-FLAGS = flags.FLAGS
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
-                                    BaseDeepspeechLibrispeechWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,
@@ -34,6 +28,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
     """
     model_config = models.DeepspeechConfig(
         feed_forward_dropout_rate=dropout_rate,
+        use_specaug=self.use_specaug,
         input_dropout_rate=aux_dropout_rate)
     self._model = models.Deepspeech(model_config)
     input_shape = [(320000,), (320000,)]
@@ -54,4 +49,4 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    pass
+    return param_key == 'Dense_0'

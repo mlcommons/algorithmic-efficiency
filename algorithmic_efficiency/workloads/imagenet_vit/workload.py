@@ -21,7 +21,7 @@ def decode_variant(variant: str) -> Dict[str, int]:
           'L': 1024,
           'H': 1280,
           'g': 1408,
-          'G': 1664
+          'G': 1664,
       }[v],
       'depth': {
           'Ti': 12,
@@ -31,7 +31,7 @@ def decode_variant(variant: str) -> Dict[str, int]:
           'L': 24,
           'H': 32,
           'g': 40,
-          'G': 48
+          'G': 48,
       }[v],
       'mlp_dim': {
           'Ti': 768,
@@ -41,20 +41,24 @@ def decode_variant(variant: str) -> Dict[str, int]:
           'L': 4096,
           'H': 5120,
           'g': 6144,
-          'G': 8192
+          'G': 8192,
       }[v],
       'num_heads': {
           'Ti': 3, 'S': 6, 'M': 8, 'B': 12, 'L': 16, 'H': 16, 'g': 16, 'G': 16
       }[v],
-      'patch_size': (int(patch), int(patch))
+      'patch_size': (int(patch), int(patch)),
   }
 
 
 class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
-  def target_value(self) -> float:
-    return 0.77171
+  def validation_target_value(self) -> float:
+    return 0.77309
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.6568
 
   @property
   def eval_batch_size(self) -> int:
@@ -91,5 +95,5 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 140_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 186_666

@@ -6,24 +6,21 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.model import \
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
     initialize
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import \
     LibriSpeechConformerWorkload
-from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.model import \
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
     DeepspeechConfig
-from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.model import \
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
     DeepspeechEncoderDecoder
-from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
-    BaseDeepspeechLibrispeechWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
-                                    BaseDeepspeechLibrispeechWorkload):
+class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,
@@ -39,6 +36,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
             feed_forward_dropout_rate=dropout_rate,
+            use_specaug=self.use_specaug,
             input_dropout_rate=aux_dropout_rate)).eval()
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
@@ -58,3 +56,6 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload,
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+
+  def is_output_params(self, param_key: spec.ParameterKey) -> bool:
+    return param_key in ['lin.weight', 'lin.bias']

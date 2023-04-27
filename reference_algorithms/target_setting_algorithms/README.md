@@ -9,29 +9,6 @@ ROOT_DIR=/home/znado
 ```
 
 ## Criteo
-Target was set using AdamW with a linear warmup cosine decay LR schedule.
-```bash
-python3 submission_runner.py \
-    --framework=jax \
-    --data_dir=$ROOT_DIR \
-    --experiment_dir=$ROOT_DIR \
-    --experiment_name=target_setting \
-    --workload=criteo1tb \
-    --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
-```
-```bash
-torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
-    --framework=pytorch \
-    --data_dir=$ROOT_DIR \
-    --experiment_dir=$ROOT_DIR \
-    --experiment_name=target_setting \
-    --workload=criteo1tb \
-    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py \
-    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
-```
-
-## FastMRI
 Target was set using NAdamW with a linear warmup cosine decay LR schedule.
 ```bash
 python3 submission_runner.py \
@@ -39,8 +16,31 @@ python3 submission_runner.py \
     --data_dir=$ROOT_DIR \
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
-    --workload=fastmri \
+    --workload=criteo1tb \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py \
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
+```
+```bash
+torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 submission_runner.py \
+    --framework=pytorch \
+    --data_dir=$ROOT_DIR \
+    --experiment_dir=$ROOT_DIR \
+    --experiment_name=target_setting \
+    --workload=criteo1tb \
+    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
+    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
+```
+
+## FastMRI
+Target was set using Nesterov with a linear warmup and linear decay LR schedule.
+```bash
+python3 submission_runner.py \
+    --framework=jax \
+    --data_dir=$ROOT_DIR \
+    --experiment_dir=$ROOT_DIR \
+    --experiment_name=target_setting \
+    --workload=fastmri \
+    --submission_path=reference_algorithms/target_setting_algorithms/jax_nesterov.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
 ```
 ```bash
@@ -50,12 +50,12 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=fastmri \
-    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nesterov.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
 ```
 
 ## ImageNet-Resnet
-Target was set using Nesterov with a linear warmup and linear decay LR schedule.
+Target was set using Heavy-ball Momentum with a linear warmup and linear decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -64,7 +64,7 @@ python3 submission_runner.py \
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=imagenet_resnet \
-    --submission_path=reference_algorithms/target_setting_algorithms/jax_nesterov.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/jax_momentum.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
 ```
 ```bash
@@ -75,7 +75,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=imagenet_resnet \
-    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nesterov.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_momentum.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
 ```
 
@@ -105,7 +105,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 ```
 
 ## Librispeech-Conformer
-Target was set using AdamW with a linear warmup cosine decay LR schedule.
+Target was set using NAdamW with a linear warmup cosine decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -113,7 +113,7 @@ python3 submission_runner.py \
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=librispeech_conformer \
-    --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
 ```
 ```bash
@@ -123,7 +123,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=librispeech_conformer \
-    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
 ```
 
@@ -174,7 +174,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 ```
 
 ## WMT
-Target was set using AdamW with a linear warmup cosine decay LR schedule.
+Target was set using NAdamW with a linear warmup cosine decay LR schedule.
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -182,7 +182,7 @@ python3 submission_runner.py \
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=wmt \
-    --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
 ```
 ```bash
@@ -192,6 +192,6 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_dir=$ROOT_DIR \
     --experiment_name=target_setting \
     --workload=wmt \
-    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py \
+    --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
 ```

@@ -1,12 +1,13 @@
+"""WMT workload parent class."""
+
+import abc
 import math
 import os
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-from absl import flags
 import jax
 import numpy as np
 import torch
-import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt import input_pipeline
@@ -15,7 +16,6 @@ from algorithmic_efficiency.workloads.wmt.wmt_jax import decode
 VOCAB_PATH = './wmt_256/sentencepiece_model'
 WORKDIR = './wmt_256'
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-FLAGS = flags.FLAGS
 
 
 class BaseWmtWorkload(spec.Workload):
@@ -27,12 +27,19 @@ class BaseWmtWorkload(spec.Workload):
     super().__init__()
     self._tokenizer = None
 
-  def has_reached_goal(self, eval_result: float) -> bool:
-    return eval_result['validation/bleu'] > self.target_value
+  def has_reached_validation_target(self, eval_result: float) -> bool:
+    return eval_result['validation/bleu'] > self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 30.6446
+  def validation_target_value(self) -> float:
+    return 30.8491
+
+  def has_reached_test_target(self, eval_result: float) -> bool:
+    return eval_result['test/bleu'] > self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 30.9973
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -67,12 +74,12 @@ class BaseWmtWorkload(spec.Workload):
     return 128
 
   @property
-  def train_mean(self) -> float:
-    return 0.0
+  def train_mean(self):
+    raise NotImplementedError
 
   @property
-  def train_stddev(self) -> float:
-    return 1.0
+  def train_stddev(self):
+    raise NotImplementedError
 
   @property
   def max_allowed_runtime_sec(self) -> int:
@@ -84,8 +91,8 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
-    return 100_000
+    """Max num steps the baseline algo was given to reach the target."""
+    return 133_333
 
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
@@ -109,9 +116,20 @@ class BaseWmtWorkload(spec.Workload):
     # when _build_input_queue is called (not when next() is first called on it).
     def _input_queue_generator():
       for batch in iter(ds):
+        weights = batch.get('weights')
+        updated_weights = np.where(batch['targets'] > 0, 1, 0)
+        if weights is not None:
+          updated_weights = np.logical_and(weights, updated_weights)
+        batch['weights'] = updated_weights
         yield batch
 
     return _input_queue_generator()
+
+  @abc.abstractmethod
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
 
   def _eval_model_on_split(self,
                            split: str,
@@ -144,14 +162,7 @@ class BaseWmtWorkload(spec.Workload):
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
-    if USE_PYTORCH_DDP:
-      for metric in eval_metrics.values():
-        dist.all_reduce(metric)
-    if FLAGS.framework == 'pytorch':
-      eval_metrics = {k: v.item() for k, v in eval_metrics.items()}
-    eval_denominator = eval_metrics.pop('denominator')
-    eval_results = jax.tree_map(lambda x: float(x / eval_denominator),
-                                eval_metrics)
+    eval_results = self._normalize_eval_metrics(num_examples, eval_metrics)
 
     eval_results['bleu'] = self.translate_and_calculate_bleu(
         params=params,
@@ -191,12 +202,16 @@ class BaseWmtWorkload(spec.Workload):
   # `update_params`.
   def loss_fn(
       self,
-      label_batch: spec.Tensor,
+      label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0
-  ) -> Tuple[spec.Tensor, spec.Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     return self.compute_weighted_cross_entropy(
         logits_batch,
         label_batch,

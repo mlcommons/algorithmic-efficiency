@@ -1,6 +1,6 @@
 """OGBG workload implemented in Jax."""
 import functools
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -88,7 +88,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
     # Numerically stable implementation of BCE loss.
     # This mimics TensorFlow's tf.nn.sigmoid_cross_entropy_with_logits().
-    positive_logits = (logits >= 0)
+    positive_logits = logits >= 0
     relu_logits = jnp.where(positive_logits, logits, 0)
     abs_logits = jnp.where(positive_logits, logits, -logits)
     losses = relu_logits - (logits * smoothed_labels) + (
@@ -96,9 +96,9 @@ class OgbgWorkload(BaseOgbgWorkload):
     return jnp.where(mask, losses, 0.)
 
   def _eval_metric(self, labels, logits, masks):
-    loss, _ = self.loss_fn(labels, logits, masks)
+    loss = self.loss_fn(labels, logits, masks)
     return metrics.EvalMetrics.single_from_model_output(
-        loss=loss, logits=logits, labels=labels, mask=masks)
+        loss=loss['per_example'], logits=logits, labels=labels, mask=masks)
 
   @functools.partial(
       jax.pmap,
@@ -107,3 +107,11 @@ class OgbgWorkload(BaseOgbgWorkload):
       static_broadcasted_argnums=(0,))
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)
+
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+    del num_examples
+    total_metrics = total_metrics.reduce()
+    return {k: float(v) for k, v in total_metrics.compute().items()}

@@ -1,39 +1,41 @@
 """MNIST workload parent class."""
 
+import abc
 import functools
 import itertools
 import math
-from typing import Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, Optional
 
-from absl import flags
-from flax import jax_utils
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
-import torch.distributed as dist
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 import algorithmic_efficiency.random_utils as prng
 
-FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 
-def normalize(image, mean, stddev):
+def _normalize(image: spec.Tensor, mean: float, stddev: float) -> spec.Tensor:
   return (tf.cast(image, tf.float32) - mean) / stddev
 
 
-def get_mnist_dataset(data_rng: jax.random.PRNGKey,
-                      num_train_examples: int,
-                      train_mean,
-                      train_stddev,
-                      split: str,
-                      data_dir: str,
-                      global_batch_size: int):
+def _build_mnist_dataset(
+    data_rng: jax.random.PRNGKey,
+    num_train_examples: int,
+    num_validation_examples: int,
+    train_mean: float,
+    train_stddev: float,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: bool = False,
+    repeat_final_dataset: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
   shuffle = split in ['train', 'eval_train']
+  assert num_train_examples + num_validation_examples == 60000
   if shuffle:
     tfds_split = f'train[:{num_train_examples}]'
   elif split == 'validation':
@@ -41,18 +43,25 @@ def get_mnist_dataset(data_rng: jax.random.PRNGKey,
   else:
     tfds_split = 'test'
   ds = tfds.load(
-      'mnist:3.0.1', split=tfds_split, shuffle_files=False, data_dir=data_dir)
+      'mnist', split=tfds_split, shuffle_files=False, data_dir=data_dir)
   ds = ds.map(
       lambda x: {
-          'inputs': normalize(x['image'], train_mean, train_stddev),
+          'inputs': _normalize(x['image'], train_mean, train_stddev),
           'targets': x['label'],
       })
   is_train = split == 'train'
+
+  if cache:
+    ds = ds.cache()
+
   if shuffle:
+    ds = ds.repeat()
     ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
-    if is_train:
-      ds = ds.repeat()
   ds = ds.batch(global_batch_size, drop_remainder=is_train)
+
+  if repeat_final_dataset:
+    ds = ds.repeat()
+
   ds = map(
       functools.partial(
           data_utils.shard_and_maybe_pad_np,
@@ -63,12 +72,20 @@ def get_mnist_dataset(data_rng: jax.random.PRNGKey,
 
 class BaseMnistWorkload(spec.Workload):
 
-  def has_reached_goal(self, eval_result: Dict[str, float]) -> bool:
-    return eval_result['validation/accuracy'] > self.target_value
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
+    return eval_result['validation/accuracy'] > self.validation_target_value
 
   @property
-  def target_value(self) -> float:
-    return 0.9
+  def validation_target_value(self) -> float:
+    return 0.97
+
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
+    return eval_result['test/accuracy'] > self.test_target_value
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.97
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -115,6 +132,12 @@ class BaseMnistWorkload(spec.Workload):
   def eval_period_time_sec(self) -> int:
     return 10
 
+  @abc.abstractmethod
+  def _normalize_eval_metrics(
+      self, num_examples: int, total_metrics: Dict[str,
+                                                   Any]) -> Dict[str, float]:
+    """Normalize eval metrics."""
+
   def _build_input_queue(
       self,
       data_rng: spec.RandomState,
@@ -124,15 +147,18 @@ class BaseMnistWorkload(spec.Workload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    ds = get_mnist_dataset(
+    del num_batches
+    ds = _build_mnist_dataset(
         data_rng=data_rng,
         num_train_examples=self.num_train_examples,
+        num_validation_examples=self.num_validation_examples,
         train_mean=self.train_mean,
         train_stddev=self.train_stddev,
         split=split,
         data_dir=data_dir,
-        global_batch_size=global_batch_size)
-
+        global_batch_size=global_batch_size,
+        cache=cache,
+        repeat_final_dataset=repeat_final_dataset)
     ds = itertools.cycle(ds)
     return ds
 
@@ -165,7 +191,12 @@ class BaseMnistWorkload(spec.Workload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          data_rng, split, data_dir, global_batch_size=global_batch_size)
+          data_rng=data_rng,
+          split=split,
+          data_dir=data_dir,
+          global_batch_size=global_batch_size,
+          cache=True,
+          repeat_final_dataset=True)
 
     total_metrics = {
         'accuracy': 0.,
@@ -183,10 +214,5 @@ class BaseMnistWorkload(spec.Workload):
       total_metrics = {
           k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
-    if FLAGS.framework == 'jax':
-      total_metrics = jax_utils.unreplicate(total_metrics)
-      return {k: float(v / num_examples) for k, v in total_metrics.items()}
-    elif USE_PYTORCH_DDP:
-      for metric in total_metrics.values():
-        dist.all_reduce(metric)
-    return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+    return self._normalize_eval_metrics(num_examples, total_metrics)

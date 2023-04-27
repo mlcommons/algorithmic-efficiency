@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from absl import logging
 import jax
+from torch import nn
 import torch.nn.functional as F
 
 
@@ -56,12 +57,13 @@ ParameterShapeTree = Dict[str, Dict[str, Shape]]
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterContainer = Dict[ParameterKey, Dict[ParameterKey, Tensor]]
+ParameterContainer = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]],
+                           nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
 
-OptimizerState = Dict[str, Any]
+OptimizerState = Union[Dict[str, Any], Tuple[Any, Any]]
 Hyperparameters = Any
 Timing = int
 Steps = int
@@ -69,34 +71,6 @@ Steps = int
 # BN EMAs.
 ModelAuxiliaryState = Any
 ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
-
-UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
-InitOptimizerFn = Callable[[ParameterShapeTree, Hyperparameters, RandomState],
-                           OptimizerState]
-UpdateParamsFn = Callable[[
-    ParameterContainer,
-    ParameterTypeTree,
-    ModelAuxiliaryState,
-    Hyperparameters,
-    Tensor,
-    Tensor,
-    LossType,
-    OptimizerState,
-    List[Tuple[int, float]],
-    int,
-    RandomState
-],
-                          UpdateReturn]
-DataSelectionFn = Callable[[
-    Iterator[Tuple[Tensor, Tensor]],
-    OptimizerState,
-    ParameterContainer,
-    LossType,
-    Hyperparameters,
-    int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
 
 
 class Workload(metaclass=abc.ABCMeta):
@@ -110,18 +84,24 @@ class Workload(metaclass=abc.ABCMeta):
     self.metrics_logger = None
 
   @abc.abstractmethod
-  def has_reached_goal(self, eval_result: float) -> bool:
-    """Return whether or not the workload goal has been reached."""
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
+    """Return whether or not the workload validation goal has been reached."""
 
   @abc.abstractmethod
-  def _build_input_queue(self,
-                         data_rng: RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = None,
-                         repeat_final_dataset: Optional[bool] = None,
-                         num_batches: Optional[int] = None) -> Dict[str, Any]:
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
+    """Return whether or not the workload test goal has been reached."""
+
+  @abc.abstractmethod
+  def _build_input_queue(
+      self,
+      data_rng: RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, Any]]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -135,15 +115,20 @@ class Workload(metaclass=abc.ABCMeta):
     examples.
     """
 
-  def attach_metrics_logger(self, metrics_logger):
+  def attach_metrics_logger(self, metrics_logger) -> None:
     """Attaches a metric logger to workload."""
     self.metrics_logger = metrics_logger
     return
 
   @property
   @abc.abstractmethod
-  def target_value(self):
-    """The target value to reach."""
+  def validation_target_value(self) -> float:
+    """The validation target value to reach."""
+
+  @property
+  @abc.abstractmethod
+  def test_target_value(self) -> float:
+    """The test target value to reach."""
 
   @property
   @abc.abstractmethod
@@ -177,12 +162,12 @@ class Workload(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def train_mean(self):
+  def train_mean(self) -> Any:
     """The mean of the training data."""
 
   @property
   @abc.abstractmethod
-  def train_stddev(self):
+  def train_stddev(self) -> Any:
     """The stddev of the training data."""
 
   @property
@@ -198,7 +183,7 @@ class Workload(metaclass=abc.ABCMeta):
   @property
   @abc.abstractmethod
   def step_hint(self) -> int:
-    """Max num steps the target setting algo was given to reach the target."""
+    """Max num steps the baseline algo was given to reach the target."""
 
   @property
   def param_shapes(self):
@@ -249,7 +234,7 @@ class Workload(metaclass=abc.ABCMeta):
                mode: ForwardPassMode,
                rng: RandomState,
                update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
-    """return logits_batch"""
+    """Return logits_batch"""
     # Possible side effect of updating BN.
 
   def output_activation_fn(self, logits_batch: Tensor,
@@ -281,8 +266,13 @@ class Workload(metaclass=abc.ABCMeta):
       label_batch: Union[Tuple[Tensor, Tensor], Tensor],
       logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
       mask_batch: Optional[Tensor] = None,
-      label_smoothing: float = 0.0) -> Tuple[Tensor, Tensor]:  # differentiable
-    """Return (correct scalar average loss, 1-d array of per-example losses)."""
+      label_smoothing: float = 0.0) -> Dict[str, Tensor]:  # differentiable
+    """Evaluate the (masked) loss function at (label_batch, logits_batch).
+
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
 
   @abc.abstractmethod
   def _eval_model_on_split(self,
@@ -359,6 +349,15 @@ class TrainingCompleteError(Exception):
 # Training algorithm track submission functions, to be filled in by the
 # submitter.
 
+InitOptimizerFn = Callable[[
+    Workload,
+    ParameterContainer,
+    ModelAuxiliaryState,
+    Hyperparameters,
+    RandomState
+],
+                           OptimizerState]
+
 
 def init_optimizer_state(workload: Workload,
                          model_params: ParameterContainer,
@@ -369,11 +368,25 @@ def init_optimizer_state(workload: Workload,
   pass
 
 
-_UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
+UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
+UpdateParamsFn = Callable[[
+    Workload,
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparameters,
+    Dict[str, Tensor],
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                          UpdateReturn]
 
 
 # Each call to this function is considered a "step".
-# Can raise a TrainingCompleteError if it believe it has achieved the goal and
+# Can raise a TrainingCompleteError if it believes it has achieved the goal and
 # wants to end the run and receive a final free eval. It will not be restarted,
 # and if has not actually achieved the goal then it will be considered as not
 # achieved the goal and get an infinite time score. Most submissions will likely
@@ -388,15 +401,28 @@ def update_params(workload: Workload,
                   optimizer_state: OptimizerState,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: RandomState) -> _UpdateReturn:
+                  rng: RandomState) -> UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
+
+
+DataSelectionFn = Callable[[
+    Workload,
+    Iterator[Dict[str, Any]],
+    OptimizerState,
+    ParameterContainer,
+    LossType,
+    Hyperparameters,
+    int,
+    RandomState
+],
+                           Tuple[Tensor, Tensor]]
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
 def data_selection(workload: Workload,
-                   input_queue: Iterator[Dict[str, Tensor]],
+                   input_queue: Iterator[Dict[str, Any]],
                    optimizer_state: OptimizerState,
                    current_param_container: ParameterContainer,
                    model_state: ModelAuxiliaryState,
@@ -411,6 +437,6 @@ def data_selection(workload: Workload,
   pass
 
 
-def get_batch_size(workload_name):
+def get_batch_size(workload_name: str) -> int:
   """Return the global batch size to use for a given workload."""
   pass
