@@ -20,45 +20,45 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-
 MAX_GLOBAL_STEPS = 5
 
 baselines = [
-    'adafactor', 
-    'adamw', 
-    'lamb', 
-    'momentum', 
-    'nadamw', 
-    'nesterov', 
-    'sam', 
+    'adafactor',
+    'adamw',
+    'lamb',
+    'momentum',
+    'nadamw',
+    'nesterov',
+    'sam',
     'shampoo',
-    ]
+]
 frameworks = [
     # 'pytorch', # will enable this once all pytorch baselines are ready
     'jax',
-    ]
-
+]
 
 named_parameters = []
 for framework in frameworks:
-    for baseline in baselines:
-        named_parameters.append(dict(
+  for baseline in baselines:
+    named_parameters.append(
+        dict(
             testcase_name=f'{baseline}_{framework}',
             workload='mnist',
             framework=f'{framework}',
             submission_path=(f'baselines/{baseline}/{framework}/submission.py'),
-            tuning_search_space=(f'baselines/{baseline}/tuning_search_space.json')
-        ))
+            tuning_search_space=(
+                f'baselines/{baseline}/tuning_search_space.json')))
+
 
 class BaselineTest(parameterized.TestCase):
   """Tests for reference submissions."""
 
   @parameterized.named_parameters(*named_parameters)
   def test_baseline_submission(self,
-                      workload,
-                      framework,
-                      submission_path,
-                      tuning_search_space):
+                               workload,
+                               framework,
+                               submission_path,
+                               tuning_search_space):
     FLAGS.framework = framework
     workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload])
     workload_metadata['workload_path'] = os.path.join(
