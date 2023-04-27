@@ -38,16 +38,16 @@ frameworks = [
 ]
 
 named_parameters = []
-for framework in frameworks:
-  for baseline in baselines:
+for f in frameworks:
+  for b in baselines:
     named_parameters.append(
         dict(
-            testcase_name=f'{baseline}_{framework}',
+            testcase_name=f'{b}_{f}',
             workload='mnist',
-            framework=f'{framework}',
-            submission_path=(f'baselines/{baseline}/{framework}/submission.py'),
+            framework=f'{f}',
+            submission_path=(f'baselines/{b}/{f}/submission.py'),
             tuning_search_space=(
-                f'baselines/{baseline}/tuning_search_space.json')))
+                f'baselines/{b}/tuning_search_space.json')))
 
 
 class BaselineTest(parameterized.TestCase):
