@@ -1,7 +1,5 @@
 FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
-ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
-
 # Installing machine packages
 RUN echo "Setting up machine"
 RUN apt-get update
@@ -23,13 +21,16 @@ RUN mkdir -p experiment_runs/
 
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
-RUN git clone $GIT_URL && cd algorithmic-efficiency && git checkout aa9a68a
+ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
+RUN git clone $GIT_URL && cd algorithmic-efficiency 
 
 RUN cd algorithmic-efficiency && pip install -e '.[full]'
-RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
-
 RUN cd algorithmic-efficiency && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
 RUN cd algorithmic-efficiency && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
+
+RUN cd algorithmic-efficiency && git fetch origin 
+RUN cd algorithmic-efficiency && git pull && git checkout 9e8168
 
 # Todo: remove this, this is temporary for developing
 COPY scripts/startup.sh /algorithmic-efficiency/docker/scripts/startup.sh

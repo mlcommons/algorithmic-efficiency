@@ -6,6 +6,7 @@ import logging
 import os.path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 from typing import Any, Optional

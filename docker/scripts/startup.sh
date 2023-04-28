@@ -3,7 +3,7 @@
 # Defaults
 DEBUG_MODE="false"
 
-while getopts d:f:s:t:e:w:b:m: flag
+while getopts d:f:s:t:e:w:b:m:o:c: flag
 do
     case "${flag}" in
         d) DATASET=${OPTARG};;
@@ -68,14 +68,14 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
     fi
 
     # Set overwrite flag to false by default if not set
-    if [[ ! -z ${OVERWRITE+x} ]]
+    if [[  -z ${OVERWRITE+x} ]]
     then 
-        OVERWRITE="False"
+        OVERWRITE='False'
     fi
 
-    if [[ ! -z ${SAVE_CHECKPOINTS+x} ]]
+    if [[  -z ${SAVE_CHECKPOINTS+x} ]]
     then 
-        SAVE_CHECKPOINTS="False"
+        SAVE_CHECKPOINTS='True'
     fi
 
     # Define special flags for imagenet and librispeech workloads

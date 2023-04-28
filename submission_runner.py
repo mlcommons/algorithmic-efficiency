@@ -625,7 +625,8 @@ def main(_):
                                               FLAGS.workload,
                                               FLAGS.framework,
                                               experiment_name,
-                                              FLAGS.resume_last_run)
+                                              FLAGS.resume_last_run,
+                                              FLAGS.overwrite)
 
   score = score_submission_on_workload(
       workload=workload,
@@ -639,7 +640,7 @@ def main(_):
       tuning_search_space=FLAGS.tuning_search_space,
       num_tuning_trials=FLAGS.num_tuning_trials,
       log_dir=logging_dir_path,
-      save_checkpoints=FLAGS.save_checkpoint)
+      save_checkpoints=FLAGS.save_checkpoints)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
