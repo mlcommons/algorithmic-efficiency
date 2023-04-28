@@ -158,8 +158,7 @@ flags.DEFINE_boolean(
     'overwrite',
     False,
     'Whether to overwrite the experiment with identical experiment_dir and'
-    'experiment_name.'
-)
+    'experiment_name.')
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
