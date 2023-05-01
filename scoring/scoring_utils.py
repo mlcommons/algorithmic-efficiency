@@ -1,8 +1,10 @@
 import os
 import pandas as pd
 import json
+import re
 
-metrics_prefix = 'Metrics: '
+trial_line_regex = '(.*) --- Tuning run (\d+)/(\d+) ---'
+metrics_line_regex = '(.*) Metrics: ({.*})'
 
 
 #### File IO helper functions ###
@@ -19,17 +21,7 @@ def get_logfile_paths(logdir):
 
 
 ### Logfile reading helper functions ###
-def get_metrics_line(logfile):
-    """Extracts the metrics line from a logfile.
-    """
-    with open(logfile, 'r') as f:
-        for line in f:
-            if metrics_prefix in line:
-                return line
-    raise ValueError(f"Log file does not have a metrics line {logfile}")
-
-
-def convert_metrics_line_to_dict(line):
+def decode_metrics_line(line):
     """Convert metrics line to dict.
     Args:
         line: str 
@@ -41,7 +33,7 @@ def convert_metrics_line_to_dict(line):
                   'step':[100, 200, 300]}
     """
     eval_results = []
-    dict_str = line.split(metrics_prefix)[1]
+    dict_str = re.match(metrics_line_regex, line).group(2)
     dict_str = dict_str.replace("'", "\"")
     dict_str = dict_str.replace("(", "")
     dict_str = dict_str.replace(")", "")
@@ -63,28 +55,40 @@ def convert_metrics_line_to_dict(line):
         for key in eval_results_dict.keys():
             val = eval_results_dict[key]
             dict_of_lists[key].append(val)
-    
+
     return dict_of_lists
+
+def get_trials_dict(logfile):
+    """Get a dict of dicts with metrics for each 
+    tuning run.
+
+    Returns:
+        trials_dict: Dict of dicts where outer dict keys
+            are trial indices and inner dict key-value pairs
+            are metrics and list of values.
+            e.g. {'trial_0': {'loss':[5.1, 3.2, 1.0],
+                            'step':[100, 200, 300]},
+                  'trial_1': {'loss':[5.1, 3.2, 1.0],
+                            'step':[100, 200, 300]}}
+    """
+    trial=0
+    metrics_lines = {}
+    with open(logfile, 'r') as f:
+        for line in f:
+            if re.match(trial_line_regex, line):
+                trial = re.match(trial_line_regex, line).group(2)
+            if re.match(metrics_line_regex, line):
+                metrics_lines[trial] = decode_metrics_line(line)
+    if len(metrics_lines) == 0:
+        raise ValueError(f"Log file does not have a metrics line {logfile}")
+    return metrics_lines
 
 
 ### Results formatting helper functions ### 
-def get_results_dict(logfile):
-    """
-    Returns results as dict.
-
-    Returns:
-        Dict where keys are metric names and values
-        are list of measurements, e.g.:
-        {'loss':[5.1, 3.2, 1.0],
-         'step':[100, 200, 300]}
-    """
-    results_line = get_metrics_line(logfile)
-    results_dict = convert_metrics_line_to_dict(results_line)
-    return results_dict
-
-
-def get_tuning_run_df(logfile):
-    """Get dataframe for single tuning run from logfile.
+def get_trials_df_dict(logfile):
+    """Get a dict with dataframes with metrics for each 
+    tuning run. 
+    Preferable format for saving dataframes for tables.
     Args:
         logfile: str path to logfile.
 
@@ -92,24 +96,20 @@ def get_tuning_run_df(logfile):
         DataFrame where indices are index of eval and 
         columns are metric names.
     """
-    line = get_metrics_line(logfile)
-    tuning_run_dict = convert_metrics_line_to_dict(line)
-    return pd.DataFrame(tuning_run_dict)
+    trials_dict = get_trials_dict(logfile)
+    trials_df_dict = {}
+    for trial in trials_dict:
+        metrics = trials_dict[trial]
+        trials_df_dict[trial] = pd.DataFrame(metrics)
+    return trials_df_dict
 
 
-def get_trials_df(experiment_dir):
-    """Gets a df of per trial results from an experiment_dir.
-    This df can be provided as input to 
+def get_trials_df(logfile):
+    """Gets a df of per trial results from a logfile.
+    The output df can be provided as input to 
     scoring.compute_performance_profiles. 
     Args:
         experiment_dir: str
-        trials_dict: Dict(Dict) where outer dict keys
-            are trial indices and inner dict key-value pairs
-            are metrics and list of values.
-            e.g. {'trial_0': {'loss':[5.1, 3.2, 1.0],
-                            'step':[100, 200, 300]},
-                'trial_1': {'loss':[5.1, 3.2, 1.0],
-                            'step':[100, 200, 300]}}
 
     Returns:
         df: DataFrame where indices are trials, columns are 
@@ -122,17 +122,8 @@ def get_trials_df(experiment_dir):
             | trial_1 | [5.1, 3.2, 1.0] | [100, 200, 300] |
             +---------+-----------------+-----------------+
     """
-    trial_dirs = os.listdir(experiment_dir)
-    trials_dict = {}
-    for trial_dir in trial_dirs:
-        logfile_paths = get_logfile_paths(os.path.join(experiment_dir, trial_dir))
-        if len(logfile_paths) > 1:
-            logfile_path=logfile_paths[-1]
-        else:
-            logfile_path=logfile_paths[0]
-        results_dict = get_results_dict(logfile_path)
-        trials_dict[trial_dir] = results_dict
-    df =  pd.DataFrame(trials_dict).transpose()
+    trials_dict = get_trials_dict(logfile)
+    df = pd.DataFrame(trials_dict).transpose()
     return df
 
 
