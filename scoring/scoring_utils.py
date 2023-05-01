@@ -102,7 +102,9 @@ def get_tuning_run_df(logfile):
 
 
 def get_trials_df(experiment_dir):
-    """Convert dict of trials to df.
+    """Gets a df of per trial results from an experiment_dir.
+    This df can be provided as input to 
+    scoring.compute_performance_profiles. 
     Args:
         experiment_dir: str
         trials_dict: Dict(Dict) where outer dict keys
