@@ -14,13 +14,14 @@ class Test(absltest.TestCase):
   def test_get_trials_df_dict(self):
     trials_dict = scoring_utils.get_trials_df_dict(TEST_LOGFILE)
     for trial in trials_dict:
-        df = trials_dict[trial]
-        self.assertEqual(len(df.index), NUM_EVALS)
+      df = trials_dict[trial]
+      self.assertEqual(len(df.index), NUM_EVALS)
 
   def test_get_trials_df(self):
     df = scoring_utils.get_trials_df(TEST_LOGFILE)
     for column in df.columns:
-        self.assertEqual(len(df.at['1', column]), NUM_EVALS)
+      self.assertEqual(len(df.at['1', column]), NUM_EVALS)
+
 
 if __name__ == '__main__':
   absltest.main()
