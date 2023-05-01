@@ -1,8 +1,8 @@
 import json
 import os
-import pandas as pd
 import re
 
+import pandas as pd
 
 trial_line_regex = '(.*) --- Tuning run (\d+)/(\d+) ---'
 metrics_line_regex = '(.*) Metrics: ({.*})'
