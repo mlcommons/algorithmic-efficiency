@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Benchmark Rules
 
-**Version:** 0.0.15 *(Last updated 24 April 2023)*
+**Version:** 0.0.16 *(Last updated 28 April 2023)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -379,12 +379,12 @@ The currently eight fixed workloads are:
 
 |            | **Task**                      | **Dataset** | **Model**               | **Loss** | **Metric** | Validation<br>**Target** | Test<br>**Target**   | Maximum<br>**Runtime** <br>(in secs) |
 |------------|-------------------------------|-------------|-------------------------|----------|------------|--------------------------|----------------------|------------------------|
-| **1**      | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall               | CE       | CE         | 0.124225                 | 0.127                |       21,600                 |
-| **2**      | MRI reconstruction            | fastMRI     | U-Net                   | L1       | SSIM       | 0.735102                 | 0.743146             |          10,800              |
-| **3<br>4** | Image classification          | ImageNet    | ResNet-50<br>ViT        | CE       | ER         | 0.22835<br>0.22829        | 0.34595<br>0.3475    |        111,600    <br> 111,600            |
-| **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.084202<br>0.120674     | 0.050427<br>0.068751 |       <br>72,000                 |
-| **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.283801                 | 0.270238             |       12,000                 |
-| **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.6446                  | 30.5703              |       80,000                 |
+| **1**      | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall               | CE       | CE         | 0.123649                 | 0.126060                |       21,600                 |
+| **2**      | MRI reconstruction            | fastMRI     | U-Net                   | L1       | SSIM       | 0.7344                   | 0.741652             |          10,800              |
+| **3<br>4** | Image classification          | ImageNet    | ResNet-50<br>ViT        | CE       | ER         | 0.22569<br>0.22691        | 0.3440<br>0.3481    |        111,600    <br> 111,600            |
+| **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.078477<br>0.1162     | 0.046973<br>0.068093 |       <br>72,000                 |
+| **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       12,000                 |
+| **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       80,000                 |
 
 #### Randomized workloads
 
@@ -420,7 +420,7 @@ For self-reported results, it is acceptable to perform the tuning trials on hard
 
 #### Defining target performance
 
-Target performances on the validation and test sets will be defined for each [workload](#workloads) separately. For the [fixed workloads](#fixed-workloads), we take the best performance achievable by one of four standard algorithms (AdamW, NadamW, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a slightly larger tuning budget of $200$ trials to guarantee competitive performance. Once the best algorithm and its hyperparameters are determined, training is repeated $20$ times, with the target performances being the median metric over those $20$ runs.
+Target performances on the validation and test sets will be defined for each [workload](#workloads) separately. For the [fixed workloads](#fixed-workloads), we take the best performance achievable by one of four standard algorithms (AdamW, NadamW, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a slightly larger tuning budget of $200$ trials to guarantee competitive performance. Once the best algorithm and its hyperparameters are determined, training is repeated $20$ times. The median of the best achieved validation errors across seeds is used as the *validation* target. Out of the $10$ repeated runs that achieved this validation target, we took the worst achieved test error across seeds as our *test* target. Taking the median validation performance after rerunning the best hyperparameter point prevents our procedure from selecting a lucky outlier.
 To save computational resources, we only tuned two training algorithms instead of four, for the [randomized workloads](#randomized-workloads). For each workload variant, we used NadamW and the other best-performing training algorithm on the corresponding fixed workload the randomized workload is based on.
 
 Both [tuning rulesets](#tuning) will use the same target performances. The runtime of the target-setting algorithms on each workload will be chosen to match published results and is constrained by the overall time budget of roughly a single week for all fixed workloads. The `max_runtime` for submissions on each workload is $\frac{1}{3}$ longer than the runtime of the target-setting algorithms (this `max_runtime` will be three times as much for the self-tuning ruleset, see the [Self-tuning ruleset](#self-tuning-ruleset) section).
