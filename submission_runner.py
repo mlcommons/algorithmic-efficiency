@@ -11,7 +11,7 @@ python3 submission_runner.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
     --experiment_dir=/home/znado/experiment_dir \
-    --experiment_name=baseline
+    --experiment_name=baseline 
 """
 
 import datetime
@@ -154,6 +154,14 @@ flags.DEFINE_boolean('profile', False, 'Whether to produce profiling output.')
 flags.DEFINE_integer('max_global_steps',
                      None,
                      'Maximum number of update steps.')
+flags.DEFINE_boolean(
+    'overwrite',
+    False,
+    'Whether to overwrite the experiment with identical experiment_dir and'
+    'experiment_name.')
+flags.DEFINE_boolean('save_checkpoints',
+                     True,
+                     'Whether or not to checkpoint the model at every eval.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -476,7 +484,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  imagenet_v2_data_dir: Optional[str] = None,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None):
+                                 log_dir: Optional[str] = None,
+                                 save_checkpoints: Optional[bool] = True):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -558,7 +567,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      hyperparameters, rng,
                                      profiler,
                                      max_global_steps,
-                                     tuning_dir_name)
+                                     tuning_dir_name,
+                                     save_checkpoints=save_checkpoints,)
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
@@ -578,7 +588,8 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, max_global_steps, log_dir)
+          None, rng, profiler, max_global_steps, log_dir,
+          save_checkpoints=save_checkpoints)
   return score
 
 
@@ -613,7 +624,8 @@ def main(_):
                                               FLAGS.workload,
                                               FLAGS.framework,
                                               experiment_name,
-                                              FLAGS.resume_last_run)
+                                              FLAGS.resume_last_run,
+                                              FLAGS.overwrite)
 
   score = score_submission_on_workload(
       workload=workload,
@@ -626,7 +638,8 @@ def main(_):
       imagenet_v2_data_dir=FLAGS.imagenet_v2_data_dir,
       tuning_search_space=FLAGS.tuning_search_space,
       num_tuning_trials=FLAGS.num_tuning_trials,
-      log_dir=logging_dir_path)
+      log_dir=logging_dir_path,
+      save_checkpoints=FLAGS.save_checkpoints)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
