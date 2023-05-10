@@ -137,6 +137,7 @@ class MnistWorkload(BaseMnistWorkload):
     self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     self._model.to(DEVICE)
+    self._model = torch.compile(self._model)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         self._model = DDP(self._model, device_ids=[RANK], output_device=RANK)
