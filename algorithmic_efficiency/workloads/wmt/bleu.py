@@ -44,8 +44,8 @@ def corpus_bleu(sys_stream: Sequence[str],
   sys_len = 0
   ref_len = 0
 
-  correct = [0 for _ in range(sacrebleu.NGRAM_ORDER)]
-  total = [0 for _ in range(sacrebleu.NGRAM_ORDER)]
+  correct = [0 for _ in range(sacrebleu.metrics.bleu.MAX_NGRAM_ORDER)]
+  total = [0 for _ in range(sacrebleu.metrics.bleu.MAX_NGRAM_ORDER)]
 
   # look for already-tokenized sentences
   tokenized_count = 0
