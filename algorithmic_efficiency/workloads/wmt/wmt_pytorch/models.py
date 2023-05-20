@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch import Tensor
 from torch.nn.functional import _in_projection
-from torch.nn.functional import _scaled_dot_product_attention
+from torch.nn.functional import scaled_dot_product_attention
 import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
@@ -1078,7 +1078,7 @@ def multi_head_attention_forward(
   #
   # (deep breath) calculate attention and out projection
   #
-  attn_output, attn_output_weights = _scaled_dot_product_attention(
+  attn_output, attn_output_weights = scaled_dot_product_attention(
       q, k, v, attn_mask, dropout_rate)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
