@@ -35,7 +35,7 @@ def corpus_bleu(sys_stream: Sequence[str],
       :return: A BLEU object containing everything you'd want.
   """
 
-  # Add some robustness to the input arguments
+  # Add some robustness to the input arguments.
   if isinstance(sys_stream, str):
     sys_stream = [sys_stream]
   if isinstance(ref_streams, str):
@@ -44,10 +44,10 @@ def corpus_bleu(sys_stream: Sequence[str],
   sys_len = 0
   ref_len = 0
 
-  correct = [0 for _ in range(sacrebleu.metrics.bleu.MAX_NGRAM_ORDER)]
-  total = [0 for _ in range(sacrebleu.metrics.bleu.MAX_NGRAM_ORDER)]
+  correct = [0 for _ in range(sacrebleu.NGRAM_ORDER)]
+  total = [0 for _ in range(sacrebleu.NGRAM_ORDER)]
 
-  # look for already-tokenized sentences
+  # Look for already-tokenized sentences.
   tokenized_count = 0
 
   fhs = [sys_stream] + ref_streams
