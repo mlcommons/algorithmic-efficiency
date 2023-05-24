@@ -8,9 +8,7 @@ paper : https://arxiv.org/abs/1512.02595
 # webpage : https://bastings.github.io/
 """
 
-import functools
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union, TypeVar, cast
-import flax
+from typing import Any, Dict, List, Optional, Tuple, Union
 from flax import linen as nn
 from flax import struct
 import jax
