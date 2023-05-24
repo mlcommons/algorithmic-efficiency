@@ -23,24 +23,18 @@ import struct
 import time
 from typing import Any, Dict, Optional, Tuple
 
-from absl import app
-from absl import flags
-from absl import logging
 import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
+from absl import app, flags, logging
 
-from algorithmic_efficiency import checkpoint_utils
-from algorithmic_efficiency import halton
-from algorithmic_efficiency import logger_utils
+from algorithmic_efficiency import checkpoint_utils, halton, logger_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.profiler import Profiler
-from algorithmic_efficiency.pytorch_utils import pytorch_init
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.pytorch_utils import sync_ddp_time
+from algorithmic_efficiency.profiler import PassThroughProfiler, Profiler
+from algorithmic_efficiency.pytorch_utils import (pytorch_init, pytorch_setup,
+                                                  sync_ddp_time)
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.

@@ -15,7 +15,7 @@ from flax import linen as nn
 from flax import struct
 import jax
 import jax.numpy as jnp
-from jax.experimental import rnn 
+from jax.experimental import rnn
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
@@ -30,7 +30,6 @@ Dtype = Any
 Carry = Any
 CarryHistory = Any
 Output = Any
-
 
 
 @struct.dataclass
@@ -320,6 +319,7 @@ class BatchNorm(nn.Module):
     return bn_output
     # return inputs
 
+
 class CudnnLSTM(nn.Module):
   features: int
   num_layers: int = 1
@@ -348,8 +348,10 @@ class CudnnLSTM(nn.Module):
     weights = self.param(
         'weights',
         rnn.init_lstm_weight,
-        input_size, self.features,
-        self.num_layers, self.bidirectional,
+        input_size,
+        self.features,
+        self.num_layers,
+        self.bidirectional,
     )
 
     if initial_states is None:
@@ -365,7 +367,7 @@ class CudnnLSTM(nn.Module):
       h_0, c_0 = initial_states
 
     if segmentation_mask is not None:
-      seq_lengths = jnp.sum(1-segmentation_mask, axis=1, dtype=jnp.int32)
+      seq_lengths = jnp.sum(1 - segmentation_mask, axis=1, dtype=jnp.int32)
     else:
       seq_lengths = jnp.full((batch_size,), inputs.shape[1], dtype=jnp.int32)
 
@@ -393,10 +395,15 @@ class CudnnLSTM(nn.Module):
 
   @nn.nowrap
   def unpack_weights(
-    self, weights: Array, input_size: int
-  ) -> Tuple[Dict[int, Array], Dict[int, Array], Dict[int, Array], Dict[int, Array]]:
+      self, weights: Array, input_size: int
+  ) -> Tuple[
+      Dict[int, Array], Dict[int, Array], Dict[int, Array], Dict[int, Array]]:
     return jax.experimental.rnn.unpack_lstm_weights(
-      weights, input_size, self.features, self.num_layers, self.bidirectional,
+        weights,
+        input_size,
+        self.features,
+        self.num_layers,
+        self.bidirectional,
     )
 
 
@@ -413,12 +420,11 @@ class BatchRNN(nn.Module):
                        config.dtype,
                        config.batch_norm_momentum,
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
-    output = cudnn_lstm.CudnnLSTM(
+    output = CudnnLSTM(
         input_size=config.encoder_dim,
         hidden_size=config.encoder_dim // 2,
         bidirectional=config.bidirectional,
         num_layers=1)(inputs, input_paddings)
-
 
     return output
 
