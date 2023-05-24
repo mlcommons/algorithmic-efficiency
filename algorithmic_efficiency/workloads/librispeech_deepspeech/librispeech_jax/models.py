@@ -9,10 +9,11 @@ paper : https://arxiv.org/abs/1512.02595
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union
-from flax import linen as nn
-from flax import struct
+
 import jax
 import jax.numpy as jnp
+from flax import linen as nn
+from flax import struct
 from jax.experimental import rnn
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
