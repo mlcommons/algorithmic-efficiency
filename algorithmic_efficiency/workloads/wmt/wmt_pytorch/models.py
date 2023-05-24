@@ -293,7 +293,7 @@ class Decoder(nn.Module):
         memory,
         tgt_mask=tgt_mask,
         memory_mask=memory_mask,
-        decode=decode,
+        is_causal=decode,
         max_len=max_len,
         cache=cache)
     if decode:
@@ -761,7 +761,7 @@ class MultiheadAttention(nn.MultiheadAttention):
               need_weights: bool = True,
               attn_mask: Optional[Tensor] = None,
               average_attn_weights: bool = True,
-              decode: bool = False,
+              is_causal: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
               index: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
@@ -840,7 +840,7 @@ class MultiheadAttention(nn.MultiheadAttention):
         query, key, value = [x.transpose(1, 0) for x in (query, key, value)]
 
     name = f'decoder.layers.{index}.self_attn'
-    loc_cache = cache[name] if decode and name in cache else None
+    loc_cache = cache[name] if is_causal and name in cache else None
 
     attn_output, attn_output_weights, loc_cache = multi_head_attention_forward(
         query, key, value, self.embed_dim, self.num_heads,
@@ -851,9 +851,9 @@ class MultiheadAttention(nn.MultiheadAttention):
         k_proj_weight=self.k_proj_weight,
         v_proj_weight=self.v_proj_weight,
         average_attn_weights=average_attn_weights,
-        decode=decode, cache=loc_cache, max_len=max_len)
+        decode=is_causal, cache=loc_cache, max_len=max_len)
 
-    if decode:
+    if is_causal:
       cache[name] = loc_cache
 
     if self.batch_first and is_batched:
@@ -884,7 +884,7 @@ def multi_head_attention_forward(
     average_attn_weights: bool = True,
     decode: bool = False,
     cache: Optional[dict] = None,
-    max_len: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
+    max_len: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor], Any]:
   r"""
   Args:
     query, key, value: map a query and a set of key-value pairs to an output.
