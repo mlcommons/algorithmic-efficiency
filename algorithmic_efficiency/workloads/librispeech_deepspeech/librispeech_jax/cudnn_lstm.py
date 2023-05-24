@@ -8,10 +8,8 @@ paper : https://arxiv.org/abs/1512.02595
 # webpage : https://bastings.github.io/
 """
 
-import functools
-from typing import Any, List, Mapping, Optional, Sequence, Tuple, Type, Union
+from typing import Any, List, Optional, Tuple, Union
 
-import flax
 from flax import linen as nn
 from flax import struct
 import jax
