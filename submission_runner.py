@@ -39,6 +39,8 @@ from algorithmic_efficiency.pytorch_utils import (pytorch_init, pytorch_setup,
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
+
+# disable only for deepspeech if it works fine for other workloads.
 os.environ["XLA_FLAGS"] = "--xla_gpu_enable_triton_gemm=false"
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
