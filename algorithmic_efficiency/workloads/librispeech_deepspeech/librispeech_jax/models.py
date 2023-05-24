@@ -377,10 +377,10 @@ class CudnnLSTM(nn.Module):
           dropout=dropout, bidirectional=self.bidirectional,
       )
     else:
-      W_ih, W_hh, b_ih, b_hh = self.unpack_weights(weights, input_size)
+      Wih, Whh, bih, bhh = self.unpack_weights(weights, input_size)
       y, h, c = rnn.lstm_ref(
-        x=inputs, h_0=h_0, c_0=c_0, W_ih=W_ih, W_hh=W_hh,
-        b_ih=b_ih, b_hh=b_hh, seq_lengths=seq_lengths,
+        x=inputs, h_0=h_0, c_0=c_0, W_ih=Wih, W_hh=Whh,
+        b_ih=bih, b_hh=bhh, seq_lengths=seq_lengths,
         input_size=input_size, hidden_size=self.features,
         num_layers=self.num_layers, dropout=dropout,
         bidirectional=self.bidirectional,
