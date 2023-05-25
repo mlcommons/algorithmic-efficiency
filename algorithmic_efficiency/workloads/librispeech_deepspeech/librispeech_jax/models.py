@@ -10,11 +10,11 @@ paper : https://arxiv.org/abs/1512.02595
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import jax
-import jax.numpy as jnp
 from flax import linen as nn
 from flax import struct
+import jax
 from jax.experimental import rnn
+import jax.numpy as jnp
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
