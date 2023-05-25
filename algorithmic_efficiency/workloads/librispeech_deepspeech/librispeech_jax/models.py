@@ -421,7 +421,7 @@ class BatchRNN(nn.Module):
                        config.batch_norm_momentum,
                        config.batch_norm_epsilon)(inputs, input_paddings, train)
     output = CudnnLSTM(
-        input_size=config.encoder_dim,
+        features=config.encoder_dim,
         hidden_size=config.encoder_dim // 2,
         bidirectional=config.bidirectional,
         num_layers=1)(inputs, input_paddings)
