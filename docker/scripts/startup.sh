@@ -3,7 +3,7 @@
 # Defaults
 DEBUG_MODE="false"
 
-while getopts d:f:s:t:e:w:b:m:o:c: flag
+while getopts d:f:s:t:e:w:b:m:o:c:r: flag
 do
     case "${flag}" in
         d) DATASET=${OPTARG};;
@@ -16,6 +16,8 @@ do
         m) MAX_STEPS=${OPTARG};;
         o) OVERWRITE=${OPTARG};;
         c) SAVE_CHECKPOINTS=${OPTARG};;
+        r) RSYNC_DATA=${OPTARG};;
+
     esac
 done
 
@@ -42,7 +44,12 @@ else
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
-if [[ ! -d ${DATA_DIR} ]]
+if [[ -z ${RSYNC_DATA+x} ]]
+then 
+RSYNC_DATA='true' # Set default argument
+fi 
+
+if [[ ! -d ${DATA_DIR} ]] && [[${RSYNC_DATA} == 'true']]
 then
     mkdir -p ${DATA_DIR}
 fi 
@@ -98,7 +105,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
-        --save_checkpoints=${SAVE_CHECKPOINTS}
+        --save_checkpoints=${SAVE_CHECKPOINTS} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} 2>&1 | tee -a ${LOG_FILE}"
     echo $COMMAND > ${LOG_FILE}
