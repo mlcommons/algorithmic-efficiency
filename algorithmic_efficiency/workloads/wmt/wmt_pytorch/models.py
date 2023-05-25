@@ -1078,21 +1078,23 @@ def multi_head_attention_forward(
   #
   # (deep breath) calculate attention and out projection
   #
-  attn_output, attn_output_weights = scaled_dot_product_attention(
-      q, k, v, attn_mask, dropout_rate)
+  attn_output = scaled_dot_product_attention(q, k, v, attn_mask, dropout_rate, decode)
+
+  # attn_output, attn_output_weights = scaled_dot_product_attention(
+  #     q, k, v, attn_mask, dropout_rate)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
   attn_output = F.linear(attn_output, out_proj_weight, out_proj_bias)
   attn_output = attn_output.view(tgt_len, bsz, attn_output.size(1))
 
-  if need_weights:
-    # optionally average attention weights over heads
-    attn_output_weights = attn_output_weights.view(bsz,
-                                                   num_heads,
-                                                   tgt_len,
-                                                   src_len)
-    if average_attn_weights:
-      attn_output_weights = attn_output_weights.sum(dim=1) / num_heads
-    return attn_output, attn_output_weights, cache
-  else:
-    return attn_output, None, cache
+  # if need_weights:
+  #   # optionally average attention weights over heads
+  #   attn_output_weights = attn_output_weights.view(bsz,
+  #                                                  num_heads,
+  #                                                  tgt_len,
+  #                                                  src_len)
+  #   if average_attn_weights:
+  #     attn_output_weights = attn_output_weights.sum(dim=1) / num_heads
+  #   return attn_output, attn_output_weights, cache
+  # else:
+  return attn_output, None, cache
