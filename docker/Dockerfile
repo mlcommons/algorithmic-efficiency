@@ -26,7 +26,7 @@ RUN git clone $GIT_URL && cd algorithmic-efficiency
 
 RUN cd algorithmic-efficiency && pip install -e '.[full]'
 RUN cd algorithmic-efficiency && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-RUN cd algorithmic-efficiency && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+RUN cd algorithmic-efficiency && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
 RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
 
 RUN cd algorithmic-efficiency && git fetch origin 
