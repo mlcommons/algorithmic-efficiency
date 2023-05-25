@@ -275,9 +275,10 @@ class Decoder(nn.Module):
       targets_positions: Optional[Tensor] = None,
       inputs_segmentation: Optional[Tensor] = None,
       targets_segmentation: Optional[Tensor] = None,
-      decode: bool = False,
+      is_casual: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None) -> Tensor:
+    decode = is_casual
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
         tgt, src, inputs_segmentation, targets_segmentation,
