@@ -9,11 +9,6 @@
             0.981543
         ]
     },
-    "beta2": {
-        "feasible_points": [
-            0.9978504782314613
-        ]
-    },
     "warmup_steps": {
         "feasible_points": [
             1357

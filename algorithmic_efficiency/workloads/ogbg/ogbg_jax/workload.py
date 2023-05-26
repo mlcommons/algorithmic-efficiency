@@ -97,8 +97,9 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   def _eval_metric(self, labels, logits, masks):
     loss = self.loss_fn(labels, logits, masks)
+    mean_loss = loss['summed'] / loss['n_valid_examples']
     return metrics.EvalMetrics.single_from_model_output(
-        loss=loss['per_example'], logits=logits, labels=labels, mask=masks)
+        loss=mean_loss, logits=logits, labels=labels, mask=masks)
 
   @functools.partial(
       jax.pmap,

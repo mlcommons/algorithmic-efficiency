@@ -112,10 +112,14 @@ def get_criteo1tb_dataset(split: str,
   ds = tf.data.Dataset.list_files(
       file_paths, shuffle=shuffle, seed=shuffle_rng[0])
 
+  ds = ds.interleave(
+      tf.data.TextLineDataset,
+      cycle_length=128,
+      block_length=global_batch_size // 8,
+      num_parallel_calls=128,
+      deterministic=False)
   if shuffle:
-    ds = ds.shuffle(buffer_size=1024)
-  ds = ds.flat_map(tf.data.TextLineDataset)
-
+    ds = ds.shuffle(buffer_size=524_288 * 100, seed=shuffle_rng[1])
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
   parse_fn = functools.partial(_parse_example_fn, num_dense_features)
   ds = ds.map(parse_fn, num_parallel_calls=16)

@@ -49,7 +49,7 @@ def init_optimizer_state(workload: spec.Workload,
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
   opt_init_fn, opt_update_fn = optax.lamb(
       learning_rate=lr_schedule_fn,
-      b1=1 - hyperparameters.one_minus_beta1,
+      b1=hyperparameters.beta1,
       b2=hyperparameters.beta2,
       eps=1e-8,
       weight_decay=hyperparameters.weight_decay)
@@ -85,25 +85,16 @@ def pmapped_train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True)
-    loss_dict = workload.loss_fn(
+    loss, _ = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
         mask_batch=batch.get('weights'),
         label_smoothing=label_smoothing)
-    summed_loss = loss_dict['summed']
-    n_valid_examples = loss_dict['n_valid_examples']
-
-    return summed_loss, (n_valid_examples, new_model_state)
+    return loss, new_model_state
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
-  (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
-    current_param_container)
-  # Get correct global mean loss and grad.
-  (summed_loss, n_valid_examples, grad) = lax.psum(
-      (summed_loss, n_valid_examples, grad), axis_name='batch')
-  loss = summed_loss / n_valid_examples
-  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
-
+  (loss, new_model_state), grad = grad_fn(current_param_container)
+  (loss, grad) = lax.pmean((loss, grad), axis_name='batch')
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 
@@ -183,8 +174,6 @@ def get_batch_size(workload_name):
     return 512
   elif workload_name == 'wmt':
     return 128
-  elif workload_name == 'mnist':
-    return 16
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
