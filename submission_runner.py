@@ -46,6 +46,9 @@ from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
+# disable only for deepspeech if it works fine for other workloads.
+os.environ["XLA_FLAGS"] = "--xla_gpu_enable_triton_gemm=false"
+
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
@@ -603,6 +606,11 @@ def main(_):
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
   workload_metadata = WORKLOADS[FLAGS.workload]
+
+  # Prevent OOM on librispeech conformer.
+  if FLAGS.workload == 'librispeech_conformer':
+    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.85"
+
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
