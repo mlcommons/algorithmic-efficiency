@@ -32,7 +32,6 @@ def init_optimizer_state(workload: spec.Workload,
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
               beta1=1 - hyperparameters.one_minus_beta1,
-              decay_adam=hyperparameters.beta2,
               weight_decay=hyperparameters.weight_decay),
   }
   optimizer = optimizer_state['optimizer']
@@ -284,6 +283,8 @@ def get_batch_size(workload_name):
     return 512
   elif workload_name == 'wmt':
     return 128
+  elif workload_name == 'mnist':
+    return 16
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

@@ -19,7 +19,7 @@ def posemb_sincos_2d(h: int,
                      temperature: int = 10_000.,
                      dtype: jnp.dtype = jnp.float32) -> spec.Tensor:
   """Follows the MoCo v3 logic."""
-  y, x = jnp.mgrid[:h, :w]
+  y, x = jnp.mgrid[:h, :w]  #pylint: disable=unpacking-non-sequence
 
   if width % 4 != 0:
     raise ValueError('Width must be mult of 4 for sincos posemb.')

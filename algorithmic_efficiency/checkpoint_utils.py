@@ -161,80 +161,80 @@ def replicate_checkpoint(latest: dict,
   return pytree
 
 
-# def save_checkpoint(framework: str,
-#                     optimizer_state: spec.OptimizerState,
-#                     model_params: spec.ParameterContainer,
-#                     model_state: spec.ModelAuxiliaryState,
-#                     train_state: dict,
-#                     eval_results: list,
-#                     global_step: int,
-#                     preemption_count: int,
-#                     checkpoint_dir: str,
-#                     save_intermediate_checkpoints: bool) -> None:
-#   """Save the checkpoint in `checkpoint_dir`.
+def save_checkpoint(framework: str,
+                    optimizer_state: spec.OptimizerState,
+                    model_params: spec.ParameterContainer,
+                    model_state: spec.ModelAuxiliaryState,
+                    train_state: dict,
+                    eval_results: list,
+                    global_step: int,
+                    preemption_count: int,
+                    checkpoint_dir: str,
+                    save_intermediate_checkpoints: bool) -> None:
+  """Save the checkpoint in `checkpoint_dir`.
 
-#   Args:
-#     framework: Current framework (e.g., `jax` or `pytorch`).
-#     optimizer_state: Optimizer state.
-#     model_params: Model parameters.
-#     model_state: Model state such as batch statistics when batch
-#       normalization is used.
-#     train_state: Training state such as `last_eval_time`.
-#     eval_results: Previous evaluation results.
-#     global_step: Global step.
-#     preemption_count: Number of preemptions.
-#     checkpoint_dir: The training directory where we will look for a checkpoint.
-#     save_intermediate_checkpoints: Whether to save intermediate checkpoints.
+  Args:
+    framework: Current framework (e.g., `jax` or `pytorch`).
+    optimizer_state: Optimizer state.
+    model_params: Model parameters.
+    model_state: Model state such as batch statistics when batch
+      normalization is used.
+    train_state: Training state such as `last_eval_time`.
+    eval_results: Previous evaluation results.
+    global_step: Global step.
+    preemption_count: Number of preemptions.
+    checkpoint_dir: The training directory where we will look for a checkpoint.
+    save_intermediate_checkpoints: Whether to save intermediate checkpoints.
 
-#   Returns:
-#     A tuple of (optimizer_state, model_params, model_state,
-#     train_state, eval_results, global_step, preemption_count).
-#   """
-#   if framework == 'jax':
-#     model_params = jax.device_get(jax_utils.unreplicate(model_params))
-#     opt_state, _ = optimizer_state
-#     opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
-#     model_state = jax.device_get(jax_utils.unreplicate(model_state))
-#   else:
-#     if isinstance(model_params, torch.nn.DataParallel):
-#       model_params = model_params.module
-#     model_params = model_params.state_dict()
-#     optimizer_state_dict = {}
-#     for key in optimizer_state.keys():
-#       if hasattr(optimizer_state[key], 'state_dict'):
-#         optimizer_state_dict[key] = optimizer_state[key].state_dict()
-#       else:
-#         logging.warning(
-#             f'The optimizer state for key {key} is not saved, because '
-#             f'{type(optimizer_state[key])} has not implemented a state_dict() '
-#             'method.')
-#     opt_state = optimizer_state_dict
+  Returns:
+    A tuple of (optimizer_state, model_params, model_state,
+    train_state, eval_results, global_step, preemption_count).
+  """
+  if framework == 'jax':
+    model_params = jax.device_get(jax_utils.unreplicate(model_params))
+    opt_state, _ = optimizer_state
+    opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
+    model_state = jax.device_get(jax_utils.unreplicate(model_state))
+  else:
+    if isinstance(model_params, torch.nn.DataParallel):
+      model_params = model_params.module
+    model_params = model_params.state_dict()
+    optimizer_state_dict = {}
+    for key in optimizer_state.keys():
+      if hasattr(optimizer_state[key], 'state_dict'):
+        optimizer_state_dict[key] = optimizer_state[key].state_dict()
+      else:
+        logging.warning(
+            f'The optimizer state for key {key} is not saved, because '
+            f'{type(optimizer_state[key])} has not implemented a state_dict() '
+            'method.')
+    opt_state = optimizer_state_dict
 
-#   checkpoint_state = {
-#       'model_params': model_params,
-#       'optimizer_state': opt_state,
-#       'model_state': model_state,
-#       'train_state': train_state,
-#       'eval_results': tuple(eval_results),
-#       'global_step': global_step,
-#       'preemption_count': preemption_count,
-#   }
+  checkpoint_state = {
+      'model_params': model_params,
+      'optimizer_state': opt_state,
+      'model_state': model_state,
+      'train_state': train_state,
+      'eval_results': tuple(eval_results),
+      'global_step': global_step,
+      'preemption_count': preemption_count,
+  }
 
-#   save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
-#   if framework == 'jax':
-#     flax_checkpoints.save_checkpoint(
-#         checkpoint_dir,
-#         target=checkpoint_state,
-#         step=global_step,
-#         overwrite=True,
-#         keep=np.Inf if save_intermediate_checkpoints else 1)
-#   else:
-#     if not save_intermediate_checkpoints:
-#       checkpoint_files = gfile.glob(
-#           os.path.join(checkpoint_dir, 'checkpoint_*'))
-#       for path in checkpoint_files:
-#         logging.info('Removing checkpoint at %s', path)
-#         gfile.rmtree(path)
-#     torch.save(checkpoint_state, save_path)
+  save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
+  if framework == 'jax':
+    flax_checkpoints.save_checkpoint(
+        checkpoint_dir,
+        target=checkpoint_state,
+        step=global_step,
+        overwrite=True,
+        keep=np.Inf if save_intermediate_checkpoints else 1)
+  else:
+    if not save_intermediate_checkpoints:
+      checkpoint_files = gfile.glob(
+          os.path.join(checkpoint_dir, 'checkpoint_*'))
+      for path in checkpoint_files:
+        logging.info('Removing checkpoint at %s', path)
+        gfile.rmtree(path)
+    torch.save(checkpoint_state, save_path)
 
-#   logging.info(f'Saved checkpoint to {save_path}.')
+  logging.info(f'Saved checkpoint to {save_path}.')
