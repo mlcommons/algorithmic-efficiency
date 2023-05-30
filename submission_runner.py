@@ -319,7 +319,7 @@ def train_once(
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
     global_start_time = sync_ddp_time(global_start_time, DEVICE)
-  tran_state['last_step_end_time'] = global_start_time
+  train_state['last_step_end_time'] = global_start_time
 
   logging.info('Starting training loop.')
   goals_reached = (
