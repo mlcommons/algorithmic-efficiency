@@ -591,6 +591,8 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
       logging.info(f'Metrics: {all_metrics[ti]}')
       logging.info(f'Timing: {all_timings[ti]}')
+      num_evals = len(all_metrics[ti]['eval_results'])
+      logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
