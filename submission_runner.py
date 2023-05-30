@@ -275,6 +275,7 @@ def train_once(
       'accumulated_submission_time': 0,
       'accumulated_eval_time': 0,
       'accumulated_logging_time': 0,
+      'last_step_end_time': None,
   }
   global_step = 0
   eval_results = []
@@ -312,10 +313,13 @@ def train_once(
                                                  hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
+  if USE_PYTORCH_DDP:
+    torch.cuda.synchronize()
   global_start_time = time.time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
     global_start_time = sync_ddp_time(global_start_time, DEVICE)
+  tran_state['last_step_end_time'] = global_start_time
 
   logging.info('Starting training loop.')
   goals_reached = (
@@ -325,13 +329,9 @@ def train_once(
       not goals_reached and \
       not train_state['training_complete']:
 
-    train_step_start_time = time.time()
-
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
 
-    if USE_PYTORCH_DDP:
-      train_step_start_time = sync_ddp_time(train_step_start_time, DEVICE)
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -361,12 +361,14 @@ def train_once(
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
 
+    if USE_PYTORCH_DDP:
+      torch.cuda.synchronize()
     train_step_end_time = time.time()
     if USE_PYTORCH_DDP:
       train_step_end_time = sync_ddp_time(train_step_end_time, DEVICE)
 
     train_state['accumulated_submission_time'] += (
-        train_step_end_time - train_step_start_time)
+        train_step_end_time - train_state['last_step_end_time'])
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
@@ -375,6 +377,8 @@ def train_once(
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
+          if USE_PYTORCH_DDP:
+            torch.cuda.synchronize()
           eval_start_time = time.time()
           if USE_PYTORCH_DDP:
             eval_start_time = sync_ddp_time(eval_start_time, DEVICE)
@@ -393,6 +397,8 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
           # Save last eval time
+          if USE_PYTORCH_DDP:
+            torch.cuda.synchronize()
           eval_end_time = time.time()
           if USE_PYTORCH_DDP:
             eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
@@ -417,6 +423,8 @@ def train_once(
                        f'\tStep: {global_step}, \t{latest_eval_result}')
           eval_results.append((global_step, latest_eval_result))
 
+          if USE_PYTORCH_DDP:
+            torch.cuda.synchronize()
           logging_start_time = time.time()
           if USE_PYTORCH_DDP:
             logging_start_time = sync_ddp_time(logging_start_time, DEVICE)
@@ -438,6 +446,8 @@ def train_once(
                   checkpoint_dir=log_dir,
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
+          if USE_PYTORCH_DDP:
+            torch.cuda.synchronize()
           logging_end_time = time.time()
           if USE_PYTORCH_DDP:
             logging_end_time = sync_ddp_time(logging_end_time, DEVICE)
@@ -445,6 +455,7 @@ def train_once(
           train_state['last_eval_time'] = logging_end_time
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
+          train_state['last_step_end_time'] = logging_end_time
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
