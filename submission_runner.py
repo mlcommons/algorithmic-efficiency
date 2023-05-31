@@ -168,6 +168,18 @@ flags.DEFINE_boolean('save_checkpoints',
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
+def _get_time():
+  return time.time()
+
+def _get_time_ddp():
+  torch.cuda.synchronize()
+  t = time.time()
+  return sync_ddp_time(t, DEVICE)
+
+if USE_PYTORCH_DDP:
+  get_time = _get_time_ddp
+else:
+  get_time = _get_time
 
 def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)
@@ -315,7 +327,7 @@ def train_once(
 
   if USE_PYTORCH_DDP:
     torch.cuda.synchronize()
-  global_start_time = time.time()
+  global_start_time = get_time()
   if USE_PYTORCH_DDP:
     # Make sure all processes start training at the same time.
     global_start_time = sync_ddp_time(global_start_time, DEVICE)
@@ -361,11 +373,7 @@ def train_once(
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
 
-    if USE_PYTORCH_DDP:
-      torch.cuda.synchronize()
-    train_step_end_time = time.time()
-    if USE_PYTORCH_DDP:
-      train_step_end_time = sync_ddp_time(train_step_end_time, DEVICE)
+    train_step_end_time = get_time()
 
     train_state['accumulated_submission_time'] += (
         train_step_end_time - train_state['last_step_end_time'])
@@ -377,11 +385,7 @@ def train_once(
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
-          if USE_PYTORCH_DDP:
-            torch.cuda.synchronize()
-          eval_start_time = time.time()
-          if USE_PYTORCH_DDP:
-            eval_start_time = sync_ddp_time(eval_start_time, DEVICE)
+          eval_start_time = get_time()
           latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
@@ -397,11 +401,7 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
           # Save last eval time
-          if USE_PYTORCH_DDP:
-            torch.cuda.synchronize()
-          eval_end_time = time.time()
-          if USE_PYTORCH_DDP:
-            eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
+          eval_end_time = get_time()
 
           # Accumulate eval time
           train_state[
@@ -423,11 +423,8 @@ def train_once(
                        f'\tStep: {global_step}, \t{latest_eval_result}')
           eval_results.append((global_step, latest_eval_result))
 
-          if USE_PYTORCH_DDP:
-            torch.cuda.synchronize()
-          logging_start_time = time.time()
-          if USE_PYTORCH_DDP:
-            logging_start_time = sync_ddp_time(logging_start_time, DEVICE)
+          logging_start_time = get_time()
+     
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
@@ -446,11 +443,7 @@ def train_once(
                   checkpoint_dir=log_dir,
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
-          if USE_PYTORCH_DDP:
-            torch.cuda.synchronize()
-          logging_end_time = time.time()
-          if USE_PYTORCH_DDP:
-            logging_end_time = sync_ddp_time(logging_end_time, DEVICE)
+          logging_end_time = get_time()
 
           train_state['last_eval_time'] = logging_end_time
           train_state['accumulated_logging_time'] += (
