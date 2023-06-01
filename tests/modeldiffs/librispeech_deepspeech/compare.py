@@ -32,6 +32,8 @@ def key_transform(k):
       i = i.replace('Conv1d', 'Conv')
     elif 'MHSAwithQS' in i:
       i = i.replace('MHSAwithQS', 'SelfAttention')
+    elif 'LSTM' in i:
+      i = i.replace('LSTM', 'CudnnLSTM')
     elif 'weight' in i:
       if bn:
         i = i.replace('weight', 'scale')
@@ -54,30 +56,24 @@ def sd_transform(sd):
       else:
         out[k] = sd[k]
     elif 'LSTM' in ''.join(k):
-      if '_hh_' in ''.join(k):
-        chunks = sd[k].chunk(4)
-        for t, c in zip(['hi', 'hf', 'hg', 'ho'], chunks):
-          out[k[:-1] + ('LSTM',
-                        f'LSTMSequenceEncoder_{1 if "reverse" in k[-1] else 0}',
-                        'cell',
-                        t,
-                        k[-1].split('_')[0])] = c
-      elif '_ih_' in ''.join(k):
-        chunks = sd[k].chunk(4)
-        for t, c in zip(['ii', 'if', 'ig', 'io'], chunks):
-          out[k[:-1] + ('LSTM',
-                        f'LSTMSequenceEncoder_{1 if "reverse" in k[-1] else 0}',
-                        'cell',
-                        t,
-                        k[-1].split('_')[0])] = c
+      l = out.get(k[:-1], dict())
+      l[k[-1]] = (sd[k])
+      out[k[:-1]] = l
     else:
       out[k] = sd[k]
   keys_to_del = []
+  updates = dict()
   for k in out:
-    if (k[-2] in ['ii', 'if', 'ig', 'io']) and k[-1] == 'bias':
-      other_bias = k[:-2] + ('h' + k[-2][1], 'bias')
-      out[other_bias] = out[other_bias] + out[k]
+    if isinstance(out[k], dict):
+      kernels = ['kernel_ih_l0', 'kernel_hh_l0']
+      biases = ['bias_ih_l0', 'bias_hh_l0']
+      weights = torch.cat([out[k][i].view(-1) for i in kernels] +
+                          [out[k][i + '_reverse'].view(-1) for i in kernels] +
+                          [out[k][i].view(-1) for i in biases] +
+                          [out[k][i + '_reverse'].view(-1) for i in biases])
+      updates[k + ('weights',)] = weights
       keys_to_del.append(k)
+  out.update(updates)
   for k in keys_to_del:
     del out[k]
   return out

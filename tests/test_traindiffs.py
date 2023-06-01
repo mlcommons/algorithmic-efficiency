@@ -24,6 +24,7 @@ WORKLOADS = [
     'librispeech_deepspeech',
     'fastmri',
     'ogbg',
+    'criteo1tb'
 ]
 GLOBAL_BATCH_SIZE = 16
 
