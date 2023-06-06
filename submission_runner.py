@@ -424,7 +424,7 @@ def train_once(
           eval_results.append((global_step, latest_eval_result))
 
           logging_start_time = get_time()
-     
+
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
