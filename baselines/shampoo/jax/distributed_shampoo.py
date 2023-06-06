@@ -2047,21 +2047,6 @@ def distributed_shampoo(
     return jax.vmap(mi_pth_root)(
         xs, ps, padding_start=padding_starts, prev=prev)
 
-  # def _quantized_matrix_inverse_pth_root_vmap(qxs,
-  #                                             qds,
-  #                                             qbs,
-  #                                             ps,
-  #                                             padding_starts,
-  #                                             qpxs=None,
-  #                                             qpds=None,
-  #                                             qpbs=None):
-  #   assert (qpxs is None) == (qpds is None) == (qpbs is None)
-  #   assert (qpxs is None) == (not reuse_preconditioner)
-
-  #   def _quantized_to_float(qx, qd, qb):
-  #     qv = QuantizedValue(qx, qd, qb, qx.dtype, True, list(qx.shape))
-  #     return qv.to_float()
-
     def matrix_inverse_pth_root_wrapper(qx,
                                         qd,
                                         qb,
