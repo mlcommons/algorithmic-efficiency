@@ -1461,25 +1461,6 @@ def distributed_shampoo(
     else:
       return maybe_quantized
 
-  def _maybe_quantize_statistics(statistics_list):
-    return _maybe_quantize_matrices_with_dtype(
-        statistics_list, quantized_dtype_for_second_moment_statistics_buffers())
-
-  def _maybe_quantize_preconditioners(statistics_list):
-    return _maybe_quantize_matrices_with_dtype(
-        statistics_list,
-        quantized_dtype_for_second_moment_preconditioner_buffers())
-
-  def _maybe_quantize_matrices_with_dtype(statistics_list, quantized_dtype):
-    if quantized_dtype != jnp.float32:
-      return ([
-          QuantizedValue.from_float_value(
-              s, quantized_dtype, extract_diagonal=True)
-          for s in statistics_list
-      ])
-    else:
-      return statistics_list
-
   def _maybe_dequantize_preconditioners(preconditioner_list):
     return _maybe_dequantize_matrices_with_dtype(
         preconditioner_list,
@@ -1491,13 +1472,13 @@ def distributed_shampoo(
     else:
       return statistics_list
 
-  def _quantize_diagonal_statistics(diagonal_statistics):
-    return QuantizedValue.from_float_value(diagonal_statistics, jnp.float32)
+  # def _quantize_diagonal_statistics(diagonal_statistics):
+  #   return QuantizedValue.from_float_value(diagonal_statistics, jnp.float32)
 
-  def _quantize_momentum(momentum_statistics):
-    return QuantizedValue.from_float_value(
-        momentum_statistics,
-        quantized_dtype_for_momentum_buffers(momentum_statistics))
+  # def _quantize_momentum(momentum_statistics):
+  #   return QuantizedValue.from_float_value(
+  #       momentum_statistics,
+  #       quantized_dtype_for_momentum_buffers(momentum_statistics))
 
   def preconditioner_from_params(param):
     """Returns a Preconditioner object for given param."""
@@ -1991,13 +1972,18 @@ def distributed_shampoo(
       if _graft_type_has_diagonal_statistics():
         diagonal_statistics = jnp.zeros_like(param)
 
-      diagonal_momentum = _quantize_momentum(jnp.zeros_like(param))
-      momentum = _quantize_momentum(jnp.zeros_like(param))
+      # diagonal_momentum = _quantize_momentum(jnp.zeros_like(param))
+      # momentum = _quantize_momentum(jnp.zeros_like(param))
+      diagonal_momentum = jnp.zeros_like(param)
+      momentum = jnp.zeros_like(param)
 
       return ParameterStats(
-          _quantize_diagonal_statistics(diagonal_statistics),
-          _maybe_quantize_statistics(statistics),
-          _maybe_quantize_preconditioners(preconditioners),
+          diagonal_statistics,
+          statistics,
+          preconditioners,
+          # _quantize_diagonal_statistics(diagonal_statistics),
+          # _maybe_quantize_statistics(statistics),
+          # _maybe_quantize_preconditioners(preconditioners),
           diagonal_momentum,
           momentum,
           init_training_metrics(
@@ -2027,7 +2013,8 @@ def distributed_shampoo(
             w1=w1,
             w2=w2,
             to_float=_to_float,
-            from_float=lambda x: _maybe_quantize_statistics([x])[0],
+            from_float=lambda x: x,
+            # from_float=lambda x: _maybe_quantize_statistics([x])[0],
             precision=tensordot_precision,
         )
 
@@ -2060,20 +2047,20 @@ def distributed_shampoo(
     return jax.vmap(mi_pth_root)(
         xs, ps, padding_start=padding_starts, prev=prev)
 
-  def _quantized_matrix_inverse_pth_root_vmap(qxs,
-                                              qds,
-                                              qbs,
-                                              ps,
-                                              padding_starts,
-                                              qpxs=None,
-                                              qpds=None,
-                                              qpbs=None):
-    assert (qpxs is None) == (qpds is None) == (qpbs is None)
-    assert (qpxs is None) == (not reuse_preconditioner)
+  # def _quantized_matrix_inverse_pth_root_vmap(qxs,
+  #                                             qds,
+  #                                             qbs,
+  #                                             ps,
+  #                                             padding_starts,
+  #                                             qpxs=None,
+  #                                             qpds=None,
+  #                                             qpbs=None):
+  #   assert (qpxs is None) == (qpds is None) == (qpbs is None)
+  #   assert (qpxs is None) == (not reuse_preconditioner)
 
-    def _quantized_to_float(qx, qd, qb):
-      qv = QuantizedValue(qx, qd, qb, qx.dtype, True, list(qx.shape))
-      return qv.to_float()
+  #   def _quantized_to_float(qx, qd, qb):
+  #     qv = QuantizedValue(qx, qd, qb, qx.dtype, True, list(qx.shape))
+  #     return qv.to_float()
 
     def matrix_inverse_pth_root_wrapper(qx,
                                         qd,
@@ -2253,7 +2240,7 @@ def distributed_shampoo(
       new_preconditioners_flat.append(
           _select_preconditioner(error, p[:shape[0], :shape[1]], prev_p))
 
-    assert len(states) == len(num_statistics_per_state)
+    assert len(states) == len(num_statistics_per_state), f"{len(states)} vs {len(num_statistics_per_state)}"
     assert len(new_preconditioners_flat) == num_statistics
     assert len(new_errors_flat) == len(packed_statistics), (
         len(new_errors_flat), len(packed_statistics))
@@ -2750,45 +2737,22 @@ def distributed_shampoo(
         prev_preconditioners.extend(state.preconditioners)
         original_shapes.extend(original_shapes_for_state)
 
-    if not shard_optimizer_states:
-      # Quantization is only enabled if batch_axis_name is not set.
-      quantized_dtype = quantized_dtype_for_second_moment_statistics_buffers()
-
-      if quantized_dtype == jnp.float32:
-        return _pmap_compute_preconditioners(states,
-                                             step,
-                                             statistics,
-                                             num_statistics_per_state,
-                                             original_shapes,
-                                             exponents,
-                                             max_size,
-                                             prev_preconditioners)
-      else:
-        return _pmap_quantized_compute_preconditioners(
-            states,
-            step,
-            statistics,
-            num_statistics_per_state,
-            original_shapes,
-            exponents,
-            max_size,
-            prev_preconditioners)
-
-    else:
-      return _pjit_compute_preconditioners(states,
-                                           step,
-                                           statistics,
-                                           num_statistics_per_state,
-                                           original_shapes,
-                                           exponents,
-                                           max_size,
-                                           prev_preconditioners)
+    # if quantized_dtype == jnp.float32:
+    assert len(states) == len (num_statistics_per_state), f"{len(states)} vs {len(num_statistics_per_state)}"
+    return _pmap_compute_preconditioners(states,
+                                          step,
+                                          statistics,
+                                          num_statistics_per_state,
+                                          original_shapes,
+                                          exponents,
+                                          max_size,
+                                          prev_preconditioners)
 
   def _transform_grad(grad, state, param, step):
     """Transform per-parameter gradients."""
     preconditioner = preconditioner_from_params(param)
     sgd_update = grad
-    new_diagonal_statistics = state.diagonal_statistics.to_float()
+    new_diagonal_statistics = state.diagonal_statistics
 
     if (graft_type == GraftingType.ADAGRAD or
         graft_type == GraftingType.ADAGRAD_NORMALIZED):
@@ -2813,7 +2777,7 @@ def distributed_shampoo(
       w2 = jnp.where(beta2 == 1.0, beta2, 1.0 - beta2)
 
       new_diagonal_statistics = (
-          w1 * state.diagonal_statistics.to_float() +
+          w1 * state.diagonal_statistics +
           w2 * jnp.square(scaled_grad))
       rmsprop_update = scaled_grad / (
           jnp.sqrt(new_diagonal_statistics) + diagonal_epsilon)
@@ -2844,7 +2808,7 @@ def distributed_shampoo(
     if not _skip_preconditioning(param):
       precond_grad = preconditioner.preconditioned_grad(
           precond_grad,
-          _maybe_dequantize_preconditioners(state.preconditioners))
+          state.preconditioners)
     else:
       if graft_type == GraftingType.NONE:
         logging.error("skipping preconditioning without grafting for param %s",
@@ -2871,10 +2835,12 @@ def distributed_shampoo(
     w = (1.0 - beta1) if moving_average_for_momentum else 1.0
 
     shampoo_update_with_wd_momentum = (
-        state.momentum.to_float() * beta1 + w * shampoo_update_with_wd)
+        state.momentum * beta1 + w * shampoo_update_with_wd)
+
 
     grafting_update_with_wd_momentum = (
-        state.diagonal_momentum.to_float() * beta1 +
+        state.diagonal_momentum * beta1 +
+
         w * grafting_update_with_wd)
 
     run_shampoo = (step >= start_preconditioning_step).astype(
@@ -2905,13 +2871,12 @@ def distributed_shampoo(
     new_momentum = shampoo_update_with_wd_momentum
 
     param_stats = ParameterStats(
-        _quantize_diagonal_statistics(new_diagonal_statistics),
+        new_diagonal_statistics,
         state.statistics,
         state.preconditioners,
-        _quantize_momentum(new_diagonal_momentum),
-        _quantize_momentum(new_momentum),
+        new_diagonal_momentum,
+        new_momentum,
         state.training_metrics)
-
     return transformed_update, param_stats
 
   def update_fn(grads, state, params):
@@ -2957,10 +2922,8 @@ def distributed_shampoo(
         new_stats_flat,
         params_flat)
     updates_flat, new_stats_flat = list(zip(*outputs)) if outputs else ((), ())
-
     updates = jax.tree_util.tree_unflatten(treedef, updates_flat)
     new_stats = jax.tree_util.tree_unflatten(treedef, new_stats_flat)
-
     new_state = ShampooState(count=state.count + 1, stats=new_stats)
     return updates, new_state
 
