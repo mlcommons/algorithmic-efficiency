@@ -168,18 +168,22 @@ flags.DEFINE_boolean('save_checkpoints',
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
+
 def _get_time():
   return time.time()
+
 
 def _get_time_ddp():
   torch.cuda.synchronize()
   t = time.time()
   return sync_ddp_time(t, DEVICE)
 
+
 if USE_PYTORCH_DDP:
   get_time = _get_time_ddp
 else:
   get_time = _get_time
+
 
 def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)
