@@ -427,8 +427,8 @@ def power_iteration(
       error_tolerance: Iterative exit condition.
       precision: precision XLA related flag, the available options are: a)
         lax.Precision.DEFAULT (better step time, but not precise) b)
-        lax.Precision.HIGH (increased precision, slower) c) lax.Precision.HIGHEST
-        (best possible precision, slowest)
+        lax.Precision.HIGH (increased precision, slower) c) 
+        lax.Precision.HIGHEST (best possible precision, slowest)
       padding_start: if set, assumes rows and columns after padding_start are
         zero.
 
@@ -547,8 +547,8 @@ def matrix_inverse_pth_root(
       error_tolerance: Error indicator, useful for early termination.
       precision: precision XLA related flag, the available options are: a)
         lax.Precision.DEFAULT (better step time, but not precise) b)
-        lax.Precision.HIGH (increased precision, slower) c) lax.Precision.HIGHEST
-        (best possible precision, slowest)
+        lax.Precision.HIGH (increased precision, slower) c) 
+        lax.Precision.HIGHEST (best possible precision, slowest)
       relative_matrix_epsilon: Whether to use relative epsilon to the max eigen
         value when computing inverse-pth root.
       lobpcg_topk_precondition: If nonzero, specifies the number of top
@@ -790,8 +790,8 @@ def matrix_inverse_pth_root_eigh(
       error_tolerance: Error indicator, useful for early termination.
       precision: precision XLA related flag, the available options are: a)
         lax.Precision.DEFAULT (better step time, but not precise) b)
-        lax.Precision.HIGH (increased precision, slower) c) lax.Precision.HIGHEST
-        (best possible precision, slowest)
+        lax.Precision.HIGH (increased precision, slower) c) 
+        lax.Precision.HIGHEST (best possible precision, slowest)
       relative_matrix_epsilon: Whether to use relative epsilon to the max eigen
         value when computing inverse-pth root.
       padding_start: If the input matrix was padded, then zeros out columns and
@@ -1024,8 +1024,8 @@ def gram_weighted_update(old_stats, g, axis, w1, w2, precision=None):
       w2:  Scalar weight for new Gram matrix.
       precision: Optional precision XLA related flag, the available options are:
         a) lax.Precision.DEFAULT (better step time, but not precise) b)
-        lax.Precision.HIGH (increased precision, slower) c) lax.Precision.HIGHEST
-        (best possible precision, slowest)
+        lax.Precision.HIGH (increased precision, slower) c) 
+        lax.Precision.HIGHEST (best possible precision, slowest)
 
     Returns:
       Weighted average of old and new statistics.
@@ -1052,7 +1052,8 @@ class Preconditioner:
           param: parameter to precondition.
           block_size: Block size used to split param.
           merge_small_dims_block_size: Block size for merging dims.
-          best_effort_shape_interpretation: Whether to collapse/merge dims together.
+          best_effort_shape_interpretation: Whether to 
+          collapse/merge dims together.
           preconditioner_type: Type of preconditioner to use.
         """
     self._original_shape = param.shape
@@ -1083,7 +1084,8 @@ class Preconditioner:
           w2: Weight for new statistics.
           to_float: Optional function for converting stats to floating point.
           from_float: Optional function for converting from floating point.
-          precision: Optional precision XLA related flag, the available options are:
+          precision: Optional precision XLA related flag, the available options 
+          are:
             a) lax.Precision.DEFAULT (better step time, but not precise) b)
             lax.Precision.HIGH (increased precision, slower) c)
             lax.Precision.HIGHEST (best possible precision, slowest)
@@ -1350,9 +1352,9 @@ def distributed_shampoo(
     Args:
       learning_rate: the step size used to update the parameters.
       block_size: Block size for large layers (if > 0). Preconditioning compute
-        operation is cubic in the dimension of the tensor. Block size allows us to
-        chunk the layers into sub-layers of maximal dimension dictated by this
-        value. Use 128 as default (increase if you have compute budget).
+        operation is cubic in the dimension of the tensor. Block size allows us 
+        to chunk the layers into sub-layers of maximal dimension dictated by 
+        this value. Use 128 as default (increase if you have compute budget).
       beta1: momentum parameter.
       beta2: second moment averaging parameter.
       diagonal_epsilon: epsilon for diagonal adagrad (only if layerwise grafting
