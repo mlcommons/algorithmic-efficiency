@@ -329,7 +329,6 @@ def train_once(
                                                  hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
-
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
 
@@ -458,7 +457,6 @@ def train_once(
               torch.cuda.empty_cache()
 
         train_state['last_step_end_time'] = get_time()
-
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
