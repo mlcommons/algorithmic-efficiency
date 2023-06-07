@@ -1368,7 +1368,8 @@ def distributed_shampoo(
         diagonal update is used. This is because we dont have enough information
         to do stable inverse.
       preconditioning_compute_steps: How often to compute preconditioner.
-        Performance tuning params for controlling memory and compute requirements.
+        Performance tuning params for controlling memory and compute 
+        requirements.
         Ideally set this and statistics_compute_steps params to 1.
       statistics_compute_steps: How often to compute statistics.
       best_effort_shape_interpretation: If there are some small dimensions,
@@ -1383,26 +1384,28 @@ def distributed_shampoo(
         optimizer used for.
       statistics_partition_spec: PartitionSpec to be used in sharded mode.
       preconditioner_partition_spec: PartitionSpec to be used in sharded mode.
-      num_devices_for_pjit: Number of devices to parallelize over when using pjit.
+      num_devices_for_pjit: Number of devices to parallelize over when using 
+      pjit.
       shard_optimizer_states: Shard optimizer states to save memory in model
         parallel training.
       best_effort_memory_usage_reduction: Best effort memory usage reduction. -
-        diagonal_statistics -> jnp.bfloat16 - momentum buffers (2x) -> jnp.int8 -
-        statistics, preconditioners -> jnp.int16 + diagonals
-      inverse_failure_threshold: numerics are hard and inverses fail sometimes; we
-        determine that using this threshold.
+        diagonal_statistics -> jnp.bfloat16 - momentum buffers (2x) 
+        -> jnp.int8 - statistics, preconditioners -> jnp.int16 + diagonals
+      inverse_failure_threshold: numerics are hard and inverses fail sometimes; 
+        we determine that using this threshold.
       moving_average_for_momentum: Whether to use moving average for momentum
         instead of exponential moving average.
       skip_preconditioning_dim_size_gt: Skip if preconditioning dim size is
         greater than this value.
-      clip_by_scaled_gradient_norm: Clip by scaled gradient norm (only useful when
-        using RMSProp Grafting).
+      clip_by_scaled_gradient_norm: Clip by scaled gradient norm (only useful 
+        when using RMSProp Grafting).
       precision: precision XLA related flag, the available options are: a)
         lax.Precision.DEFAULT (better step time, but not precise) b)
-        lax.Precision.HIGH (increased precision, slower) c) lax.Precision.HIGHEST
-        (best possible precision, slowest)
+        lax.Precision.HIGH (increased precision, slower) c) 
+        lax.Precision.HIGHEST (best possible precision, slowest)
       tensordot_precision: Optional precision to use for the tensordot operation
-        when computing statistics (e.g., G Gᵀ). Same options as `precision` above.
+        when computing statistics (e.g., G Gᵀ). Same options as `precision` 
+        above.
       relative_matrix_epsilon: Whether to use relative epsilon to the max eigen
         value when computing inverse-pth root.
       merge_small_dims_block_size: Used as the maximum block size to merge the
@@ -1414,14 +1417,14 @@ def distributed_shampoo(
         `lobpcg_topk_precondition`.
       precondtioner_type: Preconditioner type to select all, left only or right
         only preconditioners.
-      skip_preconditioning_rank_lt: Skips preconditioning for parameters with rank
-        less than this value.
+      skip_preconditioning_rank_lt: Skips preconditioning for parameters with 
+        rank less than this value.
       decoupled_learning_rate: If True, use decoupled learning rate, otherwise
         couple it with preconditioned gradient computation. (Default True)
       decoupled_weight_decay: If True, use decoupled weight decay, otherwise
         couple with weight decay. (Default False)
-      generate_training_metrics: If True, gather training metrics, otherwise avoid
-        generating them (to reduce memory usage).
+      generate_training_metrics: If True, gather training metrics, otherwise 
+        avoid generating them (to reduce memory usage).
       reuse_preconditioner: If True, pass the previous derived preconditioner as a
         warm start to the next iteratin's inverse pth root computation.
       eigh: If True, and uses eigen decomposition for inverse-pth root.
