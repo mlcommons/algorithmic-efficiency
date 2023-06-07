@@ -443,12 +443,12 @@ def train_once(
                   checkpoint_dir=log_dir,
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
-          
+
           logging_end_time = get_time()
 
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
-      
+
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
@@ -456,7 +456,7 @@ def train_once(
                             f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
-        
+
         train_state['last_step_end_time'] = get_time()
 
 
