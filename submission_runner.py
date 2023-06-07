@@ -329,12 +329,8 @@ def train_once(
                                                  hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
-  if USE_PYTORCH_DDP:
-    torch.cuda.synchronize()
+
   global_start_time = get_time()
-  if USE_PYTORCH_DDP:
-    # Make sure all processes start training at the same time.
-    global_start_time = sync_ddp_time(global_start_time, DEVICE)
   train_state['last_step_end_time'] = global_start_time
 
   logging.info('Starting training loop.')
@@ -447,13 +443,12 @@ def train_once(
                   checkpoint_dir=log_dir,
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
+          
           logging_end_time = get_time()
 
-          train_state['last_eval_time'] = logging_end_time
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
-          train_state['last_step_end_time'] = logging_end_time
-
+      
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
@@ -461,6 +456,9 @@ def train_once(
                             f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
+        
+        train_state['last_step_end_time'] = get_time()
+
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
