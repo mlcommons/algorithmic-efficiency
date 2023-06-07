@@ -57,7 +57,7 @@ def sd_transform(sd):
         out[k] = sd[k]
     elif 'LSTM' in ''.join(k):
       l = out.get(k[:-1], dict())
-      l[k[-1]] = (sd[k])
+      l[k[-1]] = sd[k]
       out[k[:-1]] = l
     else:
       out[k] = sd[k]
