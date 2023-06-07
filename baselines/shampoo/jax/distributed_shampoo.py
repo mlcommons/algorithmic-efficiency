@@ -1469,25 +1469,6 @@ def distributed_shampoo(
     else:
       return maybe_quantized
 
-  def _maybe_dequantize_preconditioners(preconditioner_list):
-    return _maybe_dequantize_matrices_with_dtype(
-        preconditioner_list,
-        quantized_dtype_for_second_moment_preconditioner_buffers())
-
-  def _maybe_dequantize_matrices_with_dtype(statistics_list, quantized_dtype):
-    if quantized_dtype != jnp.float32:
-      return [s.to_float() for s in statistics_list]
-    else:
-      return statistics_list
-
-  # def _quantize_diagonal_statistics(diagonal_statistics):
-  #   return QuantizedValue.from_float_value(diagonal_statistics, jnp.float32)
-
-  # def _quantize_momentum(momentum_statistics):
-  #   return QuantizedValue.from_float_value(
-  #       momentum_statistics,
-  #       quantized_dtype_for_momentum_buffers(momentum_statistics))
-
   def preconditioner_from_params(param):
     """Returns a Preconditioner object for given param."""
     return Preconditioner(
@@ -1900,6 +1881,16 @@ def distributed_shampoo(
     prev_stacked_padded_preconditioners = _maybe(pjit.with_sharding_constraint)(
         prev_padded_preconditioners, statistics_partition_spec)
 
+    def _internal_inverse_pth_root_all():
+      preconditioners, metrics = _matrix_inverse_pth_root_pjit(
+          new_stacked_padded_statistics,
+          global_stats.exponents,
+          stacked_padding_starts,
+          prev_stacked_padded_preconditioners,
+          statistics_partition_spec,
+      )
+      return preconditioners, metrics
+
     perform_step = state.count % preconditioning_compute_steps == 0
 
     if preconditioning_compute_steps == 1:
@@ -2041,271 +2032,47 @@ def distributed_shampoo(
       lobpcg_max_iter=lobpcg_max_iter,
       eigh=eigh)
 
-  def _pmap_quantized_compute_preconditioners(states,
-                                              step,
-                                              statistics,
-                                              num_statistics_per_state,
-                                              original_shapes,
-                                              exponents,
-                                              max_size,
-                                              prev_preconditioners):
-    """Computes preconditioners for given statistics in states in PMAP mode.
+  def _matrix_inverse_pth_root_vmap(xs, ps, padding_starts, prev):
+    return jax.vmap(mi_pth_root)(
+        xs, ps, padding_start=padding_starts, prev=prev)
 
-        For quantization, each statistic is represented by three values:
-          quantized matrix, diagonal, and bucket sizes, we run inverse pth-roots
-          without ever recreating the original matrix in f32.
-
-        Args:
-          states: A list of optimizer states.
-          step: Current step number
-          statistics: A list of statistics for all variables (for every dim)
-          num_statistics_per_state: Number of statistis per state to reconstruct
-            output states.
-          original_shapes: A list of shapes of the statistics.
-          exponents: Exponent power to use for inverse-pth roots.
-          max_size: Maximum dim of the statistics to pad.
-          prev_preconditioners: Previously available preconditioner.
-
-        Returns:
-          New optimizer states after computing the preconditioner.
-        """
-    num_devices = lax.psum(1, batch_axis_name)
-    num_statistics = len(statistics)
-    quantized_dtype = quantized_dtype_for_second_moment_statistics_buffers()
-    # Complexity here is around: shapes needing be statically shaped,
-    # our custom quantization type requires a different type of packing.
-
-    # Parallel tensors:
-    # quantized [dxd]
-    # diagonals [d] f32
-    # bucket_sizes [d] f32
-    packed_quantized_statistics = [
-        pad_square_matrix(stat.quantized, max_size) for stat in statistics
-    ]
-    packed_quantized_diagonals = [
-        pad_vector(stat.diagonal, max_size) for stat in statistics
-    ]
-    packed_quantized_bucket_sizes = [
-        pad_vector(stat.bucket_size, max_size) for stat in statistics
-    ]
-
-    to_pad = -num_statistics % num_devices
-    padded_eye = jnp.eye(max_size, dtype=jnp.float32)
-    quantized_eye = QuantizedValue.from_float_value(padded_eye,
-                                                    quantized_dtype,
-                                                    True)
-    packed_quantized_statistics.extend(
-        [quantized_eye.quantized for _ in range(to_pad)])
-    packed_quantized_diagonals.extend(
-        [quantized_eye.diagonal for _ in range(to_pad)])
-    packed_quantized_bucket_sizes.extend(
-        [quantized_eye.bucket_size for _ in range(to_pad)])
-    exponents.extend([1 for _ in range(to_pad)])
-    paddings = [len(stat.quantized) for stat in statistics] + [0] * to_pad
-
-    if not packed_quantized_statistics:
-      return states
-
-    if reuse_preconditioner:
-      total = len(packed_quantized_statistics)
-      packed_quantized_precond_mats = pad_and_maybe_zero_preconditioners(
-          [p.quantized for p in prev_preconditioners],
-          total,
-          max_size,
-          step,
-      )
-      packed_quantized_precond_diagonals = [
-          pad_vector(p.diagonal, max_size) for p in prev_preconditioners
-      ] + packed_quantized_diagonals[total - to_pad:]
-      packed_quantized_precond_bucket_sizes = [
-          pad_vector(p.bucket_size, max_size) for p in prev_preconditioners
-      ] + packed_quantized_bucket_sizes[total - to_pad:]
+  def _matrix_inverse_pth_root_pjit(xs,
+                                    ps,
+                                    padding_starts,
+                                    prev_preconds=None,
+                                    statistics_partition_spec=None):
+    # Partition the concatenated statistics matrix across all cores.
+    pspec_for_partition = preconditioner_partition_spec
+    partitioned_xs = pjit.with_sharding_constraint(xs, pspec_for_partition)
+    if preconditioner_partition_spec:
+      partitioned_ps_spec = jax.sharding.PartitionSpec(
+          preconditioner_partition_spec[0])
     else:
-      (packed_quantized_precond_mats,
-       packed_quantized_precond_diagonals,
-       packed_quantized_precond_bucket_sizes) = (None, None, None)
+      partitioned_ps_spec = None
+    partitioned_ps = pjit.with_sharding_constraint(ps, partitioned_ps_spec)
+    partitioned_prev_preconds = _maybe(pjit.with_sharding_constraint)(
+        prev_preconds, preconditioner_partition_spec)
+    partitioned_padding_starts = pjit.with_sharding_constraint(
+        padding_starts, partitioned_ps_spec)  # paddings are scalars like ps.
+    # Run matrix inverse pth root on each shard.
+    partitioned_preconditioners, partitioned_metrics = (
+        _matrix_inverse_pth_root_vmap(
+            partitioned_xs,
+            partitioned_ps,
+            partitioned_padding_starts,
+            prev=partitioned_prev_preconds))
+    # Reshard output to have the same PSpec as input. This is required to avoid
+    # vmap seeing the full set of statistics.
+    partitioned_preconditioners = pjit.with_sharding_constraint(
+        partitioned_preconditioners, pspec_for_partition)
+    # Recombine the outputs at each core.
+    preconditioners = pjit.with_sharding_constraint(partitioned_preconditioners,
+                                                    statistics_partition_spec)
+    metrics = pjit.with_sharding_constraint(partitioned_metrics,
+                                            jax.sharding.PartitionSpec())
+    return preconditioners, metrics
 
-    all_quantized_statistics = batch(packed_quantized_statistics, num_devices)
-    all_quantized_diagonals = batch(packed_quantized_diagonals, num_devices)
-    all_quantized_bucket_sizes = batch(packed_quantized_bucket_sizes,
-                                       num_devices)
-    all_exponents = batch(exponents, num_devices)
-    all_paddings = batch(paddings, num_devices)
-    all_quantized_precond_mats = _maybe(batch)(packed_quantized_precond_mats,
-                                               num_devices)
-    all_quantized_precond_diagonals = _maybe(batch)(
-        packed_quantized_precond_diagonals, num_devices)
-    all_quantized_precond_bucket_sizes = _maybe(batch)(
-        packed_quantized_precond_bucket_sizes, num_devices)
-
-    def _internal_inverse_pth_root_all():
-      current_replica = lax.axis_index(batch_axis_name)
-      (quantized_preconditioners,
-       quantized_diagonals,
-       quantized_bucket_sizes,
-       metrics) = _quantized_matrix_inverse_pth_root_vmap(
-           all_quantized_statistics[current_replica],
-           all_quantized_diagonals[current_replica],
-           all_quantized_bucket_sizes[current_replica],
-           all_exponents[current_replica],
-           all_paddings[current_replica],
-           _maybe_ix(all_quantized_precond_mats, current_replica),
-           _maybe_ix(all_quantized_precond_diagonals, current_replica),
-           _maybe_ix(all_quantized_precond_bucket_sizes, current_replica),
-       )
-      quantized_preconditioners = jax.lax.all_gather(quantized_preconditioners,
-                                                     batch_axis_name)
-      quantized_diagonals = jax.lax.all_gather(quantized_diagonals,
-                                               batch_axis_name)
-      quantized_bucket_sizes = jax.lax.all_gather(quantized_bucket_sizes,
-                                                  batch_axis_name)
-      metrics = jax.lax.all_gather(metrics, batch_axis_name)
-      quantized_preconditioners_flat = unbatch(quantized_preconditioners)
-      quantized_diagonals_flat = unbatch(quantized_diagonals)
-      quantized_bucket_sizes_flat = unbatch(quantized_bucket_sizes)
-      metrics_flat = jax.tree_map(unbatch, metrics)
-      return (quantized_preconditioners_flat,
-              quantized_diagonals_flat,
-              quantized_bucket_sizes_flat,
-              metrics_flat)
-
-    perform_step = step % preconditioning_compute_steps == 0
-    if preconditioning_compute_steps == 1:
-      (quantized_preconditioners_flat,
-       quantized_diagonals_flat,
-       quantized_bucket_sizes_flat,
-       metrics_flat) = (
-           _internal_inverse_pth_root_all())
-    else:
-      # Passing statistics instead of preconditioners as they are similarly
-      # shaped tensors. Note statistics will be ignored as we are passing in
-      # a large error value.
-      pd = precond_dim(max_size)
-      quantized_preconditioners_init = [
-          s[:, :pd] for s in packed_quantized_statistics
-      ]
-      quantized_diagonals_init = packed_quantized_diagonals
-      quantized_bucket_sizes_init = packed_quantized_bucket_sizes
-      n = len(quantized_preconditioners_init)
-      metrics_init = jax.tree_map(
-          lambda x: [x] * n,
-          default_training_metrics().replace(
-              inverse_pth_root_errors=inverse_failure_threshold))
-      init_state = [
-          quantized_preconditioners_init,
-          quantized_diagonals_init,
-          quantized_bucket_sizes_init,
-          metrics_init
-      ]
-      (quantized_preconditioners_flat,
-       quantized_diagonals_flat,
-       quantized_bucket_sizes_flat,
-       metrics_flat) = (
-           efficient_cond(perform_step,
-                          _internal_inverse_pth_root_all,
-                          init_state))
-
-    def _skip(error):
-      condition = jnp.logical_or(
-          jnp.isnan(error), error >= inverse_failure_threshold)
-      return condition.astype(error.dtype)
-
-    def _select_preconditioner(error, new_p, old_p):
-      return lax.cond(
-          _skip(error), lambda _: old_p, lambda _: new_p, operand=None)
-
-    new_quantized_preconditioners_flat = []
-    new_quantized_diagonals_flat = []
-    new_quantized_bucket_sizes_flat = []
-    new_errors_flat = metrics_flat.inverse_pth_root_errors
-    for p, d, b, shape, prev_p, error in zip(quantized_preconditioners_flat,
-                                             quantized_diagonals_flat,
-                                             quantized_bucket_sizes_flat,
-                                             original_shapes,
-                                             prev_preconditioners,
-                                             new_errors_flat):
-      new_quantized_preconditioners_flat.append(
-          _select_preconditioner(error,
-                                 p[:shape[0], :shape[1]],
-                                 prev_p.quantized))
-      new_quantized_diagonals_flat.append(
-          _select_preconditioner(error, d[:shape[0]], prev_p.diagonal))
-      new_quantized_bucket_sizes_flat.append(
-          _select_preconditioner(error, b[:shape[0]], prev_p.bucket_size))
-
-    assert len(states) == len(num_statistics_per_state)
-    assert len(new_quantized_preconditioners_flat) == num_statistics
-    assert len(new_quantized_diagonals_flat) == num_statistics
-    assert len(new_quantized_bucket_sizes_flat) == num_statistics
-
-    # Add back empty preconditioners so we that we can set the optimizer state.
-    preconditioners_for_states = []
-    metrics_for_states = []
-    idx = 0
-    for num_statistics, state in zip(num_statistics_per_state, states):
-      if num_statistics == 0:
-        preconditioners_for_states.append([])
-        metrics_for_states.append(
-            init_training_metrics(0, generate_training_metrics))
-      else:
-        new_quant_preconditioners_flat = new_quantized_preconditioners_flat
-        quantized_preconditioners_for_state = new_quant_preconditioners_flat[
-            idx:idx + num_statistics]
-        quantized_diagonals_for_state = new_quantized_diagonals_flat[
-            idx:idx + num_statistics]
-        quantized_bucket_sizes_for_state = new_quantized_bucket_sizes_flat[
-            idx:idx + num_statistics]
-
-        if generate_training_metrics:
-          # pylint:disable=cell-var-from-loop Used immediately.
-          metrics_for_state = jax.tree_map(
-              lambda x: jnp.stack(x[idx:idx + num_statistics]),
-              metrics_flat,
-              is_leaf=lambda x: isinstance(x, list))
-
-          assert len(
-              state.statistics) == len(quantized_preconditioners_for_state)
-          assert len(state.statistics) == len(quantized_diagonals_for_state)
-          assert len(state.statistics) == len(quantized_bucket_sizes_for_state)
-          assert jax.tree_util.tree_all(
-              jax.tree_map(lambda x: len(state.statistics) == len(x),
-                           metrics_for_state))
-
-          # If we skipped preconditioner computation, record old metrics.
-          metrics_for_state = efficient_cond(perform_step,
-                                             lambda: [metrics_for_state],
-                                             [state.training_metrics])[0]
-          # pylint:enable=cell-var-from-loop
-        else:
-          metrics_for_state = optax.MaskedNode()
-
-        quantized_preconditioners = []
-        for qv, qd, qb in zip(quantized_preconditioners_for_state,
-                              quantized_diagonals_for_state,
-                              quantized_bucket_sizes_for_state):
-          quantized_preconditioners.append(
-              QuantizedValue(qv, qd, qb, qv.dtype, True, list(qv.shape)))
-        preconditioners_for_states.append(quantized_preconditioners)
-        metrics_for_states.append(metrics_for_state)
-        idx += num_statistics
-    new_states = []
-    for state, new_preconditioners, new_metrics in zip(
-            states, preconditioners_for_states, metrics_for_states):
-      # Note the preconditioner may have been skipped, but we still update the
-      # metrics with the new error values; whether the preconditioner that's
-      # actively being used is stale can be derived from the new_metrics
-      # being greater than the failure threshold.
-      new_states.append(
-          ParameterStats(state.diagonal_statistics,
-                         state.statistics,
-                         new_preconditioners,
-                         state.diagonal_momentum,
-                         state.momentum,
-                         new_metrics))
-
-    return new_states
-
-  def _pjit_compute_preconditioners(states,
+  def _pmap_compute_preconditioners(states,
                                     step,
                                     statistics,
                                     num_statistics_per_state,
@@ -2313,7 +2080,7 @@ def distributed_shampoo(
                                     exponents,
                                     max_size,
                                     prev_preconditioners):
-    """Computes preconditioners for given statistics in states in PJIT mode.
+    """Computes preconditioners for given statistics in states in PMAP mode.
 
         Args:
           states: A list of optimizer states.
@@ -2329,56 +2096,81 @@ def distributed_shampoo(
         Returns:
           New optimizer states after computing the preconditioner.
         """
+    if batch_axis_name:
+      num_devices = lax.psum(1, batch_axis_name)
+    else:
+      num_devices = 1
     num_statistics = len(statistics)
-    to_pad = -num_statistics % num_devices_for_pjit
-    padded_statistics = [
+    # Pad statistics and exponents to next multiple of num_devices.
+    packed_statistics = [
         pad_square_matrix(stat, max_size) for stat in statistics
     ]
-    padded_statistics.extend([
-        jnp.eye(max_size, dtype=padded_statistics[0].dtype)
+    to_pad = -num_statistics % num_devices
+    packed_statistics.extend([
+        jnp.eye(max_size, dtype=packed_statistics[0].dtype)
         for _ in range(to_pad)
     ])
     exponents.extend([1 for _ in range(to_pad)])
     paddings = [len(stat) for stat in statistics] + [0] * to_pad
 
-    if reuse_preconditioner:
-      padded_preconditioners = pad_and_maybe_zero_preconditioners(
-          prev_preconditioners, len(padded_statistics), max_size, step)
-    else:
-      padded_preconditioners = None
+    if not packed_statistics:
+      return states
 
-    all_statistics = jnp.stack(padded_statistics)
-    all_exponents = jnp.stack(exponents)
-    all_paddings = jnp.stack(paddings)
-    all_preconditioners = _maybe(jnp.stack)(padded_preconditioners)
+    if reuse_preconditioner:
+      assert len(prev_preconditioners) == num_statistics
+      packed_preconditioners = pad_and_maybe_zero_preconditioners(
+          prev_preconditioners, len(packed_statistics), max_size, step)
+    else:
+      packed_preconditioners = None
+
+    all_statistics = batch(packed_statistics, num_devices)
+    all_exponents = batch(exponents, num_devices)
+    all_paddings = batch(paddings, num_devices)
+    all_preconditioners = _maybe(batch)(packed_preconditioners, num_devices)
 
     def _internal_inverse_pth_root_all():
-      preconditioners, metrics = _matrix_inverse_pth_root_pjit(
-          all_statistics, all_exponents, all_paddings, all_preconditioners)
-      b1 = preconditioners.shape[0]
+      if batch_axis_name:
+        current_replica = lax.axis_index(batch_axis_name)
+        preconditioners, metrics = _matrix_inverse_pth_root_vmap(
+            all_statistics[current_replica],
+            all_exponents[current_replica],
+            all_paddings[current_replica],
+            _maybe_ix(all_preconditioners, current_replica),
+        )
+        preconditioners = jax.lax.all_gather(preconditioners, batch_axis_name)
+        metrics = jax.lax.all_gather(metrics, batch_axis_name)
+        preconditioners_flat = unbatch(preconditioners)
+        metrics_flat = jax.tree_map(unbatch, metrics)
+      else:
+        preconditioners, metrics = _matrix_inverse_pth_root_vmap(
+            all_statistics[0],
+            all_exponents[0],
+            all_paddings[0],
+            _maybe_ix(all_preconditioners, 0),
+        )
+        preconditioners_flat = unbatch(jnp.stack([preconditioners]))
+        metrics = jax.tree_map(
+            functools.partial(jnp.expand_dims, axis=0), metrics)
+        metrics_flat = jax.tree_map(unbatch, metrics)
 
-      def split(batched_values):
-        return [
-            jnp.squeeze(v)
-            for v in jnp.split(batched_values, indices_or_sections=b1, axis=0)
-        ]
+      return preconditioners_flat, metrics_flat
 
-      return split(preconditioners), jax.tree_map(split, metrics)
-
+    perform_step = step % preconditioning_compute_steps == 0
     if preconditioning_compute_steps == 1:
       preconditioners_flat, metrics_flat = _internal_inverse_pth_root_all()
     else:
       # Passing statistics instead of preconditioners as they are similarly
       # shaped tensors. Note statistics will be ignored as we are passing in
-      # a large init value for error.
-      pd = precond_dim(max_size)
-      preconditioners_init = [s[:, :pd] for s in padded_statistics]
-      n = len(padded_statistics)
+      # a large error value.
+      preconditioners_init = [
+          s[:, :precond_dim(s.shape[0])] for s in packed_statistics
+      ]
+      n = len(packed_statistics)
       metrics_init = jax.tree_map(
           lambda x: [x] * n,
-          TrainingMetrics(inverse_pth_root_errors=inverse_failure_threshold))
+          default_training_metrics().replace(
+              inverse_pth_root_errors=inverse_failure_threshold))
       init_state = [preconditioners_init, metrics_init]
-      perform_step = step % preconditioning_compute_steps == 0
       preconditioners_flat, metrics_flat = efficient_cond(
           perform_step, _internal_inverse_pth_root_all, init_state)
 
@@ -2396,17 +2188,21 @@ def distributed_shampoo(
     for p, shape, prev_p, error in zip(preconditioners_flat, original_shapes,
                                        prev_preconditioners, new_errors_flat):
       new_preconditioners_flat.append(
-          _select_preconditioner(error.inverse_pth_root_errors,
-                                 p[:shape[0], :shape[1]],
-                                 prev_p))
+          _select_preconditioner(error, p[:shape[0], :shape[1]], prev_p))
 
-    assert len(states) == len(num_statistics_per_state)
+    assert len(states) == (len(
+        num_statistics_per_state),
+        f"{len(states)} vs {len(num_statistics_per_state)}")
     assert len(new_preconditioners_flat) == num_statistics
+    assert len(new_errors_flat) == len(packed_statistics), (
+        len(new_errors_flat), len(packed_statistics))
+    assert len(new_errors_flat) == num_statistics + to_pad, (
+        len(new_errors_flat), num_statistics, to_pad)
 
     # Add back empty preconditioners so we that we can set the optimizer state.
     preconditioners_for_states = []
-    metrics_for_states = []
     idx = 0
+    metrics_for_states = []
     for num_statistics, state in zip(num_statistics_per_state, states):
       if num_statistics == 0:
         preconditioners_for_states.append([])
@@ -2423,19 +2219,27 @@ def distributed_shampoo(
           metrics_for_state = jax.tree_map(
               lambda x: jnp.stack(x[idx:idx + num_statistics]),
               metrics_flat,
-              is_leaf=functools.partial(isinstance, list))
+              is_leaf=lambda x: isinstance(x, list))
           assert jax.tree_util.tree_all(
               jax.tree_map(lambda x: len(state.statistics) == len(x),
                            metrics_for_state))
+          # If we skipped preconditioner computation, record old metrics.
+          metrics_for_state = efficient_cond(perform_step,
+                                             lambda: [metrics_for_state],
+                                             [state.training_metrics])[0]
           # pylint:enable=cell-var-from-loop
         else:
           metrics_for_state = optax.MaskedNode()
         metrics_for_states.append(metrics_for_state)
-        idx += num_statistics
 
+        idx += num_statistics
     new_states = []
     for state, new_preconditioners, new_metrics in zip(
             states, preconditioners_for_states, metrics_for_states):
+      # Note the preconditioner may have been skipped, but we still update the
+      # metrics with the new error values; whether the preconditioner that's
+      # actively being used is stale can be derived from the new_metrics
+      # being greater than the failure threshold.
       new_states.append(
           ParameterStats(state.diagonal_statistics,
                          state.statistics,
