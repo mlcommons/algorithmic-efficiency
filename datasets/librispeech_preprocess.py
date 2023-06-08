@@ -73,7 +73,7 @@ def report_progress(count, total, start_time):
   sys.stdout.flush()
 
 
-def preprocess_data(data_folder, tokenizer, split):
+def preprocess_data(in_folder, out_folder, tokenizer, split):
   finished = Counter()
   skipped = Counter()
   start_time = time.time()
@@ -111,8 +111,8 @@ def preprocess_data(data_folder, tokenizer, split):
 
         targets = tokenizer.tokenize(trans).numpy().astype(np.int32)
 
-        np.save('data/{}/{}_audio.npy'.format(split, utt), sound)
-        np.save('data/{}/{}_targets.npy'.format(split, utt), targets)
+        np.save('{}/{}/{}_audio.npy'.format(out_folder, split, utt), sound)
+        np.save('{}/{}/{}_targets.npy'.format(out_folder, split, utt), targets)
 
         finished.inc()
         report_progress(finished.val() + skipped.val(),
@@ -123,9 +123,9 @@ def preprocess_data(data_folder, tokenizer, split):
     return utterance_ids
 
   paths = []
-  for _, speaker_folder in enumerate(os.listdir(data_folder)):
-    for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
-      paths.append((data_folder, speaker_folder, chapter_folder))
+  for _, speaker_folder in enumerate(os.listdir(in_folder)):
+    for chapter_folder in os.listdir(f'{in_folder}/{speaker_folder}'):
+      paths.append((in_folder, speaker_folder, chapter_folder))
 
   sys.stdout.write('\r')
   pool = multiprocessing.dummy.Pool(32)
@@ -167,9 +167,11 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
   ]
   for subset in subset_list:
     logging.info('Processing split = %s...', subset)
-    subset_dir = os.path.join(output_dir, subset)
-    os.makedirs(subset_dir, exist_ok=True)
-    example_ids, num_entries = preprocess_data(subset_dir, tokenizer, subset)
+    in_dir = os.path.join(input_dir, subset)
+    out_dir = os.path.join(output_dir, subset)
+    os.makedirs(out_dir, exist_ok=True)
+    example_ids, num_entries = preprocess_data(in_dir, output_dir, tokenizer,
+    subset)
 
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('Preprocessed dataframe final count not equal to '

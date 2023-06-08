@@ -436,19 +436,17 @@ def download_imagenet_v2(data_dir):
 
 
 def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
+  # pylint: disable=line-too-long
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'LibriSpeech')
+  _maybe_mkdir(tmp_librispeech_dir)
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
-      wget_cmd = (
-          f'wget --directory-prefix={tmp_librispeech_dir} '
-          f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
-      subprocess.Popen(wget_cmd, shell=True).communicate()
-      subprocess.Popen(
-          f'tar xzvf {split}-{version}.tar.gz', shell=True).communicate()
+      wget_cmd = f'wget http://www.openslr.org/resources/12/{split}-{version}.tar.gz -O - | tar xz '
+      subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
 
   tars = [
       'raw-metadata.tar.gz',
@@ -457,17 +455,14 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-    wget_cmd = (f'wget --directory-prefix={tmp_librispeech_dir} '
-                f'http://www.openslr.org/resources/12/{tar_filename}')
-    subprocess.Popen(wget_cmd, shell=True)
-    tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
-    subprocess.Popen(f'tar xzvf {tar_path}', shell=True)
+    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz '
+    subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
 
   if train_tokenizer:
-    librispeech_tokenizer.run(train=True, data_dir=tmp_librispeech_dir)
+    tokenizer_vocab_path = librispeech_tokenizer.run(
+        train=True, data_dir=tmp_librispeech_dir)
 
     # Preprocess data.
-    tokenizer_vocab_path = os.path.join(tmp_librispeech_dir, 'spm_model.vocab')
     librispeech_dir = os.path.join(dataset_dir, 'librispeech')
     librispeech_preprocess.run(
         input_dir=tmp_librispeech_dir,
