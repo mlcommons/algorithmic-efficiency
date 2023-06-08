@@ -1923,8 +1923,8 @@ def distributed_shampoo(
     errors = metrics.inverse_pth_root_errors
     errors = errors.reshape((-1, 1, 1))
     predicate = jnp.logical_or(
-        jnp.isnan(errors), errors
-        >= inverse_failure_threshold).astype(new_preconditioners.dtype)
+        jnp.isnan(errors), 
+        errors >= inverse_failure_threshold).astype(new_preconditioners.dtype)
     # TODO(rohananil): Check for numerical instabilities.
     new_conditional_preconditioners = (
         predicate * global_stats.preconditioners +
