@@ -24,7 +24,7 @@ class DeepspeechConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
   vocab_size: int = 1024
   encoder_dim: int = 512
-  num_lstm_layers: int = 4
+  num_lstm_layers: int = 6
   num_ffn_layers: int = 3
   conv_subsampling_factor: int = 2
   conv_subsampling_layers: int = 2
