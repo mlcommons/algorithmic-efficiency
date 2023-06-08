@@ -33,7 +33,7 @@ def init_optimizer_state(workload: spec.Workload,
   opt_init_fn, opt_update_fn = sgd(
       learning_rate=lr_schedule_fn,
       weight_decay=hyperparameters.weight_decay,
-      momentum=1.0 - hyperparameters.one_minus_,
+      momentum=1.0 - hyperparameters.one_minus_beta1,
       nesterov=True)
   optimizer_state = opt_init_fn(params_zeros_like)
 
@@ -209,6 +209,8 @@ def get_batch_size(workload_name):
     return 512
   elif workload_name == 'wmt':
     return 128
+  elif workload_name == 'mnist':
+    return 16
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

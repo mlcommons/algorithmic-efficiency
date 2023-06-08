@@ -22,7 +22,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
   @property
   def eval_batch_size(self) -> int:
-    return 65536
+    return 524_288
 
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
@@ -158,9 +158,14 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         targets = torch.as_tensor(
             batch['targets'], dtype=torch.float32, device=DEVICE)
         if not_train:
-          weights = torch.as_tensor(
-              batch['weights'], dtype=torch.float32, device=DEVICE)
-
+          weights = batch.get('weights')
+          if weights is None:
+            weights = torch.ones((N_GPUS, per_device_batch_size, 1),
+                                 dtype=torch.float32,
+                                 device=DEVICE)
+          else:
+            weights = torch.as_tensor(
+                weights, dtype=torch.float32, device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           if not_train:
