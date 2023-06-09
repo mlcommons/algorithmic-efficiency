@@ -39,7 +39,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def test_target_value(self) -> float:
-    return 30.9973
+    return 30.7219
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -83,7 +83,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 80000
+    return 48_151  # ~13.5 hours
 
   @property
   def eval_period_time_sec(self) -> int:

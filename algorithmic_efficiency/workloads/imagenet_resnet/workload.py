@@ -16,14 +16,14 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.77431
+    return 1 - 0.22569  # 0.77431
 
   def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['test/accuracy'] > self.test_target_value
 
   @property
   def test_target_value(self) -> float:
-    return 0.6565
+    return 1 - 0.3440  # 0.6560
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -82,7 +82,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 111600  # 31 hours.
+    return 63_008  # ~17.5 hours
 
   @property
   def eval_period_time_sec(self) -> int:

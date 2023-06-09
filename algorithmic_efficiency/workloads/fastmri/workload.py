@@ -21,7 +21,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def test_target_value(self) -> float:
-    return 0.741685
+    return 0.741652
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -70,7 +70,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 10800  # 3 hours
+    return 8859  # ~2.5 hours
 
   @property
   def eval_period_time_sec(self) -> int:

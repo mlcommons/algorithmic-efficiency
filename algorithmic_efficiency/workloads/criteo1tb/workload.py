@@ -33,7 +33,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def test_target_value(self) -> float:
-    return 0.126053
+    return 0.126060
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -74,7 +74,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 6 * 60 * 60
+    return 7703  # ~2 hours
 
   @property
   def eval_period_time_sec(self) -> int:
