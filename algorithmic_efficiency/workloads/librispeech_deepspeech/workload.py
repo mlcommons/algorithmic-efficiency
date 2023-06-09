@@ -15,7 +15,7 @@ class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
   def step_hint(self) -> int:
     """Max num steps the baseline algo was given to reach the target."""
     return 80_000
-  
+
   @property
   def max_allowed_runtime_sec(self) -> int:
     return 92_509  # ~26 hours
