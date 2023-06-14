@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/2306.07179">Paper (arXiv)</a> •
+  <a href="https://arxiv.org/abs/2306.07179" target="_blank">Paper (arXiv)</a> •
   <a href="#installation">Installation</a> •
   <a href="RULES.md">Rules</a> •
   <a href="#contributing">Contributing</a> •
