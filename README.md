@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2306.07179" target="_blank">Paper (arXiv)</a> •
   <a href="#installation">Installation</a> •
   <a href="RULES.md">Rules</a> •
   <a href="#contributing">Contributing</a> •
@@ -19,7 +20,7 @@
 
 ---
 
-> [MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it.
+[MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it. For a detailed description of the benchmark design, see our [paper](https://arxiv.org/abs/2306.07179).
 
 ## Installation
 
