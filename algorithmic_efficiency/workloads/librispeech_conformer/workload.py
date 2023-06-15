@@ -21,7 +21,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def test_target_value(self) -> float:
-    return 0.046696
+    return 0.046973
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -62,7 +62,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 72000  # 20h
+    return 101_780  # ~28 hours
 
   @property
   def eval_period_time_sec(self) -> int:

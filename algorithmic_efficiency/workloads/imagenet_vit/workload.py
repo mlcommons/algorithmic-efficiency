@@ -54,11 +54,11 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.77309
+    return 1 - 0.22691  # 0.77309
 
   @property
   def test_target_value(self) -> float:
-    return 0.6568
+    return 1 - 0.3481  # 0.6519
 
   @property
   def eval_batch_size(self) -> int:
@@ -66,7 +66,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 111600  # 31 hours.
+    return 77_520  # ~22 hours
 
   @property
   def eval_period_time_sec(self) -> int:
