@@ -170,8 +170,8 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
     in_dir = os.path.join(input_dir, subset)
     out_dir = os.path.join(output_dir, subset)
     os.makedirs(out_dir, exist_ok=True)
-    example_ids, num_entries = preprocess_data(in_dir, output_dir, tokenizer,
-    subset)
+    example_ids, num_entries = preprocess_data(
+      in_dir, output_dir, tokenizer, subset)
 
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('Preprocessed dataframe final count not equal to '

@@ -436,7 +436,6 @@ def download_imagenet_v2(data_dir):
 
 
 def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
-  # pylint: disable=line-too-long
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
@@ -445,7 +444,7 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
-      wget_cmd = f'wget http://www.openslr.org/resources/12/{split}-{version}.tar.gz -O - | tar xz '
+      wget_cmd = f'wget http://www.openslr.org/resources/12/{split}-{version}.tar.gz -O - | tar xz'  # pylint: disable=line-too-long
       subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
 
   tars = [
@@ -455,7 +454,7 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz '
+    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz ' # pylint: disable=line-too-long
     subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
 
   if train_tokenizer:
