@@ -454,7 +454,7 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz ' # pylint: disable=line-too-long
+    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz '  # pylint: disable=line-too-long
     subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
 
   if train_tokenizer:
