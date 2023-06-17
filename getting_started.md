@@ -1,9 +1,11 @@
 # Getting Started
 
 ## Workspace set up and installation
-First, decide where you would like to develop and run your submission algorithms. We recommend using a setup similar to the competition scoring hardware which will consist out of 8 V100 GPUs, has about 350 GB in RAM and 2 TB in storag for dataset storage. For recommendations on setting up your own Cloud VM see [here](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docker/README.md#gcp-integration).
-
-Once you have your VM set up, clone the repo and make sure you have installed the dependencies. If you have not installed the repository dependencies yet see the [Installation](https://github.com/mlcommons/algorithmic-efficiency/blob/main/README.md) instructions.
+To get started you will have to make a few decisions and install the repository along with its dependencies. Specifically:
+1. Decide if you would like to develop your submission in either Pytorch or Jax.
+2. Decide where you you would like to develop and run your submission algorithms. We recommend using a setup similar to the competition scoring hardware which will consist out of 8 V100 GPUs, has about 350 GB in RAM and 2 TB in storag for dataset storage. For recommendations on setting up your own Cloud VM see [here](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docker/README.md#gcp-integration).
+3. Set up your workstation or VM.
+4. Clone the repo and make sure you have installed the dependencies. If you have not installed the repository dependencies yet see the [Installation](https://github.com/mlcommons/algorithmic-efficiency/blob/main/README.md) instructions.
 
 ## Download the data
 
@@ -52,6 +54,7 @@ A submission for the external ruleset will consist of a submission module and a 
 TODO(kasimbeg): Add script to run all workloads?
 
 You can evaluate your submission with the `submission_runner.py` module on one workload at a time. 
+To run 
 
 ### JAX submissions
 To score your submission on a workload, from the algorithmic-efficency directory run: 
@@ -94,6 +97,9 @@ submission_runner.py \
     --submission_path=<path_to_submission_module> \
     --tuning_search_space=<path_to_tuning_search_space>
 ```
+
+### Running submission through Docker
+Todo(kasimbeg)
 
 ## Good Luck!
 
