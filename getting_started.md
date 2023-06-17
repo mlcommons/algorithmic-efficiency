@@ -3,10 +3,10 @@
 ## Workspace set up and installation
 To get started you will have to make a few decisions and install the repository along with its dependencies. Specifically:
 1. Decide if you would like to develop your submission in either Pytorch or Jax.
-2. Decide where you you would like to develop and run your submission algorithms. We recommend using a setup similar to the competition scoring hardware which will consist out of 8 V100 GPUs, has about 350 GB in RAM and 2 TB in storag for dataset storage. For recommendations on setting up your own Cloud VM see [here](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docker/README.md#gcp-integration).
-3. Set up your workstation or VM.
-4. Clone the repo and make sure you have installed the dependencies. If you have not installed the repository dependencies yet see the [Installation](https://github.com/mlcommons/algorithmic-efficiency/blob/main/README.md) instructions.
-
+2. Set up your workstation or VM. We recommend to use a setup similar to the competition scoring hardware which consists out of 8 V100 GPUs, 350 GB in RAM and 2 TB in storag for dataset storage. For recommendations on setting up your own Cloud VM see [here](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docker/README.md#gcp-integration).
+4. Clone the algorithmic-efficiency repository and make sure you have installed the dependencies. To install the dependencies we recommend either:
+    1. Installing in a python virtual environment as described in the [Installation section in the README](https://github.com/mlcommons/algorithmic-efficiency/blob/main/README.md) instructions.
+    2. Use a Docker container with dependencies installed. This option will guarantee that you're code is running on the same CUDA, cudnn, and python dependencies as the competition scoring environment. See the [Docker README](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docker/README.md) for instructions on the Docker workflow.
 ## Download the data
 
 The workloads in this benchmark use 6 different datasets across 8 workloads. You may choose to download some or all of the datasets as you are developing your submission, but your submission will be scored across all 8 workloads. For instructions on obtaining and setting up the datasets see [datasets/README](https://github.com/mlcommons/algorithmic-efficiency/blob/main/datasets/README.md#dataset-setup).
