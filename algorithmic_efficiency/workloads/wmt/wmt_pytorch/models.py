@@ -793,7 +793,7 @@ class TransformerDecoder(nn.Module):
 
 
 # Modified to use cache for autoregressive decoding.
-class TransformerDecoderLayer(nn.TransformerDecoderLayer):
+class TransformerDecoderLayer(nn.Module):
   r"""TransformerDecoderLayer is made up of self-attn, multi-head-attn and
   feedforward network.
   This standard decoder layer is based on the paper "Attention Is All You Need".
@@ -844,17 +844,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
-    super().__init__(
-        d_model,
-        nhead,
-        dim_feedforward=dim_feedforward,
-        dropout=dropout_rate,
-        activation=activation,
-        layer_norm_eps=layer_norm_eps,
-        batch_first=batch_first,
-        norm_first=norm_first,
-        device=device,
-        dtype=dtype)
+    super().__init__()
     self.self_attn = MultiheadAttention(
         d_model,
         nhead,
@@ -869,6 +859,21 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         batch_first=batch_first,
         bias=False,
         **factory_kwargs)
+
+    # Implementation of Feedforward model.
+    self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+    self.dropout = nn.Dropout(dropout_rate)
+    self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
+
+    self.norm_first = norm_first
+    self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+    self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+    self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+    self.dropout1 = nn.Dropout(dropout_rate)
+    self.dropout2 = nn.Dropout(dropout_rate)
+    self.dropout3 = nn.Dropout(dropout_rate)
+
+    self.activation = activation
 
   def forward(  # pylint: disable=arguments-renamed
       self,
@@ -919,7 +924,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
 
     return x, cache
 
-  # self-attention block
+  # Self-attention block:
   def _sa_block(  # pylint: disable=arguments-renamed
       self,
       x: Tensor,
@@ -939,6 +944,20 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
         cache=cache,
         index=index)
     return self.dropout1(x), cache
+
+  # Multihead attention block:
+  def _mha_block(self, x: Tensor, mem: Tensor,
+                 attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor]) -> Tensor:
+    x = self.multihead_attn(x, mem, mem,
+                            attn_mask=attn_mask,
+                            key_padding_mask=key_padding_mask,
+                            need_weights=False)[0]
+    return self.dropout2(x)
+
+  # Feed forward block.
+  def _ff_block(self, x: Tensor) -> Tensor:
+    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+    return self.dropout3(x)
 
 
 # Only difference to standard PyTorch class is that 'self._qkv_same_embed_dim'
