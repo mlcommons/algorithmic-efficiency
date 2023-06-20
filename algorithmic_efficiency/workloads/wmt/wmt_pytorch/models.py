@@ -210,12 +210,13 @@ class TransformerEncoder(nn.Module):
   BERT(https://arxiv.org/abs/1810.04805) model with corresponding parameters.
 
   Args:
-      encoder_layer: an instance of the TransformerEncoderLayer() class (required).
-      num_layers: the number of sub-encoder-layers in the encoder (required).
+      encoder_layer: an instance of the TransformerEncoderLayer() class.
+      num_layers: the number of sub-encoder-layers in the encoder.
       norm: the layer normalization component (optional).
-      enable_nested_tensor: if True, input will automatically convert to nested tensor
-          (and convert back on output). This will improve the overall performance of
-          TransformerEncoder when padding rate is high. Default: ``True`` (enabled).
+      enable_nested_tensor: if True, input will automatically convert to
+        nested tensor (and convert back on output). This will improve
+        the overall performance of TransformerEncoder when padding
+        rate is high.
 
   Examples::
       >>> encoder_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8)
@@ -231,9 +232,9 @@ class TransformerEncoder(nn.Module):
                norm=None,
                enable_nested_tensor=True,
                mask_check=True):
-    super(TransformerEncoder, self).__init__()
+    super().__init__()
     self.layers = nn.ModuleList(
-        [copy.deepcopy(encoder_layer) for i in range(num_layers)])
+        [copy.deepcopy(encoder_layer) for _ in range(num_layers)])
     self.num_layers = num_layers
     self.norm = norm
     self.enable_nested_tensor = enable_nested_tensor
@@ -243,7 +244,7 @@ class TransformerEncoder(nn.Module):
               src: Tensor,
               mask: Optional[Tensor] = None,
               src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
-    r"""Pass the input through the encoder layers in turn.
+    """Pass the input through the encoder layers in turn.
 
     Args:
         src: the sequence to the encoder (required).
@@ -277,7 +278,7 @@ class TransformerEncoder(nn.Module):
       why_not_sparsity_fast_path = f"{str_first_layer}.self_attn._qkv_same_embed_dim was not True"
     elif not first_layer.activation_relu_or_gelu:
       why_not_sparsity_fast_path = f" {str_first_layer}.activation_relu_or_gelu was not True"
-    elif not (first_layer.norm1.eps == first_layer.norm2.eps):
+    elif not first_layer.norm1.eps == first_layer.norm2.eps:
       why_not_sparsity_fast_path = f"{str_first_layer}.norm1.eps was not equal to {str_first_layer}.norm2.eps"
     elif not src.dim() == 3:
       why_not_sparsity_fast_path = f"input not batched; expected src.dim() of 3 but got {src.dim()}"
@@ -502,7 +503,7 @@ class PositionalEncoding(nn.Module):
 # https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/transformer.py
 # Only difference is using custom MultiheadAttention modules without bias and
 # '_qkv_same_embed_dim' always set to 'False'.
-class TransformerEncoderLayer(nn.TransformerEncoderLayer):
+class TransformerEncoderLayer(nn.Module):
   r"""TransformerEncoderLayer is made up of self-attn and feedforward network.
   This standard encoder layer is based on the paper "Attention Is All You Need".
   Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
@@ -550,17 +551,7 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
-    super().__init__(
-        d_model,
-        nhead,
-        dim_feedforward=dim_feedforward,
-        dropout=dropout_rate,
-        activation=activation,
-        layer_norm_eps=layer_norm_eps,
-        batch_first=batch_first,
-        norm_first=norm_first,
-        device=device,
-        dtype=dtype)
+    super().__init__()
     self.self_attn = MultiheadAttention(
         d_model,
         nhead,
@@ -568,6 +559,147 @@ class TransformerEncoderLayer(nn.TransformerEncoderLayer):
         batch_first=batch_first,
         bias=False,
         **factory_kwargs)
+
+    # Implementation of Feedforward model.
+    self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+    self.dropout = nn.Dropout(dropout_rate)
+    self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
+
+    self.norm_first = norm_first
+    self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+    self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+    self.dropout1 = nn.Dropout(dropout_rate)
+    self.dropout2 = nn.Dropout(dropout_rate)
+
+    # We can't test self.activation in forward() in TorchScript,
+    # so stash some information about it instead.
+    if activation is F.relu or isinstance(activation, torch.nn.ReLU):
+      self.activation_relu_or_gelu = 1
+    elif activation is F.gelu or isinstance(activation, torch.nn.GELU):
+      self.activation_relu_or_gelu = 2
+    else:
+      self.activation_relu_or_gelu = 0
+    self.activation = activation
+
+  def forward(self, src: Tensor, src_mask: Optional[Tensor] = None,
+              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+    r"""Pass the input through the encoder layer.
+
+    Args:
+        src: the sequence to the encoder layer (required).
+        src_mask: the mask for the src sequence (optional).
+        src_key_padding_mask: the mask for the src keys per batch (optional).
+
+    Shape:
+        see the docs in Transformer class.
+    """
+
+    if src_key_padding_mask is not None:
+      _skpm_dtype = src_key_padding_mask.dtype
+      if _skpm_dtype != torch.bool and not torch.is_floating_point(src_key_padding_mask):
+        raise AssertionError(
+          'Only bool and floating types of key_padding_mask are supported')
+    # See Fig. 1 of https://arxiv.org/pdf/2002.04745v1.pdf.
+    why_not_sparsity_fast_path = ''
+    if not src.dim() == 3:
+      why_not_sparsity_fast_path = \
+        f'Input not batched; expected src.dim() of 3 but got {src.dim()}'
+    elif self.training:
+      why_not_sparsity_fast_path = 'Training is enabled'
+    elif not self.self_attn.batch_first:
+      why_not_sparsity_fast_path = '`self_attn.batch_first` was not True'
+    elif not self.self_attn._qkv_same_embed_dim:
+      why_not_sparsity_fast_path = '`self_attn._qkv_same_embed_dim` was not True'
+    elif not self.activation_relu_or_gelu:
+      why_not_sparsity_fast_path = '`activation_relu_or_gelu` was not True'
+    elif not (self.norm1.eps == self.norm2.eps):
+      why_not_sparsity_fast_path = '`norm1.eps` is not equal to norm2.eps'
+    elif src_mask is not None:
+      why_not_sparsity_fast_path = '`src_mask` is not supported for fastpath'
+    elif src.is_nested and src_key_padding_mask is not None:
+      why_not_sparsity_fast_path = '`src_key_padding_mask` is not supported with NestedTensor input for fastpath'
+    elif self.self_attn.num_heads % 2 == 1:
+      why_not_sparsity_fast_path = '`num_head` is odd'
+    elif torch.is_autocast_enabled():
+      why_not_sparsity_fast_path = 'autocast is enabled'
+
+    if not why_not_sparsity_fast_path:
+      tensor_args = (
+        src,
+        self.self_attn.in_proj_weight,
+        self.self_attn.in_proj_bias,
+        self.self_attn.out_proj.weight,
+        self.self_attn.out_proj.bias,
+        self.norm1.weight,
+        self.norm1.bias,
+        self.norm2.weight,
+        self.norm2.bias,
+        self.linear1.weight,
+        self.linear1.bias,
+        self.linear2.weight,
+        self.linear2.bias,
+      )
+
+      # We have to use list comprehensions below because TorchScript does not support
+      # generator expressions.
+      if torch.overrides.has_torch_function(tensor_args):
+        why_not_sparsity_fast_path = 'Some Tensor argument has_torch_function'
+      elif not all((x.is_cuda or 'cpu' in str(x.device)) for x in tensor_args):
+        why_not_sparsity_fast_path = 'Some Tensor argument is neither CUDA nor CPU'
+      elif torch.is_grad_enabled() and any(x.requires_grad for x in tensor_args):
+        why_not_sparsity_fast_path = ('grad is enabled and at least one of query or the '
+                                      'input/output projection weights or biases requires_grad')
+
+      if not why_not_sparsity_fast_path:
+        return torch._transformer_encoder_layer_fwd(
+          src,
+          self.self_attn.embed_dim,
+          self.self_attn.num_heads,
+          self.self_attn.in_proj_weight,
+          self.self_attn.in_proj_bias,
+          self.self_attn.out_proj.weight,
+          self.self_attn.out_proj.bias,
+          self.activation_relu_or_gelu == 2,
+          self.norm_first,
+          self.norm1.eps,
+          self.norm1.weight,
+          self.norm1.bias,
+          self.norm2.weight,
+          self.norm2.bias,
+          self.linear1.weight,
+          self.linear1.bias,
+          self.linear2.weight,
+          self.linear2.bias,
+          # TODO: if src_mask and src_key_padding_mask merge to single 4-dim mask
+          src_mask if src_mask is not None else src_key_padding_mask,
+          1 if src_key_padding_mask is not None else
+          0 if src_mask is not None else
+          None,
+        )
+
+    x = src
+    if self.norm_first:
+      x = x + self._sa_block(self.norm1(x), src_mask, src_key_padding_mask)
+      x = x + self._ff_block(self.norm2(x))
+    else:
+      x = self.norm1(x + self._sa_block(x, src_mask, src_key_padding_mask))
+      x = self.norm2(x + self._ff_block(x))
+
+    return x
+
+  # Self-attention block:
+  def _sa_block(self, x: Tensor,
+                attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor]) -> Tensor:
+    x = self.self_attn(x, x, x,
+                       attn_mask=attn_mask,
+                       key_padding_mask=key_padding_mask,
+                       need_weights=False)[0]
+    return self.dropout1(x)
+
+  # Feed forward block:
+  def _ff_block(self, x: Tensor) -> Tensor:
+    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+    return self.dropout2(x)
 
 
 # Modified to use cache for autoregressive decoding.
@@ -1016,14 +1148,22 @@ def _in_projection(
   ensure embedding dimension uniformity in the projected outputs.
   Output is a triple containing projection tensors for query, key and value.
   """
-  Eq, Ek, Ev = q.size(-1), k.size(-1), v.size(-1)
-  assert w_q.shape == (Eq, Eq), f"expecting query weights shape of {(Eq, Eq)}, but got {w_q.shape}"
-  assert w_k.shape == (Eq, Ek), f"expecting key weights shape of {(Eq, Ek)}, but got {w_k.shape}"
-  assert w_v.shape == (Eq, Ev), f"expecting value weights shape of {(Eq, Ev)}, but got {w_v.shape}"
-  assert b_q is None or b_q.shape == (Eq,), f"expecting query bias shape of {(Eq,)}, but got {b_q.shape}"
-  assert b_k is None or b_k.shape == (Eq,), f"expecting key bias shape of {(Eq,)}, but got {b_k.shape}"
-  assert b_v is None or b_v.shape == (Eq,), f"expecting value bias shape of {(Eq,)}, but got {b_v.shape}"
-  return torch.nn.functional.linear(q, w_q, b_q), torch.nn.functional.linear(k, w_k, b_k), torch.nn.functional.linear(v, w_v, b_v)
+  eq, ek, ev = q.size(-1), k.size(-1), v.size(-1)
+  assert w_q.shape == (eq, eq), \
+    f'Expecting query weights shape of {(eq, eq)}, but got {w_q.shape}'
+  assert w_k.shape == (eq, ek), \
+    f'Expecting key weights shape of {(eq, ek)}, but got {w_k.shape}'
+  assert w_v.shape == (eq, ek), \
+    f'Expecting value weights shape of {(eq, ek)}, but got {w_v.shape}'
+  assert b_q is None or b_q.shape == (eq,), \
+    f'Expecting query bias shape of {(eq,)}, but got {b_q.shape}'
+  assert b_k is None or b_k.shape == (eq,), \
+    f'Expecting key bias shape of {(eq,)}, but got {b_k.shape}'
+  assert b_v is None or b_v.shape == (eq,), \
+    f'Expecting value bias shape of {(eq,)}, but got {b_v.shape}'
+  return torch.nn.functional.linear(q, w_q, b_q), \
+    torch.nn.functional.linear(k, w_k, b_k), \
+    torch.nn.functional.linear(v, w_v, b_v)
 
 
 # Modified to create cache for autoregressive decoding.
