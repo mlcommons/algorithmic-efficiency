@@ -292,7 +292,7 @@ class MetricLogger(object):
     try:
       with open(self._csv_path, 'r') as csv_file:
         measurements = pd.read_csv(csv_file)
-        measurements = measurements.append([metrics])
+        measurements = pd.concat([measurements, pd.DataFrame([metrics])])
     except (pd.errors.EmptyDataError, FileNotFoundError) as e:
       measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
       if isinstance(e, pd.errors.EmptyDataError):

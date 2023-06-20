@@ -120,15 +120,21 @@ flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/data',
                     'Dataset location for ImageNet-v2.')
+flags.DEFINE_string('librispeech_tokenizer_vocab_path',
+                    '',
+                    'Location to librispeech tokenizer.')
+
 flags.DEFINE_enum(
     'framework',
     None,
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_string('librispeech_tokenizer_vocab_path',
-                    '',
-                    'Location to librispeech tokenizer.')
+flags.DEFINE_boolean(
+    'torch_compile',
+    False,
+    'Whether to use `torch.compile` to JIT-compile PyTorch code. '
+    'This will only take effect when `framework`==pytorch.')
 
 flags.DEFINE_string(
     'experiment_dir',
@@ -257,6 +263,8 @@ def train_once(
       aux_dropout_rate = hyperparameters.aux_dropout_rate
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
+    if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
+      model_params = torch.compile(model_params)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,

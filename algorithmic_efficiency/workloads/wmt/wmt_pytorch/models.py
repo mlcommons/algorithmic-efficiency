@@ -5,15 +5,15 @@ import warnings
 import torch
 from torch import nn
 from torch import Tensor
-from torch.nn.functional import _in_projection
-from torch.nn.functional import _scaled_dot_product_attention
+# from torch.nn.functional import _in_projection
+# from torch.nn.functional import _scaled_dot_product_attention
 import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
 
 
 # Mask making utilities ported to PyTorch from
-# https://github.com/google/flax/blob/main/flax/linen/attention.py
+# https://github.com/google/flax/blob/main/flax/linen/attention.py.
 def make_attention_mask(query_input: Tensor,
                         key_input: Tensor,
                         pairwise_fn: Callable[..., Any] = torch.mul,
@@ -24,8 +24,6 @@ def make_attention_mask(query_input: Tensor,
     query_input: a batched, flat input of query_length size
     key_input: a batched, flat input of key_length size
     pairwise_fn: broadcasting elementwise comparison function
-    extra_batch_dims: number of extra batch dims to add singleton
-      axes for, none by default
     dtype: mask return dtype
 
   Returns:
@@ -42,6 +40,7 @@ def make_causal_mask(x: Tensor,
 
   Args:
     x: input array of shape `[batch..., len]`
+    device: device to store the idxs
     dtype: mask return dtype
 
   Returns:
@@ -53,7 +52,7 @@ def make_causal_mask(x: Tensor,
 
 
 def make_src_mask(src, inputs_segmentation, nhead):
-  '''Utility for creating src mask and adjust it for PyTorch Transformer API.'''
+  """Utility for creating src mask and adjust it for PyTorch Transformer API."""
   src_mask = make_attention_mask(src > 0, src > 0)
   # Add segmentation block-diagonal attention mask if using segmented data.
   if inputs_segmentation is not None:
@@ -74,10 +73,8 @@ def make_tgt_and_memory_mask(tgt,
                              targets_segmentation,
                              decode,
                              nhead):
-  '''
-  Utility for creating target and memory mask and adjust them for PyTorch
-  Transformer API.
-  '''
+  """ Utility for creating target and memory mask and adjust them for PyTorch
+  Transformer API."""
   if not decode:
     tgt_mask = torch.logical_and(
         make_attention_mask(tgt > 0, tgt > 0),
@@ -121,9 +118,7 @@ def shift_right(x, axis=1):
 
 
 class Transformer(nn.Module):
-  '''
-  Transformer architecture based on the model from the WMT Jax workload.
-  '''
+  """Transformer architecture based on the model from the WMT Jax workload."""
 
   def __init__(self,
                ntoken: int = 32000,
@@ -277,7 +272,7 @@ class Decoder(nn.Module):
       targets_segmentation: Optional[Tensor] = None,
       decode: bool = False,
       max_len: Optional[int] = None,
-      cache: Optional[dict] = None) -> Tensor:
+      cache: Optional[dict] = None) -> Any:
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
         tgt, src, inputs_segmentation, targets_segmentation,
@@ -482,7 +477,7 @@ class TransformerDecoder(nn.Module):
               memory_mask: Optional[Tensor] = None,
               decode: bool = False,
               max_len: Optional[int] = None,
-              cache: Optional[dict] = None) -> Tensor:
+              cache: Optional[dict] = None) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer in turn.
     Args:
       tgt: the sequence to the decoder (required).
@@ -602,7 +597,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      index: Optional[int] = None) -> Tensor:
+      index: Optional[int] = None) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -650,7 +645,7 @@ class TransformerDecoderLayer(nn.TransformerDecoderLayer):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      index: Optional[int] = None) -> Tensor:
+      index: Optional[int] = None) -> Any:
     x, _, cache = self.self_attn(
         x,
         x,
@@ -764,7 +759,7 @@ class MultiheadAttention(nn.MultiheadAttention):
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
-              index: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
+              index: Optional[int] = None) -> Any:
     r"""
     Args:
       query: Query embeddings of shape :math:`(L, E_q)` for unbatched input,
@@ -861,6 +856,31 @@ class MultiheadAttention(nn.MultiheadAttention):
     else:
       return attn_output, attn_output_weights, cache
 
+def _in_projection(
+        q: Tensor,
+        k: Tensor,
+        v: Tensor,
+        w_q: Tensor,
+        w_k: Tensor,
+        w_v: Tensor,
+        b_q: Optional[Tensor] = None,
+        b_k: Optional[Tensor] = None,
+        b_v: Optional[Tensor] = None,
+) -> Tuple[Tensor, Tensor, Tensor]:
+  r"""Performs the in-projection step of the attention operation. This is simply
+  a triple of linear projections, with shape constraints on the weights which
+  ensure embedding dimension uniformity in the projected outputs.
+  Output is a triple containing projection tensors for query, key and value.
+  """
+  Eq, Ek, Ev = q.size(-1), k.size(-1), v.size(-1)
+  assert w_q.shape == (Eq, Eq), f"expecting query weights shape of {(Eq, Eq)}, but got {w_q.shape}"
+  assert w_k.shape == (Eq, Ek), f"expecting key weights shape of {(Eq, Ek)}, but got {w_k.shape}"
+  assert w_v.shape == (Eq, Ev), f"expecting value weights shape of {(Eq, Ev)}, but got {w_v.shape}"
+  assert b_q is None or b_q.shape == (Eq,), f"expecting query bias shape of {(Eq,)}, but got {b_q.shape}"
+  assert b_k is None or b_k.shape == (Eq,), f"expecting key bias shape of {(Eq,)}, but got {b_k.shape}"
+  assert b_v is None or b_v.shape == (Eq,), f"expecting value bias shape of {(Eq,)}, but got {b_v.shape}"
+  return torch.nn.functional.linear(q, w_q, b_q), torch.nn.functional.linear(k, w_k, b_k), torch.nn.functional.linear(v, w_v, b_v)
+
 
 # Modified to create cache for autoregressive decoding.
 def multi_head_attention_forward(
@@ -884,7 +904,7 @@ def multi_head_attention_forward(
     average_attn_weights: bool = True,
     decode: bool = False,
     cache: Optional[dict] = None,
-    max_len: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
+    max_len: Optional[int] = None) -> Any:
   r"""
   Args:
     query, key, value: map a query and a set of key-value pairs to an output.
@@ -941,25 +961,25 @@ def multi_head_attention_forward(
       per head of shape :math:`(num_heads, L, S)` when input is unbatched or
       :math:`(N, num_heads, L, S)`.
   """
-  # set up shape vars
+  # Set up shape variables.
   tgt_len, bsz, embed_dim = query.shape
   src_len, _, _ = key.shape
   assert embed_dim == embed_dim_to_check, \
       f"was expecting dimension of {embed_dim_to_check}, but got {embed_dim}"
   if isinstance(embed_dim, torch.Tensor):
-    # embed_dim can be a tensor when JIT tracing
+    # `embed_dim` can be a tensor when JIT tracing.
     head_dim = embed_dim.div(num_heads, rounding_mode='trunc')
   else:
     head_dim = embed_dim // num_heads
   assert head_dim * num_heads == embed_dim, \
       f"embed_dim {embed_dim} not divisible by num_heads {num_heads}"
-  # allow MHA to have different embedding dimensions when separate projection
-  # weights are used
+  # Allow MHA to have different embedding dimensions when separate projection
+  # weights are used.
   assert key.shape[:2] == value.shape[:2], \
       (f"key's sequence and batch dims {key.shape[:2]} do not match value's "
        f"{value.shape[:2]}")
 
-  # compute in-projection
+  # Compute in-projection.
   assert q_proj_weight is not None, \
       "use_separate_proj_weight is True but q_proj_weight is None"
   assert k_proj_weight is not None, \
@@ -997,19 +1017,19 @@ def multi_head_attention_forward(
     assert batch_size == bsz, f'{batch_size} != {bsz}'
     assert max_length == max_len, f'{max_length} != {max_len}'
     assert num_features == embed_dim, f'{num_features} != {embed_dim}'
-    # shape check of cached keys against query input
+    # Shape check of cached keys against query input.
     expected_shape = (1, batch_size, num_features)
     if expected_shape != query.shape:
       raise ValueError('Autoregressive cache shape error, expected query shape '
                        f'{expected_shape} instead got {query.shape}.')
-    # update key, value caches with our new 1d spatial slices
+    # Update key, value caches with our new 1d spatial slices.
     cached_key[:, cache_index:cache_index + 1, :] = k.transpose(dim0=0, dim1=1)
     cached_value[:, cache_index:cache_index + 1, :] = v.transpose(
         dim0=0, dim1=1)
     k = cached_key.transpose(dim0=0, dim1=1)
     v = cached_value.transpose(dim0=0, dim1=1)
     cache_index += 1
-    # causal mask for cached decoder self-attention:
+    # Causal mask for cached decoder self-attention:
     # our single query position should only attend to those key
     # positions that have already been generated and cached,
     # not the remaining zero elements.
@@ -1018,7 +1038,7 @@ def multi_head_attention_forward(
     attn_mask = (torch.arange(max_length, device=k.device) >=
                  cache_index).reshape(1, max_length)
 
-  # prep attention mask
+  # Prepare attention mask.
   if not decode and attn_mask is not None:
     if attn_mask.dtype == torch.uint8:
       warnings.warn(
@@ -1045,7 +1065,7 @@ def multi_head_attention_forward(
       raise RuntimeError(
           f"attn_mask's dimension {attn_mask.dim()} is not supported")
 
-  # add bias along batch dimension (currently second)
+  # Add bias along batch dimension (currently second).
   if bias_k is not None and bias_v is not None:
     k = torch.cat([k, bias_k.repeat(1, bsz, 1)])
     v = torch.cat([v, bias_v.repeat(1, bsz, 1)])
@@ -1055,30 +1075,26 @@ def multi_head_attention_forward(
     assert bias_k is None
     assert bias_v is None
 
-  #
-  # reshape q, k, v for multihead attention and make em batch first
-  #
+  # Reshape q, k, v for multihead attention and make em batch first.
   q = q.contiguous().view(tgt_len, bsz * num_heads, head_dim).transpose(0, 1)
   k = k.contiguous().view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
   v = v.contiguous().view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
 
-  # update source sequence length after adjustments
+  # Update source sequence length after adjustments.
   src_len = k.size(1)
 
-  # convert mask to float
+  # Convert mask to float.
   if attn_mask is not None and attn_mask.dtype == torch.bool:
     new_attn_mask = torch.zeros_like(attn_mask, dtype=q.dtype)
     new_attn_mask.masked_fill_(attn_mask, -1e10)
     attn_mask = new_attn_mask
 
-  # adjust dropout_rate probability
+  # Adjust dropout_rate probability.
   if not training:
     dropout_rate = 0.0
 
-  #
-  # (deep breath) calculate attention and out projection
-  #
-  attn_output, attn_output_weights = _scaled_dot_product_attention(
+  # Calculate attention and out projection.
+  attn_output, attn_output_weights = torch.nn.functional.scaled_dot_product_attention(
       q, k, v, attn_mask, dropout_rate)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
@@ -1086,7 +1102,7 @@ def multi_head_attention_forward(
   attn_output = attn_output.view(tgt_len, bsz, attn_output.size(1))
 
   if need_weights:
-    # optionally average attention weights over heads
+    # Optionally average attention weights over heads.
     attn_output_weights = attn_output_weights.view(bsz,
                                                    num_heads,
                                                    tgt_len,
