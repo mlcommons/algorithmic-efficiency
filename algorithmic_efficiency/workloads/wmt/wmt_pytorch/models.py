@@ -253,49 +253,58 @@ class TransformerEncoder(nn.Module):
         see the docs in Transformer class.
     """
     if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype
+      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
       if _skpm_dtype != torch.bool and not torch.is_floating_point(
           src_key_padding_mask):
         raise AssertionError(
-            "only bool and floating types of key_padding_mask are supported")
+            'only bool and floating types of key_padding_mask are supported')
     output = src
     convert_to_nested = False
     first_layer = self.layers[0]
     src_key_padding_mask_for_layers = src_key_padding_mask
     why_not_sparsity_fast_path = ''
-    str_first_layer = "self.layers[0]"
+    str_first_layer = 'self.layers[0]'
     if not isinstance(first_layer, torch.nn.TransformerEncoderLayer):
-      why_not_sparsity_fast_path = f"{str_first_layer} was not TransformerEncoderLayer"
+      why_not_sparsity_fast_path = \
+        f'{str_first_layer} was not TransformerEncoderLayer'
     elif first_layer.norm_first:
-      why_not_sparsity_fast_path = f"{str_first_layer}.norm_first was True"
+      why_not_sparsity_fast_path = f'{str_first_layer}.norm_first was True'
     elif first_layer.training:
-      why_not_sparsity_fast_path = f"{str_first_layer} was in training mode"
+      why_not_sparsity_fast_path = \
+        f'{str_first_layer} was in training mode'
     elif not first_layer.self_attn.batch_first:
-      why_not_sparsity_fast_path = f" {str_first_layer}.self_attn.batch_first was not True"
+      why_not_sparsity_fast_path = \
+        f' {str_first_layer}.self_attn.batch_first was not True'
     elif not first_layer.self_attn._qkv_same_embed_dim:
-      why_not_sparsity_fast_path = f"{str_first_layer}.self_attn._qkv_same_embed_dim was not True"
+      why_not_sparsity_fast_path = \
+        f'{str_first_layer}.self_attn._qkv_same_embed_dim was not True'
     elif not first_layer.activation_relu_or_gelu:
-      why_not_sparsity_fast_path = f" {str_first_layer}.activation_relu_or_gelu was not True"
+      why_not_sparsity_fast_path = \
+        f' {str_first_layer}.activation_relu_or_gelu was not True'
     elif not first_layer.norm1.eps == first_layer.norm2.eps:
-      why_not_sparsity_fast_path = f"{str_first_layer}.norm1.eps was not equal to {str_first_layer}.norm2.eps"
+      why_not_sparsity_fast_path = \
+        f'{str_first_layer}.norm1.eps was not equal to {str_first_layer}.norm2.eps'
     elif not src.dim() == 3:
-      why_not_sparsity_fast_path = f"input not batched; expected src.dim() of 3 but got {src.dim()}"
+      why_not_sparsity_fast_path = \
+        f'input not batched; expected src.dim() of 3 but got {src.dim()}'
     elif not self.enable_nested_tensor:
-      why_not_sparsity_fast_path = "enable_nested_tensor was not True"
+      why_not_sparsity_fast_path = 'enable_nested_tensor was not True'
     elif src_key_padding_mask is None:
-      why_not_sparsity_fast_path = "src_key_padding_mask was None"
-    elif (((not hasattr(self, "mask_check")) or self.mask_check) and
+      why_not_sparsity_fast_path = 'src_key_padding_mask was None'
+    elif (((not hasattr(self, 'mask_check')) or self.mask_check) and
           not torch._nested_tensor_from_mask_left_aligned(
               src, src_key_padding_mask.logical_not())):
-      why_not_sparsity_fast_path = "mask_check enabled, and src and src_key_padding_mask was not left aligned"
+      why_not_sparsity_fast_path = 'mask_check enabled, and src and ' \
+                                   'src_key_padding_mask was not left aligned'
     elif output.is_nested:
-      why_not_sparsity_fast_path = "NestedTensor input is not supported"
+      why_not_sparsity_fast_path = 'NestedTensor input is not supported'
     elif mask is not None:
-      why_not_sparsity_fast_path = "src_key_padding_mask and mask were both supplied"
+      why_not_sparsity_fast_path = \
+        'src_key_padding_mask and mask were both supplied'
     elif first_layer.self_attn.num_heads % 2 == 1:
-      why_not_sparsity_fast_path = "num_head is odd"
+      why_not_sparsity_fast_path = 'num_head is odd'
     elif torch.is_autocast_enabled():
-      why_not_sparsity_fast_path = "autocast is enabled"
+      why_not_sparsity_fast_path = 'autocast is enabled'
 
     if not why_not_sparsity_fast_path:
       tensor_args = (
@@ -315,14 +324,14 @@ class TransformerEncoder(nn.Module):
       )
 
       if torch.overrides.has_torch_function(tensor_args):
-        why_not_sparsity_fast_path = "some Tensor argument has_torch_function"
+        why_not_sparsity_fast_path = 'some Tensor argument has_torch_function'
       elif not (src.is_cuda or 'cpu' in str(src.device)):
-        why_not_sparsity_fast_path = "src is neither CUDA nor CPU"
+        why_not_sparsity_fast_path = 'src is neither CUDA nor CPU'
       elif torch.is_grad_enabled() and any(
           x.requires_grad for x in tensor_args):
         why_not_sparsity_fast_path = (
-            "grad is enabled and at least one of query or the "
-            "input/output projection weights or biases requires_grad")
+            'grad is enabled and at least one of query or the '
+            'input/output projection weights or biases requires_grad')
 
       if (not why_not_sparsity_fast_path) and (src_key_padding_mask
                                                is not None):
@@ -593,9 +602,8 @@ class TransformerEncoderLayer(nn.Module):
     Shape:
         see the docs in Transformer class.
     """
-
     if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype
+      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
       if _skpm_dtype != torch.bool and not torch.is_floating_point(
           src_key_padding_mask):
         raise AssertionError(
@@ -618,7 +626,8 @@ class TransformerEncoderLayer(nn.Module):
     elif src_mask is not None:
       why_not_sparsity_fast_path = '`src_mask` is not supported for fastpath'
     elif src.is_nested and src_key_padding_mask is not None:
-      why_not_sparsity_fast_path = '`src_key_padding_mask` is not supported with NestedTensor input for fastpath'
+      why_not_sparsity_fast_path = '`src_key_padding_mask` is not supported ' \
+                                   'with NestedTensor input for fastpath'
     elif self.self_attn.num_heads % 2 == 1:
       why_not_sparsity_fast_path = '`num_head` is odd'
     elif torch.is_autocast_enabled():
@@ -946,12 +955,18 @@ class TransformerDecoderLayer(nn.Module):
     return self.dropout1(x), cache
 
   # Multihead attention block:
-  def _mha_block(self, x: Tensor, mem: Tensor,
-                 attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor]) -> Tensor:
-    x = self.multihead_attn(x, mem, mem,
-                            attn_mask=attn_mask,
-                            key_padding_mask=key_padding_mask,
-                            need_weights=False)[0]
+  def _mha_block(self,
+                 x: Tensor,
+                 mem: Tensor,
+                 attn_mask: Optional[Tensor],
+                 key_padding_mask: Optional[Tensor]) -> Tensor:
+    x = self.multihead_attn(
+        x,
+        mem,
+        mem,
+        attn_mask=attn_mask,
+        key_padding_mask=key_padding_mask,
+        need_weights=False)[0]
     return self.dropout2(x)
 
   # Feed forward block.
@@ -1174,7 +1189,7 @@ def _in_projection(
   ensure embedding dimension uniformity in the projected outputs.
   Output is a triple containing projection tensors for query, key and value.
   """
-  eq, ek, ev = q.size(-1), k.size(-1), v.size(-1)
+  eq, ek = q.size(-1), k.size(-1)
   assert w_q.shape == (eq, eq), \
     f'Expecting query weights shape of {(eq, eq)}, but got {w_q.shape}'
   assert w_k.shape == (eq, ek), \
@@ -1274,27 +1289,27 @@ def multi_head_attention_forward(query: Tensor,
   tgt_len, bsz, embed_dim = query.shape
   src_len, _, _ = key.shape
   assert embed_dim == embed_dim_to_check, \
-      f"was expecting dimension of {embed_dim_to_check}, but got {embed_dim}"
+      f'was expecting dimension of {embed_dim_to_check}, but got {embed_dim}'
   if isinstance(embed_dim, torch.Tensor):
     # `embed_dim` can be a tensor when JIT tracing.
     head_dim = embed_dim.div(num_heads, rounding_mode='trunc')
   else:
     head_dim = embed_dim // num_heads
   assert head_dim * num_heads == embed_dim, \
-      f"embed_dim {embed_dim} not divisible by num_heads {num_heads}"
+      f'embed_dim {embed_dim} not divisible by num_heads {num_heads}'
   # Allow MHA to have different embedding dimensions when separate projection
   # weights are used.
   assert key.shape[:2] == value.shape[:2], \
       (f"key's sequence and batch dims {key.shape[:2]} do not match value's "
-       f"{value.shape[:2]}")
+       f'{value.shape[:2]}')
 
   # Compute in-projection.
   assert q_proj_weight is not None, \
-      "use_separate_proj_weight is True but q_proj_weight is None"
+      'use_separate_proj_weight is True but q_proj_weight is None'
   assert k_proj_weight is not None, \
-      "use_separate_proj_weight is True but k_proj_weight is None"
+      'use_separate_proj_weight is True but k_proj_weight is None'
   assert v_proj_weight is not None, \
-      "use_separate_proj_weight is True but v_proj_weight is None"
+      'use_separate_proj_weight is True but v_proj_weight is None'
   if in_proj_bias is None:
     b_q = b_k = b_v = None
   else:
@@ -1351,25 +1366,25 @@ def multi_head_attention_forward(query: Tensor,
   if not decode and attn_mask is not None:
     if attn_mask.dtype == torch.uint8:
       warnings.warn(
-          "Byte tensor for attn_mask in nn.MultiheadAttention is deprecated."
-          "Use bool tensor instead.")
+          'Byte tensor for attn_mask in nn.MultiheadAttention is deprecated.'
+          'Use bool tensor instead.')
       attn_mask = attn_mask.to(torch.bool)
     else:
       assert attn_mask.is_floating_point() or attn_mask.dtype == torch.bool, \
-          f"float, byte, and bool types are supported, not {attn_mask.dtype}"
+          f'float, byte, and bool types are supported, not {attn_mask.dtype}'
     # ensure attn_mask's dim is 3
     if attn_mask.dim() == 2:
       correct_2d_size = (tgt_len, src_len)
       if attn_mask.shape != correct_2d_size:
         raise RuntimeError(
-            f"The shape of the 2D attn_mask is {attn_mask.shape}, "
-            f"but should be {correct_2d_size}.")
+            f'The shape of the 2D attn_mask is {attn_mask.shape}, '
+            f'but should be {correct_2d_size}.')
       attn_mask = attn_mask.unsqueeze(0)
     elif attn_mask.dim() == 3:
       correct_3d_size = (bsz * num_heads, tgt_len, src_len)
       if attn_mask.shape != correct_3d_size:
-        raise RuntimeError(f"The shape of attn_mask is {attn_mask.shape}, "
-                           f"should be {correct_3d_size}.")
+        raise RuntimeError(f'The shape of attn_mask is {attn_mask.shape}, '
+                           f'should be {correct_3d_size}.')
     else:
       raise RuntimeError(
           f"attn_mask's dimension {attn_mask.dim()} is not supported")
@@ -1385,9 +1400,12 @@ def multi_head_attention_forward(query: Tensor,
     assert bias_v is None
 
   # Reshape q, k, v for multihead attention and make em batch first.
-  q = q.contiguous().view(tgt_len, bsz * num_heads, head_dim).transpose(0, 1)
-  k = k.contiguous().view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
-  v = v.contiguous().view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
+  q = \
+    q.contiguous().view(tgt_len, bsz * num_heads, head_dim).transpose(0, 1)
+  k = \
+    k.contiguous().view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
+  v = \
+    v.contiguous().view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
 
   # Update source sequence length after adjustments.
   src_len = k.size(1)
@@ -1420,7 +1438,7 @@ def multi_head_attention_forward(query: Tensor,
     else:
       attn_output_weights = torch.bmm(q_scaled, k.transpose(-2, -1))
 
-    # Optionally average attention weights over heads
+    # Optionally average attention weights over heads.
     attn_output_weights = attn_output_weights.view(bsz,
                                                    num_heads,
                                                    tgt_len,
