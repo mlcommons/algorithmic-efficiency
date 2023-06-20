@@ -6,8 +6,6 @@ import warnings
 import torch
 from torch import nn
 from torch import Tensor
-# from torch.nn.functional import _in_projection
-# from torch.nn.functional import _scaled_dot_product_attention
 import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
@@ -581,7 +579,9 @@ class TransformerEncoderLayer(nn.Module):
       self.activation_relu_or_gelu = 0
     self.activation = activation
 
-  def forward(self, src: Tensor, src_mask: Optional[Tensor] = None,
+  def forward(self,
+              src: Tensor,
+              src_mask: Optional[Tensor] = None,
               src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
     r"""Pass the input through the encoder layer.
 
@@ -596,9 +596,10 @@ class TransformerEncoderLayer(nn.Module):
 
     if src_key_padding_mask is not None:
       _skpm_dtype = src_key_padding_mask.dtype
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(src_key_padding_mask):
+      if _skpm_dtype != torch.bool and not torch.is_floating_point(
+          src_key_padding_mask):
         raise AssertionError(
-          'Only bool and floating types of key_padding_mask are supported')
+            'Only bool and floating types of key_padding_mask are supported')
     # See Fig. 1 of https://arxiv.org/pdf/2002.04745v1.pdf.
     why_not_sparsity_fast_path = ''
     if not src.dim() == 3:
@@ -625,43 +626,11 @@ class TransformerEncoderLayer(nn.Module):
 
     if not why_not_sparsity_fast_path:
       tensor_args = (
-        src,
-        self.self_attn.in_proj_weight,
-        self.self_attn.in_proj_bias,
-        self.self_attn.out_proj.weight,
-        self.self_attn.out_proj.bias,
-        self.norm1.weight,
-        self.norm1.bias,
-        self.norm2.weight,
-        self.norm2.bias,
-        self.linear1.weight,
-        self.linear1.bias,
-        self.linear2.weight,
-        self.linear2.bias,
-      )
-
-      # We have to use list comprehensions below because TorchScript does not support
-      # generator expressions.
-      if torch.overrides.has_torch_function(tensor_args):
-        why_not_sparsity_fast_path = 'Some Tensor argument has_torch_function'
-      elif not all((x.is_cuda or 'cpu' in str(x.device)) for x in tensor_args):
-        why_not_sparsity_fast_path = 'Some Tensor argument is neither CUDA nor CPU'
-      elif torch.is_grad_enabled() and any(x.requires_grad for x in tensor_args):
-        why_not_sparsity_fast_path = ('grad is enabled and at least one of query or the '
-                                      'input/output projection weights or biases requires_grad')
-
-      if not why_not_sparsity_fast_path:
-        return torch._transformer_encoder_layer_fwd(
           src,
-          self.self_attn.embed_dim,
-          self.self_attn.num_heads,
           self.self_attn.in_proj_weight,
           self.self_attn.in_proj_bias,
           self.self_attn.out_proj.weight,
           self.self_attn.out_proj.bias,
-          self.activation_relu_or_gelu == 2,
-          self.norm_first,
-          self.norm1.eps,
           self.norm1.weight,
           self.norm1.bias,
           self.norm2.weight,
@@ -670,11 +639,44 @@ class TransformerEncoderLayer(nn.Module):
           self.linear1.bias,
           self.linear2.weight,
           self.linear2.bias,
-          # TODO: if src_mask and src_key_padding_mask merge to single 4-dim mask
-          src_mask if src_mask is not None else src_key_padding_mask,
-          1 if src_key_padding_mask is not None else
-          0 if src_mask is not None else
-          None,
+      )
+
+      # We have to use list comprehensions below because TorchScript does not support
+      # generator expressions.
+      if torch.overrides.has_torch_function(tensor_args):
+        why_not_sparsity_fast_path = 'Some Tensor argument has_torch_function'
+      elif not all((x.is_cuda or 'cpu' in str(x.device)) for x in tensor_args):
+        why_not_sparsity_fast_path = 'Some Tensor argument is neither CUDA nor CPU'
+      elif torch.is_grad_enabled() and any(
+          x.requires_grad for x in tensor_args):
+        why_not_sparsity_fast_path = (
+            'grad is enabled and at least one of query or the '
+            'input/output projection weights or biases requires_grad')
+
+      if not why_not_sparsity_fast_path:
+        return torch._transformer_encoder_layer_fwd(
+            src,
+            self.self_attn.embed_dim,
+            self.self_attn.num_heads,
+            self.self_attn.in_proj_weight,
+            self.self_attn.in_proj_bias,
+            self.self_attn.out_proj.weight,
+            self.self_attn.out_proj.bias,
+            self.activation_relu_or_gelu == 2,
+            self.norm_first,
+            self.norm1.eps,
+            self.norm1.weight,
+            self.norm1.bias,
+            self.norm2.weight,
+            self.norm2.bias,
+            self.linear1.weight,
+            self.linear1.bias,
+            self.linear2.weight,
+            self.linear2.bias,
+            # TODO: if src_mask and src_key_padding_mask merge to single 4-dim mask
+            src_mask if src_mask is not None else src_key_padding_mask,
+            1 if src_key_padding_mask is not None else
+            0 if src_mask is not None else None,
         )
 
     x = src
@@ -688,12 +690,17 @@ class TransformerEncoderLayer(nn.Module):
     return x
 
   # Self-attention block:
-  def _sa_block(self, x: Tensor,
-                attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor]) -> Tensor:
-    x = self.self_attn(x, x, x,
-                       attn_mask=attn_mask,
-                       key_padding_mask=key_padding_mask,
-                       need_weights=False)[0]
+  def _sa_block(self,
+                x: Tensor,
+                attn_mask: Optional[Tensor],
+                key_padding_mask: Optional[Tensor]) -> Tensor:
+    x = self.self_attn(
+        x,
+        x,
+        x,
+        attn_mask=attn_mask,
+        key_padding_mask=key_padding_mask,
+        need_weights=False)[0]
     return self.dropout1(x)
 
   # Feed forward block:
@@ -1377,7 +1384,7 @@ def multi_head_attention_forward(query: Tensor,
     dropout_rate = 0.0
 
   # Calculate attention and out projection.
-  attn_output, attn_output_weights = torch.nn.functional.scaled_dot_product_attention(
+  attn_output = torch.nn.functional.scaled_dot_product_attention(
       q, k, v, attn_mask, dropout_rate)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
@@ -1385,13 +1392,22 @@ def multi_head_attention_forward(query: Tensor,
   attn_output = attn_output.view(tgt_len, bsz, attn_output.size(1))
 
   if need_weights:
-    # Optionally average attention weights over heads.
+    q_scaled = q / math.sqrt(q.shape[-1])
+
+    if attn_mask is not None:
+      attn_output_weights = torch.baddbmm(attn_mask,
+                                          q_scaled,
+                                          k.transpose(-2, -1))
+    else:
+      attn_output_weights = torch.bmm(q_scaled, k.transpose(-2, -1))
+
+    # Optionally average attention weights over heads
     attn_output_weights = attn_output_weights.view(bsz,
                                                    num_heads,
                                                    tgt_len,
                                                    src_len)
     if average_attn_weights:
-      attn_output_weights = attn_output_weights.sum(dim=1) / num_heads
+      attn_output_weights = attn_output_weights.mean(dim=1) / num_heads
     return attn_output, attn_output_weights, cache
   else:
     return attn_output, None, cache
