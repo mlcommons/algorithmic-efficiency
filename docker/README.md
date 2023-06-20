@@ -113,7 +113,7 @@ docker pull us-central1-docker.pkg.dev/$PROJECT/$REPO/base_image:latest
 
 ### Setting up a Linux VM
 If you'd like to use a Linux VM, you will have to install the correct GPU drivers and the NVIDIA Docker toolkit.
-We recommmend to use the Deep Learning VM image from Google Click to Deploy. Further instructions are based on that.
+We recommmend to use the Deep Learning on Linux image. Further instructions are based on that.
 
 #### Installing GPU Drivers
 You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the

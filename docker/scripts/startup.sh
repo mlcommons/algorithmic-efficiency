@@ -3,7 +3,7 @@
 # Defaults
 DEBUG_MODE="false"
 
-while getopts d:f:s:t:e:w:b:m: flag
+while getopts d:f:s:t:e:w:b:m:o:c:r: flag
 do
     case "${flag}" in
         d) DATASET=${OPTARG};;
@@ -14,6 +14,10 @@ do
         w) WORKLOAD=${OPTARG};;
         b) DEBUG_MODE=${OPTARG};;
         m) MAX_STEPS=${OPTARG};;
+        o) OVERWRITE=${OPTARG};;
+        c) SAVE_CHECKPOINTS=${OPTARG};;
+        r) RSYNC_DATA=${OPTARG};;
+
     esac
 done
 
@@ -40,7 +44,12 @@ else
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
-if [[ ! -d ${DATA_DIR} ]]
+if [[ -z ${RSYNC_DATA+x} ]]
+then 
+RSYNC_DATA='true' # Set default argument
+fi 
+
+if [[ ! -d ${DATA_DIR} ]] && [[${RSYNC_DATA} == 'true']]
 then
     mkdir -p ${DATA_DIR}
 fi 
@@ -65,6 +74,17 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         MAX_STEPS_FLAG="--max_global_steps=${MAX_STEPS}"
     fi
 
+    # Set overwrite flag to false by default if not set
+    if [[  -z ${OVERWRITE+x} ]]
+    then 
+        OVERWRITE='False'
+    fi
+
+    if [[  -z ${SAVE_CHECKPOINTS+x} ]]
+    then 
+        SAVE_CHECKPOINTS='True'
+    fi
+
     # Define special flags for imagenet and librispeech workloads
     if [[ ${DATASET} == 'imagenet' ]]
     then 
@@ -75,7 +95,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
     fi 
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
-    ${COMMAND_PREFIX} submission_runner.py \
+    COMMAND="${COMMAND_PREFIX} submission_runner.py \
         --framework=${FRAMEWORK}  \
         --workload=${WORKLOAD} \
         --submission_path=${SUBMISSION_PATH}  \
@@ -84,12 +104,15 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
         --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
+        --overwrite=${OVERWRITE} \
+        --save_checkpoints=${SAVE_CHECKPOINTS} \
         ${MAX_STEPS_FLAG}  \
-        ${SPECIAL_FLAGS} \
-        2>&1 | tee ${LOG_FILE}
+        ${SPECIAL_FLAGS} 2>&1 | tee -a ${LOG_FILE}"
+    echo $COMMAND > ${LOG_FILE}
+    eval $COMMAND
 
-    /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}
-    /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}
+    /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
+    /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
 
 fi
 
