@@ -856,16 +856,17 @@ class MultiheadAttention(nn.MultiheadAttention):
     else:
       return attn_output, attn_output_weights, cache
 
+
 def _in_projection(
-        q: Tensor,
-        k: Tensor,
-        v: Tensor,
-        w_q: Tensor,
-        w_k: Tensor,
-        w_v: Tensor,
-        b_q: Optional[Tensor] = None,
-        b_k: Optional[Tensor] = None,
-        b_v: Optional[Tensor] = None,
+    q: Tensor,
+    k: Tensor,
+    v: Tensor,
+    w_q: Tensor,
+    w_k: Tensor,
+    w_v: Tensor,
+    b_q: Optional[Tensor] = None,
+    b_k: Optional[Tensor] = None,
+    b_v: Optional[Tensor] = None,
 ) -> Tuple[Tensor, Tensor, Tensor]:
   r"""Performs the in-projection step of the attention operation. This is simply
   a triple of linear projections, with shape constraints on the weights which
@@ -883,28 +884,27 @@ def _in_projection(
 
 
 # Modified to create cache for autoregressive decoding.
-def multi_head_attention_forward(
-    query: Tensor,
-    key: Tensor,
-    value: Tensor,
-    embed_dim_to_check: int,
-    num_heads: int,
-    in_proj_bias: Optional[Tensor],
-    bias_k: Optional[Tensor],
-    bias_v: Optional[Tensor],
-    dropout_rate: float,
-    out_proj_weight: Tensor,
-    out_proj_bias: Optional[Tensor],
-    training: bool = True,
-    need_weights: bool = True,
-    attn_mask: Optional[Tensor] = None,
-    q_proj_weight: Optional[Tensor] = None,
-    k_proj_weight: Optional[Tensor] = None,
-    v_proj_weight: Optional[Tensor] = None,
-    average_attn_weights: bool = True,
-    decode: bool = False,
-    cache: Optional[dict] = None,
-    max_len: Optional[int] = None) -> Any:
+def multi_head_attention_forward(query: Tensor,
+                                 key: Tensor,
+                                 value: Tensor,
+                                 embed_dim_to_check: int,
+                                 num_heads: int,
+                                 in_proj_bias: Optional[Tensor],
+                                 bias_k: Optional[Tensor],
+                                 bias_v: Optional[Tensor],
+                                 dropout_rate: float,
+                                 out_proj_weight: Tensor,
+                                 out_proj_bias: Optional[Tensor],
+                                 training: bool = True,
+                                 need_weights: bool = True,
+                                 attn_mask: Optional[Tensor] = None,
+                                 q_proj_weight: Optional[Tensor] = None,
+                                 k_proj_weight: Optional[Tensor] = None,
+                                 v_proj_weight: Optional[Tensor] = None,
+                                 average_attn_weights: bool = True,
+                                 decode: bool = False,
+                                 cache: Optional[dict] = None,
+                                 max_len: Optional[int] = None) -> Any:
   r"""
   Args:
     query, key, value: map a query and a set of key-value pairs to an output.
