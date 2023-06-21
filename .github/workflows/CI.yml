@@ -182,3 +182,5 @@ jobs:
         pytest -vx tests/test_param_shapes.py
         pytest -vx tests/test_param_types.py
         pytest -vx tests/test_ssim.py
+        pytest -vx tests/submission_runner_test.py
+        pytest -vx tests/test_baselines.py
