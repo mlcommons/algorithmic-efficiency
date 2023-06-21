@@ -254,7 +254,17 @@ def _make_one_batch_workload(workload_class,
           fake_batch['inputs'] = fake_batch['inputs'].transpose(
               (*range(num_dims - 3), num_dims - 1, num_dims - 3, num_dims - 2))
       elif 'librispeech' in workload_name:
-        inputs = np.random.normal(size=(*batch_shape, 320000))
+        rate = 16000
+        l = None
+        while l is None or l.shape[-1] < 320000:
+          duration = 0.5
+          freq = 2**(np.random.rand(*batch_shape, 1) * 13)
+          wav = np.sin(2 * np.pi * freq * np.arange(rate * duration) / rate)
+          if l is None:
+            l = wav
+          else:
+            l = np.concatenate([l, wav], axis=-1)
+        inputs = l
         targets = np.random.randint(low=1, high=1024, size=(*batch_shape, 256))
         tgt_pad = np.arange(0, 256)[tuple([None] * len(batch_shape))]
         tgt_lengths = np.random.randint(
