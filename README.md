@@ -26,7 +26,7 @@
 
 1. Create new environment, e.g. via `conda` or `virtualenv`:
 
-   Python minimum requirement >= 3.7
+   Python minimum requirement >= 3.8
 
    ```bash
     sudo apt-get install python3-venv
