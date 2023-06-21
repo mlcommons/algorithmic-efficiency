@@ -32,8 +32,6 @@ RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
 RUN cd algorithmic-efficiency && git fetch origin 
 RUN cd algorithmic-efficiency && git pull
 
-# Todo: remove this, this is temporary for developing
-COPY scripts/startup.sh /algorithmic-efficiency/docker/scripts/startup.sh
-RUN chmod a+x /algorithmic-efficiency/docker/scripts/startup.sh
+RUN cd algorithmic-efficiency
 
-ENTRYPOINT ["bash", "algorithmic-efficiency/docker/scripts/startup.sh"]
+ENTRYPOINT ["python3", "-m", "algorithmic-efficiency.submission_runner"]
