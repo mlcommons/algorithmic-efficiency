@@ -1,4 +1,5 @@
 """WMT workload implemented in PyTorch."""
+
 import contextlib
 from typing import Any, Dict, Optional, Tuple
 
