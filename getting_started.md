@@ -25,25 +25,25 @@ A submission for the external ruleset will consist of a submission module and a 
 2. Implement at least the methods in the template submission module. Feel free to use helper functions and/or modules as you see fit. Make sure you adhere to to the competition rules. Check out the guidelines for [allowed submissions](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disallowed-submissions), [disallowed submissions](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disallowed-submissions) and pay special attention to the [software dependencies rule](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#software-dependencies).
 3. Add a tuning configuration e.g. `tuning_search_space.json` file to your submission directory. For the tuning search space you can either:
     1. Define the set of feasible points by defining a value for "feasible_points" for the hyperparameters:
-        ```
-        {
-            "learning_rate": {
-                "feasible_points": 0.999
-                },
-        }
-        ```
-        For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
+    ```
+    {
+        "learning_rate": {
+            "feasible_points": 0.999
+            },
+    }
+    ```
+    For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
     2. Define a range of values for quasirandom sampling by specifing a "min", "max" and "scaling" 
-        keys for the hyperparameter:
-        ```
-        {
-            "weight_decay": {
-                "min": 5e-3, "max": 1.0, "scaling": "log"
-                }
-        }
-        ```
-        For a complete example see[tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/baselines/nadamw/tuning_search_space.json). 
+    keys for the hyperparameter:
+    ```
+    {
+        "weight_decay": {
+            "min": 5e-3, "max": 1.0, "scaling": "log"
+            }
+    }
+    ```
+    For a complete example see[tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/baselines/nadamw/tuning_search_space.json). 
 
 
 ## Run your submission
