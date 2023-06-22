@@ -47,8 +47,6 @@ A submission for the external ruleset will consist of a submission module and a 
 
 
 ## Run your submission
-TODO(kasimbeg): Add script to run all workloads?
-
 You can evaluate your submission with the `submission_runner.py` module on one workload at a time. 
 To run 
 
@@ -65,19 +63,7 @@ python3 submission_runner.py \
 ```
 
 ### PyTorch submissions
-To score your submission on a workload, from the algorithmic-efficency directory run: 
-```bash
-python3 submission_runner.py \
-    --framework=pytorch \
-    --workload=<workload> \
-    --experiment_dir=<path_to_experiment_dir> \
-    --experiment_name=<experiment_name> \
-    --submission_path=<path_to_submission_module> \
-    --tuning_search_space=<path_to_tuning_search_space>
-```
-
-#### PyTorch DDP
-We recommend using PyTorch's [Distributed Data Parallel (DDP)](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) when using multiple GPUs on a single node. You can initialize ddp with torchrun. 
+We use PyTorch's [Distributed Data Parallel (DDP)](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) when using multiple GPUs on a single node. You can initialize ddp with torchrun. 
 For example, on single host with 8 GPUs simply replace `python3` in the above command by:
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=N_GPUS

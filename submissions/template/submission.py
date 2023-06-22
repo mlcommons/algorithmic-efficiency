@@ -1,18 +1,9 @@
-"""Submission file for a SGD with HeavyBall momentum optimizer in Jax."""
+"""Template submission module.
 
-import functools
-from typing import Callable, Dict, Iterator, List, Tuple
-
-from flax import jax_utils
-import jax
-from jax import lax
-import jax.numpy as jnp
-import optax
-
-from algorithmic_efficiency import spec
-
-_GRAD_CLIP_EPS = 1e-6
-
+See https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#allowed-submissions 
+and https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disallowed-submissions
+for guidelines. 
+"""
 
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
