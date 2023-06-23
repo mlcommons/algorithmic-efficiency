@@ -45,7 +45,7 @@ A submission for the external ruleset will consist of a submission module and a 
             }
     }
     ```
-    For a complete example see[tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/baselines/nadamw/tuning_search_space.json). 
+    For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/baselines/nadamw/tuning_search_space.json). 
 
 
 ## Run your submission
