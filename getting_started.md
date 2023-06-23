@@ -34,12 +34,14 @@ A submission for the external ruleset will consist of a submission module and a 
     ```
     For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
-    2. Define a range of values for quasirandom sampling by specifing a "min", "max" and "scaling" 
+    2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` 
     keys for the hyperparameter:
     ```
     {
         "weight_decay": {
-            "min": 5e-3, "max": 1.0, "scaling": "log"
+            "min": 5e-3, 
+            "max": 1.0, 
+            "scaling": "log",
             }
     }
     ```
@@ -48,7 +50,6 @@ A submission for the external ruleset will consist of a submission module and a 
 
 ## Run your submission
 You can evaluate your submission with the `submission_runner.py` module on one workload at a time. 
-To run 
 
 ### JAX submissions
 To score your submission on a workload, from the algorithmic-efficency directory run: 
@@ -96,9 +97,10 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 \
     --tuning_search_space=<path_to_tuning_search_space>
 ```
 
-## Score a submission 
-To score your submission
-
+## Run your submission in a Docker container
+TODO(kasimbeg)
+## Score your submission 
+TODO(kasimbeg):
 ## Good Luck!
 
 

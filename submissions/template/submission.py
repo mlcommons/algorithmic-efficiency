@@ -5,6 +5,7 @@ and https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disal
 for guidelines. 
 """
 
+
 def init_optimizer_state(workload: spec.Workload,
                          model_params: spec.ParameterContainer,
                          model_state: spec.ModelAuxiliaryState,
