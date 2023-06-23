@@ -59,7 +59,7 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=<path_to_experiment_dir>\
     --experiment_name=<experiment_name> \
-    --submission_path=<path_to_submission_module> \
+    --submission_path=submissions/my_submissions/submission.py \
     --tuning_search_space=<path_to_tuning_search_space>
 ```
 
@@ -100,7 +100,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 \
 ## Run your submission in a Docker container
 TODO(kasimbeg)
 ## Score your submission 
-TODO(kasimbeg):
+TODO(kasimbeg)
 ## Good Luck!
 
 
