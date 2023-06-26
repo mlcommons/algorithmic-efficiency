@@ -50,7 +50,7 @@ RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd algorithmic-efficiency \
         && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; 
+        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     fi
 
 RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
