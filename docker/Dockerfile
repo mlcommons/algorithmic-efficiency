@@ -21,12 +21,20 @@ RUN mkdir -p experiment_runs/
 
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
+ARG FRAMEWORK=""
 ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
 RUN git clone $GIT_URL && cd algorithmic-efficiency 
 
 RUN cd algorithmic-efficiency && pip install -e '.[full]'
-RUN cd algorithmic-efficiency && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-RUN cd algorithmic-efficiency && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+
+RUN if [ FRAMEWORK == "jax" ]; then
+  cd algorithmic-efficiency && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+  cd algorithmic-efficiency && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+else
+  cd algorithmic-efficiency && pip install -e '.[jax_cpu]'
+  cd algorithmic-efficiency && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+fi
+
 RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
 
 RUN cd algorithmic-efficiency && git fetch origin 
