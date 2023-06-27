@@ -1,4 +1,4 @@
-for FRAMEWORK in "jax" "pytorch" "joint"
+for FRAMEWORK in "jax" "pytorch" "both"
 do
     GIT_BRANCH="dev"
     IMAGE_NAME="algoperf_$FRAMEWORK:$GIT_BRANCH"
