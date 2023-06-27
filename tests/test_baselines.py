@@ -43,8 +43,7 @@ baselines = {
         # 'sam',
         # 'shampoo',
         ],
-    ]
-]
+}
 
 
 frameworks = [
