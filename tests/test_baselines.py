@@ -34,12 +34,10 @@ baselines = {
         'shampoo',
     ],
     'pytorch': [
-        # 'adafactor',
-        'adamw',  # 'lamb',
+        'adamw',
         'momentum',
         'nadamw',
-        'nesterov',  # 'sam',
-        # 'shampoo',
+        'nesterov',
     ],
 }
 
