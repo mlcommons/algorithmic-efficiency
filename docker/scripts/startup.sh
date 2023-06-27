@@ -22,10 +22,10 @@ do
 done
 
 # Check if arguments are valid
-VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" "wmt")
-VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" "wmt" "librispeech_deepspeech" "librispeech_conformer")
+VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" "wmt" "mnist")
+VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist")
 
-if [[ -z ${DATASET+x} ]]: then 
+if [[ -z ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
         echo "Error: invalid argument for dataset (d)."
         exit 1
