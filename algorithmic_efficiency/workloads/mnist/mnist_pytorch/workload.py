@@ -57,7 +57,7 @@ class MnistWorkload(BaseMnistWorkload):
     del cache
     if N_GPUS != 0:
       per_device_batch_size = int(global_batch_size / N_GPUS)
-    else: 
+    else:
       per_device_batch_size = int(global_batch_size)
 
     # Only create and iterate over tf input pipeline in one Python process to
