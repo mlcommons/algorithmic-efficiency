@@ -39,7 +39,7 @@ baselines = {
         'momentum',
         'nadamw',
         'nesterov',  # 'sam',
-  # 'shampoo',
+        # 'shampoo',
     ],
 }
 
