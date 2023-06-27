@@ -4,56 +4,56 @@ on: [push, pull_request]
 
 jobs:
   fastmri_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d fastmri -f jax -s baselines/adamw/jax/submission.py -w fastmri -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 5428 -c False -o True -r false
   imagenet_resnet_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d imagenet -f jax -s baselines/adamw/jax/submission.py -w imagenet_resnet -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 28000 -c False -o True -r false
   imagenet_vit_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d imagenet -f jax -s baselines/adamw/jax/submission.py -w imagenet_vit -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 28000 -c False -o True -r false
   ogbg_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d ogbg -f jax -s baselines/adamw/jax/submission.py -w ogbg -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 12000 -c False -o True -r false
   criteo_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d criteo1tb -f jax -s baselines/adamw/jax/submission.py -w criteo1tb -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 1600 -c False -o True -r false
   librispeech_conformer_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d librispeech -f jax -s baselines/adamw/jax/submission.py -w librispeech_conformer -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 20000 -c False -o True -r false
   librispeech_deepspeech_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
       run: |
         docker run -t -d -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev:timing -d librispeech -f jax -s baselines/adamw/jax/submission.py -w librispeech_deepspeech -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 16000 -c False -o True -r false
   wmt_jax:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
