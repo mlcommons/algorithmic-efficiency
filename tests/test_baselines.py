@@ -32,19 +32,16 @@ baselines = {
         'nesterov',
         'sam',
         'shampoo',
-        ],
+    ],
     'pytorch': [
         # 'adafactor',
-        'adamw',
-        # 'lamb',
+        'adamw',  # 'lamb',
         'momentum',
         'nadamw',
-        'nesterov',
-        # 'sam',
-        # 'shampoo',
-        ],
+        'nesterov',  # 'sam',
+  # 'shampoo',
+    ],
 }
-
 
 frameworks = [
     'pytorch',
