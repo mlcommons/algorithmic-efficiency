@@ -1,4 +1,11 @@
 #!/bin/bash
+# Bash script to run submission_runner.py.
+# The primary purpose of this script is to serve as
+# an entrypoint for our Docker images.
+# Internal contributors may enable this script
+# to download data and upload experiment results to
+# our algorithmic-efficiency repo. To do so 
+# set the -i flag to true.
 
 # Defaults
 DEBUG_MODE="false"
@@ -17,13 +24,15 @@ do
         o) OVERWRITE=${OPTARG};;
         c) SAVE_CHECKPOINTS=${OPTARG};;
         r) RSYNC_DATA=${OPTARG};;
-
+        i) INTERNAL_CONTRIBUTOR_MODE=${OPTARG};;
     esac
 done
 
 # Check if arguments are valid
-VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" "wmt" "mnist")
-VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist")
+VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
+                "wmt" "mnist")
+VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
+                 "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist")
 
 if [[ -z ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
@@ -39,22 +48,22 @@ if [[ -z ${WORKLOAD+x} ]]; then
     fi
 fi
 
-
+# Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"
 ROOT_DATA_DIR="/data"
 
 EXPERIMENT_BUCKET="gs://mlcommons-runs"
 EXPERIMENT_DIR="/experiment_runs"
 
-if [[ "${FRAMEWORK}" == "jax" ]]
-then
+# Set run command prefix depending on framework
+if [[ "${FRAMEWORK}" == "jax" ]]; then
     COMMAND_PREFIX="python3"
 else 
     COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8"
 fi
 
-if [[ "${DATASET}" == "imagenet" ]]
-then 
+# Set data directory and bucket (bucket is only relevant in internal mode)
+if [[ "${DATASET}" == "imagenet" ]]; then 
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}/${FRAMEWORK}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/${FRAMEWORK}"
 else
@@ -64,21 +73,23 @@ fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
 if [[ -z ${RSYNC_DATA+x} ]]; then 
-    RSYNC_DATA='true' # Set default argument
+    RSYNC_DATA='true' # Set default value for rsync to true
 fi 
 
-if [[ ! -d ${DATA_DIR} ]] && [[ ${RSYNC_DATA} == 'true' ]]; then
-    mkdir -p ${DATA_DIR}
-    ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
+if [[ -z ${INTERNAL_CONTRIBUTOR_MODE+x} ]]; then
+    INTERNAL_CONTRIBUTOR_MODE='false' # Set default for contributor mode to false
 fi 
 
+if [[ $INTERNAL_CONTRIBUTOR_MODE == 'true' ]]; then
+    if [[ ! -d ${DATA_DIR} ]] && [[ ${RSYNC_DATA} == 'true' ]]; then
+        mkdir -p ${DATA_DIR}
+        ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
+    fi
+fi 
 
-# Check GPU requirements and run experiment
-# python3 scripts/check_gpu.py
 
 # Optionally run workload if SUBMISSION_PATH is set
-if [[ ! -z ${SUBMISSION_PATH+x} ]]
-    then
+if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     NOW=$(date +"%m-%d-%Y-%H-%M-%S")
     LOG_DIR="/logs"
     LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_${NOW}.log"
@@ -86,28 +97,23 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
     cd algorithmic-efficiency
 
     # Optionally define max steps flag for submission runner 
-    if [[ ! -z ${MAX_STEPS+x} ]]
-    then 
+    if [[ ! -z ${MAX_STEPS+x} ]]; then 
         MAX_STEPS_FLAG="--max_global_steps=${MAX_STEPS}"
     fi
 
     # Set overwrite flag to false by default if not set
-    if [[  -z ${OVERWRITE+x} ]]
-    then 
+    if [[  -z ${OVERWRITE+x} ]]; then 
         OVERWRITE='False'
     fi
 
-    if [[  -z ${SAVE_CHECKPOINTS+x} ]]
-    then 
+    if [[  -z ${SAVE_CHECKPOINTS+x} ]]; then 
         SAVE_CHECKPOINTS='True'
     fi
 
     # Define special flags for imagenet and librispeech workloads
-    if [[ ${DATASET} == 'imagenet' ]]
-    then 
+    if [[ ${DATASET} == 'imagenet' ]]; then 
         SPECIAL_FLAGS="--imagenet_v2_data_dir=${DATA_DIR}"
-    elif [[ ${DATASET} == 'librispeech' ]]
-    then 
+    elif [[ ${DATASET} == 'librispeech' ]]; then 
         SPECIAL_FLAGS="--librispeech_tokenizer_vocab_path=${DATA_DIR}/spm_model.vocab"
     fi 
     
@@ -128,8 +134,10 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]
     echo $COMMAND > ${LOG_FILE}
     eval $COMMAND
 
-    /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
-    /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
+    if [[ $INTERNAL_CONTRIBUTOR_MODE == 'true' ]]; then 
+        /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
+        /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
+    fi
 
 fi
 
