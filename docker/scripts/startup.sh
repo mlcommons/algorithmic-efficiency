@@ -63,16 +63,13 @@ else
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
-if [[ -z ${RSYNC_DATA+x} ]]
-then 
-RSYNC_DATA='true' # Set default argument
+if [[ -z ${RSYNC_DATA+x} ]]; then 
+    RSYNC_DATA='true' # Set default argument
 fi 
 
-if [[ ! -d ${DATA_DIR} ]] && [[${RSYNC_DATA} == 'true']]
-then
+if [[ ! -d ${DATA_DIR} ]] && [[ ${RSYNC_DATA} == 'true' ]]; then
     mkdir -p ${DATA_DIR}
     ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
-
 fi 
 
 
