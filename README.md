@@ -26,7 +26,7 @@
 
 1. Create new environment, e.g. via `conda` or `virtualenv`:
 
-   Python minimum requirement >= 3.7
+   Python minimum requirement >= 3.8
 
    ```bash
     sudo apt-get install python3-venv
@@ -181,8 +181,10 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 The rules for the MLCommons Algorithmic Efficency benchmark can be found in the seperate [rules document](RULES.md). Suggestions, clarifications and questions can be raised via pull requests.
 
 ## Contributing
-
 If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues, and see the [MLCommons contributing guidelines](CONTRIBUTING.md).
+
+### Submitting PRs 
+New PRs will be merged on the dev branch by default, given that they pass the presubmits.
 
 ### Presubmit testing
 

@@ -28,11 +28,17 @@ RUN mkdir -p experiment_runs/
 
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
+<<<<<<< HEAD
 ARG branch="main"
 ARG framework="both"
 ARG git_url=https://github.com/mlcommons/algorithmic-efficiency.git
 RUN git clone $git_url && cd algorithmic-efficiency 
 RUN cd algorithmic-efficiency && git checkout $branch
+=======
+ARG GIT_URL=https://github.com/mlcommons/algorithmic-efficiency.git
+RUN git clone $GIT_URL && cd algorithmic-efficiency && git fetch
+RUN cd algorithmic-efficiency && git checkout dev
+>>>>>>> dev
 
 RUN cd algorithmic-efficiency && pip install -e '.[full]'
 

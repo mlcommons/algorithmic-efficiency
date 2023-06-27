@@ -120,15 +120,21 @@ flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/data',
                     'Dataset location for ImageNet-v2.')
+flags.DEFINE_string('librispeech_tokenizer_vocab_path',
+                    '',
+                    'Location to librispeech tokenizer.')
+
 flags.DEFINE_enum(
     'framework',
     None,
     enum_values=['jax', 'pytorch'],
     help='Whether to use Jax or Pytorch for the submission. Controls among '
     'other things if the Jax or Numpy RNG library is used for RNG.')
-flags.DEFINE_string('librispeech_tokenizer_vocab_path',
-                    '',
-                    'Location to librispeech tokenizer.')
+flags.DEFINE_boolean(
+    'torch_compile',
+    False,
+    'Whether to use `torch.compile` to JIT-compile PyTorch code. '
+    'This will only take effect when `framework`==pytorch.')
 
 flags.DEFINE_string(
     'experiment_dir',
@@ -167,6 +173,22 @@ flags.DEFINE_boolean('save_checkpoints',
                      'Whether or not to checkpoint the model at every eval.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+
+
+def _get_time():
+  return time.time()
+
+
+def _get_time_ddp():
+  torch.cuda.synchronize()
+  t = time.time()
+  return sync_ddp_time(t, DEVICE)
+
+
+if USE_PYTORCH_DDP:
+  get_time = _get_time_ddp
+else:
+  get_time = _get_time
 
 
 def convert_filepath_to_module(path: str):
@@ -257,6 +279,8 @@ def train_once(
       aux_dropout_rate = hyperparameters.aux_dropout_rate
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
+    if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
+      model_params = torch.compile(model_params)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -275,6 +299,7 @@ def train_once(
       'accumulated_submission_time': 0,
       'accumulated_eval_time': 0,
       'accumulated_logging_time': 0,
+      'last_step_end_time': None,
   }
   global_step = 0
   eval_results = []
@@ -312,10 +337,8 @@ def train_once(
                                                  hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
-  global_start_time = time.time()
-  if USE_PYTORCH_DDP:
-    # Make sure all processes start training at the same time.
-    global_start_time = sync_ddp_time(global_start_time, DEVICE)
+  global_start_time = get_time()
+  train_state['last_step_end_time'] = global_start_time
 
   logging.info('Starting training loop.')
   goals_reached = (
@@ -325,13 +348,9 @@ def train_once(
       not goals_reached and \
       not train_state['training_complete']:
 
-    train_step_start_time = time.time()
-
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
 
-    if USE_PYTORCH_DDP:
-      train_step_start_time = sync_ddp_time(train_step_start_time, DEVICE)
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
                              input_queue,
@@ -361,12 +380,10 @@ def train_once(
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
 
-    train_step_end_time = time.time()
-    if USE_PYTORCH_DDP:
-      train_step_end_time = sync_ddp_time(train_step_end_time, DEVICE)
+    train_step_end_time = get_time()
 
     train_state['accumulated_submission_time'] += (
-        train_step_end_time - train_step_start_time)
+        train_step_end_time - train_state['last_step_end_time'])
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
@@ -375,9 +392,7 @@ def train_once(
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
-          eval_start_time = time.time()
-          if USE_PYTORCH_DDP:
-            eval_start_time = sync_ddp_time(eval_start_time, DEVICE)
+          eval_start_time = get_time()
           latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
@@ -393,9 +408,7 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
           # Save last eval time
-          eval_end_time = time.time()
-          if USE_PYTORCH_DDP:
-            eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
+          eval_end_time = get_time()
 
           # Accumulate eval time
           train_state[
@@ -417,9 +430,8 @@ def train_once(
                        f'\tStep: {global_step}, \t{latest_eval_result}')
           eval_results.append((global_step, latest_eval_result))
 
-          logging_start_time = time.time()
-          if USE_PYTORCH_DDP:
-            logging_start_time = sync_ddp_time(logging_start_time, DEVICE)
+          logging_start_time = get_time()
+
           if log_dir is not None:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
@@ -438,11 +450,9 @@ def train_once(
                   checkpoint_dir=log_dir,
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
-          logging_end_time = time.time()
-          if USE_PYTORCH_DDP:
-            logging_end_time = sync_ddp_time(logging_end_time, DEVICE)
 
-          train_state['last_eval_time'] = logging_end_time
+          logging_end_time = get_time()
+
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
 
@@ -453,6 +463,8 @@ def train_once(
                             f'{global_step}, error : {str(e)}.')
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
+
+        train_state['last_step_end_time'] = get_time()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
@@ -580,6 +592,8 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
       logging.info(f'Metrics: {all_metrics[ti]}')
       logging.info(f'Timing: {all_timings[ti]}')
+      num_evals = len(all_metrics[ti]['eval_results'])
+      logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
   else:
     rng_seed = struct.unpack('q', os.urandom(8))[0]
