@@ -1,6 +1,21 @@
+# Bash script to build and push dev docker images to artifact repo
+# Usage:
+# bash build_docker_images.sh -b <git_branch>
+
+while getopts b: flag
+do
+    case "${flag}" in
+        b) GIT_BRANCH=${OPTARG};;
+    esac
+done
+
+if [[ -z ${GIT_BRANCH+x} ]]
+then 
+GIT_BRANCH='main' # Set default argument
+fi 
+
 for FRAMEWORK in "jax" "pytorch" "both"
 do
-    GIT_BRANCH="dev"
     IMAGE_NAME="algoperf_$FRAMEWORK:$GIT_BRANCH"
     DOCKER_BUILD_COMMAND="docker build -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH"
     DOCKER_TAG_COMMAND="docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME"
