@@ -59,7 +59,7 @@ jobs:
     - name: Run containerized workload
       run: |
         docker run  -v /home/kasimbeg/data/:/data/ -v /home/kasimbeg/experiment_runs/:/experiment_runs -v /home/kasimbeg/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax:dev -d wmt -f jax -s baselines/adamw/jax/submission.py -w wmt -t baselines/adamw/tuning_search_space.json -e test_today/adamw -m 10 -c False -o True -r true     
-fastmri_pytorch:
+  fastmri_pytorch:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
