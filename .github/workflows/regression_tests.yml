@@ -1,4 +1,4 @@
-name: Containerized Regression tests
+name: Containerized Regression Tests
 
 on: [push, pull_request]
 
