@@ -34,14 +34,14 @@ VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
                  "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist")
 
-if [[ -z ${DATASET+x} ]]; then 
+if [[ -n ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
         echo "Error: invalid argument for dataset (d)."
         exit 1
     fi
 fi
 
-if [[ -z ${WORKLOAD+x} ]]; then 
+if [[ -n ${WORKLOAD+x} ]]; then 
     if [[ ! " ${VALID_WORKLOADS[@]} " =~ " $WORKLOAD " ]]; then
         echo "Error: invalid argument for workload (w)."
         exit 1
@@ -66,27 +66,27 @@ fi
 if [[ "${DATASET}" == "imagenet" ]]; then 
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}/${FRAMEWORK}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/${FRAMEWORK}"
-else
+elif [[ ! -z "${DATASET}" ]]; then
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}"
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
-if [[ -z ${RSYNC_DATA+x} ]]; then 
-    RSYNC_DATA='true' # Set default value for rsync to true
-fi 
-
 if [[ -z ${INTERNAL_CONTRIBUTOR_MODE+x} ]]; then
     INTERNAL_CONTRIBUTOR_MODE='false' # Set default for contributor mode to false
 fi 
 
-if [[ $INTERNAL_CONTRIBUTOR_MODE == 'true' ]]; then
-    if [[ ! -d ${DATA_DIR} ]] && [[ ${RSYNC_DATA} == 'true' ]]; then
-        mkdir -p ${DATA_DIR}
-        ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
-    fi
+if [[ -z ${RSYNC_DATA+x} ]]; then 
+    RSYNC_DATA='true' # Set default value for rsync to true
 fi 
 
+if [[ ! -z $DATA_DIR ]] && [[ ! -d ${DATA_DIR} ]]; then
+    mkdir -p ${DATA_DIR}
+fi 
+
+if [[ ! -z $DATA_DIR ]] && [[ ${RSYNC_DATA} == 'true' ]] && [[ $INTERNAL_CONTRIBUTOR_MODE == 'true' ]]; then
+    ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
+fi 
 
 # Optionally run workload if SUBMISSION_PATH is set
 if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
