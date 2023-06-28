@@ -16,7 +16,7 @@ except (ImportError, ModuleNotFoundError):
 
 # FLAGS = flags.FLAGS
 class Flags:
-  def __init__():
+  def __init__(self):
     self.framework = 'jax'
 
 FLAGS = Flags()
