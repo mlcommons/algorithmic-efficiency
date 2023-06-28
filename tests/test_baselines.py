@@ -29,9 +29,9 @@ baselines = {
         'lamb',
         'momentum',
         'nadamw',
-        'nesterov',
-        'sam',
-        'shampoo',
+        # 'nesterov',
+        # 'sam',
+        # 'shampoo',
     ],
     'pytorch': [
         'adamw',
