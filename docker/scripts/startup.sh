@@ -116,6 +116,11 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     elif [[ ${DATASET} == 'librispeech' ]]; then 
         SPECIAL_FLAGS="--librispeech_tokenizer_vocab_path=${DATA_DIR}/spm_model.vocab"
     fi 
+
+    # Optionally run torch compile
+    if [[ ${FRAMEWORK} == 'pytorch' ]]; then
+        TORCH_COMPILE_FLAG="torch_compile=True"
+    fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
     COMMAND="${COMMAND_PREFIX} submission_runner.py \
@@ -130,7 +135,8 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
         ${MAX_STEPS_FLAG}  \
-        ${SPECIAL_FLAGS} 2>&1 | tee -a ${LOG_FILE}"
+        ${SPECIAL_FLAGS} \
+        ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
     echo $COMMAND > ${LOG_FILE}
     eval $COMMAND
 
