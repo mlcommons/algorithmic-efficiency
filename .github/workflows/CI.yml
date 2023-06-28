@@ -192,4 +192,4 @@ jobs:
         pip install .[pytorch_cpu]
     - name: Run baseline tests
       run: |
-        pytest -v tests/test_baselines.py
+        pytest tests/test_baselines.py
