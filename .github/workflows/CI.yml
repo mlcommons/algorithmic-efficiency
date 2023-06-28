@@ -189,7 +189,7 @@ jobs:
         pip install pytest
         pip install .[full]
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu]sudo nano /usr/bin/gnome-terminal
+        pip install .[pytorch_cpu]
 
     - name: Run baseline tests
       run: |
