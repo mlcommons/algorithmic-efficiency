@@ -190,7 +190,6 @@ jobs:
         pip install .[full]
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
-
     - name: Run baseline tests
       run: |
         pytest -v tests/test_baselines.py
