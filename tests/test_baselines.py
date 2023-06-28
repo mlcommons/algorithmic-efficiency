@@ -67,7 +67,7 @@ class BaselineTest(parameterized.TestCase):
                                framework,
                                submission_path,
                                tuning_search_space):
-    FLAGS.framework = framework
+    # FLAGS.framework = framework
     workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload])
     workload_metadata['workload_path'] = os.path.join(
         submission_runner.BASE_WORKLOADS_DIR,
