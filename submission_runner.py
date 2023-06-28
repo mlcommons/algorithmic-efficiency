@@ -436,7 +436,8 @@ def train_once(
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
                 global_step=global_step,
-                preemption_count=preemption_count)
+                preemption_count=preemption_count,
+                is_eval=True,)
             if save_checkpoints:
               checkpoint_utils.save_checkpoint(
                   framework=FLAGS.framework,
