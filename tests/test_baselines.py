@@ -22,24 +22,33 @@ FLAGS(sys.argv)
 
 MAX_GLOBAL_STEPS = 500
 
-baselines = [
-    'adafactor',
-    'adamw',
-    'lamb',
-    'momentum',
-    'nadamw',
-    'nesterov',
-    'sam',
-    'shampoo',
-]
+baselines = {
+    'jax': [
+        'adafactor',
+        'adamw',
+        'lamb',
+        'momentum',
+        'nadamw',
+        'nesterov',
+        'sam',
+        'shampoo',
+    ],
+    'pytorch': [
+        'adamw',
+        'momentum',
+        'nadamw',
+        'nesterov',
+    ],
+}
+
 frameworks = [
-    # 'pytorch', # will enable this once all pytorch baselines are ready
+    'pytorch',
     'jax',
 ]
 
 named_parameters = []
 for f in frameworks:
-  for b in baselines:
+  for b in baselines[f]:
     named_parameters.append(
         dict(
             testcase_name=f'{b}_{f}',

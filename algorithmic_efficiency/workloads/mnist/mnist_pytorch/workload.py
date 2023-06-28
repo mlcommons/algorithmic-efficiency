@@ -55,7 +55,10 @@ class MnistWorkload(BaseMnistWorkload):
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     del cache
-    per_device_batch_size = int(global_batch_size / N_GPUS)
+    if N_GPUS != 0:
+      per_device_batch_size = int(global_batch_size / N_GPUS)
+    else:
+      per_device_batch_size = int(global_batch_size)
 
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
