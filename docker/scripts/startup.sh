@@ -53,27 +53,26 @@ else
     COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8"
 fi
 
-if [[ "${DATASET}" == "imagenet" ]]
-then 
+if [[ "${DATASET}" == "imagenet" ]]; then 
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}/${FRAMEWORK}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/${FRAMEWORK}"
-else
+elif [[ ! -z "${DATASET}" ]]; then
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}"
 fi
 
 # Copy data from MLCommons bucket if data has not been downloaded yet
-if [[ -z ${RSYNC_DATA+x} ]]
-then 
-RSYNC_DATA='true' # Set default argument
+if [[ -z ${RSYNC_DATA+x} ]]; then 
+    RSYNC_DATA='true' # Set default argument
 fi 
 
-if [[ ! -d ${DATA_DIR} ]] && [[${RSYNC_DATA} == 'true']]
-then
+if [[ ! -z $DATA_DIR ]] && [[ ! -d ${DATA_DIR} ]]; then
     mkdir -p ${DATA_DIR}
 fi 
-./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
 
+if [[ ! -z $DATA_DIR ]] && [[ ${RSYNC_DATA} == 'true' ]]; then
+    ./google-cloud-sdk/bin/gsutil -m rsync -r ${DATA_BUCKET} ${DATA_DIR}
+fi 
 
 # Check GPU requirements and run experiment
 # python3 scripts/check_gpu.py
