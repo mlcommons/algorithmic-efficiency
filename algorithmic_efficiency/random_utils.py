@@ -14,7 +14,12 @@ except (ImportError, ModuleNotFoundError):
       'numpy random_utils.')
   jax_rng = None
 
-FLAGS = flags.FLAGS
+# FLAGS = flags.FLAGS
+class Flags:
+  def __init__():
+    self.framework = 'jax'
+
+FLAGS = FLags()
 
 # Annoyingly, RandomState(seed) requires seed to be in [0, 2 ** 32 - 1] (an
 # unsigned int), while RandomState.randint only accepts and returns signed ints.

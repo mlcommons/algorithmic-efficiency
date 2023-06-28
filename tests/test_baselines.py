@@ -15,10 +15,10 @@ from absl.testing import parameterized
 from algorithmic_efficiency.profiler import PassThroughProfiler
 import submission_runner
 
-FLAGS = flags.FLAGS
+# FLAGS = flags.FLAGS
 # Needed to avoid UnparsedFlagAccessError
 # (see https://github.com/google/model_search/pull/8).
-FLAGS(sys.argv)
+# FLAGS(sys.argv)
 
 MAX_GLOBAL_STEPS = 500
 
