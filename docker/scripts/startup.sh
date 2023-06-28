@@ -25,14 +25,14 @@ done
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" "wmt")
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" "wmt" "librispeech_deepspeech" "librispeech_conformer")
 
-if [[ -z ${DATASET+x} ]]: then 
+if [[ -n ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
         echo "Error: invalid argument for dataset (d)."
         exit 1
     fi
 fi
 
-if [[ -z ${WORKLOAD+x} ]]; then 
+if [[ -n ${WORKLOAD+x} ]]; then 
     if [[ ! " ${VALID_WORKLOADS[@]} " =~ " $WORKLOAD " ]]; then
         echo "Error: invalid argument for workload (w)."
         exit 1
