@@ -17,7 +17,7 @@ fi
 for FRAMEWORK in "jax" "pytorch" "both"
 do
     IMAGE_NAME="algoperf_$FRAMEWORK:$GIT_BRANCH"
-    DOCKER_BUILD_COMMAND="docker build -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH"
+    DOCKER_BUILD_COMMAND="docker build -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=dockerfile_framework_arg"
     DOCKER_TAG_COMMAND="docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME"
     DOCKER_PUSH_COMMAND="docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME"
     DOCKER_PULL_COMMAND="docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME"

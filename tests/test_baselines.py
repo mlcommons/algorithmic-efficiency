@@ -15,10 +15,10 @@ from absl.testing import parameterized
 from algorithmic_efficiency.profiler import PassThroughProfiler
 import submission_runner
 
-FLAGS = flags.FLAGS
-# Needed to avoid UnparsedFlagAccessError
-# (see https://github.com/google/model_search/pull/8).
-FLAGS(sys.argv)
+# FLAGS = flags.FLAGS
+# # Needed to avoid UnparsedFlagAccessError
+# # (see https://github.com/google/model_search/pull/8).
+# FLAGS(sys.argv)
 
 MAX_GLOBAL_STEPS = 500
 
@@ -67,7 +67,6 @@ class BaselineTest(parameterized.TestCase):
                                framework,
                                submission_path,
                                tuning_search_space):
-    FLAGS.framework = framework
     workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload])
     workload_metadata['workload_path'] = os.path.join(
         submission_runner.BASE_WORKLOADS_DIR,
@@ -88,7 +87,7 @@ class BaselineTest(parameterized.TestCase):
         profiler=PassThroughProfiler(),
         max_global_steps=MAX_GLOBAL_STEPS,
     )
-    logging.info(score)
+    # logging.info(score)
 
 
 if __name__ == '__main__':
