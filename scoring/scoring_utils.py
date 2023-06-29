@@ -21,8 +21,6 @@ def get_logfile_paths(logdir):
       f = os.path.join(logdir, f)
       logfile_paths.append(f)
   return logfile_paths
-
-def get_eval_csv_paths(experiment_dir):
   
   
 ### Logfile reading helper functions ###
