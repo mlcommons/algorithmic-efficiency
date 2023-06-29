@@ -2,7 +2,6 @@
 
 import abc
 import functools
-import itertools
 import math
 from typing import Any, Dict, Iterator, Optional
 
