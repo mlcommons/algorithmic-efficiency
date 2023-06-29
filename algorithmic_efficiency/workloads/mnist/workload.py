@@ -33,7 +33,7 @@ def _build_mnist_dataset(
     data_dir: str,
     global_batch_size: int,
     cache: bool = False,
-    repeat_final_dataset: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
+    repeat_final_dataset: bool = True) -> Iterator[Dict[str, spec.Tensor]]:
   shuffle = split in ['train', 'eval_train']
   assert num_train_examples + num_validation_examples == 60000
   if shuffle:
@@ -159,7 +159,6 @@ class BaseMnistWorkload(spec.Workload):
         global_batch_size=global_batch_size,
         cache=cache,
         repeat_final_dataset=repeat_final_dataset)
-    ds = itertools.cycle(ds)
     return ds
 
   @property
