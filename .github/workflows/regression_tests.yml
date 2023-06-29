@@ -3,7 +3,7 @@ name: Containerized Regression Tests
 on: 
   pull_request:
     branches:
-      - main 
+      - 'main' 
 
 jobs:
   fastmri_jax:
