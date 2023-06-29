@@ -1,4 +1,6 @@
-import json
+"""Utils for dealing with processing logsfiles for scoring.
+"""
+ort json
 import os
 import re
 
@@ -6,7 +8,7 @@ import pandas as pd
 
 trial_line_regex = '(.*) --- Tuning run (\d+)/(\d+) ---'
 metrics_line_regex = '(.*) Metrics: ({.*})'
-
+eval_csv_filename = 'eval_measurements.csv'
 
 #### File IO helper functions ###
 def get_logfile_paths(logdir):
@@ -20,7 +22,9 @@ def get_logfile_paths(logdir):
       logfile_paths.append(f)
   return logfile_paths
 
-
+def get_eval_csv_paths(experiment_dir):
+  
+  
 ### Logfile reading helper functions ###
 def decode_metrics_line(line):
   """Convert metrics line to dict.
@@ -127,3 +131,4 @@ def get_trials_df(logfile):
   trials_dict = get_trials_dict(logfile)
   df = pd.DataFrame(trials_dict).transpose()
   return df
+
