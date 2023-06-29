@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -5,6 +6,7 @@ import pandas as pd
 
 trial_line_regex = '(.*) --- Tuning run (\d+)/(\d+) ---'
 metrics_line_regex = '(.*) Metrics: ({.*})'
+
 
 #### File IO helper functions ###
 def get_logfile_paths(logdir):
@@ -17,7 +19,7 @@ def get_logfile_paths(logdir):
       f = os.path.join(logdir, f)
       logfile_paths.append(f)
   return logfile_paths
-  
+
 
 ### Logfile reading helper functions ###
 def decode_metrics_line(line):
