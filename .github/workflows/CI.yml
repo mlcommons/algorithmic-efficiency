@@ -175,6 +175,13 @@ jobs:
         pip install .[full]
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
+    - name: Run pytest tests
+      run: |
+        pytest -vx tests/version_test.py
+        pytest -vx tests/test_num_params.py
+        pytest -vx tests/test_param_shapes.py
+        pytest -vx tests/test_param_types.py
+        pytest -vx tests/test_ssim.py
   pytest-baselines:
     runs-on: ubuntu-latest
     steps:
