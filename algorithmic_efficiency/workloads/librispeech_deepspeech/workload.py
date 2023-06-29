@@ -15,3 +15,7 @@ class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
   def step_hint(self) -> int:
     """Max num steps the baseline algo was given to reach the target."""
     return 80_000
+
+  @property
+  def use_tanh(self) -> bool:
+    return False

@@ -31,6 +31,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
     self.use_specaug = use_specaug
 
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return False
+
+  @property
+  def use_gelu(self) -> bool:
+    return False
+
+  @property
+  def attention_temperature(self) -> float:
+    return 1.0
+
   def init_model_fn(
       self,
       rng: spec.RandomState,
