@@ -131,12 +131,12 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
    ```
 
 ### Running Docker Container (End-to-end)
-To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md).
+To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 # Getting Started
 For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
 ## Running a workload
-To run a submission directly by running a Docker container, see [Getting Started Document](./getting_started.md).
+To run a submission directly by running a Docker container, see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 Alternatively from a your virtual environment or interactively running Docker container `submission_runner.py` run:
 
