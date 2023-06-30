@@ -6,6 +6,7 @@ Table of Contents:
 - [Develop your submission](#develop-your-submission)
 - [Run your submission](#run-your-submission)
     - [Docker](#run-your-submission-in-a-docker-container)
+- [Score your submission](#score-your-submission)
 
 ## Workspace set up and installation
 To get started you will have to make a few decisions and install the repository along with its dependencies. Specifically:
@@ -156,7 +157,11 @@ docker exec -it <container_id> /bin/bash
 ```
 
 ## Score your submission 
-TODO(kasimbeg)
+To produce performance profile and performance table:
+```bash
+python3 scoring/score_submission.py --experiment_name=<experiment_name> --output_dir=<output_dir>
+```
+
 
 ## Good Luck!
 
