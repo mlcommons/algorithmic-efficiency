@@ -127,4 +127,3 @@ def get_trials_df(logfile):
   trials_dict = get_trials_dict(logfile)
   df = pd.DataFrame(trials_dict).transpose()
   return df
-
