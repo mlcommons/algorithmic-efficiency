@@ -137,9 +137,11 @@ To run a submission end-to-end in a container see [Getting Started Document](./g
 # Getting Started
 For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
 ## Running a workload
+To run a submission directly by running a Docker container, see [Getting Started Document](./getting_started.md).
 
+Alternatively from a your virtual environment or interactively running Docker container `submission_runner.py` run:
 
-### JAX
+**JAX**
 
 ```bash
 python3 submission_runner.py \
@@ -151,7 +153,7 @@ python3 submission_runner.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
 
-### PyTorch
+**Pytorch**
 
 ```bash
 python3 submission_runner.py \
@@ -190,8 +192,8 @@ submission_runner.py \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
 ```
-
 </details>
+
 
 # Rules
 The rules for the MLCommons Algorithmic Efficency benchmark can be found in the seperate [rules document](RULES.md). Suggestions, clarifications and questions can be raised via pull requests.
