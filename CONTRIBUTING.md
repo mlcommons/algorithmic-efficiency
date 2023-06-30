@@ -9,11 +9,11 @@ To get started contributing code, you or your organization needs to sign the MLC
 MLCommons project work is tracked with issue trackers and pull requests. Modify the project in your own fork and issue a pull request once you want other developers to take a look at what you have done and discuss the proposed changes. Ensure that cla-bot and other checks pass for your Pull requests.
 
 # Table of Contents
-- Set up 
-- Installation
-- Docker workflow
-- Submitting PRs
-- Testing
+- [Setup](#setup) 
+- [Installation](#installation)
+- [Docker workflows](#docker-workflows)
+- [Submitting PRs](#submitting-prs)
+- [Testing](testing)
 
 
 # Setup 
@@ -64,7 +64,7 @@ To get an installation with the requirements for all workloads and development, 
 
 
 
-# Docker 
+# Docker workflows
 We recommend developing in our Docker image to ensure a consistent environment between developing, testing and scoring submissions. 
 
 To get started see:
@@ -73,12 +73,11 @@ To get started see:
 
 Other resources:
 - [Pre-built Images on Google Cloud Container Registry](#pre-built-images-on-google-cloud-container-registry)
-- [GCP Integration](#gcp-integration) 
+- [GCP Data and Experiment Integration](#gcp-integration) 
     - [Downloading Data from GCP](#downloading-data-from-gcp)
     - [Saving Experiments Results to GCP](#saving-experiments-to-gcp)
-- Other tips & tricks
-    - [Getting Information from a Container](#getting-information-from-a-container)
-    - [Mounting local repository](mounting-local-repository)
+- [Getting Information from a Container](#getting-information-from-a-container)
+- [Mounting local repository](mounting-local-repository)
 
 
 ## Pre-built Images on Google Cloud Container Registry 
@@ -114,7 +113,7 @@ bash docker/build_docker_images.sh -b <branch>
 ```
 We will maintain the dev and main images in this way.
 
-## GCP Integration
+## GCP Data and Experiment Integration
 The Docker entrypoint script can communicate with
 our GCP buckets on our internal GCP project. If
 you are an approved contributor you can get access to these resources to automatically download the datasets and upload experiment results. 
