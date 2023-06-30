@@ -104,7 +104,7 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
    cd ~ && git clone https://github.com/mlcommons/algorithmic-efficiency.git
    ```
 
-2. Build Docker Image
+2. Build Docker Image:
    ```bash
    cd `algorithmic-efficiency/docker`
    docker build -t <docker_image_name> . --build-args framework=<framework>
@@ -113,7 +113,7 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
    The `docker_image_name` is arbitrary.
 
 
-### Running Docker Container: Interactive 
+### Running Docker Container (Interactive)
 1. Run detached Docker Container
    ```bash
    docker run -t -d \
@@ -131,7 +131,7 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
    docker exec -it <container_id> /bin/bash
    ```
 
-### Running Docker Container: End-to-end
+### Running Docker Container (End-to-end)
 To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md).
 
 # Getting Started
