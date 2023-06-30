@@ -71,6 +71,6 @@ We also have regression tests available in [.github/workflows/regression_tests.y
 The regression tests are shorter end-to-end submissions run in a containerized environment across all 8 workloads, in both the jax and pytorch frameworks. 
 The regression tests run on self-hosted runners and are triggered for pull requests that target the main branch.
 To trigger a regression test:
-1. The self-hosted runner has to be on.
-2. The self-hosted runner application is active for the runner to accept jobs.
-3. Open a pull request to trigger the workflow.
+1. Turn on the self-hosted runner.
+2. Run the self-hosted runner application for the runner to accept jobs.
+3. Open a pull request into mian to trigger the workflow.
