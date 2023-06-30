@@ -9,10 +9,22 @@ To get started contributing code, you or your organization needs to sign the MLC
 MLCommons project work is tracked with issue trackers and pull requests. Modify the project in your own fork and issue a pull request once you want other developers to take a look at what you have done and discuss the proposed changes. Ensure that cla-bot and other checks pass for your Pull requests.
 
 ## Table of Contents
-- Set up your workspace
-- Developing with Docker
-- Presubmit testing
+- Set up 
+- Docker
+- Testing
 - Merging your Change
+
+### Set up
+If you have not installed the package and dependencies yet see the README for instructions.
+
+To use the development tools such as `pytest` or `pylint` use the `dev` option:
+
+```bash
+pip3 install -e '.[dev]'
+pre-commit install
+```
+
+To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
 ### Submitting PRs 
 New PRs will be merged on the dev branch by default, given that they pass the presubmits.

@@ -22,8 +22,36 @@
 
 [MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it. For a detailed description of the benchmark design, see our [paper](https://arxiv.org/abs/2306.07179).
 
-## Installation
+# Table of Contents
+- [Table of Contents](#table-of-contents)
+- [AlgoPerf Benchmark Workloads](#algoperf-benchmark-workloads)
+- [Installation](#installation)
+   - [Docker](#docker)
+- [Getting Started](#getting-started)
+- [Rules](#rules)
+- [Contributing](#contributing)
+- [Citing AlgoPerf Benchmark](#citing-algoperf-benchmark)
 
+
+## Installation
+You can install this package and dependences in a [python virtual environment](#virtual-environment) or use a [Docker container](#install-in-docker) (recommended).
+
+  *TL;DR to install the Jax version for GPU run:*
+
+   ```bash
+   pip3 install -e '.[pytorch_cpu]'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+   pip3 install -e '.[full]'
+   ```
+
+  *TL;DR to install the PyTorch version for GPU run:*
+
+   ```bash
+   pip3 install -e '.[jax_cpu]'
+   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+   pip3 install -e '.[full]'
+   ```
+##  Virtual environment
 1. Create new environment, e.g. via `conda` or `virtualenv`:
 
    Python minimum requirement >= 3.8
@@ -41,27 +69,12 @@
    cd algorithmic-efficiency
    ```
 
-3. We use pip to install the `algorithmic_efficiency`.
+3. Run pip3 install commands above  `algorithmic_efficiency`.
 
-  *TL;DR to install the Jax version for GPU run:*
-
-   ```bash
-   pip3 install -e '.[pytorch_cpu]'
-   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-   pip3 install -e '.[full]'
-   ```
-
-  *TL;DR to install the PyTorch version for GPU run:*
-
-   ```bash
-   pip3 install -e '.[jax_cpu]'
-   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
-   pip3 install -e '.[full]'
-   ```
-
-
-  #### Additional Details
-
+  <details>
+  <summary>
+  Additional Details
+  </summary>
    You can also install the requirements for individual workloads, e.g. via
 
    ```bash
@@ -73,45 +86,13 @@
    ```bash
    pip3 install -e '.[full]'
    ```
+  </details>
 
-   Depending on the framework you want to use (e.g. `JAX` or `PyTorch`) you need to install them as well. You could either do this manually or by adding the corresponding options:
+## Docker
+We recommend you install the repository by building a Docker image from the Dockerfile in docker/Dockerfile. 
+This image will contain the same dependencies we are using to score and run submissions. 
 
-   **JAX (GPU)**
-
-   ```bash
-   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-   ```
-
-   **JAX (CPU)**
-
-   ```bash
-   pip3 install -e '.[jax_cpu]'
-   ```
-
-   **PyTorch (GPU)**
-
-   ```bash
-   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
-   ```
-
-   **PyTorch (CPU)**
-
-   ```bash
-   pip3 install -e '.[pytorch_cpu]'
-   ```
-
-   **Development**
-
-   To use the development tools such as `pytest` or `pylint` use the `dev` option:
-
-   ```bash
-   pip3 install -e '.[dev]'
-   pre-commit install
-   ```
-
-   To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
-
-#### Setup
+To 
 
 1. Clone this repository:
 
@@ -133,11 +114,12 @@
 
    Currently docker method installs both PyTorch and JAX
 
-   </details>
 
+# Getting Started
+For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](.)
 ## Running a workload
 
-See the [`reference_algorithms/`](https://github.com/mlcommons/algorithmic-efficiency/tree/main/reference_algorithms) dir for training various algorithm implementations (note that none of these are valid submissions because they have workload-specific logic, so we refer to them as "algorithms" instead of "submissions").
+See the [`reference_algorithms`](https://github.com/mlcommons/algorithmic-efficiency/tree/main/reference_algorithms) directory for training various algorithm implementations (note that none of these are valid submissions because they have workload-specific logic, so we refer to them as "algorithms" instead of "submissions").
 
 ### JAX
 
@@ -176,52 +158,19 @@ where `N_GPUS` is the number of available GPUs on the node. To only see output f
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8
  ```
 
-## Rules
+# Rules
 
 The rules for the MLCommons Algorithmic Efficency benchmark can be found in the seperate [rules document](RULES.md). Suggestions, clarifications and questions can be raised via pull requests.
 
-## Contributing
+# Contributing
 If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues, and see the [MLCommons contributing guidelines](CONTRIBUTING.md).
 
-### Submitting PRs 
-New PRs will be merged on the dev branch by default, given that they pass the presubmits.
 
-### Presubmit testing
-
-We run basic presubmit checks with GitHub Actions, configured in the [.github/workflows](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows) folder.
-
-To run the below commands, use the versions installed via `pip install -e '.[dev]'`.
-
-To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
-```bash
-yapf -i -r -vv -p algorithmic_efficiency baselines datasets reference_algorithms tests *.py
-```
-
-To sort all import orderings, run the following:
-```bash
-isort .
-```
-
-To just print out all offending import orderings, run the following:
-```bash
-isort . --check --diff
-```
-
-To print out all offending pylint issues, run the following:
-```bash
-pylint algorithmic_efficiency
-pylint baselines
-pylint datasets
-pylint reference_algorithms
-pylint submission_runner.py
-pylint tests
-```
-
-You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/development_algorithms/`.
-
-## Note on shared data pipelines between JAX and PyTorch
+# Note on shared data pipelines between JAX and PyTorch
 
 The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT workloads are using the same TensorFlow input pipelines. Due to differences in how Jax and PyTorch distribute computations across devices, the PyTorch workloads have an additional overhead for these workloads.
 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
+
+## Citing AlgoPerf Benchmark
