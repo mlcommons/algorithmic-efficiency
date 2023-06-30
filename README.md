@@ -52,9 +52,11 @@ You can install this package and dependences in a [python virtual environment](#
    pip3 install -e '.[full]'
    ```
 ##  Virtual environment
+Note: Python minimum requirement >= 3.8
+
+To set up a virtual enviornment and install this repository:
 1. Create new environment, e.g. via `conda` or `virtualenv`:
 
-   Python minimum requirement >= 3.8
 
    ```bash
     sudo apt-get install python3-venv
@@ -69,57 +71,73 @@ You can install this package and dependences in a [python virtual environment](#
    cd algorithmic-efficiency
    ```
 
-3. Run pip3 install commands above  `algorithmic_efficiency`.
+3. Run pip3 install commands above to install `algorithmic_efficiency`.
 
-  <details>
-  <summary>
-  Additional Details
-  </summary>
-   You can also install the requirements for individual workloads, e.g. via
+<details>
+<summary>
+Additional Details
+</summary>
+You can also install the requirements for individual workloads, e.g. via
 
-   ```bash
-   pip3 install -e '.[librispeech]'
-   ```
+```bash
+pip3 install -e '.[librispeech]'
+```
 
-   or all workloads at once via
+or all workloads at once via
 
-   ```bash
-   pip3 install -e '.[full]'
-   ```
-  </details>
+```bash
+pip3 install -e '.[full]'
+```
+</details>
 
 ## Docker
-We recommend you install the repository by building a Docker image from the Dockerfile in docker/Dockerfile. 
-This image will contain the same dependencies we are using to score and run submissions. 
+We recommend using a Docker container to ensure a similar environment to our scoring and testing environments. 
 
-To 
 
+**Prerequisites for NVIDIA GPU set up**: You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs. 
+See instructions [here](https://github.com/NVIDIA/nvidia-docker).
+
+### Building Docker Image
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/mlcommons/algorithmic-efficiency.git
+   cd ~ && git clone https://github.com/mlcommons/algorithmic-efficiency.git
    ```
 
-2. Build Docker
-
+2. Build Docker Image
    ```bash
-   cd algorithmic-efficiency/ && sudo docker build -t algorithmic-efficiency .
+   cd `algorithmic-efficiency/docker`
+   docker build -t <docker_image_name> . --build-args framework=<framework>
    ```
+   The `framework` flag can be either `pytorch`, `jax` or `both`. 
+   The `docker_image_name` is arbitrary.
 
-3. Run Docker
 
+### Running Docker Container: Interactive 
+1. Run detached Docker Container
    ```bash
-   sudo docker run --gpus all -it --rm -v $PWD:/home/ubuntu/algorithmic-efficiency --ipc=host algorithmic-efficiency
+   docker run -t -d \
+      -v $HOME/data/:/data/ \
+      -v $HOME/experiment_runs/:/experiment_runs \
+      -v $HOME/experiment_runs/logs:/logs \
+      -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
+      --gpus all \
+      --ipc=host \
+      <docker_image_name> 
+   ```
+   This will print out a container id. 
+2. Open a bash terminal
+   ```bash
+   docker exec -it <container_id> /bin/bash
    ```
 
-   Currently docker method installs both PyTorch and JAX
-
+### Running Docker Container: End-to-end
+To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md).
 
 # Getting Started
-For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](.)
+For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
 ## Running a workload
 
-See the [`reference_algorithms`](https://github.com/mlcommons/algorithmic-efficiency/tree/main/reference_algorithms) directory for training various algorithm implementations (note that none of these are valid submissions because they have workload-specific logic, so we refer to them as "algorithms" instead of "submissions").
 
 ### JAX
 
@@ -127,8 +145,8 @@ See the [`reference_algorithms`](https://github.com/mlcommons/algorithmic-effici
 python3 submission_runner.py \
     --framework=jax \
     --workload=mnist \
-    --experiment_dir=/home/znado \
-    --experiment_name=baseline \
+    --experiment_dir=$HOME/experiments \
+    --experiment_name=my_first_experiment \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
@@ -139,14 +157,17 @@ python3 submission_runner.py \
 python3 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
-    --experiment_dir=/home/znado \
-    --experiment_name=baseline \
+    --experiment_dir=$HOME/experiments \
+    --experiment_name=my_first_experiment \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
+<details>
+<summary>
+Using Pytorch DDP (Recommended)
+</summary>
 
-When using multiple GPUs on a single node it is recommended to use PyTorch's
-[distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
+When using multiple GPUs on a single node it is recommended to use PyTorch's [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
 To do so, simply replace `python3` by
 
 ```bash
@@ -158,12 +179,25 @@ where `N_GPUS` is the number of available GPUs on the node. To only see output f
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8
  ```
 
-# Rules
+So the complete command is for example:
+```
+torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 \
+submission_runner.py \
+    --framework=pytorch \
+    --workload=mnist \
+    --experiment_dir=/home/znado \
+    --experiment_name=baseline \
+    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
+    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
+```
 
+</details>
+
+# Rules
 The rules for the MLCommons Algorithmic Efficency benchmark can be found in the seperate [rules document](RULES.md). Suggestions, clarifications and questions can be raised via pull requests.
 
 # Contributing
-If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues, and see the [MLCommons contributing guidelines](CONTRIBUTING.md).
+If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues. See our [CONTRIBUTING.md](CONTRIBUTING.md) for MLCommons contributing guidelines and setup and workflow instructions.
 
 
 # Note on shared data pipelines between JAX and PyTorch
@@ -172,5 +206,3 @@ The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT 
 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
-
-## Citing AlgoPerf Benchmark
