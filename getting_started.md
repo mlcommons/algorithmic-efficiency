@@ -1,7 +1,7 @@
 # Getting Started
 
 Table of Contents:
-- [Workspace set up and installation](#workspace-set-up-and-installation)
+- [Set up  and installation](#workspace-set-up-and-installation)
 - [Download the data](#download-the-data)
 - [Develop your submission](#develop-your-submission)
 - [Run your submission](#run-your-submission)
@@ -119,11 +119,11 @@ The container entrypoint script provides the following flags:
 
 
 To run the docker container that will run the submission runner run:
-```
+```bash
 docker run -t -d \
--v $HOME_DIR/data/:/data/ \
--v $HOME_DIR/experiment_runs/:/experiment_runs \
--v $HOME_DIR/experiment_runs/logs:/logs \
+-v $HOME/data/:/data/ \
+-v $HOME/experiment_runs/:/experiment_runs \
+-v $HOME/experiment_runs/logs:/logs \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
