@@ -11,10 +11,11 @@ MLCommons project work is tracked with issue trackers and pull requests. Modify 
 ## Table of Contents
 - Set up 
 - Docker
+- Submitting PRs
 - Testing
-- Merging your Change
 
-### Set up
+
+## Set up
 If you have not installed the package and dependencies yet see the README for instructions.
 
 To use the development tools such as `pytest` or `pylint` use the `dev` option:
@@ -26,13 +27,16 @@ pre-commit install
 
 To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
-### Submitting PRs 
+## Docker 
+Todo 
+
+## Submitting PRs 
 New PRs will be merged on the dev branch by default, given that they pass the presubmits.
 
-### Testing
+## Testing
 We run tests with GitHub Actions, configured in the [.github/workflows](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows) folder.
 
-#### Style Testing
+### Style Testing
 We run yapf and linting tests on PRs. You can view and fix offending errors with these instructions.
 
 To run the below commands, use the versions installed via `pip install -e '.[dev]'`.
@@ -62,11 +66,11 @@ pylint submission_runner.py
 pylint tests
 ```
 
-#### Unit and integration tests
+### Unit and integration tests
 We run unit tests and integration tests as part of the of github actions as well. 
 You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/development_algorithms/`.
 
-#### Regression tests
+### Regression tests
 We also have regression tests available in [.github/workflows/regression_tests.yml](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows/regression_tests.yml) that can be run semi-automatically.
 The regression tests are shorter end-to-end submissions run in a containerized environment across all 8 workloads, in both the jax and pytorch frameworks. 
 The regression tests run on self-hosted runners and are triggered for pull requests that target the main branch.
