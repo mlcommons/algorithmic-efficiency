@@ -10,13 +10,48 @@ MLCommons project work is tracked with issue trackers and pull requests. Modify 
 
 ## Table of Contents
 - Set up 
-- Docker
+- Installation
+- Docker workflow
 - Submitting PRs
 - Testing
 
 
-## Set up
-If you have not installed the package and dependencies yet see the README for instructions.
+## Setup 
+### GCP Integration
+If you want to run containers on GCP VMs or store and retrieve Docker images from the Google Cloud Container Registry, please read ahead.
+
+### Setting up a Linux VM
+If you'd like to use a Linux VM, you will have to install the correct GPU drivers and the NVIDIA Docker toolkit.
+We recommmend to use the Deep Learning on Linux image. Further instructions are based on that.
+
+#### Installing GPU Drivers
+You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the
+NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+
+#### Authentication for Google Cloud Container Registry
+To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
+Use the gcloud credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
+
+### Setting up a Container Optimized OS VMs on GCP
+You may want use a [Container Optimized OS](https://cloud.google.com/container-optimized-os/docs) to run submissions. 
+However, the Container Optimized OS does not support CUDA 11.7. If you go down this route,
+please adjust the base image in the Dockerfile to CUDA 11.6. 
+We don't guarantee compatibility of the `algorithmic_efficiency` package with CUDA 11.6 though.
+
+#### Installing GPU Drivers
+To install NVIDIA GPU drivers on container optimized OS you can use the `cos` installer.
+Follow instructions [here](https://cloud.google.com/container-optimized-os/docs/how-to/run-gpus)
+
+#### Authentication for Google Cloud Container Registry
+To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
+Use a standalone credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
+
+#### cloud-init script
+You can automate installation GPU Drivers and authentication for Cloud Container Registry with a cloud-init script, by passing
+the content of the script as `user-data` in the VMs metadata.
+
+## Installation
+If you have not installed the package and dependencies yet see [Installation](./README.md#installation).
 
 To use the development tools such as `pytest` or `pylint` use the `dev` option:
 
@@ -27,8 +62,44 @@ pre-commit install
 
 To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
+
+
 ## Docker 
-Todo 
+We recommend developing in our Docker image to ensure a consistent environment between developing, testing and scoring. 
+To get started see:
+- [Installation of package with Docker](./README#docker) 
+- [Running a submission inside a Docker Container](./getting_started.md#run-your-submission-in-a-docker-container)
+
+### Images on Google Cloud Container Registry 
+If you'd like to maintain or use images stored on our Google Cloud Container Registry read this section.
+You will have to use an authentication helper to set up permissions to access the repository:
+```
+ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
+gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
+```
+
+To push built image to artifact registry on GCP 
+```
+PROJECT=training-algorithms-external
+REPO=mlcommons-docker-repo
+docker tag <image_name> us-central1-docker.pkg.dev/$PROJECT/$REPO/<image_name>
+docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/<image_name>
+```
+
+To pull the latest image to GCP run:
+```
+PROJECT=training-algorithms-external
+REPO=mlcommons-docker-repo
+docker pull us-central1-docker.pkg.dev/$PROJECT/$REPO/<image_name>
+```
+
+The naming convention for `image_name` is `algoperf_<framework>_<branch>`. 
+
+To build and push all images (`pytorch`, `jax`, `both`) to our GCP artifact registry run.
+```
+bash docker/build_docker_images.sh -b <branch>
+```
+We will maintain the dev and main images in this way.
 
 ## Submitting PRs 
 New PRs will be merged on the dev branch by default, given that they pass the presubmits.
