@@ -54,9 +54,8 @@ You can install this package and dependences in a [python virtual environment](#
 ##  Virtual environment
 Note: Python minimum requirement >= 3.8
 
-To set up a virtual enviornment and install this repository:
-1. Create new environment, e.g. via `conda` or `virtualenv`:
-
+To set up a virtual enviornment and install this repository
+1. Create new environment, e.g. via `conda` or `virtualenv`
 
    ```bash
     sudo apt-get install python3-venv
@@ -64,7 +63,7 @@ To set up a virtual enviornment and install this repository:
     source env/bin/activate
    ```
 
-2. Clone this repository:
+2. Clone this repository
 
    ```bash
    git clone https://github.com/mlcommons/algorithmic-efficiency.git
@@ -98,13 +97,13 @@ We recommend using a Docker container to ensure a similar environment to our sco
 See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 
 ### Building Docker Image
-1. Clone this repository:
+1. Clone this repository
 
    ```bash
    cd ~ && git clone https://github.com/mlcommons/algorithmic-efficiency.git
    ```
 
-2. Build Docker Image:
+2. Build Docker Image
    ```bash
    cd `algorithmic-efficiency/docker`
    docker build -t <docker_image_name> . --build-args framework=<framework>
