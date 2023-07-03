@@ -67,7 +67,6 @@ flags.DEFINE_boolean('identical',
                      'Run jax and pytorch with identical weights.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
-N_GPUS = max(N_GPUS, jax.local_device_count())
 tf.config.set_visible_devices([], 'GPU')
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
@@ -136,12 +135,12 @@ class _FakeMetricsLogger:
     self.scalars = []
     self.eval_results = []
 
-  def append_scalar_metrics(self, scalars, step):
+  def append_scalar_metrics(self, scalars, n_gpus):
     if USE_PYTORCH_DDP:
       for k in sorted(scalars):
         scalars[k] = torch.FloatTensor([scalars[k]]).to(PYTORCH_DEVICE)
         dist.all_reduce(scalars[k])
-        scalars[k] = scalars[k].item() / N_GPUS
+        scalars[k] = scalars[k].item() / n_gpus
     if RANK == 0:
       self.scalars.append(scalars)
       self.save()
@@ -169,7 +168,8 @@ def _make_one_batch_workload(workload_class,
                              workload_name,
                              framework,
                              global_batch_size,
-                             use_fake_input_queue):
+                             use_fake_input_queue,
+                             n_gpus):
 
   class _OneEvalBatchWorkload(workload_class):
 
@@ -226,7 +226,7 @@ def _make_one_batch_workload(workload_class,
 
       np.random.seed(42)
       if framework == 'jax' or USE_PYTORCH_DDP:
-        batch_shape = (N_GPUS, global_batch_size // N_GPUS)
+        batch_shape = (n_gpus, global_batch_size // n_gpus)
       else:
         batch_shape = (global_batch_size,)
 
@@ -389,7 +389,8 @@ def _test_submission(workload_name,
                      submission_path,
                      search_space_path,
                      data_dir,
-                     use_fake_input_queue):
+                     use_fake_input_queue,
+                     n_gpus):
   logging.info(f'========= Testing {workload_name} in {framework}.')
   FLAGS.framework = framework
   workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload_name])
@@ -412,7 +413,7 @@ def _test_submission(workload_name,
   if FLAGS.all:
     if FLAGS.global_batch_size > 0:
       raise ValueError('Cannot set --global_batch_size and --all.')
-    global_batch_size = 2 * N_GPUS
+    global_batch_size = 2 * n_gpus
   else:
     global_batch_size = FLAGS.global_batch_size
     if FLAGS.global_batch_size < 0:
@@ -421,7 +422,8 @@ def _test_submission(workload_name,
                                       workload_name,
                                       framework,
                                       global_batch_size,
-                                      use_fake_input_queue)
+                                      use_fake_input_queue,
+                                      n_gpus)
 
   # Get a sample hyperparameter setting.
   hyperparameters = {}
@@ -533,6 +535,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':
             pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
+          # First jax operation has to be called after pytorch_init.
+          n_gpus = max(N_GPUS, jax.local_device_count())
           search_space_path, submission_path = _make_paths(
               repo_location, framework, workload_name)
           if search_space_path is None:
@@ -543,12 +547,15 @@ class ReferenceSubmissionTest(absltest.TestCase):
               submission_path,
               search_space_path,
               data_dir=FLAGS.data_dir,
-              use_fake_input_queue=FLAGS.use_fake_input_queue)
+              use_fake_input_queue=FLAGS.use_fake_input_queue,
+              n_gpus=n_gpus)
           self._assert_eval_result(workload_name, eval_result)
     else:
       framework = FLAGS.framework
       if framework == 'pytorch':
         pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
+      # First jax operation has to be called after pytorch_init.
+      n_gpus = max(N_GPUS, jax.local_device_count())
       workload_name = FLAGS.workload
       if FLAGS.submission_path and FLAGS.tuning_search_space:
         search_space_path = FLAGS.tuning_search_space
@@ -562,7 +569,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
           submission_path,
           search_space_path,
           data_dir=FLAGS.data_dir,
-          use_fake_input_queue=FLAGS.use_fake_input_queue)
+          use_fake_input_queue=FLAGS.use_fake_input_queue,
+          n_gpus=n_gpus)
       self._assert_eval_result(workload_name, eval_result)
 
     if USE_PYTORCH_DDP:
