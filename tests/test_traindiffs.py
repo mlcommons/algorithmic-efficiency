@@ -10,9 +10,6 @@ from subprocess import STDOUT
 
 from absl import flags
 from absl.testing import absltest
-import jax
-
-jax.config.update('jax_platforms', 'cpu')
 
 FLAGS = flags.FLAGS
 
@@ -27,6 +24,7 @@ WORKLOADS = [
     'criteo1tb'
 ]
 GLOBAL_BATCH_SIZE = 16
+NUM_TRAIN_STEPS = 10
 
 
 class ModelDiffTest(absltest.TestCase):
@@ -44,15 +42,15 @@ class ModelDiffTest(absltest.TestCase):
       jax_logs = '/tmp/jax_log.pkl'
       pyt_logs = '/tmp/pyt_log.pkl'
       run(
-          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python3 tests/reference_algorithm_tests.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}'
-          ' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps=10',
+          f'python3 tests/reference_algorithm_tests.py --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}'
+          f' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
           check=True)
       run(
-          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/reference_algorithm_tests.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}'
-          ' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps=10',
+          f'torchrun --standalone --nnodes 1 --nproc_per_node 8  tests/reference_algorithm_tests.py --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}'
+          f' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
           shell=True,
           stdout=DEVNULL,
           stderr=STDOUT,
@@ -82,7 +80,7 @@ class ModelDiffTest(absltest.TestCase):
       print("=" * pad, name, '=' * (len(header) - len(name) - pad), sep='')
       print(header)
       print('=' * len(header))
-      for i in range(10):
+      for i in range(NUM_TRAIN_STEPS):
         row = map(lambda x: str(round(x, 5)),
                   [
                       jax_results['eval_results'][i][k],
