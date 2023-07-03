@@ -373,8 +373,12 @@ def _make_one_batch_workload(workload_class,
       # the BLEU score.
       if workload_name == 'wmt':
         num_batches *= 2
-      for _ in range(num_batches * FLAGS.num_train_steps):
-        yield fake_batch
+
+      def _data_gen():
+        for _ in range(num_batches * FLAGS.num_train_steps):
+          yield fake_batch
+
+      return _data_gen
 
     def eval_model(self, *args, **kwargs):
       eval_result = super().eval_model(*args, **kwargs)
