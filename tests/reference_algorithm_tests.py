@@ -443,20 +443,20 @@ def _test_submission(workload_name,
                                          hyperparameters,
                                          opt_init_rng)
 
-  global_step = 0
-  data_select_rng, update_rng, eval_rng = prng.split(rng, 3)
-  batch = data_selection(workload,
-                         input_queue,
-                         optimizer_state,
-                         model_params,
-                         model_state,
-                         hyperparameters,
-                         global_step,
-                         data_select_rng)
   if USE_PYTORCH_DDP:
     torch.cuda.empty_cache()
     dist.barrier()
-  for _ in range(FLAGS.num_train_steps):
+  for global_step in range(FLAGS.num_train_steps):
+    step_rng = prng.fold_in(rng, global_step)
+    data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
+    batch = data_selection(workload,
+                           input_queue,
+                           optimizer_state,
+                           model_params,
+                           model_state,
+                           hyperparameters,
+                           global_step,
+                           data_select_rng)
     optimizer_state, model_params, model_state = update_params(
         workload=workload,
         current_param_container=model_params,
@@ -477,7 +477,7 @@ def _test_submission(workload_name,
         eval_rng,
         data_dir,
         imagenet_v2_data_dir=None,
-        global_step=0)
+        global_step=global_step)
   _ = workload.eval_model(
       global_batch_size,
       model_params,
@@ -485,7 +485,7 @@ def _test_submission(workload_name,
       eval_rng,
       data_dir,
       imagenet_v2_data_dir=None,
-      global_step=0)
+      global_step=global_step)
   return eval_result
 
 
