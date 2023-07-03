@@ -77,7 +77,7 @@ class ModelDiffTest(absltest.TestCase):
       fmt = lambda l: '|' + '|'.join(map(lambda x: f'{x:^20s}', l)) + '|'
       header = fmt(header)
       pad = (len(header) - len((name))) // 2
-      print("=" * pad, name, '=' * (len(header) - len(name) - pad), sep='')
+      print('=' * pad, name, '=' * (len(header) - len(name) - pad), sep='')
       print(header)
       print('=' * len(header))
       for i in range(NUM_TRAIN_STEPS):
