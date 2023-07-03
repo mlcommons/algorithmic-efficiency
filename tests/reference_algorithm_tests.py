@@ -135,12 +135,11 @@ class _FakeMetricsLogger:
     self.scalars = []
     self.eval_results = []
 
-  def append_scalar_metrics(self, scalars, n_gpus):
+  def append_scalar_metrics(self, scalars, step):
     if USE_PYTORCH_DDP:
       for k in sorted(scalars):
         scalars[k] = torch.FloatTensor([scalars[k]]).to(PYTORCH_DEVICE)
-        dist.all_reduce(scalars[k])
-        scalars[k] = scalars[k].item() / n_gpus
+        dist.all_reduce(scalars[k], op=dist.ReduceOp.AVG)
     if RANK == 0:
       self.scalars.append(scalars)
       self.save()
