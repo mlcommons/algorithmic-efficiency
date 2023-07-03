@@ -138,8 +138,9 @@ class _FakeMetricsLogger:
   def append_scalar_metrics(self, scalars, step):
     if USE_PYTORCH_DDP:
       for k in sorted(scalars):
-        scalars[k] = torch.FloatTensor([scalars[k]]).to(PYTORCH_DEVICE)
+        scalars[k] = torch.as_tensor([scalars[k]], device=PYTORCH_DEVICE)
         dist.all_reduce(scalars[k], op=dist.ReduceOp.AVG)
+        scalars[k] = scalars[k].item()
     if RANK == 0:
       self.scalars.append(scalars)
       self.save()
@@ -377,7 +378,7 @@ def _make_one_batch_workload(workload_class,
         for _ in range(num_batches * FLAGS.num_train_steps):
           yield fake_batch
 
-      return _data_gen
+      return _data_gen()
 
     def eval_model(self, *args, **kwargs):
       eval_result = super().eval_model(*args, **kwargs)
