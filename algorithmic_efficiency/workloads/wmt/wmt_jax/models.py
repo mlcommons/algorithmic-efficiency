@@ -1,4 +1,7 @@
-"""Transformer-based machine translation model."""
+"""Transformer-based machine translation model.
+
+Reference https://github.com/google/flax/tree/main/examples/wmt.
+"""
 
 from typing import Any, Callable, Optional
 
