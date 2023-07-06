@@ -176,6 +176,7 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def _get_time():
+  torch.cuda.synchronize()
   return time.time()
 
 
