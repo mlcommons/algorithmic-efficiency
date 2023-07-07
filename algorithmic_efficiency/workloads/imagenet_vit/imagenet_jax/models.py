@@ -96,7 +96,7 @@ class Encoder(nn.Module):
           num_heads=self.num_heads,
           dropout_rate=self.dropout_rate)
       x = block(x, train)
-    return nn.LayerNorm(name='encoder_norm')(x)
+    return nn.LayerNorm(name='encoder_layernorm')(x)
 
 
 class ViT(nn.Module):

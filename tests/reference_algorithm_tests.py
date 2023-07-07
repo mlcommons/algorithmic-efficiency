@@ -373,8 +373,12 @@ def _make_one_batch_workload(workload_class,
       # the BLEU score.
       if workload_name == 'wmt':
         num_batches *= 2
-      for _ in range(num_batches * FLAGS.num_train_steps):
-        yield fake_batch
+
+      def f():
+        for _ in range(num_batches * FLAGS.num_train_steps):
+          yield fake_batch
+
+      return f
 
     def eval_model(self, *args, **kwargs):
       eval_result = super().eval_model(*args, **kwargs)
@@ -441,20 +445,20 @@ def _test_submission(workload_name,
                                          hyperparameters,
                                          opt_init_rng)
 
-  global_step = 0
-  data_select_rng, update_rng, eval_rng = prng.split(rng, 3)
-  batch = data_selection(workload,
-                         input_queue,
-                         optimizer_state,
-                         model_params,
-                         model_state,
-                         hyperparameters,
-                         global_step,
-                         data_select_rng)
   if USE_PYTORCH_DDP:
     torch.cuda.empty_cache()
     dist.barrier()
-  for _ in range(FLAGS.num_train_steps):
+  for global_step in range(FLAGS.num_train_steps):
+    step_rng = prng.fold_in(rng, global_step)
+    data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
+    batch = data_selection(workload,
+                          input_queue,
+                          optimizer_state,
+                          model_params,
+                          model_state,
+                          hyperparameters,
+                          global_step,
+                          data_select_rng)
     optimizer_state, model_params, model_state = update_params(
         workload=workload,
         current_param_container=model_params,

@@ -29,8 +29,15 @@ class ParameterType(enum.Enum):
   WEIGHT = 0
   BIAS = 1
   CONV_WEIGHT = 2
-  BATCH_NORM = 3
-  EMBEDDING = 4
+  BATCH_NORM_SCALE = 3
+  BATCH_NORM_BIAS = 4
+  LAYER_NORM_SCALE = 5
+  LAYER_NORM_BIAS = 6
+  EMBEDDING = 7
+  ATTENTION_Q = 8
+  ATTENTION_K = 9
+  ATTENTION_V = 10
+  ATTENTION_OUT = 11
 
 
 # Of course, Tensor knows its shape and dtype.
