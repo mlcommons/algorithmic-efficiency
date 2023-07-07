@@ -2283,9 +2283,6 @@ def distributed_shampoo(
         prev_preconditioners.extend(state.preconditioners)
         original_shapes.extend(original_shapes_for_state)
 
-    # if quantized_dtype == jnp.float32:
-    assert len(states) == (len(num_statistics_per_state),
-                           f"{len(states)} vs {len(num_statistics_per_state)}")
     return _pmap_compute_preconditioners(states,
                                          step,
                                          statistics,

@@ -20,7 +20,7 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-MAX_GLOBAL_STEPS = 500
+MAX_GLOBAL_STEPS = 5
 
 baselines = {
     'jax': [

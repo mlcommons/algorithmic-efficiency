@@ -175,13 +175,28 @@ jobs:
         pip install .[full]
         pip install .[jax_cpu]
         pip install .[pytorch_cpu]
-    - name: Run pytest
+    - name: Run pytest tests
       run: |
         pytest -vx tests/version_test.py
         pytest -vx tests/test_num_params.py
         pytest -vx tests/test_param_shapes.py
         pytest -vx tests/test_param_types.py
         pytest -vx tests/test_ssim.py
+  pytest-baselines:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install pytest
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install .[full]
+        pip install .[jax_cpu]
+        pip install .[pytorch_cpu]
     - name: Run baseline tests
       run: |
-        pytest tests/test_baselines.py
+        pytest --verbosity=1 tests/test_baselines.py
