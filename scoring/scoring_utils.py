@@ -110,8 +110,6 @@ def get_trials_df_dict(logfile):
 
 def get_trials_df(logfile):
   """Gets a df of per trial results from a logfile.
-    The output df can be provided as input to 
-    scoring.compute_performance_profiles. 
     Args:
         experiment_dir: str
 
@@ -133,32 +131,57 @@ def get_trials_df(logfile):
 
 
 ## Get scoring code
+def get_experiment_df(experiment_dir):
+  """Gets a df of per trial results from an experiment dir.
+  The output df can be provided as input to 
+  scoring.compute_performance_profiles. 
+  Args:
+      experiment_dir: path to experiment directory containing 
+        results for workloads.
+        The directory structure is assumed to be:
+        + experiment_dir
+          + <workload>
+            + <trial>
+              - eval_measurements.csv
 
-def get_target_metric_names(workload):
-  pass 
-
-def get_df(experiment_dir):
+  Returns:
+      df: DataFrame where indices are trials, columns are 
+          metric names and values are lists.
+          e.g 
+          +----+------------+---------+--------------------+--------------------+
+          |    | workload   | trial   | validation/accuracy| score              |
+          |----+------------+---------+--------------------+--------------------|
+          |  0 | mnist_jax  | trial_1 | [0.0911, 0.0949]   | [10.6396, 10.6464] |
+          +----+------------+---------+--------------------+--------------------+
+  """
   df = pd.DataFrame()
   workload_dirs = os.listdir(experiment_dir)
   for workload in workload_dirs:
-    target_metric_names = get_target_metric_names(workload)
-    trial_dirs = [t  for t in 
-                  os.listdir(os.path.join(experiment_dir, 
-                                          workload))
-                  if re.match(TRIAL_DIR_REGEX, t)]
+    print(workload)
+    data = {
+      'workload': workload,
+    }
+    trial_dirs = [t  for t in os.listdir(os.path.join(experiment_dir, workload)) if re.match(TRIAL_DIR_REGEX, t)]
     for trial in trial_dirs:
       eval_measurements_filepath = os.path.join(experiment_dir,
                                                 workload, trial,
                                                 MEASUREMENTS_FILENAME,)
-      df = pd.read_csv(eval_measurements_filepath)
+      try:                                     
+        trial_df = pd.read_csv(eval_measurements_filepath)
+      except FileNotFoundError as e:
+        continue
       columns = df.columns.tolist()
-      for column in df.columns:
-        values = df[column].tolist()
-
-
-
-
-
-
+      data['trial'] = trial
+      for column in trial_df.columns:
+        values = trial_df[column].tolist()
+        data[column] = values
+      df = df.append(data, ignore_index=True)
+  return df
       
-
+from tabulate import tabulate
+df = get_experiment_df(experiment_dir='/home/kasimbeg/algorithmic-efficiency/scoring/test_data/experiment_dir')
+# print(df.head)
+print(df.columns)
+df = df[['workload', 'trial', 'validation/accuracy', 'global_step', 'score']].iloc[:10]
+# print(df.head())
+print(tabulate(df, headers='keys', tablefmt='psql'))

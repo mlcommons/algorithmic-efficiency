@@ -2,6 +2,7 @@ from absl.testing import absltest
 import scoring_utils
 
 TEST_LOGFILE = 'test_data/trial_0/adamw_fastmri_jax_04-18-2023-13-10-58.log'
+TEST_DIR = 'test_data/experiment_dir'
 NUM_EVALS = 18
 
 
@@ -22,7 +23,8 @@ class Test(absltest.TestCase):
     for column in df.columns:
       self.assertEqual(len(df.at['1', column]), NUM_EVALS)
 
-  def test_get_dr(self):
+  def test_get_experiment_df(self):
+    df = scoring_utils.get_experiment_df(experiment_dir)
     
 
 if __name__ == '__main__':
