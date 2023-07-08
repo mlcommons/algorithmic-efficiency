@@ -173,15 +173,15 @@ def get_experiment_df(experiment_dir):
       columns = df.columns.tolist()
       data['trial'] = trial
       for column in trial_df.columns:
-        values = trial_df[column].tolist()
+        values = trial_df[column].to_numpy()
         data[column] = values
       df = df.append(data, ignore_index=True)
   return df
       
-from tabulate import tabulate
-df = get_experiment_df(experiment_dir='/home/kasimbeg/algorithmic-efficiency/scoring/test_data/experiment_dir')
-# print(df.head)
-print(df.columns)
-df = df[['workload', 'trial', 'validation/accuracy', 'global_step', 'score']].iloc[:10]
-# print(df.head())
-print(tabulate(df, headers='keys', tablefmt='psql'))
+# from tabulate import tabulate
+# df = get_experiment_df(experiment_dir='/home/kasimbeg/algorithmic-efficiency/scoring/test_data/experiment_dir')
+# # print(df.head)
+# print(df.columns)
+# df = df[['workload', 'trial', 'validation/accuracy', 'global_step', 'score']].iloc[:10]
+# # print(df.head())
+# print(tabulate(df, headers='keys', tablefmt='psql'))

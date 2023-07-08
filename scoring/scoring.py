@@ -41,11 +41,14 @@ MIN_EVAL_METRICS = [
     'wer',
     'l1_loss',
 ]
-MAX_EVAL_METRICS = ['average_precision', 'ssim', 'bleu_score']
+MAX_EVAL_METRICS = ['average_precision', 
+                    'ssim', 
+                    'accuracy',
+                    'bleu_score']
 
 
 def generate_eval_cols(metrics):
-  splits = ['train', 'valid', 'test']
+  splits = ['train', 'valid', 'validation', 'test']
   return [f'{split}/{col}' for split, col in itertools.product(splits, metrics)]
 
 
@@ -59,7 +62,6 @@ def check_if_minimized(col_name):
   """Guess if the eval metric column name should be minimized or not."""
   for prefix in ['best_', 'final_']:
     col_name = col_name.replace(prefix, '')
-
   for col in MINIMIZE_REGISTRY:
     if col in col_name:
       return MINIMIZE_REGISTRY[col]
