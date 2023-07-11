@@ -69,7 +69,7 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
       param_types[name] = jax_param_types(
         value, parent_name=parent_name + '/' + name)
     else:
-      if 'batchnorm' in parent_name:
+      if 'batchnorm' in parent_name or 'bn' in parent_name:
         if name == 'scale':
           param_types[name] = spec.ParameterType.BATCH_NORM_SCALE
         elif name == 'bias':
@@ -77,7 +77,7 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
         else:
           raise ValueError(
             f'Unrecognized batch norm parameter: {parent_name}/{name}.')
-      elif 'layernorm' in parent_name:
+      elif 'layernorm' in parent_name or 'ln' in parent_name:
         if name == 'scale':
           param_types[name] = spec.ParameterType.LAYER_NORM_SCALE
         elif name == 'bias':
