@@ -92,7 +92,8 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
       # https://github.com/google/flax/blob/main/flax/linen/linear.py#L604.
-      elif 'embedding' in name:
+      elif ('embedding' in name or
+            ('embedding' in parent_name and name == 'kernel')):
         param_types[name] = spec.ParameterType.EMBEDDING
       elif 'attention' in parent_name:
         if 'key' in parent_name and name == 'kernel':
