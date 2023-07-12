@@ -153,7 +153,6 @@ def main(_):
                                                         num_points=100,
                                                         scale='linear',
                                                         verbosity=0)
-    print(performance_profile_df)
     if not os.path.exists(FLAGS.output_dir):
         os.mkdir(FLAGS.output_dir)
     scoring.plot_performance_profiles(performance_profile_df,
