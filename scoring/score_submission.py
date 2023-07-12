@@ -1,10 +1,20 @@
 from absl import app
 from absl import flags
 from absl import logging
+import os
 
 import scoring_utils 
 import scoring
 from algorithmic_efficiency import workloads
+from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import MnistWorkload
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import Criteo1TbDlrmSmallWorkload
+from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import FastMRIWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import ImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import ImagenetVitWorkload
+from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import LibriSpeechConformerWorkload
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax.workload import LibriSpeechDeepSpeechWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import OgbgWorkload
+from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import WmtWorkload
 
 flags.DEFINE_string('experiment_path',
                     None,
@@ -19,80 +29,77 @@ FLAGS = flags.FLAGS
 
 workload_metadata = {
     'mnist_jax': {
-        'target': workloads.mnist.workload.BaseMnistWorkload.validation_target_value,
+        'target': MnistWorkload().validation_target_value,
         'metric': 'validation/accuracy'
-    }
+    },
     'mnist_pytorch': {
-        'target': workloads.mnist.workload.BaseMnistWorkload.validation_target_value,
+        'target': MnistWorkload().validation_target_value,
         'metric': 'validation/accuracy'
-    }
+    },
     'criteo1tb_jax': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': Criteo1TbDlrmSmallWorkload().validation_target_value,
+        'metric': 'validation/loss'
+    },
     'criteo1tb_pytorch': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': Criteo1TbDlrmSmallWorkload().validation_target_value,
+        'metric': 'validation/loss'
+    },
     'fastmri_jax': {
-        'target': workloads.fastmri.workload.BaseFastMRIWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': FastMRIWorkload().validation_target_value,
+        'metric': 'validation/ssim'
+    },
     'fastmri_pytorch': {
-        'target': workloads.fastmri.workload.BaseFastMRIWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': FastMRIWorkload().validation_target_value,
+        'metric': 'validation/ssim'
+    },
     'imagenet_resnet': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
+        'target': ImagenetResnetWorkload().validation_target_value,
         'metric': 'validation/accuracy'
-    }
+    },
     'imagenet_resnet': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
+        'target': ImagenetResnetWorkload().validation_target_value,
         'metric': 'validation/accuracy'
-    }
+    },
     'imagenet_vit': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
+        'target': ImagenetVitWorkload().validation_target_value,
         'metric': 'validation/accuracy'
-    }
+    },
     'imagenet_vit': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
+        'target': ImagenetVitWorkload().validation_target_value,
         'metric': 'validation/accuracy'
-    }
+    },
     'librispeech_conformer': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': LibriSpeechConformerWorkload().validation_target_value,
+        'metric': 'validation/wer'
+    },
     'librispeech_conformer': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': LibriSpeechConformerWorkload().validation_target_value,
+        'metric': 'validation/wer'
+    },
     'librispeech_deepspeech': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': LibriSpeechDeepSpeechWorkload().validation_target_value,
+        'metric': 'validation/wer'
+    },
     'librispeech_deepspeech': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': LibriSpeechDeepSpeechWorkload().validation_target_value,
+        'metric': 'validation/wer'
+    },
     'ogbg': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': OgbgWorkload().validation_target_value,
+        'metric': 'validation/mean_average_precision'
+    },
     'ogbg': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': OgbgWorkload().validation_target_value,
+        'metric': 'validation/mean_average_precision'
+    },
     'wmt': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
+        'target': WmtWorkload().validation_target_value,
+        'metric': 'validation/bleu'
+    },
     'wmt': {
-        'target': workloads.criteo1tb.workload.BaseCriteo1TbDlrmSmallWorkload.validation_target_value,
-        'metric': 'validation/accuracy'
-    }
-
-
-
+        'target': WmtWorkload().validation_target_value,
+        'metric': 'validation/bleu'
+    },
 }
         
 
@@ -111,9 +118,12 @@ def main(_):
                                                         num_points=100,
                                                         scale='linear',
                                                         verbosity=0)
-    plot_performance_profiles(performance_profile_df,
+    print(performance_profile_df)
+    if not os.path.exists(FLAGS.output_dir):
+        os.mkdir(FLAGS.output_dir)
+    scoring.plot_performance_profiles(performance_profile_df,
                               'score',
-                              save_dir=FLAGS.ouptut_dir)
+                              save_dir=FLAGS.output_dir)
     
     logging.info(performance_profile_df)
 
