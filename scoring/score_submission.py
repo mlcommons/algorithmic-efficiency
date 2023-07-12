@@ -71,8 +71,8 @@ workload_metadata = {
         'test_metric': 'test/accuracy'
     },
     'imagenet_resnet_pytorch': {
-        'validation_target': ImagenetResnetWorkload().validation_target_value,
-        'test_target': ImagenetResnetWorkload().test_target_value,
+        'validation_target': ImagenetResNetWorkload().validation_target_value,
+        'test_target': ImagenetResNetWorkload().test_target_value,
         'validation_metric': 'validation/accuracy',
         'test_metric': 'test/accuracy'
     },
