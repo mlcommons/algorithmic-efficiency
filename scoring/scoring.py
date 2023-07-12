@@ -100,7 +100,11 @@ def get_index_that_reaches_best(workload_df, metric_col):
     return trial, best_idx[trial], best[trial]
 
 
-def get_index_that_reaches_target(workload_df, metric_col, target):
+def get_index_that_reaches_target(workload_df, 
+                                  validation_metric, 
+                                  validation_target,
+                                  test_metric,
+                                  test_target):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
@@ -113,13 +117,21 @@ def get_index_that_reaches_target(workload_df, metric_col, target):
     Tuple of trial index and time index where the workload reached the target
       metric_col. Return (-1, -1) if not reached.
   """
-  is_minimized = check_if_minimized(metric_col)
-  series = workload_df[metric_col]
+  is_minimized = check_if_minimized(validation_metric)
+  validation_series = workload_df[validation_metric]
+  test_series = workload_df[test_metric]
 
-  series = series[series != np.nan]
+  validation_series = validation_series[validation_series != np.nan and test_series != np.nan ]
+  test_series = test_series[validation_series != np.nan and test_series != np.nan ]
+
+  assert len(validation_series) == len(test_series)
 
   op = operator.le if is_minimized else operator.ge
-  target_reached = series.apply(lambda x: op(x, target))
+  validation_target_reached = validation_series.apply(lambda x: op(x, validation_target))
+  test_target_reached = test_series.apply(lambda x: op(x, test_target))
+  target_reached = validation_target_reached & test_target_reached
+
+  print(validation_target_reached)
 
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
@@ -157,9 +169,12 @@ def get_times_for_submission(submission,
   submission_name = submission_tag.split('.')[1]
 
   for workload, group in submission.groupby('workload'):
-    metric = workload_metadata[workload]['metric']
-    target = workload_metadata[workload]['target']
-    trial_idx, time_idx = get_index_that_reaches_target(group, metric, target)
+    validation_metric = workload_metadata[workload]['validation_metric']
+    validation_target = workload_metadata[workload]['validation_target']
+    test_metric = workload_metadata[workload]['test_metric']
+    test_target = workload_metadata[workload]['test_target']
+    trial_idx, time_idx = get_index_that_reaches_target(
+        group, validation_metric, test_metric, validation_target, test_target)
     if time_idx > -1:
       time_val = group[time_col].loc[trial_idx][time_idx]
     else:

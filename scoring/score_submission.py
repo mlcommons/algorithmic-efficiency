@@ -29,76 +29,112 @@ FLAGS = flags.FLAGS
 
 workload_metadata = {
     'mnist_jax': {
-        'target': MnistWorkload().validation_target_value,
-        'metric': 'validation/accuracy'
+        'validation_target': MnistWorkload().validation_target_value,
+        'test_target': MnistWorkload().test_target_value,
+        'validation_metric': 'validation/accuracy',
+        'test_metric': 'test/accuracy'
     },
     'mnist_pytorch': {
-        'target': MnistWorkload().validation_target_value,
-        'metric': 'validation/accuracy'
+        'validation_target': MnistWorkload().validation_target_value,
+        'test_target': MnistWorkload().test_target_value,
+        'validation_metric': 'validation/accuracy',
+        'test_metric': 'test/accuracy'
     },
     'criteo1tb_jax': {
-        'target': Criteo1TbDlrmSmallWorkload().validation_target_value,
-        'metric': 'validation/loss'
+        'validation_target': Criteo1TbDlrmSmallWorkload().validation_target_value,
+        'test_target': Criteo1TbDlrmSmallWorkload().test_target_value,
+        'validation_metric': 'validation/loss',
+        'test_metric': 'test/loss',
     },
     'criteo1tb_pytorch': {
-        'target': Criteo1TbDlrmSmallWorkload().validation_target_value,
-        'metric': 'validation/loss'
+        'validation_target': Criteo1TbDlrmSmallWorkload().validation_target_value,
+        'test_target': Criteo1TbDlrmSmallWorkload().test_target_value,
+        'validaiton_metric': 'validation/loss',
+        'test_metric': 'test/loss'
     },
     'fastmri_jax': {
-        'target': FastMRIWorkload().validation_target_value,
-        'metric': 'validation/ssim'
+        'validation_target': FastMRIWorkload().validation_target_value,
+        'test_target': FastMRIWorkload().test_target_value,
+        'validation_metric': 'validation/ssim',
+        'test_metric': 'test/ssim',
     },
     'fastmri_pytorch': {
-        'target': FastMRIWorkload().validation_target_value,
-        'metric': 'validation/ssim'
+        'validation_target': FastMRIWorkload().validation_target_value,
+        'test_target': FastMRIWorkload().test_target_value,
+        'validation_metric': 'validation/ssim',
+        'test_metric': 'test/ssim',
     },
-    'imagenet_resnet': {
-        'target': ImagenetResnetWorkload().validation_target_value,
-        'metric': 'validation/accuracy'
+    'imagenet_resnet_jax': {
+        'validation_target': ImagenetResNetWorkload().validation_target_value,
+        'test_target': ImagenetResNetWorkload().test_target_value,
+        'validation_metric': 'validation/accuracy',
+        'test_metric': 'test/accuracy'
     },
-    'imagenet_resnet': {
-        'target': ImagenetResnetWorkload().validation_target_value,
-        'metric': 'validation/accuracy'
+    'imagenet_resnet_pytorch': {
+        'validation_target': ImagenetResnetWorkload().validation_target_value,
+        'test_target': ImagenetResnetWorkload().test_target_value,
+        'validation_metric': 'validation/accuracy',
+        'test_metric': 'test/accuracy'
     },
-    'imagenet_vit': {
-        'target': ImagenetVitWorkload().validation_target_value,
-        'metric': 'validation/accuracy'
+    'imagenet_vit_jax': {
+        'validation_target': ImagenetVitWorkload().validation_target_value,
+        'test_target': ImagenetVitWorkload().test_target_value,
+        'validation_metric': 'validation/accuracy',
+        'test_metric': 'test/accuracy',
     },
-    'imagenet_vit': {
-        'target': ImagenetVitWorkload().validation_target_value,
-        'metric': 'validation/accuracy'
+    'imagenet_vit_pytorch': {
+        'validation_target': ImagenetVitWorkload().validation_target_value,
+        'test_target': ImagenetVitWorkload().test_target_value,
+        'validation_metric': 'validation/accuracy',
+        'test_metric': 'test/accuracy',
     },
-    'librispeech_conformer': {
-        'target': LibriSpeechConformerWorkload().validation_target_value,
-        'metric': 'validation/wer'
+    'librispeech_conformer_jax': {
+        'validation_target': LibriSpeechConformerWorkload().validation_target_value,
+        'test_target': LibriSpeechConformerWorkload().test_target_value,
+        'validation_metric': 'validation/wer',
+        'test_metric': 'test/wer',
     },
-    'librispeech_conformer': {
-        'target': LibriSpeechConformerWorkload().validation_target_value,
-        'metric': 'validation/wer'
+    'librispeech_conformer_pytorch': {
+        'validation_target': LibriSpeechConformerWorkload().validation_target_value,
+        'test_target': LibriSpeechConformerWorkload().test_target_value,
+        'validation_metric': 'validation/wer',
+        'test_metric': 'test/wer',
     },
-    'librispeech_deepspeech': {
+    'librispeech_deepspeech_jax': {
+        'validation_target': LibriSpeechDeepSpeechWorkload().validation_target_value,
+        'test_target': LibriSpeechDeepSpeechWorkload().test_target_value,
+        'validation_metric': 'validation/wer',
+        'test_metric': 'test/wer'
+    },
+    'librispeech_deepspeech_pytorch': {
         'target': LibriSpeechDeepSpeechWorkload().validation_target_value,
-        'metric': 'validation/wer'
+        'validation_target': LibriSpeechDeepSpeechWorkload().validation_target_value,
+        'test_target': LibriSpeechDeepSpeechWorkload().test_target_value,
+        'validation_metric': 'validation/wer',
     },
-    'librispeech_deepspeech': {
-        'target': LibriSpeechDeepSpeechWorkload().validation_target_value,
-        'metric': 'validation/wer'
+    'ogbg_jax': {
+        'validation_target': OgbgWorkload().validation_target_value,
+        'test_target': OgbgWorkload().test_target_value,
+        'validation_metric': 'validation/mean_average_precision',
+        'test_metric': 'test/mean_average_precision',
     },
-    'ogbg': {
-        'target': OgbgWorkload().validation_target_value,
-        'metric': 'validation/mean_average_precision'
+    'ogbg_pytorch': {
+        'validation_target': OgbgWorkload().validation_target_value,
+        'test_target': OgbgWorkload().test_target_value,
+        'validation_metric': 'validation/mean_average_precision',
+        'test_metric': 'test/mean_average_precision',
     },
-    'ogbg': {
-        'target': OgbgWorkload().validation_target_value,
-        'metric': 'validation/mean_average_precision'
+    'wmt_jax': {
+        'validation_target': WmtWorkload().validation_target_value,
+        'test_target': WmtWorkload().test_target_value,
+        'validation_metric': 'validation/bleu',
+        'test_metric': 'test/bleu',
     },
-    'wmt': {
-        'target': WmtWorkload().validation_target_value,
-        'metric': 'validation/bleu'
-    },
-    'wmt': {
-        'target': WmtWorkload().validation_target_value,
-        'metric': 'validation/bleu'
+    'wmt_pytorch': {
+        'validation_target': WmtWorkload().validation_target_value,
+        'test_target': WmtWorkload().test_target_value,
+        'validation_metric': 'validation/bleu',
+        'test_metric': 'test/bleu',
     },
 }
         
@@ -108,7 +144,6 @@ def main(_):
     results = {
         FLAGS.submission_tag : df,
         }
-    # print(results.head)
     performance_profile_df = scoring.compute_performance_profiles(results,
                                                         workload_metadata,
                                                         time_col='score',
