@@ -49,7 +49,7 @@ workload_metadata = {
     'criteo1tb_pytorch': {
         'validation_target': Criteo1TbDlrmSmallWorkload().validation_target_value,
         'test_target': Criteo1TbDlrmSmallWorkload().test_target_value,
-        'validaiton_metric': 'validation/loss',
+        'validation_metric': 'validation/loss',
         'test_metric': 'test/loss'
     },
     'fastmri_jax': {
