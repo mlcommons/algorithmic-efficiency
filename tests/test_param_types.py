@@ -69,7 +69,7 @@ def test_param_types(workload):
   pytorch_param_types_dict = count_param_types(pytorch_param_types)
   # Check if total number of each type match.
   mismatches = ''
-  for key in jax_param_types_dict.keys():
+  for key in jax_param_types_dict:
     jax_count = jax_param_types_dict.get(key, 0)
     pytorch_count = pytorch_param_types_dict.get(key, 0)
     if jax_count != pytorch_count:
@@ -127,5 +127,5 @@ def get_workload(workload):
 
 
 if __name__ == '__main__':
-  for workload in WORKLOADS:
-    test_param_types(workload)
+  for w in WORKLOADS:
+    test_param_types(w)

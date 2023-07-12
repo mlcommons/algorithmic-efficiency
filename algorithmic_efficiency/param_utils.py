@@ -76,7 +76,7 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           param_types[name] = spec.ParameterType.BATCH_NORM_BIAS
         else:
           raise ValueError(
-            f'Unrecognized batch norm parameter: {parent_name}/{name}.')
+              f'Unrecognized batch norm parameter: {parent_name}/{name}.')
       elif 'layernorm' in parent_name or 'ln' in parent_name:
         if name == 'scale':
           param_types[name] = spec.ParameterType.LAYER_NORM_SCALE
@@ -84,7 +84,7 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           param_types[name] = spec.ParameterType.LAYER_NORM_BIAS
         else:
           raise ValueError(
-            f'Unrecognized layer norm parameter: {parent_name}/{name}.')
+              f'Unrecognized layer norm parameter: {parent_name}/{name}.')
       elif 'bias' in name:
         param_types[name] = spec.ParameterType.BIAS
       elif 'conv' in parent_name:
@@ -108,7 +108,7 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           param_types[name] = spec.ParameterType.BIAS
         else:
           raise ValueError(
-            f'Unrecognized attention parameter: {parent_name}/{name}.')
+              f'Unrecognized attention parameter: {parent_name}/{name}.')
       else:
         param_types[name] = spec.ParameterType.WEIGHT
   return param_types
