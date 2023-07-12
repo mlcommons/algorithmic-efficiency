@@ -52,6 +52,12 @@ class ShapeTuple:
   def __init__(self, shape_tuple):
     self.shape_tuple = shape_tuple
 
+  def __repr__(self):
+    return f'ShapeTuple({self.shape_tuple})'
+
+  def __eq__(self, other):
+    return self.shape_tuple == other.shape_tuple
+
 
 Shape = Union[Tuple[int],
               Tuple[int, int],
