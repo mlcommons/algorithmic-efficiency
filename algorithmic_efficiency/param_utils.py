@@ -67,7 +67,7 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
     name = name.lower()
     if isinstance(value, dict) or isinstance(value, flax.core.FrozenDict):
       param_types[name] = jax_param_types(
-        value, parent_name=parent_name + '/' + name)
+          value, parent_name=parent_name + '/' + name)
     else:
       if 'batchnorm' in parent_name or 'bn' in parent_name:
         if name == 'scale':
