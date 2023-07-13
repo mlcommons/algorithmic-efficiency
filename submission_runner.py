@@ -437,7 +437,8 @@ def train_once(
                 latest_eval_result,
                 global_step=global_step,
                 preemption_count=preemption_count,
-                is_eval=True,)
+                is_eval=True,
+            )
             if save_checkpoints:
               checkpoint_utils.save_checkpoint(
                   framework=FLAGS.framework,
@@ -671,7 +672,6 @@ def main(_):
   if USE_PYTORCH_DDP:
     # Cleanup.
 
-    
     dist.destroy_process_group()
 
 

@@ -41,10 +41,7 @@ MIN_EVAL_METRICS = [
     'wer',
     'l1_loss',
 ]
-MAX_EVAL_METRICS = ['average_precision', 
-                    'ssim', 
-                    'accuracy',
-                    'bleu_score']
+MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
 
 
 def generate_eval_cols(metrics):
@@ -100,8 +97,8 @@ def get_index_that_reaches_best(workload_df, metric_col):
     return trial, best_idx[trial], best[trial]
 
 
-def get_index_that_reaches_target(workload_df, 
-                                  validation_metric, 
+def get_index_that_reaches_target(workload_df,
+                                  validation_metric,
                                   test_metric,
                                   validation_target,
                                   test_target):
@@ -121,15 +118,16 @@ def get_index_that_reaches_target(workload_df,
   validation_series = workload_df[validation_metric]
   test_series = workload_df[test_metric]
 
-  validation_series = validation_series[validation_series != np.nan ]
+  validation_series = validation_series[validation_series != np.nan]
   validaiton_series = validation_series[test_series != np.nan]
-  test_series = test_series[validation_series != np.nan ]
-  test_series = test_series[test_series != np.nan ]
+  test_series = test_series[validation_series != np.nan]
+  test_series = test_series[test_series != np.nan]
 
   assert len(validation_series) == len(test_series)
 
   op = operator.le if is_minimized else operator.ge
-  validation_target_reached = validation_series.apply(lambda x: op(x, validation_target))
+  validation_target_reached = validation_series.apply(
+      lambda x: op(x, validation_target))
   test_target_reached = test_series.apply(lambda x: op(x, test_target))
 
   target_reached = validation_target_reached * test_target_reached
