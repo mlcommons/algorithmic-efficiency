@@ -290,15 +290,15 @@ def train_once(
    eval_results,
    global_step,
    preemption_count) = checkpoint_utils.maybe_restore_checkpoint(
-    FLAGS.framework,
-    optimizer_state,
-    model_params,
-    model_state,
-    train_state,
-    eval_results,
-    global_step,
-    preemption_count,
-    checkpoint_dir=log_dir)
+       FLAGS.framework,
+       optimizer_state,
+       model_params,
+       model_state,
+       train_state,
+       eval_results,
+       global_step,
+       preemption_count,
+       checkpoint_dir=log_dir)
 
   if log_dir is not None and RANK == 0:
     meta_data = logger_utils.get_meta_data(workload)
