@@ -43,9 +43,6 @@ def get_log_dir(
     resume_last_run: bool,
     overwrite: bool,
 ) -> Optional[str]:
-  if RANK != 0:
-    return
-
   # Construct path to experiment workload directory.
   experiment_dir = os.path.expanduser(experiment_dir)
   workload_dir_name = f'{workload}_{framework}'
@@ -56,7 +53,7 @@ def get_log_dir(
                                    experiment_name,
                                    workload_dir_name)
 
-  if os.path.exists(experiment_path):
+  if os.path.exists(experiment_path) and RANK == 0:
     if overwrite:
       logging.info(
           f'Removing existing experiment directory {experiment_path} because '

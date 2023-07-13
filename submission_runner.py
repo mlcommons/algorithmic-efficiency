@@ -282,24 +282,25 @@ def train_once(
 
   # Loggers and checkpoint setup.
   logging.info('Initializing checkpoint and logger.')
-  if log_dir is not None:
-    # If the checkpoint exists, load from the checkpoint.
-    (optimizer_state,
-     model_params,
-     model_state,
-     train_state,
-     eval_results,
-     global_step,
-     preemption_count) = checkpoint_utils.maybe_restore_checkpoint(
-         FLAGS.framework,
-         optimizer_state,
-         model_params,
-         model_state,
-         train_state,
-         eval_results,
-         global_step,
-         preemption_count,
-         checkpoint_dir=log_dir)
+  # If the checkpoint exists, load from the checkpoint.
+  (optimizer_state,
+   model_params,
+   model_state,
+   train_state,
+   eval_results,
+   global_step,
+   preemption_count) = checkpoint_utils.maybe_restore_checkpoint(
+    FLAGS.framework,
+    optimizer_state,
+    model_params,
+    model_state,
+    train_state,
+    eval_results,
+    global_step,
+    preemption_count,
+    checkpoint_dir=log_dir)
+
+  if log_dir is not None and RANK == 0:
     meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
@@ -392,16 +393,16 @@ def train_once(
           train_state['test_goal_reached'] = (
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
-          # Save last eval time
+          # Save last eval time.
           eval_end_time = time.time()
           if USE_PYTORCH_DDP:
             eval_end_time = sync_ddp_time(eval_end_time, DEVICE)
 
-          # Accumulate eval time
+          # Accumulate eval time.
           train_state[
               'accumulated_eval_time'] += eval_end_time - eval_start_time
 
-          # Add times to eval results for logging
+          # Add times to eval results for logging.
           latest_eval_result['score'] = (
               train_state['accumulated_submission_time'])
           latest_eval_result[
@@ -420,7 +421,7 @@ def train_once(
           logging_start_time = time.time()
           if USE_PYTORCH_DDP:
             logging_start_time = sync_ddp_time(logging_start_time, DEVICE)
-          if log_dir is not None:
+          if log_dir is not None and RANK == 0:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
                 global_step=global_step,
@@ -548,7 +549,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'--- Tuning run {hi + 1}/{num_tuning_trials} ---')
 
       tuning_dir_name = None
-      if log_dir is not None:
+      if log_dir is not None and RANK == 0:
         tuning_dir_name = os.path.join(log_dir, f'trial_{hi + 1}')
         logging.info(f'Creating tuning directory at {tuning_dir_name}.')
         logger_utils.makedir(tuning_dir_name)
