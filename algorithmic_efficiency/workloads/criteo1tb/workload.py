@@ -61,10 +61,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return 89_274_637
 
   @property
-  def eval_batch_size(self) -> int:
-    return 524_288
-
-  @property
   def train_mean(self):
     raise NotImplementedError
 

@@ -12,15 +12,13 @@ from algorithmic_efficiency import init_utils
 
 def _make_mlp(in_dim, hidden_dims, dropout_rate):
   """Creates a MLP with specified dimensions."""
-  layers = []
+  layers = nn.Sequential()
   for dim in hidden_dims:
-    layers.extend([
-        nn.Linear(in_features=in_dim, out_features=dim),
-        nn.LayerNorm(dim, eps=1e-6),
-        nn.ReLU(),
-        nn.Dropout(dropout_rate),
-    ])
-  return nn.Sequential(*layers)
+    layers.add_module('dense', nn.Linear(in_features=in_dim, out_features=dim))
+    layers.add_module('norm', nn.LayerNorm(dim, eps=1e-6))
+    layers.add_module('relu', nn.ReLU())
+    layers.add_module('dropout', nn.Dropout(dropout_rate))
+  return layers
 
 
 class GNN(nn.Module):
