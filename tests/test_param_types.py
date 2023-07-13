@@ -35,15 +35,25 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWmtWorkload
 
 WORKLOADS = [
-    'mnist',
     'cifar',
     'criteo1tb',
     'fastmri',
     'imagenet_resnet',
     'imagenet_vit',
+    'mnist',
+    'ogbg',
     'wmt',
-    'ogbg'
 ]
+
+
+def count_param_types(param_types):
+  types_dict = {}
+  for t in param_types:
+    if t not in types_dict:
+      types_dict[t] = 1
+    else:
+      types_dict[t] += 1
+  return types_dict
 
 
 @pytest.mark.parametrize('workload', WORKLOADS)
@@ -55,21 +65,17 @@ def test_param_types(workload):
       pytorch_workload.model_params_types)
   assert len(jax_param_types) == len(pytorch_param_types)
 
-  def count_param_types(param_types):
-    types_dict = {}
-    for t in param_types:
-      if t not in types_dict:
-        types_dict[t] = 1
-      else:
-        types_dict[t] += 1
-    return types_dict
-
   jax_param_types_dict = count_param_types(jax_param_types)
   pytorch_param_types_dict = count_param_types(pytorch_param_types)
-  assert jax_param_types_dict.keys() == pytorch_param_types_dict.keys()
   # Check if total number of each type match.
-  for key in list(jax_param_types_dict.keys()):
-    assert jax_param_types_dict[key] == pytorch_param_types_dict[key]
+  mismatches = ''
+  for key in jax_param_types_dict:
+    jax_count = jax_param_types_dict.get(key, 0)
+    pytorch_count = pytorch_param_types_dict.get(key, 0)
+    if jax_count != pytorch_count:
+      mismatches += f'\nKey: {key}, Jax {jax_count} != Pytorch {pytorch_count}.'
+  if mismatches:
+    raise ValueError(f'On workload {workload}, count mismatch: {mismatches}.')
 
 
 def get_workload(workload):
@@ -106,7 +112,6 @@ def get_workload(workload):
   elif workload == 'wmt':
     # Init Jax workload.
     jax_workload = JaxWmtWorkload()
-    jax_workload._global_batch_size = 128
     # Init PyTorch workload.
     pytorch_workload = PyTorchWmtWorkload()
   elif workload == 'ogbg':
@@ -119,3 +124,8 @@ def get_workload(workload):
   _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
   _ = pytorch_workload.init_model_fn([0])
   return jax_workload, pytorch_workload
+
+
+if __name__ == '__main__':
+  for w in WORKLOADS:
+    test_param_types(w)

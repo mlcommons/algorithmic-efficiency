@@ -118,8 +118,8 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi 
 
     # Optionally run torch compile
-    if [[ ${FRAMEWORK} == 'pytorch' ]]; then
-        TORCH_COMPILE_FLAG="torch_compile=True"
+    if [[ ${FRAMEWORK} == "pytorch" ]]; then
+        TORCH_COMPILE_FLAG="--torch_compile=True"
     fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
@@ -138,6 +138,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
     echo $COMMAND > ${LOG_FILE}
+    echo $COMMAND
     eval $COMMAND
     RETURN_CODE=$?
 
