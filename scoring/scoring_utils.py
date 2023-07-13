@@ -166,7 +166,7 @@ def get_experiment_df(experiment_dir):
       eval_measurements_filepath = os.path.join(experiment_dir,
                                                 workload, trial,
                                                 MEASUREMENTS_FILENAME,)
-      try:                                     
+      try:          
         trial_df = pd.read_csv(eval_measurements_filepath)
       except FileNotFoundError as e:
         continue
@@ -177,11 +177,3 @@ def get_experiment_df(experiment_dir):
         data[column] = values
       df = df.append(data, ignore_index=True)
   return df
-      
-# from tabulate import tabulate
-# df = get_experiment_df(experiment_dir='/home/kasimbeg/algorithmic-efficiency/scoring/test_data/experiment_dir')
-# # print(df.head)
-# print(df.columns)
-# df = df[['workload', 'trial', 'validation/accuracy', 'global_step', 'score']].iloc[:10]
-# # print(df.head())
-# print(tabulate(df, headers='keys', tablefmt='psql'))
