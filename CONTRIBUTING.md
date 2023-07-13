@@ -233,8 +233,13 @@ You can also use `python tests/reference_algorithm_tests.py` to run a single mod
 ## Regression tests
 We also have regression tests available in [.github/workflows/regression_tests.yml](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows/regression_tests.yml) that can be run semi-automatically.
 The regression tests are shorter end-to-end submissions run in a containerized environment across all 8 workloads, in both the jax and pytorch frameworks. 
-The regression tests run on self-hosted runners and are triggered for pull requests that target the main branch.
-To trigger a regression test:
-1. Turn on the self-hosted runner.
-2. Run the self-hosted runner application for the runner to accept jobs.
-3. Open a pull request into mian to trigger the workflow.
+The regression tests run on self-hosted runners and are triggered for pull requests that target the main branch. Typically these PRs will be from the `dev` branch
+so the tests will run containers based on images build from the `dev` branch.
+To run a regression test:
+1. Build and upload latest Docker images from dev branch.
+    ```
+    bash ~/algorithmic-efficiency/docker/build_docker_images.sh -b dev
+    ```
+2. Turn on the self-hosted runner.
+3. Run the self-hosted runner application for the runner to accept jobs.
+4. Open a pull request into mian to trigger the workflow.
