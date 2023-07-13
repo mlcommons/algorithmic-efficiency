@@ -119,18 +119,16 @@ def get_index_that_reaches_target(workload_df,
   test_series = workload_df[test_metric]
 
   validation_series = validation_series[validation_series != np.nan]
-  validaiton_series = validation_series[test_series != np.nan]
+  validation_series = validation_series[test_series != np.nan]
   test_series = test_series[validation_series != np.nan]
   test_series = test_series[test_series != np.nan]
-
-  assert len(validation_series) == len(test_series)
 
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
   test_target_reached = test_series.apply(lambda x: op(x, test_target))
 
-  target_reached = validation_target_reached * test_target_reached
+  target_reached = validation_target_reached & test_target_reached
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
