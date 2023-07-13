@@ -102,8 +102,10 @@ def write_json(name: str, log_dict: dict, indent: int = 2) -> None:
       f.write(json.dumps(log_dict, indent=indent))
 
 
-def write_to_csv(metrics: dict,
-                 csv_path: str, ) -> None:
+def write_to_csv(
+    metrics: dict,
+    csv_path: str,
+) -> None:
   try:
     with open(csv_path, 'r') as csv_file:
       measurements = pd.read_csv(csv_file)
@@ -112,10 +114,11 @@ def write_to_csv(metrics: dict,
     measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
     if isinstance(e, pd.errors.EmptyDataError):
       logging.info('Measurements file is empty. Create a new one, starting '
-                    'with metrics from this step.')
+                   'with metrics from this step.')
   with open(csv_path, 'w') as csv_file:
     measurements.to_csv(csv_file, index=False)
-  return 
+  return
+
 
 def _get_utilization() -> dict:
   util_data = {}
