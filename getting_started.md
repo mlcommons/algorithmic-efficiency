@@ -159,7 +159,7 @@ docker exec -it <container_id> /bin/bash
 ## Score your submission 
 To produce performance profile and performance table:
 ```bash
-python3 scoring/score_submission.py --experiment_name=<experiment_name> --output_dir=<output_dir>
+python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> --output_dir=<output_dir>
 ```
 
 
