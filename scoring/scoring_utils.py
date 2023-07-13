@@ -129,7 +129,6 @@ def get_trials_df(logfile):
   return df
 
 
-
 ## Get scoring code
 def get_experiment_df(experiment_dir):
   """Gets a df of per trial results from an experiment dir.
@@ -159,14 +158,20 @@ def get_experiment_df(experiment_dir):
   for workload in workload_dirs:
     print(workload)
     data = {
-      'workload': workload,
+        'workload': workload,
     }
-    trial_dirs = [t  for t in os.listdir(os.path.join(experiment_dir, workload)) if re.match(TRIAL_DIR_REGEX, t)]
+    trial_dirs = [
+        t for t in os.listdir(os.path.join(experiment_dir, workload))
+        if re.match(TRIAL_DIR_REGEX, t)
+    ]
     for trial in trial_dirs:
-      eval_measurements_filepath = os.path.join(experiment_dir,
-                                                workload, trial,
-                                                MEASUREMENTS_FILENAME,)
-      try:          
+      eval_measurements_filepath = os.path.join(
+          experiment_dir,
+          workload,
+          trial,
+          MEASUREMENTS_FILENAME,
+      )
+      try:
         trial_df = pd.read_csv(eval_measurements_filepath)
       except FileNotFoundError as e:
         continue
