@@ -68,7 +68,7 @@ To get an installation with the requirements for all workloads and development, 
 We recommend developing in our Docker image to ensure a consistent environment between developing, testing and scoring submissions. 
 
 To get started see:
-- [Installation with Docker](./README#docker) 
+- [Installation with Docker](./README.md#docker) 
 - [Running a submission inside a Docker Container](./getting_started.md#run-your-submission-in-a-docker-container)
 
 Other resources:
@@ -77,7 +77,7 @@ Other resources:
     - [Downloading Data from GCP](#downloading-data-from-gcp)
     - [Saving Experiments Results to GCP](#saving-experiments-to-gcp)
 - [Getting Information from a Container](#getting-information-from-a-container)
-- [Mounting local repository](mounting-local-repository)
+- [Mounting local repository](#mounting-local-repository)
 
 
 ## Pre-built Images on Google Cloud Container Registry 
