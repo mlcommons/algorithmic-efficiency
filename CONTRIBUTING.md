@@ -123,9 +123,9 @@ You can use these features by setting the `-i` flag (for internal collaborator) 
 To run a docker container that will only download data (if not found on host)
 ```
 docker run -t -d \
--v $HOME_DIR/data/:/data/ \
--v $HOME_DIR/experiment_runs/:/experiment_runs \
--v $HOME_DIR/experiment_runs/logs:/logs \
+-v $HOME/data/:/data/ \
+-v $HOME/experiment_runs/:/experiment_runs \
+-v $HOME/experiment_runs/logs:/logs \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
@@ -144,9 +144,9 @@ experiments will also be automatically uploaded to our GCP bucket under `gs://ml
 Command format
 ```
 docker run -t -d \
--v $HOME_DIR/data/:/data/ \
--v $HOME_DIR/experiment_runs/:/experiment_runs \
--v $HOME_DIR/experiment_runs/logs:/logs \
+-v $HOME/data/:/data/ \
+-v $HOME/experiment_runs/:/experiment_runs \
+-v $HOME/experiment_runs/logs:/logs \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
@@ -182,10 +182,10 @@ you are making frequent changes to the code.
 To have changes in your local copy of the algorithmic-efficiency repo be reflected inside the container you can mount the local repository with the `-v` flag. 
 ```
 docker run -t -d \
--v $HOME_DIR/data/:/data/ \
--v $HOME_DIR/experiment_runs/:/experiment_runs \
--v $HOME_DIR/experiment_runs/logs:/logs \
--v $HOME_DIR/algorithmic-efficiency:/algorithmic-efficiency \
+-v $HOME/data/:/data/ \
+-v $HOME/experiment_runs/:/experiment_runs \
+-v $HOME/experiment_runs/logs:/logs \
+-v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
