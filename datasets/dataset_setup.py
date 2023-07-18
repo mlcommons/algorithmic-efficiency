@@ -55,7 +55,7 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 datasets/dataset_setup.py \
-  --data_dir=~/data \
+  --data_dir=~/data/imagenet \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
   --imagenet_train_url=<train_url> \
