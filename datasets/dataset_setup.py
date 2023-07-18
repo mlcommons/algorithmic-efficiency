@@ -379,7 +379,7 @@ def setup_imagenet_jax(data_dir):
   shutil.copy(val_tar_file_path, manual_download_dir)
   logging.info('Preparing imagenet data.')
   ds_builder = tfds.builder('imagenet2012:5.1.0',
-                            data_dir=os.path.join(imagenet_jax_data_dir, 'downloads'))
+                            data_dir=os.path.join(imagenet_jax_data_dir))
   ds_builder.download_and_prepare()
   logging.info('Set up imagenet dataset for jax framework complete')
 
