@@ -370,13 +370,15 @@ def setup_imagenet_jax(data_dir):
   manual_download_dir = os.path.join(imagenet_jax_data_dir, 'downloads', 'manual')
   os.makedirs(manual_download_dir, exist_ok=True)
 
-  # Copy tar file into jax
-  logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                         manual_download_dir))
-  shutil.copy(train_tar_file_path, manual_download_dir)
-  logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                         manual_download_dir))
-  shutil.copy(val_tar_file_path, manual_download_dir)
+  # Copy tar file into jax/downloads/manual
+  if not os.path.exists(os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(train_tar_file_path,
+                                          manual_download_dir))
+    shutil.copy(train_tar_file_path, manual_download_dir)
+  if not os.path.exists(os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(val_tar_file_path,
+                                          manual_download_dir))
+    shutil.copy(val_tar_file_path, manual_download_dir)
   logging.info('Preparing imagenet data.')
   ds_builder = tfds.builder('imagenet2012:5.1.0',
                             data_dir=os.path.join(imagenet_jax_data_dir))
