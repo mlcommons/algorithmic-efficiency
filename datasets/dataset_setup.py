@@ -542,7 +542,7 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
+    # download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
