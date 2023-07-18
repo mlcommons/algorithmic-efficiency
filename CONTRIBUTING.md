@@ -13,7 +13,7 @@ MLCommons project work is tracked with issue trackers and pull requests. Modify 
 - [Installation](#installation)
 - [Docker workflows](#docker-workflows)
 - [Submitting PRs](#submitting-prs)
-- [Testing](testing)
+- [Testing](#testing)
 
 
 # Setup 
