@@ -371,6 +371,7 @@ def setup_imagenet_jax(data_dir):
   os.makedirs(manual_download_dir, exist_ok=True)
 
   # Copy tar file into jax/downloads/manual
+  logging.info('Checking if tar files already exists in jax/downloads/manual.')
   if not os.path.exists(os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
     logging.info('Copying {} to {}'.format(train_tar_file_path,
                                           manual_download_dir))
