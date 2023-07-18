@@ -25,6 +25,7 @@ do
         c) SAVE_CHECKPOINTS=${OPTARG};;
         r) RSYNC_DATA=${OPTARG};;
         i) INTERNAL_CONTRIBUTOR_MODE=${OPTARG};;
+        p) TORCH_COMPILE=${OPTARG}
     esac
 done
 
@@ -78,6 +79,10 @@ fi
 
 if [[ -z ${RSYNC_DATA+x} ]]; then 
     RSYNC_DATA='true' # Set default value for rsync to true
+fi
+
+if [[ -z ${TORCH_COMPILE+x} ]]; then 
+    TORCH_COMPILE='true' # Set default value for torch_compile to true
 fi 
 
 if [[ ! -z $DATA_DIR ]] && [[ ! -d ${DATA_DIR} ]]; then
@@ -118,7 +123,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi 
 
     # Optionally run torch compile
-    if [[ ${FRAMEWORK} == "pytorch" ]]; then
+    if [[ ${FRAMEWORK} == "pytorch" ]] && [[ ${TORCH_COMPILE} == "true" ]]; then
         TORCH_COMPILE_FLAG="--torch_compile=True"
     fi
     
