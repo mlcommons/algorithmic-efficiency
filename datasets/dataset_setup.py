@@ -73,6 +73,7 @@ import tarfile
 from absl import app
 from absl import flags
 from absl import logging
+import resource
 import requests
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
@@ -381,6 +382,8 @@ def setup_imagenet_jax(data_dir):
                                           manual_download_dir))
     shutil.copy(val_tar_file_path, manual_download_dir)
   logging.info('Preparing imagenet data.')
+  resource.setrlimit(resource.RLIMIT_NOFILE, 
+                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
   ds_builder = tfds.builder('imagenet2012:5.1.0',
                             data_dir=os.path.join(imagenet_jax_data_dir))
   ds_builder.download_and_prepare()
