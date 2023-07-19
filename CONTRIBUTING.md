@@ -17,10 +17,8 @@ MLCommons project work is tracked with issue trackers and pull requests. Modify 
 
 
 # Setup 
-## GCP Integration
+## Setting up a Linux VM on GCP
 If you want to run containers on GCP VMs or store and retrieve Docker images from the Google Cloud Container Registry, please read ahead.
-
-## Setting up a Linux VM
 If you'd like to use a Linux VM, you will have to install the correct GPU drivers and the NVIDIA Docker toolkit.
 We recommmend to use the Deep Learning on Linux image. Further instructions are based on that.
 
@@ -32,23 +30,6 @@ NVIDIA GPU Drivers and NVIDIA Docker toolkit.
 To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
 Use the gcloud credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
 
-## Setting up a Container Optimized OS VMs on GCP
-You may want use a [Container Optimized OS](https://cloud.google.com/container-optimized-os/docs) to run submissions. 
-However, the Container Optimized OS does not support CUDA 11.7. If you go down this route,
-please adjust the base image in the Dockerfile to CUDA 11.6. 
-We don't guarantee compatibility of the `algorithmic_efficiency` package with CUDA 11.6 though.
-
-### Installing GPU Drivers
-To install NVIDIA GPU drivers on container optimized OS you can use the `cos` installer.
-Follow instructions [here](https://cloud.google.com/container-optimized-os/docs/how-to/run-gpus)
-
-### Authentication for Google Cloud Container Registry
-To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
-Use a standalone credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
-
-### cloud-init script
-You can automate installation GPU Drivers and authentication for Cloud Container Registry with a cloud-init script, by passing
-the content of the script as `user-data` in the VMs metadata.
 
 # Installation
 If you have not installed the package and dependencies yet see [Installation](./README.md#installation).
