@@ -453,6 +453,8 @@ def train_once(
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
 
+          if USE_PYTORCH_DDP:
+            torch.cuda.empty_cache()
           logging_end_time = get_time()
 
           train_state['accumulated_logging_time'] += (
