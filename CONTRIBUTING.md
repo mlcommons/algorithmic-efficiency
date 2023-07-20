@@ -68,31 +68,34 @@ You will have to use an authentication helper to set up permissions to access th
 ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
 gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
 ```
-Set the project and repo
-```
-PROJECT=training-algorithms-external
-REPO=mlcommons-docker-repo
-```
 
-To push built image to artifact registry on GCP 
-```
+To pull the latest prebuilt image:
 
-docker tag <image_name> us-central1-docker.pkg.dev/$PROJECT/$REPO/<image_name>
-docker push us-central1-docker.pkg.dev/$PROJECT/$REPO/<image_name>
 ```
-
-To pull the latest image to GCP run:
+docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/<image_name>
 ```
-docker pull us-central1-docker.pkg.dev/$PROJECT/$REPO/<image_name>
-```
-
 The naming convention for `image_name` is `algoperf_<framework>_<branch>`. 
+Currently maintained images on the repository are:
+- `algoperf_jax_main`
+- `algoperf_pytorch_main`
+- `algoperf_both_main`
+- `algoperf_jax_dev`
+- `algoperf_pytorch_dev`
+- `algoperf_both_dev`
 
-To build and push all images (`pytorch`, `jax`, `both`) to our GCP artifact registry run.
+### Trigger rebuild and push of maintained images
+To build and push all images (`pytorch`, `jax`, `both`) on maintained branches (`dev`, `main`).
 ```
 bash docker/build_docker_images.sh -b <branch>
 ```
-We will maintain the dev and main images in this way.
+
+#### Trigger build and push of images on other branch
+You can also use the above script to build images from a different branch. 
+1. Push the branch to `mlcommons/algorithmic-efficiency` repository.
+2. Run
+   ```
+   bash docker/build_docker_images.sh -b <branch>
+   ```
 
 ## GCP Data and Experiment Integration
 The Docker entrypoint script can communicate with
@@ -170,7 +173,9 @@ docker run -t -d \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
+-b <debug_mode>
 ```
+
 # Submitting PRs 
 New PRs will be merged on the dev branch by default, given that they pass the presubmits.
 
