@@ -100,6 +100,11 @@ class Workload(metaclass=abc.ABCMeta):
     self._eval_iters: Dict[str, Iterator] = {}
     self.metrics_logger = None
 
+  @property
+  @abc.abstractmethod
+  def target_metric_name(self) -> str:
+    """The name of the target metric (useful for scoring/processing code)."""
+
   @abc.abstractmethod
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
