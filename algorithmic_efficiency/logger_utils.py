@@ -283,8 +283,8 @@ class MetricLogger(object):
   """
 
   def __init__(self,
-               csv_path: str = '',
-               eval_csv_path: str = '',
+               csv_path: str,
+               eval_csv_path: str,
                events_dir: Optional[str] = None,
                configs: Optional[flags.FLAGS] = None,
                hyperparameters: Optional[spec.Hyperparameters] = None) -> None:

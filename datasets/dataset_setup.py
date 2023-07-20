@@ -55,7 +55,7 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 datasets/dataset_setup.py \
-  --data_dir=~/data/imagenet \
+  --data_dir=~/data \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
   --imagenet_train_url=<train_url> \
@@ -335,20 +335,24 @@ def setup_fastmri(data_dir):
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
-  data_dir = os.path.join(data_dir, 'imagenet')
+  imagenet_data_dir = os.path.join(data_dir, 'imagenet')
+  imagenet_train_filepath = os.path.join(imagenet_data_dir, IMAGENET_TRAIN_TAR_FILENAME)
+  imagenet_val_filepath = os.path.join(imagenet_data_dir, IMAGENET_VAL_TAR_FILENAME)
 
   # Download imagnet train dataset
-  logging.info(
-      'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
-  _download_url(url=imagenet_train_url, data_dir=data_dir).download()
+  if not os.path.exists(imagenet_train_filepath):
+    logging.info(
+        'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
+    _download_url(url=imagenet_train_url, data_dir=imagenet_data_dir).download()
 
   # Download imagenet val dataset
-  logging.info('Donwloading imagenet validation dataset from {}'.format(
-      imagenet_val_url))
-  _download_url(url=imagenet_val_url, data_dir=data_dir).download()
+  if not os.path.exists(imagenet_val_filepath):
+    logging.info('Downloading imagenet validation dataset from {}'.format(
+        imagenet_val_url))
+    _download_url(url=imagenet_val_url, data_dir=imagenet_data_dir).download()
 
   # Download imagenet test set
-  download_imagenet_v2(data_dir)
+  download_imagenet_v2(imagenet_data_dir)
 
 
 def setup_imagenet(data_dir, framework=None):
