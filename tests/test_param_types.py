@@ -111,7 +111,7 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
   return qkv_match
 
 
-@pytest.mark.parametrize('workload', WORKLOADS)
+@pytest.mark.parametrize('workload_name', WORKLOADS)
 def test_param_types(workload_name):
   logging.info(f'Testing workload {workload_name}...')
   jax_workload, pytorch_workload = get_workload(workload_name)
