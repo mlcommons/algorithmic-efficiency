@@ -66,29 +66,34 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
   # Sometimes one framework will implement QKV as a single parameter, so we need
   # to make sure there are the same number of QKV params as Q, K, V.
   num_qkv = {
-      'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
-      'pytorch': pytorch_param_types_dict.get(
-          spec.ParameterType.ATTENTION_QKV, 0),
+      'jax':
+          jax_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
+      'pytorch':
+          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
   }
   num_q = {
-      'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
-      'pytorch': pytorch_param_types_dict.get(
-          spec.ParameterType.ATTENTION_Q, 0),
+      'jax':
+          jax_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
+      'pytorch':
+          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
   }
   num_k = {
-      'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
-      'pytorch': pytorch_param_types_dict.get(
-          spec.ParameterType.ATTENTION_K, 0),
+      'jax':
+          jax_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
+      'pytorch':
+          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
   }
   num_v = {
-      'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
-      'pytorch': pytorch_param_types_dict.get(
-          spec.ParameterType.ATTENTION_V, 0),
+      'jax':
+          jax_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
+      'pytorch':
+          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
   }
   num_bias = {
-      'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
-      'pytorch': pytorch_param_types_dict.get(
-          spec.ParameterType.ATTENTION_BIAS, 0),
+      'jax':
+          jax_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
+      'pytorch':
+          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
   }
   qkv_match = num_qkv['jax'] == num_qkv['pytorch']
   q_match = num_q['jax'] == num_q['pytorch']
@@ -100,10 +105,9 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
   # We subtract 2 * num_qkv from the number of biases because there are 2
   # missing for each of q, k, v.
   jax_qkv_match = (
-      num_q['pytorch'] == num_k['pytorch'] == num_v['pytorch'] ==
-      num_qkv['jax'] and
-      (num_qkv['jax'] != 0 and
-       (num_bias['pytorch'] - 2 * num_qkv['jax']) == num_bias['jax']))
+      num_q['pytorch'] == num_k['pytorch'] == num_v['pytorch'] == num_qkv['jax']
+      and (num_qkv['jax'] != 0 and
+           (num_bias['pytorch'] - 2 * num_qkv['jax']) == num_bias['jax']))
   pytorch_qkv_match = (
       num_q['jax'] == num_k['jax'] == num_v['jax'] == num_qkv['pytorch'] and
       (num_qkv['pytorch'] != 0 and
@@ -150,13 +154,15 @@ def test_param_types(workload_name):
   non_attention_keys -= attention_keys
 
   mismatches = ''
-  mismatches += _count_mismatches(
-      jax_param_types_dict, pytorch_param_types_dict, non_attention_keys)
-  qkv_match = _check_attention_qkv_match(
-      jax_param_types_dict, pytorch_param_types_dict)
+  mismatches += _count_mismatches(jax_param_types_dict,
+                                  pytorch_param_types_dict,
+                                  non_attention_keys)
+  qkv_match = _check_attention_qkv_match(jax_param_types_dict,
+                                         pytorch_param_types_dict)
   if not qkv_match:
-    mismatches += _count_mismatches(
-        jax_param_types_dict, pytorch_param_types_dict, attention_keys)
+    mismatches += _count_mismatches(jax_param_types_dict,
+                                    pytorch_param_types_dict,
+                                    attention_keys)
   if mismatches:
     raise ValueError(
         f'On workload {workload_name}, count mismatch: {mismatches}')
