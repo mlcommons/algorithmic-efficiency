@@ -55,7 +55,7 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 datasets/dataset_setup.py \
-  --data_dir=~/data \
+  --data_dir=~/data/imagenet \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
   --imagenet_train_url=<train_url> \
@@ -66,6 +66,7 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=consider-using-with
 
 import os
+import resource
 import shutil
 import subprocess
 import tarfile
@@ -367,15 +368,29 @@ def setup_imagenet_jax(data_dir):
 
   # Setup jax dataset dir
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
-  os.makedirs(imagenet_jax_data_dir)
+  manual_download_dir = os.path.join(imagenet_jax_data_dir,
+                                     'downloads',
+                                     'manual')
+  os.makedirs(manual_download_dir, exist_ok=True)
 
-  # Copy tar file into jax
-  logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                         imagenet_jax_data_dir))
-  shutil.copy(train_tar_file_path, imagenet_jax_data_dir)
-  logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                         imagenet_jax_data_dir))
-  shutil.copy(val_tar_file_path, imagenet_jax_data_dir)
+  # Copy tar file into jax/downloads/manual
+  logging.info('Checking if tar files already exists in jax/downloads/manual.')
+  if not os.path.exists(
+      os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(train_tar_file_path,
+                                           manual_download_dir))
+    shutil.copy(train_tar_file_path, manual_download_dir)
+  if not os.path.exists(
+      os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(val_tar_file_path,
+                                           manual_download_dir))
+    shutil.copy(val_tar_file_path, manual_download_dir)
+  logging.info('Preparing imagenet data.')
+  resource.setrlimit(resource.RLIMIT_NOFILE,
+                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+  ds_builder = tfds.builder(
+      'imagenet2012:5.1.0', data_dir=os.path.join(imagenet_jax_data_dir))
+  ds_builder.download_and_prepare()
   logging.info('Set up imagenet dataset for jax framework complete')
 
 
