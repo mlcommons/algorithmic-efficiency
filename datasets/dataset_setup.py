@@ -66,6 +66,7 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=consider-using-with
 
 import os
+import resource
 import shutil
 import subprocess
 import tarfile
@@ -73,7 +74,6 @@ import tarfile
 from absl import app
 from absl import flags
 from absl import logging
-import resource
 import requests
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
