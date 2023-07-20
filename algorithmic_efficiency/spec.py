@@ -38,6 +38,10 @@ class ParameterType(enum.Enum):
   ATTENTION_K = 9
   ATTENTION_V = 10
   ATTENTION_OUT = 11
+  ATTENTION_QKV = 12  # This is used for implementations that fuse QKV together.
+  # We need to split this out because otherwise fused QKV models will have a
+  # different number of biases.
+  ATTENTION_BIAS = 13
 
 
 # Of course, Tensor knows its shape and dtype.
@@ -95,6 +99,11 @@ class Workload(metaclass=abc.ABCMeta):
     self._param_types: Optional[ParameterTypeTree] = None
     self._eval_iters: Dict[str, Iterator] = {}
     self.metrics_logger = None
+
+  @property
+  @abc.abstractmethod
+  def target_metric_name(self) -> str:
+    """The name of the target metric (useful for scoring/processing code)."""
 
   @abc.abstractmethod
   def has_reached_validation_target(self, eval_result: Dict[str,
