@@ -23,8 +23,7 @@ If you'd like to use a Linux VM, you will have to install the correct GPU driver
 We recommmend to use the Deep Learning on Linux image. Further instructions are based on that.
 
 ### Installing GPU Drivers
-You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the
-NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
 
 ### Authentication for Google Cloud Container Registry
 To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
