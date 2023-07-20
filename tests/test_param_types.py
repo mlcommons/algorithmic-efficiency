@@ -4,6 +4,7 @@ import pytest
 from absl import logging
 from algorithmic_efficiency import spec
 
+# isort: skip_file
 # pylint:disable=line-too-long
 from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import CifarWorkload as JaxCifarWorkload
 from algorithmic_efficiency.workloads.cifar.cifar_pytorch.workload import CifarWorkload as PyTorchCifarWorkload
