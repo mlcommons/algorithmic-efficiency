@@ -13,13 +13,13 @@ The two primary inputs to `compute_performance_profiles` are
   identifier for a submission and each value is a DataFrame containing one row
   per trial per workload in that submission. At minimum, this DataFrame should
   include a column of np.arrays indicating time (e.g., 'global_step'), a column
-  of np.arrays indicating performance (e.g., 'valid/accuracy') for each
+  of np.arrays indicating performance (e.g., 'validation/accuracy') for each
   workload and a column 'workload' that indicates the workload identifier.
 2. A dictionary of workload metadata describing each workload in the form:
   {
     'workload_identifier': {
       'target': VALUE,
-      'metric': 'valid/error_rate',
+      'metric': 'validation/error_rate',
     }
   }
   The keys in this dictionary should match the workload identifiers used in
@@ -45,7 +45,7 @@ MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
 
 
 def generate_eval_cols(metrics):
-  splits = ['train', 'valid', 'validation', 'test']
+  splits = ['train', 'validation', 'test']
   return [f'{split}/{col}' for split, col in itertools.product(splits, metrics)]
 
 
@@ -73,7 +73,7 @@ def get_index_that_reaches_best(workload_df, metric_col):
   Args:
     workload_df: A subset of a submission's trials DataFrame that
       includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df (e.g., `valid/l1_loss`).
+    metric_col: Name of array column in workload_df (e.g., `validation/l1_loss`).
 
   Returns:
     Tuple of trial index, time index, and best value where the workload
@@ -107,7 +107,7 @@ def get_index_that_reaches_target(workload_df,
   Args:
     workload_df: A subset of a submission's trials DataFrame that
       includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df (e.g., `valid/l1_loss`).
+    metric_col: Name of array column in workload_df (e.g., `validation/l1_loss`).
     target: Target value for metric_col.
 
   Returns:

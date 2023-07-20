@@ -156,7 +156,6 @@ def get_experiment_df(experiment_dir):
   df = pd.DataFrame()
   workload_dirs = os.listdir(experiment_dir)
   for workload in workload_dirs:
-    print(workload)
     data = {
         'workload': workload,
     }
@@ -174,6 +173,7 @@ def get_experiment_df(experiment_dir):
       try:
         trial_df = pd.read_csv(eval_measurements_filepath)
       except FileNotFoundError as e:
+        logging.info(f"Could not read {eval_measurements_filepath}")
         continue
       columns = df.columns.tolist()
       data['trial'] = trial
