@@ -65,6 +65,7 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
 
+import functools
 import os
 import shutil
 import subprocess
@@ -74,6 +75,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import requests
+import tensorflow as tf
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 import tqdm
@@ -85,6 +87,9 @@ FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar'
 FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar'
 FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar'
 
+from algorithmic_efficiency.workloads.wmt import tokenizer
+from algorithmic_efficiency.workloads.wmt.input_pipeline import \
+    normalize_feature_names
 from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer
 
@@ -480,7 +485,18 @@ def download_ogbg(data_dir):
 def download_wmt(data_dir):
   """WMT14 and WMT17 de-en."""
   for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
-    tfds.builder(ds_name, data_dir=data_dir).download_and_prepare()
+    dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
+    dataset_builder.download_and_prepare()
+
+    if ds_name == 'wmt17_translate/de-en:1.0.0':
+      ds = dataset_builder.as_dataset(split='train', shuffle_files=False)
+      ds = ds.map(
+          functools.partial(normalize_feature_names, dataset_builder.info),
+          num_parallel_calls=tf.data.AUTOTUNE)
+      # Tokenize data.
+      vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
+      tokenizer.train_tokenizer(
+          ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
 
 
 def main(_):

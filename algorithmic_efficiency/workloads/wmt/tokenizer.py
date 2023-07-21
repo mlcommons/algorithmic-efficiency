@@ -98,7 +98,6 @@ def _train_sentencepiece(dataset: tf.data.Dataset,
     while not tf.io.gfile.exists(abs_model_path):
       time.sleep(1)
     time.sleep(1)
-  return abs_model_path
 
 
 def _load_sentencepiece_tokenizer(model_path: str,
@@ -113,24 +112,25 @@ def _load_sentencepiece_tokenizer(model_path: str,
   return sp_tokenizer
 
 
-def load_or_train_tokenizer(dataset: tf.data.Dataset,
-                            *,
-                            vocab_path: str,
-                            vocab_size: int,
-                            max_corpus_chars: int,
-                            data_keys: Tuple[str, str] = ('inputs', 'targets')):
-  """Loads the tokenizer at `vocab_path` or trains a one from `dataset`."""
-  try:
-    return _load_sentencepiece_tokenizer(os.path.expanduser(vocab_path))
-  except tf.errors.NotFoundError:
-    logging.info('SentencePiece vocab not found, building one from data.')
-    vocab_path = _train_sentencepiece(
-        dataset,
-        vocab_size=vocab_size,
-        maxchars=max_corpus_chars,
-        model_path=vocab_path,
-        data_keys=data_keys)
-    return _load_sentencepiece_tokenizer(vocab_path)
+def train_tokenizer(dataset: tf.data.Dataset,
+                    *,
+                    vocab_path: str,
+                    vocab_size: int,
+                    max_corpus_chars: int,
+                    data_keys: Tuple[str, str] = ('inputs', 'targets')):
+  """Trains a tokenizer from `dataset`."""
+  logging.info('Building SentencePiece vocab from data.')
+  _train_sentencepiece(
+      dataset,
+      vocab_size=vocab_size,
+      maxchars=max_corpus_chars,
+      model_path=vocab_path,
+      data_keys=data_keys)
+
+
+def load_tokenizer(vocab_path: str):
+  """Loads the tokenizer at `vocab_path`."""
+  return _load_sentencepiece_tokenizer(os.path.expanduser(vocab_path))
 
 
 @dataclasses.dataclass
