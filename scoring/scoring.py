@@ -35,6 +35,10 @@ import numpy as np
 import pandas as pd
 import re
 
+from algorithmic_efficiency import spec
+import importlib
+import inspect
+
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
@@ -87,6 +91,57 @@ WORKLOADS = {
     },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
 }
+
+def import_workload(workload_path: str,
+                    workload_class_name: str,
+                    return_class=False,
+                    workload_init_kwargs=None) -> spec.Workload:
+  """Import and add the workload to the registry.
+
+  This importlib loading is nice to have because it allows runners to avoid
+  installing the dependencies of all the supported frameworks. For example, if
+  a submitter only wants to write Jax code, the try/except below will catch
+  the import errors caused if they do not have the PyTorch dependencies
+  installed on their system.
+
+  Args:
+    workload_path: the path to the `workload.py` file to load.
+    workload_class_name: the name of the Workload class that implements the
+      `Workload` abstract class in `spec.py`.
+    return_class: if true, then the workload class is returned instead of the
+      instantiated object. Useful for testing when methods need to be overriden.
+    workload_init_kwargs: kwargs to pass to the workload constructor.
+  """
+
+  # Remove the trailing '.py' and convert the filepath to a Python module.
+  workload_path = convert_filepath_to_module(workload_path)
+
+  # Import the workload module.
+  print(workload_path)
+  workload_module = importlib.import_module(workload_path)
+  # Get everything defined in the workload module (including our class).
+  workload_module_members = inspect.getmembers(workload_module)
+  workload_class = None
+  for name, value in workload_module_members:
+    if name == workload_class_name:
+      workload_class = value
+      break
+  if workload_class is None:
+    raise ValueError(
+        f'Could not find member {workload_class_name} in {workload_path}. '
+        'Make sure the Workload class is spelled correctly and defined in '
+        'the top scope of the module.')
+  if return_class:
+    return workload_class
+  return workload_class(**workload_init_kwargs)
+
+def convert_filepath_to_module(path: str):
+  base, extension = os.path.splitext(path)
+
+  if extension != '.py':
+    raise ValueError(f'Path: {path} must be a python file (*.py)')
+
+  return base.replace('/', '.')
 
 def generate_eval_cols(metrics):
   splits = ['train', 'validation', 'test']
@@ -172,7 +227,13 @@ def get_index_that_reaches_target(workload_df,
       lambda x: op(x, validation_target))
   test_target_reached = test_series.apply(lambda x: op(x, test_target))
 
-  target_reached = validation_target_reached & test_target_reached
+  print(validation_target_reached)
+  print(test_target_reached)
+  # validation_target_reached = np.array(validation_target_reached)
+  # test_target_reached = np.array(test_target_reached)
+
+  # breakpoint()
+  target_reached = pd.Series(validation_target_reached[0] & test_target_reached[0])
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
@@ -212,22 +273,26 @@ def get_times_for_submission(submission,
     workload_metadata = WORKLOADS[workload_name]
 
     # Extend path according to framework.
+    print("workload path is")
     workload_metadata['workload_path'] = os.path.join(
-        BASE_WORKLOADS_DIR,
-        workload_metadata['workload_path'] + f'_{framework}',
-        'workload.py')
+      BASE_WORKLOADS_DIR,
+      workload_metadata['workload_path'] + f'{framework}',
+      'workload.py')
     workload_init_kwargs = {}
-    workload_class = import_workload(
+    workload_obj = import_workload(
         workload_path=workload_metadata['workload_path'],
         workload_class_name=workload_metadata['workload_class_name'],
         workload_init_kwargs=workload_init_kwargs)
-    workload_obj = workload()
 
     metric_name = workload_obj.target_metric_name
     validation_metric = f'validation/{metric_name}'
     test_metric = f'test/{metric_name}'
     validation_target = workload_obj.validation_target_value
     test_target = workload_obj.test_target_value
+    print(validation_metric)
+    print(test_metric)
+    print(validation_target)
+    print(test_target)
 
     trial_idx, time_idx = get_index_that_reaches_target(
         group, validation_metric, test_metric, validation_target, test_target)

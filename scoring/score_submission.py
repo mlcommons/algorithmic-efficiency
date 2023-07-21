@@ -9,7 +9,51 @@ from algorithmic_efficiency import workloads
 import scoring
 
 
-WORKLOADS = workloads.workloads.WORKLOADS
+from algorithmic_efficiency import spec
+
+
+WORKLOADS = {
+    'cifar': {
+        'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
+    },
+    'criteo1tb': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
+    },
+    'criteo1tb_test': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
+    },
+    'fastmri': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRIWorkload',
+    },
+    'imagenet_resnet': {
+        'workload_path': 'imagenet_resnet/imagenet',
+        'workload_class_name': 'ImagenetResNetWorkload',
+    },
+    'imagenet_vit': {
+        'workload_path': 'imagenet_vit/imagenet',
+        'workload_class_name': 'ImagenetVitWorkload',
+    },
+    'librispeech_conformer': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerWorkload',
+    },
+    'librispeech_deepspeech': {
+        'workload_path': 'librispeech_deepspeech/librispeech',
+        'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
+    },
+    'mnist': {
+        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
+    },
+    'ogbg': {
+        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
+    },
+    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
+}
+
+
 
 flags.DEFINE_string('experiment_path',
                     None,
