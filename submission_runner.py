@@ -675,7 +675,6 @@ def main(_):
 
   if USE_PYTORCH_DDP:
     # Cleanup.
-
     dist.destroy_process_group()
 
 

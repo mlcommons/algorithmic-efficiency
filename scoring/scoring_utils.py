@@ -180,5 +180,6 @@ def get_experiment_df(experiment_dir):
       for column in trial_df.columns:
         values = trial_df[column].to_numpy()
         data[column] = values
-      df = df.append(data, ignore_index=True)
+      trial_df = pd.DataFrame([data])
+      df = pd.concat([df, trial_df], ignore_index=True)
   return df

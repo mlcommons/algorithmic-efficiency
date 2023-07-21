@@ -33,6 +33,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import re
+
+WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
+BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
 MIN_EVAL_METRICS = [
     'ce_loss',
@@ -41,8 +45,48 @@ MIN_EVAL_METRICS = [
     'wer',
     'l1_loss',
 ]
-MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
 
+MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
+WORKLOADS = {
+    'cifar': {
+        'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
+    },
+    'criteo1tb': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
+    },
+    'criteo1tb_test': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
+    },
+    'fastmri': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRIWorkload',
+    },
+    'imagenet_resnet': {
+        'workload_path': 'imagenet_resnet/imagenet',
+        'workload_class_name': 'ImagenetResNetWorkload',
+    },
+    'imagenet_vit': {
+        'workload_path': 'imagenet_vit/imagenet',
+        'workload_class_name': 'ImagenetVitWorkload',
+    },
+    'librispeech_conformer': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerWorkload',
+    },
+    'librispeech_deepspeech': {
+        'workload_path': 'librispeech_deepspeech/librispeech',
+        'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
+    },
+    'mnist': {
+        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
+    },
+    'ogbg': {
+        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
+    },
+    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
+}
 
 def generate_eval_cols(metrics):
   splits = ['train', 'validation', 'test']
@@ -144,7 +188,6 @@ def get_index_that_reaches_target(workload_df,
 
 def get_times_for_submission(submission,
                              submission_tag,
-                             workload_metadata,
                              time_col='global_step',
                              verbosity=1):
   """Get times to target for each workload in a submission.
@@ -153,8 +196,6 @@ def get_times_for_submission(submission,
     submission: A DataFrame containing one row for each trial in each workload
       for a given submission.
     submission_tag: Globally unique identified for a submission.
-    workload_metadata: Dictionary keyed by workload names with value of
-      dictionary with `target` and `metric` as keys.
     time_col: A string indicating which column to use for time.
     verbosity: Debug level of information; choice of (1, 2, 3).
 
@@ -165,10 +206,29 @@ def get_times_for_submission(submission,
   submission_name = submission_tag.split('.')[1]
 
   for workload, group in submission.groupby('workload'):
-    validation_metric = workload_metadata[workload]['validation_metric']
-    validation_target = workload_metadata[workload]['validation_target']
-    test_metric = workload_metadata[workload]['test_metric']
-    test_target = workload_metadata[workload]['test_target']
+    workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
+    framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
+    print(workload_name)
+    workload_metadata = WORKLOADS[workload_name]
+
+    # Extend path according to framework.
+    workload_metadata['workload_path'] = os.path.join(
+        BASE_WORKLOADS_DIR,
+        workload_metadata['workload_path'] + f'_{framework}',
+        'workload.py')
+    workload_init_kwargs = {}
+    workload_class = import_workload(
+        workload_path=workload_metadata['workload_path'],
+        workload_class_name=workload_metadata['workload_class_name'],
+        workload_init_kwargs=workload_init_kwargs)
+    workload_obj = workload()
+
+    metric_name = workload_obj.target_metric_name
+    validation_metric = f'validation/{metric_name}'
+    test_metric = f'test/{metric_name}'
+    validation_target = workload_obj.validation_target_value
+    test_target = workload_obj.test_target_value
+
     trial_idx, time_idx = get_index_that_reaches_target(
         group, validation_metric, test_metric, validation_target, test_target)
     if time_idx > -1:
@@ -197,7 +257,6 @@ def get_times_for_submission(submission,
 
 
 def compute_performance_profiles(results,
-                                 workload_metadata,
                                  time_col='global_step',
                                  min_tau=1.0,
                                  max_tau=None,
@@ -212,8 +271,6 @@ def compute_performance_profiles(results,
       trials where each row is a trial and each column is a field for a given
       trial. Results should contain keys for each workload's metric, time_col,
       'workload'. See file header comment for more details.
-    workload_metadata: Dictionary keyed by workload names with value of
-      dictionary with `target` and `metric` as keys.
     time_col: A string indicating which column to use for time.
     min_tau: Minimum tau to use for plotting.
     max_tau: Maximum tau to use for plotting.
@@ -239,7 +296,6 @@ def compute_performance_profiles(results,
     dfs.append(
         get_times_for_submission(result,
                                  submission_tag,
-                                 workload_metadata,
                                  time_col,
                                  verbosity))
   df = pd.concat(dfs)
