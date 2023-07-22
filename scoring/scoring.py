@@ -283,7 +283,7 @@ def get_times_for_submission(submission,
         workload_path=workload_metadata['workload_path'],
         workload_class_name=workload_metadata['workload_class_name'],
         workload_init_kwargs=workload_init_kwargs)
-
+    print(workload_obj.validation_target_value)
     metric_name = workload_obj.target_metric_name
     validation_metric = f'validation/{metric_name}'
     test_metric = f'test/{metric_name}'
