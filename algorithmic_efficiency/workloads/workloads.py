@@ -1,7 +1,9 @@
 """ Registry of workload info
 """
 from algorithmic_efficiency import spec
-
+import os
+import importlib
+import inspect
 
 WORKLOADS = {
     'cifar': {
@@ -43,6 +45,16 @@ WORKLOADS = {
     },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
 }
+
+
+def convert_filepath_to_module(path: str):
+  base, extension = os.path.splitext(path)
+
+  if extension != '.py':
+    raise ValueError(f'Path: {path} must be a python file (*.py)')
+
+  return base.replace('/', '.')
+
 
 def import_workload(workload_path: str,
                     workload_class_name: str,
