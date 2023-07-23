@@ -132,7 +132,7 @@ flags.DEFINE_enum(
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean(
     'torch_compile',
-    False,
+    True,
     'Whether to use `torch.compile` to JIT-compile PyTorch code. '
     'This will only take effect when `framework`==pytorch.')
 
@@ -290,11 +290,11 @@ def train_once(
                         'PyTorch version. Proceeding without `torch.compile`.')
       elif FLAGS.workload in eager_backend_workloads:
         logging.warning('These workloads cannot be fully compiled under current '
-                        'PyTorch version. Proceeding without `backend=eager`.')
+                        'PyTorch version. Proceeding with `backend=eager`.')
         model_params = torch.compile(model_params, backend="eager")
       elif FLAGS.workload in aot_eager_backend_workloads:
         logging.warning('These workloads cannot be fully compiled under current '
-                        'PyTorch version. Proceeding without `backend=aot_eager`.')
+                        'PyTorch version. Proceeding with `backend=aot_eager`.')
         model_params = torch.compile(model_params, backend="aot_eager")
       else:
         logging.warning('Performing `torch.compile`.')
