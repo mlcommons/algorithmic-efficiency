@@ -282,19 +282,24 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['fastmri', 'ogbg', 'librispeech_deepspeech', 'wmt']
+      compile_error_workloads = [
+          'fastmri', 'ogbg', 'librispeech_deepspeech', 'wmt'
+      ]
       eager_backend_workloads = ['librispeech_conformer']
       aot_eager_backend_workloads = ['criteo1tb']
       if FLAGS.workload in compile_error_workloads:
-        logging.warning('These workloads cannot be fully compiled under current '
-                        'PyTorch version. Proceeding without `torch.compile`.')
+        logging.warning(
+            'These workloads cannot be fully compiled under current '
+            'PyTorch version. Proceeding without `torch.compile`.')
       elif FLAGS.workload in eager_backend_workloads:
-        logging.warning('These workloads cannot be fully compiled under current '
-                        'PyTorch version. Proceeding with `backend=eager`.')
+        logging.warning(
+            'These workloads cannot be fully compiled under current '
+            'PyTorch version. Proceeding with `backend=eager`.')
         model_params = torch.compile(model_params, backend="eager")
       elif FLAGS.workload in aot_eager_backend_workloads:
-        logging.warning('These workloads cannot be fully compiled under current '
-                        'PyTorch version. Proceeding with `backend=aot_eager`.')
+        logging.warning(
+            'These workloads cannot be fully compiled under current '
+            'PyTorch version. Proceeding with `backend=aot_eager`.')
         model_params = torch.compile(model_params, backend="aot_eager")
       else:
         logging.warning('Performing `torch.compile`.')
