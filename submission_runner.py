@@ -295,14 +295,14 @@ def train_once(
         logging.warning(
             'These workloads cannot be fully compiled under current '
             'PyTorch version. Proceeding with `backend=eager`.')
-        model_params = torch.compile(model_params, backend="eager")
+        model_params = torch.compile(model_params, backend='eager')
       elif FLAGS.workload in aot_eager_backend_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
             'PyTorch version. Proceeding with `backend=aot_eager`.')
-        model_params = torch.compile(model_params, backend="aot_eager")
+        model_params = torch.compile(model_params, backend='aot_eager')
       else:
-        logging.warning('Performing `torch.compile`.')
+        logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
 
   logging.info('Initializing optimizer.')
