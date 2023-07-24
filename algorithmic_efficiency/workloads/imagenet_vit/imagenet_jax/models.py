@@ -127,7 +127,7 @@ class ViT(nn.Module):
         self.patch_size,
         strides=self.patch_size,
         padding='VALID',
-        name='embedding')(
+        name='conv_patch_extract')(
             x)
 
     n, h, w, c = x.shape
