@@ -73,10 +73,12 @@ import tarfile
 from absl import app
 from absl import flags
 from absl import logging
+import re
 import requests
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 import tqdm
+import urllib.parse
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
@@ -229,25 +231,53 @@ def download_criteo(data_dir,
   tmp_criteo_dir = os.path.join(tmp_dir, 'criteo')
   _maybe_mkdir(criteo_dir)
   _maybe_mkdir(tmp_criteo_dir)
-  processes = []
-  gz_paths = []
-  # Download and unzip.
-  for day in range(24):
-    logging.info(f'Downloading Criteo day {day}...')
-    wget_cmd = (
-        f'wget --no-clobber --directory-prefix="{tmp_criteo_dir}" '
-        f'https://sacriteopcail01.z16.web.core.windows.net/day_{day}.gz')
-    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
-    gz_paths.append(input_path)
-    unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
-    unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} "{input_path}" > '
-                 f'"{unzipped_path}"')
-    command_str = f'{wget_cmd} && {unzip_cmd}'
-    logging.info(f'Running Criteo download command:\n{command_str}')
-    processes.append(subprocess.Popen(command_str, shell=True))
-  for p in processes:
-    p.communicate()
-  _maybe_prompt_for_deletion(gz_paths, interactive_deletion)
+
+  user_agent = (
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0')
+  criteo_wetransfer_url = (
+    'https://criteo.wetransfer.com/downloads/'
+    '4bbea9b4a54baddea549d71271a38e2c20230428071257/d4f0d2'
+  )
+  _, _, transfer_id, security_hash = urllib.parse.urlparse(
+      criteo_wetransfer_url).path.split('/')
+
+  session = requests.Session()
+  session.headers.update(
+      {
+          "User-Agent": user_agent,
+          "x-requested-with": "XMLHttpRequest",
+      }
+  )
+  r = session.get('https://wetransfer.com/')
+  m = re.search('name="csrf-token" content="([^"]+)"', r.text)
+  if m:
+    session.headers.update({'x-csrf-token': m.group(1)})
+
+  get_url_request = session.post(
+      f'https://wetransfer.com/api/v4/transfers/{transfer_id}/download',
+      json={
+          'intent': 'entire_transfer',
+          'security_hash': security_hash,
+      })
+  session.close()
+
+  download_url = get_url_request.json().get("direct_link")
+
+  logging.info(f'Downloading ~342GB Criteo data .zip file:\n{download_url}')
+  download_request = requests.get(
+      download_url, headers={'User-Agent': user_agent}, stream=True)
+
+  all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all.zip')
+  with open(all_days_zip_filepath, 'wb') as f:
+    for chunk in download_request.iter_content(chunk_size=1024):
+      f.write(chunk)
+
+  unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} '
+               f'"{all_days_zip_filepath}" > "{unzipped_path}"')
+  logging.info(f'Running Criteo unzip command:\n{unzip_cmd}')
+  p = subprocess.Popen(unzip_cmd, shell=True)
+  p.communicate()
+  _maybe_prompt_for_deletion(all_days_zip_filepath, interactive_deletion)
   # Split into files with 1M lines each: day_1.csv -> day_1_[0-40].csv.
   for batch in range(6):
     batch_processes = []
