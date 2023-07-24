@@ -6,12 +6,13 @@ jobs:
   fastmri:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -23,12 +24,13 @@ jobs:
   wmt_jax:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -39,12 +41,13 @@ jobs:
   wmt_pytorch:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -55,12 +58,13 @@ jobs:
   imagenet_jax:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -72,12 +76,13 @@ jobs:
   imagenet_pytorch:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -90,12 +95,13 @@ jobs:
   criteo_jax:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -106,12 +112,13 @@ jobs:
   criteo_pytorch:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -122,12 +129,13 @@ jobs:
   speech_jax:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -139,12 +147,13 @@ jobs:
   speech_pytorch:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -156,12 +165,13 @@ jobs:
   ogbg:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
@@ -173,12 +183,13 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install pytest
       run: |
         python -m pip install --upgrade pip
@@ -196,12 +207,13 @@ jobs:
   pytest-baselines:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
-        cache: 'pip' # Cache pip dependencies.
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
     - name: Install pytest
       run: |
         python -m pip install --upgrade pip
