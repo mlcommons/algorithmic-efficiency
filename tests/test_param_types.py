@@ -29,16 +29,16 @@ from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import WmtWorkloa
 # pylint:enable=line-too-long
 
 WORKLOADS = [
-    # 'cifar',
-    # 'criteo1tb',
-    # 'fastmri',
-    # 'imagenet_resnet',
+    'cifar',
+    'criteo1tb',
+    'fastmri',
+    'imagenet_resnet',
     'imagenet_vit',
-    # 'librispeech_conformer',
-    # 'librispeech_deepspeech',
-    # 'mnist',
-    # 'ogbg',
-    # 'wmt',
+    'librispeech_conformer',
+    'librispeech_deepspeech',
+    'mnist',
+    'ogbg',
+    'wmt',
 ]
 
 
