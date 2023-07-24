@@ -11,7 +11,7 @@ python3 submission_runner.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
     --experiment_dir=/home/znado/experiment_dir \
-    --experiment_name=baseline 
+    --experiment_name=baseline
 """
 
 import datetime
@@ -47,7 +47,7 @@ from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 tf.config.set_visible_devices([], 'GPU')
 
 # disable only for deepspeech if it works fine for other workloads.
-os.environ["XLA_FLAGS"] = "--xla_gpu_enable_triton_gemm=false"
+os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
@@ -649,7 +649,7 @@ def main(_):
 
   # Prevent OOM on librispeech conformer.
   if FLAGS.workload == 'librispeech_conformer':
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.85"
+    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
