@@ -272,7 +272,8 @@ def train_once(
 
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
-
+  train_state['last_eval_time'] = global_start_time 
+  
   logging.info('Starting training loop.')
   goals_reached = (
       train_state['validation_goal_reached'] and
