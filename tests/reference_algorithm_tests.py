@@ -43,11 +43,11 @@ from algorithmic_efficiency import halton
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.profiler import PassThroughProfiler
+from algorithmic_efficiency.workloads import workloads
 from algorithmic_efficiency.workloads.ogbg import \
     input_pipeline as ogbg_input_pipeline
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
     _graph_map
-from algorithmic_efficiency.workloads import workloads
 from tests.modeldiffs import diff as diff_utils
 
 flags.DEFINE_integer(
