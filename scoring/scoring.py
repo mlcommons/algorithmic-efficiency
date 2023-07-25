@@ -54,6 +54,7 @@ MIN_EVAL_METRICS = [
 
 MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
 
+
 def generate_eval_cols(metrics):
   splits = ['train', 'validation', 'test']
   return [f'{split}/{col}' for split, col in itertools.product(splits, metrics)]
@@ -138,7 +139,8 @@ def get_index_that_reaches_target(workload_df,
       lambda x: op(x, validation_target))
   test_target_reached = test_series.apply(lambda x: op(x, test_target))
 
-  target_reached = pd.Series(validation_target_reached[0] & test_target_reached[0])
+  target_reached = pd.Series(validation_target_reached[0]
+                             & test_target_reached[0])
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
@@ -178,9 +180,9 @@ def get_times_for_submission(submission,
 
     # Extend path according to framework.
     workload_metadata['workload_path'] = os.path.join(
-      BASE_WORKLOADS_DIR,
-      workload_metadata['workload_path'] + f'{framework}',
-      'workload.py')
+        BASE_WORKLOADS_DIR,
+        workload_metadata['workload_path'] + f'{framework}',
+        'workload.py')
     workload_init_kwargs = {}
     workload_obj = workloads_registry.import_workload(
         workload_path=workload_metadata['workload_path'],
@@ -257,10 +259,7 @@ def compute_performance_profiles(results,
     print(f'\nComputing performance profile with respect to `{time_col}` for '
           f'{submission_tag}')
     dfs.append(
-        get_times_for_submission(result,
-                                 submission_tag,
-                                 time_col,
-                                 verbosity))
+        get_times_for_submission(result, submission_tag, time_col, verbosity))
   df = pd.concat(dfs)
 
   if verbosity > 0:

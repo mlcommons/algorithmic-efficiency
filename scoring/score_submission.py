@@ -8,7 +8,6 @@ import scoring_utils
 from algorithmic_efficiency import workloads
 import scoring
 
-
 flags.DEFINE_string(
     'experiment_path',
     None,
