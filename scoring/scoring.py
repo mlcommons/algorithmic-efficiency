@@ -26,8 +26,6 @@ The two primary inputs to `compute_performance_profiles` are
   the dictionary of submissions.
 """
 
-import importlib
-import inspect
 import itertools
 import operator
 import os
@@ -37,7 +35,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from algorithmic_efficiency import spec
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
 WORKLOADS = workloads_registry.WORKLOADS
@@ -84,7 +81,8 @@ def get_index_that_reaches_best(workload_df, metric_col):
   Args:
     workload_df: A subset of a submission's trials DataFrame that
       includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df (e.g., `validation/l1_loss`).
+    metric_col: Name of array column in workload_df 
+      (e.g., `validation/l1_loss`).
 
   Returns:
     Tuple of trial index, time index, and best value where the workload

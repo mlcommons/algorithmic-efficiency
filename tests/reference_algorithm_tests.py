@@ -47,8 +47,7 @@ from algorithmic_efficiency.workloads.ogbg import \
     input_pipeline as ogbg_input_pipeline
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
     _graph_map
-import algorithmic_efficiency.workloads.workloads as workloads
-import submission_runner
+from algorithmic_efficiency.workloads import workloads
 from tests.modeldiffs import diff as diff_utils
 
 flags.DEFINE_integer(

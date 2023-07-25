@@ -103,7 +103,7 @@ def get_trials_df_dict(logfile):
     """
   trials_dict = get_trials_dict(logfile)
   trials_df_dict = {}
-  for trial in trials_dict:
+  for trial in trials_dict.items():
     metrics = trials_dict[trial]
     trials_df_dict[trial] = pd.DataFrame(metrics)
   return trials_df_dict
@@ -148,11 +148,11 @@ def get_experiment_df(experiment_dir):
       df: DataFrame where indices are trials, columns are 
           metric names and values are lists.
           e.g 
-          +----+------------+---------+--------------------+--------------------+
-          |    | workload   | trial   | validation/accuracy| score              |
-          |----+------------+---------+--------------------+--------------------|
-          |  0 | mnist_jax  | trial_1 | [0.0911, 0.0949]   | [10.6396, 10.6464] |
-          +----+------------+---------+--------------------+--------------------+
+          +----+-----------+---------+--------------------+--------------------+
+          |    | workload  | trial   | validation/accuracy| score              |
+          |----+-----------+---------+--------------------+--------------------|
+          |  0 | mnist_jax | trial_1 | [0.0911, 0.0949]   | [10.6396, 10.6464] |
+          +----+-----------+---------+--------------------+--------------------+
   """
   df = pd.DataFrame()
   workload_dirs = os.listdir(experiment_dir)
@@ -176,7 +176,6 @@ def get_experiment_df(experiment_dir):
       except FileNotFoundError as e:
         logging.info(f"Could not read {eval_measurements_filepath}")
         continue
-      columns = df.columns.tolist()
       data['trial'] = trial
       for column in trial_df.columns:
         values = trial_df[column].to_numpy()
