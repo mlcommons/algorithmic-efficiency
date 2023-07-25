@@ -85,7 +85,7 @@ def get_trials_dict(logfile):
       if re.match(METRICS_LINE_REGEX, line):
         metrics_lines[trial] = decode_metrics_line(line)
   if len(metrics_lines) == 0:
-    raise ValueError(f"Log file does not have a metrics line {logfile}")
+    raise ValueError(f'Log file does not have a metrics line {logfile}')
   return metrics_lines
 
 
@@ -174,7 +174,7 @@ def get_experiment_df(experiment_dir):
       try:
         trial_df = pd.read_csv(eval_measurements_filepath)
       except FileNotFoundError as e:
-        logging.info(f"Could not read {eval_measurements_filepath}")
+        logging.info(f'Could not read {eval_measurements_filepath}')
         continue
       data['trial'] = trial
       for column in trial_df.columns:
