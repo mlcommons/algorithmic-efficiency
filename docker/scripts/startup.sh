@@ -140,6 +140,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     echo $COMMAND > ${LOG_FILE}
     echo $COMMAND
     eval $COMMAND
+    RETURN_CODE=$?
 
     if [[ $INTERNAL_CONTRIBUTOR_MODE == 'true' ]]; then 
         /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
@@ -156,3 +157,5 @@ then
         sleep 1000
     done 
 fi
+
+exit $RETURN_CODE

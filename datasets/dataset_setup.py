@@ -67,6 +67,7 @@ python3 datasets/dataset_setup.py \
 
 import functools
 import os
+import resource
 import shutil
 import subprocess
 import tarfile
@@ -339,17 +340,20 @@ def setup_fastmri(data_dir):
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
-  data_dir = os.path.join(data_dir, 'imagenet')
+  imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
+  imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
   # Download imagnet train dataset
-  logging.info(
-      'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
-  _download_url(url=imagenet_train_url, data_dir=data_dir).download()
+  if not os.path.exists(imagenet_train_filepath):
+    logging.info(
+        'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
+    _download_url(url=imagenet_train_url, data_dir=data_dir).download()
 
   # Download imagenet val dataset
-  logging.info('Donwloading imagenet validation dataset from {}'.format(
-      imagenet_val_url))
-  _download_url(url=imagenet_val_url, data_dir=data_dir).download()
+  if not os.path.exists(imagenet_val_filepath):
+    logging.info('Downloading imagenet validation dataset from {}'.format(
+        imagenet_val_url))
+    _download_url(url=imagenet_val_url, data_dir=data_dir).download()
 
   # Download imagenet test set
   download_imagenet_v2(data_dir)
@@ -372,15 +376,29 @@ def setup_imagenet_jax(data_dir):
 
   # Setup jax dataset dir
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
-  os.makedirs(imagenet_jax_data_dir)
+  manual_download_dir = os.path.join(imagenet_jax_data_dir,
+                                     'downloads',
+                                     'manual')
+  os.makedirs(manual_download_dir, exist_ok=True)
 
-  # Copy tar file into jax
-  logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                         imagenet_jax_data_dir))
-  shutil.copy(train_tar_file_path, imagenet_jax_data_dir)
-  logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                         imagenet_jax_data_dir))
-  shutil.copy(val_tar_file_path, imagenet_jax_data_dir)
+  # Copy tar file into jax/downloads/manual
+  logging.info('Checking if tar files already exists in jax/downloads/manual.')
+  if not os.path.exists(
+      os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(train_tar_file_path,
+                                           manual_download_dir))
+    shutil.move(train_tar_file_path, manual_download_dir)
+  if not os.path.exists(
+      os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(val_tar_file_path,
+                                           manual_download_dir))
+    shutil.move(val_tar_file_path, manual_download_dir)
+  logging.info('Preparing imagenet data.')
+  resource.setrlimit(resource.RLIMIT_NOFILE,
+                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+  ds_builder = tfds.builder(
+      'imagenet2012:5.1.0', data_dir=os.path.join(imagenet_jax_data_dir))
+  ds_builder.download_and_prepare()
   logging.info('Set up imagenet dataset for jax framework complete')
 
 
@@ -397,10 +415,10 @@ def setup_imagenet_pytorch(data_dir):
   # Copy tar file into pytorch directory
   logging.info('Copying {} to {}'.format(train_tar_file_path,
                                          imagenet_pytorch_data_dir))
-  shutil.copy(train_tar_file_path, imagenet_pytorch_data_dir)
+  shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
   logging.info('Copying {} to {}'.format(val_tar_file_path,
                                          imagenet_pytorch_data_dir))
-  shutil.copy(val_tar_file_path, imagenet_pytorch_data_dir)
+  shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
 
   # Extract train data\
   logging.info('Extracting imagenet train data')
@@ -553,8 +571,9 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
-    setup_imagenet(data_dir, framework=FLAGS.framework)
+    imagenet_data_dir = os.path.join(data_dir, 'imagenet')
+    download_imagenet(imagenet_data_dir, imagenet_train_url, imagenet_val_url)
+    setup_imagenet(imagenet_data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')

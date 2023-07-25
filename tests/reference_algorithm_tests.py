@@ -43,6 +43,7 @@ from algorithmic_efficiency import halton
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.profiler import PassThroughProfiler
+from algorithmic_efficiency.workloads import workloads
 from algorithmic_efficiency.workloads.ogbg import \
     input_pipeline as ogbg_input_pipeline
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
@@ -402,13 +403,12 @@ def _test_submission(workload_name,
       submission_runner.BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + framework,
       'workload.py')
-  workload_class = submission_runner.import_workload(
+  workload_class = workloads.import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       return_class=True)
 
-  submission_module_path = submission_runner.convert_filepath_to_module(
-      submission_path)
+  submission_module_path = workloads.convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
