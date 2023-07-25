@@ -407,8 +407,7 @@ def _test_submission(workload_name,
       workload_class_name=workload_metadata['workload_class_name'],
       return_class=True)
 
-  submission_module_path = workloads.convert_filepath_to_module(
-      submission_path)
+  submission_module_path = workloads.convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
