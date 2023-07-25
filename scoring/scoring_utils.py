@@ -103,7 +103,7 @@ def get_trials_df_dict(logfile):
     """
   trials_dict = get_trials_dict(logfile)
   trials_df_dict = {}
-  for trial in trials_dict.items():
+  for trial in trials_dict.keys():
     metrics = trials_dict[trial]
     trials_df_dict[trial] = pd.DataFrame(metrics)
   return trials_df_dict
