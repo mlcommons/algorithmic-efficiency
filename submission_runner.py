@@ -312,9 +312,6 @@ def train_once(
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
-    
-    print('training complete')
-    print(train_state['training_complete'])
 
     train_step_end_time = get_time()
 
@@ -323,8 +320,6 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] <
         workload.max_allowed_runtime_sec)
-    print('is time remaining')
-    print(train_state['is_time_remaining'])
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
@@ -406,7 +401,7 @@ def train_once(
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
-      train_state['last_step_end_time'] = get_time()
+    train_state['last_step_end_time'] = get_time()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
