@@ -2,8 +2,8 @@ import json
 import os
 import re
 
-import pandas as pd
 from absl import logging
+import pandas as pd
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
 METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'

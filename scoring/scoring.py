@@ -26,18 +26,18 @@ The two primary inputs to `compute_performance_profiles` are
   the dictionary of submissions.
 """
 
+import importlib
+import inspect
 import itertools
 import operator
 import os
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import re
 
 from algorithmic_efficiency import spec
-import importlib
-import inspect
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
 WORKLOADS = workloads_registry.WORKLOADS

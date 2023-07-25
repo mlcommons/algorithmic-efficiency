@@ -1,9 +1,10 @@
 """ Registry of workload info
 """
-from algorithmic_efficiency import spec
-import os
 import importlib
 import inspect
+import os
+
+from algorithmic_efficiency import spec
 
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
