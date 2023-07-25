@@ -51,7 +51,6 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
 import submission_runner
 from tests.modeldiffs import diff as diff_utils
 
-
 flags.DEFINE_integer(
     'global_batch_size',
     -1,
