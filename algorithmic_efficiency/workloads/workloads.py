@@ -5,6 +5,8 @@ import os
 import importlib
 import inspect
 
+BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+
 WORKLOADS = {
     'cifar': {
         'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'

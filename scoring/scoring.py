@@ -138,12 +138,6 @@ def get_index_that_reaches_target(workload_df,
       lambda x: op(x, validation_target))
   test_target_reached = test_series.apply(lambda x: op(x, test_target))
 
-  print(validation_target_reached)
-  print(test_target_reached)
-  # validation_target_reached = np.array(validation_target_reached)
-  # test_target_reached = np.array(test_target_reached)
-
-  # breakpoint()
   target_reached = pd.Series(validation_target_reached[0] & test_target_reached[0])
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
@@ -180,11 +174,9 @@ def get_times_for_submission(submission,
   for workload, group in submission.groupby('workload'):
     workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
     framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
-    print(workload_name)
     workload_metadata = WORKLOADS[workload_name]
 
     # Extend path according to framework.
-    print("workload path is")
     workload_metadata['workload_path'] = os.path.join(
       BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + f'{framework}',
@@ -194,16 +186,11 @@ def get_times_for_submission(submission,
         workload_path=workload_metadata['workload_path'],
         workload_class_name=workload_metadata['workload_class_name'],
         workload_init_kwargs=workload_init_kwargs)
-    print(workload_obj.validation_target_value)
     metric_name = workload_obj.target_metric_name
     validation_metric = f'validation/{metric_name}'
     test_metric = f'test/{metric_name}'
     validation_target = workload_obj.validation_target_value
     test_target = workload_obj.test_target_value
-    print(validation_metric)
-    print(test_metric)
-    print(validation_target)
-    print(test_target)
 
     trial_idx, time_idx = get_index_that_reaches_target(
         group, validation_metric, test_metric, validation_target, test_target)
