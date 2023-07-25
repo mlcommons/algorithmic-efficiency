@@ -406,7 +406,7 @@ def train_once(
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
-        train_state['last_step_end_time'] = get_time()
+      train_state['last_step_end_time'] = get_time()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
