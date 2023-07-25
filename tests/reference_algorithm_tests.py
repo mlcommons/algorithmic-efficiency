@@ -399,9 +399,9 @@ def _test_submission(workload_name,
                      n_gpus):
   logging.info(f'========= Testing {workload_name} in {framework}.')
   FLAGS.framework = framework
-  workload_metadata = copy.deepcopy(workloads.WORKLOADS[workload_name])
+  workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload_name])
   workload_metadata['workload_path'] = os.path.join(
-      workloads.BASE_WORKLOADS_DIR,
+      submission_runner.BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + framework,
       'workload.py')
   workload_class = workloads.import_workload(
