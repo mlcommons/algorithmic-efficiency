@@ -340,8 +340,10 @@ def train_once(
           train_state['test_goal_reached'] = (
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
+
           # Save last eval time
           eval_end_time = get_time()
+          train_state['last_eval_time'] = eval_end_time
 
           # Accumulate eval time
           train_state[
@@ -401,7 +403,7 @@ def train_once(
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
-        train_state['last_step_end_time'] = get_time()
+    train_state['last_step_end_time'] = get_time()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
