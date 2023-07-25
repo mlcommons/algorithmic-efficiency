@@ -273,7 +273,7 @@ def train_once(
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
   train_state['last_eval_time'] = global_start_time 
-  
+
   logging.info('Starting training loop.')
   goals_reached = (
       train_state['validation_goal_reached'] and
@@ -324,6 +324,11 @@ def train_once(
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
+      logging.info(f"Train step end time {train_step_end_time}")
+      logging.info(f"Last eval time: ")
+      logging.info(train_state['last_eval_time'])
+      logging.info(f"Workload eval period:")
+      logging.info(workload.eval_period_time_sec)
       with profiler.profile('Evaluation'):
         try:
           eval_start_time = get_time()
