@@ -232,6 +232,8 @@ def download_criteo(data_dir,
   _maybe_mkdir(criteo_dir)
   _maybe_mkdir(tmp_criteo_dir)
 
+  # Forked from
+  # https://github.com/iamleot/transferwee/blob/master/transferwee.py.
   user_agent = (
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0')
   criteo_wetransfer_url = (
