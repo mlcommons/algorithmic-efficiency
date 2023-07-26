@@ -24,6 +24,7 @@
 
 # Table of Contents
 - [Installation](#installation)
+   - [Python Virtual environment](python-virtual-environment)
    - [Docker](#docker)
 - [Getting Started](#getting-started)
 - [Rules](#rules)
@@ -49,7 +50,7 @@ You can install this package and dependences in a [python virtual environment](#
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    pip3 install -e '.[full]'
    ```
-##  Virtual environment
+##  Python virtual environment
 Note: Python minimum requirement >= 3.8
 
 To set up a virtual enviornment and install this repository
