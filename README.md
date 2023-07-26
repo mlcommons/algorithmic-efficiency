@@ -73,7 +73,7 @@ To set up a virtual enviornment and install this repository
 
 <details>
 <summary>
-Additional Details
+Per workload installations
 </summary>
 You can also install the requirements for individual workloads, e.g. via
 
