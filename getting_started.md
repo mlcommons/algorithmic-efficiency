@@ -1,14 +1,14 @@
 # Getting Started
 
 Table of Contents:
-- [Set up  and installation](#workspace-set-up-and-installation)
+- [Set up  and installation](#set-up-and-installation)
 - [Download the data](#download-the-data)
 - [Develop your submission](#develop-your-submission)
 - [Run your submission](#run-your-submission)
     - [Docker](#run-your-submission-in-a-docker-container)
 - [Score your submission](#score-your-submission)
 
-## Workspace set up and installation
+## Set up and installation
 To get started you will have to make a few decisions and install the repository along with its dependencies. Specifically:
 1. Decide if you would like to develop your submission in either Pytorch or Jax.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#benchmarking-hardware). 

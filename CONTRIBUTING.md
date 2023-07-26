@@ -172,7 +172,7 @@ docker run -t -d \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
--b <debug_mode>
+-b true
 ```
 
 # Submitting PRs 
