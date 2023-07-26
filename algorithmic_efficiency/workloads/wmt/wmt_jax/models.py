@@ -1,7 +1,4 @@
-"""Transformer-based machine translation model.
-
-Reference https://github.com/google/flax/tree/main/examples/wmt.
-"""
+"""Transformer-based machine translation model."""
 
 from typing import Any, Callable, Optional
 
@@ -352,7 +349,7 @@ class Encoder(nn.Module):
       x = Encoder1DBlock(
           config=cfg, name=f'encoderblock_{lyr}')(x, encoder_mask)
 
-    encoded = nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
+    encoded = nn.LayerNorm(dtype=cfg.dtype, name='encoder_norm')(x)
 
     return encoded
 
@@ -423,7 +420,7 @@ class Decoder(nn.Module):
               encoded,
               decoder_mask=decoder_mask,
               encoder_decoder_mask=encoder_decoder_mask)
-    y = nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_layernorm')(y)
+    y = nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_norm')(y)
 
     # Use the transpose of embedding matrix for logit transform.
     logits = output_embed.attend(y.astype(jnp.float32))

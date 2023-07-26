@@ -27,11 +27,6 @@ class BaseWmtWorkload(spec.Workload):
     super().__init__()
     self._tokenizer = None
 
-  @property
-  def target_metric_name(self) -> str:
-    """The name of the target metric (useful for scoring/processing code)."""
-    return 'bleu'
-
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/bleu'] > self.validation_target_value
 

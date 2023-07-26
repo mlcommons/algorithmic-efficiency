@@ -9,11 +9,6 @@ from algorithmic_efficiency.workloads.fastmri import input_pipeline
 
 class BaseFastMRIWorkload(spec.Workload):
 
-  @property
-  def target_metric_name(self) -> str:
-    """The name of the target metric (useful for scoring/processing code)."""
-    return 'ssim'
-
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/ssim'] > self.validation_target_value
 

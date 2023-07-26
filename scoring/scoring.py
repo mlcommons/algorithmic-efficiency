@@ -13,13 +13,13 @@ The two primary inputs to `compute_performance_profiles` are
   identifier for a submission and each value is a DataFrame containing one row
   per trial per workload in that submission. At minimum, this DataFrame should
   include a column of np.arrays indicating time (e.g., 'global_step'), a column
-  of np.arrays indicating performance (e.g., 'validation/accuracy') for each
+  of np.arrays indicating performance (e.g., 'valid/accuracy') for each
   workload and a column 'workload' that indicates the workload identifier.
 2. A dictionary of workload metadata describing each workload in the form:
   {
     'workload_identifier': {
       'target': VALUE,
-      'metric': 'validation/error_rate',
+      'metric': 'valid/error_rate',
     }
   }
   The keys in this dictionary should match the workload identifiers used in
@@ -29,17 +29,10 @@ The two primary inputs to `compute_performance_profiles` are
 import itertools
 import operator
 import os
-import re
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-import algorithmic_efficiency.workloads.workloads as workloads_registry
-
-WORKLOADS = workloads_registry.WORKLOADS
-WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
-BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
 MIN_EVAL_METRICS = [
     'ce_loss',
@@ -48,12 +41,11 @@ MIN_EVAL_METRICS = [
     'wer',
     'l1_loss',
 ]
-
-MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
+MAX_EVAL_METRICS = ['average_precision', 'ssim', 'bleu_score']
 
 
 def generate_eval_cols(metrics):
-  splits = ['train', 'validation', 'test']
+  splits = ['train', 'valid', 'test']
   return [f'{split}/{col}' for split, col in itertools.product(splits, metrics)]
 
 
@@ -67,6 +59,7 @@ def check_if_minimized(col_name):
   """Guess if the eval metric column name should be minimized or not."""
   for prefix in ['best_', 'final_']:
     col_name = col_name.replace(prefix, '')
+
   for col in MINIMIZE_REGISTRY:
     if col in col_name:
       return MINIMIZE_REGISTRY[col]
@@ -81,8 +74,7 @@ def get_index_that_reaches_best(workload_df, metric_col):
   Args:
     workload_df: A subset of a submission's trials DataFrame that
       includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df 
-      (e.g., `validation/l1_loss`).
+    metric_col: Name of array column in workload_df (e.g., `valid/l1_loss`).
 
   Returns:
     Tuple of trial index, time index, and best value where the workload
@@ -106,39 +98,27 @@ def get_index_that_reaches_best(workload_df, metric_col):
     return trial, best_idx[trial], best[trial]
 
 
-def get_index_that_reaches_target(workload_df,
-                                  validation_metric,
-                                  test_metric,
-                                  validation_target,
-                                  test_target):
+def get_index_that_reaches_target(workload_df, metric_col, target):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
     workload_df: A subset of a submission's trials DataFrame that
       includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df (e.g., `validation/l1_loss`).
+    metric_col: Name of array column in workload_df (e.g., `valid/l1_loss`).
     target: Target value for metric_col.
 
   Returns:
     Tuple of trial index and time index where the workload reached the target
       metric_col. Return (-1, -1) if not reached.
   """
-  is_minimized = check_if_minimized(validation_metric)
-  validation_series = workload_df[validation_metric]
-  test_series = workload_df[test_metric]
+  is_minimized = check_if_minimized(metric_col)
+  series = workload_df[metric_col]
 
-  validation_series = validation_series[validation_series != np.nan]
-  validation_series = validation_series[test_series != np.nan]
-  test_series = test_series[validation_series != np.nan]
-  test_series = test_series[test_series != np.nan]
+  series = series[series != np.nan]
 
   op = operator.le if is_minimized else operator.ge
-  validation_target_reached = validation_series.apply(
-      lambda x: op(x, validation_target))
-  test_target_reached = test_series.apply(lambda x: op(x, test_target))
+  target_reached = series.apply(lambda x: op(x, target))
 
-  target_reached = pd.Series(validation_target_reached[0]
-                             & test_target_reached[0])
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
@@ -154,6 +134,7 @@ def get_index_that_reaches_target(workload_df,
 
 def get_times_for_submission(submission,
                              submission_tag,
+                             workload_metadata,
                              time_col='global_step',
                              verbosity=1):
   """Get times to target for each workload in a submission.
@@ -162,6 +143,8 @@ def get_times_for_submission(submission,
     submission: A DataFrame containing one row for each trial in each workload
       for a given submission.
     submission_tag: Globally unique identified for a submission.
+    workload_metadata: Dictionary keyed by workload names with value of
+      dictionary with `target` and `metric` as keys.
     time_col: A string indicating which column to use for time.
     verbosity: Debug level of information; choice of (1, 2, 3).
 
@@ -172,28 +155,9 @@ def get_times_for_submission(submission,
   submission_name = submission_tag.split('.')[1]
 
   for workload, group in submission.groupby('workload'):
-    workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
-    framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
-    workload_metadata = WORKLOADS[workload_name]
-
-    # Extend path according to framework.
-    workload_metadata['workload_path'] = os.path.join(
-        BASE_WORKLOADS_DIR,
-        workload_metadata['workload_path'] + f'{framework}',
-        'workload.py')
-    workload_init_kwargs = {}
-    workload_obj = workloads_registry.import_workload(
-        workload_path=workload_metadata['workload_path'],
-        workload_class_name=workload_metadata['workload_class_name'],
-        workload_init_kwargs=workload_init_kwargs)
-    metric_name = workload_obj.target_metric_name
-    validation_metric = f'validation/{metric_name}'
-    test_metric = f'test/{metric_name}'
-    validation_target = workload_obj.validation_target_value
-    test_target = workload_obj.test_target_value
-
-    trial_idx, time_idx = get_index_that_reaches_target(
-        group, validation_metric, test_metric, validation_target, test_target)
+    metric = workload_metadata[workload]['metric']
+    target = workload_metadata[workload]['target']
+    trial_idx, time_idx = get_index_that_reaches_target(group, metric, target)
     if time_idx > -1:
       time_val = group[time_col].loc[trial_idx][time_idx]
     else:
@@ -220,6 +184,7 @@ def get_times_for_submission(submission,
 
 
 def compute_performance_profiles(results,
+                                 workload_metadata,
                                  time_col='global_step',
                                  min_tau=1.0,
                                  max_tau=None,
@@ -234,6 +199,8 @@ def compute_performance_profiles(results,
       trials where each row is a trial and each column is a field for a given
       trial. Results should contain keys for each workload's metric, time_col,
       'workload'. See file header comment for more details.
+    workload_metadata: Dictionary keyed by workload names with value of
+      dictionary with `target` and `metric` as keys.
     time_col: A string indicating which column to use for time.
     min_tau: Minimum tau to use for plotting.
     max_tau: Maximum tau to use for plotting.
@@ -257,7 +224,11 @@ def compute_performance_profiles(results,
     print(f'\nComputing performance profile with respect to `{time_col}` for '
           f'{submission_tag}')
     dfs.append(
-        get_times_for_submission(result, submission_tag, time_col, verbosity))
+        get_times_for_submission(result,
+                                 submission_tag,
+                                 workload_metadata,
+                                 time_col,
+                                 verbosity))
   df = pd.concat(dfs)
 
   if verbosity > 0:

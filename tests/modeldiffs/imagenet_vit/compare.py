@@ -59,7 +59,7 @@ def key_transform(k):
     elif enc_block and 'MlpBlock' in i:
       i = 'MlpBlock_3'
     elif idx == 1 and i == 'LayerNorm_0':
-      i = 'encoder_layernorm'
+      i = 'encoder_norm'
     elif 'weight' in i:
       if bn or ln:
         i = i.replace('weight', 'scale')

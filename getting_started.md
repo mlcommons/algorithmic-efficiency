@@ -59,10 +59,10 @@ A submission for the external ruleset will consist of a submission module and a 
 
 
 ## Run your submission
+You can evaluate your submission with the `submission_runner.py` module on one workload at a time. 
 
-From your virtual environment or interactively running Docker container run your submission with `submission_runner.py`:  
-
-**JAX**: to score your submission on a workload, from the algorithmic-efficency directory run: 
+### JAX submissions
+To score your submission on a workload, from the algorithmic-efficency directory run: 
 ```bash
 python3 submission_runner.py \
     --framework=jax \
@@ -73,7 +73,8 @@ python3 submission_runner.py \
     --tuning_search_space=<path_to_tuning_search_space>
 ```
 
-**Pytorch**: to score your submission on a workload, from the algorithmic-efficency directory run: 
+### PyTorch submissions
+To score your submission on a workload, from the algorithmic-efficency directory run: 
 ```bash
 python3 submission_runner.py \
     --framework=pytorch \
@@ -106,63 +107,10 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 \
     --tuning_search_space=<path_to_tuning_search_space>
 ```
 
-### Run your submission in a Docker container
-
-The container entrypoint script provides the following flags:
-- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo1tb', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
-- `-f` framework: can be either 'pytorch' or 'jax'. If you just want to download data, this flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
-- `-s` submission_path: path to submission file on container filesystem. If this flag is set, the container will run a submission, so it is required for running a submission. 
-- `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
-- `-e` experiment_name: name of experiment. Required for running a submission.
-- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo1tb'. Required for running a submission.
-- `-m` max_steps: maximum number of steps to run the workload for. Optional.
-- `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true` the main process on the container will persist.
-
-
-To run the docker container that will run the submission runner run:
-```bash
-docker run -t -d \
--v $HOME/data/:/data/ \
--v $HOME/experiment_runs/:/experiment_runs \
--v $HOME/experiment_runs/logs:/logs \
---gpus all \
---ipc=host \
-<docker_image_name> \
--d <dataset> \
--f <framework> \
--s <submission_path> \
--t <tuning_search_space> \
--e <experiment_name> \
--w <workload> \
--b <debug_mode>
-```
-This will print the container ID to the terminal.
-If debugging_mode is `true` the main process on the container will persist after finishing the submission runner.
-
-#### Docker Tips ####
-
-To find the container IDs of running containers
-```
-docker ps 
-```
-
-To see output of the entrypoint script
-```
-docker logs <container_id> 
-```
-
-To enter a bash session in the container
-```
-docker exec -it <container_id> /bin/bash
-```
-
+## Run your submission in a Docker container
+TODO(kasimbeg)
 ## Score your submission 
-To produce performance profile and performance table:
-```bash
-python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> --output_dir=<output_dir>
-```
-
-
+TODO(kasimbeg)
 ## Good Luck!
 
 
