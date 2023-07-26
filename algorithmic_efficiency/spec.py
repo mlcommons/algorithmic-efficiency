@@ -29,19 +29,8 @@ class ParameterType(enum.Enum):
   WEIGHT = 0
   BIAS = 1
   CONV_WEIGHT = 2
-  BATCH_NORM_SCALE = 3
-  BATCH_NORM_BIAS = 4
-  LAYER_NORM_SCALE = 5
-  LAYER_NORM_BIAS = 6
-  EMBEDDING = 7
-  ATTENTION_Q = 8
-  ATTENTION_K = 9
-  ATTENTION_V = 10
-  ATTENTION_OUT = 11
-  ATTENTION_QKV = 12  # This is used for implementations that fuse QKV together.
-  # We need to split this out because otherwise fused QKV models will have a
-  # different number of biases.
-  ATTENTION_BIAS = 13
+  BATCH_NORM = 3
+  EMBEDDING = 4
 
 
 # Of course, Tensor knows its shape and dtype.
@@ -55,12 +44,6 @@ class ShapeTuple:
 
   def __init__(self, shape_tuple):
     self.shape_tuple = shape_tuple
-
-  def __repr__(self):
-    return f'ShapeTuple({self.shape_tuple})'
-
-  def __eq__(self, other):
-    return self.shape_tuple == other.shape_tuple
 
 
 Shape = Union[Tuple[int],
@@ -99,11 +82,6 @@ class Workload(metaclass=abc.ABCMeta):
     self._param_types: Optional[ParameterTypeTree] = None
     self._eval_iters: Dict[str, Iterator] = {}
     self.metrics_logger = None
-
-  @property
-  @abc.abstractmethod
-  def target_metric_name(self) -> str:
-    """The name of the target metric (useful for scoring/processing code)."""
 
   @abc.abstractmethod
   def has_reached_validation_target(self, eval_result: Dict[str,

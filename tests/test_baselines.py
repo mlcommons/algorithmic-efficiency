@@ -13,7 +13,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.workloads import workloads
 import submission_runner
 
 FLAGS = flags.FLAGS
@@ -21,35 +20,26 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-MAX_GLOBAL_STEPS = 5
+MAX_GLOBAL_STEPS = 500
 
-baselines = {
-    'jax': [
-        'adafactor',
-        'adamw',
-        'lamb',
-        'momentum',
-        'nadamw',
-        'nesterov',
-        'sam',
-        'shampoo',
-    ],
-    'pytorch': [
-        'adamw',
-        'momentum',
-        'nadamw',
-        'nesterov',
-    ],
-}
-
+baselines = [
+    'adafactor',
+    'adamw',
+    'lamb',
+    'momentum',
+    'nadamw',
+    'nesterov',
+    'sam',
+    'shampoo',
+]
 frameworks = [
-    'pytorch',
+    # 'pytorch', # will enable this once all pytorch baselines are ready
     'jax',
 ]
 
 named_parameters = []
 for f in frameworks:
-  for b in baselines[f]:
+  for b in baselines:
     named_parameters.append(
         dict(
             testcase_name=f'{b}_{f}',
@@ -69,12 +59,12 @@ class BaselineTest(parameterized.TestCase):
                                submission_path,
                                tuning_search_space):
     FLAGS.framework = framework
-    workload_metadata = copy.deepcopy(workloads.WORKLOADS[workload])
+    workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload])
     workload_metadata['workload_path'] = os.path.join(
-        workloads.BASE_WORKLOADS_DIR,
+        submission_runner.BASE_WORKLOADS_DIR,
         workload_metadata['workload_path'] + '_' + framework,
         'workload.py')
-    workload_obj = workloads.import_workload(
+    workload_obj = submission_runner.import_workload(
         workload_path=workload_metadata['workload_path'],
         workload_class_name=workload_metadata['workload_class_name'],
         workload_init_kwargs={})

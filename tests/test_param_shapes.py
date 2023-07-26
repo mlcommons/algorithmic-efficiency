@@ -2,42 +2,48 @@ import jax
 import numpy as np
 import pytest
 
-# isort: skip_file
-# pylint:disable=line-too-long
-from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import CifarWorkload as JaxCifarWorkload
-from algorithmic_efficiency.workloads.cifar.cifar_pytorch.workload import CifarWorkload as PyTorchCifarWorkload
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import Criteo1TbDlrmSmallWorkload as JaxCriteoWorkload
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.workload import Criteo1TbDlrmSmallWorkload as PyTorchCriteoWorkload
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import FastMRIWorkload as JaxFastMRIWorkload
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.workload import FastMRIWorkload as PyTorchFastMRIWorkload
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import ImagenetResNetWorkload as JaxImagenetResNetWorkload
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import ImagenetResNetWorkload as PyTorchImagenetResNetWorkload
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import ImagenetVitWorkload as JaxImagenetViTWorkload
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import ImagenetVitWorkload as PyTorchImagenetViTWorkload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import LibriSpeechConformerWorkload as JaxLibriSpeechConformerWorkload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import LibriSpeechConformerWorkload as PytorchLibriSpeechConformerWorkload
-from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax.workload import LibriSpeechDeepSpeechWorkload as JaxLibriSpeechDeepSpeechWorkload
-from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.workload import LibriSpeechDeepSpeechWorkload as PytorchLibriSpeechDeepSpeechWorkload
-from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import MnistWorkload as JaxMnistWorkload
-from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import MnistWorkload as PyTorchMnistWorkload
-from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import OgbgWorkload as JaxOgbgWorkload
-from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import OgbgWorkload as PyTorchOgbgWorkload
-from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import WmtWorkload as JaxWmtWorkload
-from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import WmtWorkload as PyTorchWmtWorkload
-# pylint:enable=line-too-long
+from algorithmic_efficiency.workloads.cifar.cifar_jax.workload import \
+    CifarWorkload as JaxCifarWorkload
+from algorithmic_efficiency.workloads.cifar.cifar_pytorch.workload import \
+    CifarWorkload as PyTorchCifarWorkload
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
+    Criteo1TbDlrmSmallWorkload as JaxCriteoWorkload
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.workload import \
+    Criteo1TbDlrmSmallWorkload as PyTorchCriteoWorkload
+from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import \
+    FastMRIWorkload as JaxFastMRIWorkload
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.workload import \
+    FastMRIWorkload as PyTorchFastMRIWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
+    ImagenetResNetWorkload as JaxImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
+    ImagenetResNetWorkload as PyTorchImagenetResNetWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
+    ImagenetVitWorkload as JaxImagenetViTWorkload
+from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
+    ImagenetVitWorkload as PyTorchImagenetViTWorkload
+from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
+    MnistWorkload as JaxMnistWorkload
+from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
+    MnistWorkload as PyTorchMnistWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
+    OgbgWorkload as JaxOgbgWorkload
+from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
+    OgbgWorkload as PyTorchOgbgWorkload
+from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
+    WmtWorkload as JaxWmtWorkload
+from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
+    WmtWorkload as PyTorchWmtWorkload
 
 WORKLOADS = [
+    'mnist',
     'cifar',
     'criteo1tb',
     'fastmri',
     'imagenet_resnet',
     'imagenet_vit',
-    # TODO: make tests work for these.
-    # 'librispeech_conformer',
-    # 'librispeech_deepspeech',
-    'mnist',
-    'ogbg',
     'wmt',
+    'ogbg'
 ]
 
 
@@ -64,43 +70,49 @@ def test_param_shapes(workload):
 
 
 def get_workload(workload):
-  if workload == 'cifar':
+  if workload == 'mnist':
+    # Init Jax workload.
+    jax_workload = JaxMnistWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchMnistWorkload()
+  elif workload == 'cifar':
+    # Init Jax workload.
     jax_workload = JaxCifarWorkload()
+    # Init PyTorch workload.
     pytorch_workload = PyTorchCifarWorkload()
   elif workload == 'criteo1tb':
+    # Init Jax workload.
     jax_workload = JaxCriteoWorkload()
+    # Init PyTorch workload.
     pytorch_workload = PyTorchCriteoWorkload()
   elif workload == 'fastmri':
+    # Init Jax workload.
     jax_workload = JaxFastMRIWorkload()
+    # Init PyTorch workload.
     pytorch_workload = PyTorchFastMRIWorkload()
   elif workload == 'imagenet_resnet':
+    # Init Jax workload.
     jax_workload = JaxImagenetResNetWorkload()
+    # Init PyTorch workload.
     pytorch_workload = PyTorchImagenetResNetWorkload()
   elif workload == 'imagenet_vit':
+    # Init Jax workload.
     jax_workload = JaxImagenetViTWorkload()
+    # Init PyTorch workload.
     pytorch_workload = PyTorchImagenetViTWorkload()
-  elif workload == 'librispeech_conformer':
-    jax_workload = JaxLibriSpeechConformerWorkload()
-    pytorch_workload = PytorchLibriSpeechConformerWorkload()
-  elif workload == 'librispeech_deepspeech':
-    jax_workload = JaxLibriSpeechDeepSpeechWorkload()
-    pytorch_workload = PytorchLibriSpeechDeepSpeechWorkload()
-  elif workload == 'mnist':
-    jax_workload = JaxMnistWorkload()
-    pytorch_workload = PyTorchMnistWorkload()
-  elif workload == 'ogbg':
-    jax_workload = JaxOgbgWorkload()
-    pytorch_workload = PyTorchOgbgWorkload()
   elif workload == 'wmt':
+    # Init Jax workload.
     jax_workload = JaxWmtWorkload()
+    jax_workload._global_batch_size = 128
+    # Init PyTorch workload.
     pytorch_workload = PyTorchWmtWorkload()
+  elif workload == 'ogbg':
+    # Init Jax workload.
+    jax_workload = JaxOgbgWorkload()
+    # Init PyTorch workload.
+    pytorch_workload = PyTorchOgbgWorkload()
   else:
     raise ValueError(f'Workload {workload} is not available.')
   _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
   _ = pytorch_workload.init_model_fn([0])
   return jax_workload, pytorch_workload
-
-
-if __name__ == '__main__':
-  for w in WORKLOADS:
-    test_param_shapes(w)

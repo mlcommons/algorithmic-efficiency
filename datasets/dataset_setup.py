@@ -65,9 +65,7 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
 
-import functools
 import os
-import resource
 import shutil
 import subprocess
 import tarfile
@@ -76,7 +74,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import requests
-import tensorflow as tf
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 import tqdm
@@ -88,9 +85,6 @@ FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar'
 FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar'
 FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar'
 
-from algorithmic_efficiency.workloads.wmt import tokenizer
-from algorithmic_efficiency.workloads.wmt.input_pipeline import \
-    normalize_feature_names
 from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer
 
@@ -340,20 +334,17 @@ def setup_fastmri(data_dir):
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
-  imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
-  imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
+  data_dir = os.path.join(data_dir, 'imagenet')
 
   # Download imagnet train dataset
-  if not os.path.exists(imagenet_train_filepath):
-    logging.info(
-        'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
-    _download_url(url=imagenet_train_url, data_dir=data_dir).download()
+  logging.info(
+      'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
+  _download_url(url=imagenet_train_url, data_dir=data_dir).download()
 
   # Download imagenet val dataset
-  if not os.path.exists(imagenet_val_filepath):
-    logging.info('Downloading imagenet validation dataset from {}'.format(
-        imagenet_val_url))
-    _download_url(url=imagenet_val_url, data_dir=data_dir).download()
+  logging.info('Donwloading imagenet validation dataset from {}'.format(
+      imagenet_val_url))
+  _download_url(url=imagenet_val_url, data_dir=data_dir).download()
 
   # Download imagenet test set
   download_imagenet_v2(data_dir)
@@ -376,29 +367,15 @@ def setup_imagenet_jax(data_dir):
 
   # Setup jax dataset dir
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
-  manual_download_dir = os.path.join(imagenet_jax_data_dir,
-                                     'downloads',
-                                     'manual')
-  os.makedirs(manual_download_dir, exist_ok=True)
+  os.makedirs(imagenet_jax_data_dir)
 
-  # Copy tar file into jax/downloads/manual
-  logging.info('Checking if tar files already exists in jax/downloads/manual.')
-  if not os.path.exists(
-      os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
-    logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                           manual_download_dir))
-    shutil.move(train_tar_file_path, manual_download_dir)
-  if not os.path.exists(
-      os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
-    logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                           manual_download_dir))
-    shutil.move(val_tar_file_path, manual_download_dir)
-  logging.info('Preparing imagenet data.')
-  resource.setrlimit(resource.RLIMIT_NOFILE,
-                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
-  ds_builder = tfds.builder(
-      'imagenet2012:5.1.0', data_dir=os.path.join(imagenet_jax_data_dir))
-  ds_builder.download_and_prepare()
+  # Copy tar file into jax
+  logging.info('Copying {} to {}'.format(train_tar_file_path,
+                                         imagenet_jax_data_dir))
+  shutil.copy(train_tar_file_path, imagenet_jax_data_dir)
+  logging.info('Copying {} to {}'.format(val_tar_file_path,
+                                         imagenet_jax_data_dir))
+  shutil.copy(val_tar_file_path, imagenet_jax_data_dir)
   logging.info('Set up imagenet dataset for jax framework complete')
 
 
@@ -415,10 +392,10 @@ def setup_imagenet_pytorch(data_dir):
   # Copy tar file into pytorch directory
   logging.info('Copying {} to {}'.format(train_tar_file_path,
                                          imagenet_pytorch_data_dir))
-  shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
+  shutil.copy(train_tar_file_path, imagenet_pytorch_data_dir)
   logging.info('Copying {} to {}'.format(val_tar_file_path,
                                          imagenet_pytorch_data_dir))
-  shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
+  shutil.copy(val_tar_file_path, imagenet_pytorch_data_dir)
 
   # Extract train data\
   logging.info('Extracting imagenet train data')
@@ -462,13 +439,16 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'LibriSpeech')
-  _maybe_mkdir(tmp_librispeech_dir)
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
-      wget_cmd = f'wget http://www.openslr.org/resources/12/{split}-{version}.tar.gz -O - | tar xz'  # pylint: disable=line-too-long
-      subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
+      wget_cmd = (
+          f'wget --directory-prefix={tmp_librispeech_dir} '
+          f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
+      subprocess.Popen(wget_cmd, shell=True).communicate()
+      subprocess.Popen(
+          f'tar xzvf {split}-{version}.tar.gz', shell=True).communicate()
 
   tars = [
       'raw-metadata.tar.gz',
@@ -477,14 +457,17 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz '  # pylint: disable=line-too-long
-    subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
+    wget_cmd = (f'wget --directory-prefix={tmp_librispeech_dir} '
+                f'http://www.openslr.org/resources/12/{tar_filename}')
+    subprocess.Popen(wget_cmd, shell=True)
+    tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
+    subprocess.Popen(f'tar xzvf {tar_path}', shell=True)
 
   if train_tokenizer:
-    tokenizer_vocab_path = librispeech_tokenizer.run(
-        train=True, data_dir=tmp_librispeech_dir)
+    librispeech_tokenizer.run(train=True, data_dir=tmp_librispeech_dir)
 
     # Preprocess data.
+    tokenizer_vocab_path = os.path.join(tmp_librispeech_dir, 'spm_model.vocab')
     librispeech_dir = os.path.join(dataset_dir, 'librispeech')
     librispeech_preprocess.run(
         input_dir=tmp_librispeech_dir,
@@ -503,18 +486,7 @@ def download_ogbg(data_dir):
 def download_wmt(data_dir):
   """WMT14 and WMT17 de-en."""
   for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
-    dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
-    dataset_builder.download_and_prepare()
-
-    if ds_name == 'wmt17_translate/de-en:1.0.0':
-      ds = dataset_builder.as_dataset(split='train', shuffle_files=False)
-      ds = ds.map(
-          functools.partial(normalize_feature_names, dataset_builder.info),
-          num_parallel_calls=tf.data.AUTOTUNE)
-      # Tokenize data.
-      vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
-      tokenizer.train_tokenizer(
-          ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
+    tfds.builder(ds_name, data_dir=data_dir).download_and_prepare()
 
 
 def main(_):
@@ -571,9 +543,8 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    imagenet_data_dir = os.path.join(data_dir, 'imagenet')
-    download_imagenet(imagenet_data_dir, imagenet_train_url, imagenet_val_url)
-    setup_imagenet(imagenet_data_dir, framework=FLAGS.framework)
+    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
+    setup_imagenet(data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
