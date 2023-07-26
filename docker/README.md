@@ -1,35 +1,35 @@
-## Docker Instructions
+# Docker Instructions
 
-### General 
+## General 
 
-#### Prerequisites
+### Prerequisites
 You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
 
 If you are working with a GCP VM with Container Optimized OS setup, you will have to mount the NVIDIA drivers and devices on 
 `docker run` command (see below).
 
-#### Building Image
+### Building Image
 
 From `algorithmic-efficiency/docker/` run:
 ```
 docker build -t <docker_image_name> .
 ```
 
-#### Container Entry Point Flags
+### Container Entry Point Flags
 You can run a container that will download data to the host VM (if not already downloaded), run a submission or both. If you only want to download data you can run the container with just the `-d` and `-f` flags (`-f` is only required if `-d` is 'imagenet'). If you want to run a submission the `-d`, `-f`, `-s`, `-t`, `-e`, `-w` flags are all required to locate the data and run the submission script.
 
 The container entrypoint script provides the following flags:
-- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo1tb', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
+- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
 - `-f` framework: can be either 'pytorch' or 'jax'. If you just want to download data, this flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
 - `-s` submission_path: path to submission file on container filesystem. If this flag is set, the container will run a submission, so it is required for running a submission. 
 - `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
 - `-e` experiment_name: name of experiment. Required for running a submission.
-- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo1tb'. Required for running a submission.
+- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo'. Required for running a submission.
 - `-m` max_steps: maximum number of steps to run the workload for. Optional.
 - `-b` debugging_mode: can be true or false. If `-b ` (debugging_mode) is `true` the main process on the container will persist.
 
 
-#### Starting container w end-to-end submission runner
+### Starting container w end-to-end submission runner
 To run the docker container that will download data (if not found host) and run a submisison run:
 ```
 docker run -t -d \
@@ -51,7 +51,7 @@ This will print the container ID to the terminal.
 If debugging_mode is `true` the main process on the container will persist after finishing the submission runner.
 
 
-#### Starting a container with automated data download
+### Starting a container with automated data download
 To run a docker container that will only download data (if not found on host):
 ```
 docker run -t -d \
@@ -68,7 +68,7 @@ docker run -t -d \
 If debugging_mode is `true` the main process on the container will persist after finishing the data download.
 This run command is useful if you manually want to run a sumbission or look around.
 
-#### Interacting with the container
+### Interacting with the container
 To find the container IDs of running containers run:
 ```
 docker ps 

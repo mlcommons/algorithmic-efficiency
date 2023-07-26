@@ -45,9 +45,7 @@ def init_optimizer_state(workload: spec.Workload,
       learning_rate=lr_schedule_fn,
       beta1=1.0 - hyperparameters.one_minus_beta1,
       beta2=hyperparameters.beta2,
-      weight_decay=hyperparameters.weight_decay,
-      batch_axis_name='batch',
-      eigh=False)
+      weight_decay=hyperparameters.weight_decay)
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)

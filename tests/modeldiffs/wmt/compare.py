@@ -66,9 +66,9 @@ def sd_transform(sd):
       new_key = list(k)
       if len(k) == 3:
         if k[0] == 'encoder':
-          new_key[1] = 'encoder_layernorm'
+          new_key[1] = 'encoder_norm'
         else:
-          new_key[1] = 'encoderdecoder_layernorm'
+          new_key[1] = 'encoderdecoder_norm'
       if k[-1] == 'kernel':
         new_key[-1] = 'scale'
       new_key = tuple(new_key)

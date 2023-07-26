@@ -1,4 +1,3 @@
-import copy
 import math
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 import warnings
@@ -6,13 +5,15 @@ import warnings
 import torch
 from torch import nn
 from torch import Tensor
+from torch.nn.functional import _in_projection
+from torch.nn.functional import _scaled_dot_product_attention
 import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
 
 
 # Mask making utilities ported to PyTorch from
-# https://github.com/google/flax/blob/main/flax/linen/attention.py.
+# https://github.com/google/flax/blob/main/flax/linen/attention.py
 def make_attention_mask(query_input: Tensor,
                         key_input: Tensor,
                         pairwise_fn: Callable[..., Any] = torch.mul,
@@ -23,6 +24,8 @@ def make_attention_mask(query_input: Tensor,
     query_input: a batched, flat input of query_length size
     key_input: a batched, flat input of key_length size
     pairwise_fn: broadcasting elementwise comparison function
+    extra_batch_dims: number of extra batch dims to add singleton
+      axes for, none by default
     dtype: mask return dtype
 
   Returns:
@@ -39,7 +42,6 @@ def make_causal_mask(x: Tensor,
 
   Args:
     x: input array of shape `[batch..., len]`
-    device: device to store the idxs
     dtype: mask return dtype
 
   Returns:
@@ -51,7 +53,7 @@ def make_causal_mask(x: Tensor,
 
 
 def make_src_mask(src, inputs_segmentation, nhead):
-  """Utility for creating src mask and adjust it for PyTorch Transformer API."""
+  '''Utility for creating src mask and adjust it for PyTorch Transformer API.'''
   src_mask = make_attention_mask(src > 0, src > 0)
   # Add segmentation block-diagonal attention mask if using segmented data.
   if inputs_segmentation is not None:
@@ -72,8 +74,10 @@ def make_tgt_and_memory_mask(tgt,
                              targets_segmentation,
                              decode,
                              nhead):
-  """ Utility for creating target and memory mask and adjust them for PyTorch
-  Transformer API."""
+  '''
+  Utility for creating target and memory mask and adjust them for PyTorch
+  Transformer API.
+  '''
   if not decode:
     tgt_mask = torch.logical_and(
         make_attention_mask(tgt > 0, tgt > 0),
@@ -117,7 +121,9 @@ def shift_right(x, axis=1):
 
 
 class Transformer(nn.Module):
-  """Transformer architecture based on the model from the WMT Jax workload."""
+  '''
+  Transformer architecture based on the model from the WMT Jax workload.
+  '''
 
   def __init__(self,
                ntoken: int = 32000,
@@ -203,80 +209,6 @@ class Transformer(nn.Module):
     return output
 
 
-class TransformerEncoder(nn.Module):
-  r"""TransformerEncoder is a stack of N encoder layers. Users can build the
-  BERT(https://arxiv.org/abs/1810.04805) model with corresponding parameters.
-
-  Args:
-      encoder_layer: an instance of the TransformerEncoderLayer() class.
-      num_layers: the number of sub-encoder-layers in the encoder.
-      norm: the layer normalization component (optional).
-      enable_nested_tensor: if True, input will automatically convert to
-        nested tensor (and convert back on output). This will improve
-        the overall performance of TransformerEncoder when padding
-        rate is high.
-
-  Examples::
-    >>> encoder_layer = nn.TransformerEncoderLayer(12, 8)
-    >>> transformer_encoder = nn.TransformerEncoder(encoder_layer, 6)
-    >>> src = torch.rand(10, 32, 512)
-    >>> out = transformer_encoder(src)
-  """
-  __constants__ = ['norm']
-
-  def __init__(self,
-               encoder_layer,
-               num_layers,
-               norm=None,
-               enable_nested_tensor=True,
-               mask_check=True):
-    super().__init__()
-    self.layers = nn.ModuleList(
-        [copy.deepcopy(encoder_layer) for _ in range(num_layers)])
-    self.num_layers = num_layers
-    self.norm = norm
-    self.enable_nested_tensor = enable_nested_tensor
-    self.mask_check = mask_check
-
-  def forward(self,
-              src: Tensor,
-              mask: Optional[Tensor] = None,
-              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
-    """Pass the input through the encoder layers in turn.
-
-    Args:
-        src: the sequence to the encoder (required).
-        mask: the mask for the src sequence (optional).
-        src_key_padding_mask: the mask for the src keys per batch (optional).
-
-    Shape:
-        see the docs in Transformer class.
-    """
-    if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(
-          src_key_padding_mask):
-        raise AssertionError(
-            'only bool and floating types of key_padding_mask are supported')
-    output = src
-    convert_to_nested = False
-    src_key_padding_mask_for_layers = src_key_padding_mask
-
-    for mod in self.layers:
-      output = mod(
-          output,
-          src_mask=mask,
-          src_key_padding_mask=src_key_padding_mask_for_layers)
-
-    if convert_to_nested:
-      output = output.to_padded_tensor(0.)
-
-    if self.norm is not None:
-      output = self.norm(output)
-
-    return output
-
-
 class Encoder(nn.Module):
 
   def __init__(self,
@@ -299,7 +231,7 @@ class Encoder(nn.Module):
         attention_dropout_rate=attention_dropout_rate,
         layer_norm_eps=layer_norm_eps)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
-    self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
+    self.encoder = nn.TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
   def forward(self,
               src: Tensor,
@@ -345,7 +277,7 @@ class Decoder(nn.Module):
       targets_segmentation: Optional[Tensor] = None,
       decode: bool = False,
       max_len: Optional[int] = None,
-      cache: Optional[dict] = None) -> Any:
+      cache: Optional[dict] = None) -> Tensor:
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
         tgt, src, inputs_segmentation, targets_segmentation,
@@ -432,7 +364,7 @@ class PositionalEncoding(nn.Module):
 # https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/transformer.py
 # Only difference is using custom MultiheadAttention modules without bias and
 # '_qkv_same_embed_dim' always set to 'False'.
-class TransformerEncoderLayer(nn.Module):
+class TransformerEncoderLayer(nn.TransformerEncoderLayer):
   r"""TransformerEncoderLayer is made up of self-attn and feedforward network.
   This standard encoder layer is based on the paper "Attention Is All You Need".
   Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
@@ -480,7 +412,17 @@ class TransformerEncoderLayer(nn.Module):
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
-    super().__init__()
+    super().__init__(
+        d_model,
+        nhead,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout_rate,
+        activation=activation,
+        layer_norm_eps=layer_norm_eps,
+        batch_first=batch_first,
+        norm_first=norm_first,
+        device=device,
+        dtype=dtype)
     self.self_attn = MultiheadAttention(
         d_model,
         nhead,
@@ -489,93 +431,23 @@ class TransformerEncoderLayer(nn.Module):
         bias=False,
         **factory_kwargs)
 
-    # Implementation of Feedforward model.
-    self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
-    self.dropout = nn.Dropout(dropout_rate)
-    self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
-
-    self.norm_first = norm_first
-    self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.dropout1 = nn.Dropout(dropout_rate)
-    self.dropout2 = nn.Dropout(dropout_rate)
-
-    # We can't test self.activation in forward() in TorchScript,
-    # so stash some information about it instead.
-    if activation is F.relu or isinstance(activation, torch.nn.ReLU):
-      self.activation_relu_or_gelu = 1
-    elif activation is F.gelu or isinstance(activation, torch.nn.GELU):
-      self.activation_relu_or_gelu = 2
-    else:
-      self.activation_relu_or_gelu = 0
-    self.activation = activation
-
-  def forward(self,
-              src: Tensor,
-              src_mask: Optional[Tensor] = None,
-              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
-    r"""Pass the input through the encoder layer.
-
-    Args:
-        src: the sequence to the encoder layer (required).
-        src_mask: the mask for the src sequence (optional).
-        src_key_padding_mask: the mask for the src keys per batch (optional).
-
-    Shape:
-        see the docs in Transformer class.
-    """
-    if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(
-          src_key_padding_mask):
-        raise AssertionError(
-            'Only bool and floating types of key_padding_mask are supported')
-    x = src
-    if self.norm_first:
-      x = x + self._sa_block(self.norm1(x), src_mask, src_key_padding_mask)
-      x = x + self._ff_block(self.norm2(x))
-    else:
-      x = self.norm1(x + self._sa_block(x, src_mask, src_key_padding_mask))
-      x = self.norm2(x + self._ff_block(x))
-
-    return x
-
-  # Self-attention block:
-  def _sa_block(self,
-                x: Tensor,
-                attn_mask: Optional[Tensor],
-                key_padding_mask: Optional[Tensor]) -> Tensor:
-    x = self.self_attn(
-        x,
-        x,
-        x,
-        attn_mask=attn_mask,
-        key_padding_mask=key_padding_mask,
-        need_weights=False)[0]
-    return self.dropout1(x)
-
-  # Feed forward block:
-  def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-    return self.dropout2(x)
-
 
 # Modified to use cache for autoregressive decoding.
 class TransformerDecoder(nn.Module):
   r"""TransformerDecoder is a stack of N decoder layers
   Args:
-    d_model: the number of expected features in the input (default=1024)
-    nhead: the number of heads in the multiheadattention models (default=16)
+    d_model: the number of expected features in the input (default=1024).
+    nhead: the number of heads in the multiheadattention models (default=16).
     d_hid: the dimension of the feedforward network model
-        (default=1024)
-    dropout_rate: the dropout_rate value (default=0.1)
+        (default=1024).
+    dropout_rate: the dropout_rate value (default=0.1).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
-    decoder_layer: an instance of the TransformerDecoderLayer() class
-    num_layers: the number of sub-decoder-layers in the decoder
+    decoder_layer: an instance of the TransformerDecoderLayer() class (required)
+    num_layers: the number of sub-decoder-layers in the decoder (required).
   Examples::
-    >>> decoder_layer = nn.TransformerDecoderLayer(12, 8)
-    >>> transformer_decoder = nn.TransformerDecoder(decoder_layer, 6)
+    >>> decoder_layer = nn.TransformerDecoderLayer(d_model=512, nhead=8)
+    >>> transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=6)
     >>> memory = torch.rand(10, 32, 512)
     >>> tgt = torch.rand(20, 32, 512)
     >>> out = transformer_decoder(tgt, memory)
@@ -610,7 +482,7 @@ class TransformerDecoder(nn.Module):
               memory_mask: Optional[Tensor] = None,
               decode: bool = False,
               max_len: Optional[int] = None,
-              cache: Optional[dict] = None) -> Any:
+              cache: Optional[dict] = None) -> Tensor:
     r"""Pass the inputs (and mask) through the decoder layer in turn.
     Args:
       tgt: the sequence to the decoder (required).
@@ -644,7 +516,7 @@ class TransformerDecoder(nn.Module):
 
 
 # Modified to use cache for autoregressive decoding.
-class TransformerDecoderLayer(nn.Module):
+class TransformerDecoderLayer(nn.TransformerDecoderLayer):
   r"""TransformerDecoderLayer is made up of self-attn, multi-head-attn and
   feedforward network.
   This standard decoder layer is based on the paper "Attention Is All You Need".
@@ -695,7 +567,17 @@ class TransformerDecoderLayer(nn.Module):
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
-    super().__init__()
+    super().__init__(
+        d_model,
+        nhead,
+        dim_feedforward=dim_feedforward,
+        dropout=dropout_rate,
+        activation=activation,
+        layer_norm_eps=layer_norm_eps,
+        batch_first=batch_first,
+        norm_first=norm_first,
+        device=device,
+        dtype=dtype)
     self.self_attn = MultiheadAttention(
         d_model,
         nhead,
@@ -711,21 +593,6 @@ class TransformerDecoderLayer(nn.Module):
         bias=False,
         **factory_kwargs)
 
-    # Implementation of Feedforward model.
-    self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
-    self.dropout = nn.Dropout(dropout_rate)
-    self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
-
-    self.norm_first = norm_first
-    self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.dropout1 = nn.Dropout(dropout_rate)
-    self.dropout2 = nn.Dropout(dropout_rate)
-    self.dropout3 = nn.Dropout(dropout_rate)
-
-    self.activation = activation
-
   def forward(  # pylint: disable=arguments-renamed
       self,
       tgt: Tensor,
@@ -735,7 +602,7 @@ class TransformerDecoderLayer(nn.Module):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      index: Optional[int] = None) -> Any:
+      index: Optional[int] = None) -> Tensor:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -775,7 +642,7 @@ class TransformerDecoderLayer(nn.Module):
 
     return x, cache
 
-  # Self-attention block:
+  # self-attention block
   def _sa_block(  # pylint: disable=arguments-renamed
       self,
       x: Tensor,
@@ -783,7 +650,7 @@ class TransformerDecoderLayer(nn.Module):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      index: Optional[int] = None) -> Any:
+      index: Optional[int] = None) -> Tensor:
     x, _, cache = self.self_attn(
         x,
         x,
@@ -795,26 +662,6 @@ class TransformerDecoderLayer(nn.Module):
         cache=cache,
         index=index)
     return self.dropout1(x), cache
-
-  # Multihead attention block:
-  def _mha_block(self,
-                 x: Tensor,
-                 mem: Tensor,
-                 attn_mask: Optional[Tensor],
-                 key_padding_mask: Optional[Tensor]) -> Tensor:
-    x = self.multihead_attn(
-        x,
-        mem,
-        mem,
-        attn_mask=attn_mask,
-        key_padding_mask=key_padding_mask,
-        need_weights=False)[0]
-    return self.dropout2(x)
-
-  # Feed forward block.
-  def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-    return self.dropout3(x)
 
 
 # Only difference to standard PyTorch class is that 'self._qkv_same_embed_dim'
@@ -917,7 +764,7 @@ class MultiheadAttention(nn.MultiheadAttention):
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
-              index: Optional[int] = None) -> Any:
+              index: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
     r"""
     Args:
       query: Query embeddings of shape :math:`(L, E_q)` for unbatched input,
@@ -1015,62 +862,29 @@ class MultiheadAttention(nn.MultiheadAttention):
       return attn_output, attn_output_weights, cache
 
 
-def _in_projection(
-    q: Tensor,
-    k: Tensor,
-    v: Tensor,
-    w_q: Tensor,
-    w_k: Tensor,
-    w_v: Tensor,
-    b_q: Optional[Tensor] = None,
-    b_k: Optional[Tensor] = None,
-    b_v: Optional[Tensor] = None,
-) -> Tuple[Tensor, Tensor, Tensor]:
-  r"""Performs the in-projection step of the attention operation. This is simply
-  a triple of linear projections, with shape constraints on the weights which
-  ensure embedding dimension uniformity in the projected outputs.
-  Output is a triple containing projection tensors for query, key and value.
-  """
-  eq, ek = q.size(-1), k.size(-1)
-  assert w_q.shape == (eq, eq), \
-    f'Expecting query weights shape of {(eq, eq)}, but got {w_q.shape}'
-  assert w_k.shape == (eq, ek), \
-    f'Expecting key weights shape of {(eq, ek)}, but got {w_k.shape}'
-  assert w_v.shape == (eq, ek), \
-    f'Expecting value weights shape of {(eq, ek)}, but got {w_v.shape}'
-  assert b_q is None or b_q.shape == (eq,), \
-    f'Expecting query bias shape of {(eq,)}, but got {b_q.shape}'
-  assert b_k is None or b_k.shape == (eq,), \
-    f'Expecting key bias shape of {(eq,)}, but got {b_k.shape}'
-  assert b_v is None or b_v.shape == (eq,), \
-    f'Expecting value bias shape of {(eq,)}, but got {b_v.shape}'
-  return torch.nn.functional.linear(q, w_q, b_q), \
-    torch.nn.functional.linear(k, w_k, b_k), \
-    torch.nn.functional.linear(v, w_v, b_v)
-
-
 # Modified to create cache for autoregressive decoding.
-def multi_head_attention_forward(query: Tensor,
-                                 key: Tensor,
-                                 value: Tensor,
-                                 embed_dim_to_check: int,
-                                 num_heads: int,
-                                 in_proj_bias: Optional[Tensor],
-                                 bias_k: Optional[Tensor],
-                                 bias_v: Optional[Tensor],
-                                 dropout_rate: float,
-                                 out_proj_weight: Tensor,
-                                 out_proj_bias: Optional[Tensor],
-                                 training: bool = True,
-                                 need_weights: bool = True,
-                                 attn_mask: Optional[Tensor] = None,
-                                 q_proj_weight: Optional[Tensor] = None,
-                                 k_proj_weight: Optional[Tensor] = None,
-                                 v_proj_weight: Optional[Tensor] = None,
-                                 average_attn_weights: bool = True,
-                                 decode: bool = False,
-                                 cache: Optional[dict] = None,
-                                 max_len: Optional[int] = None) -> Any:
+def multi_head_attention_forward(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    embed_dim_to_check: int,
+    num_heads: int,
+    in_proj_bias: Optional[Tensor],
+    bias_k: Optional[Tensor],
+    bias_v: Optional[Tensor],
+    dropout_rate: float,
+    out_proj_weight: Tensor,
+    out_proj_bias: Optional[Tensor],
+    training: bool = True,
+    need_weights: bool = True,
+    attn_mask: Optional[Tensor] = None,
+    q_proj_weight: Optional[Tensor] = None,
+    k_proj_weight: Optional[Tensor] = None,
+    v_proj_weight: Optional[Tensor] = None,
+    average_attn_weights: bool = True,
+    decode: bool = False,
+    cache: Optional[dict] = None,
+    max_len: Optional[int] = None) -> Tuple[Tensor, Optional[Tensor]]:
   r"""
   Args:
     query, key, value: map a query and a set of key-value pairs to an output.
@@ -1127,31 +941,31 @@ def multi_head_attention_forward(query: Tensor,
       per head of shape :math:`(num_heads, L, S)` when input is unbatched or
       :math:`(N, num_heads, L, S)`.
   """
-  # Set up shape variables.
+  # set up shape vars
   tgt_len, bsz, embed_dim = query.shape
   src_len, _, _ = key.shape
   assert embed_dim == embed_dim_to_check, \
-      f'was expecting dimension of {embed_dim_to_check}, but got {embed_dim}'
+      f"was expecting dimension of {embed_dim_to_check}, but got {embed_dim}"
   if isinstance(embed_dim, torch.Tensor):
-    # `embed_dim` can be a tensor when JIT tracing.
+    # embed_dim can be a tensor when JIT tracing
     head_dim = embed_dim.div(num_heads, rounding_mode='trunc')
   else:
     head_dim = embed_dim // num_heads
   assert head_dim * num_heads == embed_dim, \
-      f'embed_dim {embed_dim} not divisible by num_heads {num_heads}'
-  # Allow MHA to have different embedding dimensions when separate projection
-  # weights are used.
+      f"embed_dim {embed_dim} not divisible by num_heads {num_heads}"
+  # allow MHA to have different embedding dimensions when separate projection
+  # weights are used
   assert key.shape[:2] == value.shape[:2], \
       (f"key's sequence and batch dims {key.shape[:2]} do not match value's "
-       f'{value.shape[:2]}')
+       f"{value.shape[:2]}")
 
-  # Compute in-projection.
+  # compute in-projection
   assert q_proj_weight is not None, \
-      'use_separate_proj_weight is True but q_proj_weight is None'
+      "use_separate_proj_weight is True but q_proj_weight is None"
   assert k_proj_weight is not None, \
-      'use_separate_proj_weight is True but k_proj_weight is None'
+      "use_separate_proj_weight is True but k_proj_weight is None"
   assert v_proj_weight is not None, \
-      'use_separate_proj_weight is True but v_proj_weight is None'
+      "use_separate_proj_weight is True but v_proj_weight is None"
   if in_proj_bias is None:
     b_q = b_k = b_v = None
   else:
@@ -1183,19 +997,19 @@ def multi_head_attention_forward(query: Tensor,
     assert batch_size == bsz, f'{batch_size} != {bsz}'
     assert max_length == max_len, f'{max_length} != {max_len}'
     assert num_features == embed_dim, f'{num_features} != {embed_dim}'
-    # Shape check of cached keys against query input.
+    # shape check of cached keys against query input
     expected_shape = (1, batch_size, num_features)
     if expected_shape != query.shape:
       raise ValueError('Autoregressive cache shape error, expected query shape '
                        f'{expected_shape} instead got {query.shape}.')
-    # Update key, value caches with our new 1d spatial slices.
+    # update key, value caches with our new 1d spatial slices
     cached_key[:, cache_index:cache_index + 1, :] = k.transpose(dim0=0, dim1=1)
     cached_value[:, cache_index:cache_index + 1, :] = v.transpose(
         dim0=0, dim1=1)
     k = cached_key.transpose(dim0=0, dim1=1)
     v = cached_value.transpose(dim0=0, dim1=1)
     cache_index += 1
-    # Causal mask for cached decoder self-attention:
+    # causal mask for cached decoder self-attention:
     # our single query position should only attend to those key
     # positions that have already been generated and cached,
     # not the remaining zero elements.
@@ -1204,34 +1018,34 @@ def multi_head_attention_forward(query: Tensor,
     attn_mask = (torch.arange(max_length, device=k.device) >=
                  cache_index).reshape(1, max_length)
 
-  # Prepare attention mask.
+  # prep attention mask
   if not decode and attn_mask is not None:
     if attn_mask.dtype == torch.uint8:
       warnings.warn(
-          'Byte tensor for attn_mask in nn.MultiheadAttention is deprecated.'
-          'Use bool tensor instead.')
+          "Byte tensor for attn_mask in nn.MultiheadAttention is deprecated."
+          "Use bool tensor instead.")
       attn_mask = attn_mask.to(torch.bool)
     else:
       assert attn_mask.is_floating_point() or attn_mask.dtype == torch.bool, \
-          f'float, byte, and bool types are supported, not {attn_mask.dtype}'
+          f"float, byte, and bool types are supported, not {attn_mask.dtype}"
     # ensure attn_mask's dim is 3
     if attn_mask.dim() == 2:
       correct_2d_size = (tgt_len, src_len)
       if attn_mask.shape != correct_2d_size:
         raise RuntimeError(
-            f'The shape of the 2D attn_mask is {attn_mask.shape}, '
-            f'but should be {correct_2d_size}.')
+            f"The shape of the 2D attn_mask is {attn_mask.shape}, "
+            f"but should be {correct_2d_size}.")
       attn_mask = attn_mask.unsqueeze(0)
     elif attn_mask.dim() == 3:
       correct_3d_size = (bsz * num_heads, tgt_len, src_len)
       if attn_mask.shape != correct_3d_size:
-        raise RuntimeError(f'The shape of attn_mask is {attn_mask.shape}, '
-                           f'should be {correct_3d_size}.')
+        raise RuntimeError(f"The shape of attn_mask is {attn_mask.shape}, "
+                           f"should be {correct_3d_size}.")
     else:
       raise RuntimeError(
           f"attn_mask's dimension {attn_mask.dim()} is not supported")
 
-  # Add bias along batch dimension (currently second).
+  # add bias along batch dimension (currently second)
   if bias_k is not None and bias_v is not None:
     k = torch.cat([k, bias_k.repeat(1, bsz, 1)])
     v = torch.cat([v, bias_v.repeat(1, bsz, 1)])
@@ -1241,29 +1055,30 @@ def multi_head_attention_forward(query: Tensor,
     assert bias_k is None
     assert bias_v is None
 
-  # Reshape q, k, v for multihead attention and make em batch first.
-  q = \
-    q.contiguous().view(tgt_len, bsz * num_heads, head_dim).transpose(0, 1)
-  k = \
-    k.contiguous().view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
-  v = \
-    v.contiguous().view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
+  #
+  # reshape q, k, v for multihead attention and make em batch first
+  #
+  q = q.contiguous().view(tgt_len, bsz * num_heads, head_dim).transpose(0, 1)
+  k = k.contiguous().view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
+  v = v.contiguous().view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
 
-  # Update source sequence length after adjustments.
+  # update source sequence length after adjustments
   src_len = k.size(1)
 
-  # Convert mask to float.
+  # convert mask to float
   if attn_mask is not None and attn_mask.dtype == torch.bool:
     new_attn_mask = torch.zeros_like(attn_mask, dtype=q.dtype)
     new_attn_mask.masked_fill_(attn_mask, -1e10)
     attn_mask = new_attn_mask
 
-  # Adjust dropout_rate probability.
+  # adjust dropout_rate probability
   if not training:
     dropout_rate = 0.0
 
-  # Calculate attention and out projection.
-  attn_output = torch.nn.functional.scaled_dot_product_attention(
+  #
+  # (deep breath) calculate attention and out projection
+  #
+  attn_output, attn_output_weights = _scaled_dot_product_attention(
       q, k, v, attn_mask, dropout_rate)
   attn_output = attn_output.transpose(0, 1).contiguous().view(
       tgt_len * bsz, embed_dim)
@@ -1271,16 +1086,7 @@ def multi_head_attention_forward(query: Tensor,
   attn_output = attn_output.view(tgt_len, bsz, attn_output.size(1))
 
   if need_weights:
-    q_scaled = q / math.sqrt(q.shape[-1])
-
-    if attn_mask is not None:
-      attn_output_weights = torch.baddbmm(attn_mask,
-                                          q_scaled,
-                                          k.transpose(-2, -1))
-    else:
-      attn_output_weights = torch.bmm(q_scaled, k.transpose(-2, -1))
-
-    # Optionally average attention weights over heads.
+    # optionally average attention weights over heads
     attn_output_weights = attn_output_weights.view(bsz,
                                                    num_heads,
                                                    tgt_len,
