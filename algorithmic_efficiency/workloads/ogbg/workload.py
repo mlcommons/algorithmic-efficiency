@@ -17,6 +17,11 @@ class BaseOgbgWorkload(spec.Workload):
 
   _num_outputs: int = 128
 
+  @property
+  def target_metric_name(self) -> str:
+    """The name of the target metric (useful for scoring/processing code)."""
+    return 'mean_average_precision'
+
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result[
         'validation/mean_average_precision'] > self.validation_target_value
