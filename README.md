@@ -23,7 +23,6 @@
 [MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it. For a detailed description of the benchmark design, see our [paper](https://arxiv.org/abs/2306.07179).
 
 # Table of Contents
-- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
    - [Docker](#docker)
 - [Getting Started](#getting-started)
