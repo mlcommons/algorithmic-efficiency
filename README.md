@@ -23,9 +23,8 @@
 [MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it. For a detailed description of the benchmark design, see our [paper](https://arxiv.org/abs/2306.07179).
 
 # Table of Contents
-- [Table of Contents](#table-of-contents)
-- [AlgoPerf Benchmark Workloads](#algoperf-benchmark-workloads)
 - [Installation](#installation)
+   - [Python Virtual environment](python-virtual-environment)
    - [Docker](#docker)
 - [Getting Started](#getting-started)
 - [Rules](#rules)
@@ -51,7 +50,7 @@ You can install this package and dependences in a [python virtual environment](#
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    pip3 install -e '.[full]'
    ```
-##  Virtual environment
+##  Python virtual environment
 Note: Python minimum requirement >= 3.8
 
 To set up a virtual enviornment and install this repository
@@ -74,7 +73,7 @@ To set up a virtual enviornment and install this repository
 
 <details>
 <summary>
-Additional Details
+Per workload installations
 </summary>
 You can also install the requirements for individual workloads, e.g. via
 
@@ -113,6 +112,8 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 
 
 ### Running Docker Container (Interactive)
+To use the Docker container as an interactive virtual environment, you can run a container mounted to your local data and code directories and execute the `bash` program. This may be useful if you are in the process of developing a submission.
+
 1. Run detached Docker Container
    ```bash
    docker run -t -d \
@@ -123,6 +124,7 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
       --gpus all \
       --ipc=host \
       <docker_image_name> 
+      -b true 
    ```
    This will print out a container id. 
 2. Open a bash terminal
@@ -131,14 +133,13 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
    ```
 
 ### Running Docker Container (End-to-end)
-To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
+To run a submission end-to-end in a containerized envionment see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 # Getting Started
-For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
-## Running a workload
-To run a submission directly by running a Docker container, see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
-Alternatively from a your virtual environment or interactively running Docker container `submission_runner.py` run:
+## Running a workload
+
+From a your virtual environment or interactively running Docker container run:
 
 **JAX**
 
@@ -166,6 +167,9 @@ python3 submission_runner.py \
 <details>
 <summary>
 Using Pytorch DDP (Recommended)
+
+## Developing submissions
+For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
 </summary>
 
 When using multiple GPUs on a single node it is recommended to use PyTorch's [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html).
