@@ -114,9 +114,9 @@ def preprocess_data(data_folder, output_folder, tokenizer, split):
     return utterance_ids
 
   paths = []
-  for _, speaker_folder in enumerate(os.listdir(data_folder)):
-    for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
-      paths.append((data_folder, speaker_folder, chapter_folder))
+  for _, speaker_folder in enumerate(os.listdir(in_folder)):
+    for chapter_folder in os.listdir(f'{in_folder}/{speaker_folder}'):
+      paths.append((in_folder, speaker_folder, chapter_folder))
 
   sys.stdout.write('\r')
   pool = multiprocessing.dummy.Pool(32)
@@ -156,13 +156,11 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
       'test-clean',
       'test-other',
   ]
-  for split in split_list:
-    logging.info('Processing split = %s...', split)
-    output_split_dir = os.path.join(output_dir, split)
-    input_split_dir = os.path.join(input_dir, split)
-
-    os.makedirs(output_split_dir, exist_ok=True)
-    example_ids, num_entries = preprocess_data(input_split_dir, output_split_dir, tokenizer, subset)
+  for subset in subset_list:
+    logging.info('Processing split = %s...', subset)
+    subset_dir = os.path.join(output_dir, subset)
+    os.makedirs(subset_dir, exist_ok=True)
+    example_ids, num_entries = preprocess_data(subset_dir, tokenizer, subset)
 
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('Preprocessed dataframe final count not equal to '

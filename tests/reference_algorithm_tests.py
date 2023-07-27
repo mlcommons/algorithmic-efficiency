@@ -43,6 +43,7 @@ from algorithmic_efficiency import halton
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.profiler import PassThroughProfiler
+from algorithmic_efficiency.workloads import workloads
 from algorithmic_efficiency.workloads.ogbg import \
     input_pipeline as ogbg_input_pipeline
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
@@ -67,7 +68,6 @@ flags.DEFINE_boolean('identical',
                      'Run jax and pytorch with identical weights.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
-N_GPUS = max(N_GPUS, jax.local_device_count())
 tf.config.set_visible_devices([], 'GPU')
 _EXPECTED_METRIC_NAMES = {
     'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
@@ -139,9 +139,9 @@ class _FakeMetricsLogger:
   def append_scalar_metrics(self, scalars, step):
     if USE_PYTORCH_DDP:
       for k in sorted(scalars):
-        scalars[k] = torch.FloatTensor([scalars[k]]).to(PYTORCH_DEVICE)
-        dist.all_reduce(scalars[k])
-        scalars[k] = scalars[k].item() / N_GPUS
+        scalars[k] = torch.as_tensor([scalars[k]], device=PYTORCH_DEVICE)
+        dist.all_reduce(scalars[k], op=dist.ReduceOp.AVG)
+        scalars[k] = scalars[k].item()
     if RANK == 0:
       self.scalars.append(scalars)
       self.save()
@@ -169,7 +169,8 @@ def _make_one_batch_workload(workload_class,
                              workload_name,
                              framework,
                              global_batch_size,
-                             use_fake_input_queue):
+                             use_fake_input_queue,
+                             n_gpus):
 
   class _OneEvalBatchWorkload(workload_class):
 
@@ -226,7 +227,7 @@ def _make_one_batch_workload(workload_class,
 
       np.random.seed(42)
       if framework == 'jax' or USE_PYTORCH_DDP:
-        batch_shape = (N_GPUS, global_batch_size // N_GPUS)
+        batch_shape = (n_gpus, global_batch_size // n_gpus)
       else:
         batch_shape = (global_batch_size,)
 
@@ -373,8 +374,12 @@ def _make_one_batch_workload(workload_class,
       # the BLEU score.
       if workload_name == 'wmt':
         num_batches *= 2
-      for _ in range(num_batches * FLAGS.num_train_steps):
-        yield fake_batch
+
+      def _data_gen():
+        for _ in range(num_batches * FLAGS.num_train_steps):
+          yield fake_batch
+
+      return _data_gen()
 
     def eval_model(self, *args, **kwargs):
       eval_result = super().eval_model(*args, **kwargs)
@@ -389,7 +394,8 @@ def _test_submission(workload_name,
                      submission_path,
                      search_space_path,
                      data_dir,
-                     use_fake_input_queue):
+                     use_fake_input_queue,
+                     n_gpus):
   logging.info(f'========= Testing {workload_name} in {framework}.')
   FLAGS.framework = framework
   workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload_name])
@@ -397,13 +403,12 @@ def _test_submission(workload_name,
       submission_runner.BASE_WORKLOADS_DIR,
       workload_metadata['workload_path'] + '_' + framework,
       'workload.py')
-  workload_class = submission_runner.import_workload(
+  workload_class = workloads.import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       return_class=True)
 
-  submission_module_path = submission_runner.convert_filepath_to_module(
-      submission_path)
+  submission_module_path = workloads.convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
@@ -412,7 +417,7 @@ def _test_submission(workload_name,
   if FLAGS.all:
     if FLAGS.global_batch_size > 0:
       raise ValueError('Cannot set --global_batch_size and --all.')
-    global_batch_size = 2 * N_GPUS
+    global_batch_size = 2 * n_gpus
   else:
     global_batch_size = FLAGS.global_batch_size
     if FLAGS.global_batch_size < 0:
@@ -421,7 +426,8 @@ def _test_submission(workload_name,
                                       workload_name,
                                       framework,
                                       global_batch_size,
-                                      use_fake_input_queue)
+                                      use_fake_input_queue,
+                                      n_gpus)
 
   # Get a sample hyperparameter setting.
   hyperparameters = {}
@@ -441,20 +447,20 @@ def _test_submission(workload_name,
                                          hyperparameters,
                                          opt_init_rng)
 
-  global_step = 0
-  data_select_rng, update_rng, eval_rng = prng.split(rng, 3)
-  batch = data_selection(workload,
-                         input_queue,
-                         optimizer_state,
-                         model_params,
-                         model_state,
-                         hyperparameters,
-                         global_step,
-                         data_select_rng)
   if USE_PYTORCH_DDP:
     torch.cuda.empty_cache()
     dist.barrier()
-  for _ in range(FLAGS.num_train_steps):
+  for global_step in range(FLAGS.num_train_steps):
+    step_rng = prng.fold_in(rng, global_step)
+    data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
+    batch = data_selection(workload,
+                           input_queue,
+                           optimizer_state,
+                           model_params,
+                           model_state,
+                           hyperparameters,
+                           global_step,
+                           data_select_rng)
     optimizer_state, model_params, model_state = update_params(
         workload=workload,
         current_param_container=model_params,
@@ -475,7 +481,7 @@ def _test_submission(workload_name,
         eval_rng,
         data_dir,
         imagenet_v2_data_dir=None,
-        global_step=0)
+        global_step=global_step)
   _ = workload.eval_model(
       global_batch_size,
       model_params,
@@ -483,7 +489,7 @@ def _test_submission(workload_name,
       eval_rng,
       data_dir,
       imagenet_v2_data_dir=None,
-      global_step=0)
+      global_step=global_step)
   return eval_result
 
 
@@ -533,6 +539,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':
             pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
+          # First jax operation has to be called after pytorch_init.
+          n_gpus = max(N_GPUS, jax.local_device_count())
           search_space_path, submission_path = _make_paths(
               repo_location, framework, workload_name)
           if search_space_path is None:
@@ -543,12 +551,15 @@ class ReferenceSubmissionTest(absltest.TestCase):
               submission_path,
               search_space_path,
               data_dir=FLAGS.data_dir,
-              use_fake_input_queue=FLAGS.use_fake_input_queue)
+              use_fake_input_queue=FLAGS.use_fake_input_queue,
+              n_gpus=n_gpus)
           self._assert_eval_result(workload_name, eval_result)
     else:
       framework = FLAGS.framework
       if framework == 'pytorch':
         pytorch_utils.pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
+      # First jax operation has to be called after pytorch_init.
+      n_gpus = max(N_GPUS, jax.local_device_count())
       workload_name = FLAGS.workload
       if FLAGS.submission_path and FLAGS.tuning_search_space:
         search_space_path = FLAGS.tuning_search_space
@@ -562,7 +573,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
           submission_path,
           search_space_path,
           data_dir=FLAGS.data_dir,
-          use_fake_input_queue=FLAGS.use_fake_input_queue)
+          use_fake_input_queue=FLAGS.use_fake_input_queue,
+          n_gpus=n_gpus)
       self._assert_eval_result(workload_name, eval_result)
 
     if USE_PYTORCH_DDP:

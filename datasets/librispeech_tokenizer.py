@@ -119,7 +119,11 @@ def run(train, data_dir):
   if train:
     logging.info('Training...')
     splits = ['train-clean-100']
+<<<<<<< HEAD
     train_tokenizer(data_dir, splits, model_path=vocab_path)
+=======
+    return train_tokenizer(data_dir, splits)
+>>>>>>> 0db8dbbfe41aee1e17a7165f95dbc43817859453
   else:
     tokenizer = load_tokenizer(vocab_path)
     test_input = 'OPEN SOURCE ROCKS'
