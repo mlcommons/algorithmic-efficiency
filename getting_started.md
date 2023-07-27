@@ -164,5 +164,3 @@ python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> -
 
 
 ## Good Luck!
-
-
