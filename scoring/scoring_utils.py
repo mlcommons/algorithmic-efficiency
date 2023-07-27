@@ -2,10 +2,13 @@ import json
 import os
 import re
 
+from absl import logging
 import pandas as pd
 
-trial_line_regex = '(.*) --- Tuning run (\d+)/(\d+) ---'
-metrics_line_regex = '(.*) Metrics: ({.*})'
+TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
+METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'
+TRIAL_DIR_REGEX = 'trial_(\d+)'
+MEASUREMENTS_FILENAME = 'eval_measurements.csv'
 
 
 #### File IO helper functions ###
@@ -34,7 +37,7 @@ def decode_metrics_line(line):
                   'step':[100, 200, 300]}
     """
   eval_results = []
-  dict_str = re.match(metrics_line_regex, line).group(2)
+  dict_str = re.match(METRICS_LINE_REGEX, line).group(2)
   dict_str = dict_str.replace("'", "\"")
   dict_str = dict_str.replace("(", "")
   dict_str = dict_str.replace(")", "")
@@ -77,12 +80,12 @@ def get_trials_dict(logfile):
   metrics_lines = {}
   with open(logfile, 'r') as f:
     for line in f:
-      if re.match(trial_line_regex, line):
-        trial = re.match(trial_line_regex, line).group(2)
-      if re.match(metrics_line_regex, line):
+      if re.match(TRIAL_LINE_REGEX, line):
+        trial = re.match(TRIAL_LINE_REGEX, line).group(2)
+      if re.match(METRICS_LINE_REGEX, line):
         metrics_lines[trial] = decode_metrics_line(line)
   if len(metrics_lines) == 0:
-    raise ValueError(f"Log file does not have a metrics line {logfile}")
+    raise ValueError(f'Log file does not have a metrics line {logfile}')
   return metrics_lines
 
 
@@ -100,7 +103,7 @@ def get_trials_df_dict(logfile):
     """
   trials_dict = get_trials_dict(logfile)
   trials_df_dict = {}
-  for trial in trials_dict:
+  for trial in trials_dict.keys():
     metrics = trials_dict[trial]
     trials_df_dict[trial] = pd.DataFrame(metrics)
   return trials_df_dict
@@ -108,8 +111,6 @@ def get_trials_df_dict(logfile):
 
 def get_trials_df(logfile):
   """Gets a df of per trial results from a logfile.
-    The output df can be provided as input to 
-    scoring.compute_performance_profiles. 
     Args:
         experiment_dir: str
 
@@ -126,4 +127,59 @@ def get_trials_df(logfile):
     """
   trials_dict = get_trials_dict(logfile)
   df = pd.DataFrame(trials_dict).transpose()
+  return df
+
+
+## Get scoring code
+def get_experiment_df(experiment_dir):
+  """Gets a df of per trial results from an experiment dir.
+  The output df can be provided as input to 
+  scoring.compute_performance_profiles. 
+  Args:
+      experiment_dir: path to experiment directory containing 
+        results for workloads.
+        The directory structure is assumed to be:
+        + experiment_dir
+          + <workload>
+            + <trial>
+              - eval_measurements.csv
+
+  Returns:
+      df: DataFrame where indices are trials, columns are 
+          metric names and values are lists.
+          e.g 
+          +----+-----------+---------+--------------------+--------------------+
+          |    | workload  | trial   | validation/accuracy| score              |
+          |----+-----------+---------+--------------------+--------------------|
+          |  0 | mnist_jax | trial_1 | [0.0911, 0.0949]   | [10.6396, 10.6464] |
+          +----+-----------+---------+--------------------+--------------------+
+  """
+  df = pd.DataFrame()
+  workload_dirs = os.listdir(experiment_dir)
+  for workload in workload_dirs:
+    data = {
+        'workload': workload,
+    }
+    trial_dirs = [
+        t for t in os.listdir(os.path.join(experiment_dir, workload))
+        if re.match(TRIAL_DIR_REGEX, t)
+    ]
+    for trial in trial_dirs:
+      eval_measurements_filepath = os.path.join(
+          experiment_dir,
+          workload,
+          trial,
+          MEASUREMENTS_FILENAME,
+      )
+      try:
+        trial_df = pd.read_csv(eval_measurements_filepath)
+      except FileNotFoundError as e:
+        logging.info(f'Could not read {eval_measurements_filepath}')
+        continue
+      data['trial'] = trial
+      for column in trial_df.columns:
+        values = trial_df[column].to_numpy()
+        data[column] = values
+      trial_df = pd.DataFrame([data])
+      df = pd.concat([df, trial_df], ignore_index=True)
   return df

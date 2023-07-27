@@ -122,7 +122,7 @@ def run(train, data_dir):
   if train:
     logging.info('Training...')
     splits = ['train-clean-100']
-    train_tokenizer(data_dir, splits)
+    return train_tokenizer(data_dir, splits)
   else:
     tokenizer = load_tokenizer(os.path.join(data_dir, 'spm_model.vocab'))
     test_input = 'OPEN SOURCE ROCKS'

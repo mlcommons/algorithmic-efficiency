@@ -221,7 +221,7 @@ class ViT(nn.Module):
       rep_size = self.width if self.rep_size is True else self.rep_size
       self.pre_logits = nn.Linear(self.width, rep_size)
 
-    self.embed = nn.Conv2d(
+    self.conv_patch_extract = nn.Conv2d(
         self.channels,
         self.width,
         self.patch_size,
@@ -241,7 +241,7 @@ class ViT(nn.Module):
     self.reset_parameters()
 
   def reset_parameters(self) -> None:
-    init_utils.pytorch_default_init(self.embed)
+    init_utils.pytorch_default_init(self.conv_patch_extract)
 
     if self.rep_size:
       init_utils.pytorch_default_init(self.pre_logits)
@@ -258,7 +258,7 @@ class ViT(nn.Module):
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
     # Patch extraction.
-    x = self.embed(x)
+    x = self.conv_patch_extract(x)
 
     # Add posemb before adding extra token.
     n, c, h, w = x.shape

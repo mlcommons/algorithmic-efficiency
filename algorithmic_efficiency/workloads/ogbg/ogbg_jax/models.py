@@ -7,10 +7,10 @@ import jax.numpy as jnp
 import jraph
 
 
-def _make_embed(latent_dim):
+def _make_embed(latent_dim, name):
 
   def make_fn(inputs):
-    return nn.Dense(features=latent_dim)(inputs)
+    return nn.Dense(features=latent_dim, name=name)(inputs)
 
   return make_fn
 
@@ -55,8 +55,8 @@ class GNN(nn.Module):
         globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))
 
     embedder = jraph.GraphMapFeatures(
-        embed_node_fn=_make_embed(self.latent_dim),
-        embed_edge_fn=_make_embed(self.latent_dim))
+        embed_node_fn=_make_embed(self.latent_dim, name='node_embedding'),
+        embed_edge_fn=_make_embed(self.latent_dim, name='edge_embedding'))
     graph = embedder(graph)
 
     for _ in range(self.num_message_passing_steps):
