@@ -487,7 +487,7 @@ def download_librispeech(dataset_dir, tmp_dir):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-     wget_cmd = (f'wget --directory-prefix={tmp_librispeech_dir} '
+    wget_cmd = (f'wget --directory-prefix={tmp_librispeech_dir} '
                 f'http://www.openslr.org/resources/12/{tar_filename}')
     subprocess.Popen(wget_cmd, shell=True).communicate()
     tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
