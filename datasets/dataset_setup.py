@@ -78,10 +78,8 @@ from absl import logging
 import requests
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import tensorflow as tf 
 from torchvision.datasets import CIFAR10
 import tqdm
-import os
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
