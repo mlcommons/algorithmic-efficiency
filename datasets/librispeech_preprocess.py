@@ -23,15 +23,6 @@ copy = tf.io.gfile.copy
 exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
 
-flags.DEFINE_string('raw_input_dir',
-                    '',
-                    'Path to the raw training data directory.')
-flags.DEFINE_string('output_dir', '', 'Dir to write the processed data to.')
-flags.DEFINE_string('tokenizer_vocab_path',
-                    '',
-                    'Path to sentence piece tokenizer vocab file.')
-FLAGS = flags.FLAGS
-
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 
@@ -73,7 +64,7 @@ def report_progress(count, total, start_time):
   sys.stdout.flush()
 
 
-def preprocess_data(data_folder, tokenizer, split):
+def preprocess_data(data_folder, output_folder, tokenizer, split):
   finished = Counter()
   skipped = Counter()
   start_time = time.time()
@@ -111,8 +102,8 @@ def preprocess_data(data_folder, tokenizer, split):
 
         targets = tokenizer.tokenize(trans).numpy().astype(np.int32)
 
-        np.save('data/{}/{}_audio.npy'.format(split, utt), sound)
-        np.save('data/{}/{}_targets.npy'.format(split, utt), targets)
+        np.save('{}/{}_audio.npy'.format(output_split_dir, utt), sound)
+        np.save('{}/{}_targets.npy'.format(output_split_dir, utt), targets)
 
         finished.inc()
         report_progress(finished.val() + skipped.val(),
@@ -152,11 +143,11 @@ def load_audio(audio_path):
   return audio
 
 
-def run(input_dir, output_dir, tokenizer_vocab_path):
+def run(input_dir, output_dir, tokenizer_vocab_path):  
   tokenizer = librispeech_tokenizer.load_tokenizer(tokenizer_vocab_path)
   os.makedirs(output_dir, exist_ok=True)
 
-  subset_list = [
+  split_list = [
       'train-clean-100',
       'train-clean-360',
       'train-other-500',
@@ -165,22 +156,16 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
       'test-clean',
       'test-other',
   ]
-  for subset in subset_list:
-    logging.info('Processing split = %s...', subset)
-    subset_dir = os.path.join(output_dir, subset)
-    os.makedirs(subset_dir, exist_ok=True)
-    example_ids, num_entries = preprocess_data(subset_dir, tokenizer, subset)
+  for split in split_list:
+    logging.info('Processing split = %s...', split)
+    output_split_dir = os.path.join(output_dir, split)
+    input_split_dir = os.path.join(input_dir, split)
+
+    os.makedirs(output_split_dir, exist_ok=True)
+    example_ids, num_entries = preprocess_data(input_split_dir, output_split_dir, tokenizer, subset)
 
     if num_entries != librispeech_example_counts[subset]:
       raise ValueError('Preprocessed dataframe final count not equal to '
                        'expected count: {} vs expected {}'.format(
                            num_entries, librispeech_example_counts[subset]))
     example_ids.to_csv(os.path.join(output_dir, f'{subset}.csv'))
-
-
-def main():
-  run(FLAGS.input_dir, FLAGS.output_dir, FLAGS.tokenizer_vocab_path)
-
-
-if __name__ == '__main__':
-  main()

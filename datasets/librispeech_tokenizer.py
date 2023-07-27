@@ -8,7 +8,6 @@ import os
 import tempfile
 from typing import Dict
 
-from absl import flags
 from absl import logging
 import sentencepiece as spm
 import tensorflow as tf
@@ -21,13 +20,6 @@ rename = tf.io.gfile.rename
 
 Features = Dict[str, tf.Tensor]
 
-flags.DEFINE_string('input_dir', '', 'Path to training data directory.')
-flags.DEFINE_boolean(
-    'train',
-    False,
-    'Whether to train a new tokenizer or load existing one to test.')
-FLAGS = flags.FLAGS
-
 
 def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
   char_count = 0
@@ -35,6 +27,8 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
       delete=False, prefix='/tmp/ds_chars') as outfp:
     for split in splits:
       data_folder = data_folder + '/' + split
+      logging.info('data folder = ', data_folder)
+      logging.info('list dir = ', os.listdir(data_folder))
       for _, speaker_folder in enumerate(os.listdir(data_folder)):
         if char_count > maxchars:
           break
@@ -53,7 +47,7 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
               if char_count > maxchars:
                 break
 
-              logging.info(line)
+              # logging.info(line)
               outfp.write(str.encode(line))
   return outfp
 
@@ -82,6 +76,9 @@ def train_tokenizer(data_dir: str,
     path to the trained sentencepiece vocabulary model.
   """
   abs_model_path = os.path.abspath(os.path.expanduser(model_path))
+  logging.info('inside train_tokenizer model_path = ', model_path)
+  logging.info('inside train_tokenizer abs_model_path = ', abs_model_path)
+
   charfile = dump_chars_for_training(data_dir, splits, maxchars=maxchars)
 
   with tempfile.NamedTemporaryFile(
@@ -115,16 +112,16 @@ def load_tokenizer(model_filepath):
       model=sp_model, add_bos=False, add_eos=True, reverse=False)
   return sp_tokenizer
 
-
 def run(train, data_dir):
-  logging.info('Data dir: %s', data_dir)
+  vocab_path = os.path.join(data_dir, 'spm_model.vocab')
+  logging.info('vocab_path = ', vocab_path)
 
   if train:
     logging.info('Training...')
     splits = ['train-clean-100']
-    train_tokenizer(data_dir, splits)
+    train_tokenizer(data_dir, splits, model_path=vocab_path)
   else:
-    tokenizer = load_tokenizer(os.path.join(data_dir, 'spm_model.vocab'))
+    tokenizer = load_tokenizer(vocab_path)
     test_input = 'OPEN SOURCE ROCKS'
     tokens = tokenizer.tokenize(test_input)
     detokenized = tokenizer.detokenize(tokens).numpy().decode('utf-8')
@@ -135,11 +132,3 @@ def run(train, data_dir):
 
     if detokenized == test_input:
       logging.info('Tokenizer working correctly!')
-
-
-def main():
-  run(FLAGS.train, FLAGS.data_dir)
-
-
-if __name__ == '__main__':
-  main()
