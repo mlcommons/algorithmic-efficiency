@@ -47,7 +47,7 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
               if char_count > maxchars:
                 break
 
-              # logging.info(line)
+              logging.info(line)
               outfp.write(str.encode(line))
   return outfp
 
