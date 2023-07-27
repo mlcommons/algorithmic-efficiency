@@ -485,7 +485,7 @@ def download_librispeech(dataset_dir, tmp_dir):
 
 
 def download_mnist(data_dir):
-  tfds.builder('mnist', data_dir=data_dir).download_and_prepare() 
+  tfds.builder('mnist', data_dir=data_dir).download_and_prepare()
 
 
 def download_ogbg(data_dir):
