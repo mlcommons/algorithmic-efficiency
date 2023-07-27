@@ -9,7 +9,6 @@ import sys
 import threading
 import time
 
-from absl import flags
 from absl import logging
 import numpy as np
 import pandas as pd
@@ -23,14 +22,6 @@ copy = tf.io.gfile.copy
 exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
 
-flags.DEFINE_string('raw_input_dir',
-                    '',
-                    'Path to the raw training data directory.')
-flags.DEFINE_string('output_dir', '', 'Dir to write the processed data to.')
-flags.DEFINE_string('tokenizer_vocab_path',
-                    '',
-                    'Path to sentence piece tokenizer vocab file.')
-FLAGS = flags.FLAGS
 
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
@@ -178,11 +169,3 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
                        'expected count: {} vs expected {}'.format(
                            num_entries, librispeech_example_counts[subset]))
     example_ids.to_csv(os.path.join(output_dir, f'{subset}.csv'))
-
-
-def main():
-  run(FLAGS.input_dir, FLAGS.output_dir, FLAGS.tokenizer_vocab_path)
-
-
-if __name__ == '__main__':
-  main()
