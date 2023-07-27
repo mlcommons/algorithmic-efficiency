@@ -283,9 +283,8 @@ def get_wmt_dataset(data_rng,
       functools.partial(normalize_feature_names, dataset_builder.info),
       num_parallel_calls=AUTOTUNE)
 
-  # Tokenize data.
-  sp_tokenizer = tokenizer.load_or_train_tokenizer(
-      ds, vocab_path=vocab_path, vocab_size=vocab_size, max_corpus_chars=10**7)
+  # Load tf-text SentencePiece tokenizer.
+  sp_tokenizer = tokenizer.load_tokenizer(vocab_path=vocab_path)
   ds = ds.map(tokenizer.TokenizeOp(sp_tokenizer), num_parallel_calls=AUTOTUNE)
 
   shuffle = split in ['train', 'eval_train']

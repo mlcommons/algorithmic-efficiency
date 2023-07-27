@@ -18,6 +18,11 @@ class BaseCifarWorkload(spec.Workload):
 
   _num_classes: int = 10
 
+  @property
+  def target_metric_name(self) -> str:
+    """The name of the target metric (useful for scoring/processing code)."""
+    return 'accuracy'
+
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value

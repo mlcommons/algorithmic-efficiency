@@ -21,6 +21,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
   embed_dim: int = 128
 
+  @property
+  def target_metric_name(self) -> str:
+    """The name of the target metric (useful for scoring/processing code)."""
+    return 'loss'
+
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value
 
@@ -59,10 +64,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   @property
   def num_test_examples(self) -> int:
     return 89_274_637
-
-  @property
-  def eval_batch_size(self) -> int:
-    return 524_288
 
   @property
   def train_mean(self):

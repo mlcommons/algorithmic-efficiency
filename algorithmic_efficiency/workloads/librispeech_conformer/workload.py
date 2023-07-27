@@ -8,6 +8,11 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   _num_outputs: int = 1024
 
+  @property
+  def target_metric_name(self) -> str:
+    """The name of the target metric (useful for scoring/processing code)."""
+    return 'wer'
+
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
     return eval_result['validation/wer'] < self.validation_target_value
