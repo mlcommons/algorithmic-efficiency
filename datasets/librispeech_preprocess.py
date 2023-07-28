@@ -22,7 +22,6 @@ copy = tf.io.gfile.copy
 exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
 
-
 TRANSCRIPTION_MAX_LENGTH = 256
 AUDIO_MAX_LENGTH = 320000
 

@@ -481,7 +481,6 @@ def download_librispeech(dataset_dir, tmp_dir):
           f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', 
           shell=True).communicate()
 
-
   tars = [
       'raw-metadata.tar.gz',
       'train-clean-100.tar.gz',
@@ -494,8 +493,8 @@ def download_librispeech(dataset_dir, tmp_dir):
     subprocess.Popen(wget_cmd, shell=True).communicate()
     tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
     subprocess.Popen(
-      f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', 
-      shell=True).communicate()
+        f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', 
+        shell=True).communicate()
 
   tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
 
