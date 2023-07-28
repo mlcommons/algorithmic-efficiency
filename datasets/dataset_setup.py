@@ -174,6 +174,7 @@ FLAGS = flags.FLAGS
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 tf.config.set_visible_devices([], 'GPU')
 
+
 def _maybe_mkdir(d):
   if not os.path.exists(d):
     os.makedirs(d)
@@ -466,7 +467,7 @@ def download_librispeech(dataset_dir, tmp_dir):
   tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
   extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
   final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
-  
+
   _maybe_mkdir(tmp_librispeech_dir)
 
   for split in ['dev', 'test']:
@@ -477,7 +478,8 @@ def download_librispeech(dataset_dir, tmp_dir):
       subprocess.Popen(wget_cmd, shell=True).communicate()
       tar_path = os.path.join(tmp_librispeech_dir, f'{split}-{version}.tar.gz')
       subprocess.Popen(
-          f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', shell=True).communicate()
+          f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', 
+          shell=True).communicate()
 
 
   tars = [
@@ -491,7 +493,9 @@ def download_librispeech(dataset_dir, tmp_dir):
                 f'http://www.openslr.org/resources/12/{tar_filename}')
     subprocess.Popen(wget_cmd, shell=True).communicate()
     tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
-    subprocess.Popen(f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', shell=True).communicate()
+    subprocess.Popen(
+      f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}', 
+      shell=True).communicate()
 
   tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
 
