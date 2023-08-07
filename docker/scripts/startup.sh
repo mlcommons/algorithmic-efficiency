@@ -97,7 +97,6 @@ while [ "$1" != "" ]; do
             INTERNAL_CONTRIBUTOR_MODE=$1
             ;;
         *) 
-            echo "Invalid argument"
             usage 
             exit 1
             ;;
@@ -180,11 +179,11 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
 
     # Set overwrite flag to false by default if not set
     if [[  -z ${OVERWRITE+x} ]]; then 
-        OVERWRITE='False'
+        OVERWRITE='false'
     fi
 
     if [[  -z ${SAVE_CHECKPOINTS+x} ]]; then 
-        SAVE_CHECKPOINTS='True'
+        SAVE_CHECKPOINTS='true'
     fi
 
     # Define special flags for imagenet and librispeech workloads
