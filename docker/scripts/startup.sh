@@ -8,25 +8,103 @@
 # set the -i flag to true.
 
 # Defaults
-DEBUG_MODE="false"
+INTERNAL_CONTRIBUTOR_MODE="false"
 
-while getopts d:f:s:t:e:w:b:m:o:c:r:i: flag
-do
-    case "${flag}" in
-        d) DATASET=${OPTARG};;
-        f) FRAMEWORK=${OPTARG};;
-        s) SUBMISSION_PATH=${OPTARG};;
-        t) TUNING_SEARCH_SPACE=${OPTARG};;
-        e) EXPERIMENT_NAME=${OPTARG};;
-        w) WORKLOAD=${OPTARG};;
-        b) DEBUG_MODE=${OPTARG};;
-        m) MAX_STEPS=${OPTARG};;
-        o) OVERWRITE=${OPTARG};;
-        c) SAVE_CHECKPOINTS=${OPTARG};;
-        r) RSYNC_DATA=${OPTARG};;
-        i) INTERNAL_CONTRIBUTOR_MODE=${OPTARG};;
+function usage() {
+    cat <<USAGE
+
+    Usage: 
+        $0  [--dataset dataset] [--framework framework] [--submission_path submission_path]
+            [--tuning_search_space tuning_search_space] [--experiment_name experiment_name] 
+            [--workload workload] [--max_global_steps max_global_steps]
+
+    Usage (with internal contributor options for GCP data sync and experiment upload):
+        $0  [--dataset dataset] [--framework framework] [--submission_path submission_path]
+            [--tuning_search_space tuning_search_space] [--experiment_name experiment_name] 
+            [--workload workload] [--max_global_steps max_global_steps] [--rsync_data rsync_data]
+            [--internal_contributor true]        
+     
+    Options:
+        -d | --dataset:                 Can be imagenet, criteo1tb, ogbg, fastmri, wmt, librispeech.
+        -f | --framework:               Can be jax or pytorch.
+        -s | --submission_path:         Path to submission module.
+        -t | --tuning_search_space:     Path to tuning search space.
+        -e | --experiment_name:         Name of experiment.
+        -w | --workload:                Can be imagenet_resnet, imagenet_vit, criteo1tb, fastmri,
+                                        wmt, librispeech_deepspeech, librispeech_conformer.
+        -a | --keep_container_alive:    If true, docker container will be kept alive. Useful for 
+                                        developing or debugging.
+        -m | --max_global_steps:        Maximum number of global steps for submission.
+        -o | --overwrite:               If true, overwrite the experiment directory with the identical
+                                        experiment name.
+        -c | --save_checkpoints         If true, save all checkpoints from all evals. 
+        -r | --rsync_data:              If true and if --internal_contributor mode is true, rsync data
+                                        from internal GCP bucket.
+        -i | --internal_contributor:    If true, allow rsync of data and transfer of experiment results 
+                                        with GCP project.
+USAGE
+    exit 1
+}
+
+while [ "$1" != "" ]; do
+    case $1 in 
+        -d | --dataset) 
+            shift
+            DATASET=$1
+            ;;
+        -f | --framework)
+            shift 
+            FRAMEWORK=$1
+            ;;
+        -s | --submission_path)
+            shift
+            SUBMISSION_PATH=$1
+            ;;
+        -t | --tuning_search_space)
+            shift
+            TUNING_SEARCH_SPACE=$1
+            ;;
+        -e | --experiment_name)
+            shift
+            EXPERIMENT_NAME=$1
+            ;;
+        -w | --workload)
+            shift
+            WORKLOAD=$1
+            ;;
+        -a | --keep_container_alive)
+            shift 
+            KEEP_CONTAINER_ALIVE=$1
+            ;;
+        -m | --max_global_steps)
+            shift
+            MAX_GLOBAL_STEPS=$1
+            ;;
+        -o | --overwrite)
+            shift
+            OVERWRITE=$1
+            ;;
+        -c | --save_checkpoints)
+            shift
+            SAVE_CHECKPOINTS=$1
+            ;;
+        -r | --rsync_data)
+            shift
+            RSYNC_DATA=$1
+            ;;
+        -i | --internal_contributor)
+            shift
+            INTERNAL_CONTRIBUTOR_MODE=$1
+            ;;
+        *) 
+            echo "Invalid argument"
+            usage 
+            exit 1
+            ;;
     esac
-done
+    shift 
+done 
+
 
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
@@ -71,7 +149,6 @@ elif [[ ! -z "${DATASET}" ]]; then
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}"
 fi
 
-# Copy data from MLCommons bucket if data has not been downloaded yet
 if [[ -z ${INTERNAL_CONTRIBUTOR_MODE+x} ]]; then
     INTERNAL_CONTRIBUTOR_MODE='false' # Set default for contributor mode to false
 fi 
@@ -97,8 +174,8 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     cd algorithmic-efficiency
 
     # Optionally define max steps flag for submission runner 
-    if [[ ! -z ${MAX_STEPS+x} ]]; then 
-        MAX_STEPS_FLAG="--max_global_steps=${MAX_STEPS}"
+    if [[ ! -z ${MAX_GLOBAL_STEPS+x} ]]; then 
+        MAX_STEPS_FLAG="--max_global_steps=${MAX_GLOBAL_STEPS}"
     fi
 
     # Set overwrite flag to false by default if not set
@@ -150,7 +227,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
 fi
 
 # Keep main process running in debug mode to avoid the container from stopping
-if [[ ${DEBUG_MODE} == 'true' ]]
+if [[ ${KEEP_CONTAINER_ALIVE} == 'true' ]]
 then 
     while true
     do 
