@@ -169,8 +169,10 @@ flags.DEFINE_integer(
     'The number of threads to use in parallel when decompressing.')
 
 flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
-flags.DEFINE_boolean('train_tokenizer', True, 'Train Librispeech tokenizer.')
 FLAGS = flags.FLAGS
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+tf.config.set_visible_devices([], 'GPU')
 
 
 def _maybe_mkdir(d):
@@ -458,17 +460,26 @@ def download_imagenet_v2(data_dir):
       data_dir=data_dir).download_and_prepare()
 
 
-def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
+def download_librispeech(dataset_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'LibriSpeech')
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+  extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
+  final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
+
   _maybe_mkdir(tmp_librispeech_dir)
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
-      wget_cmd = f'wget http://www.openslr.org/resources/12/{split}-{version}.tar.gz -O - | tar xz'  # pylint: disable=line-too-long
-      subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
+      wget_cmd = (
+          f'wget --directory-prefix={tmp_librispeech_dir} '
+          f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
+      subprocess.Popen(wget_cmd, shell=True).communicate()
+      tar_path = os.path.join(tmp_librispeech_dir, f'{split}-{version}.tar.gz')
+      subprocess.Popen(
+          f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
+          shell=True).communicate()
 
   tars = [
       'raw-metadata.tar.gz',
@@ -477,19 +488,23 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz '  # pylint: disable=line-too-long
-    subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
+    wget_cmd = (f'wget --directory-prefix={tmp_librispeech_dir} '
+                f'http://www.openslr.org/resources/12/{tar_filename}')
+    subprocess.Popen(wget_cmd, shell=True).communicate()
+    tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
+    subprocess.Popen(
+        f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
+        shell=True).communicate()
 
-  if train_tokenizer:
-    tokenizer_vocab_path = librispeech_tokenizer.run(
-        train=True, data_dir=tmp_librispeech_dir)
+  tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
 
-    # Preprocess data.
-    librispeech_dir = os.path.join(dataset_dir, 'librispeech')
-    librispeech_preprocess.run(
-        input_dir=tmp_librispeech_dir,
-        output_dir=librispeech_dir,
-        tokenizer_vocab_path=tokenizer_vocab_path)
+  if not os.path.exists(tokenizer_vocab_path):
+    librispeech_tokenizer.run(train=True, data_dir=extracted_data_dir)
+
+  librispeech_preprocess.run(
+      input_dir=extracted_data_dir,
+      output_dir=final_data_dir,
+      tokenizer_vocab_path=tokenizer_vocab_path)
 
 
 def download_mnist(data_dir):
@@ -577,7 +592,7 @@ def main(_):
 
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
-    download_librispeech(data_dir, tmp_dir, train_tokenizer=True)
+    download_librispeech(data_dir, tmp_dir)
 
   if FLAGS.all or FLAGS.cifar:
     logging.info('Downloading CIFAR...')
