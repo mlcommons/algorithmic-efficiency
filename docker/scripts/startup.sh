@@ -118,10 +118,10 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
 
 # Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"
-ROOT_DATA_DIR="{$HOME_DIR}/data"
+ROOT_DATA_DIR="${HOME_DIR}/data"
 
 EXPERIMENT_BUCKET="gs://mlcommons-runs"
-EXPERIMENT_DIR="{$HOME_DIR}/experiment_runs"
+EXPERIMENT_DIR="${HOME_DIR}/experiment_runs"
 
 if [[ -n ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
@@ -164,7 +164,7 @@ fi
 # Optionally run workload if SUBMISSION_PATH is set
 if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     NOW=$(date +"%m-%d-%Y-%H-%M-%S")
-    LOG_DIR="$HOME/logs"
+    LOG_DIR="${HOME_DIR}/logs"
     LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_${NOW}.log"
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
