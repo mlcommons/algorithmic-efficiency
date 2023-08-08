@@ -103,7 +103,7 @@ You can also use the above script to build images from a different branch.
 The Docker entrypoint script can transfer data to and from 
 our GCP buckets on our internal GCP project. If
 you are an approved contributor you can get access to these resources to automatically download the datasets and upload experiment results. 
-You can use these features by setting the `-internal_contributor` flag (for internal collaborator) to 'true' for the Docker entrypoint script.
+You can use these features by setting the `--internal_contributor` flag (for internal collaborator) to 'true' for the Docker entrypoint script.
 
 ### Downloading Data from GCP
 To run a docker container that will only download data (if not found on host)
