@@ -41,9 +41,9 @@ USAGE
 # Defaults
 INTERNAL_CONTRIBUTOR_MODE="false"
 HOME_DIR=""
-RSYNC_DATA='true'
-OVERWRITE='false'
-SAVE_CHECKPOINTS='true'
+RSYNC_DATA="true"
+OVERWRITE="false"
+SAVE_CHECKPOINTS="true"
 
 # Pass flag
 while [ "$1" != "" ]; do
@@ -175,9 +175,9 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi
 
     # Define special flags for imagenet and librispeech workloads
-    if [[ ${DATASET} == 'imagenet' ]]; then 
+    if [[ ${DATASET} == "imagenet" ]]; then 
         SPECIAL_FLAGS="--imagenet_v2_data_dir=${DATA_DIR}"
-    elif [[ ${DATASET} == 'librispeech' ]]; then 
+    elif [[ ${DATASET} == "librispeech" ]]; then 
         SPECIAL_FLAGS="--librispeech_tokenizer_vocab_path=${DATA_DIR}/spm_model.vocab"
     fi 
 
@@ -206,7 +206,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     eval $COMMAND
     RETURN_CODE=$?
 
-    if [[ $INTERNAL_CONTRIBUTOR_MODE == 'true' ]]; then 
+    if [[ $INTERNAL_CONTRIBUTOR_MODE == "true" ]]; then 
         /google-cloud-sdk/bin/gsutil -m cp -r ${EXPERIMENT_DIR}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/
         /google-cloud-sdk/bin/gsutil -m cp ${LOG_FILE} ${EXPERIMENT_BUCKET}/${EXPERIMENT_NAME}/${WORKLOAD}_${FRAMEWORK}/
     fi
@@ -214,7 +214,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
 fi
 
 # Keep main process running in debug mode to avoid the container from stopping
-if [[ ${KEEP_CONTAINER_ALIVE} == 'true' ]]
+if [[ ${KEEP_CONTAINER_ALIVE} == "true" ]]
 then 
     while true
     do 
