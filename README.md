@@ -104,16 +104,16 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 
 2. Build Docker Image
    ```bash
-   cd `algorithmic-efficiency/docker`
+   cd algorithmic-efficiency/docker
    docker build -t <docker_image_name> . --build-args framework=<framework>
    ```
-   The `framework` flag can be either `pytorch`, `jax` or `both`. 
+   The `framework` flag can be either `pytorch`, `jax` or `both`. Specifying the framework will install the framework specific dependencies.
    The `docker_image_name` is arbitrary.
 
 
 ### Running Docker Container (Interactive)
 To use the Docker container as an interactive virtual environment, you can run a container mounted to your local data and code directories and execute the `bash` program. This may be useful if you are in the process of developing a submission.
-1. Run detached Docker Container
+1. Run detached Docker Container. The container_id will be printed if the container is run successfully.
    ```bash
    docker run -t -d \
       -v $HOME/data/:/data/ \
@@ -123,9 +123,8 @@ To use the Docker container as an interactive virtual environment, you can run a
       --gpus all \
       --ipc=host \
       <docker_image_name> 
-      -b true
+      -keep_container_alive true
    ```
-   This will print out a container id. 
 2. Open a bash terminal
    ```bash
    docker exec -it <container_id> /bin/bash

@@ -13,12 +13,7 @@ INTERNAL_CONTRIBUTOR_MODE="false"
 function usage() {
     cat <<USAGE
 
-    Usage: 
-        $0  [--dataset dataset] [--framework framework] [--submission_path submission_path]
-            [--tuning_search_space tuning_search_space] [--experiment_name experiment_name] 
-            [--workload workload] [--max_global_steps max_global_steps]
-
-    Usage (with internal contributor options for GCP data sync and experiment upload):
+    Usage:
         $0  [--dataset dataset] [--framework framework] [--submission_path submission_path]
             [--tuning_search_space tuning_search_space] [--experiment_name experiment_name] 
             [--workload workload] [--max_global_steps max_global_steps] [--rsync_data rsync_data]
