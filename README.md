@@ -105,7 +105,7 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 2. Build Docker Image
    ```bash
    cd algorithmic-efficiency/docker
-   docker build -t <docker_image_name> . --build-args framework=<framework>
+   docker build -t <docker_image_name> . --build-arg framework=<framework>
    ```
    The `framework` flag can be either `pytorch`, `jax` or `both`. Specifying the framework will install the framework specific dependencies.
    The `docker_image_name` is arbitrary.
