@@ -7,9 +7,6 @@
 # our algorithmic-efficiency repo. To do so 
 # set the -i flag to true.
 
-# Defaults
-INTERNAL_CONTRIBUTOR_MODE="false"
-
 function usage() {
     cat <<USAGE
 
@@ -22,8 +19,8 @@ function usage() {
     Options:
         -d | --dataset:                 Can be imagenet, criteo1tb, ogbg, fastmri, wmt, librispeech.
         -f | --framework:               Can be jax or pytorch.
-        -s | --submission_path:         Path to submission module.
-        -t | --tuning_search_space:     Path to tuning search space.
+        -s | --submission_path:         Path to submission module. If relative path, from algorithmic-efficiency top directory.
+        -t | --tuning_search_space:     Path to tuning search space. If relative path, from algorithmic-efficiency top directory.
         -e | --experiment_name:         Name of experiment.
         -w | --workload:                Can be imagenet_resnet, imagenet_vit, criteo1tb, fastmri,
                                         wmt, librispeech_deepspeech, librispeech_conformer.
@@ -41,6 +38,14 @@ USAGE
     exit 1
 }
 
+# Defaults
+INTERNAL_CONTRIBUTOR_MODE="false"
+HOME_DIR=""
+RSYNC_DATA='true'
+OVERWRITE='false'
+SAVE_CHECKPOINTS='true'
+
+# Pass flag
 while [ "$1" != "" ]; do
     case $1 in 
         -d | --dataset) 
@@ -91,6 +96,10 @@ while [ "$1" != "" ]; do
             shift
             INTERNAL_CONTRIBUTOR_MODE=$1
             ;;
+        -h | --home_dir)
+            shift
+            HOME_DIR=$1
+            ;;
         *) 
             usage 
             exit 1
@@ -106,6 +115,14 @@ VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
                  "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist")
 
+
+# Set data and experiment paths
+ROOT_DATA_BUCKET="gs://mlcommons-data"
+ROOT_DATA_DIR="{$HOME_DIR}/data"
+
+EXPERIMENT_BUCKET="gs://mlcommons-runs"
+EXPERIMENT_DIR="{$HOME_DIR}/experiment_runs"
+
 if [[ -n ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
         echo "Error: invalid argument for dataset (d)."
@@ -119,13 +136,6 @@ if [[ -n ${WORKLOAD+x} ]]; then
         exit 1
     fi
 fi
-
-# Set data and experiment paths
-ROOT_DATA_BUCKET="gs://mlcommons-data"
-ROOT_DATA_DIR="/data"
-
-EXPERIMENT_BUCKET="gs://mlcommons-runs"
-EXPERIMENT_DIR="/experiment_runs"
 
 # Set run command prefix depending on framework
 if [[ "${FRAMEWORK}" == "jax" ]]; then
@@ -143,14 +153,6 @@ elif [[ ! -z "${DATASET}" ]]; then
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}"
 fi
 
-if [[ -z ${INTERNAL_CONTRIBUTOR_MODE+x} ]]; then
-    INTERNAL_CONTRIBUTOR_MODE='false' # Set default for contributor mode to false
-fi 
-
-if [[ -z ${RSYNC_DATA+x} ]]; then 
-    RSYNC_DATA='true' # Set default value for rsync to true
-fi 
-
 if [[ ! -z $DATA_DIR ]] && [[ ! -d ${DATA_DIR} ]]; then
     mkdir -p ${DATA_DIR}
 fi 
@@ -162,7 +164,7 @@ fi
 # Optionally run workload if SUBMISSION_PATH is set
 if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     NOW=$(date +"%m-%d-%Y-%H-%M-%S")
-    LOG_DIR="/logs"
+    LOG_DIR="$HOME/logs"
     LOG_FILE="$LOG_DIR/${WORKLOAD}_${FRAMEWORK}_${NOW}.log"
     mkdir -p ${LOG_DIR}
     cd algorithmic-efficiency
@@ -170,15 +172,6 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     # Optionally define max steps flag for submission runner 
     if [[ ! -z ${MAX_GLOBAL_STEPS+x} ]]; then 
         MAX_STEPS_FLAG="--max_global_steps=${MAX_GLOBAL_STEPS}"
-    fi
-
-    # Set overwrite flag to false by default if not set
-    if [[  -z ${OVERWRITE+x} ]]; then 
-        OVERWRITE='false'
-    fi
-
-    if [[  -z ${SAVE_CHECKPOINTS+x} ]]; then 
-        SAVE_CHECKPOINTS='true'
     fi
 
     # Define special flags for imagenet and librispeech workloads
@@ -190,7 +183,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
 
     # Optionally run torch compile
     if [[ ${FRAMEWORK} == "pytorch" ]]; then
-        TORCH_COMPILE_FLAG="--torch_compile=True"
+        TORCH_COMPILE_FLAG="--torch_compile=true"
     fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
