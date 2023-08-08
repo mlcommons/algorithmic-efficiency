@@ -120,7 +120,7 @@ docker run -t -d \
 --keep_container_alive <keep_container_alive> \
 --internal_contributor true
 ```
-If debugging_mode is `true` the main process on the container will persist after finishing the data download.
+If `keep_container_alive` is `true` the main process on the container will persist after finishing the data download.
 This run command is useful if you are developing or debugging. 
 
 ### Saving Experiments to GCP
