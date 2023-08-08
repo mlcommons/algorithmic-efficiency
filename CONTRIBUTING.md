@@ -61,7 +61,7 @@ Other resources:
 
 
 ## Pre-built Images on Google Cloud Container Registry 
-If you'd like to maintain or use images stored on our Google Cloud Container Registry read this section.
+If you want to maintain or use images stored on our Google Cloud Container Registry read this section.
 You will have to use an authentication helper to set up permissions to access the repository:
 ```
 ARTIFACT_REGISTRY_URL=us-central1-docker.pkg.dev
@@ -82,6 +82,9 @@ Currently maintained images on the repository are:
 - `algoperf_pytorch_dev`
 - `algoperf_both_dev`
 
+To reference the pulled image you will have to use the full `image_path`, e.g. 
+`us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main`.
+
 ### Trigger rebuild and push of maintained images
 To build and push all images (`pytorch`, `jax`, `both`) on maintained branches (`dev`, `main`).
 ```
@@ -97,10 +100,10 @@ You can also use the above script to build images from a different branch.
    ```
 
 ## GCP Data and Experiment Integration
-The Docker entrypoint script can communicate with
+The Docker entrypoint script can transfer data to and from 
 our GCP buckets on our internal GCP project. If
 you are an approved contributor you can get access to these resources to automatically download the datasets and upload experiment results. 
-You can use these features by setting the `-i` flag (for internal collaborator) to 'true' for the Docker entrypoint script.
+You can use these features by setting the `--internal_contributor` flag to 'true' for the Docker entrypoint script.
 
 ### Downloading Data from GCP
 To run a docker container that will only download data (if not found on host)
@@ -111,14 +114,14 @@ docker run -t -d \
 -v $HOME/experiment_runs/logs:/logs \
 --gpus all \
 --ipc=host \
-<docker_image_name> \
--d <dataset> \
--f <framework> \
--b <debugging_mode> \
--i true
+<image_path> \
+--dataset <dataset> \
+--framework <framework> \
+--keep_container_alive <keep_container_alive> \
+--internal_contributor true
 ```
-If debugging_mode is `true` the main process on the container will persist after finishing the data download.
-This run command is useful if you manually want to run a sumbission or look around.
+If `keep_container_alive` is `true` the main process on the container will persist after finishing the data download.
+This run command is useful if you are developing or debugging. 
 
 ### Saving Experiments to GCP
 If you set the internal collaborator mode to true
@@ -132,15 +135,15 @@ docker run -t -d \
 -v $HOME/experiment_runs/logs:/logs \
 --gpus all \
 --ipc=host \
-<docker_image_name> \
--d <dataset> \
--f <framework> \
--s <submission_path> \
--t <tuning_search_space> \
--e <experiment_name> \
--w <workload> \
--b <debug_mode>
--i true \
+<image_path> \
+--dataset <dataset> \
+--framework <framework> \
+--sumbission_path <submission_path> \
+--tuning_search_space <tuning_search_space> \
+--experiment_name <experiment_name> \
+--workload <workload> \
+--keep_container_alive <keep_container_alive>
+--internal_contributor true \
 ```
 
 ## Getting Information from a Container
@@ -171,8 +174,8 @@ docker run -t -d \
 -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
 --gpus all \
 --ipc=host \
-<docker_image_name> \
--b true 
+<image_path> \
+--keep_container_alive true 
 ```
 
 # Submitting PRs 
