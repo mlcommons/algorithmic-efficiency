@@ -161,5 +161,7 @@ To produce performance profile and performance table:
 python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> --output_dir=<output_dir>
 ```
 
+We provide the scores and performance profiles for the baseline algorithms in the "Baseline Results" section in [Benchmarking Nerual Network Training Algorithms](https://arxiv.org/abs/2306.07179). 
+
 
 ## Good Luck!
