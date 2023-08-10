@@ -75,7 +75,6 @@ import tarfile
 from absl import app
 from absl import flags
 from absl import logging
-
 import requests
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -201,7 +200,7 @@ def _maybe_prompt_for_deletion(paths, interactive_deletion):
 
 
 def _download_url(url, data_dir, name=None):
-  
+
   data_dir = os.path.expanduser(data_dir)
   if not name:
     file_path = os.path.join(data_dir, url.split('/')[-1])
@@ -285,7 +284,6 @@ def download_criteo(data_dir,
     _maybe_prompt_for_deletion(unzipped_paths, interactive_deletion)
 
 
-
 def download_cifar(data_dir, framework):
   if framework == 'jax':
     tfds.builder('cifar10:3.0.2', data_dir=data_dir).download_and_prepare()
@@ -295,18 +293,20 @@ def download_cifar(data_dir, framework):
   else:
     raise ValueError('Invalid value for framework: {}'.format(framework))
 
-def extract_filename_from_url(url, start_str = 'knee', end_str='.xz'):
-    """ the url filenames are couched within a urldefense+aws access id etc. string.
+
+def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
+  """ the url filenames are sometimes couched within a urldefense+aws access id etc. string.
     unfortunately querying the content disposition in requests fails (not provided)...
-    so fast search here
+    so fast search is done here within the url
     """
-    failure = -1
-    start = url.find(start_str)
-    end = url.find(end_str)
-    if failure in (start, end):
-        raise ValueError(f"Unable to locate filename wrapped in {start}--{end} in {url}")
-    end+=len(end_str) # make it inclusive
-    return url[start:end]
+  failure = -1
+  start = url.find(start_str)
+  end = url.find(end_str)
+  if failure in (start, end):
+    raise ValueError(
+        f"Unable to locate filename wrapped in {start}--{end} in {url}")
+  end += len(end_str)  # make it inclusive
+  return url[start:end]
 
 
 def download_fastmri(data_dir,
@@ -319,22 +319,24 @@ def download_fastmri(data_dir,
   knee_train_filename = extract_filename_from_url(fastmri_train_url)
   logging.info(
       'Downloading fastmri train dataset from {}'.format(fastmri_train_url))
-  _download_url(url=fastmri_train_url, data_dir=data_dir, name = knee_train_filename)
+  _download_url(
+      url=fastmri_train_url, data_dir=data_dir, name=knee_train_filename)
 
   # Download fastmri val dataset
   knee_val_filename = extract_filename_from_url(fastmri_val_url)
   logging.info(
       'Downloading fastmri val dataset from {}'.format(fastmri_val_url))
-  _download_url(url=fastmri_val_url, data_dir=data_dir, name= knee_val_filename)
+  _download_url(url=fastmri_val_url, data_dir=data_dir, name=knee_val_filename)
 
   # Download fastmri test dataset
   knee_test_filename = extract_filename_from_url(fastmri_test_url)
-  
+
   logging.info(
       'Downloading fastmri test dataset from {}'.format(fastmri_test_url))
-  _download_url(url=fastmri_test_url, data_dir=data_dir, name= knee_test_filename)
+  _download_url(
+      url=fastmri_test_url, data_dir=data_dir, name=knee_test_filename)
   return data_dir
-  
+
 
 def extract(source, dest):
   if not os.path.exists(dest):
@@ -342,17 +344,17 @@ def extract(source, dest):
   print(f"extracting {source} to {dest}")
   tar = tarfile.open(source)
   print(f"opened tar")
-  
+
   tar.extractall(dest)
   tar.close()
 
 
 def setup_fastmri(data_dir, src_data_dir):
-  
+
   train_tar_file_path = os.path.join(src_data_dir, FASTMRI_TRAIN_TAR_FILENAME)
   val_tar_file_path = os.path.join(src_data_dir, FASTMRI_VAL_TAR_FILENAME)
   test_tar_file_path = os.path.join(src_data_dir, FASTMRI_TEST_TAR_FILENAME)
-  
+
   # Make train, val and test subdirectories
   fastmri_data_dir = os.path.join(data_dir, 'fastmri')
   train_data_dir = os.path.join(fastmri_data_dir, 'train')
@@ -362,10 +364,8 @@ def setup_fastmri(data_dir, src_data_dir):
   test_data_dir = os.path.join(fastmri_data_dir, 'test')
   os.makedirs(test_data_dir, exist_ok=True)
 
-  
   # Unzip tar file into subdirectories
-  logging.info('Unzipping {} to {}'.format(train_tar_file_path,
-                                           train_data_dir))
+  logging.info('Unzipping {} to {}'.format(train_tar_file_path, train_data_dir))
   extract(train_tar_file_path, train_data_dir)
   logging.info('Unzipping {} to {}'.format(val_tar_file_path, val_data_dir))
   extract(val_tar_file_path, val_data_dir)
@@ -582,17 +582,19 @@ def main(_):
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
     knee_singlecoil_val_url = FLAGS.fastmri_knee_singlecoil_val_url
     knee_singlecoil_test_url = FLAGS.fastmri_knee_singlecoil_test_url
-    if None in (knee_singlecoil_train_url, knee_singlecoil_val_url, knee_singlecoil_test_url):
+    if None in (knee_singlecoil_train_url,
+                knee_singlecoil_val_url,
+                knee_singlecoil_test_url):
       raise ValueError(
           f'Must provide three --fastmri_knee_singlecoil_[train,val,test]_url to '
           'download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
-    
+
     updated_data_dir = download_fastmri(data_dir,
-                     knee_singlecoil_train_url,
-                     knee_singlecoil_val_url,
-                     knee_singlecoil_test_url)
-    
+                                        knee_singlecoil_train_url,
+                                        knee_singlecoil_val_url,
+                                        knee_singlecoil_test_url)
+
     print(f"fastMRI download completed. Extracting...")
     setup_fastmri(data_dir, updated_data_dir)
 
