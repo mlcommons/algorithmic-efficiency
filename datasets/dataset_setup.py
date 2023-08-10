@@ -65,6 +65,15 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
 
+import tensorflow_datasets as tfds
+from torchvision.datasets import CIFAR10
+
+from algorithmic_efficiency.workloads.wmt import tokenizer
+from algorithmic_efficiency.workloads.wmt.input_pipeline import \
+    normalize_feature_names
+from datasets import librispeech_preprocess
+from datasets import librispeech_tokenizer
+
 import functools
 import os
 import resource
@@ -77,8 +86,7 @@ from absl import flags
 from absl import logging
 import requests
 import tensorflow as tf
-import tensorflow_datasets as tfds
-from torchvision.datasets import CIFAR10
+
 import tqdm
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
@@ -87,12 +95,6 @@ IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
 FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar'
 FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar'
 FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar'
-
-from algorithmic_efficiency.workloads.wmt import tokenizer
-from algorithmic_efficiency.workloads.wmt.input_pipeline import \
-    normalize_feature_names
-from datasets import librispeech_preprocess
-from datasets import librispeech_tokenizer
 
 flags.DEFINE_boolean(
     'interactive_deletion',
