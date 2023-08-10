@@ -65,6 +65,7 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
 
+# isort: off
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 
