@@ -5,17 +5,17 @@ class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.1162
+    return 0.118232
 
   @property
   def test_target_value(self) -> float:
-    return 0.068093
+    return 0.073397
 
   @property
   def step_hint(self) -> int:
     """Max num steps the baseline algo was given to reach the target."""
-    return 80_000
+    return 48_000
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 92_509  # ~26 hours
+    return 55_506  # ~15.4 hours
