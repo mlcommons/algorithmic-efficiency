@@ -89,8 +89,6 @@ FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar.xz'
 FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar.xz'
 FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar.xz'
 
-logging.set_verbosity(logging.INFO)
-
 from algorithmic_efficiency.workloads.wmt import tokenizer
 from algorithmic_efficiency.workloads.wmt.input_pipeline import \
     normalize_feature_names
@@ -155,19 +153,19 @@ flags.DEFINE_string(
     'submission_runner.py.')
 flags.DEFINE_string(
     'fastmri_knee_singlecoil_train_url',
-    'https://urldefense.com/v3/__https://fastmri-dataset.s3.amazonaws.com/v2.0/knee_singlecoil_train.tar.xz?AWSAccessKeyId=AKIAJM2LEZ67Y2JL3KRA&Signature=hsjono46qXAe2eTp7*2FIxbb8BznE*3D&Expires=1699392960__;JSU!!Bt8RZUm9aw!9ZtfuS47pQU1aNHHINqX61D6D2I4KqPyeF1AMj_T_jmNpVqbHGwK2bU3YF1hkqtSZDFwYqdfAOQ6Iw$',
+    None,
     'Only necessary if you want this script to `wget` the FastMRI train '
     'split. If not, you can supply the path to --data_dir in '
     'submission_runner.py.')
 flags.DEFINE_string(
     'fastmri_knee_singlecoil_val_url',
-    'https://urldefense.com/v3/__https://fastmri-dataset.s3.amazonaws.com/v2.0/knee_singlecoil_val.tar.xz?AWSAccessKeyId=AKIAJM2LEZ67Y2JL3KRA&Signature=ayD5i*2FR9hOIq56Dkhv26K3hMnb0*3D&Expires=1699392960__;JSU!!Bt8RZUm9aw!9ZtfuS47pQU1aNHHINqX61D6D2I4KqPyeF1AMj_T_jmNpVqbHGwK2bU3YF1hkqtSZDFwYqdmx3WO-Q$',
+    None,
     'Only necessary if you want this script to `wget` the FastMRI validation '
     'split. If not, you can supply the path to --data_dir in '
     'submission_runner.py.')
 flags.DEFINE_string(
     'fastmri_knee_singlecoil_test_url',
-    'https://urldefense.com/v3/__https://fastmri-dataset.s3.amazonaws.com/v2.0/knee_singlecoil_test.tar.xz?AWSAccessKeyId=AKIAJM2LEZ67Y2JL3KRA&Signature=eRkQaz7TwD3Wb76pb*2FaccpCtxxI*3D&Expires=1699392960__;JSU!!Bt8RZUm9aw!9ZtfuS47pQU1aNHHINqX61D6D2I4KqPyeF1AMj_T_jmNpVqbHGwK2bU3YF1hkqtSZDFwYqdCkr0dNw$',
+    None,
     'Only necessary if you want this script to `wget` the FastMRI validation '
     'split. If not, you can supply the path to --data_dir in '
     'submission_runner.py.')
@@ -317,8 +315,6 @@ def download_fastmri(data_dir,
                      fastmri_test_url):
 
   data_dir = os.path.join(data_dir, 'fastmri')
-  print(f"\nStarting fast mri downloads...downloading to {data_dir}\n")
-  
   # Download fastmri train dataset
   knee_train_filename = extract_filename_from_url(fastmri_train_url)
   logging.info(
@@ -337,7 +333,6 @@ def download_fastmri(data_dir,
   logging.info(
       'Downloading fastmri test dataset from {}'.format(fastmri_test_url))
   _download_url(url=fastmri_test_url, data_dir=data_dir, name= knee_test_filename)
-
   return data_dir
   
 
@@ -367,18 +362,15 @@ def setup_fastmri(data_dir, src_data_dir):
   test_data_dir = os.path.join(fastmri_data_dir, 'test')
   os.makedirs(test_data_dir, exist_ok=True)
 
-  print(f"made {test_data_dir=}, {train_data_dir=}, {val_data_dir=}")
   
   # Unzip tar file into subdirectories
-  #logging.info('Unzipping {} to {}'.format(train_tar_file_path,
-  #                                         fastmri_data_dir))
-  # extract(train_tar_file_path, train_data_dir)
-  print(f"extracting to {val_tar_file_path=}")
+  logging.info('Unzipping {} to {}'.format(train_tar_file_path,
+                                           train_data_dir))
+  extract(train_tar_file_path, train_data_dir)
   logging.info('Unzipping {} to {}'.format(val_tar_file_path, val_data_dir))
   extract(val_tar_file_path, val_data_dir)
-  print(f"'Unzipping {test_tar_file_path} to {fastmri_data_dir}') # .format(, ))")
   logging.info('Unzipping {} to {}'.format(test_tar_file_path, test_data_dir))
-  #extract(test_tar_file_path, test_data_dir)
+  extract(test_tar_file_path, test_data_dir)
   logging.info('Set up fastMRI dataset complete')
   print(f"extraction completed! ")
 
@@ -585,7 +577,7 @@ def main(_):
     download_mnist(data_dir)
 
   if FLAGS.all or FLAGS.fastmri:
-    print(f"starting fastmri download...\n")
+    print(f"starting fastMRI download...\n")
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
     knee_singlecoil_val_url = FLAGS.fastmri_knee_singlecoil_val_url
@@ -600,6 +592,7 @@ def main(_):
                      knee_singlecoil_train_url,
                      knee_singlecoil_val_url,
                      knee_singlecoil_test_url)
+    
     print(f"fastMRI download completed. Extracting...")
     setup_fastmri(data_dir, updated_data_dir)
 
@@ -642,5 +635,4 @@ def main(_):
 # pylint: enable=consider-using-with
 
 if __name__ == '__main__':
-  print(f"starting main")
   app.run(main)
