@@ -76,7 +76,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import requests
-import tensorflow as tf
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 import tqdm
@@ -172,7 +171,6 @@ flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
 FLAGS = flags.FLAGS
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-tf.config.set_visible_devices([], 'GPU')
 
 
 def _maybe_mkdir(d):
@@ -464,7 +462,7 @@ def download_librispeech(dataset_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+  tmp_librispeech_dir = os.path.join(dataset_dir, 'librispeech')
   extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
   final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
 
