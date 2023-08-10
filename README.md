@@ -23,17 +23,23 @@
 [MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it. For a detailed description of the benchmark design, see our [paper](https://arxiv.org/abs/2306.07179).
 
 # Table of Contents
+
+- [MLCommons™ Algorithmic Efficiency](#mlcommons-algorithmic-efficiency)
 - [Table of Contents](#table-of-contents)
-- [AlgoPerf Benchmark Workloads](#algoperf-benchmark-workloads)
-- [Installation](#installation)
-   - [Docker](#docker)
+  - [Installation](#installation)
+  - [Virtual environment](#virtual-environment)
+  - [Docker](#docker)
+    - [Building Docker Image](#building-docker-image)
+    - [Running Docker Container (Interactive)](#running-docker-container-interactive)
+    - [Running Docker Container (End-to-end)](#running-docker-container-end-to-end)
 - [Getting Started](#getting-started)
+  - [Running a workload](#running-a-workload)
 - [Rules](#rules)
 - [Contributing](#contributing)
-- [Citing AlgoPerf Benchmark](#citing-algoperf-benchmark)
-
+- [Note on shared data pipelines between JAX and PyTorch](#note-on-shared-data-pipelines-between-jax-and-pytorch)
 
 ## Installation
+
 You can install this package and dependences in a [python virtual environment](#virtual-environment) or use a [Docker container](#install-in-docker) (recommended).
 
   *TL;DR to install the Jax version for GPU run:*
@@ -51,10 +57,13 @@ You can install this package and dependences in a [python virtual environment](#
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    pip3 install -e '.[full]'
    ```
-##  Virtual environment
+
+## Virtual environment
+
 Note: Python minimum requirement >= 3.8
 
 To set up a virtual enviornment and install this repository
+
 1. Create new environment, e.g. via `conda` or `virtualenv`
 
    ```bash
@@ -87,16 +96,18 @@ or all workloads at once via
 ```bash
 pip3 install -e '.[full]'
 ```
+
 </details>
 
 ## Docker
-We recommend using a Docker container to ensure a similar environment to our scoring and testing environments. 
 
+We recommend using a Docker container to ensure a similar environment to our scoring and testing environments.
 
-**Prerequisites for NVIDIA GPU set up**: You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs. 
+**Prerequisites for NVIDIA GPU set up**: You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
 See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 
 ### Building Docker Image
+
 1. Clone this repository
 
    ```bash
@@ -104,16 +115,19 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
    ```
 
 2. Build Docker Image
+
    ```bash
    cd `algorithmic-efficiency/docker`
    docker build -t <docker_image_name> . --build-args framework=<framework>
    ```
-   The `framework` flag can be either `pytorch`, `jax` or `both`. 
+
+   The `framework` flag can be either `pytorch`, `jax` or `both`.
    The `docker_image_name` is arbitrary.
 
-
 ### Running Docker Container (Interactive)
+
 1. Run detached Docker Container
+
    ```bash
    docker run -t -d \
       -v $HOME/data/:/data/ \
@@ -124,18 +138,24 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
       --ipc=host \
       <docker_image_name> 
    ```
-   This will print out a container id. 
+
+   This will print out a container id.
 2. Open a bash terminal
+
    ```bash
    docker exec -it <container_id> /bin/bash
    ```
 
 ### Running Docker Container (End-to-end)
+
 To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 # Getting Started
+
 For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
+
 ## Running a workload
+
 To run a submission directly by running a Docker container, see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 Alternatively from a your virtual environment or interactively running Docker container `submission_runner.py` run:
@@ -163,6 +183,7 @@ python3 submission_runner.py \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
 ```
+
 <details>
 <summary>
 Using Pytorch DDP (Recommended)
@@ -176,11 +197,13 @@ torchrun --standalone --nnodes=1 --nproc_per_node=N_GPUS
 ```
 
 where `N_GPUS` is the number of available GPUs on the node. To only see output from the first process, you can run the following to redirect the output from processes 1-7 to a log file:
+
 ```bash
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8
  ```
 
 So the complete command is for example:
+
 ```
 torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8 \
 submission_runner.py \
@@ -191,15 +214,16 @@ submission_runner.py \
     --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
 ```
+
 </details>
 
-
 # Rules
+
 The rules for the MLCommons Algorithmic Efficency benchmark can be found in the seperate [rules document](RULES.md). Suggestions, clarifications and questions can be raised via pull requests.
 
 # Contributing
-If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues. See our [CONTRIBUTING.md](CONTRIBUTING.md) for MLCommons contributing guidelines and setup and workflow instructions.
 
+If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues. See our [CONTRIBUTING.md](CONTRIBUTING.md) for MLCommons contributing guidelines and setup and workflow instructions.
 
 # Note on shared data pipelines between JAX and PyTorch
 
