@@ -6,12 +6,13 @@
 
 # To build Docker image
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Installing machine packages
 RUN echo "Setting up machine"
 RUN apt-get update
 RUN apt-get install -y curl tar
-RUN apt-get install -y git python3 pip wget
+RUN apt-get install -y git python3 pip wget ffmpeg
 RUN apt-get install libtcmalloc-minimal4
 RUN export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
 
