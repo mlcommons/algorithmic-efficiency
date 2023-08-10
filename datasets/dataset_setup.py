@@ -113,7 +113,7 @@ flags.DEFINE_boolean('cifar',
                      False,
                      'If --all=false, whether or not to download CIFAR-10.')
 flags.DEFINE_boolean('fastmri',
-                     True,
+                     False,
                      'If --all=false, whether or not to download FastMRI.')
 flags.DEFINE_boolean('imagenet',
                      False,
@@ -172,7 +172,7 @@ flags.DEFINE_string(
 
 flags.DEFINE_integer(
     'num_decompression_threads',
-    12,
+    8,
     'The number of threads to use in parallel when decompressing.')
 
 flags.DEFINE_string('framework', 'pytorch', 'Can be either jax or pytorch.')
