@@ -6,102 +6,102 @@ on:
       - 'main' 
 
 jobs:
-  fastmri_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d fastmri -f jax -s baselines/adamw/jax/submission.py -w fastmri -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  imagenet_resnet_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d imagenet -f jax -s baselines/adamw/jax/submission.py -w imagenet_resnet -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  imagenet_vit_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d imagenet -f jax -s baselines/adamw/jax/submission.py -w imagenet_vit -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  ogbg_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d ogbg -f jax -s baselines/adamw/jax/submission.py -w ogbg -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  criteo_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d criteo1tb -f jax -s baselines/adamw/jax/submission.py -w criteo1tb -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  librispeech_conformer_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d librispeech -f jax -s baselines/adamw/jax/submission.py -w librispeech_conformer -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  librispeech_deepspeech_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d librispeech -f jax -s baselines/adamw/jax/submission.py -w librispeech_deepspeech -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  wmt_jax:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d wmt -f jax -s baselines/adamw/jax/submission.py -w wmt -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false     
-  fastmri_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d fastmri -f pytorch -s baselines/adamw/pytorch/submission.py -w fastmri -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  imagenet_resnet_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d imagenet -f pytorch -s baselines/adamw/pytorch/submission.py -w imagenet_resnet -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  imagenet_vit_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d imagenet -f pytorch -s baselines/adamw/pytorch/submission.py -w imagenet_vit -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  ogbg_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d ogbg -f pytorch -s baselines/adamw/pytorch/submission.py -w ogbg -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # fastmri_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d fastmri -f jax -s baselines/adamw/jax/submission.py -w fastmri -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # imagenet_resnet_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d imagenet -f jax -s baselines/adamw/jax/submission.py -w imagenet_resnet -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # imagenet_vit_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d imagenet -f jax -s baselines/adamw/jax/submission.py -w imagenet_vit -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # ogbg_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d ogbg -f jax -s baselines/adamw/jax/submission.py -w ogbg -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # criteo_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d criteo1tb -f jax -s baselines/adamw/jax/submission.py -w criteo1tb -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # librispeech_conformer_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d librispeech -f jax -s baselines/adamw/jax/submission.py -w librispeech_conformer -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # librispeech_deepspeech_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d librispeech -f jax -s baselines/adamw/jax/submission.py -w librispeech_deepspeech -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # wmt_jax:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev -d wmt -f jax -s baselines/adamw/jax/submission.py -w wmt -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false     
+  # fastmri_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d fastmri -f pytorch -s baselines/adamw/pytorch/submission.py -w fastmri -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # imagenet_resnet_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d imagenet -f pytorch -s baselines/adamw/pytorch/submission.py -w imagenet_resnet -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # imagenet_vit_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d imagenet -f pytorch -s baselines/adamw/pytorch/submission.py -w imagenet_vit -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # ogbg_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d ogbg -f pytorch -s baselines/adamw/pytorch/submission.py -w ogbg -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
   criteo_pytorch:
     runs-on: self-hosted
     steps:
@@ -110,27 +110,28 @@ jobs:
       run: |
         docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
         docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d criteo1tb -f pytorch -s baselines/adamw/pytorch/submission.py -w criteo1tb -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  librispeech_conformer_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d librispeech -f pytorch -s baselines/adamw/pytorch/submission.py -w librispeech_conformer -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  librispeech_deepspeech_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d librispeech -f pytorch -s baselines/adamw/pytorch/submission.py -w librispeech_deepspeech -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  wmt_pytorch:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Run containerized workload
-      run: |
-        docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
-        docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d wmt -f pytorch -s baselines/adamw/pytorch/submission.py -w wmt -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false     
+        exit $?
+  # librispeech_conformer_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d librispeech -f pytorch -s baselines/adamw/pytorch/submission.py -w librispeech_conformer -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # librispeech_deepspeech_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d librispeech -f pytorch -s baselines/adamw/pytorch/submission.py -w librispeech_deepspeech -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
+  # wmt_pytorch:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Run containerized workload
+  #     run: |
+  #       docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev 
+  #       docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_dev -d wmt -f pytorch -s baselines/adamw/pytorch/submission.py -w wmt -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false     
