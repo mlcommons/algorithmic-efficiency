@@ -222,4 +222,5 @@ then
     done 
 fi
 
+echo "Exiting with $RETURN_CODE"
 exit $RETURN_CODE
