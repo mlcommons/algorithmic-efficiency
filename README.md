@@ -23,9 +23,8 @@
 [MLCommons Algorithmic Efficiency](https://mlcommons.org/en/groups/research-algorithms/) is a benchmark and competition measuring neural network training speedups due to algorithmic improvements in both training algorithms and models. This repository holds the [competition rules](RULES.md) and the benchmark code to run it. For a detailed description of the benchmark design, see our [paper](https://arxiv.org/abs/2306.07179).
 
 # Table of Contents
-- [Table of Contents](#table-of-contents)
-- [AlgoPerf Benchmark Workloads](#algoperf-benchmark-workloads)
 - [Installation](#installation)
+   - [Python Virtual Environment](#python-virtual-environment)
    - [Docker](#docker)
 - [Getting Started](#getting-started)
 - [Rules](#rules)
@@ -51,7 +50,7 @@ You can install this package and dependences in a [python virtual environment](#
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    pip3 install -e '.[full]'
    ```
-##  Virtual environment
+##  Python virtual environment
 Note: Python minimum requirement >= 3.8
 
 To set up a virtual enviornment and install this repository
@@ -74,7 +73,7 @@ To set up a virtual enviornment and install this repository
 
 <details>
 <summary>
-Additional Details
+Per workload installations
 </summary>
 You can also install the requirements for individual workloads, e.g. via
 
@@ -105,15 +104,16 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 
 2. Build Docker Image
    ```bash
-   cd `algorithmic-efficiency/docker`
-   docker build -t <docker_image_name> . --build-args framework=<framework>
+   cd algorithmic-efficiency/docker
+   docker build -t <docker_image_name> . --build-arg framework=<framework>
    ```
-   The `framework` flag can be either `pytorch`, `jax` or `both`. 
+   The `framework` flag can be either `pytorch`, `jax` or `both`. Specifying the framework will install the framework specific dependencies.
    The `docker_image_name` is arbitrary.
 
 
 ### Running Docker Container (Interactive)
-1. Run detached Docker Container
+To use the Docker container as an interactive virtual environment, you can run a container mounted to your local data and code directories and execute the `bash` program. This may be useful if you are in the process of developing a submission.
+1. Run detached Docker Container. The container_id will be printed if the container is run successfully.
    ```bash
    docker run -t -d \
       -v $HOME/data/:/data/ \
@@ -123,22 +123,22 @@ See instructions [here](https://github.com/NVIDIA/nvidia-docker).
       --gpus all \
       --ipc=host \
       <docker_image_name> 
+      -keep_container_alive true
    ```
-   This will print out a container id. 
 2. Open a bash terminal
    ```bash
    docker exec -it <container_id> /bin/bash
    ```
 
 ### Running Docker Container (End-to-end)
-To run a submission end-to-end in a container see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
+To run a submission end-to-end in a containerized environment see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 # Getting Started
 For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
 ## Running a workload
 To run a submission directly by running a Docker container, see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
-Alternatively from a your virtual environment or interactively running Docker container `submission_runner.py` run:
+From your virtual environment or interactively running Docker container run:
 
 **JAX**
 

@@ -1,6 +1,6 @@
 # Bash script to build and push dev docker images to artifact repo
 # Usage:
-# bash build_docker_images.sh -b <git_branch>
+#   bash build_docker_images.sh -b <git_branch>
 
 while getopts b: flag
 do
