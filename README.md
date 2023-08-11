@@ -123,7 +123,7 @@ To use the Docker container as an interactive virtual environment, you can run a
       --gpus all \
       --ipc=host \
       <docker_image_name> 
-      -keep_container_alive true
+      --keep_container_alive true
    ```
 2. Open a bash terminal
    ```bash
@@ -148,8 +148,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
+    --submission_path=baselines/adamw/jax/submission.py \
+    --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 
 **Pytorch**
@@ -160,8 +160,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
+    --submission_path=baselines/adamw/jax/submission.py \
+    --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 <details>
 <summary>
@@ -186,10 +186,10 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
-    --experiment_dir=/home/znado \
+    --experiment_dir=$HOME/experiments \
     --experiment_name=baseline \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
+    --submission_path=baselines/adamw/jax/submission.py \
+    --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 </details>
 
