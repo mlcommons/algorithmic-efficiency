@@ -8,7 +8,6 @@ import os
 import tempfile
 from typing import Dict
 
-from absl import flags
 from absl import logging
 import sentencepiece as spm
 import tensorflow as tf
@@ -20,13 +19,6 @@ exists = tf.io.gfile.exists
 rename = tf.io.gfile.rename
 
 Features = Dict[str, tf.Tensor]
-
-flags.DEFINE_string('input_dir', '', 'Path to training data directory.')
-flags.DEFINE_boolean(
-    'train',
-    False,
-    'Whether to train a new tokenizer or load existing one to test.')
-FLAGS = flags.FLAGS
 
 
 def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
@@ -118,13 +110,15 @@ def load_tokenizer(model_filepath):
 
 def run(train, data_dir):
   logging.info('Data dir: %s', data_dir)
+  vocab_path = os.path.join(data_dir, 'spm_model.vocab')
+  logging.info('vocab_path = ', vocab_path)
 
   if train:
     logging.info('Training...')
     splits = ['train-clean-100']
-    return train_tokenizer(data_dir, splits)
+    train_tokenizer(data_dir, splits, model_path=vocab_path)
   else:
-    tokenizer = load_tokenizer(os.path.join(data_dir, 'spm_model.vocab'))
+    tokenizer = load_tokenizer(vocab_path)
     test_input = 'OPEN SOURCE ROCKS'
     tokens = tokenizer.tokenize(test_input)
     detokenized = tokenizer.detokenize(tokens).numpy().decode('utf-8')
@@ -135,11 +129,3 @@ def run(train, data_dir):
 
     if detokenized == test_input:
       logging.info('Tokenizer working correctly!')
-
-
-def main():
-  run(FLAGS.train, FLAGS.data_dir)
-
-
-if __name__ == '__main__':
-  main()

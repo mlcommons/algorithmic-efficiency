@@ -1,30 +1,28 @@
 # Getting Started
 
-Table of Contents:
+- [Set up and installation](#set-up-and-installation)
+- [Download the data](#download-the-data)
+- [Develop your submission](#develop-your-submission)
+  - [Set up your directory structure (Optional)](#set-up-your-directory-structure-optional)
+  - [Coding your submission](#coding-your-submission)
+- [Run your submission](#run-your-submission)
+  - [Pytorch DDP](#pytorch-ddp)
+  - [Run your submission in a Docker container](#run-your-submission-in-a-docker-container)
+    - [Docker Tips](#docker-tips)
+- [Score your submission](#score-your-submission)
+- [Good Luck](#good-luck)
 
-- [Getting Started](#getting-started)
-  - [Workspace set up and installation](#workspace-set-up-and-installation)
-  - [Download the data](#download-the-data)
-  - [Develop your submission](#develop-your-submission)
-    - [Set up your directory structure (Optional)](#set-up-your-directory-structure-optional)
-    - [Coding your submission](#coding-your-submission)
-  - [Run your submission](#run-your-submission)
-    - [Pytorch DDP](#pytorch-ddp)
-    - [Run your submission in a Docker container](#run-your-submission-in-a-docker-container)
-      - [Docker Tips](#docker-tips)
-  - [Score your submission](#score-your-submission)
-  - [Good Luck](#good-luck)
-
-## Workspace set up and installation
+## Set up and installation
 
 To get started you will have to make a few decisions and install the repository along with its dependencies. Specifically:
 
 1. Decide if you would like to develop your submission in either Pytorch or Jax.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#benchmarking-hardware).
-  The specs on the benchmarking machines are:
+The specs on the benchmarking machines are:
     - 8 V100 GPUs
     - 240 GB in RAM
     - 2 TB in storage (for datasets).
+
 3. Install the algorithmic package and dependencies, see [Installation](./README.md#installation).
 
 ## Download the data
@@ -102,7 +100,7 @@ python3 submission_runner.py \
     --tuning_search_space=<path_to_tuning_search_space>
 ```
 
-#### Pytorch DDP
+### Pytorch DDP
 
 We recommend using PyTorch's [Distributed Data Parallel (DDP)](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html)
 when using multiple GPUs on a single node. You can initialize ddp with torchrun.
@@ -132,14 +130,14 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 \
 
 The container entrypoint script provides the following flags:
 
-- `-d` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo1tb', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
-- `-f` framework: can be either 'pytorch' or 'jax'. If you just want to download data, this flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
-- `-s` submission_path: path to submission file on container filesystem. If this flag is set, the container will run a submission, so it is required for running a submission.
-- `-t` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
-- `-e` experiment_name: name of experiment. Required for running a submission.
-- `-w` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo1tb'. Required for running a submission.
-- `-m` max_steps: maximum number of steps to run the workload for. Optional.
-- `-b` debugging_mode: can be true or false. If `-b` (debugging_mode) is `true` the main process on the container will persist.
+- `--dataset` dataset: can be 'imagenet', 'fastmri', 'librispeech', 'criteo1tb', 'wmt', or 'ogbg'. Setting this flag will download data if `~/data/<dataset>` does not exist on the host machine. Required for running a submission.
+- `--framework` framework: can be either 'pytorch' or 'jax'. If you just want to download data, this flag is required for `-d imagenet` since we have two versions of data for imagenet. This flag is also required for running a submission.
+- `--submission_path` submission_path: path to submission file on container filesystem. If this flag is set, the container will run a submission, so it is required for running a submission.
+- `--tuning_search_space` tuning_search_space: path to file containing tuning search space on container filesystem. Required for running a submission.
+- `--experiment_name` experiment_name: name of experiment. Required for running a submission.
+- `--workload` workload: can be 'imagenet_resnet', 'imagenet_jax', 'librispeech_deepspeech', 'librispeech_conformer', 'ogbg', 'wmt', 'fastmri' or 'criteo1tb'. Required for running a submission.
+- `--max_global_steps` max_global_steps: maximum number of steps to run the workload for. Optional.
+- `--keep_container_alive` : can be true or false. If`true` the container will not be killed automatically. This is useful for developing or debugging.
 
 To run the docker container that will run the submission runner run:
 
@@ -151,35 +149,34 @@ docker run -t -d \
 --gpus all \
 --ipc=host \
 <docker_image_name> \
--d <dataset> \
--f <framework> \
--s <submission_path> \
--t <tuning_search_space> \
--e <experiment_name> \
--w <workload> \
--b <debug_mode>
+--dataset <dataset> \
+--framework <framework> \
+--submission_path <submission_path> \
+--tuning_search_space <tuning_search_space> \
+--experiment_name <experiment_name> \
+--workload <workload> \
+--keep_container_alive <keep_container_alive>
 ```
 
 This will print the container ID to the terminal.
-If debugging_mode is `true` the main process on the container will persist after finishing the submission runner.
 
-#### Docker Tips ####
+#### Docker Tips
 
 To find the container IDs of running containers
 
-```
+```bash
 docker ps 
 ```
 
 To see output of the entrypoint script
 
-```
+```bash
 docker logs <container_id> 
 ```
 
 To enter a bash session in the container
 
-```
+```bash
 docker exec -it <container_id> /bin/bash
 ```
 
@@ -190,5 +187,7 @@ To produce performance profile and performance table:
 ```bash
 python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> --output_dir=<output_dir>
 ```
+
+We provide the scores and performance profiles for the baseline algorithms in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
 ## Good Luck
