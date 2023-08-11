@@ -86,7 +86,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import requests
-import tensorflow as tf
 import tqdm
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
