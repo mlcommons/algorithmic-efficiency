@@ -191,7 +191,7 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['ogbg', 'librispeech_deepspeech', 'wmt']
+      compile_error_workloads = ['ogbg', 'wmt']
       eager_backend_workloads = ['librispeech_conformer']
       aot_eager_backend_workloads = ['criteo1tb']
       if FLAGS.workload in compile_error_workloads:
