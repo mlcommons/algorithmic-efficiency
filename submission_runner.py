@@ -192,7 +192,9 @@ def train_once(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = ['ogbg', 'wmt']
-      eager_backend_workloads = ['librispeech_conformer', 'librispeech_deepspeech']
+      eager_backend_workloads = [
+          'librispeech_conformer', 'librispeech_deepspeech'
+      ]
       aot_eager_backend_workloads = ['criteo1tb']
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
@@ -316,11 +318,11 @@ def train_once(
     train_state['accumulated_submission_time'] += (
         train_step_end_time - train_state['last_step_end_time'])
     train_state['is_time_remaining'] = (
-        train_state['accumulated_submission_time'] <
-        workload.max_allowed_runtime_sec)
+        train_state['accumulated_submission_time']
+        < workload.max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         try:
           eval_start_time = get_time()
