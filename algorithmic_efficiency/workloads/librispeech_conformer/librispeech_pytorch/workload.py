@@ -48,7 +48,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     """
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.benchmark = False
     model = conformer_model.ConformerEncoderDecoder(
         conformer_model.ConformerConfig(
             attention_residual_dropout_rate=dropout_rate,
