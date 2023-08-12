@@ -281,7 +281,7 @@ class BatchRNN(nn.Module):
 
   def forward(self, inputs, input_paddings):
     inputs = self.bn(inputs, input_paddings)
-    lengths = torch.sum(1 - input_paddings, dim=1).to(dtype=torch.int64).detach().cpu()
+    lengths = torch.sum(1 - input_paddings, dim=1).detach().cpu().numpy()
     packed_inputs = torch.nn.utils.rnn.pack_padded_sequence(
         inputs, lengths, batch_first=True, enforce_sorted=False)
     packed_outputs, _ = self.lstm(packed_inputs)
