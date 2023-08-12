@@ -210,7 +210,7 @@ def train_once(
         model_params = torch.compile(model_params, backend='aot_eager')
       else:
         logging.info('Performing `torch.compile`.')
-        model_params = torch.compile(model_params, dynamic=True)
+        model_params = torch.compile(model_params, backend='eager')
 
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
