@@ -393,7 +393,7 @@ def train_once(
             # Clean up the GPU cache after evaluation.
             gc.collect()
             torch.cuda.empty_cache()
-            logging.info(f'Released all unoccupied cached memory.')
+            logging.info('Released all unoccupied cached memory.')
 
           logging_end_time = get_time()
           train_state['accumulated_logging_time'] += (
