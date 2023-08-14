@@ -66,6 +66,7 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=consider-using-with
 
 # isort: off
+import tensorflow as tf
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 
