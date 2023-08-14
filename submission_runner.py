@@ -20,6 +20,7 @@ import json
 import os
 import struct
 import time
+import gc
 from typing import Any, Dict, Optional, Tuple
 
 from absl import app
@@ -387,9 +388,15 @@ def train_once(
                   .save_intermediate_checkpoints)
 
           if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+            # Clean up the GPU cache after evaluation.
+            # See https://github.com/pytorch/pytorch/issues/99835.
+            torch._C._cuda_clearCublasWorkspaces()
+            torch._dynamo.reset()
+            gc.collect()
             torch.cuda.empty_cache()
-          logging_end_time = get_time()
+            logging.info(f'Released all unoccupied cached memory.')
 
+          logging_end_time = get_time()
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
 

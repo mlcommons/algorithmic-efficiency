@@ -1,4 +1,5 @@
 """Criteo1TB workload implemented in PyTorch."""
+
 import contextlib
 from typing import Dict, Optional, Tuple
 
@@ -79,6 +80,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     """Only dropout is used."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
+    # Disable cudnn benchmark to avoid OOM errors.
+    torch.backends.cudnn.benchmark = False
     model = DlrmSmall(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,

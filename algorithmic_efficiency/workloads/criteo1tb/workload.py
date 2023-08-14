@@ -1,13 +1,20 @@
 """Criteo1TB DLRM workload base class."""
+
 import math
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Iterator
 
 import jax
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
+
+
+from absl import flags
+
+FLAGS = flags.FLAGS
+
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
@@ -26,14 +33,15 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'loss'
 
-  def has_reached_validation_target(self, eval_result: float) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value
 
   @property
   def validation_target_value(self) -> float:
     return 0.123649
 
-  def has_reached_test_target(self, eval_result: float) -> bool:
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['test/loss'] < self.test_target_value
 
   @property
@@ -75,19 +83,22 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 7703  # ~2 hours
+    return 7703  # ~2 hours.
 
   @property
   def eval_period_time_sec(self) -> int:
-    return 2 * 60
+    return 2 * 600  # 20 mins.
 
-  def _build_input_queue(self,
-                         data_rng: jax.random.PRNGKey,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         num_batches: Optional[int] = None,
-                         repeat_final_dataset: bool = False):
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del cache
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
         shuffle_rng=data_rng,
@@ -134,4 +145,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     if USE_PYTORCH_DDP:
       dist.all_reduce(loss)
     mean_loss = loss.item() / num_examples
+    if FLAGS.framework == 'pytorch':
+      # For PyTorch, the saved iterators cause OOM after evaluation.
+      # Hence, we create new iterators for each evaluation step. While this
+      # slows down the overall time to perform evaluation, this does not affect
+      # the final score.
+      del self._eval_iters
+      self._eval_iters = {}
     return {'loss': mean_loss}
