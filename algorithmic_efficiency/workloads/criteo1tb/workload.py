@@ -2,19 +2,15 @@
 
 import math
 import os
-from typing import Dict, Optional, Tuple, Iterator
+from typing import Dict, Iterator, Optional, Tuple
 
-import jax
+from absl import flags
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
 
-
-from absl import flags
-
 FLAGS = flags.FLAGS
-
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
