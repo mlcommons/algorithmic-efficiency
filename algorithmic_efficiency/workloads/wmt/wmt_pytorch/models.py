@@ -11,27 +11,6 @@ from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
 
 
-# Mask making utilities ported to PyTorch from
-# https://github.com/google/flax/blob/main/flax/linen/attention.py.
-def make_attention_mask(query_input: Tensor,
-                        key_input: Tensor,
-                        pairwise_fn: Callable[..., Any] = torch.mul,
-                        dtype: torch.dtype = torch.float32) -> Tensor:
-  """Mask-making helper for attention weights.
-
-  Args:
-    query_input: a batched, flat input of query_length size
-    key_input: a batched, flat input of key_length size
-    pairwise_fn: broadcasting elementwise comparison function
-    dtype: mask return dtype
-
-  Returns:
-    A `[batch..., len_q, len_kv]` shaped attention mask.
-  """
-  mask = pairwise_fn(query_input.unsqueeze(-1), key_input.unsqueeze(-2))
-  return mask.to(dtype)
-
-
 def make_causal_mask(x: Tensor,
                      device: str = 'cuda:0',
                      dtype: torch.dtype = torch.float32) -> Tensor:
@@ -47,17 +26,17 @@ def make_causal_mask(x: Tensor,
   """
   idxs = torch.broadcast_to(
       torch.arange(x.shape[-1], dtype=torch.int32, device=device), x.shape)
-  return make_attention_mask(idxs, idxs, torch.greater_equal, dtype=dtype)
+  return torch.greater_equal(idxs.unsqueeze(-1), idxs.unsqueeze(-2)).to(dtype=dtype)
 
 
 def make_src_mask(src, inputs_segmentation, nhead):
   """Utility for creating src mask and adjust it for PyTorch Transformer API."""
-  src_mask = make_attention_mask(src > 0, src > 0)
+  src_mask = torch.mul((src > 0).unsqueeze(-1), (src > 0).unsqueeze(-2)).to(dtype=torch.float32)
   # Add segmentation block-diagonal attention mask if using segmented data.
   if inputs_segmentation is not None:
     src_mask = torch.logical_and(
         src_mask,
-        make_attention_mask(inputs_segmentation, inputs_segmentation, torch.eq))
+        torch.eq(inputs_segmentation.unsqueeze(-1), inputs_segmentation.unsqueeze(-2)).to(dtype=torch.float32))
   # Flip values and ensure numerical stability.
   src_mask = torch.repeat_interleave(
       torch.logical_not(src_mask), repeats=nhead, dim=0)
@@ -76,23 +55,20 @@ def make_tgt_and_memory_mask(tgt,
   Transformer API."""
   if not decode:
     tgt_mask = torch.logical_and(
-        make_attention_mask(tgt > 0, tgt > 0),
+        torch.mul((tgt > 0).unsqueeze(-1), (tgt > 0).unsqueeze(-2)).to(dtype=torch.float32),
         make_causal_mask(tgt, device=tgt.device))
-    memory_mask = make_attention_mask(tgt > 0, src > 0)
+    memory_mask = torch.mul((tgt > 0).unsqueeze(-1), (src > 0).unsqueeze(-2)).to(dtype=torch.float32)
   else:
     tgt_mask = None
-    memory_mask = make_attention_mask(torch.ones_like(tgt) > 0, src > 0)
+    memory_mask = torch.mul((torch.ones_like(tgt) > 0).unsqueeze(-1), (src > 0).unsqueeze(-2)).to(dtype=torch.float32)
   # Add segmentation block-diagonal attention masks if using segmented data.
   if inputs_segmentation is not None:
     tgt_mask = torch.logical_and(
         tgt_mask,
-        make_attention_mask(targets_segmentation,
-                            targets_segmentation,
-                            torch.eq))
+        torch.eq(targets_segmentation.unsqueeze(-1), targets_segmentation.unsqueeze(-2)).to(dtype=torch.float32))
     memory_mask = torch.logical_and(
         memory_mask,
-        make_attention_mask(targets_segmentation, inputs_segmentation,
-                            torch.eq))
+        torch.eq(targets_segmentation.unsqueeze(-1), inputs_segmentation.unsqueeze(-2)).to(dtype=torch.float32))
   # Flip values and ensure numerical stability.
   memory_mask = torch.repeat_interleave(
       torch.logical_not(memory_mask), repeats=nhead, dim=0)
@@ -617,7 +593,7 @@ class TransformerDecoder(nn.Module):
       memory: the sequence from the last layer of the encoder (required).
       tgt_mask: the mask for the tgt sequence (optional).
       memory_mask: the mask for the memory sequence (optional).
-      decode: wether to use cache for autoregressive decoding or not.
+      decode: whether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
     Shape:
       see the docs in Transformer class.
@@ -1214,7 +1190,7 @@ def multi_head_attention_forward(query: Tensor,
     else:
       assert attn_mask.is_floating_point() or attn_mask.dtype == torch.bool, \
           f'float, byte, and bool types are supported, not {attn_mask.dtype}'
-    # ensure attn_mask's dim is 3
+    # Ensure attn_mask's dim is 3.
     if attn_mask.dim() == 2:
       correct_2d_size = (tgt_len, src_len)
       if attn_mask.shape != correct_2d_size:
