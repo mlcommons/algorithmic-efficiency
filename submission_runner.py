@@ -15,6 +15,7 @@ python3 submission_runner.py \
 """
 
 import datetime
+import gc
 import importlib
 import json
 import os
@@ -191,8 +192,10 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['ogbg', 'librispeech_deepspeech', 'wmt']
-      eager_backend_workloads = ['librispeech_conformer']
+      compile_error_workloads = ['ogbg']
+      eager_backend_workloads = [
+          'librispeech_conformer', 'librispeech_deepspeech'
+      ]
       aot_eager_backend_workloads = ['criteo1tb']
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
@@ -387,9 +390,12 @@ def train_once(
                   .save_intermediate_checkpoints)
 
           if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+            # Clean up the GPU cache after evaluation.
+            gc.collect()
             torch.cuda.empty_cache()
-          logging_end_time = get_time()
+            logging.info('Released all unoccupied cached memory.')
 
+          logging_end_time = get_time()
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
 

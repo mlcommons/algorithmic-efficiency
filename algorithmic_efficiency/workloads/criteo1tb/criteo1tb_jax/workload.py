@@ -1,4 +1,5 @@
 """Criteo1TB workload implemented in Jax."""
+
 import functools
 from typing import Dict, Optional, Tuple
 

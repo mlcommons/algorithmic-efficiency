@@ -77,17 +77,27 @@ class WmtWorkload(BaseWmtWorkload):
                    max_decode_len: int,
                    beam_size: int = 4) -> spec.Tensor:
     """Predict translation with fast decoding beam search on a batch."""
-    params = params.module if isinstance(params, (DP, DDP)) else params
+    # params = params.module if isinstance(params, (DP, DDP)) else params
+    if hasattr(params, 'module'):
+      params = params.module
     params.eval()
-    encoder = params.encoder
+
+    if hasattr(params, '_modules'):
+      params = params._modules
+      encoder = params["encoder"]
+      decoder = params["decoder"]
+    else:
+      encoder = params.encoder
+      decoder = params.decoder
+
     if N_GPUS > 1 and not USE_PYTORCH_DDP:
       encoder = DP(encoder)
+    if N_GPUS > 1 and not USE_PYTORCH_DDP:
+      decoder = DP(decoder)
+
     encoded_inputs = torch.repeat_interleave(
         encoder(inputs), repeats=beam_size, dim=0)
     raw_inputs = torch.repeat_interleave(inputs, repeats=beam_size, dim=0)
-    decoder = params.decoder
-    if N_GPUS > 1 and not USE_PYTORCH_DDP:
-      decoder = DP(decoder)
 
     def tokens_ids_to_logits(
         flat_ids: spec.Tensor, flat_cache: Dict[str, spec.Tensor]
