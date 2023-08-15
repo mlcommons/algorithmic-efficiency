@@ -542,7 +542,7 @@ class TransformerEncoderLayer(nn.Module):
     return self.dropout2(x)
 
 
-# Modified to use cache for autoregressive decoding and custom 
+# Modified to use cache for autoregressive decoding and custom
 # MultiheadAttention modules.
 class TransformerDecoder(nn.Module):
   r"""TransformerDecoder is a stack of N decoder layers
@@ -626,7 +626,7 @@ class TransformerDecoder(nn.Module):
     return output
 
 
-# Modified to use cache for autoregressive decoding and custom 
+# Modified to use cache for autoregressive decoding and custom
 # MultiheadAttention modules.
 class TransformerDecoderLayer(nn.Module):
   r"""TransformerDecoderLayer is made up of self-attn, multi-head-attn and
@@ -939,8 +939,8 @@ class MultiheadAttention(nn.Module):
       # not the remaining zero elements.
       if attn_mask is not None:
         raise ValueError('Attention mask has to be None for decode == True.')
-      attn_mask = (torch.arange(max_length, device=k.device) >=
-                   cache_index).reshape(1, max_length)
+      attn_mask = (torch.arange(max_length, device=k.device)
+                   >= cache_index).reshape(1, max_length)
 
     # Update sequence length to account for complete sequence.
     seq_len = k.size(1)
