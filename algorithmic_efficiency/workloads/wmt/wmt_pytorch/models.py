@@ -939,8 +939,8 @@ class MultiheadAttention(nn.Module):
       # not the remaining zero elements.
       if attn_mask is not None:
         raise ValueError('Attention mask has to be None for decode == True.')
-      attn_mask = (torch.arange(max_length, device=k.device)
-                   >= cache_index).reshape(1, max_length)
+      attn_mask = (torch.arange(max_length, device=k.device) >=
+                   cache_index).reshape(1, max_length)
 
     # Update sequence length to account for complete sequence.
     seq_len = k.size(1)
