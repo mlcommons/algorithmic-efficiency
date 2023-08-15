@@ -1,3 +1,5 @@
+from itertools import zip_longest
+
 import jax
 import numpy as np
 import pytest
@@ -53,13 +55,23 @@ def test_param_shapes(workload):
       jax_workload.param_shapes.unfreeze())
   pytorch_param_shapes = jax.tree_util.tree_leaves(
       pytorch_workload.param_shapes)
-  assert len(jax_param_shapes) == len(pytorch_param_shapes)
+  if workload == 'wmt':
+    # The PyTorch transformer for WMT is implemented with fused linear layers
+    # for the projection of QKV inside of the MultiheadAttention module.
+    # Two weight matrices for each of the two self-attention layers less and one
+    # less for the encoder-decoder attention layer -> 5 weight matrices less.
+    # We have 6 encoder/decoder layers, hence 30 weight matrices less in total.
+    assert len(jax_param_shapes) == len(pytorch_param_shapes) + 30
+  else:
+    assert len(jax_param_shapes) == len(pytorch_param_shapes)
   # Check if total number of params deduced from shapes match.
   num_jax_params = 0
   num_pytorch_params = 0
-  for jax_shape, pytorch_shape in zip(jax_param_shapes, pytorch_param_shapes):
+  for jax_shape, pytorch_shape in zip_longest(jax_param_shapes,
+                                              pytorch_param_shapes):
     num_jax_params += np.prod(jax_shape.shape_tuple)
-    num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
+    if pytorch_shape is not None:
+      num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
   assert num_jax_params == num_pytorch_params
 
 
