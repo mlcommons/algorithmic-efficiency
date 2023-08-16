@@ -71,6 +71,12 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
       'pytorch':
           pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
   }
+  num_kv = {
+      'jax':
+          jax_param_types_dict.get(spec.ParameterType.ATTENTION_KV, 0),
+      'pytorch':
+          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_KV, 0),
+  }
   num_q = {
       'jax':
           jax_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
@@ -96,11 +102,13 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
           pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
   }
   qkv_match = num_qkv['jax'] == num_qkv['pytorch']
+  kv_match = num_kv['jax'] == num_kv['pytorch']
   q_match = num_q['jax'] == num_q['pytorch']
   k_match = num_k['jax'] == num_k['pytorch']
   v_match = num_v['jax'] == num_v['pytorch']
   bias_match = num_bias['jax'] == num_bias['pytorch']
-  qkv_match = qkv_match and q_match and k_match and v_match and bias_match
+  qkv_match = (
+      qkv_match and kv_match and q_match and k_match and v_match and bias_match)
 
   # We subtract 2 * num_qkv from the number of biases because there are 2
   # missing for each of q, k, v.
@@ -112,7 +120,12 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
       num_q['jax'] == num_k['jax'] == num_v['jax'] == num_qkv['pytorch'] and
       (num_qkv['pytorch'] != 0 and
        (num_bias['jax'] - 2 * num_qkv['pytorch']) == num_bias['pytorch']))
-  qkv_match = qkv_match or jax_qkv_match or pytorch_qkv_match
+  pytorch_kv_match = (
+      num_q['jax'] == num_k['jax'] == num_v['jax'] ==
+      num_qkv['pytorch'] + num_kv['pytorch'] and
+      num_q['pytorch'] == num_kv['pytorch'])
+  qkv_match = (
+      qkv_match or jax_qkv_match or pytorch_qkv_match or pytorch_kv_match)
   return qkv_match
 
 
@@ -144,6 +157,7 @@ def test_param_types(workload_name):
   # Check if total number of each type match.
   attention_keys = {
       spec.ParameterType.ATTENTION_QKV,
+      spec.ParameterType.ATTENTION_KV,
       spec.ParameterType.ATTENTION_Q,
       spec.ParameterType.ATTENTION_K,
       spec.ParameterType.ATTENTION_V,
