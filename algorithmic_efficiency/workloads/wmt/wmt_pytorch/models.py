@@ -918,12 +918,8 @@ class MultiheadAttention(nn.Module):
       cached_key = loc_cache['cached_key']
       cached_value = loc_cache['cached_value']
       cache_index = loc_cache['cache_index']
-      batch_size, max_length, num_features = cached_key.shape
-      assert batch_size == bsz, f'{batch_size} != {bsz}'
-      assert max_length == max_len, f'{max_length} != {max_len}'
-      assert num_features == embed_dim, f'{num_features} != {embed_dim}'
       # Shape check of cached keys against query input.
-      expected_shape = (batch_size, 1, num_features)
+      expected_shape = (bsz, 1, embed_dim)
       if expected_shape != x.shape:
         raise ValueError('Autoregressive cache shape error, expected query '
                          f'shape {expected_shape} instead got {x.shape}.')
@@ -939,18 +935,16 @@ class MultiheadAttention(nn.Module):
       # not the remaining zero elements.
       if attn_mask is not None:
         raise ValueError('Attention mask has to be None for decode == True.')
-      attn_mask = (torch.arange(max_length, device=k.device) >=
-                   cache_index).reshape(1, max_length)
+      attn_mask = (torch.arange(max_len, device=k.device) >=
+                   cache_index).reshape(1, max_len)
 
     # Update sequence length to account for complete sequence.
     seq_len = k.size(1)
 
-    # Reshape q, k, v for multihead attention.
-    q, k, v = q.transpose(0, 1), k.transpose(0, 1), v.transpose(0, 1)
-    q, k, v = q.contiguous(), k.contiguous(), v.contiguous()
-    q = q.view(tgt_len, bsz * self.num_heads, self.head_dim).transpose(0, 1)
-    k = k.view(seq_len, bsz * self.num_heads, self.head_dim).transpose(0, 1)
-    v = v.view(seq_len, bsz * self.num_heads, self.head_dim).transpose(0, 1)
+    # Rearrange q, k, v for multihead attention.
+    q = q.view(bsz, tgt_len, self.num_heads, self.head_dim).transpose(1, 2)
+    k = k.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+    v = v.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
 
     # Check dtype and shape of attention mask.
     if not decode and attn_mask is not None:
@@ -965,6 +959,8 @@ class MultiheadAttention(nn.Module):
       else:
         raise RuntimeError(
             f"attn_mask's dimension {attn_mask.dim()} is not supported")
+      # Reshape attention mask to be consistent with q, k, v.
+      attn_mask = attn_mask.view(bsz, self.num_heads, tgt_len, seq_len)
 
     # Convert attention mask to float.
     if attn_mask is not None and attn_mask.dtype == torch.bool:
@@ -975,10 +971,14 @@ class MultiheadAttention(nn.Module):
     # Adjust dropout_rate probability.
     dropout_rate = self.dropout if self.training else 0.0
 
-    # Calculate attention and out projection.
+    # Calculate attention.
     attn_output = torch.nn.functional.scaled_dot_product_attention(
         q, k, v, attn_mask, dropout_rate)
-    attn_output = self.out_proj(attn_output.view(bsz, tgt_len, embed_dim))
+    # Rearrange for output projection.
+    attn_output = attn_output.transpose(1, 2).contiguous().view(
+        bsz, tgt_len, embed_dim)
+    # Output projection.
+    attn_output = self.out_proj(attn_output)
 
     if decode:
       cache[name] = loc_cache
