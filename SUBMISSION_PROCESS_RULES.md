@@ -1,8 +1,8 @@
-# MLCommons™ AlgoPerf: Call for Submissions
+# MLCommons™ AlgoPerf: Submission Process Rules
 
-**Version:** 0.0.1 *(Last updated 10 August 2023)*
+**Version:** 0.0.1 *(Last updated 17 August 2023)*
 
-- [MLCommons™ AlgoPerf: Call for Submissions](#mlcommons-algoperf-call-for-submissions)
+- [MLCommons™ AlgoPerf: Submission Process Rules](#mlcommons-algoperf-submission-process-rules)
   - [Basics](#basics)
   - [Schedule](#schedule)
     - [Dates](#dates)
@@ -27,11 +27,11 @@
 
 ## Basics
 
-This is the call for submissions for the AlgoPerf: Training Algorithms Benchmark. The call describes the process of submitting a new training algorithm and details how it will be scored. This call applies to both the external tuning ruleset and the self-tuning ruleset although, for all intents and purposes, they are two separate competitions, with separate leaderboards.
+This is the submission process rules for the AlgoPerf: Training Algorithms Benchmark. It describes the process of submitting a new training algorithm and details how it will be scored. This process applies to both the external tuning ruleset and the self-tuning ruleset although, for all intents and purposes, they are two separate competitions, with separate leaderboards.
 
-Three additional documents complement this call for submissions:
+Three additional documents complement this document:
 
-- [**Benchmark rules**](RULES.md): While the call for submissions details the *logistical* aspects of submitting to the AlgoPerf: Training Algorithms Benchmark, the [rules document](RULES.md) describes the *scientific* rules of the competition. This includes, for example, how tuning is performed in each ruleset, what types of submissions are allowed, or how the benchmark score is computed.
+- [**Benchmark rules**](RULES.md): While the submission process rules detail the *logistical* aspects of submitting to the AlgoPerf: Training Algorithms Benchmark, the [rules document](RULES.md) describes the *scientific* rules of the competition. This includes, for example, how tuning is performed in each ruleset, what types of submissions are allowed, or how the benchmark score is computed.
 - [**AlgoPerf paper**](https://arxiv.org/abs/2306.07179): The paper titled ["Benchmarking Neural Network Training Algorithms"](https://arxiv.org/abs/2306.07179) motivates the need for the benchmark, explains the rules, and justifies the specific design choices of the AlgoPerf: Training Algorithms Benchmark. Additionally, it evaluates baseline submissions, constructed using various optimizers like Adam, Shampoo, or SAM, on the benchmark, demonstrating the feasibility but also the difficulty of the benchmark.
 - [**Benchmark codebase**](https://github.com/mlcommons/algorithmic-efficiency): The codebase implements the rules, provides exact specifications of the workloads, and it will ultimately be used to score submissions.
 
@@ -39,22 +39,22 @@ Three additional documents complement this call for submissions:
 
 ### Dates
 
-- **Publication of the call for submission: 01. September 2023 (08:00 AM UTC)**
-- Registration deadline for submissions: 01. November 2023 (08:00 AM UTC)
-- Code freeze for the benchmark codebase: 01. December 2023 (08:00 AM UTC)
-- **Submission deadline: 01. January 2024 (08:00 AM UTC)**
-- Sampling the held-out workloads and hyperparameters: 02. January 2024 (08:00 AM UTC)
-- Deadline for challenging submissions: 01. February 2024 (08:00 AM UTC)
+- **Publication of the call for submission: 08. September 2023 (08:00 AM UTC)**
+- Registration deadline for submissions: 15. November 2023 (08:00 AM UTC)
+- Version freeze for the benchmark codebase: 01. December 2023 (08:00 AM UTC)
+- **Submission deadline: 15. January 2024 (08:00 AM UTC)**
+- Sampling the held-out workloads and hyperparameters: 16. January 2024 (08:00 AM UTC)
+- Deadline for specifying the submission batch sizes for held-out workloads: 23. January 2024 (08:00 AM UTC)
 - Deadline for self-reporting results: 01. March 2024 (08:00 AM UTC)
-- **Publication of all results: 01. April 2024 (08:00 AM UTC)**
+- **[extra tentative] Publication of all results: 15. April 2024 (08:00 AM UTC)**
 
 The presented dates are subject to change and adjustments may be made by the [MLCommmons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/).
 
-### Code freeze
+### Version freeze
 
-The benchmark code base is subject to change after the call for proposals is published. For example, while interacting with the codebase, if submitters encounter bugs or API limitations, they have the option to issue a bug report. This might lead to modifications of the benchmark codebase even after the publication of the call for submissions.
+The benchmark code base is subject to change after the call for submissions is published. For example, while interacting with the codebase, if submitters encounter bugs or API limitations, they have the option to issue a bug report. This might lead to modifications of the benchmark codebase even after the publication of the call for submissions.
 
-To ensure that all submitters can develop their submissions based on the exact same code that will be utilized for scoring, we will freeze the benchmark codebase before the submission deadline. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. The code freeze also involves fixing all package versions of the codebase dependencies, such as JAX, PyTorch, etc.
+To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we will freeze the package versions of the codebase dependencies before the submission deadline. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will also try to minimize changes to the benchmark codebase as best as possible.
 
 ### Submission deadline
 
@@ -105,7 +105,7 @@ Submitting to the AlgoPerf: Training Algorithms Benchmark requires the following
 - *Either* a membership in MLCommons *or* a signed [non-member test agreement](https://mlcommons.org/en/policies/).
 - A signed trademark license agreement, either the member or the non-member version, as appropriate. These license agreements are available upon request to [support@mlcommons.org](mailto:support@mlcommons.org).
 
-We furthermore require all submissions to be made available open source after the submission deadline under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
+We furthermore require all submissions to be made available open source on the submission deadline under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
 
 ### Multiple Submission
 
@@ -123,7 +123,7 @@ Submitters can both contribute and request additional baseline algorithms. This 
 
 Submitters are expected to self-report scores on the full benchmark set before the deadline for self-reporting results. Reporting the scores involves providing all unmodified logs that the benchmarking codebase automatically generates in a separate `/results` directory within the `/submission` folder. For submissions competing in the external tuning ruleset, this includes all the logs of the tuning trials using the [hyperparameter samples provided by the working group](#sampling-held-out-workloads-and-hyperparameters). Note, that while the tuning runs can be performed on non-competition hardware, they still need to show that the "winning hyperparameter" in each study was selected according to the [tuning rules](/RULES.md#external-tuning-ruleset), i.e. the fastest hyperparameter to reach the validation target. Additionally, the logs of the "winning hyperparameter" (or each trial, in the self-tuning ruleset) in each of the five studies need to be computed on the competition hardware, to allow wall-clock runtime comparisons.
 
-Submitters unable to self-fund scoring costs can instead self-report only on the [qualification set of workloads](/RULES.md#qualification-set) that excludes some of the most expensive workloads. Based on this performance on the qualification set, the working group will provide compute to evaluate and score the most promising submissions. Additionally, we encourage researchers to reach out to the [working group](mailto:algorithms@mlcommons.org) to find potential collaborators with the resources to run larger, more comprehensive experiments for both developing and scoring submissions.
+Submitters unable to self-fund scoring costs can instead self-report only on the [qualification set of workloads](/RULES.md#qualification-set) that excludes some of the most expensive workloads. Based on this performance on the qualification set, the working group will provide - as funding allows - compute to evaluate and score the most promising submissions. Additionally, we encourage researchers to reach out to the [working group](mailto:algorithms@mlcommons.org) to find potential collaborators with the resources to run larger, more comprehensive experiments for both developing and scoring submissions.
 
 #### Verifying scores
 
@@ -141,11 +141,9 @@ The publication of the results will contain two separate leaderboards, one for t
 
 ## Sprit jury & challenging submissions
 
-The spirit jury will be responsible for deciding whether a submission violates the "spirit of the rules". Until the deadline for challenging submissions, anyone has the right to challenge a submission, i.e. request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email can be written anonymously but it is required to link to the challenged submission and a detailed description of why the submission should be reviewed needs to be attached.
+The spirit jury will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters may challenge other submissions, i.e. request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed.
 
 The spirit jury may then hear the justifications of the submitters, inspect the code, and also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments. Example cases that might be reviewed by the spirit jury are cases of multiple similar submissions by the same submitter or extensive workload-specific tuning.
-
-In the event of a review, the spirit jury will hold a vote, which will be decided by a simple majority.
 
 **TODO Who is on the Jury?**
 
