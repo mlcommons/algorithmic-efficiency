@@ -18,7 +18,7 @@ jobs:
         cd $HOME/algorithmic-efficiency/docker
         docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
         BUILD_RETURN=$?
-        if [[ ${BUILD_RETURN} != 0 ]]; exit ${BUILD_RETURN} 
+        if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
         docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
         docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
   build_and_push_pytorch_docker_image:
@@ -33,7 +33,7 @@ jobs:
         cd $HOME/algorithmic-efficiency/docker
         docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
         BUILD_RETURN=$?
-        if [[ ${BUILD_RETURN} != 0 ]]; exit ${BUILD_RETURN} 
+        if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
         docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
         docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
   fastmri_jax:
