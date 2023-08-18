@@ -4,8 +4,8 @@
 #   bash build_docker_images.sh -b <git_branch>
 
 # Make program exit with non-zero exit code if any command fails.
-
 set -e
+
 while getopts b: flag
 do
     case "${flag}" in
