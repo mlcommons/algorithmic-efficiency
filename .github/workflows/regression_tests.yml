@@ -12,7 +12,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build and push docker images
       run: |
-        bash docker/scripts/build_docker_images.sh -b ${{ github.head_ref || github.ref_name }}
+        cd $HOME/algorithmic-efficiency && git checkout ${{ github.head_ref || github.ref_name }}
+        bash $HOME/algorithmic-efficiency/docker/scripts/build_docker_images.sh -b ${{ github.head_ref || github.ref_name }}
   fastmri_jax:
     runs-on: self-hosted
     needs: build_and_push_docker_images
