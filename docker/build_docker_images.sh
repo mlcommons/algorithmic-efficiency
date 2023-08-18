@@ -1,7 +1,11 @@
+#!/bin/bash
 # Bash script to build and push dev docker images to artifact repo
 # Usage:
 #   bash build_docker_images.sh -b <git_branch>
 
+# Make program exit with non-zero exit code if any command fails.
+
+set -e
 while getopts b: flag
 do
     case "${flag}" in
