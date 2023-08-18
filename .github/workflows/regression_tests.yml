@@ -6,16 +6,7 @@ on:
       - 'main' 
 
 jobs:
-  build_and_push_docker_images:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build and push docker images
-      run: |
-        GIT_BRANCH=${{ github.head_ref || github.ref_name }}
-        cd $HOME/algorithmic-efficiency/docker
-        bash build_docker_images.sh -b ${GIT_BRANCH}
-  build_and_push_jax_docker_image:
+  build_jax_docker_image:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
@@ -26,8 +17,10 @@ jobs:
         IMAGE_NAME="algoperf_${FRAMEWORK}_${GIT_BRANCH}"
         cd $HOME/algorithmic-efficiency/docker
         docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
-        # docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
-        # docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+        BUILD_RETURN=$?
+        if [[ ${BUILD_RETURN} != 0 ]]; exit ${BUILD_RETURN} 
+        docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
   build_and_push_pytorch_docker_image:
     runs-on: self-hosted
     steps:
@@ -39,8 +32,10 @@ jobs:
         IMAGE_NAME="algoperf_${FRAMEWORK}_${GIT_BRANCH}"
         cd $HOME/algorithmic-efficiency/docker
         docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
-        # docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
-        # docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+        BUILD_RETURN=$?
+        if [[ ${BUILD_RETURN} != 0 ]]; exit ${BUILD_RETURN} 
+        docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
   fastmri_jax:
     runs-on: self-hosted
     needs: build_and_push_jax_docker_image
