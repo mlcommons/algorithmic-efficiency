@@ -13,7 +13,8 @@ jobs:
     - name: Build and push docker images
       run: |
         GIT_BRANCH=${{ github.head_ref || github.ref_name }}
-        bash $HOME/algorithmic-efficiency/docker/build_docker_images.sh -b $GIT_BRANCH
+        cd $HOME/algorithmic-efficiency/docker
+        bash build_docker_images.sh -b $GIT_BRANCH
   fastmri_jax:
     runs-on: self-hosted
     needs: build_and_push_docker_images
