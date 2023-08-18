@@ -6,7 +6,7 @@ on:
       - 'main' 
 
 jobs:
-  build_jax_docker_image:
+  build_and_push_jax_docker_image:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
