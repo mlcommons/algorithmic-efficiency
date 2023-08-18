@@ -13,14 +13,7 @@ jobs:
     - name: Build and push docker images
       run: |
         GIT_BRANCH=${{ github.head_ref || github.ref_name }}
-        JAX_IMAGE_NAME="algoperf_jax_${GIT_BRANCH}"
-        PYTORCH_IMAGE_NAME="algoperf_pytorch_${GIT_BRANCH}"
-        docker build --no-cache -t $JAX_IMAGE_NAME . --build-arg framework=jax --build-arg branch=${GIT_BRANCH}
-        docker tag $JAX_IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$JAX_IMAGE_NAME
-        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$JAX_IMAGE_NAME
-        docker build --no-cache -t $PYTORCH_IMAGE_NAME . --build-arg framework=jax --build-arg branch=${GIT_BRANCH}
-        docker tag $PYTORCH_IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$PYTORCH_IMAGE_NAME
-        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$PYTORCH_IMAGE_NAME
+        bash $HOME/algorithmic-efficiency/docker/build_docker_images.sh -b $GIT_BRANCH
   fastmri_jax:
     runs-on: self-hosted
     needs: build_and_push_docker_images
