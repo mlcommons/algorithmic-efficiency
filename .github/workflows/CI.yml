@@ -16,7 +16,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=fastmri     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/fastmri/tuning_search_space.json
@@ -34,7 +34,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=wmt     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
@@ -51,7 +51,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=wmt     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
@@ -68,7 +68,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=imagenet_vit     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
@@ -86,7 +86,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=imagenet_resnet     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
@@ -105,7 +105,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=criteo1tb_test     --framework=jax     --global_batch_size=1     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
@@ -122,7 +122,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=criteo1tb_test     --framework=pytorch     --global_batch_size=1     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
@@ -139,7 +139,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
@@ -157,7 +157,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
@@ -175,7 +175,7 @@ jobs:
     - name: Install Modules and Run
       run: |
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
         pip install .[full]
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=ogbg     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nesterov.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
@@ -196,7 +196,7 @@ jobs:
         pip install pytest
         pip install .[full]
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
     - name: Run pytest tests
       run: |
         pytest -vx tests/version_test.py
@@ -220,7 +220,7 @@ jobs:
         pip install pytest
         pip install .[full]
         pip install .[jax_cpu]
-        pip install .[pytorch_cpu] --index_url 'https://download.pytorch.org/whl/nightly/cpu'
+        pip install .[pytorch_cpu] --index-url 'https://download.pytorch.org/whl/nightly/cpu'
     - name: Run baseline tests
       run: |
         pytest --verbosity=1 tests/test_baselines.py
