@@ -24,8 +24,8 @@ due to write speed issues (--data_dir can include the GCS bucket though).
 Note that some of the disk usage number below may be underestimates if the temp
 and final data dir locations are on the same drive.
 
-Criteo download size: ~350GB
-Criteo final disk size: ~1TB
+Criteo 1TB download size: ~350GB
+Criteo 1TB final disk size: ~1TB
 FastMRI download size:
 FastMRI final disk size:
 LibriSpeech download size:
@@ -110,9 +110,9 @@ flags.DEFINE_boolean(
     'Whether or not to download all datasets. If false, can download some '
     'combination of datasets by setting the individual dataset flags below.')
 
-flags.DEFINE_boolean('criteo',
+flags.DEFINE_boolean('criteo1tb',
                      False,
-                     'If --all=false, whether or not to download Criteo.')
+                     'If --all=false, whether or not to download Criteo 1TB.')
 flags.DEFINE_boolean('cifar',
                      False,
                      'If --all=false, whether or not to download CIFAR-10.')
@@ -246,12 +246,12 @@ def _download_url(url, data_dir, name=None):
              url=url, n=progress_bar.n, size=progress_bar.total))
 
 
-def download_criteo(data_dir,
-                    tmp_dir,
-                    num_decompression_threads,
-                    interactive_deletion):
-  criteo_dir = os.path.join(data_dir, 'criteo')
-  tmp_criteo_dir = os.path.join(tmp_dir, 'criteo')
+def download_criteo1tb(data_dir,
+                       tmp_dir,
+                       num_decompression_threads,
+                       interactive_deletion):
+  criteo_dir = os.path.join(data_dir, 'criteo1tb')
+  tmp_criteo_dir = os.path.join(tmp_dir, 'criteo1tb')
   _maybe_mkdir(criteo_dir)
   _maybe_mkdir(tmp_criteo_dir)
 
@@ -285,7 +285,7 @@ def download_criteo(data_dir,
 
   download_url = get_url_request.json().get('direct_link')
 
-  logging.info(f'Downloading ~342GB Criteo data .zip file:\n{download_url}')
+  logging.info(f'Downloading ~342GB Criteo 1TB data .zip file:\n{download_url}')
   download_request = requests.get(  # pylint: disable=missing-timeout
       download_url,
       headers={'User-Agent': user_agent},
@@ -297,7 +297,7 @@ def download_criteo(data_dir,
       f.write(chunk)
 
   unzip_cmd = None  # TODO
-  logging.info(f'Running Criteo unzip command:\n{unzip_cmd}')
+  logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
   p = subprocess.Popen(unzip_cmd, shell=True)
   p.communicate()
   _maybe_prompt_for_deletion(all_days_zip_filepath, interactive_deletion)
@@ -312,7 +312,7 @@ def download_criteo(data_dir,
       split_path = os.path.join(criteo_dir, f'day_{day}_')
       split_cmd = ('split -a 3 -d -l 1000000 --additional-suffix=.csv '
                    f'"{unzipped_path}" "{split_path}"')
-      logging.info(f'Running Criteo split command:\n{split_cmd}')
+      logging.info(f'Running Criteo 1TB split command:\n{split_cmd}')
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))
     for p in batch_processes:
       p.communicate()
@@ -613,12 +613,12 @@ def main(_):
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
 
-  if FLAGS.all or FLAGS.criteo:
-    logging.info('Downloading criteo...')
-    download_criteo(data_dir,
-                    tmp_dir,
-                    num_decompression_threads,
-                    FLAGS.interactive_deletion)
+  if FLAGS.all or FLAGS.criteo1tb:
+    logging.info('Downloading criteo1tb...')
+    download_criteo1tb(data_dir,
+                       tmp_dir,
+                       num_decompression_threads,
+                       FLAGS.interactive_deletion)
 
   if FLAGS.all or FLAGS.mnist:
     logging.info('Downloading MNIST...')
