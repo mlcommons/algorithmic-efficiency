@@ -13,6 +13,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from algorithmic_efficiency.profiler import PassThroughProfiler
+from algorithmic_efficiency.workloads import workloads
 import submission_runner
 
 FLAGS = flags.FLAGS
@@ -68,12 +69,12 @@ class BaselineTest(parameterized.TestCase):
                                submission_path,
                                tuning_search_space):
     FLAGS.framework = framework
-    workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload])
+    workload_metadata = copy.deepcopy(workloads.WORKLOADS[workload])
     workload_metadata['workload_path'] = os.path.join(
-        submission_runner.BASE_WORKLOADS_DIR,
+        workloads.BASE_WORKLOADS_DIR,
         workload_metadata['workload_path'] + '_' + framework,
         'workload.py')
-    workload_obj = submission_runner.import_workload(
+    workload_obj = workloads.import_workload(
         workload_path=workload_metadata['workload_path'],
         workload_class_name=workload_metadata['workload_class_name'],
         workload_init_kwargs={})

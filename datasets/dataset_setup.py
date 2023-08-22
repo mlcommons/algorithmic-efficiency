@@ -65,7 +65,19 @@ python3 datasets/dataset_setup.py \
 # pylint: disable=logging-format-interpolation
 # pylint: disable=consider-using-with
 
+# isort: off
+import tensorflow_datasets as tfds
+from torchvision.datasets import CIFAR10
+
+from algorithmic_efficiency.workloads.wmt import tokenizer
+from algorithmic_efficiency.workloads.wmt.input_pipeline import \
+    normalize_feature_names
+from datasets import librispeech_preprocess
+from datasets import librispeech_tokenizer
+
+import functools
 import os
+import resource
 import shutil
 import subprocess
 import tarfile
@@ -75,20 +87,17 @@ from absl import flags
 from absl import logging
 import re
 import requests
-import tensorflow_datasets as tfds
-from torchvision.datasets import CIFAR10
 import tqdm
 import urllib.parse
+
+import tensorflow as tf
 
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
 
-FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar'
-FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar'
-FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar'
-
-from datasets import librispeech_preprocess
-from datasets import librispeech_tokenizer
+FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar.xz'
+FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar.xz'
+FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar.xz'
 
 flags.DEFINE_boolean(
     'interactive_deletion',
@@ -128,11 +137,11 @@ flags.DEFINE_boolean('wmt',
 
 flags.DEFINE_string(
     'data_dir',
-    None,
+    '~/data',
     'The path to the folder where datasets should be downloaded.')
 flags.DEFINE_string(
     'temp_dir',
-    '/tmp',
+    '/tmp/mlcommons',
     'A local path to a folder where temp files can be downloaded.')
 flags.DEFINE_string(
     'imagenet_train_url',
@@ -158,6 +167,12 @@ flags.DEFINE_string(
     'Only necessary if you want this script to `wget` the FastMRI validation '
     'split. If not, you can supply the path to --data_dir in '
     'submission_runner.py.')
+flags.DEFINE_string(
+    'fastmri_knee_singlecoil_test_url',
+    None,
+    'Only necessary if you want this script to `wget` the FastMRI validation '
+    'split. If not, you can supply the path to --data_dir in '
+    'submission_runner.py.')
 
 flags.DEFINE_integer(
     'num_decompression_threads',
@@ -165,8 +180,10 @@ flags.DEFINE_integer(
     'The number of threads to use in parallel when decompressing.')
 
 flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
-flags.DEFINE_boolean('train_tokenizer', True, 'Train Librispeech tokenizer.')
+
 FLAGS = flags.FLAGS
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 def _maybe_mkdir(d):
@@ -189,9 +206,15 @@ def _maybe_prompt_for_deletion(paths, interactive_deletion):
     logging.info('Skipping deletion.')
 
 
-def _download_url(url, data_dir):
+def _download_url(url, data_dir, name=None):
+
   data_dir = os.path.expanduser(data_dir)
-  file_path = os.path.join(data_dir, url.split('/')[-1])
+  if not name:
+    file_path = os.path.join(data_dir, url.split('/')[-1])
+  else:
+    file_path = os.path.join(data_dir, name)
+  print(f"about to download to {file_path}")
+
   response = requests.get(url, stream=True, timeout=600)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
   total_size_in_mib = total_size_in_bytes / (2**20)
@@ -308,75 +331,102 @@ def download_cifar(data_dir, framework):
     raise ValueError('Invalid value for framework: {}'.format(framework))
 
 
+def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
+  """ the url filenames are sometimes couched within a urldefense+aws access id etc. string.
+    unfortunately querying the content disposition in requests fails (not provided)...
+    so fast search is done here within the url
+    """
+  failure = -1
+  start = url.find(start_str)
+  end = url.find(end_str)
+  if failure in (start, end):
+    raise ValueError(
+        f"Unable to locate filename wrapped in {start}--{end} in {url}")
+  end += len(end_str)  # make it inclusive
+  return url[start:end]
+
+
 def download_fastmri(data_dir,
                      fastmri_train_url,
                      fastmri_val_url,
                      fastmri_test_url):
 
   data_dir = os.path.join(data_dir, 'fastmri')
-
   # Download fastmri train dataset
+  knee_train_filename = extract_filename_from_url(fastmri_train_url)
   logging.info(
       'Downloading fastmri train dataset from {}'.format(fastmri_train_url))
-  _download_url(url=fastmri_train_url, data_dir=data_dir).download()
+  _download_url(
+      url=fastmri_train_url, data_dir=data_dir, name=knee_train_filename)
 
   # Download fastmri val dataset
+  knee_val_filename = extract_filename_from_url(fastmri_val_url)
   logging.info(
       'Downloading fastmri val dataset from {}'.format(fastmri_val_url))
-  _download_url(url=fastmri_val_url, data_dir=data_dir).download()
+  _download_url(url=fastmri_val_url, data_dir=data_dir, name=knee_val_filename)
 
   # Download fastmri test dataset
+  knee_test_filename = extract_filename_from_url(fastmri_test_url)
+
   logging.info(
       'Downloading fastmri test dataset from {}'.format(fastmri_test_url))
-  _download_url(url=fastmri_test_url, data_dir=data_dir).download()
+  _download_url(
+      url=fastmri_test_url, data_dir=data_dir, name=knee_test_filename)
+  return data_dir
 
 
 def extract(source, dest):
   if not os.path.exists(dest):
     os.path.makedirs(dest)
-
+  print(f"extracting {source} to {dest}")
   tar = tarfile.open(source)
+  print(f"opened tar")
+
   tar.extractall(dest)
   tar.close()
 
 
-def setup_fastmri(data_dir):
-  train_tar_file_path = os.path.join(data_dir, FASTMRI_TRAIN_TAR_FILENAME)
-  val_tar_file_path = os.path.join(data_dir, FASTMRI_VAL_TAR_FILENAME)
-  test_tar_file_path = os.path.join(data_dir, FASTMRI_TEST_TAR_FILENAME)
+def setup_fastmri(data_dir, src_data_dir):
+
+  train_tar_file_path = os.path.join(src_data_dir, FASTMRI_TRAIN_TAR_FILENAME)
+  val_tar_file_path = os.path.join(src_data_dir, FASTMRI_VAL_TAR_FILENAME)
+  test_tar_file_path = os.path.join(src_data_dir, FASTMRI_TEST_TAR_FILENAME)
 
   # Make train, val and test subdirectories
   fastmri_data_dir = os.path.join(data_dir, 'fastmri')
   train_data_dir = os.path.join(fastmri_data_dir, 'train')
-  os.makedirs(train_data_dir)
+  os.makedirs(train_data_dir, exist_ok=True)
   val_data_dir = os.path.join(fastmri_data_dir, 'val')
-  os.makedirsval_data_dir()
+  os.makedirs(val_data_dir, exist_ok=True)
   test_data_dir = os.path.join(fastmri_data_dir, 'test')
-  os.makedirs(test_data_dir)
+  os.makedirs(test_data_dir, exist_ok=True)
 
   # Unzip tar file into subdirectories
-  logging.info('Unzipping {} to {}'.format(train_tar_file_path,
-                                           fastmri_data_dir))
+  logging.info('Unzipping {} to {}'.format(train_tar_file_path, train_data_dir))
   extract(train_tar_file_path, train_data_dir)
-  logging.info('Unzipping {} to {}'.format(val_tar_file_path, fastmri_data_dir))
+  logging.info('Unzipping {} to {}'.format(val_tar_file_path, val_data_dir))
   extract(val_tar_file_path, val_data_dir)
-  logging.info('Unzipping {} to {}'.format(val_tar_file_path, fastmri_data_dir))
+  logging.info('Unzipping {} to {}'.format(test_tar_file_path, test_data_dir))
   extract(test_tar_file_path, test_data_dir)
-  logging.info('Set up imagenet dataset for jax framework complete')
+  logging.info('Set up fastMRI dataset complete')
+  print(f"extraction completed! ")
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
-  data_dir = os.path.join(data_dir, 'imagenet')
+  imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
+  imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
   # Download imagnet train dataset
-  logging.info(
-      'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
-  _download_url(url=imagenet_train_url, data_dir=data_dir).download()
+  if not os.path.exists(imagenet_train_filepath):
+    logging.info(
+        'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
+    _download_url(url=imagenet_train_url, data_dir=data_dir).download()
 
   # Download imagenet val dataset
-  logging.info('Donwloading imagenet validation dataset from {}'.format(
-      imagenet_val_url))
-  _download_url(url=imagenet_val_url, data_dir=data_dir).download()
+  if not os.path.exists(imagenet_val_filepath):
+    logging.info('Downloading imagenet validation dataset from {}'.format(
+        imagenet_val_url))
+    _download_url(url=imagenet_val_url, data_dir=data_dir).download()
 
   # Download imagenet test set
   download_imagenet_v2(data_dir)
@@ -399,15 +449,29 @@ def setup_imagenet_jax(data_dir):
 
   # Setup jax dataset dir
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
-  os.makedirs(imagenet_jax_data_dir)
+  manual_download_dir = os.path.join(imagenet_jax_data_dir,
+                                     'downloads',
+                                     'manual')
+  os.makedirs(manual_download_dir, exist_ok=True)
 
-  # Copy tar file into jax
-  logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                         imagenet_jax_data_dir))
-  shutil.copy(train_tar_file_path, imagenet_jax_data_dir)
-  logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                         imagenet_jax_data_dir))
-  shutil.copy(val_tar_file_path, imagenet_jax_data_dir)
+  # Copy tar file into jax/downloads/manual
+  logging.info('Checking if tar files already exists in jax/downloads/manual.')
+  if not os.path.exists(
+      os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(train_tar_file_path,
+                                           manual_download_dir))
+    shutil.move(train_tar_file_path, manual_download_dir)
+  if not os.path.exists(
+      os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
+    logging.info('Copying {} to {}'.format(val_tar_file_path,
+                                           manual_download_dir))
+    shutil.move(val_tar_file_path, manual_download_dir)
+  logging.info('Preparing imagenet data.')
+  resource.setrlimit(resource.RLIMIT_NOFILE,
+                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+  ds_builder = tfds.builder(
+      'imagenet2012:5.1.0', data_dir=os.path.join(imagenet_jax_data_dir))
+  ds_builder.download_and_prepare()
   logging.info('Set up imagenet dataset for jax framework complete')
 
 
@@ -424,10 +488,10 @@ def setup_imagenet_pytorch(data_dir):
   # Copy tar file into pytorch directory
   logging.info('Copying {} to {}'.format(train_tar_file_path,
                                          imagenet_pytorch_data_dir))
-  shutil.copy(train_tar_file_path, imagenet_pytorch_data_dir)
+  shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
   logging.info('Copying {} to {}'.format(val_tar_file_path,
                                          imagenet_pytorch_data_dir))
-  shutil.copy(val_tar_file_path, imagenet_pytorch_data_dir)
+  shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
 
   # Extract train data\
   logging.info('Extracting imagenet train data')
@@ -467,17 +531,26 @@ def download_imagenet_v2(data_dir):
       data_dir=data_dir).download_and_prepare()
 
 
-def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
+def download_librispeech(dataset_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'LibriSpeech')
+  tmp_librispeech_dir = os.path.join(dataset_dir, 'librispeech')
+  extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
+  final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
+
   _maybe_mkdir(tmp_librispeech_dir)
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
-      wget_cmd = f'wget http://www.openslr.org/resources/12/{split}-{version}.tar.gz -O - | tar xz'  # pylint: disable=line-too-long
-      subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
+      wget_cmd = (
+          f'wget --directory-prefix={tmp_librispeech_dir} '
+          f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
+      subprocess.Popen(wget_cmd, shell=True).communicate()
+      tar_path = os.path.join(tmp_librispeech_dir, f'{split}-{version}.tar.gz')
+      subprocess.Popen(
+          f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
+          shell=True).communicate()
 
   tars = [
       'raw-metadata.tar.gz',
@@ -486,19 +559,23 @@ def download_librispeech(dataset_dir, tmp_dir, train_tokenizer):
       'train-other-500.tar.gz',
   ]
   for tar_filename in tars:
-    wget_cmd = f'wget http://www.openslr.org/resources/12/{tar_filename} -O - | tar xz '  # pylint: disable=line-too-long
-    subprocess.Popen(wget_cmd, shell=True, cwd=tmp_dir).communicate()
+    wget_cmd = (f'wget --directory-prefix={tmp_librispeech_dir} '
+                f'http://www.openslr.org/resources/12/{tar_filename}')
+    subprocess.Popen(wget_cmd, shell=True).communicate()
+    tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
+    subprocess.Popen(
+        f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
+        shell=True).communicate()
 
-  if train_tokenizer:
-    tokenizer_vocab_path = librispeech_tokenizer.run(
-        train=True, data_dir=tmp_librispeech_dir)
+  tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
 
-    # Preprocess data.
-    librispeech_dir = os.path.join(dataset_dir, 'librispeech')
-    librispeech_preprocess.run(
-        input_dir=tmp_librispeech_dir,
-        output_dir=librispeech_dir,
-        tokenizer_vocab_path=tokenizer_vocab_path)
+  if not os.path.exists(tokenizer_vocab_path):
+    librispeech_tokenizer.run(train=True, data_dir=extracted_data_dir)
+
+  librispeech_preprocess.run(
+      input_dir=extracted_data_dir,
+      output_dir=final_data_dir,
+      tokenizer_vocab_path=tokenizer_vocab_path)
 
 
 def download_mnist(data_dir):
@@ -512,7 +589,18 @@ def download_ogbg(data_dir):
 def download_wmt(data_dir):
   """WMT14 and WMT17 de-en."""
   for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
-    tfds.builder(ds_name, data_dir=data_dir).download_and_prepare()
+    dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
+    dataset_builder.download_and_prepare()
+
+    if ds_name == 'wmt17_translate/de-en:1.0.0':
+      ds = dataset_builder.as_dataset(split='train', shuffle_files=False)
+      ds = ds.map(
+          functools.partial(normalize_feature_names, dataset_builder.info),
+          num_parallel_calls=tf.data.AUTOTUNE)
+      # Tokenize data.
+      vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
+      tokenizer.train_tokenizer(
+          ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
 
 
 def main(_):
@@ -539,21 +627,26 @@ def main(_):
     download_mnist(data_dir)
 
   if FLAGS.all or FLAGS.fastmri:
+    print(f"starting fastMRI download...\n")
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
     knee_singlecoil_val_url = FLAGS.fastmri_knee_singlecoil_val_url
     knee_singlecoil_test_url = FLAGS.fastmri_knee_singlecoil_test_url
-    if (knee_singlecoil_train_url is None or knee_singlecoil_val_url is None or
-        knee_singlecoil_val_url is None):
+    if None in (knee_singlecoil_train_url,
+                knee_singlecoil_val_url,
+                knee_singlecoil_test_url):
       raise ValueError(
-          'Must provide both --fastmri_knee_singlecoil_{train,val}_url to '
-          'download the FastMRI dataset. Sign up for the URLs at '
+          f'Must provide three --fastmri_knee_singlecoil_[train,val,test]_url to '
+          'download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
-    download_fastmri(data_dir,
-                     tmp_dir,
-                     knee_singlecoil_train_url,
-                     knee_singlecoil_val_url,
-                     knee_singlecoil_test_url)
+
+    updated_data_dir = download_fastmri(data_dir,
+                                        knee_singlecoil_train_url,
+                                        knee_singlecoil_val_url,
+                                        knee_singlecoil_test_url)
+
+    print(f"fastMRI download completed. Extracting...")
+    setup_fastmri(data_dir, updated_data_dir)
 
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
@@ -569,12 +662,13 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
-    setup_imagenet(data_dir, framework=FLAGS.framework)
+    imagenet_data_dir = os.path.join(data_dir, 'imagenet')
+    download_imagenet(imagenet_data_dir, imagenet_train_url, imagenet_val_url)
+    setup_imagenet(imagenet_data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
-    download_librispeech(data_dir, tmp_dir, train_tokenizer=True)
+    download_librispeech(data_dir, tmp_dir)
 
   if FLAGS.all or FLAGS.cifar:
     logging.info('Downloading CIFAR...')

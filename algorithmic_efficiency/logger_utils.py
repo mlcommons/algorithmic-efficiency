@@ -102,6 +102,24 @@ def write_json(name: str, log_dict: dict, indent: int = 2) -> None:
       f.write(json.dumps(log_dict, indent=indent))
 
 
+def write_to_csv(
+    metrics: dict,
+    csv_path: str,
+) -> None:
+  try:
+    with open(csv_path, 'r') as csv_file:
+      measurements = pd.read_csv(csv_file)
+      measurements = pd.concat([measurements, pd.DataFrame([metrics])])
+  except (pd.errors.EmptyDataError, FileNotFoundError) as e:
+    measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
+    if isinstance(e, pd.errors.EmptyDataError):
+      logging.info('Measurements file is empty. Create a new one, starting '
+                   'with metrics from this step.')
+  with open(csv_path, 'w') as csv_file:
+    measurements.to_csv(csv_file, index=False)
+  return
+
+
 def _get_utilization() -> dict:
   util_data = {}
 
@@ -265,12 +283,14 @@ class MetricLogger(object):
   """
 
   def __init__(self,
-               csv_path: str = '',
+               csv_path: str,
+               eval_csv_path: str,
                events_dir: Optional[str] = None,
                configs: Optional[flags.FLAGS] = None,
                hyperparameters: Optional[spec.Hyperparameters] = None) -> None:
     self._measurements = {}
     self._csv_path = csv_path
+    self._eval_csv_path = eval_csv_path
     self.use_wandb = configs.use_wandb
 
     if events_dir:
@@ -284,23 +304,15 @@ class MetricLogger(object):
   def append_scalar_metrics(self,
                             metrics: dict,
                             global_step: int,
-                            preemption_count: Optional[int] = None) -> None:
+                            preemption_count: Optional[int] = None,
+                            is_eval: bool = False) -> None:
     metrics['global_step'] = global_step
     if preemption_count is not None:
       metrics['preemption_count'] = preemption_count
 
-    try:
-      with open(self._csv_path, 'r') as csv_file:
-        measurements = pd.read_csv(csv_file)
-        measurements = pd.concat([measurements, pd.DataFrame([metrics])])
-    except (pd.errors.EmptyDataError, FileNotFoundError) as e:
-      measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
-      if isinstance(e, pd.errors.EmptyDataError):
-        logging.info('Measurements file is empty. Create a new one, starting '
-                     'with metrics from this step.')
-
-    with open(self._csv_path, 'w') as csv_file:
-      measurements.to_csv(csv_file, index=False)
+    write_to_csv(metrics, self._csv_path)
+    if is_eval:
+      write_to_csv(metrics, self._eval_csv_path)
 
     if self._tb_metric_writer:
       self._tb_metric_writer.write_scalars(
@@ -319,8 +331,10 @@ def set_up_loggers(train_dir: str,
                    configs: flags.FLAGS,
                    hyperparameters: spec.Hyperparameters) -> MetricLogger:
   csv_path = os.path.join(train_dir, 'measurements.csv')
+  eval_csv_path = os.path.join(train_dir, 'eval_measurements.csv')
   metrics_logger = MetricLogger(
       csv_path=csv_path,
+      eval_csv_path=eval_csv_path,
       events_dir=train_dir,
       configs=configs,
       hyperparameters=hyperparameters)

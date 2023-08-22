@@ -32,7 +32,10 @@ def pytorch_param_types(
       else:
         raise ValueError(f'Unrecognized layer norm parameter: {name}.')
     elif 'conv' in name:
-      param_types[name] = spec.ParameterType.CONV_WEIGHT
+      if 'bias' in name:
+        param_types[name] = spec.ParameterType.BIAS
+      else:
+        param_types[name] = spec.ParameterType.CONV_WEIGHT
     elif ('embedding' in name or 'embed' in name) and 'weight' in name:
       param_types[name] = spec.ParameterType.EMBEDDING
     elif 'attn' in name or 'attention' in name:
@@ -90,7 +93,10 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           raise ValueError(
               f'Unrecognized layer norm parameter: {parent_name}/{name}.')
       elif 'conv' in parent_name:
-        param_types[name] = spec.ParameterType.CONV_WEIGHT
+        if 'bias' in name:
+          param_types[name] = spec.ParameterType.BIAS
+        else:
+          param_types[name] = spec.ParameterType.CONV_WEIGHT
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
       # https://github.com/google/flax/blob/main/flax/linen/linear.py#L604.

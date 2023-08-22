@@ -11,12 +11,12 @@ python3 submission_runner.py \
     --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
     --experiment_dir=/home/znado/experiment_dir \
-    --experiment_name=baseline 
+    --experiment_name=baseline
 """
 
 import datetime
+import gc
 import importlib
-import inspect
 import json
 import os
 import struct
@@ -41,58 +41,20 @@ from algorithmic_efficiency.profiler import Profiler
 from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
+from algorithmic_efficiency.workloads import workloads
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
 # disable only for deepspeech if it works fine for other workloads.
-os.environ["XLA_FLAGS"] = "--xla_gpu_enable_triton_gemm=false"
+os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
-BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
 
 # Workload_path will be appended by '_pytorch' or '_jax' automatically.
-WORKLOADS = {
-    'cifar': {
-        'workload_path': 'cifar/cifar', 'workload_class_name': 'CifarWorkload'
-    },
-    'criteo1tb': {
-        'workload_path': 'criteo1tb/criteo1tb',
-        'workload_class_name': 'Criteo1TbDlrmSmallWorkload',
-    },
-    'criteo1tb_test': {
-        'workload_path': 'criteo1tb/criteo1tb',
-        'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
-    },
-    'fastmri': {
-        'workload_path': 'fastmri/fastmri',
-        'workload_class_name': 'FastMRIWorkload',
-    },
-    'imagenet_resnet': {
-        'workload_path': 'imagenet_resnet/imagenet',
-        'workload_class_name': 'ImagenetResNetWorkload',
-    },
-    'imagenet_vit': {
-        'workload_path': 'imagenet_vit/imagenet',
-        'workload_class_name': 'ImagenetVitWorkload',
-    },
-    'librispeech_conformer': {
-        'workload_path': 'librispeech_conformer/librispeech',
-        'workload_class_name': 'LibriSpeechConformerWorkload',
-    },
-    'librispeech_deepspeech': {
-        'workload_path': 'librispeech_deepspeech/librispeech',
-        'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
-    },
-    'mnist': {
-        'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
-    },
-    'ogbg': {
-        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
-    },
-    'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
-}
+WORKLOADS = workloads.WORKLOADS
 
 flags.DEFINE_string(
     'submission_path',
@@ -132,7 +94,7 @@ flags.DEFINE_enum(
     'other things if the Jax or Numpy RNG library is used for RNG.')
 flags.DEFINE_boolean(
     'torch_compile',
-    False,
+    True,
     'Whether to use `torch.compile` to JIT-compile PyTorch code. '
     'This will only take effect when `framework`==pytorch.')
 
@@ -193,58 +155,6 @@ else:
   get_time = _get_time
 
 
-def convert_filepath_to_module(path: str):
-  base, extension = os.path.splitext(path)
-
-  if extension != '.py':
-    raise ValueError(f'Path: {path} must be a python file (*.py)')
-
-  return base.replace('/', '.')
-
-
-def import_workload(workload_path: str,
-                    workload_class_name: str,
-                    return_class=False,
-                    workload_init_kwargs=None) -> spec.Workload:
-  """Import and add the workload to the registry.
-
-  This importlib loading is nice to have because it allows runners to avoid
-  installing the dependencies of all the supported frameworks. For example, if
-  a submitter only wants to write Jax code, the try/except below will catch
-  the import errors caused if they do not have the PyTorch dependencies
-  installed on their system.
-
-  Args:
-    workload_path: the path to the `workload.py` file to load.
-    workload_class_name: the name of the Workload class that implements the
-      `Workload` abstract class in `spec.py`.
-    return_class: if true, then the workload class is returned instead of the
-      instantiated object. Useful for testing when methods need to be overriden.
-    workload_init_kwargs: kwargs to pass to the workload constructor.
-  """
-
-  # Remove the trailing '.py' and convert the filepath to a Python module.
-  workload_path = convert_filepath_to_module(workload_path)
-
-  # Import the workload module.
-  workload_module = importlib.import_module(workload_path)
-  # Get everything defined in the workload module (including our class).
-  workload_module_members = inspect.getmembers(workload_module)
-  workload_class = None
-  for name, value in workload_module_members:
-    if name == workload_class_name:
-      workload_class = value
-      break
-  if workload_class is None:
-    raise ValueError(
-        f'Could not find member {workload_class_name} in {workload_path}. '
-        'Make sure the Workload class is spelled correctly and defined in '
-        'the top scope of the module.')
-  if return_class:
-    return workload_class
-  return workload_class(**workload_init_kwargs)
-
-
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
@@ -282,7 +192,29 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      model_params = torch.compile(model_params)
+      compile_error_workloads = ['ogbg']
+      eager_backend_workloads = [
+          'librispeech_conformer', 'librispeech_deepspeech'
+      ]
+      aot_eager_backend_workloads = ['criteo1tb']
+      if FLAGS.workload in compile_error_workloads:
+        logging.warning(
+            'These workloads cannot be fully compiled under current '
+            'PyTorch version. Proceeding without `torch.compile`.')
+      elif FLAGS.workload in eager_backend_workloads:
+        logging.warning(
+            'These workloads cannot be fully compiled under current '
+            'PyTorch version. Proceeding with `backend=eager`.')
+        model_params = torch.compile(model_params, backend='eager')
+      elif FLAGS.workload in aot_eager_backend_workloads:
+        logging.warning(
+            'These workloads cannot be fully compiled under current '
+            'PyTorch version. Proceeding with `backend=aot_eager`.')
+        model_params = torch.compile(model_params, backend='aot_eager')
+      else:
+        logging.info('Performing `torch.compile`.')
+        model_params = torch.compile(model_params)
+
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -409,8 +341,10 @@ def train_once(
           train_state['test_goal_reached'] = (
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
+
           # Save last eval time
           eval_end_time = get_time()
+          train_state['last_eval_time'] = eval_end_time
 
           # Accumulate eval time
           train_state[
@@ -438,7 +372,9 @@ def train_once(
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
                 global_step=global_step,
-                preemption_count=preemption_count)
+                preemption_count=preemption_count,
+                is_eval=True,
+            )
             if save_checkpoints:
               checkpoint_utils.save_checkpoint(
                   framework=FLAGS.framework,
@@ -453,10 +389,13 @@ def train_once(
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
 
-          if USE_PYTORCH_DDP:
+          if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+            # Clean up the GPU cache after evaluation.
+            gc.collect()
             torch.cuda.empty_cache()
-          logging_end_time = get_time()
+            logging.info('Released all unoccupied cached memory.')
 
+          logging_end_time = get_time()
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
 
@@ -468,7 +407,7 @@ def train_once(
             if torch.cuda.is_available():
               torch.cuda.empty_cache()
 
-        train_state['last_step_end_time'] = get_time()
+    train_state['last_step_end_time'] = get_time()
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
@@ -511,7 +450,7 @@ def score_submission_on_workload(workload: spec.Workload,
     imagenet_v2_data_dir = os.path.expanduser(imagenet_v2_data_dir)
 
   # Remove the trailing '.py' and convert the filepath to a Python module.
-  submission_module_path = convert_filepath_to_module(submission_path)
+  submission_module_path = workloads.convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
 
   init_optimizer_state = submission_module.init_optimizer_state
@@ -627,7 +566,7 @@ def main(_):
 
   # Prevent OOM on librispeech conformer.
   if FLAGS.workload == 'librispeech_conformer':
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.85"
+    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
@@ -638,7 +577,7 @@ def main(_):
   if FLAGS.librispeech_tokenizer_vocab_path:
     workload_init_kwargs['tokenizer_vocab_path'] = (
         FLAGS.librispeech_tokenizer_vocab_path)
-  workload = import_workload(
+  workload = workloads.import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       workload_init_kwargs=workload_init_kwargs)
