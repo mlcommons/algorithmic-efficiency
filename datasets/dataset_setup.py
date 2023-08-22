@@ -296,12 +296,28 @@ def download_criteo1tb(data_dir,
     for chunk in download_request.iter_content(chunk_size=1024):
       f.write(chunk)
 
-  unzip_cmd = None  # TODO
+  unzip_cmd = f'unzip {all_days_zip_filepath} -d {tmp_criteo_dir}'
   logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
   p = subprocess.Popen(unzip_cmd, shell=True)
   p.communicate()
   _maybe_prompt_for_deletion(all_days_zip_filepath, interactive_deletion)
-  # Split into files with 1M lines each: day_1.csv -> day_1_[0-40].csv.
+
+  # Unzip the individual days.
+  processes = []
+  gz_paths = []
+  for day in range(24):
+    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
+    gz_paths.append(input_path)
+    unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
+    unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} "{input_path}" > '
+                 f'"{unzipped_path}"')
+    logging.info(f'Running Criteo unzip command for day {day}:\n{unzip_cmd}')
+    processes.append(subprocess.Popen(unzip_cmd, shell=True))
+  for p in processes:
+    p.communicate()
+  _maybe_prompt_for_deletion(gz_paths, interactive_deletion)
+
+  # Split into files with 5M lines each: day_1.csv -> day_1_[0-39].csv.
   for batch in range(6):
     batch_processes = []
     unzipped_paths = []
@@ -310,7 +326,7 @@ def download_criteo1tb(data_dir,
       unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
       unzipped_paths.append(unzipped_path)
       split_path = os.path.join(criteo_dir, f'day_{day}_')
-      split_cmd = ('split -a 3 -d -l 1000000 --additional-suffix=.csv '
+      split_cmd = ('split -a 3 -d -l 5000000 --additional-suffix=.csv '
                    f'"{unzipped_path}" "{split_path}"')
       logging.info(f'Running Criteo 1TB split command:\n{split_cmd}')
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))
