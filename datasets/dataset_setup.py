@@ -213,7 +213,7 @@ def _download_url(url, data_dir, name=None):
     file_path = os.path.join(data_dir, url.split('/')[-1])
   else:
     file_path = os.path.join(data_dir, name)
-  print(f"about to download to {file_path}")
+  logging.info(f'About to download to {file_path}')
 
   response = requests.get(url, stream=True, timeout=600)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
@@ -257,22 +257,19 @@ def download_criteo(data_dir,
 
   # Forked from
   # https://github.com/iamleot/transferwee/blob/master/transferwee.py.
-  user_agent = (
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0')
+  user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) '
+                'Gecko/20100101 Firefox/102.0')
   criteo_wetransfer_url = (
-    'https://criteo.wetransfer.com/downloads/'
-    '4bbea9b4a54baddea549d71271a38e2c20230428071257/d4f0d2'
-  )
+      'https://criteo.wetransfer.com/downloads/'
+      '4bbea9b4a54baddea549d71271a38e2c20230428071257/d4f0d2')
   _, _, transfer_id, security_hash = urllib.parse.urlparse(
       criteo_wetransfer_url).path.split('/')
 
   session = requests.Session()
-  session.headers.update(
-      {
-          "User-Agent": user_agent,
-          "x-requested-with": "XMLHttpRequest",
-      }
-  )
+  session.headers.update({
+      'User-Agent': user_agent,
+      'x-requested-with': 'XMLHttpRequest',
+  })
   r = session.get('https://wetransfer.com/')
   m = re.search('name="csrf-token" content="([^"]+)"', r.text)
   if m:
@@ -286,19 +283,20 @@ def download_criteo(data_dir,
       })
   session.close()
 
-  download_url = get_url_request.json().get("direct_link")
+  download_url = get_url_request.json().get('direct_link')
 
   logging.info(f'Downloading ~342GB Criteo data .zip file:\n{download_url}')
-  download_request = requests.get(
-      download_url, headers={'User-Agent': user_agent}, stream=True)
+  download_request = requests.get(  # pylint: disable=missing-timeout
+      download_url,
+      headers={'User-Agent': user_agent},
+      stream=True)
 
-  all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all.zip')
+  all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all_days.zip')
   with open(all_days_zip_filepath, 'wb') as f:
     for chunk in download_request.iter_content(chunk_size=1024):
       f.write(chunk)
 
-  unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} '
-               f'"{all_days_zip_filepath}" > "{unzipped_path}"')
+  unzip_cmd = None  # TODO
   logging.info(f'Running Criteo unzip command:\n{unzip_cmd}')
   p = subprocess.Popen(unzip_cmd, shell=True)
   p.communicate()
@@ -332,16 +330,16 @@ def download_cifar(data_dir, framework):
 
 
 def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
-  """ the url filenames are sometimes couched within a urldefense+aws access id etc. string.
-    unfortunately querying the content disposition in requests fails (not provided)...
-    so fast search is done here within the url
-    """
+  """ The url filenames are sometimes couched within a urldefense+aws access id
+  etc. string. Unfortunately querying the content disposition in requests fails
+  (not provided)... so fast search is done here within the url.
+   """
   failure = -1
   start = url.find(start_str)
   end = url.find(end_str)
   if failure in (start, end):
     raise ValueError(
-        f"Unable to locate filename wrapped in {start}--{end} in {url}")
+        f'Unable to locate filename wrapped in {start}--{end} in {url}')
   end += len(end_str)  # make it inclusive
   return url[start:end]
 
@@ -378,9 +376,9 @@ def download_fastmri(data_dir,
 def extract(source, dest):
   if not os.path.exists(dest):
     os.path.makedirs(dest)
-  print(f"extracting {source} to {dest}")
+  logging.info(f'Extracting {source} to {dest}')
   tar = tarfile.open(source)
-  print(f"opened tar")
+  logging.info('Opened tar')
 
   tar.extractall(dest)
   tar.close()
@@ -409,7 +407,7 @@ def setup_fastmri(data_dir, src_data_dir):
   logging.info('Unzipping {} to {}'.format(test_tar_file_path, test_data_dir))
   extract(test_tar_file_path, test_data_dir)
   logging.info('Set up fastMRI dataset complete')
-  print(f"extraction completed! ")
+  logging.info('Extraction completed!')
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
@@ -627,7 +625,7 @@ def main(_):
     download_mnist(data_dir)
 
   if FLAGS.all or FLAGS.fastmri:
-    print(f"starting fastMRI download...\n")
+    logging.info('Starting fastMRI download...\n')
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
     knee_singlecoil_val_url = FLAGS.fastmri_knee_singlecoil_val_url
@@ -636,8 +634,8 @@ def main(_):
                 knee_singlecoil_val_url,
                 knee_singlecoil_test_url):
       raise ValueError(
-          f'Must provide three --fastmri_knee_singlecoil_[train,val,test]_url to '
-          'download the FastMRI dataset.\nSign up for the URLs at '
+          'Must provide three --fastmri_knee_singlecoil_[train,val,test]_url '
+          'to download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
 
     updated_data_dir = download_fastmri(data_dir,
@@ -645,7 +643,7 @@ def main(_):
                                         knee_singlecoil_val_url,
                                         knee_singlecoil_test_url)
 
-    print(f"fastMRI download completed. Extracting...")
+    logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir, updated_data_dir)
 
   if FLAGS.all or FLAGS.imagenet:
