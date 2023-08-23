@@ -1,7 +1,7 @@
 """Criteo1TB workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Iterator
 
 import jax
 import torch
@@ -81,7 +81,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.benchmark = False
     model = DlrmSmall(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
@@ -133,25 +133,27 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
     return logits_batch, None
 
-  def _build_input_queue(self,
-                         data_rng: jax.random.PRNGKey,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         num_batches: Optional[int] = None,
-                         repeat_final_dataset: bool = False):
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     not_train = split != 'train'
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
     if RANK == 0:
-      np_iter = super()._build_input_queue(data_rng,
-                                           split,
-                                           data_dir,
-                                           global_batch_size,
-                                           num_batches,
-                                           repeat_final_dataset)
+      np_iter = super()._build_input_queue(data_rng=data_rng,
+                                           split=split,
+                                           data_dir=data_dir,
+                                           global_batch_size=global_batch_size,
+                                           num_batches=num_batches,
+                                           repeat_final_dataset=repeat_final_dataset)
     weights = None
     while True:
       if RANK == 0:
