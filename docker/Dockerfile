@@ -14,6 +14,8 @@ RUN apt-get update
 RUN apt-get install -y curl tar
 RUN apt-get install -y git python3 pip wget ffmpeg
 RUN apt-get install libtcmalloc-minimal4
+RUN apt-get install unzip
+RUN apt-get install pigz
 RUN export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
 
 # Install GCP tools
