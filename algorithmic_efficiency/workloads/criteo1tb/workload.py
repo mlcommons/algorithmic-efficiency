@@ -3,8 +3,6 @@
 import math
 import os
 from typing import Dict, Iterator, Optional, Tuple
-import gc
-import torch.cuda
 from absl import flags
 import torch.distributed as dist
 

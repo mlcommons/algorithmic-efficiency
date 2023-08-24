@@ -67,11 +67,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         'per_example': per_example_losses,
     }
 
-  def _eval_metric(self, logits: spec.Tensor,
-                   targets: spec.Tensor) -> Dict[str, int]:
-    summed_loss = self.loss_fn(logits, targets)['summed']
-    return {'loss': summed_loss}
-
   def init_model_fn(
       self,
       rng: spec.RandomState,
@@ -222,7 +217,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       }
       yield batch
 
-  @torch.inference_mode()
   def _eval_batch(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
