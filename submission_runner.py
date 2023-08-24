@@ -389,15 +389,15 @@ def train_once(
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
 
+          logging_end_time = get_time()
+          train_state['accumulated_logging_time'] += (
+              logging_end_time - logging_start_time)
+
           if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
             # Clean up the GPU cache after evaluation.
             gc.collect()
             torch.cuda.empty_cache()
             logging.info('Released all unoccupied cached memory.')
-
-          logging_end_time = get_time()
-          train_state['accumulated_logging_time'] += (
-              logging_end_time - logging_start_time)
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')

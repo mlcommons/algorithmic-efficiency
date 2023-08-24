@@ -236,7 +236,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
     summed_loss = self.loss_fn(
-        label_batch=batch['targets'], logits_batch=logits,
+        label_batch=batch['targets'],
+        logits_batch=logits,
         mask_batch=weights)['summed']
     return summed_loss
 
