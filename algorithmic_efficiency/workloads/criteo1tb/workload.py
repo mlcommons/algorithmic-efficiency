@@ -3,8 +3,11 @@
 import math
 import os
 from typing import Dict, Iterator, Optional, Tuple
+
+import torch.cuda
 from absl import flags
 import torch.distributed as dist
+import gc
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
@@ -135,12 +138,10 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           repeat_final_dataset=True)
     loss = 0.0
     for _ in range(num_batches):
-      print(f"STEP {_}")
       eval_batch = next(self._eval_iters[split])
       loss += self._eval_batch(params, eval_batch)
     if USE_PYTORCH_DDP:
       dist.all_reduce(loss)
-      loss = loss.cpu()
     mean_loss = loss.item() / num_examples
     if FLAGS.framework == 'pytorch':
       # For PyTorch, the saved iterators cause OOM after evaluation.
@@ -148,5 +149,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
       # slows down the overall time to perform evaluation, this does not affect
       # the final score.
       del self._eval_iters
+      gc.collect()
+      torch.cuda.empty_cache()
       self._eval_iters = {}
     return {'loss': mean_loss}
