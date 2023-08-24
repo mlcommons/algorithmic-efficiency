@@ -1,3 +1,5 @@
+from itertools import zip_longest
+
 import jax
 import numpy as np
 import pytest
@@ -53,13 +55,21 @@ def test_param_shapes(workload):
       jax_workload.param_shapes.unfreeze())
   pytorch_param_shapes = jax.tree_util.tree_leaves(
       pytorch_workload.param_shapes)
-  assert len(jax_param_shapes) == len(pytorch_param_shapes)
+  if workload == 'criteo1tb':
+    # The PyTorch implementation divides the embedding matrix
+    # into 3 chunks.
+    assert len(jax_param_shapes) == len(pytorch_param_shapes) - 3
+  else:
+    assert len(jax_param_shapes) == len(pytorch_param_shapes)
   # Check if total number of params deduced from shapes match.
   num_jax_params = 0
   num_pytorch_params = 0
-  for jax_shape, pytorch_shape in zip(jax_param_shapes, pytorch_param_shapes):
-    num_jax_params += np.prod(jax_shape.shape_tuple)
-    num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
+  for jax_shape, pytorch_shape in zip_longest(jax_param_shapes,
+                                              pytorch_param_shapes):
+    if jax_shape is not None:
+      num_jax_params += np.prod(jax_shape.shape_tuple)
+    if pytorch_shape is not None:
+      num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
   assert num_jax_params == num_pytorch_params
 
 
