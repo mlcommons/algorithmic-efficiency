@@ -140,9 +140,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
       eval_batch = next(self._eval_iters[split])
       loss += self._eval_batch(params, eval_batch)
       del eval_batch
-      if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
-        gc.collect()
-        torch.cuda.empty_cache()
     if USE_PYTORCH_DDP:
       dist.all_reduce(loss)
     mean_loss = loss.item() / num_examples
