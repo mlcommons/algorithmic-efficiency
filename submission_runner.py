@@ -156,6 +156,15 @@ else:
   get_time = _get_time
 
 
+def _reset_cuda_mem():
+  if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+    torch._C._cuda_clearCublasWorkspaces()
+    torch._dynamo.reset()
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+
+
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
@@ -272,6 +281,7 @@ def train_once(
                                                  hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
+  _reset_cuda_mem()
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
 
@@ -326,14 +336,7 @@ def train_once(
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
-        if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
-          # Clean up the GPU cache before evaluation.
-          torch._C._cuda_clearCublasWorkspaces()
-          torch._dynamo.reset()
-          gc.collect()
-          torch.cuda.empty_cache()
-          torch.cuda.reset_peak_memory_stats()
-          logging.info('Released all unoccupied cached memory.')
+        _reset_cuda_mem()
 
         try:
           eval_start_time = get_time()
@@ -344,7 +347,7 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          # Check if targets reached
+          # Check if targets reached.
           train_state['validation_goal_reached'] = (
               workload.has_reached_validation_target(latest_eval_result) or
               train_state['validation_goal_reached'])
@@ -352,15 +355,15 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
 
-          # Save last eval time
+          # Save last eval time.
           eval_end_time = get_time()
           train_state['last_eval_time'] = eval_end_time
 
-          # Accumulate eval time
+          # Accumulate eval time.
           train_state[
               'accumulated_eval_time'] += eval_end_time - eval_start_time
 
-          # Add times to eval results for logging
+          # Add times to eval results for logging.
           latest_eval_result['score'] = (
               train_state['accumulated_submission_time'])
           latest_eval_result[
@@ -403,14 +406,7 @@ def train_once(
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
 
-          if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
-            # Clean up the GPU cache after evaluation.
-            torch._C._cuda_clearCublasWorkspaces()
-            torch._dynamo.reset()
-            gc.collect()
-            torch.cuda.empty_cache()
-            torch.cuda.reset_peak_memory_stats()
-            logging.info('Released all unoccupied cached memory.')
+          _reset_cuda_mem()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
