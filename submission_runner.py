@@ -29,6 +29,7 @@ from absl import logging
 import jax
 import tensorflow as tf
 import torch
+import torch._dynamo
 import torch.distributed as dist
 
 from algorithmic_efficiency import checkpoint_utils
@@ -331,6 +332,7 @@ def train_once(
           torch._dynamo.reset()
           gc.collect()
           torch.cuda.empty_cache()
+          torch.cuda.reset_peak_memory_stats()
           logging.info('Released all unoccupied cached memory.')
 
         try:
@@ -407,6 +409,7 @@ def train_once(
             torch._dynamo.reset()
             gc.collect()
             torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats()
             logging.info('Released all unoccupied cached memory.')
 
         except RuntimeError as e:
