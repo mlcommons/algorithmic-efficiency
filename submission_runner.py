@@ -328,6 +328,7 @@ def train_once(
         if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
           # Clean up the GPU cache before evaluation.
           torch._C._cuda_clearCublasWorkspaces()
+          torch._dynamo.reset()
           gc.collect()
           torch.cuda.empty_cache()
           logging.info('Released all unoccupied cached memory.')
@@ -403,6 +404,7 @@ def train_once(
           if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
             # Clean up the GPU cache after evaluation.
             torch._C._cuda_clearCublasWorkspaces()
+            torch._dynamo.reset()
             gc.collect()
             torch.cuda.empty_cache()
             logging.info('Released all unoccupied cached memory.')
