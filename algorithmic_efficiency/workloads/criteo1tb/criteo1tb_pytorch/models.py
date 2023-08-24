@@ -126,8 +126,10 @@ class DlrmSmall(nn.Module):
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
 
+    # Dot product interactions.
     concatenated_dense = self.dot_interact(
       dense_features=embedded_dense, sparse_features=embedded_sparse
     )
+
     logits = self.top_mlp(concatenated_dense)
     return logits

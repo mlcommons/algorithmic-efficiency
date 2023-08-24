@@ -21,9 +21,9 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
-  @property
-  def eval_batch_size(self) -> int:
-    return 262_144
+  # @property
+  # def eval_batch_size(self) -> int:
+  #   return 262_144
 
   def _per_example_sigmoid_binary_cross_entropy(
       self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
