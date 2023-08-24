@@ -63,13 +63,13 @@ class DlrmSmall(nn.Module):
     assert vocab_size % num_chucks == 0
     # self.embedding_table_chucks = []
     # scale = 1.0 / torch.sqrt(self.vocab_size)
-    self.embedding_table = nn.Parameter(torch.Tensor(self.vocab_size, self.embed_dim))
-    # for i in range(num_chucks):
-    #   chunk = nn.Parameter(torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
-    #   chunk.data.uniform_(0, 1)
-    #   chunk.data = scale * chunk.data
-    #   self.register_parameter(f"embedding_chunk_{i}", chunk)
-    #   self.embedding_table_chucks.append(chunk)
+    # self.embedding_table = nn.Parameter(torch.Tensor(self.vocab_size, self.embed_dim))
+    for i in range(num_chucks):
+      chunk = nn.Parameter(torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
+      chunk.data.uniform_(0, 1)
+      chunk.data = scale * chunk.data
+      self.register_parameter(f"embedding_chunk_{i}", chunk)
+      self.embedding_table_chucks.append(chunk)
 
     bottom_mlp_layers = []
     input_dim = self.num_dense_features
@@ -125,9 +125,9 @@ class DlrmSmall(nn.Module):
     # Sparse feature processing.
     sparse_features = sparse_features.to(dtype=torch.int32)
     idx_lookup = torch.reshape(sparse_features, [-1]) % self.vocab_size
-    # embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
-    # embedded_sparse = embedding_table[idx_lookup]
-    embedded_sparse = self.embedding_table[idx_lookup]
+    embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
+    embedded_sparse = embedding_table[idx_lookup]
+    # embedded_sparse = self.embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
 
