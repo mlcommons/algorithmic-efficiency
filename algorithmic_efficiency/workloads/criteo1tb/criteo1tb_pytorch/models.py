@@ -45,7 +45,7 @@ class DlrmSmall(nn.Module):
                embed_dim=128,
                dropout_rate=0.0):
     super().__init__()
-    self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
+    self.vocab_size = vocab_size
     self.num_dense_features = num_dense_features
     self.num_sparse_features = num_sparse_features
     self.mlp_bottom_dims = mlp_bottom_dims
