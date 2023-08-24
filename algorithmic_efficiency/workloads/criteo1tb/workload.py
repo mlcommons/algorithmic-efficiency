@@ -139,6 +139,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
       loss += self._eval_batch(params, eval_batch)
     if USE_PYTORCH_DDP:
       dist.all_reduce(loss)
+      loss = loss.cpu()
     mean_loss = loss.item() / num_examples
     if FLAGS.framework == 'pytorch':
       # For PyTorch, the saved iterators cause OOM after evaluation.
