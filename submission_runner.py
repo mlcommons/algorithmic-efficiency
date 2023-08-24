@@ -179,7 +179,7 @@ def train_once(
     log_dir: Optional[str] = None,
     save_checkpoints: Optional[bool] = True
 ) -> Tuple[spec.Timing, Dict[str, Any]]:
-  _reset_cuda_mem()
+  # _reset_cuda_mem()
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
