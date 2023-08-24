@@ -5,10 +5,6 @@ import math
 import torch
 from torch import nn
 
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-
-USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
-
 
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
@@ -63,7 +59,6 @@ class DlrmSmall(nn.Module):
     assert vocab_size % num_chucks == 0
     self.embedding_table_chucks = []
     scale = 1.0 / torch.sqrt(self.vocab_size)
-    # self.embedding_table = nn.Parameter(torch.Tensor(self.vocab_size, self.embed_dim))
     for i in range(num_chucks):
       chunk = nn.Parameter(torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
       chunk.data.uniform_(0, 1)
@@ -127,7 +122,6 @@ class DlrmSmall(nn.Module):
     idx_lookup = torch.reshape(sparse_features, [-1]) % self.vocab_size
     embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
     embedded_sparse = embedding_table[idx_lookup]
-    # embedded_sparse = self.embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
 
