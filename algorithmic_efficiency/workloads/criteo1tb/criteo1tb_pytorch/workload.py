@@ -3,7 +3,6 @@
 import contextlib
 from typing import Dict, Optional, Tuple, Iterator
 
-import jax
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP

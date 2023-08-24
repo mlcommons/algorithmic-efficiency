@@ -5,6 +5,10 @@ import math
 import torch
 from torch import nn
 
+from algorithmic_efficiency.pytorch_utils import pytorch_setup
+
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
+
 
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
@@ -120,9 +124,14 @@ class DlrmSmall(nn.Module):
     # Sparse feature processing.
     sparse_features = sparse_features.to(dtype=torch.int32)
     idx_lookup = torch.reshape(sparse_features, [-1]) % self.vocab_size
-    embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
-    embedded_sparse = embedding_table[idx_lookup]
-    del embedding_table
+    if not self.training:
+      # For inference, perform the embedding on CPU.
+      embedding_table = torch.cat([emb.cpu() for emb in self.embedding_table_chucks], dim=0)
+      embedded_sparse = embedding_table[idx_lookup.cpu()]
+      embedded_sparse = embedded_sparse.to(device=DEVICE)
+    else:
+      embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
+      embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
 

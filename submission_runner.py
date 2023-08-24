@@ -336,6 +336,7 @@ def train_once(
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
+        del batch
         _reset_cuda_mem()
 
         try:
