@@ -43,18 +43,17 @@ RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd algorithmic-efficiency \
         && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
-        && pip install -e '.[pytorch_cpu]' --index-url 'https://download.pytorch.org/whl/nightly/cpu'; \
+        && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd algorithmic-efficiency \
         && pip install -e '.[jax_cpu]' \
-        # && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
-        && pip install -e '.[pytorch_gpu]' --index-url 'https://download.pytorch.org/whl/nightly/cu118'; \
+        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd algorithmic-efficiency \
         && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
-        && pip install -e '.[pytorch_gpu]' --index-url 'https://download.pytorch.org/whl/nightly/cu118'; \
+        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     else \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
