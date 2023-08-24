@@ -52,9 +52,9 @@ class DlrmSmall(nn.Module):
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
 
-    # Ideally, we should use the pooled embedding implementation from `TorchRec`.
-    # However, in order to have identical implementation with that of Jax, we define a
-    # single embedding matrix.
+    # Ideally, we should use the pooled embedding implementation from
+    # `TorchRec`. However, in order to have identical implementation
+    # with that of Jax, we define a single embedding matrix.
     num_chucks = 4
     assert vocab_size % num_chucks == 0
     self.embedding_table_chucks = []
