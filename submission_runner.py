@@ -411,8 +411,7 @@ def train_once(
           if 'out of memory' in str(e):
             logging.warning('Error: GPU out of memory during eval during step '
                             f'{global_step}, error : {str(e)}.')
-            if torch.cuda.is_available():
-              torch.cuda.empty_cache()
+            _reset_cuda_mem()
 
     train_state['last_step_end_time'] = get_time()
 
