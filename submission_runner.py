@@ -159,7 +159,6 @@ else:
 def _reset_cuda_mem():
   if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
     torch._C._cuda_clearCublasWorkspaces()
-    torch._dynamo.reset()
     gc.collect()
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
@@ -181,6 +180,7 @@ def train_once(
     log_dir: Optional[str] = None,
     save_checkpoints: Optional[bool] = True
 ) -> Tuple[spec.Timing, Dict[str, Any]]:
+  _reset_cuda_mem()
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -281,7 +281,6 @@ def train_once(
                                                  hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
-  _reset_cuda_mem()
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
 
