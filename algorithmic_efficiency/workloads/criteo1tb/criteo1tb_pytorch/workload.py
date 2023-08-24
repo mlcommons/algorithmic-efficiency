@@ -81,7 +81,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
-    # torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.benchmark = False
     model = DlrmSmall(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
