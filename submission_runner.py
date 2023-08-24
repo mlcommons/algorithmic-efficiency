@@ -29,7 +29,6 @@ from absl import logging
 import jax
 import tensorflow as tf
 import torch
-import torch._dynamo
 import torch.distributed as dist
 
 from algorithmic_efficiency import checkpoint_utils

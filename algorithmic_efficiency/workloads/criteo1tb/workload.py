@@ -138,6 +138,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           repeat_final_dataset=True)
     loss = 0.0
     for _ in range(num_batches):
+      print(_)
       eval_batch = next(self._eval_iters[split])
       loss += self._eval_batch(params, eval_batch)
     if USE_PYTORCH_DDP:
