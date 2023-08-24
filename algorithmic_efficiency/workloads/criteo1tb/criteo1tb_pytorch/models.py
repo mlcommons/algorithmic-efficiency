@@ -124,14 +124,8 @@ class DlrmSmall(nn.Module):
     # Sparse feature processing.
     sparse_features = sparse_features.to(dtype=torch.int32)
     idx_lookup = torch.reshape(sparse_features, [-1]) % self.vocab_size
-    if not self.training:
-      # For inference, perform the embedding on CPU.
-      embedding_table = torch.cat([emb.cpu() for emb in self.embedding_table_chucks], dim=0)
-      embedded_sparse = embedding_table[idx_lookup.cpu()]
-      embedded_sparse = embedded_sparse.to(device=DEVICE)
-    else:
-      embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
-      embedded_sparse = embedding_table[idx_lookup]
+    embedding_table = torch.cat(self.embedding_table_chucks, dim=0)
+    embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
 
