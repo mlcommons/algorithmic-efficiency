@@ -61,7 +61,7 @@ class DlrmSmall(nn.Module):
     # single embedding matrix.
     num_chucks = 4
     assert vocab_size % num_chucks == 0
-    # self.embedding_table_chucks = []
+    self.embedding_table_chucks = []
     scale = 1.0 / torch.sqrt(self.vocab_size)
     # self.embedding_table = nn.Parameter(torch.Tensor(self.vocab_size, self.embed_dim))
     for i in range(num_chucks):
