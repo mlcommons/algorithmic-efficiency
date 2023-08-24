@@ -327,6 +327,7 @@ def train_once(
       with profiler.profile('Evaluation'):
         if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
           # Clean up the GPU cache before evaluation.
+          torch._C._cuda_clearCublasWorkspaces()
           gc.collect()
           torch.cuda.empty_cache()
           logging.info('Released all unoccupied cached memory.')
@@ -401,6 +402,7 @@ def train_once(
 
           if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
             # Clean up the GPU cache after evaluation.
+            torch._C._cuda_clearCublasWorkspaces()
             gc.collect()
             torch.cuda.empty_cache()
             logging.info('Released all unoccupied cached memory.')

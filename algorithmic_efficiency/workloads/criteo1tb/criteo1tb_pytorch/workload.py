@@ -222,6 +222,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       }
       yield batch
 
+  @torch.inference_mode()
   def _eval_batch(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
