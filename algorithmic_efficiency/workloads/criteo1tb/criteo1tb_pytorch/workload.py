@@ -1,7 +1,7 @@
 """Criteo1TB workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Optional, Tuple, Iterator
+from typing import Dict, Iterator, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -142,12 +142,13 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
     if RANK == 0:
-      np_iter = super()._build_input_queue(data_rng=data_rng,
-                                           split=split,
-                                           data_dir=data_dir,
-                                           global_batch_size=global_batch_size,
-                                           num_batches=num_batches,
-                                           repeat_final_dataset=repeat_final_dataset)
+      np_iter = super()._build_input_queue(
+          data_rng=data_rng,
+          split=split,
+          data_dir=data_dir,
+          global_batch_size=global_batch_size,
+          num_batches=num_batches,
+          repeat_final_dataset=repeat_final_dataset)
     weights = None
     while True:
       if RANK == 0:
@@ -230,8 +231,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
     summed_loss = self.loss_fn(
-        label_batch=batch['targets'],
-        logits_batch=logits,
+        label_batch=batch['targets'], logits_batch=logits,
         mask_batch=weights)['summed']
     return summed_loss
 

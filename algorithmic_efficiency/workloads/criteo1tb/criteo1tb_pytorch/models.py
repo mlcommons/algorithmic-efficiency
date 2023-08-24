@@ -8,20 +8,20 @@ from torch import nn
 
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
+
   def __init__(self, num_sparse_features):
     super().__init__()
-    self.triu_indices = torch.triu_indices(
-      num_sparse_features + 1, num_sparse_features + 1
-    )
+    self.triu_indices = torch.triu_indices(num_sparse_features + 1,
+                                           num_sparse_features + 1)
 
   def forward(self, dense_features, sparse_features):
-    combined_values = torch.cat(
-      (dense_features.unsqueeze(1), sparse_features), dim=1
-    )
-    interactions = torch.bmm(
-      combined_values, torch.transpose(combined_values, 1, 2)
-    )
-    interactions_flat = interactions[:, self.triu_indices[0], self.triu_indices[1]]
+    combined_values = torch.cat((dense_features.unsqueeze(1), sparse_features),
+                                dim=1)
+    interactions = torch.bmm(combined_values,
+                             torch.transpose(combined_values, 1, 2))
+    interactions_flat = interactions[:,
+                                     self.triu_indices[0],
+                                     self.triu_indices[1]]
     return torch.cat((dense_features, interactions_flat), dim=1)
 
 
@@ -60,7 +60,8 @@ class DlrmSmall(nn.Module):
     self.embedding_table_chucks = []
     scale = 1.0 / torch.sqrt(self.vocab_size)
     for i in range(num_chucks):
-      chunk = nn.Parameter(torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
+      chunk = nn.Parameter(
+          torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
       chunk.data.uniform_(0, 1)
       chunk.data = scale * chunk.data
       self.register_parameter(f"embedding_chunk_{i}", chunk)
@@ -81,11 +82,9 @@ class DlrmSmall(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-    self.dot_interact = DotInteract(
-      num_sparse_features=num_sparse_features,
-    )
+    self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
 
-    input_dims = 506   # TODO: Write down the formula here instead of the constant.
+    input_dims = 506  # TODO: Write down the formula here instead of the constant.
     top_mlp_layers = []
     num_layers_top = len(self.mlp_top_dims)
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
@@ -127,8 +126,7 @@ class DlrmSmall(nn.Module):
 
     # Dot product interactions.
     concatenated_dense = self.dot_interact(
-      dense_features=embedded_dense, sparse_features=embedded_sparse
-    )
+        dense_features=embedded_dense, sparse_features=embedded_sparse)
 
     # Final MLP.
     logits = self.top_mlp(concatenated_dense)
