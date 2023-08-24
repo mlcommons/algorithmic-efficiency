@@ -319,6 +319,12 @@ def train_once(
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
+        if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+          # Clean up the GPU cache before evaluation.
+          gc.collect()
+          torch.cuda.empty_cache()
+          logging.info('Released all unoccupied cached memory.')
+
         try:
           eval_start_time = get_time()
           latest_eval_result = workload.eval_model(global_eval_batch_size,
