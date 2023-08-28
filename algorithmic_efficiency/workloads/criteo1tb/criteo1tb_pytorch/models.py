@@ -64,7 +64,7 @@ class DlrmSmall(nn.Module):
           torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
       chunk.data.uniform_(0, 1)
       chunk.data = scale * chunk.data
-      self.register_parameter(f"embedding_chunk_{i}", chunk)
+      self.register_parameter(f'embedding_chunk_{i}', chunk)
       self.embedding_table_chucks.append(chunk)
 
     bottom_mlp_layers = []
