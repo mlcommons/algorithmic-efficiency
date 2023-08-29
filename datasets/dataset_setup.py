@@ -24,8 +24,8 @@ due to write speed issues (--data_dir can include the GCS bucket though).
 Note that some of the disk usage number below may be underestimates if the temp
 and final data dir locations are on the same drive.
 
-Criteo download size: ~350GB
-Criteo final disk size: ~1TB
+Criteo 1TB download size: ~350GB
+Criteo 1TB final disk size: ~1TB
 FastMRI download size:
 FastMRI final disk size:
 LibriSpeech download size:
@@ -85,8 +85,10 @@ import tarfile
 from absl import app
 from absl import flags
 from absl import logging
+import re
 import requests
 import tqdm
+import urllib.parse
 
 import tensorflow as tf
 
@@ -108,9 +110,9 @@ flags.DEFINE_boolean(
     'Whether or not to download all datasets. If false, can download some '
     'combination of datasets by setting the individual dataset flags below.')
 
-flags.DEFINE_boolean('criteo',
+flags.DEFINE_boolean('criteo1tb',
                      False,
-                     'If --all=false, whether or not to download Criteo.')
+                     'If --all=false, whether or not to download Criteo 1TB.')
 flags.DEFINE_boolean('cifar',
                      False,
                      'If --all=false, whether or not to download CIFAR-10.')
@@ -211,7 +213,7 @@ def _download_url(url, data_dir, name=None):
     file_path = os.path.join(data_dir, url.split('/')[-1])
   else:
     file_path = os.path.join(data_dir, name)
-  print(f"about to download to {file_path}")
+  logging.info(f'About to download to {file_path}')
 
   response = requests.get(url, stream=True, timeout=600)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
@@ -244,34 +246,78 @@ def _download_url(url, data_dir, name=None):
              url=url, n=progress_bar.n, size=progress_bar.total))
 
 
-def download_criteo(data_dir,
-                    tmp_dir,
-                    num_decompression_threads,
-                    interactive_deletion):
-  criteo_dir = os.path.join(data_dir, 'criteo')
-  tmp_criteo_dir = os.path.join(tmp_dir, 'criteo')
+def download_criteo1tb(data_dir,
+                       tmp_dir,
+                       num_decompression_threads,
+                       interactive_deletion):
+  criteo_dir = os.path.join(data_dir, 'criteo1tb')
+  tmp_criteo_dir = os.path.join(tmp_dir, 'criteo1tb')
   _maybe_mkdir(criteo_dir)
   _maybe_mkdir(tmp_criteo_dir)
+
+  # Forked from
+  # https://github.com/iamleot/transferwee/blob/master/transferwee.py.
+  user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) '
+                'Gecko/20100101 Firefox/102.0')
+  criteo_wetransfer_url = (
+      'https://criteo.wetransfer.com/downloads/'
+      '4bbea9b4a54baddea549d71271a38e2c20230428071257/d4f0d2')
+  _, _, transfer_id, security_hash = urllib.parse.urlparse(
+      criteo_wetransfer_url).path.split('/')
+
+  session = requests.Session()
+  session.headers.update({
+      'User-Agent': user_agent,
+      'x-requested-with': 'XMLHttpRequest',
+  })
+  r = session.get('https://wetransfer.com/')
+  m = re.search('name="csrf-token" content="([^"]+)"', r.text)
+  if m:
+    session.headers.update({'x-csrf-token': m.group(1)})
+
+  get_url_request = session.post(
+      f'https://wetransfer.com/api/v4/transfers/{transfer_id}/download',
+      json={
+          'intent': 'entire_transfer',
+          'security_hash': security_hash,
+      })
+  session.close()
+
+  download_url = get_url_request.json().get('direct_link')
+
+  logging.info(f'Downloading ~342GB Criteo 1TB data .zip file:\n{download_url}')
+  download_request = requests.get(  # pylint: disable=missing-timeout
+      download_url,
+      headers={'User-Agent': user_agent},
+      stream=True)
+
+  all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all_days.zip')
+  with open(all_days_zip_filepath, 'wb') as f:
+    for chunk in download_request.iter_content(chunk_size=1024):
+      f.write(chunk)
+
+  unzip_cmd = f'unzip {all_days_zip_filepath} -d {tmp_criteo_dir}'
+  logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
+  p = subprocess.Popen(unzip_cmd, shell=True)
+  p.communicate()
+  _maybe_prompt_for_deletion(all_days_zip_filepath, interactive_deletion)
+
+  # Unzip the individual days.
   processes = []
   gz_paths = []
-  # Download and unzip.
   for day in range(24):
-    logging.info(f'Downloading Criteo day {day}...')
-    wget_cmd = (
-        f'wget --no-clobber --directory-prefix="{tmp_criteo_dir}" '
-        f'https://sacriteopcail01.z16.web.core.windows.net/day_{day}.gz')
     input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
     gz_paths.append(input_path)
     unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
     unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} "{input_path}" > '
                  f'"{unzipped_path}"')
-    command_str = f'{wget_cmd} && {unzip_cmd}'
-    logging.info(f'Running Criteo download command:\n{command_str}')
-    processes.append(subprocess.Popen(command_str, shell=True))
+    logging.info(f'Running Criteo unzip command for day {day}:\n{unzip_cmd}')
+    processes.append(subprocess.Popen(unzip_cmd, shell=True))
   for p in processes:
     p.communicate()
   _maybe_prompt_for_deletion(gz_paths, interactive_deletion)
-  # Split into files with 1M lines each: day_1.csv -> day_1_[0-40].csv.
+
+  # Split into files with 5M lines each: day_1.csv -> day_1_[0-39].csv.
   for batch in range(6):
     batch_processes = []
     unzipped_paths = []
@@ -280,9 +326,9 @@ def download_criteo(data_dir,
       unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
       unzipped_paths.append(unzipped_path)
       split_path = os.path.join(criteo_dir, f'day_{day}_')
-      split_cmd = ('split -a 3 -d -l 1000000 --additional-suffix=.csv '
+      split_cmd = ('split -a 3 -d -l 5000000 --additional-suffix=.csv '
                    f'"{unzipped_path}" "{split_path}"')
-      logging.info(f'Running Criteo split command:\n{split_cmd}')
+      logging.info(f'Running Criteo 1TB split command:\n{split_cmd}')
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))
     for p in batch_processes:
       p.communicate()
@@ -300,16 +346,16 @@ def download_cifar(data_dir, framework):
 
 
 def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
-  """ the url filenames are sometimes couched within a urldefense+aws access id etc. string.
-    unfortunately querying the content disposition in requests fails (not provided)...
-    so fast search is done here within the url
-    """
+  """ The url filenames are sometimes couched within a urldefense+aws access id
+  etc. string. Unfortunately querying the content disposition in requests fails
+  (not provided)... so fast search is done here within the url.
+   """
   failure = -1
   start = url.find(start_str)
   end = url.find(end_str)
   if failure in (start, end):
     raise ValueError(
-        f"Unable to locate filename wrapped in {start}--{end} in {url}")
+        f'Unable to locate filename wrapped in {start}--{end} in {url}')
   end += len(end_str)  # make it inclusive
   return url[start:end]
 
@@ -346,9 +392,9 @@ def download_fastmri(data_dir,
 def extract(source, dest):
   if not os.path.exists(dest):
     os.path.makedirs(dest)
-  print(f"extracting {source} to {dest}")
+  logging.info(f'Extracting {source} to {dest}')
   tar = tarfile.open(source)
-  print(f"opened tar")
+  logging.info('Opened tar')
 
   tar.extractall(dest)
   tar.close()
@@ -377,7 +423,7 @@ def setup_fastmri(data_dir, src_data_dir):
   logging.info('Unzipping {} to {}'.format(test_tar_file_path, test_data_dir))
   extract(test_tar_file_path, test_data_dir)
   logging.info('Set up fastMRI dataset complete')
-  print(f"extraction completed! ")
+  logging.info('Extraction completed!')
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
@@ -583,19 +629,19 @@ def main(_):
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
 
-  if FLAGS.all or FLAGS.criteo:
-    logging.info('Downloading criteo...')
-    download_criteo(data_dir,
-                    tmp_dir,
-                    num_decompression_threads,
-                    FLAGS.interactive_deletion)
+  if FLAGS.all or FLAGS.criteo1tb:
+    logging.info('Downloading criteo1tb...')
+    download_criteo1tb(data_dir,
+                       tmp_dir,
+                       num_decompression_threads,
+                       FLAGS.interactive_deletion)
 
   if FLAGS.all or FLAGS.mnist:
     logging.info('Downloading MNIST...')
     download_mnist(data_dir)
 
   if FLAGS.all or FLAGS.fastmri:
-    print(f"starting fastMRI download...\n")
+    logging.info('Starting fastMRI download...\n')
     logging.info('Downloading FastMRI...')
     knee_singlecoil_train_url = FLAGS.fastmri_knee_singlecoil_train_url
     knee_singlecoil_val_url = FLAGS.fastmri_knee_singlecoil_val_url
@@ -604,8 +650,8 @@ def main(_):
                 knee_singlecoil_val_url,
                 knee_singlecoil_test_url):
       raise ValueError(
-          f'Must provide three --fastmri_knee_singlecoil_[train,val,test]_url to '
-          'download the FastMRI dataset.\nSign up for the URLs at '
+          'Must provide three --fastmri_knee_singlecoil_[train,val,test]_url '
+          'to download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
 
     updated_data_dir = download_fastmri(data_dir,
@@ -613,7 +659,7 @@ def main(_):
                                         knee_singlecoil_val_url,
                                         knee_singlecoil_test_url)
 
-    print(f"fastMRI download completed. Extracting...")
+    logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir, updated_data_dir)
 
   if FLAGS.all or FLAGS.imagenet:

@@ -62,6 +62,9 @@ def test_param_shapes(workload):
     # less for the encoder-decoder attention layer -> 5 weight matrices less.
     # We have 6 encoder/decoder layers, hence 30 weight matrices less in total.
     assert len(jax_param_shapes) == len(pytorch_param_shapes) + 30
+  elif workload == 'criteo1tb':
+    # The PyTorch implementation divides the embedding matrix into 3 chunks.
+    assert len(jax_param_shapes) == len(pytorch_param_shapes) - 3
   else:
     assert len(jax_param_shapes) == len(pytorch_param_shapes)
   # Check if total number of params deduced from shapes match.
@@ -69,7 +72,8 @@ def test_param_shapes(workload):
   num_pytorch_params = 0
   for jax_shape, pytorch_shape in zip_longest(jax_param_shapes,
                                               pytorch_param_shapes):
-    num_jax_params += np.prod(jax_shape.shape_tuple)
+    if jax_shape is not None:
+      num_jax_params += np.prod(jax_shape.shape_tuple)
     if pytorch_shape is not None:
       num_pytorch_params += np.prod(pytorch_shape.shape_tuple)
   assert num_jax_params == num_pytorch_params

@@ -142,6 +142,11 @@ def test_param_types(workload_name):
   jax_param_types_dict = count_param_types(jax_param_types)
   pytorch_param_types_dict = count_param_types(pytorch_param_types)
 
+  # PyTorch splits embedding matrix into 3 chunks.
+  if workload_name == 'criteo1tb':
+    pytorch_param_types_dict[spec.ParameterType.WEIGHT] -= 4
+    pytorch_param_types_dict[spec.ParameterType.EMBEDDING] = 1
+
   # Jax fuses LSTM cells together, whereas PyTorch exposes all the weight
   # parameters, and there are two per cell, for each of the forward and backward
   # directional LSTMs, and there are 6 layers of LSTM in librispeech_deepspeech,

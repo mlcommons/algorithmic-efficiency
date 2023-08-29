@@ -155,6 +155,14 @@ else:
   get_time = _get_time
 
 
+def _reset_cuda_mem():
+  if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+    torch._C._cuda_clearCublasWorkspaces()
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+
+
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
@@ -192,11 +200,11 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['ogbg']
+      compile_error_workloads = ['ogbg', 'criteo1tb']
       eager_backend_workloads = [
           'librispeech_conformer', 'librispeech_deepspeech'
       ]
-      aot_eager_backend_workloads = ['criteo1tb']
+      aot_eager_backend_workloads = []
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
@@ -325,6 +333,9 @@ def train_once(
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
+        del batch
+        _reset_cuda_mem()
+
         try:
           eval_start_time = get_time()
           latest_eval_result = workload.eval_model(global_eval_batch_size,
@@ -334,7 +345,7 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          # Check if targets reached
+          # Check if targets reached.
           train_state['validation_goal_reached'] = (
               workload.has_reached_validation_target(latest_eval_result) or
               train_state['validation_goal_reached'])
@@ -342,15 +353,15 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
 
-          # Save last eval time
+          # Save last eval time.
           eval_end_time = get_time()
           train_state['last_eval_time'] = eval_end_time
 
-          # Accumulate eval time
+          # Accumulate eval time.
           train_state[
               'accumulated_eval_time'] += eval_end_time - eval_start_time
 
-          # Add times to eval results for logging
+          # Add times to eval results for logging.
           latest_eval_result['score'] = (
               train_state['accumulated_submission_time'])
           latest_eval_result[
@@ -389,23 +400,18 @@ def train_once(
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
 
-          if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
-            # Clean up the GPU cache after evaluation.
-            gc.collect()
-            torch.cuda.empty_cache()
-            logging.info('Released all unoccupied cached memory.')
-
           logging_end_time = get_time()
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
+
+          _reset_cuda_mem()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
             logging.warning('Error: GPU out of memory during eval during step '
                             f'{global_step}, error : {str(e)}.')
-            if torch.cuda.is_available():
-              torch.cuda.empty_cache()
+            _reset_cuda_mem()
 
     train_state['last_step_end_time'] = get_time()
 

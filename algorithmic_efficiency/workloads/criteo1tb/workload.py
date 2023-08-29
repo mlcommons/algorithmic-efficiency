@@ -18,7 +18,7 @@ USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
 
-  vocab_size: int = 32 * 128 * 1024  # 4_194_304
+  vocab_size: int = 32 * 128 * 1024  # 4_194_304.
   num_dense_features: int = 13
   mlp_bottom_dims: Tuple[int, int] = (512, 256, 128)
   mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
@@ -128,11 +128,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
-          rng,
-          split,
-          data_dir,
-          global_batch_size,
-          num_batches,
+          data_rng=rng,
+          split=split,
+          data_dir=data_dir,
+          global_batch_size=global_batch_size,
+          num_batches=num_batches,
           repeat_final_dataset=True)
     loss = 0.0
     for _ in range(num_batches):
@@ -141,11 +141,4 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     if USE_PYTORCH_DDP:
       dist.all_reduce(loss)
     mean_loss = loss.item() / num_examples
-    if FLAGS.framework == 'pytorch':
-      # For PyTorch, the saved iterators cause OOM after evaluation.
-      # Hence, we create new iterators for each evaluation step. While this
-      # slows down the overall time to perform evaluation, this does not affect
-      # the final score.
-      del self._eval_iters
-      self._eval_iters = {}
     return {'loss': mean_loss}
