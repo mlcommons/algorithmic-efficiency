@@ -10,36 +10,31 @@ from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
 
 
-def make_causal_mask(x: Tensor,
-                     device: str = 'cuda:0',
-                     dtype: torch.dtype = torch.float32) -> Tensor:
+def make_causal_mask(x: Tensor, device: str = 'cuda:0') -> Tensor:
   """Make a causal mask for self-attention.
 
   Args:
     x: input array of shape `[batch..., len]`
     device: device to store the idxs
-    dtype: mask return dtype
 
   Returns:
     A `[batch..., len, len]` shaped causal attention mask.
   """
   idxs = torch.broadcast_to(
       torch.arange(x.shape[-1], dtype=torch.int32, device=device), x.shape)
-  return torch.greater_equal(idxs.unsqueeze(-1),
-                             idxs.unsqueeze(-2)).to(dtype=dtype)
+  return torch.greater_equal(idxs.unsqueeze(-1), idxs.unsqueeze(-2))
 
 
 def make_src_mask(src, inputs_segmentation, nhead):
   """Utility for creating src mask and adjust it for PyTorch Transformer API."""
-  src_mask = torch.mul((src > 0).unsqueeze(-1),
-                       (src > 0).unsqueeze(-2)).to(dtype=torch.float32)
+  src_mask = torch.mul((src > 0).unsqueeze(-1), (src > 0).unsqueeze(-2))
   # Add segmentation block-diagonal attention mask if using segmented data.
   if inputs_segmentation is not None:
     src_mask = torch.logical_and(
         src_mask,
         torch.eq(
             inputs_segmentation.unsqueeze(-1),
-            inputs_segmentation.unsqueeze(-2)).to(dtype=torch.float32))
+            inputs_segmentation.unsqueeze(-2)))
   # Flip values and ensure numerical stability.
   src_mask = torch.repeat_interleave(
       torch.logical_not(src_mask), repeats=nhead, dim=0)
@@ -58,27 +53,25 @@ def make_tgt_and_memory_mask(tgt,
   Transformer API."""
   if not decode:
     tgt_mask = torch.logical_and(
-        torch.mul((tgt > 0).unsqueeze(-1),
-                  (tgt > 0).unsqueeze(-2)).to(dtype=torch.float32),
+        torch.mul((tgt > 0).unsqueeze(-1), (tgt > 0).unsqueeze(-2)),
         make_causal_mask(tgt, device=tgt.device))
-    memory_mask = torch.mul((tgt > 0).unsqueeze(-1),
-                            (src > 0).unsqueeze(-2)).to(dtype=torch.float32)
+    memory_mask = torch.mul((tgt > 0).unsqueeze(-1), (src > 0).unsqueeze(-2))
   else:
     tgt_mask = None
     memory_mask = torch.mul((torch.ones_like(tgt) > 0).unsqueeze(-1),
-                            (src > 0).unsqueeze(-2)).to(dtype=torch.float32)
+                            (src > 0).unsqueeze(-2))
   # Add segmentation block-diagonal attention masks if using segmented data.
   if inputs_segmentation is not None:
     tgt_mask = torch.logical_and(
         tgt_mask,
         torch.eq(
             targets_segmentation.unsqueeze(-1),
-            targets_segmentation.unsqueeze(-2)).to(dtype=torch.float32))
+            targets_segmentation.unsqueeze(-2)))
     memory_mask = torch.logical_and(
         memory_mask,
         torch.eq(
             targets_segmentation.unsqueeze(-1),
-            inputs_segmentation.unsqueeze(-2)).to(dtype=torch.float32))
+            inputs_segmentation.unsqueeze(-2)))
   # Flip values and ensure numerical stability.
   memory_mask = torch.repeat_interleave(
       torch.logical_not(memory_mask), repeats=nhead, dim=0)
