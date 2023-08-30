@@ -1,28 +1,114 @@
 # Dataset Setup
-Use `dataset_setup.py` to download datasets, for example:
+TL;DR: 
+Use `dataset_setup.py` to download datasets.
+Usage:
 ```
 python3 datasets/dataset_setup.py \
   --data_dir=~/data \
+  --<dataset_name>
+  --<optional_fags>
+```
+The complete benchmark uses 6 datasets:
+- OGBG
+- WMT
+- FastMRI
+- Imagenet 
+- Criteo 1TB
+- Librispeech
+
+
+
+Some dataset setups will require you to sign a third party agreement with the 
+dataset in order to get the donwload URLs.
+
+
+# Per dataset instructions
+## Environment
+
+### Set data directory (Docker container)
+If you are running the `dataset_setup.py` script from a Docker container, please 
+make sure the data directory is mounted to a directory on your host with
+-v flag. If you are following instructions from the README you will have used 
+the `-v $HOME/data:/data` flag in the `docker run` command. This will mount
+the `$HOME/data` directory to the `/data` directory in the container. 
+In this case set --data_dir to  `\data`. 
+```
+DATA_DIR=\data
+```
+### Set data directory (on host)
+Alternatively, if you are running the data download script directly on your host, feel free
+to choose whatever directory you find suitable, further submission instructions 
+assume the data is stored in `~/data`.
+```
+DATA_DIR=~/data
+```
+#### Start tmux session (Recommended)
+If running the dataset_setup.py on directly on host it is recommended to run 
+the dataset_setup.py script in a tmux session because some of the data downloads may 
+take several hours. To avoid your setup being interrupted start a tmux session:
+```
+tmux new -s data_setup
+```
+
+
+## Datasets
+
+### OGBG 
+From `algorithmic-efficiency` run:
+```
+python3 datasets/dataset_setup.py \
+  --data_dir=$DATA_DIR/ogbg \
   --ogbg
 ```
 
-This will require the same pip dependencies as `submission_runner.py`.
+### WMT 
+From `algorithmic-efficiency` run:
+```
+python3 datasets/dataset_setup.py \
+  --data_dir=$DATA_DIR/wmt \
+  --wmt
+```
 
-Some datasets require signing a form before downloading:
 
-FastMRI:
-Fill out form on https://fastmri.med.nyu.edu/ and run this script with the
-links that are emailed to you for "knee_singlecoil_train" and
-"knee_singlecoil_val".
+## FastMRI
+Fill out form on https://fastmri.med.nyu.edu/. After filling out the form 
+you should get an email containing the URLS for "knee_singlecoil_train",
+"knee_singlecoil_val" and "knee_singlecoil_test".  
 
-ImageNet:
-Register on https://image-net.org/ and run this script with the links to the
-ILSVRC2012 train and validation images.
+```
+python3 datasets/dataset_setup.py \
+  --data_dir=$DATA_DIR/fastmri \
+  --fastmri \
+  --fastmri_knee_singlecoil_train_url "<knee_singlecoil_train_url>" \
+  --fastmri_knee_singlecoil_val_url "<knee_singlecoil_val_url>" \
+  --fastmri_knee_singlecoil_test_url "<knee_singlecoil_test_url>"
+```
 
-Note for tfds ImageNet, you may have to increase the max number of files allowed
-open at once using `ulimit -n 8192`.
+## ImageNet
+Register on https://image-net.org/ and follow directions to obtain the 
+URLS for the ILSVRC2012 train and validation images.
 
-Note that in order to avoid potential accidental deletion, this script does NOT
+Imagenet dataset processsing is resource intensive. To avoid potential
+ResourcExhausted errors increase the maximum number of open file descriptors:
+```
+ulimit -n 8192
+```
+
+Alo note that some functions use subprocess.Popen(..., shell=True), which can be
+dangerous if the user injects code into the --data_dir or --temp_dir flags. We
+do some basic sanitization in main(), but submitters should not let untrusted
+users run this script on their systems.
+
+```
+python3 datasets/dataset_setup.py \
+  --data_dir=$DATA_DIR/imagenet \
+  --imagenet
+  --imagenet_train_url <train_url>
+  --imagenet_val_url <val_url>
+```
+
+### Cleanup 
+Note: that in order to avoid potential accidental deletion, this script does NOT
 delete any intermediate temporary files (such as zip archives) without a user
 confirmation. Deleting temp files is particularly important for Criteo 1TB, as
 there can be multiple copies of the dataset on disk during preprocessing if
@@ -31,10 +117,7 @@ can pass --interactive_deletion=false and then all files will be downloaded to
 the provided --temp_dir, and the user can manually delete these after
 downloading has finished.
 
-Note that some functions use subprocess.Popen(..., shell=True), which can be
-dangerous if the user injects code into the --data_dir or --temp_dir flags. We
-do some basic sanitization in main(), but submitters should not let untrusted
-users run this script on their systems.
+
 
 ## Librispeech
 
@@ -57,3 +140,14 @@ The preprocessing script will generate `.npy` files for audio data, `features.cs
 ```bash
 python3 librispeech_preprocess.py --data_dir=$DATA_DIR/librispeech --tokenizer_vocab_path=$DATA_DIR/librispeech/spm_model.vocab
 ```
+
+## Criteo1tb
+
+Note: that in order to avoid potential accidental deletion, this script does NOT
+delete any intermediate temporary files (such as zip archives) without a user
+confirmation. Deleting temp files is particularly important for Criteo 1TB, as
+there can be multiple copies of the dataset on disk during preprocessing if
+files are not cleaned up. If you do not want any temp files to be deleted, you
+can pass --interactive_deletion=false and then all files will be downloaded to
+the provided --temp_dir, and the user can manually delete these after
+downloading has finished.

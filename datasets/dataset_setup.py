@@ -55,7 +55,7 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 datasets/dataset_setup.py \
-  --data_dir=~/data \
+  --data_dir=~/data/imagenet \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
   --imagenet_train_url=<train_url> \
@@ -170,7 +170,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'fastmri_knee_singlecoil_test_url',
     None,
-    'Only necessary if you want this script to `wget` the FastMRI validation '
+    'Only necessary if you want this script to `wget` the FastMRI test '
     'split. If not, you can supply the path to --data_dir in '
     'submission_runner.py.')
 
@@ -345,7 +345,7 @@ def download_cifar(data_dir, framework):
     raise ValueError('Invalid value for framework: {}'.format(framework))
 
 
-def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
+def extract_filename_from_url(url, start_str='knee', end_str='.g-uz'):
   """ The url filenames are sometimes couched within a urldefense+aws access id
   etc. string. Unfortunately querying the content disposition in requests fails
   (not provided)... so fast search is done here within the url.
