@@ -11,6 +11,13 @@ import time
 from typing import Dict, Generator, List, Optional, Tuple
 
 import numpy as np
+import torch
+
+
+def _get_monotonic_time() -> float:
+  if torch.cuda.is_available():
+    torch.cuda.synchronize()
+  return time.monotonic()
 
 
 class Profiler:
@@ -20,7 +27,7 @@ class Profiler:
 
     self.current_actions: Dict[str, float] = {}
     self.recorded_durations = defaultdict(list)
-    self.start_time = time.monotonic()
+    self.start_time = _get_monotonic_time()
 
   def set_local_rank(self, local_rank: int) -> None:
     self._local_rank = local_rank
@@ -35,12 +42,12 @@ class Profiler:
     if action_name in self.current_actions:
       raise ValueError(
           f'Attempted to start {action_name} which has already started.')
-    self.current_actions[action_name] = time.monotonic()
+    self.current_actions[action_name] = _get_monotonic_time()
 
   def stop(self, action_name: str) -> None:
     if self.local_rank != 0:
       pass
-    end_time = time.monotonic()
+    end_time = _get_monotonic_time()
     if action_name not in self.current_actions:
       raise ValueError(f'Attempting to stop recording an action '
                        f'({action_name}) which was never started.')
@@ -59,7 +66,7 @@ class Profiler:
   def _make_report(
       self
   ) -> Tuple[List[Tuple[str, float, float, int, float, float]], int, float]:
-    total_duration = time.monotonic() - self.start_time
+    total_duration = _get_monotonic_time() - self.start_time
     report = [(str(a),
                float(np.mean(d)),
                float(np.std(d)),
