@@ -55,7 +55,7 @@ open at once using `ulimit -n 8192`.
 Example command:
 
 python3 datasets/dataset_setup.py \
-  --data_dir=~/data/imagenet \
+  --data_dir=~/dataa \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
   --imagenet_train_url=<train_url> \
@@ -345,7 +345,7 @@ def download_cifar(data_dir, framework):
     raise ValueError('Invalid value for framework: {}'.format(framework))
 
 
-def extract_filename_from_url(url, start_str="knee", end_str=".gz"):
+def extract_filename_from_url(url, start_str='knee', end_str='.gz'):
   """ The url filenames are sometimes couched within a urldefense+aws access id
   etc. string. Unfortunately querying the content disposition in requests fails
   (not provided)... so fast search is done here within the url.
@@ -364,7 +364,6 @@ def download_fastmri(data_dir,
                      fastmri_train_url,
                      fastmri_val_url,
                      fastmri_test_url):
-
   data_dir = os.path.join(data_dir, 'fastmri')
   # Download fastmri train dataset
   knee_train_filename = extract_filename_from_url(fastmri_train_url)
@@ -597,11 +596,13 @@ def download_mnist(data_dir):
 
 
 def download_ogbg(data_dir):
+  data_dir = os.path.join(data_dir, 'ogbg')
   tfds.builder('ogbg_molpcba:0.1.3', data_dir=data_dir).download_and_prepare()
 
 
 def download_wmt(data_dir):
   """WMT14 and WMT17 de-en."""
+  data_dir = os.path.join(data_dir, 'wmt')
   for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
     dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
     dataset_builder.download_and_prepare()

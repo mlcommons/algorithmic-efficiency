@@ -65,7 +65,7 @@ python3 datasets/dataset_setup.py \
 From `algorithmic-efficiency` run:
 ```
 python3 datasets/dataset_setup.py \
-  --data_dir=$DATA_DIR/wmt \
+  --data_dir=$DATA_DIR \
   --wmt
 ```
 
@@ -77,7 +77,7 @@ you should get an email containing the URLS for "knee_singlecoil_train",
 
 ```
 python3 datasets/dataset_setup.py \
-  --data_dir=$DATA_DIR/fastmri \
+  --data_dir=$DATA_DIR \
   --fastmri \
   --fastmri_knee_singlecoil_train_url "<knee_singlecoil_train_url>" \
   --fastmri_knee_singlecoil_val_url "<knee_singlecoil_val_url>" \
@@ -101,7 +101,7 @@ users run this script on their systems.
 
 ```
 python3 datasets/dataset_setup.py \
-  --data_dir=$DATA_DIR/imagenet \
+  --data_dir=$DATA_DIR \
   --imagenet
   --imagenet_train_url <train_url>
   --imagenet_val_url <val_url>
