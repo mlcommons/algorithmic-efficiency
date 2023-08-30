@@ -106,7 +106,7 @@ def update_params(workload: spec.Workload,
   optimizer_state['scheduler'].step()
 
   # Log training metrics - loss, grad_norm, batch_size.
-  if global_step <= 100 or global_step % 500 == 0:
+  if global_step <= 10 or global_step % 500 == 0:
     with torch.no_grad():
       parameters = [p for p in current_model.parameters() if p.grad is not None]
       grad_norm = torch.norm(

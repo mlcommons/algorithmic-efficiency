@@ -1,13 +1,16 @@
 """Criteo1TB DLRM workload base class."""
+
 import math
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
-import jax
+from absl import flags
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb import input_pipeline
+
+FLAGS = flags.FLAGS
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 
@@ -15,7 +18,7 @@ USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   """Criteo1tb workload."""
 
-  vocab_size: int = 32 * 128 * 1024  # 4_194_304
+  vocab_size: int = 32 * 128 * 1024  # 4_194_304.
   num_dense_features: int = 13
   mlp_bottom_dims: Tuple[int, int] = (512, 256, 128)
   mlp_top_dims: Tuple[int, int, int] = (1024, 1024, 512, 256, 1)
@@ -26,14 +29,15 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'loss'
 
-  def has_reached_validation_target(self, eval_result: float) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value
 
   @property
   def validation_target_value(self) -> float:
     return 0.123649
 
-  def has_reached_test_target(self, eval_result: float) -> bool:
+  def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['test/loss'] < self.test_target_value
 
   @property
@@ -75,19 +79,22 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 7703  # ~2 hours
+    return 7703  # ~2 hours.
 
   @property
   def eval_period_time_sec(self) -> int:
-    return 2 * 60
+    return 2 * 600  # 20 mins.
 
-  def _build_input_queue(self,
-                         data_rng: jax.random.PRNGKey,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         num_batches: Optional[int] = None,
-                         repeat_final_dataset: bool = False):
+  def _build_input_queue(
+      self,
+      data_rng: spec.RandomState,
+      split: str,
+      data_dir: str,
+      global_batch_size: int,
+      cache: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None,
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    del cache
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
         shuffle_rng=data_rng,
@@ -121,11 +128,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
-          rng,
-          split,
-          data_dir,
-          global_batch_size,
-          num_batches,
+          data_rng=rng,
+          split=split,
+          data_dir=data_dir,
+          global_batch_size=global_batch_size,
+          num_batches=num_batches,
           repeat_final_dataset=True)
     loss = 0.0
     for _ in range(num_batches):
