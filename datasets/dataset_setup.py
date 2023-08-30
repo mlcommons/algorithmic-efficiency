@@ -95,9 +95,9 @@ import tensorflow as tf
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
 
-FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar.xz'
-FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar.xz'
-FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar.xz'
+FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar.gz'
+FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar.gz'
+FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar.gz'
 
 flags.DEFINE_boolean(
     'interactive_deletion',
