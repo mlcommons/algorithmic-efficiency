@@ -95,9 +95,9 @@ import tensorflow as tf
 IMAGENET_TRAIN_TAR_FILENAME = 'ILSVRC2012_img_train.tar'
 IMAGENET_VAL_TAR_FILENAME = 'ILSVRC2012_img_val.tar'
 
-FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar.gz'
-FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar.gz'
-FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar.gz'
+FASTMRI_TRAIN_TAR_FILENAME = 'knee_singlecoil_train.tar.xz'
+FASTMRI_VAL_TAR_FILENAME = 'knee_singlecoil_val.tar.xz'
+FASTMRI_TEST_TAR_FILENAME = 'knee_singlecoil_test.tar.xz'
 
 flags.DEFINE_boolean(
     'interactive_deletion',
@@ -304,12 +304,12 @@ def download_criteo1tb(data_dir,
 
   # Unzip the individual days.
   processes = []
-  gz_paths = []
+  xz_paths = []
   for day in range(24):
-    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
-    gz_paths.append(input_path)
+    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.xz')
+    xz_paths.append(input_path)
     unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
-    unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} "{input_path}" > '
+    unzip_cmd = (f'pixz -d -c -p{num_decompression_threads} "{input_path}" > '
                  f'"{unzipped_path}"')
     logging.info(f'Running Criteo unzip command for day {day}:\n{unzip_cmd}')
     processes.append(subprocess.Popen(unzip_cmd, shell=True))
@@ -345,7 +345,7 @@ def download_cifar(data_dir, framework):
     raise ValueError('Invalid value for framework: {}'.format(framework))
 
 
-def extract_filename_from_url(url, start_str='knee', end_str='.gz'):
+def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
   """ The url filenames are sometimes couched within a urldefense+aws access id
   etc. string. Unfortunately querying the content disposition in requests fails
   (not provided)... so fast search is done here within the url.
