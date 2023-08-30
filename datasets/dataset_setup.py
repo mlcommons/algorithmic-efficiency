@@ -345,7 +345,7 @@ def download_cifar(data_dir, framework):
     raise ValueError('Invalid value for framework: {}'.format(framework))
 
 
-def extract_filename_from_url(url, start_str='knee', end_str='.g-uz'):
+def extract_filename_from_url(url, start_str="knee", end_str=".gz"):
   """ The url filenames are sometimes couched within a urldefense+aws access id
   etc. string. Unfortunately querying the content disposition in requests fails
   (not provided)... so fast search is done here within the url.
@@ -355,7 +355,7 @@ def extract_filename_from_url(url, start_str='knee', end_str='.g-uz'):
   end = url.find(end_str)
   if failure in (start, end):
     raise ValueError(
-        f'Unable to locate filename wrapped in {start}--{end} in {url}')
+        f'Unable to locate filename wrapped in {start_str}--{end_str} in {url}')
   end += len(end_str)  # make it inclusive
   return url[start:end]
 
