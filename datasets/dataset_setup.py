@@ -392,7 +392,7 @@ def extract(source, dest):
   if not os.path.exists(dest):
     os.path.makedirs(dest)
   logging.info(f'Extracting {source} to {dest}')
-  tar = tarfile.open(source)
+  tar = tarfile.open(source, 'r:xz')
   logging.info('Opened tar')
 
   tar.extractall(dest)
