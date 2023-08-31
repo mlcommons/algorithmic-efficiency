@@ -213,7 +213,7 @@ def _download_url(url, data_dir, name=None):
     file_path = os.path.join(data_dir, url.split('/')[-1])
   else:
     file_path = os.path.join(data_dir, name)
-  logging.info(f'About to download to {file_path}')
+  logging.info(f'Downloading URL {url} to {file_path}')
 
   response = requests.get(url, stream=True, timeout=600)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
