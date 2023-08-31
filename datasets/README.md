@@ -32,14 +32,14 @@ the `-v $HOME/data:/data` flag in the `docker run` command. This will mount
 the `$HOME/data` directory to the `/data` directory in the container. 
 In this case set --data_dir to  `\data`. 
 ```bash
-DATA_DIR=\data
+DATA_DIR='/data'
 ```
 ### Set data directory (on host)
 Alternatively, if you are running the data download script directly on your host, feel free
 to choose whatever directory you find suitable, further submission instructions 
 assume the data is stored in `~/data`.
 ```bash
-DATA_DIR=~/data
+DATA_DIR='~/data'
 ```
 #### Start tmux session (Recommended)
 If running the dataset_setup.py on directly on host it is recommended to run 
