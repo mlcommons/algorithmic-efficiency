@@ -478,8 +478,6 @@ def setup_imagenet_jax(data_dir):
                                            manual_download_dir))
     shutil.move(val_tar_file_path, manual_download_dir)
   logging.info('Preparing imagenet data.')
-  resource.setrlimit(resource.RLIMIT_NOFILE,
-                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
   ds_builder = tfds.builder(
       'imagenet2012:5.1.0', data_dir=os.path.join(imagenet_jax_data_dir))
   ds_builder.download_and_prepare()
@@ -628,8 +626,6 @@ def main(_):
     raise ValueError(f'Invalid data_dir: {data_dir}.')
   if any(s in tmp_dir for s in bad_chars):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
-  print('data dir before expand user')
-  print(data_dir)
   if '~' in data_dir:
     data_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
@@ -667,9 +663,6 @@ def main(_):
     logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir, updated_data_dir)
 
-  if not FLAGS.imagenet:
-    print('not imagenet')
-    
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
     flags.mark_flag_as_required('imagenet_val_url')

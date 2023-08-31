@@ -56,16 +56,16 @@ tmux new -s data_setup
 From `algorithmic-efficiency` run:
 ```bash
 python3 datasets/dataset_setup.py \
-  --data_dir $DATA_DIR/ogbg \
-  --ogbg
+--data_dir $DATA_DIR/ogbg \
+--ogbg
 ```
 
 ### WMT 
 From `algorithmic-efficiency` run:
 ```bash
 python3 datasets/dataset_setup.py \
-  --data_dir $DATA_DIR \
-  --wmt
+--data_dir $DATA_DIR \
+--wmt
 ```
 
 
@@ -76,11 +76,11 @@ you should get an email containing the URLS for "knee_singlecoil_train",
 
 ```bash
 python3 datasets/dataset_setup.py \
-  --data_dir $DATA_DIR \
-  --fastmri \
-  --fastmri_knee_singlecoil_train_url '<knee_singlecoil_train_url>' \
-  --fastmri_knee_singlecoil_val_url '<knee_singlecoil_val_url>' \
-  --fastmri_knee_singlecoil_test_url '<knee_singlecoil_test_url>'
+--data_dir $DATA_DIR \
+--fastmri \
+--fastmri_knee_singlecoil_train_url '<knee_singlecoil_train_url>' \
+--fastmri_knee_singlecoil_val_url '<knee_singlecoil_val_url>' \
+--fastmri_knee_singlecoil_test_url '<knee_singlecoil_test_url>'
 ```
 
 ## ImageNet
@@ -99,11 +99,12 @@ framework flag.
 
 ```bash
 python3 datasets/dataset_setup.py \ 
-  --data_dir=/data \
-  --imagenet \
-  --temp_dir=$DATA_DIR/tmp \  --imagenet_train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar \
-  --imagenet_val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar \
-  --framework=jax
+--data_dir=/data \
+--imagenet \
+--temp_dir=$DATA_DIR/tmp \  
+--imagenet_train_url=<imagenet_train_url> \
+--imagenet_val_url=<imagenet_val_url\
+--framework=jax
 
 ```
 
