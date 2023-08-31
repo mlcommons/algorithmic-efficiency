@@ -666,6 +666,9 @@ def main(_):
     logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir, updated_data_dir)
 
+  if not FLAGS.imagenet:
+    print('not imagenet')
+    
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
     flags.mark_flag_as_required('imagenet_val_url')
