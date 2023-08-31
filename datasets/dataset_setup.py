@@ -207,8 +207,6 @@ def _maybe_prompt_for_deletion(paths, interactive_deletion):
 
 
 def _download_url(url, data_dir, name=None):
-
-  data_dir = os.path.expanduser(data_dir)
   if not name:
     file_path = os.path.join(data_dir, url.split('/')[-1])
   else:
