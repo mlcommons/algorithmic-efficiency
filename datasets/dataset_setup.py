@@ -230,7 +230,7 @@ def _download_url(url, data_dir, name=None):
         break
       logging.info('Invalid response. Try again.')
     if overwrite == 'n':
-      logging.info('Skipping download to {}'.format(file_path))
+      logging.info(f'Skipping download URL {url} to {}'.format(file_path))
       return
 
   with open(file_path, 'wb') as f:
