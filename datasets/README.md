@@ -98,13 +98,13 @@ Therefore, you will have to specify the framework (pytorch or jax) through the
 framework flag.
 
 ```bash
-python3 datasets/dataset_setup.py \
-  --data_dir $DATA_DIR \
-  --temp_dir $DATA_DIR/tmp \
+python3 datasets/dataset_setup.py \ 
+  --data_dir=/data \
   --imagenet \
-  --imagenet_train_url <train_url> \
-  --imagenet_val_url <val_url> \
-  --framework <framework>
+  --temp_dir=$DATA_DIR/tmp \  --imagenet_train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar \
+  --imagenet_val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar \
+  --framework=jax
+
 ```
 
 Note that some functions use subprocess.Popen(..., shell=True), which can be

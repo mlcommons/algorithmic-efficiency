@@ -433,13 +433,13 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   if not os.path.exists(imagenet_train_filepath):
     logging.info(
         'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
-    _download_url(url=imagenet_train_url, data_dir=data_dir).download()
+    _download_url(url=imagenet_train_url, data_dir=data_dir)
 
   # Download imagenet val dataset
   if not os.path.exists(imagenet_val_filepath):
     logging.info('Downloading imagenet validation dataset from {}'.format(
         imagenet_val_url))
-    _download_url(url=imagenet_val_url, data_dir=data_dir).download()
+    _download_url(url=imagenet_val_url, data_dir=data_dir)
 
   # Download imagenet test set
   download_imagenet_v2(data_dir)
