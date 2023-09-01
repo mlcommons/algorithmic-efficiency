@@ -427,14 +427,25 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
+  imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
+  manual_download_dir = os.path.join(imagenet_jax_data_dir,
+                                     'downloads',
+                                     'manual')
+  imagenet_train_download_filepath = os.path.join(manual_download_dir,
+                                                  IMAGENET_TRAIN_TAR_FILENAME)
+  imagenet_val_download_filepath = os.path.join(manual_download_dir,
+                                                IMAGENET_VAL_TAR_FILENAME)
+
   # Download imagnet train dataset
-  if not os.path.exists(imagenet_train_filepath):
+  if not os.path.exists(imagenet_train_filepath) and not os.path.exists(
+      imagenet_train_download_filepath):
     logging.info(
         'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
     _download_url(url=imagenet_train_url, data_dir=data_dir)
 
   # Download imagenet val dataset
-  if not os.path.exists(imagenet_val_filepath):
+  if not os.path.exists(imagenet_val_filepath) and not os.path.exists(
+      imagenet_val_download_filepath):
     logging.info('Downloading imagenet validation dataset from {}'.format(
         imagenet_val_url))
     _download_url(url=imagenet_val_url, data_dir=data_dir)
@@ -626,8 +637,7 @@ def main(_):
     raise ValueError(f'Invalid data_dir: {data_dir}.')
   if any(s in tmp_dir for s in bad_chars):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
-  if '~' in data_dir:
-    data_dir = os.path.abspath(os.path.expanduser(data_dir))
+  data_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo1tb:
