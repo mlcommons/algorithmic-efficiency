@@ -431,21 +431,19 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   manual_download_dir = os.path.join(imagenet_jax_data_dir,
                                      'downloads',
                                      'manual')
-  imagenet_train_download_filepath = os.path.join(manual_download_dir,
+  imagenet_train_download_filepath = os.path.join(manual_download_dir, 
                                                   IMAGENET_TRAIN_TAR_FILENAME)
-  imagenet_val_download_filepath = os.path.join(manual_download_dir,
+  imagenet_val_download_filepath = os.path.join(manual_download_dir, 
                                                 IMAGENET_VAL_TAR_FILENAME)
-
+  
   # Download imagnet train dataset
-  if not os.path.exists(imagenet_train_filepath) and not os.path.exists(
-      imagenet_train_download_filepath):
+  if not os.path.exists(imagenet_train_filepath) and not os.path.exists(imagenet_train_download_filepath):
     logging.info(
         'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
     _download_url(url=imagenet_train_url, data_dir=data_dir)
 
   # Download imagenet val dataset
-  if not os.path.exists(imagenet_val_filepath) and not os.path.exists(
-      imagenet_val_download_filepath):
+  if not os.path.exists(imagenet_val_filepath) and not os.path.exists(imagenet_val_download_filepath):
     logging.info('Downloading imagenet validation dataset from {}'.format(
         imagenet_val_url))
     _download_url(url=imagenet_val_url, data_dir=data_dir)
