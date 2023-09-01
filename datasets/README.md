@@ -99,12 +99,12 @@ framework flag.
 
 ```bash
 python3 datasets/dataset_setup.py \ 
---data_dir=/data \
+--data_dir /data \
 --imagenet \
---temp_dir=$DATA_DIR/tmp \  
---imagenet_train_url=<imagenet_train_url> \
---imagenet_val_url=<imagenet_val_url\
---framework=jax
+--temp_dir $DATA_DIR/tmp \  
+--imagenet_train_url <imagenet_train_url> \
+--imagenet_val_url <imagenet_val_url\
+--framework jax
 
 ```
 
@@ -126,9 +126,9 @@ downloading has finished.
 ## Criteo1tb
 ```bash
 python3 datasets/dataset_setup.py \
-  --data_dir $DATA_DIR \
-  --temp_dir $DATA_DIR/tmp \
-  --criteo1tb \
+--data_dir $DATA_DIR \
+--temp_dir $DATA_DIR/tmp \
+--criteo1tb 
 ```
 
 ### Clean up 
@@ -143,11 +143,19 @@ downloading has finished.
 
 
 ## Librispeech
+To download, train a tokenizer and preprocess the librispeech dataset:
+```bash
+python3 datasets/dataset_setup.py \
+--data_dir librispeech \
+--temp_dir $DATA_DIR/tmp \
+--criteo1tb 
+```
 
-### Training SPM Tokenizer
-This step trains a simple sentence piece tokenizer over librispeech training data.
-This tokenizer is then used in later preprocessing step to tokenize transcripts.
-This command will generate `spm_model.vocab` file in `$DATA_DIR/librispeech`:
+### Notes on librispeech preprocessing
+#### Training SPM Tokenizer
+ A simple sentence piece tokenizer is trained over librispeech training
+ data. This tokenizer is then used in later preprocessing step to tokenize transcripts.
+This command generates `spm_model.vocab` file in `$DATA_DIR/librispeech`:
 ```bash
 python3 librispeech_tokenizer.py --train --data_dir=$DATA_DIR/librispeech
 ```
@@ -157,7 +165,7 @@ The trained tokenizer can be loaded back to do sanity check by tokenizing + de-t
 librispeech_tokenizer.py --data_dir=$DATA_DIR/librispeech
 ```
 
-### Preprocessing Script
+#### Preprocessing Script
 The preprocessing script will generate `.npy` files for audio data, `features.csv` which has paths to saved audio `.npy`, and `trans.csv` which has paths to `features.csv` and transcription data.
 
 ```bash
