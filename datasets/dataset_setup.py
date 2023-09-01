@@ -302,12 +302,12 @@ def download_criteo1tb(data_dir,
 
   # Unzip the individual days.
   processes = []
-  xz_paths = []
+  gz_paths = []
   for day in range(24):
     input_path = os.path.join(tmp_criteo_dir, f'day_{day}.xz')
-    xz_paths.append(input_path)
+    gz_paths.append(input_path)
     unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
-    unzip_cmd = (f'pixz -d -c -p{num_decompression_threads} "{input_path}" > '
+    unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} "{input_path}" > '
                  f'"{unzipped_path}"')
     logging.info(f'Running Criteo unzip command for day {day}:\n{unzip_cmd}')
     processes.append(subprocess.Popen(unzip_cmd, shell=True))

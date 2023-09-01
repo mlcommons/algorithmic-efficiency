@@ -110,16 +110,6 @@ dangerous if the user injects code into the --data_dir or --temp_dir flags. We
 do some basic sanitization in main(), but submitters should not let untrusted
 users run this script on their systems.
 
-### Cleanup 
-In order to avoid potential accidental deletion, this script does NOT
-delete any intermediate temporary files (such as zip archives) without a user
-confirmation. Deleting temp files is particularly important for Criteo 1TB, as
-there can be multiple copies of the dataset on disk during preprocessing if
-files are not cleaned up. If you do not want any temp files to be deleted, you
-can pass --interactive_deletion=false and then all files will be downloaded to
-the provided --temp_dir, and the user can manually delete these after
-downloading has finished.
-
 ## Criteo1tb
 ```bash
 python3 datasets/dataset_setup.py \
