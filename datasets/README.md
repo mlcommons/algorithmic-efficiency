@@ -17,9 +17,7 @@ The complete benchmark uses 6 datasets:
 - Librispeech
 
 
-Some dataset setups will require you to sign a third party agreement with the 
-dataset in order to get the donwload URLs.
-
+Some dataset setups will require you to sign a third party agreement with the dataset owners in order to get the donwload URLs.
 
 # Per dataset instructions
 ## Environment
@@ -94,8 +92,7 @@ ulimit -n 8192
 ```
 
 The imagenet data pipeline differs between the pytorch and jax workloads. 
-Therefore, you will have to specify the framework (pytorch or jax) through the
-framework flag.
+Therefore, you will have to specify the framework (pytorch or jax) through theframework flag.
 
 ```bash
 python3 datasets/dataset_setup.py \ 
