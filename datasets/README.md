@@ -135,7 +135,7 @@ To download, train a tokenizer and preprocess the librispeech dataset:
 python3 datasets/dataset_setup.py \
 --data_dir librispeech \
 --temp_dir $DATA_DIR/tmp \
---criteo1tb 
+--librispeech
 ```
 
 ### Notes on librispeech preprocessing
