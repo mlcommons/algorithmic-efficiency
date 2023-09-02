@@ -170,7 +170,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'fastmri_knee_singlecoil_test_url',
     None,
-    'Only necessary if you want this script to `wget` the FastMRI validation '
+    'Only necessary if you want this script to `wget` the FastMRI test '
     'split. If not, you can supply the path to --data_dir in '
     'submission_runner.py.')
 
@@ -207,13 +207,11 @@ def _maybe_prompt_for_deletion(paths, interactive_deletion):
 
 
 def _download_url(url, data_dir, name=None):
-
-  data_dir = os.path.expanduser(data_dir)
   if not name:
     file_path = os.path.join(data_dir, url.split('/')[-1])
   else:
     file_path = os.path.join(data_dir, name)
-  logging.info(f'About to download to {file_path}')
+  logging.info(f'Downloading URL {url} to {file_path}')
 
   response = requests.get(url, stream=True, timeout=600)
   total_size_in_bytes = int(response.headers.get('Content-length', 0))
@@ -230,7 +228,7 @@ def _download_url(url, data_dir, name=None):
         break
       logging.info('Invalid response. Try again.')
     if overwrite == 'n':
-      logging.info('Skipping download to {}'.format(file_path))
+      logging.info(f'Skipping download URL {url} to {file_path}')
       return
 
   with open(file_path, 'wb') as f:
@@ -355,7 +353,7 @@ def extract_filename_from_url(url, start_str='knee', end_str='.xz'):
   end = url.find(end_str)
   if failure in (start, end):
     raise ValueError(
-        f'Unable to locate filename wrapped in {start}--{end} in {url}')
+        f'Unable to locate filename wrapped in {start_str}--{end_str} in {url}')
   end += len(end_str)  # make it inclusive
   return url[start:end]
 
@@ -364,7 +362,6 @@ def download_fastmri(data_dir,
                      fastmri_train_url,
                      fastmri_val_url,
                      fastmri_test_url):
-
   data_dir = os.path.join(data_dir, 'fastmri')
   # Download fastmri train dataset
   knee_train_filename = extract_filename_from_url(fastmri_train_url)
@@ -393,7 +390,7 @@ def extract(source, dest):
   if not os.path.exists(dest):
     os.path.makedirs(dest)
   logging.info(f'Extracting {source} to {dest}')
-  tar = tarfile.open(source)
+  tar = tarfile.open(source, 'r:xz')
   logging.info('Opened tar')
 
   tar.extractall(dest)
@@ -430,17 +427,28 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
+  imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
+  manual_download_dir = os.path.join(imagenet_jax_data_dir,
+                                     'downloads',
+                                     'manual')
+  imagenet_train_download_filepath = os.path.join(manual_download_dir,
+                                                  IMAGENET_TRAIN_TAR_FILENAME)
+  imagenet_val_download_filepath = os.path.join(manual_download_dir,
+                                                IMAGENET_VAL_TAR_FILENAME)
+
   # Download imagnet train dataset
-  if not os.path.exists(imagenet_train_filepath):
+  if not os.path.exists(imagenet_train_filepath) and not os.path.exists(
+      imagenet_train_download_filepath):
     logging.info(
         'Downloading imagenet train dataset from {}'.format(imagenet_train_url))
-    _download_url(url=imagenet_train_url, data_dir=data_dir).download()
+    _download_url(url=imagenet_train_url, data_dir=data_dir)
 
   # Download imagenet val dataset
-  if not os.path.exists(imagenet_val_filepath):
+  if not os.path.exists(imagenet_val_filepath) and not os.path.exists(
+      imagenet_val_download_filepath):
     logging.info('Downloading imagenet validation dataset from {}'.format(
         imagenet_val_url))
-    _download_url(url=imagenet_val_url, data_dir=data_dir).download()
+    _download_url(url=imagenet_val_url, data_dir=data_dir)
 
   # Download imagenet test set
   download_imagenet_v2(data_dir)
@@ -460,6 +468,7 @@ def setup_imagenet(data_dir, framework=None):
 def setup_imagenet_jax(data_dir):
   train_tar_file_path = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   val_tar_file_path = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
+  test_dir_path = os.path.join(data_dir, 'imagenet_v2')
 
   # Setup jax dataset dir
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
@@ -472,17 +481,20 @@ def setup_imagenet_jax(data_dir):
   logging.info('Checking if tar files already exists in jax/downloads/manual.')
   if not os.path.exists(
       os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
-    logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                           manual_download_dir))
+    logging.info('Moving {} to {}'.format(train_tar_file_path,
+                                          manual_download_dir))
     shutil.move(train_tar_file_path, manual_download_dir)
   if not os.path.exists(
       os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
-    logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                           manual_download_dir))
+    logging.info('Moving {} to {}'.format(val_tar_file_path,
+                                          manual_download_dir))
     shutil.move(val_tar_file_path, manual_download_dir)
+  if not os.path.exists(os.path.join(imagenet_jax_data_dir, 'imagenet_v2')):
+    logging.info('Moving imagenet_v2 to {}'.format(
+        os.path.join(imagenet_jax_data_dir, 'imagenet_v2')))
+    shutil.move(test_dir_path,
+                os.path.join(imagenet_jax_data_dir, 'imagenet_v2'))
   logging.info('Preparing imagenet data.')
-  resource.setrlimit(resource.RLIMIT_NOFILE,
-                     (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
   ds_builder = tfds.builder(
       'imagenet2012:5.1.0', data_dir=os.path.join(imagenet_jax_data_dir))
   ds_builder.download_and_prepare()
@@ -492,6 +504,7 @@ def setup_imagenet_jax(data_dir):
 def setup_imagenet_pytorch(data_dir):
   train_tar_file_path = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   val_tar_file_path = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
+  test_dir_path = os.path.join(data_dir, 'imagenet_v2')
 
   # Setup jax dataset dir
   imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
@@ -499,13 +512,18 @@ def setup_imagenet_pytorch(data_dir):
   os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
   os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
 
-  # Copy tar file into pytorch directory
-  logging.info('Copying {} to {}'.format(train_tar_file_path,
-                                         imagenet_pytorch_data_dir))
+  # Move tar files and imagenet_v2 into pytorch directory
+  logging.info('Moving {} to {}'.format(train_tar_file_path,
+                                        imagenet_pytorch_data_dir))
   shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
-  logging.info('Copying {} to {}'.format(val_tar_file_path,
-                                         imagenet_pytorch_data_dir))
+  logging.info('Moving {} to {}'.format(val_tar_file_path,
+                                        imagenet_pytorch_data_dir))
   shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
+  if not os.path.exists(os.path.join(imagenet_jax_data_dir, 'imagenet_v2')):
+    logging.info('Moving imagenet_v2 to {}'.format(
+        os.path.join(imagenet_jax_data_dir, 'imagenet_v2')))
+  shutil.move(test_dir_path,
+              os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
 
   # Extract train data\
   logging.info('Extracting imagenet train data')
@@ -549,9 +567,12 @@ def download_librispeech(dataset_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  tmp_librispeech_dir = os.path.join(dataset_dir, 'librispeech')
-  extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
-  final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
+  # tmp_librispeech_dir = os.path.join(dataset_dir, 'librispeech')
+  # extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
+  # final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech_raw')
+  extracted_data_dir = os.path.join(tmp_dir, 'librispeech_extracted')
+  final_data_dir = os.path.join(dataset_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
 
@@ -597,11 +618,13 @@ def download_mnist(data_dir):
 
 
 def download_ogbg(data_dir):
+  data_dir = os.path.join(data_dir, 'ogbg')
   tfds.builder('ogbg_molpcba:0.1.3', data_dir=data_dir).download_and_prepare()
 
 
 def download_wmt(data_dir):
   """WMT14 and WMT17 de-en."""
+  data_dir = os.path.join(data_dir, 'wmt')
   for ds_name in ['wmt14_translate/de-en:1.0.0', 'wmt17_translate/de-en:1.0.0']:
     dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
     dataset_builder.download_and_prepare()
