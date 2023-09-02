@@ -304,7 +304,7 @@ def download_criteo1tb(data_dir,
   processes = []
   gz_paths = []
   for day in range(24):
-    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.xz')
+    input_path = os.path.join(tmp_criteo_dir, f'day_{day}.gz')
     gz_paths.append(input_path)
     unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
     unzip_cmd = (f'pigz -d -c -p{num_decompression_threads} "{input_path}" > '
