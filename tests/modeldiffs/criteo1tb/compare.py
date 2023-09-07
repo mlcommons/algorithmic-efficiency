@@ -35,7 +35,16 @@ def key_transform(k):
   return tuple(new_key)
 
 
-sd_transform = None
+def sd_transform(sd):
+  out = {}
+  chunks = []
+  for k in sd:
+    if 'embedding_chunk' in ''.join(k):
+      chunks.append(sd[k])
+    else:
+      out[k] = sd[k]
+  out[('embedding_table',)] = torch.cat(chunks,dim=0)
+  return out
 
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
