@@ -40,7 +40,7 @@ def sd_transform(sd):
   chunks = []
   for k in sd:
     if 'embedding_chunk' in ''.join(k):
-      chunks.append(sd[k])
+      chunks.append(sd[k].cpu())
     else:
       out[k] = sd[k]
   out[('embedding_table',)] = torch.cat(chunks, dim=0)
