@@ -43,8 +43,9 @@ def sd_transform(sd):
       chunks.append(sd[k])
     else:
       out[k] = sd[k]
-  out[('embedding_table',)] = torch.cat(chunks,dim=0)
+  out[('embedding_table',)] = torch.cat(chunks, dim=0)
   return out
+
 
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
