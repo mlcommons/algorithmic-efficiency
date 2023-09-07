@@ -41,6 +41,10 @@ def pytorch_param_types(
     elif 'attn' in name or 'attention' in name:
       if 'bias' in name:
         param_types[name] = spec.ParameterType.ATTENTION_BIAS
+      elif 'in_proj' in name:
+        param_types[name] = spec.ParameterType.ATTENTION_QKV
+      elif 'kv_proj' in name:
+        param_types[name] = spec.ParameterType.ATTENTION_KV
       elif 'k_proj' in name or 'key' in name:
         param_types[name] = spec.ParameterType.ATTENTION_K
       elif 'q_proj' in name or 'query' in name:
@@ -51,8 +55,6 @@ def pytorch_param_types(
         param_types[name] = spec.ParameterType.ATTENTION_OUT
       elif 'scale' in name:
         param_types[name] = spec.ParameterType.WEIGHT
-      elif 'in_proj_weight' in name:
-        param_types[name] = spec.ParameterType.ATTENTION_QKV
       else:
         raise ValueError(f'Unrecognized attention parameter: {name}.')
     elif 'bias' in name:

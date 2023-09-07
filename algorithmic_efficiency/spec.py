@@ -39,9 +39,10 @@ class ParameterType(enum.Enum):
   ATTENTION_V = 10
   ATTENTION_OUT = 11
   ATTENTION_QKV = 12  # This is used for implementations that fuse QKV together.
-  # We need to split this out because otherwise fused QKV models will have a
-  # different number of biases.
-  ATTENTION_BIAS = 13
+  ATTENTION_KV = 13  # This is used for implementations that fuse KV together.
+  # We sometimes need to split this out because otherwise fused models will have
+  # a different number of biases.
+  ATTENTION_BIAS = 14
 
 
 # Of course, Tensor knows its shape and dtype.
