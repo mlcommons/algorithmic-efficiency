@@ -56,26 +56,26 @@ def sd_transform(sd):
       if 'SelfAttention_0' in k_str:
         if new_key[-2] == 'Dense_0':
           # qkv
-          for name, value in zip(('query','key','value'),sd[k].chunk(3)):
-            out[(*new_key[:-2],name,new_key[-1])] = value
+          for name, value in zip(('query', 'key', 'value'), sd[k].chunk(3)):
+            out[(*new_key[:-2], name, new_key[-1])] = value
           pass
         elif new_key[-2] == 'Dense_1':
           # out
-          out[(*new_key[:-2],'out',new_key[-1])] = sd[k]
+          out[(*new_key[:-2], 'out', new_key[-1])] = sd[k]
           pass
       else:
         if new_key[-2] == 'Dense_0':
           #q
-          out[(*new_key[:-2],'query',new_key[-1])] = sd[k]
-          pass 
+          out[(*new_key[:-2], 'query', new_key[-1])] = sd[k]
+          pass
         elif new_key[-2] == 'Dense_1':
-          # kv 
-          for name, value in zip(('key','value'),sd[k].chunk(2)):
-            out[(*new_key[:-2],name,new_key[-1])] = value
-          pass 
+          # kv
+          for name, value in zip(('key', 'value'), sd[k].chunk(2)):
+            out[(*new_key[:-2], name, new_key[-1])] = value
+          pass
         elif new_key[-2] == 'Dense_2':
           # out
-          out[(*new_key[:-2],'out',new_key[-1])] = sd[k]
+          out[(*new_key[:-2], 'out', new_key[-1])] = sd[k]
           pass
     elif 'Dense' in k_str:
       new_key = (*k[:2], 'MlpBlock_0', *k[2:])
