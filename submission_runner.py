@@ -134,8 +134,8 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
-flags.DEFINE_integer('hparam_start_index', None, 'Start index for hyperparameter selection.')
-flags.DEFINE_integer('hparam_end_index', None, 'End index for hyperparameter selection.')
+flags.DEFINE_integer('hparam_start_index', None, 'Start index to slice set of hyperparameters in tuning search space.')
+flags.DEFINE_integer('hparam_end_index', None, 'End index to slice set of hyperparameters in tuning spearch space.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
