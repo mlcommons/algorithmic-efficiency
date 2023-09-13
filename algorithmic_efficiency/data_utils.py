@@ -51,7 +51,7 @@ def shard_and_maybe_pad_np(
 
     # Pad if remainder_size != 0 (should only be possible during evaluation).
     if remainder_size != 0:
-      x = pad(x, pad_size, 'jax', padding_value=padding_value)
+      x = pad(x, pad_size, padding_value=padding_value)
 
     # Reshape (global_batch_size, ...) to
     # (local_device_count, per_device_batch_size, ...).
@@ -61,21 +61,13 @@ def shard_and_maybe_pad_np(
   return jax.tree_map(_prepare, batch)
 
 
-def pad(tensor: spec.Tensor,
+def pad(tensor: np.ndarray,
         pad_size: int,
-        framework: str,
-        padding_value: int = 0) -> spec.Tensor:
+        padding_value: int = 0) -> np.ndarray:
   if len(tensor) > 1:
     pad_size = (pad_size, *tensor.shape[1:])
-  if framework == 'pytorch':
-    padding = torch.full(
-        pad_size, padding_value, dtype=tensor.dtype, device=tensor.device)
-    padded_tensor = torch.cat((tensor, padding), dim=0)
-  elif framework == 'jax':
-    padding = np.full(pad_size, padding_value, dtype=tensor.dtype)
-    padded_tensor = np.concatenate((tensor, padding), axis=0)
-  else:
-    raise ValueError(f'Framework has to be pytorch or jax, but is {framework}.')
+  padding = np.full(pad_size, padding_value, dtype=tensor.dtype)
+  padded_tensor = np.concatenate((tensor, padding), axis=0)
   return padded_tensor
 
 
