@@ -17,6 +17,7 @@ python3 submission_runner.py \
 import datetime
 import gc
 import importlib
+import itertools
 import json
 import os
 import struct
@@ -133,6 +134,8 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
+flags.DEFINE_int('hparam_start_index', None, 'Start index for hyperparameter selection.')
+flags.DEFINE_int('hparam_end_index', None, 'End index for hyperparameter selection.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -449,7 +452,9 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
-                                 save_checkpoints: Optional[bool] = True):
+                                 save_checkpoints: Optional[bool] = True,
+                                 hparam_start_index: Optional[bool] = None,
+                                 hparam_end_index: Optional[bool] = None,):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -494,7 +499,8 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for hi, hyperparameters in enumerate(tuning_search_space):
+    for hi, hyperparameters in itertools.islice(enumerate(tuning_search_space), 
+      hparam_start_index, hparam_end_index):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
@@ -610,7 +616,9 @@ def main(_):
       tuning_search_space=FLAGS.tuning_search_space,
       num_tuning_trials=FLAGS.num_tuning_trials,
       log_dir=logging_dir_path,
-      save_checkpoints=FLAGS.save_checkpoints)
+      save_checkpoints=FLAGS.save_checkpoints,
+      hparam_start_index=FLAGS.hparam_start_index,
+      hparam_end_index=FLAGS.hparam_end_index)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
