@@ -507,9 +507,9 @@ def score_submission_on_workload(
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    tuning_search_space = itertools.islice(
+    tuning_search_space_iter = itertools.islice(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
-    for hi, hyperparameters in tuning_search_space:
+    for hi, hyperparameters in tuning_search_space_iter:
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
@@ -551,7 +551,7 @@ def score_submission_on_workload(
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
-    for ti, _ in tuning_search_space:
+    for ti, _ in tuning_search_space_iter:
       logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
       logging.info(f'Metrics: {all_metrics[ti]}')
