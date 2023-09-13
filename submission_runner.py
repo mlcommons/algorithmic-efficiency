@@ -134,8 +134,14 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
-flags.DEFINE_integer('hparam_start_index', None, 'Start index to slice set of hyperparameters in tuning search space.')
-flags.DEFINE_integer('hparam_end_index', None, 'End index to slice set of hyperparameters in tuning spearch space.')
+flags.DEFINE_integer(
+    'hparam_start_index',
+    None,
+    'Start index to slice set of hyperparameters in tuning search space.')
+flags.DEFINE_integer(
+    'hparam_end_index',
+    None,
+    'End index to slice set of hyperparameters in tuning spearch space.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -441,20 +447,22 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(workload: spec.Workload,
-                                 workload_name: str,
-                                 submission_path: str,
-                                 data_dir: str,
-                                 tuning_ruleset: str,
-                                 profiler: Optional[Profiler] = None,
-                                 max_global_steps: Optional[int] = None,
-                                 imagenet_v2_data_dir: Optional[str] = None,
-                                 tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None,
-                                 save_checkpoints: Optional[bool] = True,
-                                 hparam_start_index: Optional[bool] = None,
-                                 hparam_end_index: Optional[bool] = None,):
+def score_submission_on_workload(
+    workload: spec.Workload,
+    workload_name: str,
+    submission_path: str,
+    data_dir: str,
+    tuning_ruleset: str,
+    profiler: Optional[Profiler] = None,
+    max_global_steps: Optional[int] = None,
+    imagenet_v2_data_dir: Optional[str] = None,
+    tuning_search_space: Optional[str] = None,
+    num_tuning_trials: Optional[int] = None,
+    log_dir: Optional[str] = None,
+    save_checkpoints: Optional[bool] = True,
+    hparam_start_index: Optional[bool] = None,
+    hparam_end_index: Optional[bool] = None,
+):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -499,7 +507,7 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for hi, hyperparameters in itertools.islice(enumerate(tuning_search_space), 
+    for hi, hyperparameters in itertools.islice(enumerate(tuning_search_space),
       hparam_start_index, hparam_end_index):
       # Generate a new seed from hardware sources of randomness for each trial.
       rng_seed = struct.unpack('I', os.urandom(4))[0]
