@@ -298,7 +298,7 @@ def download_criteo1tb(data_dir,
   logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
   p = subprocess.Popen(unzip_cmd, shell=True)
   p.communicate()
-  _maybe_prompt_for_deletion(all_days_zip_filepath, interactive_deletion)
+  _maybe_prompt_for_deletion([all_days_zip_filepath], interactive_deletion)
 
   # Unzip the individual days.
   processes = []
