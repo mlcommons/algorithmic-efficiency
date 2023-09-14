@@ -571,11 +571,10 @@ def download_librispeech(dataset_dir, tmp_dir):
   # extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
   # final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
   tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech_raw')
-  extracted_data_dir = os.path.join(tmp_dir, 'librispeech_extracted')
+  extracted_data_dir = os.path.join(tmp_dir, 'LibriSpeech)
   final_data_dir = os.path.join(dataset_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
-  _maybe_mkdir(extracted_data_dir)
   _maybe_mkdir(final_data_dir)
 
   for split in ['dev', 'test']:
@@ -586,7 +585,7 @@ def download_librispeech(dataset_dir, tmp_dir):
       subprocess.Popen(wget_cmd, shell=True).communicate()
       tar_path = os.path.join(tmp_librispeech_dir, f'{split}-{version}.tar.gz')
       subprocess.Popen(
-          f'tar xzvf {tar_path} --directory {extracted_data_dir}',
+          f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
           shell=True).communicate()
 
   tars = [
@@ -601,7 +600,7 @@ def download_librispeech(dataset_dir, tmp_dir):
     subprocess.Popen(wget_cmd, shell=True).communicate()
     tar_path = os.path.join(tmp_librispeech_dir, tar_filename)
     subprocess.Popen(
-        f'tar xzvf {tar_path} --directory {extracted_data_dir}',
+        f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
         shell=True).communicate()
 
   tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
