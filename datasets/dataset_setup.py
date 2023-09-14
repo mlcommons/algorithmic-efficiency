@@ -570,8 +570,8 @@ def download_librispeech(dataset_dir, tmp_dir):
   # tmp_librispeech_dir = os.path.join(dataset_dir, 'librispeech')
   # extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
   # final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech_raw')
-  extracted_data_dir = os.path.join(tmp_dir, 'LibriSpeech')
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+  extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
   final_data_dir = os.path.join(dataset_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
