@@ -575,6 +575,8 @@ def download_librispeech(dataset_dir, tmp_dir):
   final_data_dir = os.path.join(dataset_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
+  _maybe_mkdir(extracted_data_dir)
+  _maybe_mkdir(final_data_dir)
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
