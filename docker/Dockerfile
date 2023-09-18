@@ -6,13 +6,12 @@
 
 # To build Docker image
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
-ARG DEBIAN_FRONTEND=noninteractive
 
 # Installing machine packages
 RUN echo "Setting up machine"
 RUN apt-get update
 RUN apt-get install -y curl tar
-RUN apt-get install -y git python3 pip wget ffmpeg
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 pip wget ffmpeg
 RUN apt-get install libtcmalloc-minimal4
 RUN apt-get install unzip
 RUN apt-get install pigz
