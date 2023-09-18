@@ -271,6 +271,7 @@ def train_once(
          global_step,
          preemption_count,
          checkpoint_dir=log_dir)
+    meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
     logger_utils.save_meta_data(workload, rng_seed, preemption_count)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
