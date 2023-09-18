@@ -34,24 +34,24 @@ RUN echo "Setting up algorithmic_efficiency repo"
 ARG branch="main"
 ARG framework="both"
 ARG git_url=https://github.com/mlcommons/algorithmic-efficiency.git
-RUN git clone $git_url && cd algorithmic-efficiency 
-RUN cd algorithmic-efficiency && git checkout $branch
+RUN git clone $git_url && cd /algorithmic-efficiency 
+RUN cd /algorithmic-efficiency && git checkout $branch
 
-RUN cd algorithmic-efficiency && pip install -e '.[full]'
+RUN cd /algorithmic-efficiency && pip install -e '.[full]'
 
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
-        && cd algorithmic-efficiency \
+        && cd /algorithmic-efficiency \
         && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
         && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
-        && cd algorithmic-efficiency \
+        && cd /algorithmic-efficiency \
         && pip install -e '.[jax_cpu]' \
         && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
-        && cd algorithmic-efficiency \
+        && cd /algorithmic-efficiency \
         && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
         && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
     else \
@@ -59,13 +59,13 @@ RUN if [ "$framework" = "jax" ] ; then \
         && exit 1 ; \
     fi
 
-RUN cd algorithmic-efficiency && pip install -e '.[wandb]'
+RUN cd /algorithmic-efficiency && pip install -e '.[wandb]'
 
-RUN cd algorithmic-efficiency && git fetch origin 
-RUN cd algorithmic-efficiency && git pull
+RUN cd /algorithmic-efficiency && git fetch origin 
+RUN cd /algorithmic-efficiency && git pull
 
 # Todo: remove this, this is temporary for developing
 COPY scripts/startup.sh /algorithmic-efficiency/docker/scripts/startup.sh
 RUN chmod a+x /algorithmic-efficiency/docker/scripts/startup.sh
 
-ENTRYPOINT ["bash", "algorithmic-efficiency/docker/scripts/startup.sh"]
+ENTRYPOINT ["bash", "/algorithmic-efficiency/docker/scripts/startup.sh"]
