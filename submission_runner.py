@@ -133,6 +133,10 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
+flags.DEFINE_integer('rng_seed',
+                     None, 
+                     'Value of rng seed. If None, a random seed will'
+                     'be generated from hardware.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -267,10 +271,8 @@ def train_once(
          global_step,
          preemption_count,
          checkpoint_dir=log_dir)
-    meta_data = logger_utils.get_meta_data(workload)
-    meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
-    logger_utils.write_json(meta_file_name, meta_data)
+    logger_utils.save_meta_data(workload, rng_seed, preemption_count)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
@@ -449,7 +451,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
-                                 save_checkpoints: Optional[bool] = True):
+                                 save_checkpoints: Optional[bool] = True,
+                                 rng_seed: Optional[int] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -496,7 +499,8 @@ def score_submission_on_workload(workload: spec.Workload,
     all_metrics = []
     for hi, hyperparameters in enumerate(tuning_search_space):
       # Generate a new seed from hardware sources of randomness for each trial.
-      rng_seed = struct.unpack('I', os.urandom(4))[0]
+      if not rng_seed:
+        rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
@@ -610,7 +614,8 @@ def main(_):
       tuning_search_space=FLAGS.tuning_search_space,
       num_tuning_trials=FLAGS.num_tuning_trials,
       log_dir=logging_dir_path,
-      save_checkpoints=FLAGS.save_checkpoints)
+      save_checkpoints=FLAGS.save_checkpoints,
+      rng_seed=FLAGS.rng_seed)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
