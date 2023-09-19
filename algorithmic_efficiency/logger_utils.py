@@ -275,12 +275,11 @@ def get_meta_data(workload: spec.Workload) -> dict:
   return meta_data
 
 
-def save_meta_data(workload: spec.Workload,
-                   rng_seed: int,
-                   meta_file_name: str):
+def save_meta_data(workload: spec.Workload, rng_seed: int, meta_file_name: str):
   meta_data = get_meta_data(workload)
   meta_data.update({'rng_seed': rng_seed})
   write_json(meta_file_name, meta_data)
+
 
 class MetricLogger(object):
   """Used to log all measurements during training.

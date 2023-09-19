@@ -133,10 +133,11 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
-flags.DEFINE_integer('rng_seed',
-                     None,
-                     'Value of rng seed. If None, a random seed will'
-                     'be generated from hardware.')
+flags.DEFINE_integer(
+    'rng_seed',
+    None,
+    'Value of rng seed. If None, a random seed will'
+    'be generated from hardware.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
