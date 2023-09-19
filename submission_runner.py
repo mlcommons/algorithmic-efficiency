@@ -134,7 +134,7 @@ flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
 flags.DEFINE_integer('rng_seed',
-                     None, 
+                     None,
                      'Value of rng seed. If None, a random seed will'
                      'be generated from hardware.')
 FLAGS = flags.FLAGS
@@ -177,7 +177,7 @@ def train_once(
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
     hyperparameters: Optional[spec.Hyperparameters],
-    rng_seed: int, 
+    rng_seed: int,
     rng: spec.RandomState,
     profiler: Profiler,
     max_global_steps: int = None,
@@ -534,7 +534,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, 
+                                     hyperparameters,
                                      rng_seed,
                                      rng,
                                      profiler,
