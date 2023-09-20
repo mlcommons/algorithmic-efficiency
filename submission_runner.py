@@ -554,7 +554,8 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
   else:
-    rng_seed = struct.unpack('q', os.urandom(8))[0]
+    if not rng_seed:
+      rng_seed = struct.unpack('q', os.urandom(8))[0]
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
