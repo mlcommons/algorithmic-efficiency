@@ -100,7 +100,7 @@ python3 datasets/dataset_setup.py \
 --imagenet \
 --temp_dir $DATA_DIR/tmp \  
 --imagenet_train_url <imagenet_train_url> \
---imagenet_val_url <imagenet_val_url\
+--imagenet_val_url <imagenet_val_url> \
 --framework jax
 
 ```

@@ -298,7 +298,7 @@ def download_criteo1tb(data_dir,
   logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
   p = subprocess.Popen(unzip_cmd, shell=True)
   p.communicate()
-  _maybe_prompt_for_deletion(all_days_zip_filepath, interactive_deletion)
+  _maybe_prompt_for_deletion([all_days_zip_filepath], interactive_deletion)
 
   # Unzip the individual days.
   processes = []
@@ -316,9 +316,9 @@ def download_criteo1tb(data_dir,
   _maybe_prompt_for_deletion(gz_paths, interactive_deletion)
 
   # Split into files with 5M lines each: day_1.csv -> day_1_[0-39].csv.
+  unzipped_paths = []
   for batch in range(6):
     batch_processes = []
-    unzipped_paths = []
     for day_offset in range(4):
       day = batch * 4 + day_offset
       unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
@@ -330,7 +330,7 @@ def download_criteo1tb(data_dir,
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))
     for p in batch_processes:
       p.communicate()
-    _maybe_prompt_for_deletion(unzipped_paths, interactive_deletion)
+  _maybe_prompt_for_deletion(unzipped_paths, interactive_deletion)
 
 
 def download_cifar(data_dir, framework):
@@ -567,14 +567,12 @@ def download_librispeech(dataset_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
-  # tmp_librispeech_dir = os.path.join(dataset_dir, 'librispeech')
-  # extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
-  # final_data_dir = os.path.join(dataset_dir, 'librispeech_processed')
-  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech_raw')
-  extracted_data_dir = os.path.join(tmp_dir, 'librispeech_extracted')
+  tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
+  extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
   final_data_dir = os.path.join(dataset_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
+  _maybe_mkdir(final_data_dir)
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
