@@ -15,7 +15,7 @@ import torch
 
 
 def _get_monotonic_time() -> float:
-  if torch.cuda.is_available():
+  if torch.cuda.is_available() and torch.cuda.is_initialized():
     torch.cuda.synchronize()
   return time.monotonic()
 
