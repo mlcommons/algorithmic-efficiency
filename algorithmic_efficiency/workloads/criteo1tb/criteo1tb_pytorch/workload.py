@@ -233,7 +233,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     summed_loss = self.loss_fn(
         label_batch=batch['targets'], logits_batch=logits,
         mask_batch=weights)['summed']
-    return summed_loss
+    return summed_loss.to(dtype=torch.float64)
 
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):

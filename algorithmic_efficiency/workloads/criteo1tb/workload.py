@@ -63,11 +63,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self) -> int:
-    return 89_000_000
+    return 83_274_637
 
   @property
   def num_test_examples(self) -> int:
-    return 89_274_637
+    return 95_000_000
 
   @property
   def train_mean(self):
