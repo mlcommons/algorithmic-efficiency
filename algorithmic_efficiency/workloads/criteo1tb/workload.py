@@ -63,11 +63,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def num_validation_examples(self) -> int:
-    return 89_000_000
+    return 83_274_637
 
   @property
   def num_test_examples(self) -> int:
-    return 89_274_637
+    return 95_000_000
 
   @property
   def train_mean(self):
@@ -95,13 +95,13 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     del cache
+    del num_batches
     ds = input_pipeline.get_criteo1tb_dataset(
         split=split,
         shuffle_rng=data_rng,
         data_dir=data_dir,
         num_dense_features=self.num_dense_features,
         global_batch_size=global_batch_size,
-        num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
 
     for batch in iter(ds):
@@ -132,7 +132,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
           split=split,
           data_dir=data_dir,
           global_batch_size=global_batch_size,
-          num_batches=num_batches,
           repeat_final_dataset=True)
     loss = 0.0
     for _ in range(num_batches):
