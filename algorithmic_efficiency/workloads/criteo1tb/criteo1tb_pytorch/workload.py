@@ -136,8 +136,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
       num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
-    del num_batches
-
     not_train = split != 'train'
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
@@ -149,6 +147,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
           split=split,
           data_dir=data_dir,
           global_batch_size=global_batch_size,
+          num_batches=num_batches,
           repeat_final_dataset=repeat_final_dataset)
     weights = None
     while True:
