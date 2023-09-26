@@ -55,9 +55,15 @@ def test_param_shapes(workload):
       jax_workload.param_shapes.unfreeze())
   pytorch_param_shapes = jax.tree_util.tree_leaves(
       pytorch_workload.param_shapes)
-  if workload == 'criteo1tb':
-    # The PyTorch implementation divides the embedding matrix
-    # into 3 chunks.
+  if workload == 'wmt':
+    # The PyTorch transformer for WMT is implemented with fused linear layers
+    # for the projection of QKV inside of the MultiheadAttention module.
+    # Two weight matrices for each of the two self-attention layers less and one
+    # less for the encoder-decoder attention layer -> 5 weight matrices less.
+    # We have 6 encoder/decoder layers, hence 30 weight matrices less in total.
+    assert len(jax_param_shapes) == len(pytorch_param_shapes) + 30
+  elif workload == 'criteo1tb':
+    # The PyTorch implementation divides the embedding matrix into 3 chunks.
     assert len(jax_param_shapes) == len(pytorch_param_shapes) - 3
   else:
     assert len(jax_param_shapes) == len(pytorch_param_shapes)

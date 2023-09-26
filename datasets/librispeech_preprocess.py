@@ -32,6 +32,7 @@ librispeech_example_counts = {
     'train-clean-360': 104014,
     'train-other-500': 148688,
     'test-clean': 2620,
+    'test-other': 2939,
     'dev-clean': 2703,
     'dev-other': 2864,
 }
