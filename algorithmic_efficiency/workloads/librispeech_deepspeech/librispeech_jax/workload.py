@@ -40,7 +40,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
                               console_kwargs={'force_terminal': False,
                                               'force_jupyter': False,
                                               'width': 240})
-    logging.info(tabuleate_fn(*fake_input_batch), train=False)
+    logging.info(tabulate_fn(*fake_input_batch), train=False)
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, dropout_rng = jax.random.split(rng, 2)
