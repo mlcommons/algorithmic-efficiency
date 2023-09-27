@@ -5,6 +5,8 @@ from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
+import flax.linen as nn
+from absl import logging
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -34,6 +36,11 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
+    tabulate_fn = nn.tabulate(self._model, jax.random.PRNGKey(0),
+                              console_kwargs={'force_terminal': False,
+                                              'force_jupyter': False,
+                                              'width': 240})
+    logging.info(tabulate_fn(*fake_input_batch, train=False))
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, dropout_rng = jax.random.split(rng, 2)
