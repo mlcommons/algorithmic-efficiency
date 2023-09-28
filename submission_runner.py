@@ -55,6 +55,9 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 # Workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = workloads.WORKLOADS
 
+# TODO(znado): make a nicer registry of workloads that lookup in.
+BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
+
 flags.DEFINE_string(
     'submission_path',
     None,
