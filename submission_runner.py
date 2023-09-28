@@ -602,7 +602,7 @@ def main(_):
   workload_class = workload_metadata['workload_class_name']
   logging.info(f'workload : {workload_path}')
   logging.info(f'workload class: {workload_class}')
-
+  logging.info(f'workload max run time: {workload.max_allowed_runtime_sec}')
   experiment_name = FLAGS.experiment_name
   if experiment_name and FLAGS.append_timestamp:
     experiment_name += datetime.datetime.now().strftime('-%Y-%m-%d-%H-%M-%S')
