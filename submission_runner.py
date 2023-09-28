@@ -530,6 +530,7 @@ def score_submission_on_workload(workload: spec.Workload,
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
+        logging.info(f"Workload step hint: {workload.step_hint}")
         timing, metrics = train_once(workload, global_batch_size,
                                      global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
