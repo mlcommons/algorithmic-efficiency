@@ -43,7 +43,6 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 from algorithmic_efficiency.workloads import workloads
 
-
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
