@@ -598,7 +598,10 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       workload_init_kwargs=workload_init_kwargs)
-  logging.info(f'workload : {workload_path} {workload_class_name}')
+  workload_path = workload_metadata['workload_path']
+  workload_class = workload_metadata['workload_class']
+  logging.info(f'workload : {workload_path}')
+  logging.info(f'workload class: {workload_class}')
 
   experiment_name = FLAGS.experiment_name
   if experiment_name and FLAGS.append_timestamp:
