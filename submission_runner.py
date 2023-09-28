@@ -420,7 +420,7 @@ def train_once(
             _reset_cuda_mem()
 
     train_state['last_step_end_time'] = get_time()
-    
+  
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
   if log_dir is not None:
