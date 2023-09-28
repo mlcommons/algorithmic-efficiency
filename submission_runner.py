@@ -52,11 +52,11 @@ tf.config.set_visible_devices([], 'GPU')
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 
-# Workload_path will be appended by '_pytorch' or '_jax' automatically.
-WORKLOADS = workloads.WORKLOADS
-
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
+
+# Workload_path will be appended by '_pytorch' or '_jax' automatically.
+WORKLOADS = workloads.WORKLOADS
 
 flags.DEFINE_string(
     'submission_path',
@@ -420,6 +420,7 @@ def train_once(
             _reset_cuda_mem()
 
     train_state['last_step_end_time'] = get_time()
+    
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
   if log_dir is not None:
