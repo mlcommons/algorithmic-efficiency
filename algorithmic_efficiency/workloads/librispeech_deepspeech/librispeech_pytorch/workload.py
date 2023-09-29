@@ -8,8 +8,8 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
     initialize
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import \
-    LibriSpeechConformerWorkload
+from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
+    BaseDeepspeechLibrispeechWorkload
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
     DeepspeechConfig
 from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
