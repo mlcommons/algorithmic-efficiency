@@ -62,7 +62,7 @@ def maybe_restore_checkpoint(framework: str,
     train_state, eval_results, global_step, preemption_count).
   """
   if framework == 'jax':
-    opt_state, opt_update_fn, lr_schedule_fn = optimizer_state
+    opt_state, opt_update_fn = optimizer_state
   else:
     opt_state, opt_update_fn = optimizer_state, None
 
