@@ -1,4 +1,4 @@
-from algorithmic_efficiency.workloads.librispeech_conformer import workload
+from algorithmic_efficiency.workloads.librispeech_deepspeech import workload
 
 
 class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
