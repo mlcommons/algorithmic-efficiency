@@ -85,7 +85,7 @@ def update_params(workload: spec.Workload,
   del loss_type
   del eval_results
 
-  optimizer_state, opt_update_fn, lr_schedule_fn = optimizer_state
+  optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
@@ -107,6 +107,5 @@ def update_params(workload: spec.Workload,
         {
             'loss': loss[0],
             'grad_norm': grad_norm[0],
-            'learning_rate': lr_schedule_fn(global_step)
         }, global_step)
-  return (new_optimizer_state, opt_update_fn, lr_schedule_fn), new_params, new_model_state
+  return (new_optimizer_state, opt_update_fn), new_params, new_model_state

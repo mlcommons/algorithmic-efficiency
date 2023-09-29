@@ -7,7 +7,6 @@ from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import optax
-from absl import logging
 
 from algorithmic_efficiency import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
@@ -153,7 +152,6 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
 
   target_setting_step_hint = int(0.75 * workload.step_hint)
-  logging.info(f'target setting step hint: {target_setting_step_hint}')
   lr_schedule_fn = cosine_warmup.jax_cosine_warmup(target_setting_step_hint,
                                                    hyperparameters)
 
@@ -170,4 +168,4 @@ def init_optimizer_state(workload: spec.Workload,
       weight_decay=hyperparameters.weight_decay)
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn, opt_update_fn
+  return jax_utils.replicate(optimizer_state), opt_update_fn

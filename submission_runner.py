@@ -530,7 +530,6 @@ def score_submission_on_workload(workload: spec.Workload,
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
-        logging.info(f"Workload step hint: {workload.step_hint}")
         timing, metrics = train_once(workload, global_batch_size,
                                      global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
@@ -598,11 +597,7 @@ def main(_):
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       workload_init_kwargs=workload_init_kwargs)
-  workload_path = workload_metadata['workload_path']
-  workload_class = workload_metadata['workload_class_name']
-  logging.info(f'workload : {workload_path}')
-  logging.info(f'workload class: {workload_class}')
-  logging.info(f'workload max run time: {workload.max_allowed_runtime_sec}')
+
   experiment_name = FLAGS.experiment_name
   if experiment_name and FLAGS.append_timestamp:
     experiment_name += datetime.datetime.now().strftime('-%Y-%m-%d-%H-%M-%S')
