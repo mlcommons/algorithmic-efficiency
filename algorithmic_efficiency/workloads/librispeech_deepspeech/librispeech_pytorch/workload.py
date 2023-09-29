@@ -20,7 +20,7 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 MAX_INPUT_LENGTH = 320000
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
+class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
 
   def init_model_fn(
       self,

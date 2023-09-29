@@ -16,7 +16,7 @@ from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax imp
     models
 
 
-class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
+class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
 
   def init_model_fn(
       self,
