@@ -142,6 +142,10 @@ flags.DEFINE_integer(
     'hparam_end_index',
     None,
     'End index to slice set of hyperparameters in tuning spearch space.')
+    'rng_seed',
+    None,
+    'Value of rng seed. If None, a random seed will'
+    'be generated from hardware.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -182,6 +186,7 @@ def train_once(
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
     hyperparameters: Optional[spec.Hyperparameters],
+    rng_seed: int,
     rng: spec.RandomState,
     profiler: Profiler,
     max_global_steps: int = None,
@@ -276,10 +281,9 @@ def train_once(
          global_step,
          preemption_count,
          checkpoint_dir=log_dir)
-    meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
-    logger_utils.write_json(meta_file_name, meta_data)
+    logger_utils.save_meta_data(workload, rng_seed, preemption_count)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
@@ -462,7 +466,8 @@ def score_submission_on_workload(
     save_checkpoints: Optional[bool] = True,
     hparam_start_index: Optional[bool] = None,
     hparam_end_index: Optional[bool] = None,
-):
+    rng_seed: Optional[int] = None
+    ):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -511,7 +516,8 @@ def score_submission_on_workload(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
     for hi, hyperparameters in tuning_search_space_iter:
       # Generate a new seed from hardware sources of randomness for each trial.
-      rng_seed = struct.unpack('I', os.urandom(4))[0]
+      if not rng_seed:
+        rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
@@ -543,7 +549,9 @@ def score_submission_on_workload(
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng,
+                                     hyperparameters,
+                                     rng_seed,
+                                     rng,
                                      profiler,
                                      max_global_steps,
                                      tuning_dir_name,
@@ -560,7 +568,8 @@ def score_submission_on_workload(
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
   else:
-    rng_seed = struct.unpack('q', os.urandom(8))[0]
+    if not rng_seed:
+      rng_seed = struct.unpack('q', os.urandom(8))[0]
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
@@ -569,7 +578,7 @@ def score_submission_on_workload(
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, max_global_steps, log_dir,
+          None, rng_seed, rng, profiler, max_global_steps, log_dir,
           save_checkpoints=save_checkpoints)
   return score
 
@@ -628,6 +637,7 @@ def main(_):
       save_checkpoints=FLAGS.save_checkpoints,
       hparam_start_index=FLAGS.hparam_start_index,
       hparam_end_index=FLAGS.hparam_end_index)
+      rng_seed=FLAGS.rng_seed)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
