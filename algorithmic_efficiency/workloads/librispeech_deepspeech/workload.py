@@ -1,7 +1,7 @@
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
 
 
-class BaseDeepspeechLibrispeechWorkload(workload.BaseLibrispeechWorkload):
+class BaseDeepspeechLibrispeechWorkload(workload.LibrispeechConformerWorkload):
 
   @property
   def validation_target_value(self) -> float:
