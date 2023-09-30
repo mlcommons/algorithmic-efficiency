@@ -117,7 +117,7 @@ class LibriSpeechDeepSpeechWorkload(LibrispeechWorkload):
         'per_example': per_example_losses,
     }
 
-    def _eval_model_on_split(self,
+  def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
                            global_batch_size: int,
