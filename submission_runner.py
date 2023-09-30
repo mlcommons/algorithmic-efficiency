@@ -142,7 +142,6 @@ flags.DEFINE_integer(
     'hparam_end_index',
     None,
     'End index to slice set of hyperparameters in tuning spearch space.')
-    'rng_seed',
 flags.DEFINE_integer(
     'rng_seed',
     None,
@@ -453,23 +452,21 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(
-    workload: spec.Workload,
-    workload_name: str,
-    submission_path: str,
-    data_dir: str,
-    tuning_ruleset: str,
-    profiler: Optional[Profiler] = None,
-    max_global_steps: Optional[int] = None,
-    imagenet_v2_data_dir: Optional[str] = None,
-    tuning_search_space: Optional[str] = None,
-    num_tuning_trials: Optional[int] = None,
-    log_dir: Optional[str] = None,
-    save_checkpoints: Optional[bool] = True,
-    hparam_start_index: Optional[bool] = None,
-    hparam_end_index: Optional[bool] = None,
-    rng_seed: Optional[int] = None
-    ):
+def score_submission_on_workload(workload: spec.Workload,
+                                 workload_name: str,
+                                 submission_path: str,
+                                 data_dir: str,
+                                 tuning_ruleset: str,
+                                 profiler: Optional[Profiler] = None,
+                                 max_global_steps: Optional[int] = None,
+                                 imagenet_v2_data_dir: Optional[str] = None,
+                                 tuning_search_space: Optional[str] = None,
+                                 num_tuning_trials: Optional[int] = None,
+                                 log_dir: Optional[str] = None,
+                                 save_checkpoints: Optional[bool] = True,
+                                 hparam_start_index: Optional[bool] = None,
+                                 hparam_end_index: Optional[bool] = None,
+                                 rng_seed: Optional[int] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -638,7 +635,7 @@ def main(_):
       log_dir=logging_dir_path,
       save_checkpoints=FLAGS.save_checkpoints,
       hparam_start_index=FLAGS.hparam_start_index,
-      hparam_end_index=FLAGS.hparam_end_index)
+      hparam_end_index=FLAGS.hparam_end_index,
       rng_seed=FLAGS.rng_seed)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
