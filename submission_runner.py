@@ -143,6 +143,8 @@ flags.DEFINE_integer(
     None,
     'End index to slice set of hyperparameters in tuning spearch space.')
     'rng_seed',
+flags.DEFINE_integer(
+    'rng_seed',
     None,
     'Value of rng seed. If None, a random seed will'
     'be generated from hardware.')
