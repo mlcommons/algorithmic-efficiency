@@ -140,14 +140,14 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     summed_loss = self.loss_fn(
         label_batch=batch['targets'], logits_batch=logits,
         mask_batch=weights)['summed']
-    return np.array(summed_loss, dtype=np.float64)
+    return summed_loss
 
   def _eval_batch(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
-    return self._eval_batch_pmapped(params, batch).sum()
+    return np.array(self._eval_batch_pmapped(params, batch).sum(), dtype=np.float64)
 
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
