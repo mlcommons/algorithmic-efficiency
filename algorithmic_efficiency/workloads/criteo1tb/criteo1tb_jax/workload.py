@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
-
+import numpy as np
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import models
@@ -140,8 +140,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     summed_loss = self.loss_fn(
         label_batch=batch['targets'], logits_batch=logits,
         mask_batch=weights)['summed']
-    print(summed_loss)
-    return summed_loss
+    return np.array(summed_loss, dtype=np.float64)
 
   def _eval_batch(self,
                   params: spec.ParameterContainer,
