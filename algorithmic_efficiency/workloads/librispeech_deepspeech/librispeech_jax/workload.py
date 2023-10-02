@@ -1,8 +1,9 @@
 import functools
 import math
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -53,33 +54,33 @@ class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
     return param_key == 'Dense_0'
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-    variables = {'params': params, **model_state}
-    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
-    is_train_mode = mode == spec.ForwardPassMode.TRAIN
-    if update_batch_norm or is_train_mode:
-      (logits, logit_paddings), new_model_state = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=True,
-          rngs={'dropout' : rng},
-          mutable=['batch_stats'])
-      return (logits, logit_paddings), new_model_state
-    else:
-      logits, logit_paddings = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=False,
-          mutable=False)
-      return (logits, logit_paddings), model_state
+        self,
+        params: spec.ParameterContainer,
+        augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+        model_state: spec.ModelAuxiliaryState,
+        mode: spec.ForwardPassMode,
+        rng: spec.RandomState,
+        update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      variables = {'params': params, **model_state}
+      inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+      is_train_mode = mode == spec.ForwardPassMode.TRAIN
+      if update_batch_norm or is_train_mode:
+        (logits, logit_paddings), new_model_state = self._model.apply(
+            variables,
+            inputs,
+            input_paddings,
+            train=True,
+            rngs={'dropout' : rng},
+            mutable=['batch_stats'])
+        return (logits, logit_paddings), new_model_state
+      else:
+        logits, logit_paddings = self._model.apply(
+            variables,
+            inputs,
+            input_paddings,
+            train=False,
+            mutable=False)
+        return (logits, logit_paddings), model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
