@@ -17,6 +17,13 @@ from algorithmic_efficiency.workloads.librispeech_deepspeech.workload import \
 
 
 class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
+  
+  def __init__(self,
+               tokenizer_vocab_path: Optional[str] = None,
+               use_specaug: bool = True) -> None:
+    super().__init__()
+    self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
+    self.use_specaug = use_specaug
 
   def init_model_fn(
       self,

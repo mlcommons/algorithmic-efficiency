@@ -29,6 +29,13 @@ MAX_INPUT_LENGTH = 320000
 
 class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
 
+  def __init__(self,
+               tokenizer_vocab_path: Optional[str] = None,
+               use_specaug: bool = True) -> None:
+    super().__init__()
+    self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
+    self.use_specaug = use_specaug
+
   def init_model_fn(
       self,
       rng: spec.RandomState,
