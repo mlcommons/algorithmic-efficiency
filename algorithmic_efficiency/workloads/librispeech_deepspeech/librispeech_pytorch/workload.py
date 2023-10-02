@@ -76,3 +76,4 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
   @property
   def max_allowed_runtime_sec(self) -> int:
     return 55_506  # ~15.4 hours
+  

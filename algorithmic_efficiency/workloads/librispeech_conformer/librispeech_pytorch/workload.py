@@ -314,4 +314,3 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             float(total_metrics['word_errors'].item() /
                   total_metrics['num_words'].item()),
     }
-
