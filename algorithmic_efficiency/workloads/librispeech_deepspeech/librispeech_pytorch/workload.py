@@ -66,7 +66,7 @@ class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['lin.weight', 'lin.bias']
-  
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -97,7 +97,7 @@ class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
       logits, logits_paddings = model(inputs.to(DEVICE),
                                       input_paddings.to(DEVICE))
     return (logits, logits_paddings), None
-  
+
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
@@ -137,7 +137,7 @@ class LibriSpeechDeepSpeechWorkload(BaseDeepspeechLibrispeechWorkload):
         'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
         'per_example': per_example_losses,
     }
-  
+
   def _eval_model_on_split(self,
                            split: str,
                            num_examples: int,
