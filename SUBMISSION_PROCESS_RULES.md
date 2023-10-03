@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Submission Process Rules
 
-**Version:** 0.0.1 *(Last updated 17 August 2023)*
+**Version:** 0.0.2 *(Last updated 03 Oktober 2023)*
 
 - [Basics](#basics)
 - [Schedule](#schedule)
@@ -37,14 +37,14 @@ Three additional documents complement this document:
 
 ### Dates
 
-- **Publication of the call for submission: 08. September 2023 (08:00 AM UTC)**
-- Registration deadline for submissions: 15. November 2023 (08:00 AM UTC)
-- Version freeze for the benchmark codebase: 01. December 2023 (08:00 AM UTC)
-- **Submission deadline: 15. January 2024 (08:00 AM UTC)**
-- Sampling the held-out workloads and hyperparameters: 16. January 2024 (08:00 AM UTC)
-- Deadline for specifying the submission batch sizes for held-out workloads: 23. January 2024 (08:00 AM UTC)
-- Deadline for self-reporting results: 01. March 2024 (08:00 AM UTC)
-- **[extra tentative] Announcement of all results: 15. April 2024 (08:00 AM UTC)**
+- **Publication of the call for submission: 17. Oktober 2023 (08:00 AM UTC)**
+- Registration deadline for submissions: 15. December 2023 (08:00 AM UTC)
+- Version freeze for the benchmark codebase: 17. January 2024 (08:00 AM UTC)
+- **Submission deadline: 15. February 2024 (08:00 AM UTC)**
+- Sampling the held-out workloads and hyperparameters: 16. February 2024 (08:00 AM UTC)
+- Deadline for specifying the submission batch sizes for held-out workloads: 28. February 2024 (08:00 AM UTC)
+- Deadline for self-reporting results: 10. April 2024 (08:00 AM UTC)
+- **[extra tentative] Announcement of all results: 22. May 2024 (08:00 AM UTC)**
 
 The presented dates are subject to change and adjustments may be made by the [MLCommmons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/).
 
