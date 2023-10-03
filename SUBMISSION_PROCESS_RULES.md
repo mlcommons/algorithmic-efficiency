@@ -2,28 +2,26 @@
 
 **Version:** 0.0.1 *(Last updated 17 August 2023)*
 
-- [MLCommons™ AlgoPerf: Submission Process Rules](#mlcommons-algoperf-submission-process-rules)
-  - [Basics](#basics)
-  - [Schedule](#schedule)
-    - [Dates](#dates)
-    - [Code freeze](#code-freeze)
-    - [Submission deadline](#submission-deadline)
-  - [Submission](#submission)
-    - [Register a submission](#register-a-submission)
-    - [How to submit](#how-to-submit)
-      - [Submission repository](#submission-repository)
-      - [Licensing](#licensing)
-    - [Multiple Submission](#multiple-submission)
-    - [Requesting Additional Baselines](#requesting-additional-baselines)
-  - [Scoring](#scoring)
-    - [Self-reporting scores](#self-reporting-scores)
-      - [Verifying scores](#verifying-scores)
-    - [Sampling held-out workloads and hyperparameters](#sampling-held-out-workloads-and-hyperparameters)
-    - [Leaderboard](#leaderboard)
-  - [Sprit jury \& challenging submissions](#sprit-jury--challenging-submissions)
-  - [Awards and prize money](#awards-and-prize-money)
-    - [Awards committee](#awards-committee)
-  - [Ineligibility and conflict of interest](#ineligibility-and-conflict-of-interest)
+- [Basics](#basics)
+- [Schedule](#schedule)
+  - [Dates](#dates)
+  - [Version freeze](#version-freeze)
+  - [Submission deadline](#submission-deadline)
+- [Submission](#submission)
+  - [Register a submission](#register-a-submission)
+  - [How to submit](#how-to-submit)
+    - [Submission repository](#submission-repository)
+    - [Licensing](#licensing)
+  - [Multiple Submission](#multiple-submission)
+- [Scoring](#scoring)
+  - [Self-reporting scores](#self-reporting-scores)
+    - [Verifying scores](#verifying-scores)
+  - [Sampling held-out workloads and hyperparameters](#sampling-held-out-workloads-and-hyperparameters)
+  - [Leaderboard](#leaderboard)
+- [Sprit jury \& challenging submissions](#sprit-jury--challenging-submissions)
+- [Awards and prize money](#awards-and-prize-money)
+  - [Awards committee](#awards-committee)
+- [Ineligibility and conflict of interest](#ineligibility-and-conflict-of-interest)
 
 ## Basics
 
@@ -111,11 +109,7 @@ We furthermore require all submissions to be made available open source on the s
 
 Our benchmark allows multiple submissions by the same submitter(s). However, we would like to prevent submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
 
-We encourage multiple submissions if they differ substantially. The spirit jury will be responsible for judging whether the submissions are substantially different. This jury will apply stricter scrutiny to submitters with a larger number of submissions. In this context, a submitter refers to an individual (not the general institution or research group they belong to). The total number of submissions by a submitter is the sum of submissions they contributed to.
-
-### Requesting Additional Baselines
-
-Submitters can both contribute and request additional baseline algorithms. This includes existing algorithms with different search spaces or learning rate schedules. These baselines will not be eligible for winning the competition or prize money.
+Submitters may submit algorithms marked as *baselines*. These might include existing algorithms with different search spaces or learning rate schedules. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters.
 
 ## Scoring
 
