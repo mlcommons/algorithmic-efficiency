@@ -18,7 +18,7 @@ def dot_interact(concat_features):
   """
   batch_size = concat_features.shape[0]
 
-  # Interact features, select upper or lower-triangular portion, and re-shape.
+  # Interact features, select upper or lower-triangular portion, and reshape.
   xactions = jnp.matmul(concat_features,
                         jnp.transpose(concat_features, [0, 2, 1]))
   feature_dim = xactions.shape[-1]
@@ -46,7 +46,7 @@ class DlrmSmall(nn.Module):
     embed_dim: embedding dimension.
   """
 
-  vocab_size: int = 32 * 128 * 1024  # 4_194_304
+  vocab_size: int = 32 * 128 * 1024  # 4_194_304.
   num_dense_features: int = 13
   mlp_bottom_dims: Sequence[int] = (512, 256, 128)
   mlp_top_dims: Sequence[int] = (1024, 1024, 512, 256, 1)

@@ -15,7 +15,9 @@ python3 submission_runner.py \
 """
 
 import datetime
+import gc
 import importlib
+import itertools
 import json
 import os
 import struct
@@ -132,6 +134,19 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
+flags.DEFINE_integer(
+    'hparam_start_index',
+    None,
+    'Start index to slice set of hyperparameters in tuning search space.')
+flags.DEFINE_integer(
+    'hparam_end_index',
+    None,
+    'End index to slice set of hyperparameters in tuning spearch space.')
+flags.DEFINE_integer(
+    'rng_seed',
+    None,
+    'Value of rng seed. If None, a random seed will'
+    'be generated from hardware.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -154,6 +169,14 @@ else:
   get_time = _get_time
 
 
+def _reset_cuda_mem():
+  if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
+    torch._C._cuda_clearCublasWorkspaces()
+    gc.collect()
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+
+
 def train_once(
     workload: spec.Workload,
     global_batch_size: int,
@@ -164,6 +187,7 @@ def train_once(
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
     hyperparameters: Optional[spec.Hyperparameters],
+    rng_seed: int,
     rng: spec.RandomState,
     profiler: Profiler,
     max_global_steps: int = None,
@@ -191,9 +215,11 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['ogbg', 'librispeech_deepspeech', 'wmt']
-      eager_backend_workloads = ['librispeech_conformer']
-      aot_eager_backend_workloads = ['criteo1tb']
+      compile_error_workloads = ['ogbg', 'criteo1tb']
+      eager_backend_workloads = [
+          'librispeech_conformer', 'librispeech_deepspeech'
+      ]
+      aot_eager_backend_workloads = []
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
@@ -256,10 +282,9 @@ def train_once(
          global_step,
          preemption_count,
          checkpoint_dir=log_dir)
-    meta_data = logger_utils.get_meta_data(workload)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
-    logger_utils.write_json(meta_file_name, meta_data)
+    logger_utils.save_meta_data(workload, rng_seed, preemption_count)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
@@ -322,6 +347,9 @@ def train_once(
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
+        del batch
+        _reset_cuda_mem()
+
         try:
           eval_start_time = get_time()
           latest_eval_result = workload.eval_model(global_eval_batch_size,
@@ -331,7 +359,7 @@ def train_once(
                                                    data_dir,
                                                    imagenet_v2_data_dir,
                                                    global_step)
-          # Check if targets reached
+          # Check if targets reached.
           train_state['validation_goal_reached'] = (
               workload.has_reached_validation_target(latest_eval_result) or
               train_state['validation_goal_reached'])
@@ -339,15 +367,15 @@ def train_once(
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
 
-          # Save last eval time
+          # Save last eval time.
           eval_end_time = get_time()
           train_state['last_eval_time'] = eval_end_time
 
-          # Accumulate eval time
+          # Accumulate eval time.
           train_state[
               'accumulated_eval_time'] += eval_end_time - eval_start_time
 
-          # Add times to eval results for logging
+          # Add times to eval results for logging.
           latest_eval_result['score'] = (
               train_state['accumulated_submission_time'])
           latest_eval_result[
@@ -386,20 +414,18 @@ def train_once(
                   save_intermediate_checkpoints=FLAGS
                   .save_intermediate_checkpoints)
 
-          if FLAGS.framework == 'pytorch' and torch.cuda.is_available():
-            torch.cuda.empty_cache()
           logging_end_time = get_time()
-
           train_state['accumulated_logging_time'] += (
               logging_end_time - logging_start_time)
+
+          _reset_cuda_mem()
 
         except RuntimeError as e:
           logging.exception(f'Eval step {global_step} error.\n')
           if 'out of memory' in str(e):
             logging.warning('Error: GPU out of memory during eval during step '
                             f'{global_step}, error : {str(e)}.')
-            if torch.cuda.is_available():
-              torch.cuda.empty_cache()
+            _reset_cuda_mem()
 
     train_state['last_step_end_time'] = get_time()
 
@@ -437,7 +463,10 @@ def score_submission_on_workload(workload: spec.Workload,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
-                                 save_checkpoints: Optional[bool] = True):
+                                 save_checkpoints: Optional[bool] = True,
+                                 hparam_start_index: Optional[bool] = None,
+                                 hparam_end_index: Optional[bool] = None,
+                                 rng_seed: Optional[int] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -482,9 +511,12 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for hi, hyperparameters in enumerate(tuning_search_space):
+    tuning_search_space_iter = itertools.islice(
+        enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
+    for hi, hyperparameters in tuning_search_space_iter:
       # Generate a new seed from hardware sources of randomness for each trial.
-      rng_seed = struct.unpack('I', os.urandom(4))[0]
+      if not rng_seed:
+        rng_seed = struct.unpack('I', os.urandom(4))[0]
       logging.info('Using RNG seed %d', rng_seed)
       rng = prng.PRNGKey(rng_seed)
       # Because we initialize the PRNGKey with only a single 32 bit int, in the
@@ -516,7 +548,9 @@ def score_submission_on_workload(workload: spec.Workload,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
                                      update_params, data_selection,
-                                     hyperparameters, rng,
+                                     hyperparameters,
+                                     rng_seed,
+                                     rng,
                                      profiler,
                                      max_global_steps,
                                      tuning_dir_name,
@@ -524,7 +558,7 @@ def score_submission_on_workload(workload: spec.Workload,
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
-    for ti in range(num_tuning_trials):
+    for ti, _ in tuning_search_space_iter:
       logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
       logging.info(f'Metrics: {all_metrics[ti]}')
@@ -533,7 +567,8 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
   else:
-    rng_seed = struct.unpack('q', os.urandom(8))[0]
+    if not rng_seed:
+      rng_seed = struct.unpack('q', os.urandom(8))[0]
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
@@ -542,7 +577,7 @@ def score_submission_on_workload(workload: spec.Workload,
           workload, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
-          None, rng, profiler, max_global_steps, log_dir,
+          None, rng_seed, rng, profiler, max_global_steps, log_dir,
           save_checkpoints=save_checkpoints)
   return score
 
@@ -598,7 +633,10 @@ def main(_):
       tuning_search_space=FLAGS.tuning_search_space,
       num_tuning_trials=FLAGS.num_tuning_trials,
       log_dir=logging_dir_path,
-      save_checkpoints=FLAGS.save_checkpoints)
+      save_checkpoints=FLAGS.save_checkpoints,
+      hparam_start_index=FLAGS.hparam_start_index,
+      hparam_end_index=FLAGS.hparam_end_index,
+      rng_seed=FLAGS.rng_seed)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:

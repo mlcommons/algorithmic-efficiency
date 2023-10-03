@@ -41,7 +41,7 @@
 
 ## Installation
 
-You can install this package and dependences in a [python virtual environment](#virtual-environment) or use a [Docker container](#install-in-docker) (recommended).
+You can install this package and dependences in a [python virtual environment](#virtual-environment) or use a [Docker/Singularity/Apptainer container](#install-in-docker) (recommended).
 
   *TL;DR to install the Jax version for GPU run:*
 
@@ -103,6 +103,9 @@ pip3 install -e '.[full]'
 ### Docker
 
 We recommend using a Docker container to ensure a similar environment to our scoring and testing environments.
+Alternatively, a Singularity/Apptainer container can also be used (see instructions below).
+
+We recommend using a Docker container to ensure a similar environment to our scoring and testing environments.
 
 **Prerequisites for NVIDIA GPU set up**: You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
 See instructions [here](https://github.com/NVIDIA/nvidia-docker).
@@ -139,8 +142,8 @@ To use the Docker container as an interactive virtual environment, you can run a
       -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
       --gpus all \
       --ipc=host \
-      <docker_image_name> 
-      -keep_container_alive true
+      <docker_image_name> \
+      --keep_container_alive true
    ```
 
 2. Open a bash terminal
@@ -152,6 +155,25 @@ To use the Docker container as an interactive virtual environment, you can run a
 #### Running Docker Container (End-to-end)
 
 To run a submission end-to-end in a containerized environment see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
+
+### Using Singularity/Apptainer instead of Docker
+Since many compute clusters don't allow the usage of Docker due to securtiy concerns and instead encourage the use of [Singularity/Apptainer](https://github.com/apptainer/apptainer) (formerly Singularity, now called Apptainer), we also provide instructions on how to build an Apptainer container based on the here provided Dockerfile.
+
+To convert the Dockerfile into an Apptainer definition file, we will use [spython](https://github.com/singularityhub/singularity-cli):
+```bash
+pip3 install spython
+cd algorithmic-efficiency/docker
+spython recipe Dockerfile &> Singularity.def
+```
+Now we can build the Apptainer image by running
+```bash
+singularity build --fakeroot <singularity_image_name>.sif Singularity.def
+```
+To start a shell session with GPU support (by using the `--nv` flag), we can run
+```bash
+singularity shell --nv <singularity_image_name>.sif 
+```
+Similarly to Docker, Apptainer allows you to bind specific paths on the host system and the container by specifying the `--bind` flag, as explained [here](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
 
 ## Getting Started
 
@@ -171,8 +193,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
+    --submission_path=baselines/adamw/jax/submission.py \
+    --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 
 #### Pytorch
@@ -183,8 +205,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json
+    --submission_path=baselines/adamw/jax/submission.py \
+    --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 
 <details>
@@ -212,10 +234,10 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 submission_runner.py \
     --framework=pytorch \
     --workload=mnist \
-    --experiment_dir=/home/znado \
+    --experiment_dir=$HOME/experiments \
     --experiment_name=baseline \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
+    --submission_path=baselines/adamw/jax/submission.py \
+    --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 
 </details>
