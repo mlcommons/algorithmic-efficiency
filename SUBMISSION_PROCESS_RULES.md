@@ -139,8 +139,6 @@ The spirit jury, consisting of selected active members of the working group, wil
 
 The spirit jury may then hear the justifications of the submitters, inspect the code, and also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments. Example cases that might be reviewed by the spirit jury are cases of multiple similar submissions by the same submitter or extensive workload-specific tuning.
 
-**TODO Who is on the Jury?**
-
 ## Awards and prize money
 
 An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will take into account the [benchmark score](RULES.md#benchmark-score-using-performance-profiles) on the full benchmark. The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
