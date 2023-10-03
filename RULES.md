@@ -5,26 +5,25 @@
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
 
-- [MLCommons™ AlgoPerf: Benchmark Rules](#mlcommons-algoperf-benchmark-rules)
-  - [Introduction](#introduction)
-  - [Training Algorithm Track](#training-algorithm-track)
-    - [Submissions](#submissions)
-      - [Specification](#specification)
-      - [Evaluation during training](#evaluation-during-training)
-      - [Valid submissions](#valid-submissions)
-    - [Tuning](#tuning)
-      - [External tuning ruleset](#external-tuning-ruleset)
-      - [Self-tuning ruleset](#self-tuning-ruleset)
-    - [Workloads](#workloads)
-      - [Fixed workloads](#fixed-workloads)
-      - [Randomized workloads](#randomized-workloads)
-      - [Qualification set](#qualification-set)
-    - [Scoring](#scoring)
-      - [Benchmarking hardware](#benchmarking-hardware)
-      - [Defining target performance](#defining-target-performance)
-      - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
-    - [Benchmark Procedure](#benchmark-procedure)
-  - [Model Track](#model-track)
+- [Introduction](#introduction)
+- [Training Algorithm Track](#training-algorithm-track)
+  - [Submissions](#submissions)
+    - [Specification](#specification)
+    - [Evaluation during training](#evaluation-during-training)
+    - [Valid submissions](#valid-submissions)
+  - [Tuning](#tuning)
+    - [External tuning ruleset](#external-tuning-ruleset)
+    - [Self-tuning ruleset](#self-tuning-ruleset)
+  - [Workloads](#workloads)
+    - [Fixed workloads](#fixed-workloads)
+    - [Randomized workloads](#randomized-workloads)
+    - [Qualification set](#qualification-set)
+  - [Scoring](#scoring)
+    - [Benchmarking hardware](#benchmarking-hardware)
+    - [Defining target performance](#defining-target-performance)
+    - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
+  - [Benchmark Procedure](#benchmark-procedure)
+- [Model Track](#model-track)
 
 ## Introduction
 
@@ -400,7 +399,7 @@ Our scoring procedure uses the held-out workloads only to penalize submissions t
 
 #### Qualification set
 
-The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](/CALL_FOR_SUBMISSIONS.md#awards-and-prize-money).
+The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](/SUBMISSION_PROCESS_RULES.md#awards-and-prize-money).
 
 The qualification set consists of the same [fixed workloads](#fixed-workloads) as mentioned above, except for both workloads on *ImageNet*, both workloads on *LibriSpeech*, and the *fastMRI* workload. The remaining three workloads (*WMT*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [randomized workloads](#randomized-workloads) in the qualification set. The qualification set of workloads aims to have a combined runtime of roughly 24 hours on the [benchmarking hardware](#benchmarking-hardware).
 
