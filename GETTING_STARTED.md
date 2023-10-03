@@ -1,4 +1,6 @@
-# Getting Started
+# MLCommons™ AlgoPerf: Getting Started
+
+## Table of Contents <!-- omit from toc -->
 
 - [Set up and installation](#set-up-and-installation)
 - [Download the data](#download-the-data)
