@@ -1,9 +1,11 @@
 # MLCommons™ AlgoPerf: Benchmark Rules
 
-**Version:** 0.0.17 *(Last updated 10 August 2023)*
+**Version:** 0.0.18 *(Last updated 03 Oktober 2023)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
+
+## Table of Contents <!-- omit from toc -->
 
 - [Introduction](#introduction)
 - [Training Algorithm Track](#training-algorithm-track)
