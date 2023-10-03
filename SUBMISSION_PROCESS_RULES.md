@@ -44,7 +44,7 @@ Three additional documents complement this document:
 - Sampling the held-out workloads and hyperparameters: 16. January 2024 (08:00 AM UTC)
 - Deadline for specifying the submission batch sizes for held-out workloads: 23. January 2024 (08:00 AM UTC)
 - Deadline for self-reporting results: 01. March 2024 (08:00 AM UTC)
-- **[extra tentative] Publication of all results: 15. April 2024 (08:00 AM UTC)**
+- **[extra tentative] Announcement of all results: 15. April 2024 (08:00 AM UTC)**
 
 The presented dates are subject to change and adjustments may be made by the [MLCommmons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/).
 
@@ -131,11 +131,11 @@ The sampling code for the held-out workloads and the hyperparameters is publicly
 
 ### Leaderboard
 
-The publication of the results will contain two separate leaderboards, one for the self-tuning and one for the external tuning ruleset. All valid submissions will be ranked by the benchmark score, taking into account all workloads, including the held-out ones. The leaderboard will clearly mark scores that were verified by the working group.
+The announcement of the results will contain two separate leaderboards, one for the self-tuning and one for the external tuning ruleset. All valid submissions will be ranked by the benchmark score, taking into account all workloads, including the held-out ones. The leaderboard will clearly mark scores that were verified by the working group.
 
 ## Sprit jury & challenging submissions
 
-The spirit jury, consisting of selected active members of the working group, will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters with specific concerns about a particular submission can request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed. This request must be made reasonably in advance of the publication deadline to allow the Spirit Jury sufficient time to conduct a thorough review.
+The spirit jury, consisting of selected active members of the working group, will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters with specific concerns about a particular submission can request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed. This request must be made reasonably in advance of the results announcement deadline to allow the Spirit Jury sufficient time to conduct a thorough review.
 
 The spirit jury may then hear the justifications of the submitters, inspect the code, and also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments. Example cases that might be reviewed by the spirit jury are cases of multiple similar submissions by the same submitter or extensive workload-specific tuning.
 
