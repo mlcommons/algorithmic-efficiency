@@ -31,6 +31,7 @@
     - [Building Docker Image](#building-docker-image)
     - [Running Docker Container (Interactive)](#running-docker-container-interactive)
     - [Running Docker Container (End-to-end)](#running-docker-container-end-to-end)
+  - [Using Singularity/Apptainer instead of Docker](#using-singularityapptainer-instead-of-docker)
 - [Getting Started](#getting-started)
   - [Running a workload](#running-a-workload)
     - [JAX](#jax)
@@ -157,22 +158,29 @@ To use the Docker container as an interactive virtual environment, you can run a
 To run a submission end-to-end in a containerized environment see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 ### Using Singularity/Apptainer instead of Docker
+
 Since many compute clusters don't allow the usage of Docker due to securtiy concerns and instead encourage the use of [Singularity/Apptainer](https://github.com/apptainer/apptainer) (formerly Singularity, now called Apptainer), we also provide instructions on how to build an Apptainer container based on the here provided Dockerfile.
 
 To convert the Dockerfile into an Apptainer definition file, we will use [spython](https://github.com/singularityhub/singularity-cli):
+
 ```bash
 pip3 install spython
 cd algorithmic-efficiency/docker
 spython recipe Dockerfile &> Singularity.def
 ```
+
 Now we can build the Apptainer image by running
+
 ```bash
 singularity build --fakeroot <singularity_image_name>.sif Singularity.def
 ```
+
 To start a shell session with GPU support (by using the `--nv` flag), we can run
+
 ```bash
 singularity shell --nv <singularity_image_name>.sif 
 ```
+
 Similarly to Docker, Apptainer allows you to bind specific paths on the host system and the container by specifying the `--bind` flag, as explained [here](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
 
 ## Getting Started
