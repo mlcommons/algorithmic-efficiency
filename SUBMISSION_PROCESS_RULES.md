@@ -135,7 +135,7 @@ The publication of the results will contain two separate leaderboards, one for t
 
 ## Sprit jury & challenging submissions
 
-The spirit jury will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters may challenge other submissions, i.e. request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed.
+The spirit jury will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters with specific concerns about a particular submission can request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed.
 
 The spirit jury may then hear the justifications of the submitters, inspect the code, and also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments. Example cases that might be reviewed by the spirit jury are cases of multiple similar submissions by the same submitter or extensive workload-specific tuning.
 
