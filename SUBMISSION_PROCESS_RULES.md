@@ -56,7 +56,7 @@ To ensure that all submitters can develop their submissions based on the same co
 
 ### Submission deadline
 
-With the submission deadline, all submissions need to be available as a *public* repository with the appropriate license (see the [Licensing section](#licensing)). No changes to the submission code are allowed after the submission deadline (with the notable exception of specifying the batch size for the - at that point unknown - held-out workloads). Once the submission deadline has passed, the working group will publish a list of all submitted algorithms, along with their associated repositories. Until the deadline for challenging submissions, anyone has the right to challenge a submission, i.e. request a review by the spirit jury to determine whether a submission violates the rules of the competition, see the [Spirit jury section](#sprit-jury--challenging-submissions).
+With the submission deadline, all submissions need to be available as a *public* repository with the appropriate license (see the [Licensing section](#licensing)). No changes to the submission code are allowed after the submission deadline (with the notable exception of specifying the batch size for the - at that point unknown - held-out workloads). Once the submission deadline has passed, the working group will publish a list of all submitted algorithms, along with their associated repositories. Anyone has the right to challenge a submission, i.e. request a review by the spirit jury to determine whether a submission violates the rules of the competition, see the [Spirit jury section](#sprit-jury--challenging-submissions).
 
 Directly after the submission deadline, all randomized aspects of the competition are fixed. This includes sampling the held-out workloads from the set of randomized workloads, as well as, sampling the hyperparameters for each submission in the external tuning ruleset (for more details see the [Sampling held-out workloads and hyperparameters section](#sampling-held-out-workloads-and-hyperparameters)). After that, submitters can now ascertain the appropriate batch size of their submission on each held-out workload and self-report scores on either the qualification set or the full benchmarking set of workloads including both fixed and held-out workloads (see the [Self-reporting scores section](#self-reporting-scores)).
 
@@ -135,7 +135,7 @@ The publication of the results will contain two separate leaderboards, one for t
 
 ## Sprit jury & challenging submissions
 
-The spirit jury will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters with specific concerns about a particular submission can request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed.
+The spirit jury, consisting of selected active members of the working group, will be responsible for deciding whether a submission violates the "spirit of the rules". Submitters with specific concerns about a particular submission can request a review by the spirit jury to determine whether a submission violates the rules of the competition. To challenge a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Challenge] *submission_name*". The email needs to link to the challenged submission and include a detailed description of why the submission should be reviewed. This request must be made reasonably in advance of the publication deadline to allow the Spirit Jury sufficient time to conduct a thorough review.
 
 The spirit jury may then hear the justifications of the submitters, inspect the code, and also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments. Example cases that might be reviewed by the spirit jury are cases of multiple similar submissions by the same submitter or extensive workload-specific tuning.
 
@@ -147,9 +147,11 @@ An awards committee will award a prize for the "*Best Performance*" in each rule
 
 The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
 
+If a submission is ineligible to win prize money it can still win an award. The prize money will then go to the highest-ranking eligible submission.
+
 ### Awards committee
 
-The awards committee will be responsible for awarding prize money to submissions. Members of the awards committee can suggest submissions to be considered for the awards. The committee will vote on the winning submissions, the submission with the most votes in each respective category wins the awards, and if eligible, the prize money.
+The awards committee will be responsible for awarding prize money to submissions. The committee will try to reach a consensus on how to award prize money and settle disagreements by majority vote, if necessary.
 
 **TODO Who is on the Awards committee?**
 
