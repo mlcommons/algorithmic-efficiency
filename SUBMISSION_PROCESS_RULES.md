@@ -70,7 +70,7 @@ In the following, we describe the logistical steps required to submit a training
 
 All submitters need to register an intent to submit before the submission registration deadline. This registration is mandatory, i.e. required for all submissions, but not binding, i.e. you don't have to submit a registered submission. This registration is necessary, to estimate the number of submissions and provide support for potential submitters.
 
-To register a submission, please write an email to <algorithms-chairs@mlcommons.org> with the subject "[Registration] *submission_name*" and the following information:
+To register a submission, please fill out this [online form](https://forms.gle/iY1bUhwSjj1JZ4fa9) with the following information
 
 - Name of the submission (e.g. name of the algorithm, or any other arbitrary identifier).
 - Ruleset under which the submission will be scored.
