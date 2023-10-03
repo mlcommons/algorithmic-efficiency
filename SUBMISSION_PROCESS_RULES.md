@@ -2,6 +2,8 @@
 
 **Version:** 0.0.2 *(Last updated 03 Oktober 2023)*
 
+## Table of Contents <!-- omit from toc -->
+
 - [Basics](#basics)
 - [Schedule](#schedule)
   - [Dates](#dates)
