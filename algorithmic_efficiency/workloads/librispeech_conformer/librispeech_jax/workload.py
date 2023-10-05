@@ -144,7 +144,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       }
 
       padded_batch = data_utils.shard_and_maybe_pad_np(
-          numpy_batch, padding_value=1.0, global_batch_size=global_batch_size)
+          numpy_batch, padding_value=1.0)
       yield padded_batch
 
   # Does NOT apply regularization, which is left to the submitter to do in
