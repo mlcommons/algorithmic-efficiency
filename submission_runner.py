@@ -49,7 +49,6 @@ tf.config.set_visible_devices([], 'GPU')
 
 # disable only for deepspeech if it works fine for other workloads.
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
@@ -227,7 +226,9 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-
+    # Temporary fix for Conformer OOM
+    if flags.framework == 'pytorch' and flags.workload == 'librispeech_conformer':
+      os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:512'
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
