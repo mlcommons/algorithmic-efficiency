@@ -262,7 +262,7 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
   return workload_properties
 
 
-def get_meta_data(workload: spec.Workload) -> dict:
+def get_meta_data(workload: spec.Workload, rng_seed: int = None) -> dict:
   meta_data = {}
   workload_properties = _get_workload_properties(workload)
   meta_data.update(workload_properties)
@@ -272,14 +272,8 @@ def get_meta_data(workload: spec.Workload) -> dict:
   meta_data.update(system_software_info)
   system_hardware_info = _get_system_hardware_info()
   meta_data.update(system_hardware_info)
-  return meta_data
-
-
-def get_meta_data(workload: spec.Workload, rng_seed: int, meta_file_name: str):
-  meta_data = get_meta_data(workload)
-  meta_data.update({'rng_seed': rng_seed})
-  # with open(meta_file_name, 'w') as f:
-  #   f.write(json.dumps(meta_data, indent=2))
+  if rng_seed:
+    meta_data.update({'rng_seed': rng_seed}) 
   return meta_data
 
 
