@@ -277,7 +277,7 @@ def get_meta_data(workload: spec.Workload) -> dict:
 
 def save_meta_data(workload: spec.Workload, rng_seed: int, meta_file_name: str):
   meta_data = get_meta_data(workload)
-  meta_data.update({'rng_seed': rng_seed})
+  # meta_data.update({'rng_seed': rng_seed})
   with open(meta_file_name, 'w') as f:
     f.write(json.dumps(meta_data, indent=2))
 
