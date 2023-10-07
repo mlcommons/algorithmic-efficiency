@@ -230,6 +230,7 @@ def train_once(
     # Temporary fix for Conformer OOM
     if FLAGS.framework == 'pytorch' and FLAGS.workload == 'librispeech_conformer':
       os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+      logging.info("AHHHHHHhhhhhhhhhhhhhhhh")
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
