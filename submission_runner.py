@@ -227,8 +227,8 @@ def train_once(
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
     # Temporary fix for Conformer OOM
-    if flags.framework == 'pytorch' and flags.workload == 'librispeech_conformer':
-      os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+    if FLAGS.framework == 'pytorch' and FLAGS.workload == 'librispeech_conformer':
+      os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:512'
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
