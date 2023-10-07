@@ -227,10 +227,6 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-    # Temporary fix for Conformer OOM
-    if FLAGS.framework == 'pytorch' and FLAGS.workload == 'librispeech_conformer':
-      os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
-      logging.info("AHHHHHHhhhhhhhhhhhhhhhh")
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -583,8 +579,9 @@ def main(_):
   workload_metadata = WORKLOADS[FLAGS.workload]
 
   # Prevent OOM on librispeech conformer.
-  if FLAGS.workload == 'librispeech_conformer':
-    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
+  # if FLAGS.workload == 'librispeech_conformer':
+  #   os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
+  #   os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
