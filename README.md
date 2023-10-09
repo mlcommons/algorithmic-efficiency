@@ -126,7 +126,15 @@ To use the Docker container as an interactive virtual environment, you can run a
       <docker_image_name> \
       --keep_container_alive true
    ```
-2. Open a bash terminal
+   Note: You may have to use double quotes around `algorithmic-efficiency` in the mounting `-v` flag. If the above command fails try replacing the following line:
+   ```bash
+   -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
+   ``` 
+   with 
+   ```
+   -v $HOME"/algorithmic-efficiency:/algorithmic-efficiency" \
+   ```
+   - Open a bash terminal
    ```bash
    docker exec -it <container_id> /bin/bash
    ```
