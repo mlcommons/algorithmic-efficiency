@@ -17,6 +17,7 @@ python3 submission_runner.py \
 import datetime
 import gc
 import importlib
+import itertools
 import json
 import os
 import struct
@@ -134,6 +135,14 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('save_checkpoints',
                      True,
                      'Whether or not to checkpoint the model at every eval.')
+flags.DEFINE_integer(
+    'hparam_start_index',
+    None,
+    'Start index to slice set of hyperparameters in tuning search space.')
+flags.DEFINE_integer(
+    'hparam_end_index',
+    None,
+    'End index to slice set of hyperparameters in tuning spearch space.')
 flags.DEFINE_integer(
     'rng_seed',
     None,
@@ -330,9 +339,12 @@ def train_once(
 
     train_state['accumulated_submission_time'] += (
         train_step_end_time - train_state['last_step_end_time'])
+    # Use 3x the runtime budget for the self-tuning ruleset.
+    max_allowed_runtime_sec = (
+        workload.max_allowed_runtime_sec if FLAGS.tuning_ruleset == 'external'
+        else 3 * workload.max_allowed_runtime_sec)
     train_state['is_time_remaining'] = (
-        train_state['accumulated_submission_time'] <
-        workload.max_allowed_runtime_sec)
+        train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
         workload.eval_period_time_sec or train_state['training_complete']):
@@ -454,6 +466,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  num_tuning_trials: Optional[int] = None,
                                  log_dir: Optional[str] = None,
                                  save_checkpoints: Optional[bool] = True,
+                                 hparam_start_index: Optional[bool] = None,
+                                 hparam_end_index: Optional[bool] = None,
                                  rng_seed: Optional[int] = None):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
@@ -499,7 +513,9 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
     all_timings = []
     all_metrics = []
-    for hi, hyperparameters in enumerate(tuning_search_space):
+    tuning_search_space_iter = itertools.islice(
+        enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
+    for hi, hyperparameters in tuning_search_space_iter:
       # Generate a new seed from hardware sources of randomness for each trial.
       if not rng_seed:
         rng_seed = struct.unpack('I', os.urandom(4))[0]
@@ -544,7 +560,7 @@ def score_submission_on_workload(workload: spec.Workload,
       all_timings.append(timing)
       all_metrics.append(metrics)
     score = min(all_timings)
-    for ti in range(num_tuning_trials):
+    for ti, _ in tuning_search_space_iter:
       logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
       logging.info(f'Metrics: {all_metrics[ti]}')
@@ -553,6 +569,9 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
   else:
+    if tuning_search_space is not None:
+      raise ValueError(
+          'Cannot provide a tuning search space when using self tuning.')
     if not rng_seed:
       rng_seed = struct.unpack('q', os.urandom(8))[0]
     rng = prng.PRNGKey(rng_seed)
@@ -621,6 +640,8 @@ def main(_):
       num_tuning_trials=FLAGS.num_tuning_trials,
       log_dir=logging_dir_path,
       save_checkpoints=FLAGS.save_checkpoints,
+      hparam_start_index=FLAGS.hparam_start_index,
+      hparam_end_index=FLAGS.hparam_end_index,
       rng_seed=FLAGS.rng_seed)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 

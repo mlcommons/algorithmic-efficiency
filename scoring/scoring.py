@@ -53,7 +53,7 @@ MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
 
 
 def generate_eval_cols(metrics):
-  splits = ['train', 'validation', 'test']
+  splits = ['train', 'validation']
   return [f'{split}/{col}' for split, col in itertools.product(splits, metrics)]
 
 
@@ -108,15 +108,13 @@ def get_index_that_reaches_best(workload_df, metric_col):
 
 def get_index_that_reaches_target(workload_df,
                                   validation_metric,
-                                  test_metric,
-                                  validation_target,
-                                  test_target):
+                                  validation_target):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
     workload_df: A subset of a submission's trials DataFrame that
       includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df (e.g., `validation/l1_loss`).
+    metric_col: Name of array column in workload_df (e.g. `validation/l1_loss`).
     target: Target value for metric_col.
 
   Returns:
@@ -125,20 +123,13 @@ def get_index_that_reaches_target(workload_df,
   """
   is_minimized = check_if_minimized(validation_metric)
   validation_series = workload_df[validation_metric]
-  test_series = workload_df[test_metric]
-
   validation_series = validation_series[validation_series != np.nan]
-  validation_series = validation_series[test_series != np.nan]
-  test_series = test_series[validation_series != np.nan]
-  test_series = test_series[test_series != np.nan]
 
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
-  test_target_reached = test_series.apply(lambda x: op(x, test_target))
 
-  target_reached = pd.Series(validation_target_reached[0]
-                             & test_target_reached[0])
+  target_reached = pd.Series(validation_target_reached[0])
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
@@ -188,12 +179,10 @@ def get_times_for_submission(submission,
         workload_init_kwargs=workload_init_kwargs)
     metric_name = workload_obj.target_metric_name
     validation_metric = f'validation/{metric_name}'
-    test_metric = f'test/{metric_name}'
     validation_target = workload_obj.validation_target_value
-    test_target = workload_obj.test_target_value
 
     trial_idx, time_idx = get_index_that_reaches_target(
-        group, validation_metric, test_metric, validation_target, test_target)
+        group, validation_metric, validation_target)
     if time_idx > -1:
       time_val = group[time_col].loc[trial_idx][time_idx]
     else:
