@@ -256,7 +256,6 @@ Yes you can use this repo on your cloud project. As noted above we recommend
 Docker or Apptainer to ensure a similar environment as our scoring environment.
 ## Submissions
 ### Can submission be structured using multiple files?
-
 ### How can I install custom dependencies?
 ### How can I know if my code can be run on benchmarking hardware?
 ### Are we allowed to use our own hardware to self-report the results?
