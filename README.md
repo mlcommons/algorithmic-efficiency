@@ -235,3 +235,28 @@ The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT 
 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
+
+# FAQS
+## Setup 
+### Why do I get a warning that GPU is not found?
+If running with pytorch, we intentionally hide the GPUs from jax. So please disregard the following warning:
+```
+W1003 ... xla_bridge.py:463] No GPU/TPU found, falling back to CPU. (Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+```
+
+## Platform
+### My machine only has one GPU. How can I use this repo?
+You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines/` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. To solve this
+please reduce the batchsizes for the submission.
+
+### How do I run this on my SLURM cluster?
+You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
+### How can I run this on my AWS/GCP/Azure cloud project?
+Yes you can use this repo on your cloud project. As noted above we recommend
+Docker or Apptainer to ensure a similar environment as our scoring environment.
+## Submissions
+### Can submission be structured using multiple files?
+
+### How can I install custom dependencies?
+### How can I know if my code can be run on benchmarking hardware?
+### Are we allowed to use our own hardware to self-report the results?
