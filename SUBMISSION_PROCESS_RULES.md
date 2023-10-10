@@ -157,10 +157,10 @@ The awards committee will be responsible for awarding prize money to submissions
 
 To ensure a fair process and avoid conflicts of interest, some individuals and institutions are ineligible to win prize money. This includes:
 
-- The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*)
-- All individuals serving on the awards committee and their institutions.
+- The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their associated institutions (currently *Google Inc.* and the *University of Tübingen*)
+- All individuals serving on the awards committee and their associated institutions.
 
-A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
+A submission with at least one participating ineligible entity may still win an award, but the prize money will then be given to the top-ranked submission that does not contain ineligible entities.
 
 Additionally, we require members of the spirit jury to abstain from being involved in a review if:
 
