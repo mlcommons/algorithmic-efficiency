@@ -9,8 +9,8 @@ submission_runner_test.py.
 Assumes that each reference submission is using the external tuning ruleset and
 that it is defined in:
 # pylint: disable=line-too-long
-"reference_algorithms/development_algorithms/{workload}/{workload}_{framework}/submission.py"
-"reference_algorithms/development_algorithms/{workload}/tuning_search_space.json".
+"reference_algorithms/target_setting_algorithms/{workload}/{workload}_{framework}/submission.py"
+"reference_algorithms/target_setting_algorithms/{workload}/tuning_search_space.json".
 
 python3 tests/reference_algorithm_tests.py \
     --workload=criteo1tb \
@@ -19,6 +19,7 @@ python3 tests/reference_algorithm_tests.py \
     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
     --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
 """
+
 import copy
 import functools
 import importlib
@@ -79,10 +80,7 @@ _EXPECTED_METRIC_NAMES = {
     'librispeech_conformer': ['train/wer', 'validation/wer', 'train/ctc_loss'],
     'librispeech_deepspeech': ['train/wer', 'validation/wer', 'train/ctc_loss'],
     'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
-    'ogbg': [
-        'train/accuracy', 'validation/loss', 'test/mean_average_precision'
-    ],
-    'wmt': ['train/bleu', 'validation/loss', 'validation/accuracy'],
+
 }
 
 
@@ -499,10 +497,10 @@ def _make_paths(repo_location, framework, workload_name):
   else:
     dataset_name = workload_name
   workload_dir = (
-      f'{repo_location}/reference_algorithms/development_algorithms/'
+      f'{repo_location}/reference_algorithms/target_setting_algorithms/'
       f'{workload_name}')
   search_space_path = f'{workload_dir}/tuning_search_space.json'
-  submission_path = (f'reference_algorithms/development_algorithms/'
+  submission_path = (f'reference_algorithms/target_setting_algorithms/'
                      f'{workload_name}/{dataset_name}_{framework}/'
                      'submission.py')
   full_submission_path = f'{repo_location}/{submission_path}'
@@ -534,7 +532,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
       if FLAGS.tuning_search_space:
         raise ValueError('Cannot set --tuning_search_space and --all.')
       references_dir = (
-          f'{repo_location}/reference_algorithms/development_algorithms')
+          f'{repo_location}/reference_algorithms/target_setting_algorithms')
       for workload_name in os.listdir(references_dir):
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':
