@@ -53,11 +53,11 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.118232
+    return 0.119936
 
   @property
   def test_target_value(self) -> float:
-    return 0.073397
+    return 0.074143
 
   @property
   def step_hint(self) -> int:
