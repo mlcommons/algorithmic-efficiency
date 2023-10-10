@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Submission Process Rules
 
-**Version:** 0.0.2 *(Last updated 03 Oktober 2023)*
+**Version:** 0.0.3 *(Last updated 10 Oktober 2023)*
 
 - [Basics](#basics)
 - [Schedule](#schedule)
@@ -37,7 +37,7 @@ Three additional documents complement this document:
 
 ### Dates
 
-- **Publication of the call for submission: 17. Oktober 2023 (08:00 AM UTC)**
+- **Publication of the call for submission: 17. October 2023 (08:00 AM UTC)**
 - Registration deadline for submissions: 15. December 2023 (08:00 AM UTC)
 - Version freeze for the benchmark codebase: 17. January 2024 (08:00 AM UTC)
 - **Submission deadline: 15. February 2024 (08:00 AM UTC)**
@@ -141,9 +141,9 @@ The spirit jury may then hear the justifications of the submitters, inspect the 
 
 ## Awards and prize money
 
-An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will take into account the [benchmark score](RULES.md#benchmark-score-using-performance-profiles) on the full benchmark. The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
+An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Innovative Submission Award*". The prize for the best-performing submission will take into account the [benchmark score](RULES.md#benchmark-score-using-performance-profiles) on the full benchmark. The "*Innovative Submission Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
 
-The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
+The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Innovative Submission Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
 
 If a submission is ineligible to win prize money it can still win an award. The prize money will then go to the highest-ranking eligible submission.
 
