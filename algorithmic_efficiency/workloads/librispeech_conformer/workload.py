@@ -19,14 +19,14 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.084952
+    return 0.085884
 
   def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['test/wer'] < self.test_target_value
 
   @property
   def test_target_value(self) -> float:
-    return 0.053000
+    return 0.052981
 
   @property
   def loss_type(self) -> spec.LossType:
