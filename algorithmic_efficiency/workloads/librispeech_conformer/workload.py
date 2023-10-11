@@ -67,8 +67,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 122136 # ~34h extended max_allowed_run_time for conformer OOM issue
-
+    return 61_068  # ~17 hours
 
   @property
   def eval_period_time_sec(self) -> int:
