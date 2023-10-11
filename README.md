@@ -245,8 +245,8 @@ While this issue might not affect all setups, we currently implement a different
 The Conformer Pytorch workload has memory fragmentation issue after upgrading to 
 Pytorch 2.0.1, which led to out of memory errors. To circumvent this issues we have tuned the pytorch 
 memory allocation configuration, which slows down the workload by a factor of roughly 2x. For submitters, this 
-means that the Conformer Pytorch submission times will be roughly 2x compared to an identical jax submissions. 
-Tracking issue here: see issue/497(https://github.com/mlcommons/algorithmic-efficiency/issues/497). 
+means that the Conformer Pytorch submission times will be roughly 2x compared to an identical jax submission. 
+Tracking in issue/497(https://github.com/mlcommons/algorithmic-efficiency/issues/497). 
 
 # FAQS
 ## Setup 
@@ -266,7 +266,7 @@ to make make sure it will fit on a 8 16GB V100 GPUs.
 ### How do I run this on my SLURM cluster?
 You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
 ### How can I run this on my AWS/GCP/Azure cloud project?
- Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you can:
+ Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
 1. If you don't have an VM instance yet, we recommmend creating a
 new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options. 
 2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
