@@ -252,10 +252,20 @@ please reduce the batchsizes for the submission.
 ### How do I run this on my SLURM cluster?
 You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
 ### How can I run this on my AWS/GCP/Azure cloud project?
-Yes you can use this repo on your cloud project. As noted above we recommend
-Docker or Apptainer to ensure a similar environment as our scoring environment.
+Below instructions are for GCP. Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit.
+1. If you don't have an VM instance yet, we recommmend to use the "Deep Learning on Linux" Image in Boot disk options. 
+2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+
 ## Submissions
 ### Can submission be structured using multiple files?
-### How can I install custom dependencies?
+Yes, your submission can be structured using multiple files. 
+### Can I install custom dependencies?
+You may use custom dependencies as long as they do not conflict with any of the pinned packages in setup.cfg. 
+To include your custom dependencies in your submission, please include them in a requirements.txt file. 
 ### How can I know if my code can be run on benchmarking hardware?
+The benchmarking hardware specifications are documented in the [Getting Started Document](./getting_started.md).
+Please monitor your submission's memory usage so that it does not exceed the available memory 
+on the competition hardware. 
 ### Are we allowed to use our own hardware to self-report the results?
+No. However you are allowed to use your own hardware to report the best hyperparameter point to qualify for 
+a compute sponsorship offering a free evaluation on the full benchmark set, see [Rules](./RULES.md#qualification-set)
