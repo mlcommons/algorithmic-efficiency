@@ -273,7 +273,7 @@ def get_meta_data(workload: spec.Workload, rng_seed: int = None) -> dict:
   system_hardware_info = _get_system_hardware_info()
   meta_data.update(system_hardware_info)
   if rng_seed:
-    meta_data.update({'rng_seed': rng_seed}) 
+    meta_data.update({'rng_seed': rng_seed})
   return meta_data
 
 
