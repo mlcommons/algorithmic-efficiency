@@ -280,7 +280,7 @@ Please monitor your submission's memory usage so that it does not exceed the ava
 on the competition hardware. 
 ### Are we allowed to use our own hardware to self-report the results?
 No. However you are allowed to use your own hardware to report the best hyperparameter point to qualify for 
-a compute sponsorship offering a free evaluation on the full benchmark set, see [Rules](./RULES.md#qualification-set)
+a compute sponsorship offering a free evaluation on the full benchmark set, see the [Rules](./RULES.md#qualification-set).
 
 # Citing AlgoPerf Benchmark
 Todo: how to cite the algoperf benchmark?
