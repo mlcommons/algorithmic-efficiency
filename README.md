@@ -258,8 +258,10 @@ W1003 ... xla_bridge.py:463] No GPU/TPU found, falling back to CPU. (Set TF_CPP_
 
 ## Platform
 ### My machine only has one GPU. How can I use this repo?
-You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. To solve this
-please reduce the batchsizes for the submission.
+You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batchsizes for the submission. Note that your final submission must 'fit'
+on the benchmarking hardware, so if you are using fewer
+GPUs with higher per gpu memory, please monitor your memory usage 
+to make make sure it will fit on a 8 16GB V100 GPUs.
 
 ### How do I run this on my SLURM cluster?
 You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
