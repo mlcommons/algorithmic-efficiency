@@ -272,7 +272,7 @@ Below instructions are for GCP. Depending on your virtual machine, you may have 
 ### Can submission be structured using multiple files?
 Yes, your submission can be structured using multiple files. 
 ### Can I install custom dependencies?
-You may use custom dependencies as long as they do not conflict with any of the pinned packages in setup.cfg. 
+You may use custom dependencies as long as they do not conflict with any of the pinned packages in `algorithmic-efficiency/setup.cfg`. 
 To include your custom dependencies in your submission, please include them in a requirements.txt file. 
 ### How can I know if my code can be run on benchmarking hardware?
 The benchmarking hardware specifications are documented in the [Getting Started Document](./getting_started.md).
