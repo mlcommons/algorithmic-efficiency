@@ -258,7 +258,7 @@ W1003 ... xla_bridge.py:463] No GPU/TPU found, falling back to CPU. (Set TF_CPP_
 
 ## Platform
 ### My machine only has one GPU. How can I use this repo?
-You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines/` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. To solve this
+You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. To solve this
 please reduce the batchsizes for the submission.
 
 ### How do I run this on my SLURM cluster?
