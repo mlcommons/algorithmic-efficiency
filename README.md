@@ -266,8 +266,9 @@ to make make sure it will fit on a 8 16GB V100 GPUs.
 ### How do I run this on my SLURM cluster?
 You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
 ### How can I run this on my AWS/GCP/Azure cloud project?
-Below instructions are for GCP. Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit.
-1. If you don't have an VM instance yet, we recommmend to use the "Deep Learning on Linux" Image in Boot disk options. 
+ Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you can:
+1. If you don't have an VM instance yet, we recommmend creating a
+new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options. 
 2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
 
 ## Submissions
