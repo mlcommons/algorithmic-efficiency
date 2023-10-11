@@ -560,15 +560,14 @@ def score_submission_on_workload(workload: spec.Workload,
                                      save_checkpoints=save_checkpoints,)
       all_timings.append(timing)
       all_metrics.append(metrics)
-    score = min(all_timings)
-    for ti, _ in tuning_search_space_iter:
-      logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
-      logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
-      logging.info(f'Metrics: {all_metrics[ti]}')
-      logging.info(f'Timing: {all_timings[ti]}')
-      num_evals = len(all_metrics[ti]['eval_results'])
+      logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
+      logging.info(f'Hyperparameters: {tuning_search_space[hi]}')
+      logging.info(f'Metrics: {all_metrics[hi]}')
+      logging.info(f'Timing: {all_timings[hi]}')
+      num_evals = len(all_metrics[hi]['eval_results'])
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
+    score = min(all_timings)
   else:
     if tuning_search_space is not None:
       raise ValueError(
