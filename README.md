@@ -241,11 +241,11 @@ The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
 
-## Conformer workload 2x slower in Pytorch vs Jax
+## Conformer Pytorch OOM 
 The Conformer Pytorch workload has memory fragmentation issue after upgrading to 
 Pytorch 2.0.1, which led to out of memory errors. To circumvent this issues we have tuned the pytorch 
 memory allocation configuration, which slows down the workload by a factor of roughly 2x. For submitters, this 
-means that the Conformer Pytorch submission times will be roughly 2x compared to an identical jax submission. 
+means that the Conformer Pytorch submission times will be roughly 2x slower. 
 Tracking in issue/497(https://github.com/mlcommons/algorithmic-efficiency/issues/497). 
 
 # FAQS
