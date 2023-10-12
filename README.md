@@ -249,14 +249,8 @@ means that the Conformer Pytorch submission times will be roughly 2x compared to
 Tracking in issue/497(https://github.com/mlcommons/algorithmic-efficiency/issues/497). 
 
 # FAQS
-## Setup 
-### Why do I get a warning that GPU is not found?
-If running with pytorch, we intentionally hide the GPUs from jax. So please disregard the following warning:
-```
-W1003 ... xla_bridge.py:463] No GPU/TPU found, falling back to CPU. (Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
-```
 
-## Platform
+## Setup and Platform
 ### My machine only has one GPU. How can I use this repo?
 You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batchsizes for the submission. Note that your final submission must 'fit'
 on the benchmarking hardware, so if you are using fewer
