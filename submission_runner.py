@@ -28,9 +28,15 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
-import tensorflow as tf
 import torch
 import torch.distributed as dist
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
+import tensorflow as tf
+
+# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+# it unavailable to JAX.
+tf.config.set_visible_devices([], 'GPU')
 
 from algorithmic_efficiency import checkpoint_utils
 from algorithmic_efficiency import halton
@@ -43,10 +49,6 @@ from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 from algorithmic_efficiency.workloads import workloads
-
-# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-# it unavailable to JAX.
-tf.config.set_visible_devices([], 'GPU')
 
 # disable only for deepspeech if it works fine for other workloads.
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
