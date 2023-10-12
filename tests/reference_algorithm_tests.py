@@ -80,7 +80,10 @@ _EXPECTED_METRIC_NAMES = {
     'librispeech_conformer': ['train/wer', 'validation/wer', 'train/ctc_loss'],
     'librispeech_deepspeech': ['train/wer', 'validation/wer', 'train/ctc_loss'],
     'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
-
+    'ogbg': [
+        'train/accuracy', 'validation/loss', 'test/mean_average_precision'
+    ],
+    'wmt': ['train/bleu', 'validation/loss', 'validation/accuracy'],
 }
 
 

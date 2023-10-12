@@ -21,7 +21,7 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-_MNIST_DEV_ALGO_DIR = 'reference_algorithms/target_setting_algorithms/mnist'
+_MNIST_DEV_ALGO_DIR = 'reference_algorithms/development_algorithms/mnist'
 
 
 class SubmissionRunnerTest(parameterized.TestCase):
