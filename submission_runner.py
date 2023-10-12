@@ -28,6 +28,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import tensorflow as tf
 import torch
 import torch.distributed as dist
