@@ -28,6 +28,7 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
   os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
   # Only use CPU for Jax to avoid memory issues.
   jax.config.update('jax_platforms', 'cpu')
+  jax.config.update('jax_platform_name', 'cpu')
   # From the docs: "(...) causes cuDNN to benchmark multiple convolution
   # algorithms and select the fastest."
   torch.backends.cudnn.benchmark = True
