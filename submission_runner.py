@@ -28,7 +28,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
-import tensorflow as tf
 import torch
 import torch.distributed as dist
 
@@ -44,9 +43,9 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 from algorithmic_efficiency.workloads import workloads
 
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
 import tensorflow as tf
+
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
@@ -350,8 +349,8 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         del batch
         _reset_cuda_mem()
