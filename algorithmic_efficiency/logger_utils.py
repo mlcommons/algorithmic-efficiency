@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from absl import flags
 from clu import metric_writers
@@ -96,14 +96,14 @@ def write_hparams(hparams: spec.Hyperparameters,
   return hparams
 
 
-def write_json(name: str, log_dict: dict, indent: int = 2) -> None:
+def write_json(name: str, log_dict: Dict, indent: int = 2) -> None:
   if RANK == 0:
     with open(name, 'w') as f:
       f.write(json.dumps(log_dict, indent=indent))
 
 
 def write_to_csv(
-    metrics: dict,
+    metrics: Dict,
     csv_path: str,
 ) -> None:
   try:
@@ -120,7 +120,7 @@ def write_to_csv(
   return
 
 
-def _get_utilization() -> dict:
+def _get_utilization() -> Dict:
   util_data = {}
 
   # CPU
@@ -180,7 +180,7 @@ def _get_utilization() -> dict:
   return util_data
 
 
-def _get_system_hardware_info() -> dict:
+def _get_system_hardware_info() -> Dict:
   system_hardware_info = {}
   try:
     system_hardware_info['cpu_model_name'] = _get_cpu_model_name()
@@ -200,7 +200,7 @@ def _get_system_hardware_info() -> dict:
   return system_hardware_info
 
 
-def _get_system_software_info() -> dict:
+def _get_system_software_info() -> Dict:
   system_software_info = {}
 
   system_software_info['os_platform'] = \
@@ -243,7 +243,7 @@ def _is_primitive_type(item: Any) -> bool:
   return isinstance(item, primitive)
 
 
-def _get_workload_properties(workload: spec.Workload) -> dict:
+def _get_workload_properties(workload: spec.Workload) -> Dict:
   workload_properties = {}
   skip_list = ['param_shapes', 'model_params_types']
   keys = [
@@ -262,7 +262,8 @@ def _get_workload_properties(workload: spec.Workload) -> dict:
   return workload_properties
 
 
-def get_meta_data(workload: spec.Workload, rng_seed: int = None) -> dict:
+def get_meta_data(workload: spec.Workload,
+                  rng_seed: Optional[int] = None) -> Dict:
   meta_data = {}
   workload_properties = _get_workload_properties(workload)
   meta_data.update(workload_properties)
@@ -272,7 +273,7 @@ def get_meta_data(workload: spec.Workload, rng_seed: int = None) -> dict:
   meta_data.update(system_software_info)
   system_hardware_info = _get_system_hardware_info()
   meta_data.update(system_hardware_info)
-  if rng_seed:
+  if rng_seed is not None:
     meta_data.update({'rng_seed': rng_seed})
   return meta_data
 
@@ -304,7 +305,7 @@ class MetricLogger(object):
         wandb.config.update(hyperparameters._asdict())
 
   def append_scalar_metrics(self,
-                            metrics: dict,
+                            metrics: Dict,
                             global_step: int,
                             preemption_count: Optional[int] = None,
                             is_eval: bool = False) -> None:
