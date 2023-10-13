@@ -9,7 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
 from absl import flags
 from clu import metric_writers
