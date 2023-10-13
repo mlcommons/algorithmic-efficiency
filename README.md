@@ -243,7 +243,7 @@ While this issue might not affect all setups, we currently implement a different
 
 ## Conformer Pytorch OOM 
 The Conformer Pytorch workload has memory fragmentation issue after upgrading to 
-Pytorch 2.0.1, which led to out of memory errors. To circumvent this issues we have tuned the pytorch 
+Pytorch 2.0.1, which led to out of memory errors. To circumvent this issue we have tuned the pytorch 
 memory allocation configuration, which slows down the workload by a factor of roughly 2x. For submitters, this 
 means that the Conformer Pytorch submission times will be roughly 2x slower. 
 Tracking in issue/497(https://github.com/mlcommons/algorithmic-efficiency/issues/497). 
