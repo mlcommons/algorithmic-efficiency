@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -147,7 +148,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
-    return self._eval_batch_pmapped(params, batch).sum()
+    return np.array(
+        self._eval_batch_pmapped(params, batch).sum(), dtype=np.float64)
 
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
