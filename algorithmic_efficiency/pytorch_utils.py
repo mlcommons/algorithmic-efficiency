@@ -27,9 +27,8 @@ def pytorch_init(use_pytorch_ddp: bool, rank: int, profiler: Profiler) -> None:
   # Make sure no GPU memory is preallocated to Jax.
   os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
   # Only use CPU for Jax to avoid memory issues.
-  # Setting the corresponding environment variable here has no effect; it has to
-  # be done before jax and tensorflow (!) are imported for the first time.
   jax.config.update('jax_platforms', 'cpu')
+  jax.config.update('jax_platform_name', 'cpu')
   # From the docs: "(...) causes cuDNN to benchmark multiple convolution
   # algorithms and select the fastest."
   torch.backends.cudnn.benchmark = True

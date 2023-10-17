@@ -28,9 +28,15 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
-import tensorflow as tf
 import torch
 import torch.distributed as dist
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
+import tensorflow as tf
+
+# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
+# it unavailable to JAX.
+tf.config.set_visible_devices([], 'GPU')
 
 from algorithmic_efficiency import checkpoint_utils
 from algorithmic_efficiency import halton
@@ -43,10 +49,6 @@ from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 from algorithmic_efficiency.workloads import workloads
-
-# Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
-# it unavailable to JAX.
-tf.config.set_visible_devices([], 'GPU')
 
 # disable only for deepspeech if it works fine for other workloads.
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
@@ -237,7 +239,6 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -284,7 +285,8 @@ def train_once(
          checkpoint_dir=log_dir)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
-    logger_utils.save_meta_data(workload, rng_seed, preemption_count)
+    meta_data = logger_utils.get_meta_data(workload, rng_seed)
+    logger_utils.write_json(meta_file_name, meta_data)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
@@ -560,15 +562,14 @@ def score_submission_on_workload(workload: spec.Workload,
                                      save_checkpoints=save_checkpoints,)
       all_timings.append(timing)
       all_metrics.append(metrics)
-    score = min(all_timings)
-    for ti, _ in tuning_search_space_iter:
-      logging.info(f'Tuning trial {ti + 1}/{num_tuning_trials}')
-      logging.info(f'Hyperparameters: {tuning_search_space[ti]}')
-      logging.info(f'Metrics: {all_metrics[ti]}')
-      logging.info(f'Timing: {all_timings[ti]}')
-      num_evals = len(all_metrics[ti]['eval_results'])
+      logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
+      logging.info(f'Hyperparameters: {tuning_search_space[hi]}')
+      logging.info(f'Metrics: {all_metrics[hi]}')
+      logging.info(f'Timing: {all_timings[hi]}')
+      num_evals = len(all_metrics[hi]['eval_results'])
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
+    score = min(all_timings)
   else:
     if tuning_search_space is not None:
       raise ValueError(
