@@ -38,7 +38,7 @@ Three additional documents complement this document:
 ### Dates
 
 - **Publication of the call for submission: 17. October 2023 (08:00 AM UTC)**
-- Registration deadline for submissions: 15. December 2023 (08:00 AM UTC)
+- Registration deadline to express non-binding intent to submit: 15. December 2023 (08:00 AM UTC)
 - Version freeze for the benchmark codebase: 17. January 2024 (08:00 AM UTC)
 - **Submission deadline: 15. February 2024 (08:00 AM UTC)**
 - Sampling the held-out workloads and hyperparameters: 16. February 2024 (08:00 AM UTC)
@@ -66,19 +66,18 @@ For a guide on the technical steps and details on how to write a submission, ple
 
 In the following, we describe the logistical steps required to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark.
 
-### Register a submission
+### Register an intent to submit
 
 All submitters need to register an intent to submit before the submission registration deadline. This registration is mandatory, i.e. required for all submissions, but not binding, i.e. you don't have to submit a registered submission. This registration is necessary, to estimate the number of submissions and provide support for potential submitters.
 
-To register a submission, please fill out this [online form](https://forms.gle/iY1bUhwSjj1JZ4fa9) with the following information
+To register an intent to submission, please fill out this [online form](https://forms.gle/iY1bUhwSjj1JZ4fa9) with the following information
 
 - Name of the submission (e.g. name of the algorithm, or any other arbitrary identifier).
 - Ruleset under which the submission will be scored.
-- Name of all submitters associated with this submission.
-- Email of all submitters associated with this submission.
-- Affiliations of all submitters associated with this submission.
+- Name, email, and affiliations of all submitters associated with this submission.
+- Interest in compute support.
 
-In return, the submission will be issued a unique **submission ID** that will be used throughout the submission process.
+The submission will be issued a unique **submission ID** that will be used throughout the submission process.
 
 ### How to submit
 
