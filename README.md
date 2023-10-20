@@ -129,7 +129,7 @@ To use the Docker container as an interactive virtual environment, you can run a
       <docker_image_name> \
       --keep_container_alive true
    ```
-   Note: You may have to use double quotes around `algorithmic-efficiency` in the mounting `-v` flag. If the above command fails try replacing the following line:
+   Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
    ```bash
    -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
    ``` 
@@ -241,13 +241,6 @@ The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
 
-## Conformer Pytorch OOM 
-The Conformer Pytorch workload has memory fragmentation issue after upgrading to 
-Pytorch 2.0.1, which led to out of memory errors. To circumvent this issue we have tuned the pytorch 
-memory allocation configuration, which slows down the workload by a factor of roughly 2x. For submitters, this 
-means that the Conformer Pytorch submission times will be roughly 2x slower. 
-Tracking in issue/497(https://github.com/mlcommons/algorithmic-efficiency/issues/497). 
-
 # FAQS
 
 ## Setup and Platform
@@ -261,7 +254,7 @@ to make make sure it will fit on a 8 16GB V100 GPUs.
 You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
 ### How can I run this on my AWS/GCP/Azure cloud project?
  Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
-1. If you don't have an VM instance yet, we recommmend creating a
+1. If you don't have a VM instance yet, we recommend creating a
 new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options. 
 2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
 
@@ -270,14 +263,28 @@ new Compute Instance with the "Deep Learning on Linux" Image in Boot disk option
 Yes, your submission can be structured using multiple files. 
 ### Can I install custom dependencies?
 You may use custom dependencies as long as they do not conflict with any of the pinned packages in `algorithmic-efficiency/setup.cfg`. 
-To include your custom dependencies in your submission, please include them in a requirements.txt file. 
+To include your custom dependencies in your submission, please include them in a requirements.txt file. Please refer to the [Software dependencies](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#software-dependencies) section of our rules. 
 ### How can I know if my code can be run on benchmarking hardware?
 The benchmarking hardware specifications are documented in the [Getting Started Document](./getting_started.md).
-Please monitor your submission's memory usage so that it does not exceed the available memory 
-on the competition hardware. 
+We recommend monitoring your submission's memory usage so that it does not exceed the available memory 
+on the competition hardware. We also recommend to do a dry run using a cloud instance.
 ### Are we allowed to use our own hardware to self-report the results?
-No. However you are allowed to use your own hardware to report the best hyperparameter point to qualify for 
-a compute sponsorship offering a free evaluation on the full benchmark set, see the [Rules](./RULES.md#qualification-set).
+You only have to use the competition hardware for runs that are directly involved in the scoring procedure. This includes all runs for the self-tuning ruleset, but only the runs of the best hyperparameter configuration in each study for the external tuning ruleset. For example, you could use your own (different) hardware to tune your submission and identify the best hyperparameter configuration (in each study) and then only run this configuration (i.e. 5 runs, one for each study) on the competition hardware.
 
 # Citing AlgoPerf Benchmark
-Todo: how to cite the algoperf benchmark?
+If you use the **AlgoPerf** Benchmark in your work, please consider citing:
+
+> [George E. Dahl, Frank Schneider, Zachary Nado, et al.<br/>
+> **Benchmarking Neural Network Training Algorithms**<br/>
+> *arXiv 2306.07179*](http://arxiv.org/abs/2306.07179)
+
+```bibtex
+@misc{dahl2023algoperf,
+   title={{Benchmarking Neural Network Training Algorithms}},
+   author={Dahl, George E. and Schneider, Frank and Nado, Zachary and Agarwal, Naman and Sastry, Chandramouli Shama and Hennig, Philipp and Medapati, Sourabh and Eschenhagen, Runa and Kasimbeg, Priya and Suo, Daniel and Bae, Juhan and Gilmer, Justin and Peirson, Abel L. and Khan, Bilal and Anil, Rohan and Rabbat, Mike and Krishnan, Shankar and Snider, Daniel and Amid, Ehsan and Chen, Kongtao and Maddison, Chris J. and Vasudev, Rakshith and Badura, Michal and Garg, Ankush and Mattson, Peter},
+   year={2023},
+   eprint={2306.07179},
+   archivePrefix={arXiv},
+   primaryClass={cs.LG}
+}
+```
