@@ -244,6 +244,7 @@ While this issue might not affect all setups, we currently implement a different
 # FAQS
 
 ## Setup and Platform
+
 ### My machine only has one GPU. How can I use this repo?
 You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batchsizes for the submission. Note that your final submission must 'fit'
 on the benchmarking hardware, so if you are using fewer
