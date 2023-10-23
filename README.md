@@ -246,15 +246,15 @@ While this issue might not affect all setups, we currently implement a different
 ## Setup and Platform
 
 ### My machine only has one GPU. How can I use this repo?
-You can run this repo on a machine with arbitrary number of GPUs. However, the default batchsizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batchsizes for the submission. Note that your final submission must 'fit'
+You can run this repo on a machine with an arbitrary number of GPUs. However, the default batch sizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batch sizes for the submission. Note that your final submission must 'fit'
 on the benchmarking hardware, so if you are using fewer
-GPUs with higher per gpu memory, please monitor your memory usage 
-to make make sure it will fit on a 8 16GB V100 GPUs.
+GPUs with higher per GPU memory, please monitor your memory usage 
+to make make sure it will fit on 8xV100 GPUs with 16GB of VRAM per card.
 
 ### How do I run this on my SLURM cluster?
 You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
 ### How can I run this on my AWS/GCP/Azure cloud project?
- Depending on your virtual machine, you may have to install install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
+ Depending on your virtual machine, you may have to install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
 1. If you don't have a VM instance yet, we recommend creating a
 new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options. 
 2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
