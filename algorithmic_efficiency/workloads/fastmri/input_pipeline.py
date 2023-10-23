@@ -180,7 +180,7 @@ def load_fastmri_split(global_batch_size,
     h5_paths = glob.glob(file_pattern)
   elif split == 'validation':
     file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
-    h5_paths = sorted(glob.glob(file_pattern))
+    h5_paths = sorted(glob.glob(file_pattern))[:100]
   elif split == 'test':
     # The fastmri validation set is split into a validation and test set
     file_pattern = os.path.join(data_dir, _VAL_DIR, '*.h5')
