@@ -129,7 +129,6 @@ def get_index_that_reaches_target(workload_df,
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
-  print(validation_target_reached)
   target_reached = pd.Series(validation_target_reached)
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
