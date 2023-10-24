@@ -47,6 +47,7 @@ MIN_EVAL_METRICS = [
     'ctc_loss',
     'wer',
     'l1_loss',
+    'loss',
 ]
 
 MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
