@@ -34,6 +34,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from tabulate import tabulate
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
@@ -355,7 +356,7 @@ def plot_performance_profiles(perf_df,
   Returns:
     None. If a valid save_dir is provided, save both the plot and perf_df.
   """
-  print(perf_df)
+  print(tabulate(pef_df, headers='keys', tablefmt='psql'))  
   fig = perf_df.T.plot(figsize=figsize)
   df_col_display = f'log10({df_col})' if scale == 'log' else df_col
   fig.set_xlabel(
