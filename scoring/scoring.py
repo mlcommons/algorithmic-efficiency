@@ -356,7 +356,7 @@ def plot_performance_profiles(perf_df,
   Returns:
     None. If a valid save_dir is provided, save both the plot and perf_df.
   """
-  print(tabulate(pef_df, headers='keys', tablefmt='psql'))  
+  print(tabulate(perf_df, headers='keys', tablefmt='psql'))  
   fig = perf_df.T.plot(figsize=figsize)
   df_col_display = f'log10({df_col})' if scale == 'log' else df_col
   fig.set_xlabel(
