@@ -217,10 +217,8 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['ogbg', 'criteo1tb']
-      eager_backend_workloads = [
-          'librispeech_conformer', 'librispeech_deepspeech'
-      ]
+      compile_error_workloads = ['librispeech_conformer', 'ogbg', 'criteo1tb']
+      eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
@@ -239,7 +237,6 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -286,7 +283,8 @@ def train_once(
          checkpoint_dir=log_dir)
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
-    logger_utils.save_meta_data(workload, rng_seed, preemption_count)
+    meta_data = logger_utils.get_meta_data(workload, rng_seed)
+    logger_utils.write_json(meta_file_name, meta_data)
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())

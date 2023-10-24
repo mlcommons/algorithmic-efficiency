@@ -13,7 +13,7 @@ To get started you will have to make a few decisions and install the repository 
 1. Decide if you would like to develop your submission in either Pytorch or Jax.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#benchmarking-hardware). 
 The specs on the benchmarking machines are:
-    -  8 V100 GPUs
+    - 8 V100 GPUs
     - 240 GB in RAM
     - 2 TB in storage (for datasets). 
 3. Install the algorithmic package and dependencies, see [Installation](./README.md#installation).
