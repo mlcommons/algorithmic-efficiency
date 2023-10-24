@@ -50,7 +50,7 @@ MIN_EVAL_METRICS = [
     'loss',
 ]
 
-MAX_EVAL_METRICS = ['mean_average_precision', 'ssim', 'accuracy', 'bleu_score']
+MAX_EVAL_METRICS = ['mean_average_precision', 'ssim', 'accuracy', 'bleu']
 
 
 def generate_eval_cols(metrics):
