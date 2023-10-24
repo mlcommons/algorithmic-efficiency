@@ -32,7 +32,7 @@ def main(_):
       reference_submission_tag=None,
       num_points=100,
       scale='linear',
-      verbosity=1)
+      )
   if not os.path.exists(FLAGS.output_dir):
     os.mkdir(FLAGS.output_dir)
   scoring.plot_performance_profiles(
