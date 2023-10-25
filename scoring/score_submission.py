@@ -21,6 +21,7 @@ FLAGS = flags.FLAGS
 
 def main(_):
   df = scoring_utils.get_experiment_df(FLAGS.experiment_path)
+  print(df)
   results = {
       FLAGS.submission_tag: df,
   }

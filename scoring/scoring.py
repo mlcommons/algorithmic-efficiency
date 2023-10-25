@@ -140,7 +140,10 @@ def get_index_that_reaches_target(workload_df,
     return -1, -1
   else:
     index_reached = target_reached.apply(np.argmax)
+    print(index_reached)
     trial = index_reached.idxmin()
+    print(trial)
+    print(index_reached)
     return trial, index_reached[trial]
 
 
@@ -165,6 +168,7 @@ def get_times_for_submission(submission,
 
   for workload, group in submission.groupby('workload'):
     workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
+    print(workload_name)
     framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
     workload_metadata = WORKLOADS[workload_name]
 
@@ -268,18 +272,19 @@ def compute_performance_profiles(results,
 
   if verbosity > 0:
     print(f'\n`{time_col}` to reach target normalized to best:')
-    with pd.option_context('display.max_rows',
-                           None,
-                           'display.max_columns',
-                           None,
-                           'display.width',
-                           1000):
-      print(df)
+    # with pd.option_context('display.max_rows',
+    #                        None,
+    #                        'display.max_columns',
+    #                        None,
+    #                        'display.width',
+    #                        1000):
+      # print(df)
 
   # If no max_tau is supplied, choose the value of tau that would plot all non
   # inf or nan data.
   if max_tau is None:
     max_tau = df.replace(float('inf'), -1).replace(np.nan, -1).values.max()
+    print(f"MAX TAU: {max_tau}")
 
   if scale == 'linear':
     points = np.linspace(min_tau, max_tau, num=num_points)
@@ -356,7 +361,9 @@ def plot_performance_profiles(perf_df,
   Returns:
     None. If a valid save_dir is provided, save both the plot and perf_df.
   """
-  print(tabulate(perf_df, headers='keys', tablefmt='psql'))  
+  print("PERF DF")
+  print(perf_df.columns)  
+  print(perf_df.T)
   fig = perf_df.T.plot(figsize=figsize)
   df_col_display = f'log10({df_col})' if scale == 'log' else df_col
   fig.set_xlabel(
