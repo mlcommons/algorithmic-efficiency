@@ -135,23 +135,25 @@ To use the Docker container as an interactive virtual environment, you can run a
 To run a submission end-to-end in a containerized environment see [Getting Started Document](./getting_started.md#run-your-submission-in-a-docker-container).
 
 ### Using Singularity/Apptainer instead of Docker
-Since many compute clusters don't allow the usage of Docker due to securtiy concerns and instead encourage the use of [Singularity/Apptainer](https://github.com/apptainer/apptainer) (formerly Singularity, now called Apptainer), we also provide instructions on how to build an Apptainer container based on the here provided Dockerfile.
-
-To convert the Dockerfile into an Apptainer definition file, we will use [spython](https://github.com/singularityhub/singularity-cli):
-```bash
-pip3 install spython
-cd algorithmic-efficiency/docker
-spython recipe Dockerfile &> Singularity.def
-```
-Now we can build the Apptainer image by running
+Since many compute clusters don't allow the usage of Docker due to securtiy concerns and instead encourage the use of [Singularity/Apptainer](https://github.com/apptainer/apptainer) (formerly Singularity, now called Apptainer), we also provide an Apptainer recipe that can be used to build an image by running
 ```bash
 singularity build --fakeroot <singularity_image_name>.sif Singularity.def
 ```
-To start a shell session with GPU support (by using the `--nv` flag), we can run
+Then, to start a shell session with GPU support (by using the `--nv` flag), we can run
 ```bash
-singularity shell --nv <singularity_image_name>.sif 
+singularity shell --bind $HOME/data:/data,$HOME/experiment_runs:/experiment_runs \
+    --nv <singularity_image_name>.sif
 ```
-Similarly to Docker, Apptainer allows you to bind specific paths on the host system and the container by specifying the `--bind` flag, as explained [here](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
+
+Note the `--bind` flag which, similarly to Docker, allows to bind specific paths on the host system and the container, as explained [here](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
+
+Also note that `Singularity.def` was automatically generated from the `Dockerfile` using [spython](https://github.com/singularityhub/singularity-cli), as follows:
+```bash
+pip3 install spython
+cd algorithmic-efficiency/docker
+python scripts/singularity_converter.py -i Dockerfile -o Singularity.def
+```
+Users that wish to customize their images are invited to check the respective files.
 
 # Getting Started
 For instructions on developing and scoring your own algorithm in the benchmark see [Getting Started Document](./getting_started.md).
