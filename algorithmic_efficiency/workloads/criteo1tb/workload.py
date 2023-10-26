@@ -35,14 +35,14 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.123649
+    return 0.123735
 
   def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return eval_result['test/loss'] < self.test_target_value
 
   @property
   def test_target_value(self) -> float:
-    return 0.126060
+    return 0.126041
 
   @property
   def loss_type(self) -> spec.LossType:

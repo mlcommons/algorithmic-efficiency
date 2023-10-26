@@ -31,13 +31,26 @@
     - [Building Docker Image](#building-docker-image)
     - [Running Docker Container (Interactive)](#running-docker-container-interactive)
     - [Running Docker Container (End-to-end)](#running-docker-container-end-to-end)
+  - [Using Singularity/Apptainer instead of Docker](#using-singularityapptainer-instead-of-docker)
 - [Getting Started](#getting-started)
   - [Running a workload](#running-a-workload)
     - [JAX](#jax)
     - [Pytorch](#pytorch)
 - [Rules](#rules)
 - [Contributing](#contributing)
-- [Note on shared data pipelines between JAX and PyTorch](#note-on-shared-data-pipelines-between-jax-and-pytorch)
+- [Shared data pipelines between JAX and PyTorch](#shared-data-pipelines-between-jax-and-pytorch)
+- [Setup and Platform](#setup-and-platform)
+  - [My machine only has one GPU. How can I use this repo?](#my-machine-only-has-one-gpu-how-can-i-use-this-repo)
+  - [How do I run this on my SLURM cluster?](#how-do-i-run-this-on-my-slurm-cluster)
+  - [How can I run this on my AWS/GCP/Azure cloud project?](#how-can-i-run-this-on-my-awsgcpazure-cloud-project)
+- [Submissions](#submissions)
+  - [Can submission be structured using multiple files?](#can-submission-be-structured-using-multiple-files)
+  - [Can I install custom dependencies?](#can-i-install-custom-dependencies)
+  - [How can I know if my code can be run on benchmarking hardware?](#how-can-i-know-if-my-code-can-be-run-on-benchmarking-hardware)
+  - [Are we allowed to use our own hardware to self-report the results?](#are-we-allowed-to-use-our-own-hardware-to-self-report-the-results)
+
+
+
 
 ## Installation
 
@@ -145,9 +158,15 @@ To use the Docker container as an interactive virtual environment, you can run a
       <docker_image_name> \
       --keep_container_alive true
    ```
-
-2. Open a bash terminal
-
+   Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
+   ```bash
+   -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
+   ``` 
+   with 
+   ```
+   -v $HOME"/algorithmic-efficiency:/algorithmic-efficiency" \
+   ```
+   - Open a bash terminal
    ```bash
    docker exec -it <container_id> /bin/bash
    ```
@@ -250,9 +269,61 @@ The rules for the MLCommons Algorithmic Efficency benchmark can be found in the 
 
 If you are interested in contributing to the work of the working group, feel free to [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/), open issues. See our [CONTRIBUTING.md](CONTRIBUTING.md) for MLCommons contributing guidelines and setup and workflow instructions.
 
-## Note on shared data pipelines between JAX and PyTorch
+
+# Disclaimers
+
+## Shared data pipelines between JAX and PyTorch
 
 The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT workloads are using the same TensorFlow input pipelines. Due to differences in how Jax and PyTorch distribute computations across devices, the PyTorch workloads have an additional overhead for these workloads.
 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
+
+# FAQS
+
+## Setup and Platform
+
+### My machine only has one GPU. How can I use this repo?
+You can run this repo on a machine with an arbitrary number of GPUs. However, the default batch sizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batch sizes for the submission. Note that your final submission must 'fit'
+on the benchmarking hardware, so if you are using fewer
+GPUs with higher per GPU memory, please monitor your memory usage 
+to make make sure it will fit on 8xV100 GPUs with 16GB of VRAM per card.
+
+### How do I run this on my SLURM cluster?
+You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](using-singularity/apptainer-instead-of-docker).
+### How can I run this on my AWS/GCP/Azure cloud project?
+ Depending on your virtual machine, you may have to install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
+1. If you don't have a VM instance yet, we recommend creating a
+new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options. 
+2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+
+## Submissions
+### Can submission be structured using multiple files?
+Yes, your submission can be structured using multiple files. 
+### Can I install custom dependencies?
+You may use custom dependencies as long as they do not conflict with any of the pinned packages in `algorithmic-efficiency/setup.cfg`. 
+To include your custom dependencies in your submission, please include them in a requirements.txt file. Please refer to the [Software dependencies](https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#software-dependencies) section of our rules. 
+### How can I know if my code can be run on benchmarking hardware?
+The benchmarking hardware specifications are documented in the [Getting Started Document](./getting_started.md).
+We recommend monitoring your submission's memory usage so that it does not exceed the available memory 
+on the competition hardware. We also recommend to do a dry run using a cloud instance.
+### Are we allowed to use our own hardware to self-report the results?
+You only have to use the competition hardware for runs that are directly involved in the scoring procedure. This includes all runs for the self-tuning ruleset, but only the runs of the best hyperparameter configuration in each study for the external tuning ruleset. For example, you could use your own (different) hardware to tune your submission and identify the best hyperparameter configuration (in each study) and then only run this configuration (i.e. 5 runs, one for each study) on the competition hardware.
+
+# Citing AlgoPerf Benchmark
+If you use the **AlgoPerf** Benchmark in your work, please consider citing:
+
+> [George E. Dahl, Frank Schneider, Zachary Nado, et al.<br/>
+> **Benchmarking Neural Network Training Algorithms**<br/>
+> *arXiv 2306.07179*](http://arxiv.org/abs/2306.07179)
+
+```bibtex
+@misc{dahl2023algoperf,
+   title={{Benchmarking Neural Network Training Algorithms}},
+   author={Dahl, George E. and Schneider, Frank and Nado, Zachary and Agarwal, Naman and Sastry, Chandramouli Shama and Hennig, Philipp and Medapati, Sourabh and Eschenhagen, Runa and Kasimbeg, Priya and Suo, Daniel and Bae, Juhan and Gilmer, Justin and Peirson, Abel L. and Khan, Bilal and Anil, Rohan and Rabbat, Mike and Krishnan, Shankar and Snider, Daniel and Amid, Ehsan and Chen, Kongtao and Maddison, Chris J. and Vasudev, Rakshith and Badura, Michal and Garg, Ankush and Mattson, Peter},
+   year={2023},
+   eprint={2306.07179},
+   archivePrefix={arXiv},
+   primaryClass={cs.LG}
+}
+```
