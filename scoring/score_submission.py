@@ -21,7 +21,6 @@ FLAGS = flags.FLAGS
 
 def main(_):
   df = scoring_utils.get_experiment_df(FLAGS.experiment_path)
-  print(df)
   results = {
       FLAGS.submission_tag: df,
   }
@@ -33,7 +32,7 @@ def main(_):
       reference_submission_tag=None,
       num_points=100,
       scale='linear',
-      )
+      verbosity=0)
   if not os.path.exists(FLAGS.output_dir):
     os.mkdir(FLAGS.output_dir)
   scoring.plot_performance_profiles(
