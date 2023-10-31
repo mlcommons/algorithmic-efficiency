@@ -227,9 +227,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     idxs = torch.arange(
         fin_result.numel(), device=result.device).view(*fin_result.shape)
     mask = torch.arange(
-        fin_result.shape[1],
-        device=result.device).view(1, -1) < result.count_nonzero(dim=1).view(
-            -1, 1)
+        fin_result.shape[1], device=result.device).view(
+            1, -1) < result.count_nonzero(dim=1).view(-1, 1)
     fin_result.view(-1)[idxs[mask != 0]] = result[result != blank_id]
     padding = fin_result == 0
     return fin_result, padding

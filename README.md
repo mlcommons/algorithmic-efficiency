@@ -126,13 +126,8 @@ To use the Docker container as an interactive virtual environment, you can run a
       -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
       --gpus all \
       --ipc=host \
-<<<<<<< HEAD
-      <docker_image_name> \
-      -keep_container_alive true
-=======
       <docker_image_name> \
       --keep_container_alive true
->>>>>>> ba5c6f6175a0ce12f23a7f035613d9d1edc0b74a
    ```
    Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
    ```bash

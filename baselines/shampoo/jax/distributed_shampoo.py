@@ -595,8 +595,8 @@ def matrix_inverse_pth_root(
 
   if padding_start is not None:
     # Zero out padding in identity as well for convergence checks.
-    ix = (jnp.arange(matrix_size, dtype=jnp.int32)
-          < padding_start).astype(matrix.dtype)
+    ix = (jnp.arange(matrix_size, dtype=jnp.int32) < padding_start).astype(
+        matrix.dtype)
     matrix *= ix[jnp.newaxis, :]
     matrix *= ix[:, jnp.newaxis]
     identity *= ix
