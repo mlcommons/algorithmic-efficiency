@@ -149,6 +149,11 @@ flags.DEFINE_integer(
     None,
     'Value of rng seed. If None, a random seed will'
     'be generated from hardware.')
+flags.DEFINE_boolean(
+    'set_pytorch_max_split_size', 
+    None,
+    'If true, set pytorch max_split_size_mb to 256'
+)
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -601,6 +606,9 @@ def main(_):
   # Prevent OOM on librispeech conformer.
   if FLAGS.workload == 'librispeech_conformer':
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
+  
+  if FLAGS.set_pytorch_max_split_size is True:
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
