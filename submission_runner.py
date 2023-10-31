@@ -149,11 +149,9 @@ flags.DEFINE_integer(
     None,
     'Value of rng seed. If None, a random seed will'
     'be generated from hardware.')
-flags.DEFINE_boolean(
-    'set_pytorch_max_split_size', 
-    None,
-    'If true, set pytorch max_split_size_mb to 256'
-)
+flags.DEFINE_boolean('set_pytorch_max_split_size',
+                     None,
+                     'If true, set pytorch max_split_size_mb to 256')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -352,8 +350,8 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         del batch
         _reset_cuda_mem()
@@ -606,7 +604,7 @@ def main(_):
   # Prevent OOM on librispeech conformer.
   if FLAGS.workload == 'librispeech_conformer':
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
-  
+
   if FLAGS.set_pytorch_max_split_size is True:
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 
