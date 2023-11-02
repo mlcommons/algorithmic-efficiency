@@ -815,8 +815,8 @@ def matrix_inverse_pth_root_eigh(
   alpha = jnp.asarray(-1.0 / p, _MAT_INV_PTH_ROOT_DTYPE)
   identity = jnp.eye(matrix_size, dtype=_MAT_INV_PTH_ROOT_DTYPE)
   if padding_start is not None:
-    ix = (jnp.arange(matrix_size, dtype=jnp.int32)
-          < padding_start).astype(matrix.dtype)
+    ix = (jnp.arange(matrix_size, dtype=jnp.int32) < padding_start).astype(
+        matrix.dtype)
     matrix *= ix[jnp.newaxis, :]
     matrix *= ix[:, jnp.newaxis]
     identity *= ix
@@ -1923,8 +1923,8 @@ def distributed_shampoo(
     errors = metrics.inverse_pth_root_errors
     errors = errors.reshape((-1, 1, 1))
     predicate = jnp.logical_or(
-        jnp.isnan(errors), errors
-        >= inverse_failure_threshold).astype(new_preconditioners.dtype)
+        jnp.isnan(errors),
+        errors >= inverse_failure_threshold).astype(new_preconditioners.dtype)
     # TODO(rohananil): Check for numerical instabilities.
     new_conditional_preconditioners = (
         predicate * global_stats.preconditioners +
