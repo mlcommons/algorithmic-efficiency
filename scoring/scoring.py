@@ -47,9 +47,10 @@ MIN_EVAL_METRICS = [
     'ctc_loss',
     'wer',
     'l1_loss',
+    'loss',
 ]
 
-MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
+MAX_EVAL_METRICS = ['mean_average_precision', 'ssim', 'accuracy', 'bleu']
 
 
 def generate_eval_cols(metrics):
@@ -128,8 +129,7 @@ def get_index_that_reaches_target(workload_df,
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
-
-  target_reached = pd.Series(validation_target_reached[0])
+  target_reached = pd.Series(validation_target_reached)
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
