@@ -34,7 +34,6 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from tabulate import tabulate
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
