@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Benchmark Rules
 
-**Version:** 0.0.16 *(Last updated 28 April 2023)*
+**Version:** 0.0.17 *(Last updated 10 August 2023)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
@@ -23,9 +23,6 @@
     - [Defining target performance](#defining-target-performance)
     - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
   - [Benchmark Procedure](#benchmark-procedure)
-    - [Multiple Submission](#multiple-submission)
-    - [Licensing](#licensing)
-    - [Awards and prize money](#awards-and-prize-money)
 - [Model Track](#model-track)
 
 ## Introduction
@@ -46,6 +43,8 @@ In general, submissions to the Training Algorithm Track will replace specific pi
 Submissions to the Training Algorithm Track can be entered under two separate rulesets, named [external tuning ruleset](#external-tuning-ruleset) and [self-tuning ruleset](#self-tuning-ruleset), with it being possible to submit to both rulesets. The main difference is that the external tuning ruleset allows moderate, automatic, parallel tuning of the optimizer's hyperparameters on each workload, using the submitted workload-agnostic search space. This allows the training algorithm to adapt to a particular task while ensuring that it is not too difficult to tune automatically. Under the self-tuning ruleset, there is no external tuning and submissions need to adapt to a particular task autonomously within a single optimization run. Unless otherwise specified, the rules in this section apply to both rulesets (see, for example, the [Tuning](#tuning) section for the most substantial difference between the rulesets).
 
 The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific [workload](#workloads) (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful. In order to further discourage submissions that overfit to the particular [fixed benchmark workloads](#fixed-workloads), submissions will also be evaluated on [held-out workloads](#randomized-workloads) specified after the submission deadline.
+
+For a description of how to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark, see the [Call for submissions](CALL_FOR_SUBMISSIONS.md), which details the entire competition process.
 
 ### Submissions
 
@@ -400,7 +399,7 @@ Our scoring procedure uses the held-out workloads only to penalize submissions t
 
 #### Qualification set
 
-The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](#awards-and-prize-money).
+The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](/SUBMISSION_PROCESS_RULES.md#awards-and-prize-money).
 
 The qualification set consists of the same [fixed workloads](#fixed-workloads) as mentioned above, except for both workloads on *ImageNet*, both workloads on *LibriSpeech*, and the *fastMRI* workload. The remaining three workloads (*WMT*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [randomized workloads](#randomized-workloads) in the qualification set. The qualification set of workloads aims to have a combined runtime of roughly 24 hours on the [benchmarking hardware](#benchmarking-hardware).
 
@@ -483,35 +482,7 @@ For a given workload $\bar{w}$, we define the "speedup of a submission $\bar{s}$
 
 ### Benchmark Procedure
 
-#### Multiple Submission
-
-Our benchmark allows multiple submissions by the same submitter. However, we would like to prevent submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
-
-We encourage multiple submissions if they differ substantially. A spirit jury will be responsible for judging whether the submissions are substantially different. This jury will apply stricter scrutiny to submitters with a larger number of submissions. In this context, a submitter refers to an individual (not the general institution or research group they belong to). The total number of submissions by a submitter is the sum of submissions they contributed to.
-
-##### Requesting Additional Baselines
-
-Submitters can both contribute and request additional baseline algorithms. This includes existing algorithms with different search spaces or learning rate schedules. These baselines will not be eligible for winning the competition or prize money.
-
-#### Licensing
-
-Submitting to the benchmark requires the following legal considerations:
-
-- A signed [Contributor License Agreement (CLA) "Corporate CLA"](https://mlcommons.org/en/policies/) of MLCommons.
-- *Either* membership in MLCommons *or* a signed [non-member test agreement](https://mlcommons.org/en/policies/).
-- A signed trademark license agreement, either the member or the non-member version, as appropriate). These license agreements are available upon request to [support@mlcommons.org](mailto:support@mlcommons.org).
-
-We furthermore require all submissions to be made available open source after the submission deadline under the [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0).
-
-#### Awards and prize money
-
-An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will take into account the [benchmark score](#benchmark-score-using-performance-profiles) on the full benchmark. The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
-
-The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
-
-The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*) are ineligible to receive prize money. In addition, all individuals serving on the awards committee and their institutions are ineligible to win prize money. A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
-
-Submitters may self-report the results of their submissions as long as they follow the benchmark protocol (e.g. use the time to reach the validation target for tuning, use the hyperparameter samples provided by the working group, etc.). The working group will independently verify the self-reported submissions with the highest scores. Only verified results are eligible to win the benchmark and be awarded prize money.
+For a description of how to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark, see the [Call for submissions](CALL_FOR_SUBMISSIONS.md), which details the entire competition process.
 
 ## Model Track
 
