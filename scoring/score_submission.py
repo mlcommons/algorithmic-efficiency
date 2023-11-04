@@ -4,9 +4,8 @@ from absl import app
 from absl import flags
 from absl import logging
 import scoring_utils
-
+from tabulate import tabulate
 from scoring import score_profile
-import tabulate
 
 flags.DEFINE_string(
     'experiment_path',
@@ -27,6 +26,14 @@ def main(_):
   results = {
       FLAGS.submission_tag: df,
   }
+  table = tabulate(df, headers='keys', tablefmt='psql')
+  logging.info(df)
+  for workload, group in df.groupby('workload'):
+    target_metric_name, target_metric_value = scoring_utils.get_workload_validation_target(workload)
+    print(target_metric_name)
+    print(target_metric_value)
+    # print(workload)
+    # print(group)
 
   if FLAGS.compute_performance_profiles:
     performance_profile_df = score_profile.compute_performance_profiles(
@@ -42,8 +49,8 @@ def main(_):
       os.mkdir(FLAGS.output_dir)
     score_profile.plot_performance_profiles(
         performance_profile_df, 'score', save_dir=FLAGS.output_dir)
-
-    logging.info(performance_profile_df)
+    perf_df = tabulate(performance_profile_df.T, headers='keys', tablefmt='psql')
+    logging.info(f'Performance profile:\n {perf_df}')
 
 
 if __name__ == '__main__':

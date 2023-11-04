@@ -34,6 +34,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scoring_utils
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
@@ -178,23 +179,8 @@ def get_times_for_submission(submission,
     if num_trials != NUM_TRIALS and not self_tuning_ruleset:
       logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
                     f'{workload} but found {num_trials} trials.')
-    workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
-    framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
-    workload_metadata = WORKLOADS[workload_name]
-
-    # Extend path according to framework.
-    workload_metadata['workload_path'] = os.path.join(
-        BASE_WORKLOADS_DIR,
-        workload_metadata['workload_path'] + f'{framework}',
-        'workload.py')
-    workload_init_kwargs = {}
-    workload_obj = workloads_registry.import_workload(
-        workload_path=workload_metadata['workload_path'],
-        workload_class_name=workload_metadata['workload_class_name'],
-        workload_init_kwargs=workload_init_kwargs)
-    metric_name = workload_obj.target_metric_name
-    validation_metric = f'validation/{metric_name}'
-    validation_target = workload_obj.validation_target_value
+    validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
+    validation_target = validation_target
 
     trial_idx, time_idx = get_index_that_reaches_target(
         group, validation_metric, validation_target)

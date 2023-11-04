@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import copy
 
 from absl import logging
 import pandas as pd
@@ -9,12 +10,16 @@ import pandas as pd
 from algorithmic_efficiency import spec
 from scoring.score_profile import NUM_TRIALS
 from scoring.score_profile import NUM_WORKLOADS
+import algorithmic_efficiency.workloads.workloads as workloads_registry
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
 METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'
 TRIAL_DIR_REGEX = 'trial_(\d+)'
 MEASUREMENTS_FILENAME = 'eval_measurements.csv'
 
+WORKLOADS = workloads_registry.WORKLOADS
+WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
+BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
 #### File IO helper functions ###
 def get_logfile_paths(logdir):
@@ -193,3 +198,30 @@ def get_experiment_df(experiment_dir):
       workload_df = pd.concat([workload_df, trial_df], ignore_index=True)
     df = pd.concat([df, workload_df], ignore_index=True)
   return df
+
+
+## Get workload properties
+def get_workload_validation_target(workload):
+  """Returns workload target metric name and value.
+  """ 
+  print(workload)
+  workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
+  framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
+  workload_metadata = copy.copy(WORKLOADS[workload_name])
+  print(workload_metadata)
+
+  # Extend path according to framework.
+  workload_metadata['workload_path'] = os.path.join(
+      BASE_WORKLOADS_DIR,
+      workload_metadata['workload_path'] + f'{framework}',
+      'workload.py')
+  workload_init_kwargs = {}
+  print(workload_metadata['workload_path'])
+  workload_obj = workloads_registry.import_workload(
+      workload_path=workload_metadata['workload_path'],
+      workload_class_name=workload_metadata['workload_class_name'],
+      workload_init_kwargs=workload_init_kwargs)
+  metric_name = workload_obj.target_metric_name
+  validation_metric = f'validation/{metric_name}'
+  validation_target = workload_obj.validation_target_value
+  return validation_metric, validation_target
