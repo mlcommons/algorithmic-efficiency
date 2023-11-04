@@ -25,7 +25,7 @@ The two primary inputs to `compute_performance_profiles` are
   The keys in this dictionary should match the workload identifiers used in
   the dictionary of submissions.
 """
-
+from absl import logging
 import itertools
 import operator
 import os
@@ -153,7 +153,8 @@ def get_index_that_reaches_target(workload_df,
 def get_times_for_submission(submission,
                              submission_tag,
                              time_col='global_step',
-                             verbosity=1):
+                             verbosity=1,
+                             self_tuning_ruleset=False):
   """Get times to target for each workload in a submission.
 
   Args:
@@ -168,8 +169,15 @@ def get_times_for_submission(submission,
   """
   workloads = []
   submission_name = submission_tag.split('.')[1]
-
+  num_workloads = len(submission.groupby('workload'))
+  if num_workloads != NUM_WORKLOADS:
+    logging.warning(f'Expecting {NUM_WORKLOADS} workloads '
+                    f'but found {num_workloads} workloads.')
   for workload, group in submission.groupby('workload'):
+    num_trials = len(group)
+    if num_trials != NUM_TRIALS and not self_tuning_ruleset:
+      logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
+                    f'{workload} but found {num_trials} trials.')
     workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
     framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
     workload_metadata = WORKLOADS[workload_name]
@@ -250,21 +258,21 @@ def compute_performance_profiles(results,
   dfs = []
 
   for submission_tag, result in results.items():
-    print(f'\nComputing performance profile with respect to `{time_col}` for '
+    logging.info(f'\nComputing performance profile with respect to `{time_col}` for '
           f'{submission_tag}')
     dfs.append(
         get_times_for_submission(result, submission_tag, time_col, verbosity))
   df = pd.concat(dfs)
 
   if verbosity > 0:
-    print(f'\n`{time_col}` to reach target:')
+    logging.info('\n`{time_col}` to reach target:')
     with pd.option_context('display.max_rows',
                            None,
                            'display.max_columns',
                            None,
                            'display.width',
                            1000):
-      print(df)
+      logging.info(df)
 
   # Divide by the fastest.
   if reference_submission_tag is None:
@@ -273,14 +281,14 @@ def compute_performance_profiles(results,
     df.update(df.div(df.loc[reference_submission_tag, :], axis=1))
 
   if verbosity > 0:
-    print(f'\n`{time_col}` to reach target normalized to best:')
+    logging.info('\n`{time_col}` to reach target normalized to best:')
     with pd.option_context('display.max_rows',
                            None,
                            'display.max_columns',
                            None,
                            'display.width',
                            1000):
-      print(df)
+      logging.info(df)
 
   # If no max_tau is supplied, choose the value of tau that would plot all non
   # inf or nan data.
