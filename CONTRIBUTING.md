@@ -253,10 +253,9 @@ pylint submission_runner.py
 pylint tests
 ```
 
-### Unit and integration tests
-
-We run unit tests and integration tests as part of the of github actions as well.
-You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/development_algorithms/`.
+## Unit and integration tests
+We run unit tests and integration tests as part of the of github actions as well. 
+You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/target_setting_algorithms/`.
 
 ### Regression tests
 

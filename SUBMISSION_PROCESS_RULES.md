@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Submission Process Rules
 
-**Version:** 0.0.2 *(Last updated 03 Oktober 2023)*
+**Version:** 0.0.3 *(Last updated 10 Oktober 2023)*
 
 ## Table of Contents <!-- omit from toc -->
 
@@ -39,8 +39,8 @@ Three additional documents complement this document:
 
 ### Dates
 
-- **Publication of the call for submission: 17. Oktober 2023 (08:00 AM UTC)**
-- Registration deadline for submissions: 15. December 2023 (08:00 AM UTC)
+- **Publication of the call for submission: 17. October 2023 (08:00 AM UTC)**
+- Registration deadline to express non-binding intent to submit: 15. December 2023 (08:00 AM UTC)
 - Version freeze for the benchmark codebase: 17. January 2024 (08:00 AM UTC)
 - **Submission deadline: 15. February 2024 (08:00 AM UTC)**
 - Sampling the held-out workloads and hyperparameters: 16. February 2024 (08:00 AM UTC)
@@ -68,19 +68,18 @@ For a guide on the technical steps and details on how to write a submission, ple
 
 In the following, we describe the logistical steps required to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark.
 
-### Register a submission
+### Register an intent to submit
 
 All submitters need to register an intent to submit before the submission registration deadline. This registration is mandatory, i.e. required for all submissions, but not binding, i.e. you don't have to submit a registered submission. This registration is necessary, to estimate the number of submissions and provide support for potential submitters.
 
-To register a submission, please fill out this [online form](https://forms.gle/iY1bUhwSjj1JZ4fa9) with the following information
+To register an intent to submission, please fill out this [online form](https://forms.gle/iY1bUhwSjj1JZ4fa9) with the following information
 
 - Name of the submission (e.g. name of the algorithm, or any other arbitrary identifier).
 - Ruleset under which the submission will be scored.
-- Name of all submitters associated with this submission.
-- Email of all submitters associated with this submission.
-- Affiliations of all submitters associated with this submission.
+- Name, email, and affiliations of all submitters associated with this submission.
+- Interest in compute support.
 
-In return, the submission will be issued a unique **submission ID** that will be used throughout the submission process.
+The submission will be issued a unique **submission ID** that will be used throughout the submission process.
 
 ### How to submit
 
@@ -143,9 +142,9 @@ The spirit jury may then hear the justifications of the submitters, inspect the 
 
 ## Awards and prize money
 
-An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Jury Award*". The prize for the best-performing submission will take into account the [benchmark score](RULES.md#benchmark-score-using-performance-profiles) on the full benchmark. The "*Jury Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
+An awards committee will award a prize for the "*Best Performance*" in each ruleset as well as a "*Innovative Submission Award*". The prize for the best-performing submission will take into account the [benchmark score](RULES.md#benchmark-score-using-performance-profiles) on the full benchmark. The "*Innovative Submission Award*" will favor more out-of-the-box ideas that show great potential, even though the method may not be of practical value with the current landscape of models, software, etc.
 
-The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Jury Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
+The prize money for "*Best Performance*" in a ruleset is $20,000 each. The winner of the "*Innovative Submission Award*" will be awarded $10,000. We reserve the right to split the prize money and distribute it among multiple submissions.
 
 If a submission is ineligible to win prize money it can still win an award. The prize money will then go to the highest-ranking eligible submission.
 
@@ -159,10 +158,10 @@ The awards committee will be responsible for awarding prize money to submissions
 
 To ensure a fair process and avoid conflicts of interest, some individuals and institutions are ineligible to win prize money. This includes:
 
-- The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their institutions (currently *Google Inc.* and the *University of Tübingen*)
-- All individuals serving on the awards committee and their institutions.
+- The chairs of the MLCommons Algorithms Working Group (presently *George Dahl* and *Frank Schneider*) and their associated institutions (currently *Google Inc.* and the *University of Tübingen*)
+- All individuals serving on the awards committee and their associated institutions.
 
-A submission with at least one ineligible submitter may still win an award, but the prize money will then be awarded to the top-ranked submission that is eligible for prize money.
+A submission with at least one participating ineligible entity may still win an award, but the prize money will then be given to the top-ranked submission that does not contain ineligible entities.
 
 Additionally, we require members of the spirit jury to abstain from being involved in a review if:
 
