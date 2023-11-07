@@ -1,9 +1,13 @@
 import json
 import os
 import re
+import warnings
 
 from absl import logging
 import pandas as pd
+
+from scoring.scoring import NUM_TRIALS
+from scoring.scoring import NUM_WORKLOADS
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
 METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'
@@ -103,8 +107,7 @@ def get_trials_df_dict(logfile):
     """
   trials_dict = get_trials_dict(logfile)
   trials_df_dict = {}
-  for trial in trials_dict.keys():
-    metrics = trials_dict[trial]
+  for trial, metrics in trials_dict.items():
     trials_df_dict[trial] = pd.DataFrame(metrics)
   return trials_df_dict
 
@@ -156,6 +159,10 @@ def get_experiment_df(experiment_dir):
   """
   df = pd.DataFrame()
   workload_dirs = os.listdir(experiment_dir)
+  num_workloads = len(workload_dirs)
+  if num_workloads != NUM_WORKLOADS:
+    warnings.warn(f'There should be {NUM_WORKLOADS} workloads but there are '
+                  f'{num_workloads}.')
   for workload in workload_dirs:
     data = {
         'workload': workload,
@@ -164,6 +171,7 @@ def get_experiment_df(experiment_dir):
         t for t in os.listdir(os.path.join(experiment_dir, workload))
         if re.match(TRIAL_DIR_REGEX, t)
     ]
+    workload_df = pd.DataFrame()
     for trial in trial_dirs:
       eval_measurements_filepath = os.path.join(
           experiment_dir,
@@ -173,7 +181,7 @@ def get_experiment_df(experiment_dir):
       )
       try:
         trial_df = pd.read_csv(eval_measurements_filepath)
-      except FileNotFoundError as e:
+      except FileNotFoundError:
         logging.info(f'Could not read {eval_measurements_filepath}')
         continue
       data['trial'] = trial
@@ -181,5 +189,10 @@ def get_experiment_df(experiment_dir):
         values = trial_df[column].to_numpy()
         data[column] = values
       trial_df = pd.DataFrame([data])
-      df = pd.concat([df, trial_df], ignore_index=True)
+      workload_df = pd.concat([workload_df, trial_df], ignore_index=True)
+    num_trials = len(workload_df)
+    if num_trials != NUM_TRIALS:
+      warnings.warn(f'There should be {NUM_TRIALS} trials for workload '
+                    f'{workload} but there are only {num_trials}.')
+    df = pd.concat([df, workload_df], ignore_index=True)
   return df

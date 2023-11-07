@@ -40,6 +40,12 @@ import algorithmic_efficiency.workloads.workloads as workloads_registry
 WORKLOADS = workloads_registry.WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+# These global variables have to be set according to the current set of
+# workloads and rules for the scoring to be correct.
+# We do not use the workload registry since it contains test and development
+# workloads as well.
+NUM_WORKLOADS = 8
+NUM_TRIALS = 5
 
 MIN_EVAL_METRICS = [
     'ce_loss',
@@ -47,9 +53,10 @@ MIN_EVAL_METRICS = [
     'ctc_loss',
     'wer',
     'l1_loss',
+    'loss',
 ]
 
-MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
+MAX_EVAL_METRICS = ['mean_average_precision', 'ssim', 'accuracy', 'bleu']
 
 
 def generate_eval_cols(metrics):
@@ -128,14 +135,14 @@ def get_index_that_reaches_target(workload_df,
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
-
-  target_reached = pd.Series(validation_target_reached[0])
+  target_reached = pd.Series(validation_target_reached)
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
-  # If we have no trials that have reached the target, return -1. Else, return
-  # the eval index of the earliest point the target is reached.
-  if target_reached.empty:
+  # If less than 3 trials reach the target, the submission will be scored as
+  # missing the target on this workload; return -1. Else, return the eval index
+  # of the earliest point the target is reached.
+  if len(target_reached) < 3:
     return -1, -1
   else:
     index_reached = target_reached.apply(np.argmax)
@@ -287,7 +294,7 @@ def compute_performance_profiles(results,
         np.log10(min_tau), np.log10(max_tau), num=num_points, base=10.0)
 
   def rho(r, tau):
-    return (r <= tau).sum(axis=1) / len(r.columns)
+    return (r <= tau).sum(axis=1) / NUM_WORKLOADS
 
   perf_df = pd.concat([rho(df, tau) for tau in points], axis=1)
 
