@@ -1,7 +1,7 @@
+import copy
 import json
 import os
 import re
-import copy
 
 from absl import logging
 import pandas as pd

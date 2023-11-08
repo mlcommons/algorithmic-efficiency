@@ -1,14 +1,14 @@
+import operator
 import os
 
 from absl import app
 from absl import flags
 from absl import logging
-import pandas as pd
 import numpy as np
-import operator
-
+import pandas as pd
 import scoring_utils
 from tabulate import tabulate
+
 from scoring import performance_profile
 from scoring.performance_profile import check_if_minimized
 
