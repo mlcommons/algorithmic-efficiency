@@ -6,7 +6,6 @@ import re
 from absl import logging
 import pandas as pd
 
-from algorithmic_efficiency import spec
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
