@@ -51,7 +51,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def num_test_examples(self) -> int:
-    return 3548
+    return 3581
 
   @property
   def eval_batch_size(self) -> int:
