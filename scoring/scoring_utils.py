@@ -6,10 +6,7 @@ import copy
 from absl import logging
 import pandas as pd
 
-
 from algorithmic_efficiency import spec
-from scoring.score_profile import NUM_TRIALS
-from scoring.score_profile import NUM_WORKLOADS
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
@@ -20,6 +17,7 @@ MEASUREMENTS_FILENAME = 'eval_measurements.csv'
 WORKLOADS = workloads_registry.WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+
 
 #### File IO helper functions ###
 def get_logfile_paths(logdir):
@@ -166,9 +164,6 @@ def get_experiment_df(experiment_dir):
   df = pd.DataFrame()
   workload_dirs = os.listdir(experiment_dir)
   num_workloads = len(workload_dirs)
-  # if num_workloads != NUM_WORKLOADS:
-  #   warnings.warn(f'There should be {NUM_WORKLOADS} workloads but there are '
-  #                 f'{num_workloads}.')
   for workload in workload_dirs:
     data = {
         'workload': workload,
@@ -203,12 +198,10 @@ def get_experiment_df(experiment_dir):
 ## Get workload properties
 def get_workload_validation_target(workload):
   """Returns workload target metric name and value.
-  """ 
-  print(workload)
+  """
   workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
   framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
   workload_metadata = copy.copy(WORKLOADS[workload_name])
-  print(workload_metadata)
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
