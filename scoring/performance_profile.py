@@ -34,9 +34,9 @@ from absl import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scoring import scoring_utils
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
+from scoring import scoring_utils
 
 WORKLOADS = workloads_registry.WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
