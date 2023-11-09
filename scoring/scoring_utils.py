@@ -140,7 +140,7 @@ def get_trials_df(logfile):
 def get_experiment_df(experiment_dir):
   """Gets a df of per trial results from an experiment dir.
   The output df can be provided as input to 
-  score_profilecompute_performance_profiles. 
+  performance_profile.compute_performance_profiles. 
   Args:
       experiment_dir: path to experiment directory containing 
         results for workloads.
@@ -196,8 +196,7 @@ def get_experiment_df(experiment_dir):
 
 ## Get workload properties
 def get_workload_validation_target(workload):
-  """Returns workload target metric name and value.
-  """
+  """Returns workload target metric name and value."""
   workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
   framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
   workload_metadata = copy.copy(WORKLOADS[workload_name])
@@ -208,7 +207,6 @@ def get_workload_validation_target(workload):
       workload_metadata['workload_path'] + f'{framework}',
       'workload.py')
   workload_init_kwargs = {}
-  print(workload_metadata['workload_path'])
   workload_obj = workloads_registry.import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],

@@ -34,7 +34,7 @@ from absl import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import scoring_utils
+from scoring import scoring_utils
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
@@ -180,7 +180,6 @@ def get_times_for_submission(submission,
       logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
                       f'{workload} but found {num_trials} trials.')
     validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
-    validation_target = validation_target
 
     trial_idx, time_idx = get_index_that_reaches_target(
         group, validation_metric, validation_target)

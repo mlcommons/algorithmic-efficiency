@@ -10,7 +10,6 @@ import scoring_utils
 from tabulate import tabulate
 
 from scoring import performance_profile
-from scoring.performance_profile import check_if_minimized
 
 flags.DEFINE_string(
     'experiment_path',
@@ -28,7 +27,7 @@ FLAGS = flags.FLAGS
 
 def get_summary_df(workload, workload_df):
   validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
-  is_minimized = check_if_minimized(validation_metric)
+  is_minimized = performance_profile.check_if_minimized(validation_metric)
   target_op = operator.le if is_minimized else operator.ge
   best_op = min if is_minimized else max
   idx_op = np.argmin if is_minimized else np.argmax
@@ -65,7 +64,7 @@ def main(_):
     dfs.append(summary_df)
 
   df = pd.concat(dfs)
-  print(tabulate(df, headers='keys', tablefmt='psql'))
+  logging.info(tabulate(df, headers='keys', tablefmt='psql'))
 
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
