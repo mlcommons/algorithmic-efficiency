@@ -31,6 +31,16 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return False
+
+  @property
+  def use_resnet(self) -> bool:
+    """Whether or not to use residual connections in the model."""
+    return False
+
+  def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value
 
   @property
