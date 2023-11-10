@@ -605,10 +605,7 @@ def main(_):
 
   # Prevent OOM on librispeech conformer.
   if FLAGS.workload == 'librispeech_conformer':
-    if FLAGS.framework == 'jax':
-      os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
-    elif FLAGS.framework == 'pytorch' and torch.cuda.is_available():
-      torch.cuda.memory._set_allocator_settings('expandable_segments:True')
+    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
 
   if FLAGS.set_pytorch_max_split_size:
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
