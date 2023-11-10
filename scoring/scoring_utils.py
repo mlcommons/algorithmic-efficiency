@@ -9,6 +9,7 @@ import pandas as pd
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 
+
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
 METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'
 TRIAL_DIR_REGEX = 'trial_(\d+)'
