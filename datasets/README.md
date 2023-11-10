@@ -133,7 +133,7 @@ downloading has finished.
 To download, train a tokenizer and preprocess the librispeech dataset:
 ```bash
 python3 datasets/dataset_setup.py \
---data_dir librispeech \
+--data_dir $DATA_DIR \
 --temp_dir $DATA_DIR/tmp \
 --librispeech
 ```
