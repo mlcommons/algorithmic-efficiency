@@ -28,7 +28,7 @@ make sure the data directory is mounted to a directory on your host with
 -v flag. If you are following instructions from the README you will have used 
 the `-v $HOME/data:/data` flag in the `docker run` command. This will mount
 the `$HOME/data` directory to the `/data` directory in the container. 
-In this case set --data_dir to  `\data`. 
+In this case set --data_dir to  `/data`. 
 ```bash
 DATA_DIR='/data'
 ```

@@ -25,21 +25,28 @@ The two primary inputs to `compute_performance_profiles` are
   The keys in this dictionary should match the workload identifiers used in
   the dictionary of submissions.
 """
-
 import itertools
 import operator
 import os
 import re
 
+from absl import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
+from scoring import scoring_utils
 
 WORKLOADS = workloads_registry.WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+# These global variables have to be set according to the current set of
+# workloads and rules for the scoring to be correct.
+# We do not use the workload registry since it contains test and development
+# workloads as well.
+NUM_WORKLOADS = 8
+NUM_TRIALS = 5
 
 MIN_EVAL_METRICS = [
     'ce_loss',
@@ -47,9 +54,10 @@ MIN_EVAL_METRICS = [
     'ctc_loss',
     'wer',
     'l1_loss',
+    'loss',
 ]
 
-MAX_EVAL_METRICS = ['average_precision', 'ssim', 'accuracy', 'bleu_score']
+MAX_EVAL_METRICS = ['mean_average_precision', 'ssim', 'accuracy', 'bleu']
 
 
 def generate_eval_cols(metrics):
@@ -128,14 +136,14 @@ def get_index_that_reaches_target(workload_df,
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
-
-  target_reached = pd.Series(validation_target_reached[0])
+  target_reached = pd.Series(validation_target_reached)
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
-  # If we have no trials that have reached the target, return -1. Else, return
-  # the eval index of the earliest point the target is reached.
-  if target_reached.empty:
+  # If less than 3 trials reach the target, the submission will be scored as
+  # missing the target on this workload; return -1. Else, return the eval index
+  # of the earliest point the target is reached.
+  if len(target_reached) < 3:
     return -1, -1
   else:
     index_reached = target_reached.apply(np.argmax)
@@ -146,7 +154,8 @@ def get_index_that_reaches_target(workload_df,
 def get_times_for_submission(submission,
                              submission_tag,
                              time_col='global_step',
-                             verbosity=1):
+                             verbosity=1,
+                             self_tuning_ruleset=False):
   """Get times to target for each workload in a submission.
 
   Args:
@@ -161,25 +170,16 @@ def get_times_for_submission(submission,
   """
   workloads = []
   submission_name = submission_tag.split('.')[1]
-
+  num_workloads = len(submission.groupby('workload'))
+  if num_workloads != NUM_WORKLOADS:
+    logging.warning(f'Expecting {NUM_WORKLOADS} workloads '
+                    f'but found {num_workloads} workloads.')
   for workload, group in submission.groupby('workload'):
-    workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
-    framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
-    workload_metadata = WORKLOADS[workload_name]
-
-    # Extend path according to framework.
-    workload_metadata['workload_path'] = os.path.join(
-        BASE_WORKLOADS_DIR,
-        workload_metadata['workload_path'] + f'{framework}',
-        'workload.py')
-    workload_init_kwargs = {}
-    workload_obj = workloads_registry.import_workload(
-        workload_path=workload_metadata['workload_path'],
-        workload_class_name=workload_metadata['workload_class_name'],
-        workload_init_kwargs=workload_init_kwargs)
-    metric_name = workload_obj.target_metric_name
-    validation_metric = f'validation/{metric_name}'
-    validation_target = workload_obj.validation_target_value
+    num_trials = len(group)
+    if num_trials != NUM_TRIALS and not self_tuning_ruleset:
+      logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
+                      f'{workload} but found {num_trials} trials.')
+    validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
 
     trial_idx, time_idx = get_index_that_reaches_target(
         group, validation_metric, validation_target)
@@ -243,21 +243,22 @@ def compute_performance_profiles(results,
   dfs = []
 
   for submission_tag, result in results.items():
-    print(f'\nComputing performance profile with respect to `{time_col}` for '
-          f'{submission_tag}')
+    logging.info(
+        f'\nComputing performance profile with respect to `{time_col}` for '
+        f'{submission_tag}')
     dfs.append(
         get_times_for_submission(result, submission_tag, time_col, verbosity))
   df = pd.concat(dfs)
 
   if verbosity > 0:
-    print(f'\n`{time_col}` to reach target:')
+    logging.info('\n`{time_col}` to reach target:')
     with pd.option_context('display.max_rows',
                            None,
                            'display.max_columns',
                            None,
                            'display.width',
                            1000):
-      print(df)
+      logging.info(df)
 
   # Divide by the fastest.
   if reference_submission_tag is None:
@@ -266,14 +267,14 @@ def compute_performance_profiles(results,
     df.update(df.div(df.loc[reference_submission_tag, :], axis=1))
 
   if verbosity > 0:
-    print(f'\n`{time_col}` to reach target normalized to best:')
+    logging.info('\n`{time_col}` to reach target normalized to best:')
     with pd.option_context('display.max_rows',
                            None,
                            'display.max_columns',
                            None,
                            'display.width',
                            1000):
-      print(df)
+      logging.info(df)
 
   # If no max_tau is supplied, choose the value of tau that would plot all non
   # inf or nan data.
@@ -287,7 +288,7 @@ def compute_performance_profiles(results,
         np.log10(min_tau), np.log10(max_tau), num=num_points, base=10.0)
 
   def rho(r, tau):
-    return (r <= tau).sum(axis=1) / len(r.columns)
+    return (r <= tau).sum(axis=1) / NUM_WORKLOADS
 
   perf_df = pd.concat([rho(df, tau) for tau in points], axis=1)
 
