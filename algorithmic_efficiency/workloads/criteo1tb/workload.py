@@ -29,11 +29,11 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'loss'
 
-  def has_reached_validation_target(self, 
-                                    eval_result: Dict[str,float]) -> bool:
+  def has_reached_validation_target(self, eval_result: Dict[str,
+                                                            float]) -> bool:
     return eval_result['validation/loss'] < self.validation_target_value
 
-  @property                                                          
+  @property
   def use_layer_norm(self) -> bool:
     """Whether or not to use LayerNorm in the model."""
     return False
@@ -42,7 +42,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
   def use_resnet(self) -> bool:
     """Whether or not to use residual connections in the model."""
     return False
-
 
   @property
   def validation_target_value(self) -> float:
