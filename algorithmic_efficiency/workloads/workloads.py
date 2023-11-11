@@ -19,6 +19,7 @@ WORKLOADS = {
     'criteo1tb_test': {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
+    }
     'criteo1tb_layernorm': {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallLayerNormWorkload'
