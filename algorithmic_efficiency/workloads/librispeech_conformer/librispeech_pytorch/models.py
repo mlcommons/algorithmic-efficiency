@@ -42,6 +42,9 @@ class ConformerConfig:
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
+  attention_temperature: float = 1.0
+  activation_function_name: str = 'swish'
+  use_post_layer_norm: bool = False
 
 
 def initialize(m):
@@ -207,7 +210,16 @@ class FeedForwardModule(nn.Module):
   def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
-    inputs = F.silu(inputs)
+    if self.config.activation_function_name == 'swish':
+      activation_fn = F.silu
+    elif self.config.activation_function_name == 'gelu':
+      activation_fn = F.gelu
+    else:
+      raise ValueError(
+          'Only "swish" and "gelu" are supported '
+          'config.activation_function_name values, recieved '
+          f'{self.config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = self.dropout1(inputs)
     inputs = inputs * padding_mask
     inputs = self.linear2(inputs)
@@ -270,6 +282,7 @@ class MHSAwithQS(nn.Module):
     self.in_proj = nn.Linear(config.encoder_dim, 3 * config.encoder_dim)
     self.out_proj = nn.Linear(config.encoder_dim, config.encoder_dim)
     self.qs = QueryScaler(dim=config.encoder_dim // config.num_attention_heads)
+    self.attention_temperature = config.attention_temperature
 
   def forward(self, inputs, key_padding_mask=None):
     batch_size, seq_len, embed_dim = inputs.shape
