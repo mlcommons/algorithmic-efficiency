@@ -47,8 +47,11 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     input_dropout_rate.
     """
     torch.random.manual_seed(rng[0])
-    # Disable cudnn benchmark to avoid OOM errors.
+    # Configure torch backends to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    torch.backends.cuda.enable_math_sdp(True)
     model = conformer_model.ConformerEncoderDecoder(
         conformer_model.ConformerConfig(
             attention_residual_dropout_rate=dropout_rate,
@@ -57,13 +60,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             input_dropout_rate=aux_dropout_rate,
             use_specaug=self.use_specaug))
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
-    # Run model once to initialize lazy layers.
-    # Run the initialization in eval mode to disable BN tracking.
-    model = model.eval()
-    t = MAX_INPUT_LENGTH
-    wave = torch.randn((2, t))
-    pad = torch.zeros_like(wave)
-    _ = model(wave, pad)
     conformer_model.initialize(model)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)

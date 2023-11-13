@@ -5,8 +5,7 @@ from absl import flags
 from absl import logging
 import scoring_utils
 
-from algorithmic_efficiency import workloads
-import scoring
+from scoring import scoring
 
 flags.DEFINE_string(
     'experiment_path',

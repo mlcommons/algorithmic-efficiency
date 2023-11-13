@@ -149,6 +149,9 @@ flags.DEFINE_integer(
     None,
     'Value of rng seed. If None, a random seed will'
     'be generated from hardware.')
+flags.DEFINE_boolean('set_pytorch_max_split_size',
+                     False,
+                     'If true, set pytorch max_split_size_mb to 256')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -217,10 +220,8 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['ogbg', 'criteo1tb']
-      eager_backend_workloads = [
-          'librispeech_conformer', 'librispeech_deepspeech'
-      ]
+      compile_error_workloads = ['librispeech_conformer', 'ogbg', 'criteo1tb']
+      eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
@@ -603,6 +604,9 @@ def main(_):
   # Prevent OOM on librispeech conformer.
   if FLAGS.workload == 'librispeech_conformer':
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
+
+  if FLAGS.set_pytorch_max_split_size:
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(

@@ -38,11 +38,15 @@ def sd_transform(sd):
   out = {}
   for k in sd:
     if 'Attention' in ''.join(k):
-      if 'in_proj' in k[-1]:
-        new_key = k[:-1]
+      if 'Dense_0' in k[-2]:
+        # In-proj
+        new_key = k[:-2]
         chunks = sd[k].chunk(3)
         for t, c in zip(['query', 'key', 'value'], chunks):
-          out[new_key + (t, k[-1].split('_')[-1])] = c
+          out[new_key + (t, k[-1])] = c
+      elif 'Dense_1' in k[-2]:
+        # Out-proj
+        out[(*k[:-2], 'out', k[-1])] = sd[k]
       else:
         out[k] = sd[k]
     else:
