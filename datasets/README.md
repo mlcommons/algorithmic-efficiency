@@ -96,7 +96,7 @@ Therefore, you will have to specify the framework (pytorch or jax) through thefr
 
 ```bash
 python3 datasets/dataset_setup.py \ 
---data_dir /data \
+--data_dir $DATA_DIR \
 --imagenet \
 --temp_dir $DATA_DIR/tmp \  
 --imagenet_train_url <imagenet_train_url> \
