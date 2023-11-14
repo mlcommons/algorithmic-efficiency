@@ -510,10 +510,10 @@ def setup_imagenet_pytorch(data_dir):
   # Check if downloaded data has been moved 
   manual_download_dir = os.path.join(data_dir, 'jax', 'downloads', 'manual')
   if not os.path.exists(train_tar_file_path):
-    if os.path.exists(os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME))
+    if os.path.exists(os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
       train_tar_file_path = os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)
   if not os.path.exists(val_tar_file_path):
-    if os.path.exists(os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME))
+    if os.path.exists(os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
       val_tar_file_path = os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)
 
   # Setup pytorch dataset dir
