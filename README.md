@@ -70,11 +70,14 @@ You can install this package and dependences in a [python virtual environment](#
    pip3 install -e '.[jax_cpu]'
    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
    pip3 install -e '.[full]'
-   ```
+   ``` 
 
 ### Python virtual environment
 
-Note: Python minimum requirement >= 3.8
+#### Prerequisites
+- Python minimum requirement >= 3.8
+- CUDA 11.8
+- NVIDIA Driver version 535.104.05
 
 To set up a virtual enviornment and install this repository
 
@@ -115,12 +118,14 @@ pip3 install -e '.[full]'
 
 ### Docker
 
-We recommend using a Docker container to ensure a similar environment to our scoring and testing environments.
+We recommend using a Docker container to ensure a similar environment to our scoring and testing environments. 
 Alternatively, a Singularity/Apptainer container can also be used (see instructions below).
 
 We recommend using a Docker container to ensure a similar environment to our scoring and testing environments.
 
-**Prerequisites for NVIDIA GPU set up**: You may have to install the NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
+#### Prerequisites
+- NVIDIA Driver version 535.104.05
+- NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs.
 See instructions [here](https://github.com/NVIDIA/nvidia-docker).
 
 #### Building Docker Image
