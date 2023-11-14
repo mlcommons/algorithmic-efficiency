@@ -115,8 +115,8 @@ class DLRMResNet(nn.Module):
 
 
 
-   def forward(self, x):
-    # Todo (kasimbeg): add residual layer
+  def forward(self, x):
+      # Todo (kasimbeg): add residual layer
     batch_size = x.shape[0]
 
     dense_features, sparse_features = torch.split(
