@@ -27,7 +27,7 @@
 
 ## Goal
 
-To discover new training algorithms that can train general neural networks faster. Sponsor will use an objective measuring program to allocate a score to each entry ("Submission") and determine two winners (one in each ruleset), each of which will be eligible to win a prize.
+To discover new training algorithms that can train general neural networks faster. Sponsor will use an objective measuring program to allocate a score to each entry ("Submission") and determine two (2) winners (one in each ruleset), each of which will be eligible to win a prize.
 
 ## Sponsor
 
