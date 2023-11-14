@@ -1,4 +1,4 @@
-name: Containerized Regression Tests
+name: Containerized Regression Tests for Workload Variants
 
 on: 
   pull_request:
