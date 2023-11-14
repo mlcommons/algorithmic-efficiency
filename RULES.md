@@ -1,5 +1,7 @@
 # MLCommons™ AlgoPerf: Competition Rules
 
+**Version:** 0.0.1 *(Last updated November 14, 2023)*
+
 ## Table of Contents <!-- omit from toc -->
 
 - [Goal](#goal)

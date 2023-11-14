@@ -1,5 +1,5 @@
-# Change log
+# Change Log
 
-## TODO: algorithmic-efficiency 0.1.0
+## [0.1.0] - 2023-11-21
 
-First release of AlgoPerf benchmarking code.
+First release of the AlgoPerf: Training algorithms benchmarking code.
