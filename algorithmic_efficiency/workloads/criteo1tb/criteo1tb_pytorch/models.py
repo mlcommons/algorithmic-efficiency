@@ -113,8 +113,6 @@ class DLRMResNet(nn.Module):
                           0.,
                           math.sqrt(1. / module.out_features))
 
-
-
   def forward(self, x):
     # Todo (kasimbeg): add residual layer
     batch_size = x.shape[0]
