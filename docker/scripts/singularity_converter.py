@@ -3,7 +3,7 @@ This script is a modification of the
 ``spython recipe Dockerfile &> Singularity.def`` command, implemented here:
 github.com/singularityhub/singularity-cli/blob/master/spython/client/recipe.py
 
-It converts the Docker recipy to Singularity, but suppressing any %files
+It converts the Docker recipe to Singularity, but suppressing any %files
 command. Usage example:
 
 python singularity_converter.py -i Dockerfile -o Singularity.def
