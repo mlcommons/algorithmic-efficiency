@@ -31,7 +31,7 @@
     - [My machine only has one GPU. How can I use this repo?](#my-machine-only-has-one-gpu-how-can-i-use-this-repo)
     - [How do I run this on my SLURM cluster?](#how-do-i-run-this-on-my-slurm-cluster)
     - [How can I run this on my AWS/GCP/Azure cloud project?](#how-can-i-run-this-on-my-awsgcpazure-cloud-project)
-  - [Submissions](#submissions-1)
+  - [Submitting](#submitting)
     - [Can I submit multiple times to the benchmark competition?](#can-i-submit-multiple-times-to-the-benchmark-competition)
     - [Can my submission be structured using multiple files?](#can-my-submission-be-structured-using-multiple-files)
     - [Can I install custom dependencies?](#can-i-install-custom-dependencies)
@@ -495,7 +495,7 @@ For the benchmark score, we compute and integrate the performance profiles using
 - Reach the validation target on the held-out workload (corresponding to the fixed workload) within the maximum runtime.
 - Reach the validation target on the held-out workload (corresponding to the fixed workload) within 4x of the fastest submission. To determine the fastest submission on a held-out workload, we only consider submissions that reached the target on the corresponding fixed workload. This protects us against extremely fast submissions that only work on a specific held-out workload and are useless as general algorithms.
 
-Only if all four requirements are met, does the submission get a finite score. Otherwise, a submission will receive a training time of infinity.
+Only if all four requirements are met, does the submission get a finite score. Otherwise, a submission will receive a training time of infinity. Note that the tuning process works the same for held-out workloads as for the fixed workloads, i.e. in the external tuning ruleset there are multiple tuning trials and only the fastest trial per study is relevant for scoring.
 
 This essentially means that being unable to successfully train a held-out workload can "disqualify" a submission from getting a good score on the fixed workload it is based on. In other words, we require submissions to be robust enough to handle workload variations. This protocol ensures that we prioritize the fixed workloads for scoring since they are the most relevant version of that workload in practice. However, we also protect our benchmark from egregious workload-specific tuning and penalize brittle methods that break with slight modifications of the workload.
 
@@ -537,7 +537,7 @@ Depending on your virtual machine, you may have to install the correct GPU drive
 new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options.
 2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
 
-### Submissions
+### Submitting
 
 #### Can I submit multiple times to the benchmark competition?
 
