@@ -116,7 +116,7 @@ class DLRMResNet(nn.Module):
 
 
   def forward(self, x):
-      # Todo (kasimbeg): add residual layer
+    # Todo (kasimbeg): add residual layer
     batch_size = x.shape[0]
 
     dense_features, sparse_features = torch.split(
@@ -138,7 +138,7 @@ class DLRMResNet(nn.Module):
 
     # Final MLP.
     logits = self.top_mlp(concatenated_dense)
-    return logits 
+    return logits
 
 
 class DlrmSmall(nn.Module):
