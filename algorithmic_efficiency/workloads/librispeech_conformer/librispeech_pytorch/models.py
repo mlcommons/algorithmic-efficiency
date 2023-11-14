@@ -418,7 +418,16 @@ class ConvolutionBlock(nn.Module):
     inputs = inputs.permute(0, 2, 1)
 
     inputs = self.bn(inputs, input_paddings)
-    inputs = F.silu(inputs)
+    if self.config.activation_function_name == 'swish':
+      activation_fn = F.silu
+    elif self.config.activation_function_name == 'gelu':
+      activation_fn = F.gelu
+    else:
+      raise ValueError(
+          'Only "swish" and "gelu" are supported '
+          'config.activation_function_name values, recieved '
+          f'{self.config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = self.lin3(inputs)
 
     inputs = self.dropout(inputs)
@@ -434,7 +443,9 @@ class ConformerBlock(nn.Module):
     self.mhsa = MultiHeadedSelfAttention(config)
     self.conv = ConvolutionBlock(config)
     self.ff2 = FeedForwardModule(config)
-    self.ln = LayerNorm(dim=config.encoder_dim)
+    self.ln = None
+    if config.use_post_layer_norm:
+      self.ln = LayerNorm(dim=config.encoder_dim)
 
   def forward(self, inputs, input_paddings):
     padding_mask = 1 - input_paddings[:, :, None]
@@ -442,7 +453,8 @@ class ConformerBlock(nn.Module):
     inputs = inputs + self.mhsa(inputs, input_paddings)
     inputs = inputs + self.conv(inputs, input_paddings)
     inputs = inputs + 0.5 * self.ff2(inputs, padding_mask)
-    inputs = self.ln(inputs)
+    if self.ln:
+      inputs = self.ln(inputs)
     return inputs
 
 
