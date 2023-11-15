@@ -6,39 +6,39 @@ on:
       - 'dev' 
 
 jobs:
-  build_and_push_jax_docker_image:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build and push docker images
-      run: |
-        GIT_BRANCH=${{ github.head_ref || github.ref_name }}
-        FRAMEWORK=jax
-        IMAGE_NAME="algoperf_${FRAMEWORK}_${GIT_BRANCH}"
-        cd $HOME/algorithmic-efficiency/docker
-        docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
-        BUILD_RETURN=$?
-        if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
-        docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
-        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
-  build_and_push_pytorch_docker_image:
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build and push docker images
-      run: |
-        GIT_BRANCH=${{ github.head_ref || github.ref_name }}
-        FRAMEWORK=pytorch
-        IMAGE_NAME="algoperf_${FRAMEWORK}_${GIT_BRANCH}"
-        cd $HOME/algorithmic-efficiency/docker
-        docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
-        BUILD_RETURN=$?
-        if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
-        docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
-        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+  # build_and_push_jax_docker_image:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Build and push docker images
+  #     run: |
+  #       GIT_BRANCH=${{ github.head_ref || github.ref_name }}
+  #       FRAMEWORK=jax
+  #       IMAGE_NAME="algoperf_${FRAMEWORK}_${GIT_BRANCH}"
+  #       cd $HOME/algorithmic-efficiency/docker
+  #       docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
+  #       BUILD_RETURN=$?
+  #       if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
+  #       docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+  #       docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+  # build_and_push_pytorch_docker_image:
+  #   runs-on: self-hosted
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Build and push docker images
+  #     run: |
+  #       GIT_BRANCH=${{ github.head_ref || github.ref_name }}
+  #       FRAMEWORK=pytorch
+  #       IMAGE_NAME="algoperf_${FRAMEWORK}_${GIT_BRANCH}"
+  #       cd $HOME/algorithmic-efficiency/docker
+  #       docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
+  #       BUILD_RETURN=$?
+  #       if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
+  #       docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+  #       docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
   criteo_layernorm_jax:
     runs-on: self-hosted
-    needs: build_and_push_jax_docker_image
+    # needs: build_and_push_jax_docker_image
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
@@ -47,7 +47,7 @@ jobs:
         docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_${{ github.head_ref || github.ref_name }}  -d criteo1tb -f jax -s baselines/adamw/jax/submission.py -w criteo1tb_layernorm -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
   criteo_resnet_jax:
     runs-on: self-hosted
-    needs: build_and_push_jax_docker_image
+    # needs: build_and_push_jax_docker_image
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
@@ -56,7 +56,7 @@ jobs:
         docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_${{ github.head_ref || github.ref_name }}  -d criteo1tb -f jax -s baselines/adamw/jax/submission.py -w criteo1tb_resnet -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
   criteo_layernorm_pytorch:
     runs-on: self-hosted
-    needs: build_and_push_pytorch_docker_image
+    # needs: build_and_push_pytorch_docker_image
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
@@ -65,7 +65,7 @@ jobs:
         docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_${{ github.head_ref || github.ref_name }} -d criteo1tb -f pytorch -s baselines/adamw/pytorch/submission.py -w criteo1tb_layernorm -t baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
   criteo_resnet_pytorch:
     runs-on: self-hosted
-    needs: build_and_push_pytorch_docker_image
+    # needs: build_and_push_pytorch_docker_image
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
