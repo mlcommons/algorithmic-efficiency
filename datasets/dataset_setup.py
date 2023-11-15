@@ -543,7 +543,8 @@ def setup_imagenet_pytorch(data_dir):
   logging.info('Extracting imagenet train data')
   extract(
       os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME),
-      os.path.join(imagenet_pytorch_data_dir, 'train'), mode='r:')
+      os.path.join(imagenet_pytorch_data_dir, 'train'),
+      mode='r:')
 
   train_tar_filenames = os.listdir(
       os.path.join(imagenet_pytorch_data_dir, 'train'))
@@ -552,13 +553,15 @@ def setup_imagenet_pytorch(data_dir):
       dir_name = tar_filename[:-4]
       extract(
           os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME),
-          os.path.join(imagenet_pytorch_data_dir, 'train', dir_name), mode='r:')
+          os.path.join(imagenet_pytorch_data_dir, 'train', dir_name),
+          mode='r:')
 
   # Extract val data
   logging.info('Extracting imagenet val data')
   extract(
       os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME),
-      os.path.join(imagenet_pytorch_data_dir, 'val'), mode='r:')
+      os.path.join(imagenet_pytorch_data_dir, 'val'),
+      mode='r:')
 
   valprep_command = [
       'wget',
