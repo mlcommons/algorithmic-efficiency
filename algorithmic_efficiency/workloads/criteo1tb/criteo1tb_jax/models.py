@@ -78,7 +78,7 @@ class DLRMResNet(nn.Module):
             stddev=jnp.sqrt(1.0 / mlp_top_dims[0])))(
                 top_mlp_input)
     top_mlp_input = nn.relu(top_mlp_input)
-    for layer_idx, fan_out in Sequence(enumerate(mlp_top_dims))[1:-1]:
+    for layer_idx, fan_out in list(enumerate(mlp_top_dims))[1:-1]:
       fan_in = mlp_top_dims[layer_idx - 1]
       x = nn.Dense(
           fan_out,
