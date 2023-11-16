@@ -68,8 +68,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       activation_function_name = 'gelu'
     else:
       activation_function_name = 'swish'
-    model = conformer_model.ConformerEncoderDecoder(
-        conformer_model.ConformerConfig(
+    model = models.ConformerEncoderDecoder(
+        models.ConformerConfig(
             attention_residual_dropout_rate=dropout_rate,
             feed_forward_residual_dropout_rate=dropout_rate,
             conv_residual_dropout_rate=dropout_rate,
