@@ -65,7 +65,7 @@ There are four (4) steps to a successful submission ("Submission").
 
    The form is sent to the working group chairs, who will process your Submission. Failure to complete the proper Submission Forms will results in disqualification of your Submission. At the close of the Submission Period, your GitHub repository must be public.
 
-4. **Report Results.** Prior to the Deadline for self-reporting results, run your Submission on either the qualification set or the full benchmark set and report the results. You must report your scores by uploading all unmodified logs that the benchmarking codebase automatically generates in a separate `/results` directory within the `/submission` folder f your Submission's GitHub repository.
+4. **Report Results.** Prior to the Deadline for self-reporting results, run your Submission on either the qualification set or the full benchmark set and report the results. You must report your scores by uploading all unmodified logs that the benchmarking codebase automatically generates in a separate `/results` directory within the `/submission` folder of your Submission's GitHub repository.
 
 ## Submission Conditions
 
