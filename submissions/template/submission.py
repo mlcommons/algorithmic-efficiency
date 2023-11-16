@@ -1,8 +1,8 @@
 """Template submission module.
 
-See https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#allowed-submissions 
-and https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disallowed-submissions
-for guidelines. 
+See https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md#allowed-submissions
+and https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md#disallowed-submissions
+for guidelines.
 """
 
 

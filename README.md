@@ -9,7 +9,7 @@
   <a href="https://arxiv.org/abs/2306.07179" target="_blank">Paper (arXiv)</a> •
   <a href="#installation">Installation</a> •
   <a href="/GETTING_STARTED.md">Getting Started</a> •
-  <a href="/RULES.md">Competition Rules</a> •
+  <a href="/COMPETITION_RULES.md">Competition Rules</a> •
   <a href="/DOCUMENTATION.md">Documentation</a> •
   <a href="/CONTRIBUTING.md">Contributing</a> •
   <a href="/LICENSE.md">License</a>
@@ -22,7 +22,7 @@
 
 ---
 
-> *AlgoPerf* is a suite of benchmarks and competitions to measure neural network training speedups due to algorithmic improvements in both training algorithms and models. This is the repository for the *AlgoPerf: Training algorithms benchmark*. It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/). This repository holds the [**competition rules**](/RULES.md), the [**technical documentation**](/DOCUMENTATION.md), [**getting started guides**](/GETTING_STARTED.md), and the benchmark code to run it. For a detailed description of the benchmark design, see our [**paper**](https://arxiv.org/abs/2306.07179).
+> *AlgoPerf* is a suite of benchmarks and competitions to measure neural network training speedups due to algorithmic improvements in both training algorithms and models. This is the repository for the *AlgoPerf: Training algorithms benchmark*. It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/). This repository holds the [**competition rules**](/COMPETITION_RULES.md), the [**technical documentation**](/DOCUMENTATION.md) of the benchmark, [**getting started guides**](/GETTING_STARTED.md), and the benchmark code. For a detailed description of the benchmark design, see our [**paper**](https://arxiv.org/abs/2306.07179).
 
 ## Table of Contents <!-- omit from toc -->
 
@@ -86,7 +86,7 @@ python3 submission_runner.py \
 
 ## Competition Rules
 
-The competition rules for the *AlgoPerf: Training algorithms* benchmark competition can be found in the seperate [**Competition Rules**](/RULES.md) document.
+The competition rules for the *AlgoPerf: Training algorithms* benchmark competition can be found in the seperate [**Competition Rules**](/COMPETITION_RULES.md) document.
 
 ## Technical Documentation & FAQs
 
