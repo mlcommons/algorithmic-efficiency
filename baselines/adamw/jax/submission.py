@@ -169,12 +169,6 @@ def get_batch_size(workload_name):
     return 1024
   elif workload_name == 'librispeech_conformer':
     return 256
-  elif workload_name == 'librispeech_conformer_attention_temperature':
-    return 256
-  elif workload_name == 'librispeech_conformer_layernorm':
-    return 256
-  elif workload_name == 'librispeech_conformer_gelu':
-    return 256
   elif workload_name == 'librispeech_deepspeech':
     return 256
   elif workload_name == 'ogbg':
