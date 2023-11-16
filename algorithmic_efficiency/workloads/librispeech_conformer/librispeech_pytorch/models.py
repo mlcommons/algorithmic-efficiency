@@ -297,6 +297,7 @@ class MHSAwithQS(nn.Module):
         attn_mask=~key_padding_mask[:, None, None],
         dropout_p=self.dropout,
     ).transpose(1, 2).reshape(batch_size, seq_len, embed_dim)
+    out = out * attention_temperature
     out = self.out_proj(out)
     return out
 
