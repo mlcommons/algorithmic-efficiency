@@ -7,12 +7,11 @@
 
 <p align="center">
   <a href="https://arxiv.org/abs/2306.07179" target="_blank">Paper (arXiv)</a> •
-  <a href="#installation">Installation</a> •
+  <a href="/CALL_FOR_SUBMISSIONS.md">Call for Submissions</a> •
   <a href="/GETTING_STARTED.md">Getting Started</a> •
   <a href="/COMPETITION_RULES.md">Competition Rules</a> •
   <a href="/DOCUMENTATION.md">Documentation</a> •
-  <a href="/CONTRIBUTING.md">Contributing</a> •
-  <a href="/LICENSE.md">License</a>
+  <a href="/CONTRIBUTING.md">Contributing</a>
 </p>
 
 [![CI](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml/badge.svg)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml)
@@ -22,14 +21,15 @@
 
 ---
 
-> *AlgoPerf* is a suite of benchmarks and competitions to measure neural network training speedups due to algorithmic improvements in both training algorithms and models. This is the repository for the *AlgoPerf: Training algorithms benchmark*. It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/). This repository holds the [**competition rules**](/COMPETITION_RULES.md), the [**technical documentation**](/DOCUMENTATION.md) of the benchmark, [**getting started guides**](/GETTING_STARTED.md), and the benchmark code. For a detailed description of the benchmark design, see our [**paper**](https://arxiv.org/abs/2306.07179).
+> *AlgoPerf* is a suite of benchmarks and competitions to measure neural network training speedups due to algorithmic improvements in both training algorithms and models. This is the repository for the *AlgoPerf: Training Algorithms benchmark* and its associated competition. It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/). This repository holds the [**competition rules**](/COMPETITION_RULES.md), the [**technical documentation**](/DOCUMENTATION.md) of the benchmark, [**getting started guides**](/GETTING_STARTED.md), and the benchmark code. For a detailed description of the benchmark design, see our [**paper**](https://arxiv.org/abs/2306.07179).
 
 ## Table of Contents <!-- omit from toc -->
 
 - [Installation](#installation)
 - [Getting Started](#getting-started)
-- [Competition Rules](#competition-rules)
-- [Technical Documentation \& FAQs](#technical-documentation--faqs)
+- [Call for Submissions](#call-for-submissions)
+  - [Competition Rules](#competition-rules)
+  - [Technical Documentation of the Benchmark \& FAQs](#technical-documentation-of-the-benchmark--faqs)
 - [Contributing](#contributing)
 - [License](#license)
 - [Paper and Citing the AlgoPerf Benchmark](#paper-and-citing-the-algoperf-benchmark)
@@ -84,13 +84,17 @@ python3 submission_runner.py \
     --tuning_search_space=baselines/adamw/tuning_search_space.json
 ```
 
-## Competition Rules
+## Call for Submissions
 
-The competition rules for the *AlgoPerf: Training algorithms* benchmark competition can be found in the seperate [**Competition Rules**](/COMPETITION_RULES.md) document.
+The [Call for Submissions](/CALL_FOR_SUBMISSIONS.md) announces the first iteration of the AlgoPerf: Training Algorithms competition based on the benchmark by the same name.
 
-## Technical Documentation & FAQs
+### Competition Rules
 
-We provide additional technical documentation and answer frequently asked questions in a separate [**Documentation**](/DOCUMENTATION.md) page. Suggestions, clarifications and questions can be raised via pull requests, creating an issue, or by sending an email to the [working group](mailto:algorithms@mlcommons.org).
+The competition rules for the *AlgoPerf: Training Algorithms* competition can be found in the separate [**Competition Rules**](/COMPETITION_RULES.md) document.
+
+### Technical Documentation of the Benchmark & FAQs
+
+We provide additional technical documentation of the benchmark and answer frequently asked questions in a separate [**Documentation**](/DOCUMENTATION.md) page. Suggestions, clarifications and questions can be raised via pull requests, creating an issue, or by sending an email to the [working group](mailto:algorithms@mlcommons.org).
 
 ## Contributing
 
@@ -104,7 +108,7 @@ The *AlgoPerf* codebase is licensed under the [Apache License 2.0](/LICENSE.md).
 
 ## Paper and Citing the AlgoPerf Benchmark
 
-In our paper ["Benchmarking Neural Network Training Algorithms"](http://arxiv.org/abs/2306.07179) we motivate, describe, and justify the *AlgoPerf: Training algorithms* benchmark.
+In our paper ["Benchmarking Neural Network Training Algorithms"](http://arxiv.org/abs/2306.07179) we motivate, describe, and justify the *AlgoPerf: Training Algorithms* benchmark.
 
 If you are using the *AlgoPerf benchmark*, its codebase, baselines, or workloads, please consider citing our paper:
 
