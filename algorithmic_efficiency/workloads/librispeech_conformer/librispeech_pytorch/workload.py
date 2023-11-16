@@ -79,7 +79,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             use_post_layer_norm=self.use_post_layer_norm,
             activation_function_name=activation_function_name))
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
-    conformer_model.initialize(model)
+    model.initialize(model)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
