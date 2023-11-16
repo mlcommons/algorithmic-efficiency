@@ -75,8 +75,6 @@ class DLRMResNet(nn.Module):
     for dense_dim in self.mlp_bottom_dims:
       bottom_mlp_layers.append(nn.Linear(input_dim, dense_dim))
       bottom_mlp_layers.append(nn.ReLU(inplace=True))
-      if use_layer_norm:
-        bottom_mlp_layers.append(nn.LayerNorm(dense_dim, eps=1e-6))
       input_dim = dense_dim
     self.bot_mlp = nn.Sequential(*bottom_mlp_layers)
     for module in self.bot_mlp.modules():
@@ -99,16 +97,10 @@ class DLRMResNet(nn.Module):
       top_mlp_layers.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         top_mlp_layers.append(nn.ReLU(inplace=True))
-        if use_layer_norm:
-          top_mlp_layers.append(nn.LayerNorm(fan_out, eps=1e-6))
       if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
         top_mlp_layers.append(nn.Dropout(p=dropout_rate))
     self.top_mlp = nn.Sequential(*top_mlp_layers)
-    if use_layer_norm:
-      self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
-    else:
-      self.embed_ln = None
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):
         nn.init.normal_(
