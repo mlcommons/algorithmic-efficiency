@@ -96,7 +96,7 @@ Therefore, you will have to specify the framework (pytorch or jax) through thefr
 
 ```bash
 python3 datasets/dataset_setup.py \ 
---data_dir /data \
+--data_dir $DATA_DIR \
 --imagenet \
 --temp_dir $DATA_DIR/tmp \  
 --imagenet_train_url <imagenet_train_url> \
@@ -133,7 +133,7 @@ downloading has finished.
 To download, train a tokenizer and preprocess the librispeech dataset:
 ```bash
 python3 datasets/dataset_setup.py \
---data_dir librispeech \
+--data_dir $DATA_DIR \
 --temp_dir $DATA_DIR/tmp \
 --librispeech
 ```
