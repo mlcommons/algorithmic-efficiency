@@ -487,7 +487,11 @@ def score_submission_on_workload(workload: spec.Workload,
   init_optimizer_state = submission_module.init_optimizer_state
   update_params = submission_module.update_params
   data_selection = submission_module.data_selection
-  global_batch_size = submission_module.get_batch_size(workload_name)
+  try:
+    global_batch_size = submission_module.get_batch_size(workload_name)
+  except:
+    base_workload_name = workloads.get_base_workload_name(workload_name)
+    global_batch_size = submission_module.get_batch_size(base_workload_name)
   # n_gpus has to be set here, because we cannot call the first Jax operation
   # before pytorch_init().
   n_gpus = max(N_GPUS, jax.local_device_count())
