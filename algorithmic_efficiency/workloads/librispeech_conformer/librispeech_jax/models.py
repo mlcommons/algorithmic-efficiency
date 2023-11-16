@@ -20,6 +20,7 @@ from flax import struct
 import jax
 import jax.numpy as jnp
 import numpy as np
+import functools 
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
