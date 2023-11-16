@@ -17,7 +17,7 @@ Submissions can compete under two hyperparameter tuning rulesets (with separate 
 - Registration deadline to express non-binding intent to submit: January 28th, 2024
 - **Submission deadline: March 28th, 2024**
 - **Deadline for self-reporting preliminary results: May 28th, 2024**
-- [tentative] Announcement of all results: July 15th 2024
+- [tentative] Announcement of all results: July 15th, 2024
 
 For a detailed and up-to-date timeline see the [Competition Rules](/COMPETITION_RULES.md).
 
