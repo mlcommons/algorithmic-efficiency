@@ -46,6 +46,7 @@ class DLRMResNet(nn.Module):
                dropout_rate=0.0,
                use_layer_norm=False):  # use_layer_norm is unused.
     del use_layer_norm
+    super().__init__()
     self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
     self.num_dense_features = num_dense_features
     self.num_sparse_features = num_sparse_features
