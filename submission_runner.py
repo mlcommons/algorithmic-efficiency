@@ -220,7 +220,9 @@ def train_once(
     model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
-      compile_error_workloads = ['librispeech_conformer', 'ogbg', 'criteo1tb']
+      compile_error_workloads = [
+          'librispeech_conformer', 'ogbg', 'criteo1tb', 'imagenet_vit'
+      ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
       if FLAGS.workload in compile_error_workloads:
@@ -580,6 +582,10 @@ def score_submission_on_workload(workload: spec.Workload,
     rng = prng.PRNGKey(rng_seed)
     # If the submission is responsible for tuning itself, we only need to run it
     # once and return the total time.
+    if log_dir is not None:
+      log_dir = os.path.join(log_dir, 'trial_1')
+      logging.info(f'Creating directory at {log_dir}.')
+      logger_utils.makedir(log_dir)
     with profiler.profile('Train'):
       score, _ = train_once(
           workload, global_batch_size, global_eval_batch_size,
