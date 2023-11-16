@@ -39,11 +39,11 @@ The Competition is open to English-speaking individuals and teams (made of indiv
 
 ## Competition Period
 
-The Competition begins at 12:01am (ET) on November 21, 2023 and ends at 11:59pm (ET) on May 21, 2024, all according to Sponsor's time clock, which decisions are final (the "Competition Period"). There are several deadlines contained within the Competition Period:
+The Competition begins at 12:01am (ET) on November 28, 2023 and ends at 11:59pm (ET) on May 28, 2024, all according to Sponsor's time clock, which decisions are final (the "Competition Period"). There are several deadlines contained within the Competition Period:
 
-- **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on January 21, 2024.
-- **Submission Period.** You must complete your Submission and enter it after the Intention to Submit deadline, but no later than 11:59pm ET on March 21, 2024.
-- **Deadline for self-reporting results.** 11:59pm ET on May 21, 2024.
+- **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on January 28, 2024.
+- **Submission Period.** You must complete your Submission and enter it after the Intention to Submit deadline, but no later than 11:59pm ET on March 28, 2024.
+- **Deadline for self-reporting results.** 11:59pm ET on May 28, 2024.
 
 ## Agreement to Official Rules
 
@@ -95,7 +95,7 @@ All Submission are subject to human review and testing to determine whether, in 
 
 ## Notification
 
-On or about June 30, 2024, the Selected Team with the best scores as determined by Sponsor will be notified that they are potential winners of the Competition. The Selected Team will be notified by either phone or email at the sole discretion of Sponsor or Sponsor's representative. Selected Team will be required to respond (as directed) to a phone and/or e-mail notification within 72 hours of attempted notification. The failure to respond timely to the notification may result in forfeiture of the prize; and, in such case, Sponsor may choose the next highest scoring Submission from among the remaining eligible Submissions. Selected Team members will each be required to sign and return a Declaration (or affidavit, at Sponsor's option) of Eligibility and Liability/Publicity Release ("Declaration") and any other documents Sponsor or Sponsor's representative may require within 72 hours of receipt of the Declaration. Failure to timely return a signed Declaration (or failure of a Team member to return it), or any other required documents or the return of any prize notification as undeliverable will result in Prize forfeiture. National and state income taxes may apply and are the sole responsibility of the winner. All expenses not specifically stated as being included are excluded, and are the responsibility of the Selected Teams. No assignment, transfer or substitution of Prize is permitted, however, Sponsor reserves the right to substitute a prize for one of comparable or greater value should Prize become impracticable to award or unavailable for any reason.
+On or about July 15, 2024, the Selected Team with the best scores as determined by Sponsor will be notified that they are potential winners of the Competition. The Selected Team will be notified by either phone or email at the sole discretion of Sponsor or Sponsor's representative. Selected Team will be required to respond (as directed) to a phone and/or e-mail notification within 72 hours of attempted notification. The failure to respond timely to the notification may result in forfeiture of the prize; and, in such case, Sponsor may choose the next highest scoring Submission from among the remaining eligible Submissions. Selected Team members will each be required to sign and return a Declaration (or affidavit, at Sponsor's option) of Eligibility and Liability/Publicity Release ("Declaration") and any other documents Sponsor or Sponsor's representative may require within 72 hours of receipt of the Declaration. Failure to timely return a signed Declaration (or failure of a Team member to return it), or any other required documents or the return of any prize notification as undeliverable will result in Prize forfeiture. National and state income taxes may apply and are the sole responsibility of the winner. All expenses not specifically stated as being included are excluded, and are the responsibility of the Selected Teams. No assignment, transfer or substitution of Prize is permitted, however, Sponsor reserves the right to substitute a prize for one of comparable or greater value should Prize become impracticable to award or unavailable for any reason.
 
 ## Prizes
 
