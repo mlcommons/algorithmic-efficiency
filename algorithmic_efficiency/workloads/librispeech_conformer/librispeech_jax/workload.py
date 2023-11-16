@@ -377,7 +377,7 @@ class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
 
   property
   def use_post_layer_norm(self) -> bool:
-    return True
+    return False
 
 
 class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):

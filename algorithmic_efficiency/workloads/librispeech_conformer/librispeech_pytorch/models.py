@@ -44,7 +44,7 @@ class ConformerConfig:
   use_specaug: bool = True
   attention_temperature: float = 1.0
   activation_function_name: str = 'swish'
-  use_post_layer_norm: bool = False
+  use_post_layer_norm: bool = True
 
 
 def initialize(m):
