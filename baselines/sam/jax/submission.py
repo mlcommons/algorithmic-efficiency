@@ -248,10 +248,6 @@ def get_batch_size(workload_name):
   # Return the global batch size.
   if workload_name == 'criteo1tb':
     return 262_144
-  elif workload_name == 'criteo1tb_layernorm':
-    return 262_144
-  elif workload_name == 'criteo1tb_resnet':
-    return 262_144
   elif workload_name == 'fastmri':
     return 32
   elif workload_name == 'imagenet_resnet':
