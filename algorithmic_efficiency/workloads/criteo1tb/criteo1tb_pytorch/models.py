@@ -35,17 +35,15 @@ class DLRMResNet(nn.Module):
     mlp_top_dims: dimensions of dense layers of the top mlp.
     embed_dim: embedding dimension.
   """
-
   def __init__(self,
                vocab_size,
                num_dense_features=13,
                num_sparse_features=26,
-               mlp_bottom_dims=(256, 256, 256),
-               mlp_top_dims=(256, 256, 256, 256, 1),
+               mlp_bottom_dims=(512, 256, 128),
+               mlp_top_dims=(1024, 1024, 512, 256, 1),
                embed_dim=128,
                dropout_rate=0.0,
-               use_layer_norm=False):  # use_layer_norm is unused.
-    del use_layer_norm
+               use_layer_norm=False):
     super().__init__()
     self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
     self.num_dense_features = num_dense_features
@@ -69,12 +67,13 @@ class DLRMResNet(nn.Module):
       self.register_parameter(f'embedding_chunk_{i}', chunk)
       self.embedding_table_chucks.append(chunk)
 
-    # bottom mlp
     bottom_mlp_layers = []
     input_dim = self.num_dense_features
     for dense_dim in self.mlp_bottom_dims:
       bottom_mlp_layers.append(nn.Linear(input_dim, dense_dim))
       bottom_mlp_layers.append(nn.ReLU(inplace=True))
+      if use_layer_norm:
+        bottom_mlp_layers.append(nn.LayerNorm(dense_dim, eps=1e-6))
       input_dim = dense_dim
     self.bot_mlp = nn.Sequential(*bottom_mlp_layers)
     for module in self.bot_mlp.modules():
@@ -97,10 +96,16 @@ class DLRMResNet(nn.Module):
       top_mlp_layers.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         top_mlp_layers.append(nn.ReLU(inplace=True))
+        if use_layer_norm:
+          top_mlp_layers.append(nn.LayerNorm(fan_out, eps=1e-6))
       if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
         top_mlp_layers.append(nn.Dropout(p=dropout_rate))
     self.top_mlp = nn.Sequential(*top_mlp_layers)
+    if use_layer_norm:
+      self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
+    else:
+      self.embed_ln = None
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):
         nn.init.normal_(
@@ -127,6 +132,8 @@ class DLRMResNet(nn.Module):
     embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
+    if self.embed_ln:
+      embedded_sparse = self.embed_ln(embedded_sparse)
     # Dot product interactions.
     concatenated_dense = self.dot_interact(
         dense_features=embedded_dense, sparse_features=embedded_sparse)
