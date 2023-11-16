@@ -215,10 +215,8 @@ def update_params(
 - **A call to this function will be considered a step**
   - The time between a call to this function and the next call to this function will be considered the per-step time.
 - Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
-  - This will be checked by the spirit jury.
 - The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
 - Cannot replace the model parameters with pre-trained ones.
-  - This will be checked by the spirit jury.
 - This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
 - Batch norm should work here because the `model_fn` will return updated batch norm moving averages when it is told to with `update_batch_norm`.
 
@@ -257,9 +255,7 @@ Submissions are eligible for an untimed eval every `eval_period` seconds, run as
 
 The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark.
 
-We reserve the right to disqualify submissions if they clearly violate this spirit of the benchmark, even if those submissions perform well in our benchmark. Unfortunately, we can't easily write rules that make it completely clear if a submission is circumventing the spirit of the benchmark in a way that would encompass all possible cases. Instead, we will have to prohibit these activities in the abstract and defer rulings about specific submissions to a **"spirit [of the rules] jury"** that can hear the justifications of the submitters, inspect the code, and ultimately decide if the spirit of the rules has been violated. The jury might also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments.
-
-We want to state clearly that we welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions, however, in some cases, routines that would be allowed in principle might not be practically feasible in the provided framework. The spirit jury, however, will only be invoked for submissions that aim to bypass the core premise of this benchmark since submissions like this would also be irrelevant in practice.
+Unfortunately, we can't easily write rules that make it completely clear if a submission is circumventing the spirit of the benchmark in a way that would encompass all possible cases. We want to state clearly that we welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions, however, in some cases, routines that would be allowed in principle might not be practically feasible in the provided framework.
 
 In order to help clarify which submissions are [allowed](#allowed-submissions) and [disallowed](#disallowed-submissions), we described a few examples below. Two essential questions can help provide a general guideline for whether a submission is allowed or not:
 
@@ -366,7 +362,7 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 ##### Software dependencies
 
-We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section. In case of doubts, these additional dependencies will be judged by the spirit jury.
+We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section.
 
 ### Tuning
 
