@@ -25,7 +25,7 @@ class DotInteract(nn.Module):
     return torch.cat((dense_features, interactions_flat), dim=1)
 
 
-class DlrmResNet(nn.Module):
+class DLRMResNet(nn.Module):
   """Define a DLRM-Small model.
 
   Parameters:
