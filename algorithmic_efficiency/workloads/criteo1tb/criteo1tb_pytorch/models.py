@@ -70,49 +70,54 @@ class DLRMResNet(nn.Module):
       self.embedding_table_chucks.append(chunk)
 
     # bottom mlp
-    self.bot_layers = []
+    bottom_mlp_layers = []
     input_dim = self.num_dense_features
     for dense_dim in self.mlp_bottom_dims:
-      block = []
-      block.append(nn.Linear(input_dim, dense_dim))
-      block.append(nn.ReLU(inplace=True))
-      self.bot_layers.append(nn.Sequential(*block))
+      bottom_mlp_layers.append(nn.Linear(input_dim, dense_dim))
+      bottom_mlp_layers.append(nn.ReLU(inplace=True))
+      if use_layer_norm:
+        bottom_mlp_layers.append(nn.LayerNorm(dense_dim, eps=1e-6))
       input_dim = dense_dim
-    for layer in self.bot_layers:
-      for module in layer.modules():
-        if isinstance(module, nn.Linear):
-          limit = math.sqrt(6. / (module.in_features + module.out_features))
-          nn.init.uniform_(module.weight.data, -limit, limit)
-          nn.init.normal_(module.bias.data,
-                          0.,
-                          math.sqrt(1. / module.out_features))
+    self.bot_mlp = nn.Sequential(*bottom_mlp_layers)
+    for module in self.bot_mlp.modules():
+      if isinstance(module, nn.Linear):
+        limit = math.sqrt(6. / (module.in_features + module.out_features))
+        nn.init.uniform_(module.weight.data, -limit, limit)
+        nn.init.normal_(module.bias.data,
+                        0.,
+                        math.sqrt(1. / module.out_features))
+
     self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
-    # top mlp
-    # TODO (JB): Write down the formula here instead of the constant.
+
+    # TODO: Write down the formula here instead of the constant.
     input_dims = 506
-    self.top_layers = []
+    top_mlp_layers = []
     num_layers_top = len(self.mlp_top_dims)
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
-      block = []
-      fan_in = (input_dims + self.embed_dim) if layer_idx == 0 \
+      fan_in = input_dims if layer_idx == 0 \
           else self.mlp_top_dims[layer_idx - 1]
-      block.append(nn.Linear(fan_in, fan_out))
+      top_mlp_layers.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
-        block.append(nn.ReLU(inplace=True))
+        top_mlp_layers.append(nn.ReLU(inplace=True))
+        if use_layer_norm:
+          top_mlp_layers.append(nn.LayerNorm(fan_out, eps=1e-6))
       if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
-        block.append(nn.Dropout(p=dropout_rate))
-      self.top_layers.append(nn.Sequential(*block))
-    for layer in self.top_layers:
-      for module in layer.modules():
-        if isinstance(module, nn.Linear):
-          nn.init.normal_(
-              module.weight.data,
-              0.,
-              math.sqrt(2. / (module.in_features + module.out_features)))
-          nn.init.normal_(module.bias.data,
-                          0.,
-                          math.sqrt(1. / module.out_features))
+        top_mlp_layers.append(nn.Dropout(p=dropout_rate))
+    self.top_mlp = nn.Sequential(*top_mlp_layers)
+    if use_layer_norm:
+      self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
+    else:
+      self.embed_ln = None
+    for module in self.top_mlp.modules():
+      if isinstance(module, nn.Linear):
+        nn.init.normal_(
+            module.weight.data,
+            0.,
+            math.sqrt(2. / (module.in_features + module.out_features)))
+        nn.init.normal_(module.bias.data,
+                        0.,
+                        math.sqrt(1. / module.out_features))
 
   def forward(self, x):
     # Todo (kasimbeg): add residual layer
