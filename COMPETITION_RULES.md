@@ -43,7 +43,6 @@ The Competition begins at 12:01am (ET) on November 21, 2023 and ends at 11:59pm 
 
 - **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on January 21, 2024.
 - **Submission Period.** You must complete your Submission and enter it after the Intention to Submit deadline, but no later than 11:59pm ET on March 21, 2024.
-- **Deadline for specifying the Submission batch sizes for held-out workloads.** 11:59pm ET on April 4, 2024.
 - **Deadline for self-reporting results.** 11:59pm ET on May 21, 2024.
 
 ## Agreement to Official Rules
@@ -52,7 +51,7 @@ By participating, Teams agree to be fully unconditionally bound by these Rules, 
 
 ## How to Enter
 
-There are five (5) steps to a successful submission ("Submission").
+There are four (4) steps to a successful submission ("Submission").
 
 1. **Register Intent to Submit.** Registration of intent does not obligate you to enter a Submission, but you must register prior to entering your Submission. Click for the [Intent Form](https://forms.gle/K7ty8MaYdi2AxJ4N8). This is your "Team," even if you are a single person. Please note that natural persons may not be on multiple teams, but each Team may enter multiple Submissions.
 2. **Develop your Submission.** Develop your Submission according to the guidelines set forth in these rules, along with the links to various necessary information. Please note that all Submissions must be entered subject to the Apache 2.0 license. In order to develop your Submission, you must:
@@ -66,8 +65,7 @@ There are five (5) steps to a successful submission ("Submission").
 
    The form is sent to the working group chairs, who will process your Submission. Failure to complete the proper Submission Forms will results in disqualification of your Submission. At the close of the Submission Period, your GitHub repository must be public.
 
-4. **Define the batch sizes for held-out workloads.** Once the held-out workloads have been sampled, you have until the "Deadline for specifying the Submission batch sizes for held-out workloads" to define the batch sizes for the held-out workloads via the `get_batch_size` function of your submission.
-5. **Report Results.** Prior to the Deadline for self-reporting results, run your Submission on either the qualification set or the full benchmark set and report the results. You must report your scores by uploading all unmodified logs that the benchmarking codebase automatically generates in a separate `/results` directory within the `/submission` folder f your Submission's GitHub repository.
+4. **Report Results.** Prior to the Deadline for self-reporting results, run your Submission on either the qualification set or the full benchmark set and report the results. You must report your scores by uploading all unmodified logs that the benchmarking codebase automatically generates in a separate `/results` directory within the `/submission` folder f your Submission's GitHub repository.
 
 ## Submission Conditions
 
