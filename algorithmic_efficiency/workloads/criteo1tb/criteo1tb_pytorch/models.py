@@ -25,8 +25,8 @@ class DotInteract(nn.Module):
     return torch.cat((dense_features, interactions_flat), dim=1)
 
 
-class DLRMResNet(nn.Module):
-  """Define a DLRM-ResNet model.
+class DlrmResnet(nn.Module):
+  """Define a DLRM-Small model.
 
   Parameters:
     vocab_size: vocab size of embedding table.
@@ -35,6 +35,7 @@ class DLRMResNet(nn.Module):
     mlp_top_dims: dimensions of dense layers of the top mlp.
     embed_dim: embedding dimension.
   """
+
   def __init__(self,
                vocab_size,
                num_dense_features=13,
