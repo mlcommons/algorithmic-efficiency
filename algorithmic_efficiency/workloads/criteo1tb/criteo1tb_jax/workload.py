@@ -178,8 +178,8 @@ class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
-  # mlp_bottom_dims = (256, 256, 256)
-  # mlp_top_dims = (256, 256, 256, 256, 1)
+  mlp_bottom_dims = (256, 256, 256)
+  mlp_top_dims = (256, 256, 256, 256, 1)
 
   @property
   def use_resnet(self) -> bool:
