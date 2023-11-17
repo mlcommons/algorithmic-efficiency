@@ -71,6 +71,7 @@ class DLRMResNet(nn.Module):
     batch_size = bot_mlp_input.shape[0]
     print('embed_features shape')
     print(jnp.shape(embed_features))
+    print(jnp.shape(bot_mlp_input))
     embed_features = jnp.reshape(embed_features,
                                  (batch_size, 26 * self.embed_dim))
     top_mlp_input = jnp.concatenate([bot_mlp_input, embed_features], axis=1)
