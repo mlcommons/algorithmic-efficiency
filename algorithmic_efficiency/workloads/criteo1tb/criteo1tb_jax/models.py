@@ -35,7 +35,7 @@ class DLRMResNet(nn.Module):
     mlp_bottom_dims = self.mlp_bottom_dims
 
     bot_mlp_input = nn.Dense(
-        mlp_bottom_dims[0],
+        256,
         kernel_init=jnn.initializers.glorot_uniform(),
         bias_init=jnn.initializers.normal(
             stddev=jnp.sqrt(1.0 / mlp_bottom_dims[0])),
@@ -45,7 +45,7 @@ class DLRMResNet(nn.Module):
 
     for dense_dim in mlp_bottom_dims[1:]:
       x = nn.Dense(
-          dense_dim,
+          256,
           kernel_init=jnn.initializers.glorot_uniform(),
           bias_init=jnn.initializers.normal(stddev=jnp.sqrt(1.0 / dense_dim)),
       )(
