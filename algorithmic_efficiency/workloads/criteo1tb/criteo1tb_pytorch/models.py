@@ -5,14 +5,17 @@ import math
 import torch
 from torch import nn
 
+
 class ResNetBlock(nn.Module):
-    def __init__(self, module):
-      super().__init__()
-      self.module = module
-    def forward(self, x):
-      return self.module(x) + x
-    
-    
+  """Resnet block"""""
+  def __init__(self, module):
+    super().__init__()
+    self.module = module
+
+  def forward(self, x):
+    return self.module(x) + x
+
+  
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
 
@@ -202,7 +205,7 @@ class DlrmSmall(nn.Module):
       if use_layer_norm:
         bottom_mlp_layers.append(nn.LayerNorm(dense_dim, eps=1e-6))
       input_dim = dense_dim
-    self.bot_mlp = nn.Sequential(*bottom_mlp_layers)
+    self.bot_mlp = nn.Sequential([ResNetBlock(layer) for layer in bottom_mlp_layers])
     for module in self.bot_mlp.modules():
       if isinstance(module, nn.Linear):
         limit = math.sqrt(6. / (module.in_features + module.out_features))
@@ -228,7 +231,7 @@ class DlrmSmall(nn.Module):
       if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
         top_mlp_layers.append(nn.Dropout(p=dropout_rate))
-    self.top_mlp = nn.Sequential(*top_mlp_layers)
+    self.top_mlp = nn.Sequential([ResNetBlock(layer) for layer in top_mlp_layers])
     if use_layer_norm:
       self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
     else:
