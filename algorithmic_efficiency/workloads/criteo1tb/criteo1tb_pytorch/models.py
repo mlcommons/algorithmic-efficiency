@@ -45,7 +45,6 @@ class DLRMResNet(nn.Module):
     mlp_top_dims: dimensions of dense layers of the top mlp.
     embed_dim: embedding dimension.
   """
-
   def __init__(self,
                vocab_size,
                num_dense_features=13,
