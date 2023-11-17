@@ -28,6 +28,11 @@ class DLRMResNet(nn.Module):
 
   @nn.compact
   def __call__(self, x, train):
+    print(self.vocab_size)
+    print(self.num_dense_features)
+    print(self.mlp_bottom_dims)
+    print(self.mlp_top_dims)
+    print(self.embed_dim)
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
