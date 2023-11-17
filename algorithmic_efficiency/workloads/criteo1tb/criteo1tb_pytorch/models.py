@@ -49,8 +49,8 @@ class DLRMResNet(nn.Module):
                vocab_size,
                num_dense_features=13,
                num_sparse_features=26,
-               mlp_bottom_dims=(512, 256, 128),
-               mlp_top_dims=(1024, 1024, 512, 256, 1),
+               mlp_bottom_dims=(256, 256, 256),
+               mlp_top_dims=(256, 256, 256, 256, 1),
                embed_dim=128,
                dropout_rate=0.0,
                use_layer_norm=False):
