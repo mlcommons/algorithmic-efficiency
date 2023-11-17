@@ -78,6 +78,7 @@ class DLRMResNet(nn.Module):
     mlp_input_dim = top_mlp_input.shape[1]
     mlp_top_dims = self.mlp_top_dims
     num_layers_top = len(mlp_top_dims)
+    print(jnp.shape(top_mlp_input))
     top_mlp_input = nn.Dense(
         mlp_top_dims[0],
         kernel_init=jnn.initializers.normal(
