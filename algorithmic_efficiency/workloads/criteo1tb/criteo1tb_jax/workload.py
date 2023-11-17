@@ -108,7 +108,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                             console_kwargs={'force_terminal': False,
                                             'force_jupyter': False,
                                             'width': 240},)
-    logging.info(tabulate_fn(fake_inputs))
+    logging.info(tabulate_fn(fake_inputs, train=False))
     return jax_utils.replicate(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
