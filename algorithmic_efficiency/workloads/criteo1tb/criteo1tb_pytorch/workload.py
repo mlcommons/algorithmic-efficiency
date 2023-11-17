@@ -79,6 +79,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_class = models.DLRMResNet
     else:
       model_class = models.DlrmSmall
+    print(self.vocab_size)
+    print(self.num_dense_features)
+    print(self.mlp_bottom_dims)
+    print(self.mlp_top_dims)
+    print(self.embed_dim)
     model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
