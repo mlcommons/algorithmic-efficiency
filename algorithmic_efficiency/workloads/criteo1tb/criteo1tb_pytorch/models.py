@@ -216,7 +216,7 @@ class DlrmSmall(nn.Module):
     self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
 
     # TODO: Write down the formula here instead of the constant.
-    input_dims = 506
+    input_dims = 634
     top_mlp_layers = []
     num_layers_top = len(self.mlp_top_dims)
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
