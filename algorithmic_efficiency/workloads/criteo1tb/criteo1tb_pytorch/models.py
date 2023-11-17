@@ -5,7 +5,14 @@ import math
 import torch
 from torch import nn
 
-
+class ResNetBlock(nn.Module):
+    def __init__(self, module):
+      super().__init__()
+      self.module = module
+    def forward(self, x):
+      return self.module(x) + x
+    
+    
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
 
