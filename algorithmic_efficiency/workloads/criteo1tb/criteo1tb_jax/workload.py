@@ -104,7 +104,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    tabulate_fn = nn.tabulate(self._model.flax_module, jax.random.PRNGKey(0),
+    tabulate_fn = nn.tabulate(self._model, jax.random.PRNGKey(0),
                             console_kwargs={'force_terminal': False,
                                             'force_jupyter': False,
                                             'width': 240},)
