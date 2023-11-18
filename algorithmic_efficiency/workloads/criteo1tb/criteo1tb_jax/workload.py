@@ -2,11 +2,12 @@
 
 import functools
 from typing import Dict, Optional, Tuple
-
+from absl import logging
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
+import flax.linen as nn
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -99,9 +100,15 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     initial_variables = jax.jit(init_fn)(
         {'params': params_rng, 'dropout': dropout_rng},
         jnp.ones(input_shape, jnp.float32))
+    fake_inputs = jnp.ones(input_shape, jnp.float32)
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
+    tabulate_fn = nn.tabulate(self._model, jax.random.PRNGKey(0),
+                            console_kwargs={'force_terminal': False,
+                                            'force_jupyter': False,
+                                            'width': 240},)
+    print(tabulate_fn(fake_inputs, train=False))
     return jax_utils.replicate(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -178,9 +185,10 @@ class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
-  # mlp_bottom_dims = (256, 256, 256)
-  # mlp_top_dims = (256, 256, 256, 256, 1)
-
+  mlp_bottom_dims: Tuple[int, int] = (256, 256, 256)
+  mlp_top_dims: Tuple[int, int, int] = (256, 256, 256, 256, 1)
+  embed_dim: int = 256
+ 
   @property
   def use_resnet(self) -> bool:
     """Whether or not to use residual connections in the model."""

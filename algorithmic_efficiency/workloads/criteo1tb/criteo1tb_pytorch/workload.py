@@ -79,6 +79,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_class = models.DLRMResNet
     else:
       model_class = models.DlrmSmall
+    print(self.vocab_size)
+    print(self.num_dense_features)
+    print(self.mlp_bottom_dims)
+    print(self.mlp_top_dims)
+    print(self.embed_dim)
     model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
@@ -262,8 +267,9 @@ class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
-  # mlp_bottom_dims = (256, 256, 256)
-  # mlp_top_dims = (256, 256, 256, 256, 1)
+  mlp_bottom_dims: Tuple[int, int] = (256, 256, 256)
+  mlp_top_dims: Tuple[int, int, int] = (256, 256, 256, 256, 1)
+  embed_dim: int = 256
 
   @property
   def use_resnet(self) -> bool:

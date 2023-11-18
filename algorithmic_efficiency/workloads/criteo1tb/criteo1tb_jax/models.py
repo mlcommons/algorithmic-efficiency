@@ -22,12 +22,17 @@ class DLRMResNet(nn.Module):
   num_dense_features: int = 13
   mlp_bottom_dims: Sequence[int] = (256, 256, 256)
   mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
-  embed_dim: int = 128
+  embed_dim: int = 256
   dropout_rate: float = 0.0
   use_layer_norm: bool = False  # Unused.
 
   @nn.compact
   def __call__(self, x, train):
+    print(self.vocab_size)
+    print(self.num_dense_features)
+    print(self.mlp_bottom_dims)
+    print(self.mlp_top_dims)
+    print(self.embed_dim)
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
@@ -64,12 +69,16 @@ class DLRMResNet(nn.Module):
 
     embed_features = embedding_table[idx_lookup]
     batch_size = bot_mlp_input.shape[0]
+    print('embed_features shape')
+    print(jnp.shape(embed_features))
+    print(jnp.shape(bot_mlp_input))
     embed_features = jnp.reshape(embed_features,
                                  (batch_size, 26 * self.embed_dim))
     top_mlp_input = jnp.concatenate([bot_mlp_input, embed_features], axis=1)
     mlp_input_dim = top_mlp_input.shape[1]
     mlp_top_dims = self.mlp_top_dims
     num_layers_top = len(mlp_top_dims)
+    print(jnp.shape(top_mlp_input))
     top_mlp_input = nn.Dense(
         mlp_top_dims[0],
         kernel_init=jnn.initializers.normal(
