@@ -18,8 +18,8 @@ from tests.modeldiffs.diff import out_diff
 def key_transform(k):
   print('key transform: ')
   new_key = []
-  s_count = None
-  resnet_count = None
+  s_count = 0
+  resnet_count = 0
   print(k)
   for i in k:
     print(f'in transform {i}')
