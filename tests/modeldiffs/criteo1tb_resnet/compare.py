@@ -16,9 +16,12 @@ from tests.modeldiffs.diff import out_diff
 
 
 def key_transform(k):
+  print('key transform: ')
   new_key = []
   s_count = None
+  print(k)
   for i in k:
+    print(i)
     if 'Sequential' in i:
       s_count = int(i.split('_')[1])
       continue
@@ -34,7 +37,7 @@ def key_transform(k):
       i = name + '_' + str(s_count * 3 + int(count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
-
+    print(i)
     new_key.append(i)
   return tuple(new_key)
 
