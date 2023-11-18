@@ -39,6 +39,7 @@ def key_transform(k):
       i = i.replace('weight', 'kernel')
     print(f'out transform {i}')
     new_key.append(i)
+  print(f'new key {new_key}')
   return tuple(new_key)
 
 
