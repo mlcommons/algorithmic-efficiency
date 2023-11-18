@@ -77,6 +77,8 @@ class Torch2Jax:
     }
 
   def value_transform(self, v_transform_fn):
+    for k in self.pytorch_sd:
+      print(k)
     self.pytorch_sd = {
         k: v_transform_fn(k, self.pytorch_sd[k], self.flattened_jax_model[k])
         for k in self.pytorch_sd
