@@ -36,6 +36,7 @@ def key_transform(k):
 
     new_key.append(i)
     print(f'out transform: {i}')
+  print(f'new key {new_key}')
   return tuple(new_key)
 
 
