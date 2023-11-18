@@ -106,6 +106,7 @@ class Torch2Jax:
         if s_p == s_j:
           count += 1
         else:
+          print('Difference in pytorch and jax key:')
           print(k, s_p, s_j)
       print(f'Number of values with identical shapes: {count}')
 
