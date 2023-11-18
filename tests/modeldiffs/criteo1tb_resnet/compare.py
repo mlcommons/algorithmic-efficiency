@@ -24,6 +24,10 @@ def key_transform(k):
       continue
     if 'Embedding' in i:
       return ('embedding_table',)
+    if 'ResNetBlock' in i:
+      i = i.replace('ResNetBlock', 'Dense')
+      name, count = i.split('_')
+      i = name + '_' + str(s_count * 3 + int(count))
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
