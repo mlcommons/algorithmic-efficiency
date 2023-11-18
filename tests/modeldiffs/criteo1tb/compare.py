@@ -33,7 +33,6 @@ def key_transform(k):
       i = name + '_' + str(s_count * 3 + int(count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
-
     new_key.append(i)
     print(f'out transform: {i}')
   print(f'new key {new_key}')

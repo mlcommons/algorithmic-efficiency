@@ -19,6 +19,7 @@ def key_transform(k):
   print('key transform: ')
   new_key = []
   s_count = None
+  resnet_count = None
   print(k)
   for i in k:
     print(f'in transform {i}')
@@ -30,11 +31,12 @@ def key_transform(k):
     if 'ResNetBlock' in i:
       i = i.replace('ResNetBlock', 'Dense')
       name, count = i.split('_')
-      i = name + '_' + str(s_count * 3 + int(count))
+      resnet_count = resnet_count + 1 
+      continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
-      i = name + '_' + str(s_count * 3 + int(count))
+      i = name + '_' + str(s_count * 3 + int(resnet_count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
     print(f'out transform {i}')
