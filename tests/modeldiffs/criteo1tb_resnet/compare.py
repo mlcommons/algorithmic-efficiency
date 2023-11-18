@@ -18,8 +18,8 @@ from tests.modeldiffs.diff import out_diff
 def key_transform(k):
   print('key transform: ')
   new_key = []
-  s_count = 0
-  resnet_count = 0
+  s_count = None
+  resnet_count = None
   print(k)
   for i in k:
     print(f'in transform {i}')
@@ -30,7 +30,7 @@ def key_transform(k):
       return ('embedding_table',)
     if 'ResNetBlock' in i:
       name, count = i.split('_')
-      resnet_count = resnet_count + 1 
+      resnet_count = int(count)
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
