@@ -29,13 +29,13 @@ def key_transform(k):
     if 'Embedding' in i:
       return ('embedding_table',)
     if 'ResNetBlock' in i:
-      i = i.replace('ResNetBlock', 'Dense')
       name, count = i.split('_')
       resnet_count = resnet_count + 1 
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
+      print(resnet_count)
       i = name + '_' + str(s_count * 3 + int(resnet_count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
