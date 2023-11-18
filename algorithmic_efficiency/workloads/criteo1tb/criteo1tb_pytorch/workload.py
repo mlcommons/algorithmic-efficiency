@@ -95,6 +95,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         model = DDP(model, device_ids=[RANK], output_device=RANK)
       else:
         model = torch.nn.DataParallel(model)
+    print(model)
     return model, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
