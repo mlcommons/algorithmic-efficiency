@@ -20,7 +20,7 @@ def key_transform(k):
   new_key = []
   s_count = None
   for i in k:
-    print(i)
+    print(f'in transform: {i}')
     if 'Sequential' in i:
       s_count = int(i.split('_')[1])
       continue
@@ -34,7 +34,7 @@ def key_transform(k):
       i = i.replace('weight', 'kernel')
 
     new_key.append(i)
-    print(i)
+    print(f'out transform: {i}')
   return tuple(new_key)
 
 
