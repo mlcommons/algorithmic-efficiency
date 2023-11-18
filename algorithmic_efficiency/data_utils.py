@@ -44,6 +44,7 @@ def shard_and_maybe_pad_np(
     targets = batch['targets']
     targets_shape = tuple(
         targets[0].shape if isinstance(targets, tuple) else targets.shape)
+    logging.info(f"TARGETS shape: {targets_shape}")
     # We need a 2d mask for WMT.
     mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
     # Get weights from batch if there are any.
