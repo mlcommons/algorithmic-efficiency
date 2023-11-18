@@ -19,6 +19,7 @@ def key_transform(k):
   print('key transform: ')
   new_key = []
   s_count = None
+  print(k)
   for i in k:
     print(f'in transform: {i}')
     if 'Sequential' in i:
