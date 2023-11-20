@@ -77,15 +77,19 @@ class DLRMResNet(nn.Module):
       self.register_parameter(f'embedding_chunk_{i}', chunk)
       self.embedding_table_chucks.append(chunk)
 
-    bottom_mlp_layers = []
     input_dim = self.num_dense_features
-    for dense_dim in self.mlp_bottom_dims:
-      bottom_mlp_layers.append(nn.Linear(input_dim, dense_dim))
-      bottom_mlp_layers.append(nn.ReLU(inplace=True))
-      if use_layer_norm:
-        bottom_mlp_layers.append(nn.LayerNorm(dense_dim, eps=1e-6))
+    bot_mlp_blocks = []
+    for layer_idx, dense_dim in enumerate(self.mlp_bottom_dims):
+      block = []
+      block.append(nn.Linear(input_dim, dense_dim))
+      block.append(nn.ReLU(inplace=True))
+      block = nn.Sequential(*block)    
+      if layer_idx > 0:
+        block = ResNetBlock(block)
+      bot_mlp_blocks_append(block)
       input_dim = dense_dim
-    self.bot_mlp = nn.Sequential(*[ResNetBlock(layer) for layer in bottom_mlp_layers])
+    self.bot_mlp = nn.Sequential(*bot_mlp_blocks)
+
     for module in self.bot_mlp.modules():
       if isinstance(module, nn.Linear):
         limit = math.sqrt(6. / (module.in_features + module.out_features))
@@ -95,27 +99,25 @@ class DLRMResNet(nn.Module):
                         math.sqrt(1. / module.out_features))
 
     self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
-
     # TODO: Write down the formula here instead of the constant.
-    input_dims = 634
-    top_mlp_layers = []
+    fan_in = 634
     num_layers_top = len(self.mlp_top_dims)
+    mlp_top_blocks = []
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
-      fan_in = input_dims if layer_idx == 0 \
-          else self.mlp_top_dims[layer_idx - 1]
-      top_mlp_layers.append(nn.Linear(fan_in, fan_out))
+      block = []
+      block.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
-        top_mlp_layers.append(nn.ReLU(inplace=True))
-        if use_layer_norm:
-          top_mlp_layers.append(nn.LayerNorm(fan_out, eps=1e-6))
+        block.append(nn.ReLU(inplace=True))
       if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
-        top_mlp_layers.append(nn.Dropout(p=dropout_rate))
-    self.top_mlp = nn.Sequential(*[ResNetBlock(layer) for layer in top_mlp_layers])
-    if use_layer_norm:
-      self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
-    else:
-      self.embed_ln = None
+        block.append(nn.Dropout(p=dropout_rate))
+      block = nn.Sequential(*block)
+      if layer_idx > 0:
+        block = ResNetBlock(block)
+      mlp_top_blocks.append(block)
+      fan_in = fan_out
+    self.top_mlp = nn.Sequential(*mlp_top_blocks)
+
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):
         nn.init.normal_(
