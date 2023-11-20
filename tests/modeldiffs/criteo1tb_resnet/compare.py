@@ -19,6 +19,8 @@ def key_transform(k):
   new_key = []
   s_count = None
   resnet_count = None
+  print("key before")
+  print(k)
   for i in k:
     if 'Sequential' in i:
       s_count = int(i.split('_')[1])
@@ -36,6 +38,8 @@ def key_transform(k):
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
     new_key.append(i)
+  print("key after")
+  print(new_key)
   return tuple(new_key)
 
 
