@@ -86,7 +86,7 @@ class DLRMResNet(nn.Module):
       block = nn.Sequential(*block)    
       if layer_idx > 0:
         block = ResNetBlock(block)
-      bot_mlp_blocks_append(block)
+      bot_mlp_blocks.append(block)
       input_dim = dense_dim
     self.bot_mlp = nn.Sequential(*bot_mlp_blocks)
 

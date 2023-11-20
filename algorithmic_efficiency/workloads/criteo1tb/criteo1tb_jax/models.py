@@ -56,7 +56,6 @@ class DLRMResNet(nn.Module):
       )(
           bot_mlp_input)
       bot_mlp_input += nn.relu(x)
-
     base_init_fn = jnn.initializers.uniform(scale=1.0)
     # Embedding table init and lookup for a single unified table.
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
