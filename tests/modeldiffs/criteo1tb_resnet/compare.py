@@ -31,13 +31,15 @@ def key_transform(k):
       else:
         block_count = int(i.split('_')[1])
       continue
+    if 'ResNetBlock' in i:
+      continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
       i = name + '_' + str(mlp_count * 3 + int(block_count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
-    new_key.append(i)
+    new_key.append(i)    
   print("key after")
   print(new_key)
   return tuple(new_key)
