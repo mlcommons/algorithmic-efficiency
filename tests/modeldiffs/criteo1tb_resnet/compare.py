@@ -29,7 +29,7 @@ def key_transform(k):
       if mlp_count is None:
         mlp_count = int(i.split('_')[1])
       else:
-        block_count = int(i.split(_)[1])
+        block_count = int(i.split('_')[1])
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
