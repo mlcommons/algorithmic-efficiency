@@ -17,24 +17,24 @@ from tests.modeldiffs.diff import out_diff
 
 def key_transform(k):
   new_key = []
-  s_count = None
+  mlp_count = None
+  block_count = None
   resnet_count = None
   print("key before")
   print(k)
   for i in k:
-    if 'Sequential' in i:
-      s_count = int(i.split('_')[1])
-      continue
     if 'Embedding' in i:
       return ('embedding_table',)
-    if 'ResNetBlock' in i:
-      name, count = i.split('_')
-      resnet_count = int(count)
+    if 'Sequential' in i:
+      if mlp_count is None:
+        mlp_count = int(i.split('_')[1])
+      else:
+        block_count = int(i.split(_)[1])
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
-      i = name + '_' + str(s_count * 3 + int(resnet_count))
+      i = name + '_' + str(mlp_count * 3 + int(block_count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
     new_key.append(i)
