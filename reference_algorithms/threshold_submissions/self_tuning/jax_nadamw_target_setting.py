@@ -162,7 +162,7 @@ def init_optimizer_state(workload: spec.Workload,
       hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
   opt_init_fn, opt_update_fn = nadamw(
       learning_rate=lr_schedule_fn,
-      b1=hyperparameters.beta1,
+      b1=1 - hyperparameters.one_minus_beta1,
       b2=hyperparameters.beta2,
       eps=epsilon,
       weight_decay=hyperparameters.weight_decay)

@@ -1,12 +1,10 @@
-"""Submission file for a NAdamW optimizer with warmup+cosine LR in Jax."""
+"""Submission file for a NAdamW optimizer in PyTorch."""
 
-from typing import Any, Callable, NamedTuple, Optional, Union
+import math
+from typing import List
 
-import chex
-from flax import jax_utils
-import jax
-import jax.numpy as jnp
-import optax
+import torch
+from torch import Tensor
 
 from algorithmic_efficiency import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
@@ -14,131 +12,177 @@ from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import
 from reference_algorithms.target_setting_algorithms.get_batch_size import \
     get_batch_size  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.jax_submission_base import \
+from reference_algorithms.target_setting_algorithms.pytorch_submission_base import \
     update_params  # pylint: disable=unused-import
 
 
-# Forked from
-# github.com/google/init2winit/blob/master/init2winit/optimizer_lib/alias.py
-def nadamw(
-    learning_rate: Union[float, optax.Schedule],
-    b1: float = 0.9,
-    b2: float = 0.999,
-    eps: float = 1e-8,
-    eps_root: float = 0.0,
-    debias: bool = True,
-    weight_decay: float = 0.0,
-    weight_decay_mask: Optional[Union[Any, Callable[[optax.Params],
-                                                    Any]]] = None,
-) -> optax.GradientTransformation:
-  """Rescale updates according to the NAdam algorithm.
-  References:
-  There seem to be multiple versions of NAdam. The original version is here
-  https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ (the official PyTorch
-  implementation also follows this).
-  Current code implements a simpler version with no momentum decay and slightly
-  different bias correction terms. The exact description can be found here
-  https://arxiv.org/pdf/1910.05446.pdf (Table 1).
-  Args:
-    learning_rate: this is a fixed global scaling factor.
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
-      numerical stability when backpropagating gradients through the rescaling.
-    debias: whether to use bias correction.
-    weight_decay: strength of the weight decay regularization. Note that this
-      weight decay is multiplied with the learning rate. This is consistent with
-      other frameworks such as PyTorch, but different from (Loshchilov et al,
-      2019) where the weight decay is only multiplied with the "schedule
-      multiplier", but not the base learning rate.
-    weight_decay_mask: a tree with same structure as (or a prefix of) the params
-      PyTree, or a Callable that returns such a pytree given the params/updates.
-      The leaves should be booleans, `True` for leaves/subtrees you want to
-      apply the weight decay to, and `False` for those you want to skip. Note
-      that the Nadam gradient transformations are applied to all parameters.
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-  return optax.chain(
-      scale_by_nadam(b1, b2, eps, eps_root, debias),
-      optax.add_decayed_weights(weight_decay, weight_decay_mask),
-      scale_by_learning_rate(learning_rate))
+# Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py
+class NAdamW(torch.optim.Optimizer):
+  r"""Implements NAdamW algorithm.
+    See Table 1 in https://arxiv.org/abs/1910.05446 for the implementation of
+    the NAdam algorithm (there is also a comment in the code which highlights
+    the only difference of NAdamW and AdamW).
+    For further details regarding the algorithm we refer to
+    `Decoupled Weight Decay Regularization`_.
+    Args:
+      params (iterable): iterable of parameters to optimize or dicts defining
+          parameter groups
+      lr (float, optional): learning rate (default: 1e-3)
+      betas (Tuple[float, float], optional): coefficients used for computing
+          running averages of gradient and its square (default: (0.9, 0.999))
+      eps (float, optional): term added to the denominator to improve
+          numerical stability (default: 1e-8)
+      weight_decay (float, optional): weight decay coefficient (default: 1e-2)
+    .. _Decoupled Weight Decay Regularization:
+        https://arxiv.org/abs/1711.05101
+    .. _On the Convergence of Adam and Beyond:
+        https://openreview.net/forum?id=ryQu7f-RZ
+    """
+
+  def __init__(self,
+               params,
+               lr=1e-3,
+               betas=(0.9, 0.999),
+               eps=1e-8,
+               weight_decay=1e-2):
+    if not 0.0 <= lr:
+      raise ValueError(f'Invalid learning rate: {lr}')
+    if not 0.0 <= eps:
+      raise ValueError(f'Invalid epsilon value: {eps}')
+    if not 0.0 <= betas[0] < 1.0:
+      raise ValueError(f'Invalid beta parameter at index 0: {betas[0]}')
+    if not 0.0 <= betas[1] < 1.0:
+      raise ValueError(f'Invalid beta parameter at index 1: {betas[1]}')
+    if not 0.0 <= weight_decay:
+      raise ValueError(f'Invalid weight_decay value: {weight_decay}')
+    defaults = {
+        'lr': lr, 'betas': betas, 'eps': eps, 'weight_decay': weight_decay
+    }
+    super().__init__(params, defaults)
+
+  def __setstate__(self, state):
+    super().__setstate__(state)
+    state_values = list(self.state.values())
+    step_is_tensor = (len(state_values) != 0) and torch.is_tensor(
+        state_values[0]['step'])
+    if not step_is_tensor:
+      for s in state_values:
+        s['step'] = torch.tensor(float(s['step']))
+
+  @torch.no_grad()
+  def step(self, closure=None):
+    """Performs a single optimization step.
+        Args:
+          closure (callable, optional): A closure that reevaluates the model
+              and returns the loss.
+        """
+    self._cuda_graph_capture_health_check()
+
+    loss = None
+    if closure is not None:
+      with torch.enable_grad():
+        loss = closure()
+
+    for group in self.param_groups:
+      params_with_grad = []
+      grads = []
+      exp_avgs = []
+      exp_avg_sqs = []
+      state_steps = []
+      beta1, beta2 = group['betas']
+
+      for p in group['params']:
+        if p.grad is None:
+          continue
+        params_with_grad.append(p)
+        if p.grad.is_sparse:
+          raise RuntimeError('NAdamW does not support sparse gradients')
+        grads.append(p.grad)
+
+        state = self.state[p]
+
+        # State initialization
+        if len(state) == 0:
+          state['step'] = torch.tensor(0.)
+          # Exponential moving average of gradient values
+          state['exp_avg'] = torch.zeros_like(
+              p, memory_format=torch.preserve_format)
+          # Exponential moving average of squared gradient values
+          state['exp_avg_sq'] = torch.zeros_like(
+              p, memory_format=torch.preserve_format)
+
+        exp_avgs.append(state['exp_avg'])
+        exp_avg_sqs.append(state['exp_avg_sq'])
+        state_steps.append(state['step'])
+
+      nadamw(
+          params_with_grad,
+          grads,
+          exp_avgs,
+          exp_avg_sqs,
+          state_steps,
+          beta1=beta1,
+          beta2=beta2,
+          lr=group['lr'],
+          weight_decay=group['weight_decay'],
+          eps=group['eps'])
+
+    return loss
 
 
-# All functions below are forked from
-# github.com/google/init2winit/blob/master/init2winit/optimizer_lib/transform.py
-def scale_by_nadam(b1: float = 0.9,
-                   b2: float = 0.999,
-                   eps: float = 1e-8,
-                   eps_root: float = 0.0,
-                   debias: bool = True,
-                   power: float = 0.5) -> optax.GradientTransformation:
-  """Rescale updates according to the NAdam algorithm.
-  References:
-  There seem to be multiple versions of NAdam. The original version is here
-  https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ (the pytorch imp. also
-  follows this)
-  Current code implements a simpler version with no momentum decay and slightly
-  different (standard Adam) bias correction terms. The exact description can be
-  found here https://arxiv.org/pdf/1910.05446.pdf (Table 1)
-  Args:
-    b1: decay rate for the exponentially weighted average of grads.
-    b2: decay rate for the exponentially weighted average of squared grads.
-    eps: term added to the denominator to improve numerical stability.
-    eps_root: term added to the denominator inside the square-root to improve
-      numerical stability when backpropagating gradients through the rescaling.
-    debias: whether to use bias correction.
-    power: the power to use in the preconditioner (0.5 in default adam).
-  Returns:
-    An (init_fn, update_fn) tuple.
-  """
-  raise_power = jnp.sqrt if power == 0.5 else lambda x: jnp.power(x, power)
+def nadamw(params: List[Tensor],
+           grads: List[Tensor],
+           exp_avgs: List[Tensor],
+           exp_avg_sqs: List[Tensor],
+           state_steps: List[Tensor],
+           beta1: float,
+           beta2: float,
+           lr: float,
+           weight_decay: float,
+           eps: float):
+  r"""Functional API that performs NAdamW algorithm computation.
+    See NAdamW class for details.
+    """
 
-  def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
-    return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
+  if not all(isinstance(t, torch.Tensor) for t in state_steps):
+    raise RuntimeError(
+        'API has changed, `state_steps` argument must contain a list of' +
+        ' singleton tensors')
 
-  def update_fn(updates, state, params=None):
-    del params
-    mu = _update_moment(updates, state.mu, b1, 1)
-    nu = _update_moment(updates, state.nu, b2, 2)
-    count = state.count + jnp.array(1, dtype=jnp.int32)
-    mu_hat = _update_moment(updates, mu, b1, 1)
-    mu_hat = mu_hat if not debias else _bias_correction(mu_hat, b1, count)
-    nu_hat = nu if not debias else _bias_correction(nu, b2, count)
-    updates = jax.tree_map(
-        lambda m, v: m / (raise_power(v + eps_root) + eps), mu_hat, nu_hat)
-    return updates, ScaleByAdamState(count=count, mu=mu, nu=nu)
+  for i, param in enumerate(params):
+    grad = grads[i]
+    exp_avg = exp_avgs[i]
+    exp_avg_sq = exp_avg_sqs[i]
+    step_t = state_steps[i]
 
-  return optax.GradientTransformation(init_fn, update_fn)
+    # update step
+    step_t += 1
 
+    # Perform stepweight decay
+    param.mul_(1 - lr * weight_decay)
 
-class ScaleByAdamState(NamedTuple):
-  """State for the NAdam algorithm."""
-  count: chex.Array  # shape=(), dtype=jnp.int32.
-  mu: optax.Updates
-  nu: optax.Updates
+    # Decay the first and second moment running average coefficient
+    exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+    exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
 
+    # Only difference between NAdamW and AdamW in this implementation.
+    # The official PyTorch implementation of NAdam uses a different algorithm.
+    # We undo these ops later on, which could cause numerical issues but saves
+    # us from having to make an extra copy of the gradients.
+    exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
 
-def _update_moment(updates, moments, decay, order):
-  """Compute the exponential moving average of the `order-th` moment."""
-  return jax.tree_map(
-      lambda g, t: (1 - decay) * (g**order) + decay * t, updates, moments)
+    step = step_t.item()
 
+    bias_correction1 = 1 - beta1**step
+    bias_correction2 = 1 - beta2**step
 
-def _bias_correction(moment, decay, count):
-  """Perform bias correction. This becomes a no-op as count goes to infinity."""
-  beta = 1 - decay**count
-  return jax.tree_map(lambda t: t / beta.astype(t.dtype), moment)
+    step_size = lr / bias_correction1
 
+    bias_correction2_sqrt = math.sqrt(bias_correction2)
+    denom = (exp_avg_sq.sqrt() / bias_correction2_sqrt).add_(eps)
 
-def scale_by_learning_rate(learning_rate, flip_sign=True):
-  m = -1 if flip_sign else 1
-  if callable(learning_rate):
-    return optax.scale_by_schedule(lambda count: m * learning_rate(count))
-  return optax.scale(m * learning_rate)
+    param.addcdiv_(exp_avg, denom, value=-step_size)
+    exp_avg.sub_(grad, alpha=1 - beta1).div_(beta1)
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -147,25 +191,22 @@ def init_optimizer_state(workload: spec.Workload,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   """Creates a NAdamW optimizer and a learning rate schedule."""
-  del model_params
   del model_state
   del rng
 
-  target_setting_step_hint = int(0.75 * workload.step_hint)
-  lr_schedule_fn = cosine_warmup.jax_cosine_warmup(target_setting_step_hint,
-                                                   hyperparameters)
-
-  # Create optimizer.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
-                                   workload.param_shapes)
   epsilon = (
       hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)
-  opt_init_fn, opt_update_fn = nadamw(
-      learning_rate=lr_schedule_fn,
-      b1=hyperparameters.beta1,
-      b2=hyperparameters.beta2,
-      eps=epsilon,
-      weight_decay=hyperparameters.weight_decay)
-  optimizer_state = opt_init_fn(params_zeros_like)
+  optimizer_state = {
+      'optimizer':
+          NAdamW(
+              model_params.parameters(),
+              lr=hyperparameters.learning_rate,
+              betas=(1 - hyperparameters.one_minus_beta1, hyperparameters.beta2),
+              eps=epsilon,
+              weight_decay=hyperparameters.weight_decay),
+  }
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  target_setting_step_hint = int(0.75 * workload.step_hint)
+  optimizer_state['scheduler'] = cosine_warmup.pytorch_cosine_warmup(
+      target_setting_step_hint, hyperparameters, optimizer_state['optimizer'])
+  return optimizer_state

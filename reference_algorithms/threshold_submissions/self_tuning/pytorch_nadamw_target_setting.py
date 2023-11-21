@@ -201,7 +201,7 @@ def init_optimizer_state(workload: spec.Workload,
           NAdamW(
               model_params.parameters(),
               lr=hyperparameters.learning_rate,
-              betas=(hyperparameters.beta1, hyperparameters.beta2),
+              betas=(1 - hyperparameters.one_minus_beta1, hyperparameters.beta2),
               eps=epsilon,
               weight_decay=hyperparameters.weight_decay),
   }
