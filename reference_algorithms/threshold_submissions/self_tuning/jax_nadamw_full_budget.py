@@ -26,6 +26,14 @@ from algorithmic_efficiency import spec
 
 _GRAD_CLIP_EPS = 1e-6
 
+HPARAMS = {
+        "dropout_rate": 0.1,
+        "learning_rate": 0.0017486387539278373,
+        "one_minus_beta1": 0.06733926164,
+        "beta2": 0.9955159689799007,
+        "weight_decay": 0.08121616522670176,
+        "warmup_factor": 0.02
+    }
 
 # Forked from
 # github.com/google/init2winit/blob/master/init2winit/optimizer_lib/alias.py
@@ -165,7 +173,10 @@ def init_optimizer_state(workload: spec.Workload,
   del model_params
   del model_state
   del rng
+  del hyperparameters
 
+  hyperparameters=HPARAMS
+  
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
     warmup_steps = int(hyperparameters.warmup_factor * step_hint)
@@ -267,6 +278,9 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del eval_results
+  del hyperparameters
+
+  hyperparameters = HPARAMS
 
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())

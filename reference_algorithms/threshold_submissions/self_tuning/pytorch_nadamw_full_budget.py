@@ -16,6 +16,14 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
 USE_PYTORCH_DDP = pytorch_setup()[0]
 
+HPARAMS =  {
+        "dropout_rate": 0.1,
+        "learning_rate": 0.0017486387539278373,
+        "one_minus_beta1": 0.06733926164,
+        "beta2": 0.9955159689799007,
+        "weight_decay": 0.08121616522670176,
+        "warmup_factor": 0.02
+    }
 
 # Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py.
 class NAdamW(torch.optim.Optimizer):
@@ -197,6 +205,9 @@ def init_optimizer_state(workload: spec.Workload,
   """Creates a NAdamW optimizer and a learning rate schedule."""
   del model_state
   del rng
+  del hyperparameters
+
+  hyperparameters = HPARAMS
 
   optimizer_state = {
       'optimizer':
@@ -239,7 +250,10 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del eval_results
+  del hyperparameters
 
+  hyperparameters = HPARAMS
+  
   current_model = current_param_container
   current_model.train()
   optimizer_state['optimizer'].zero_grad()
