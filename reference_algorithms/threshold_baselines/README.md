@@ -5,7 +5,7 @@ TODO: link back to section in rules.
 
 ### JAX
 
-The threshold submissions for jax are: 
+The threshold baseline submissions for jax are: 
 - `reference_algorithms/threshold_baselines/external_tuning/jax_nadamw_target_setting.py`
 - `feference_algorithms/threshold_baselines/external_tuning/jax_nadamw_full_budget.py`
 
@@ -24,7 +24,7 @@ python3 submission_runner.py \
 
 ### PyTorch
 
-The threshold submissions for PyTorch are 
+The threshold baseline submissionss for PyTorch are:
 - `reference_algorithms/threshold_baselines/external_tuning/pytorch_nadamw_target_setting.py` 
 - `feference_algorithms/threshold_baselines/external_tuning/pytorch_nadamw_full_budget.py`
 
@@ -46,7 +46,7 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 
 ### JAX
 
-The threshold submissions for jax are 
+The threshold baseline submissionss for jax are: 
 - `reference_algorithms/threshold_baselines/external_tuning/jax_nadamw_target_setting.py`
 - `feference_algorithms/threshold_baselines/external_tuning/jax_nadamw_full_budget.py`
 
@@ -64,7 +64,7 @@ python3 submission_runner.py \
 
 ### PyTorch
 
-The threshold submissions for PyTorch are 
+The threshold baseline submissionss for PyTorch are:
 - `reference_algorithms/threshold_baselines/external_tuning/pytorch_nadamw_target_setting.py` 
 - `feference_algorithms/threshold_baselines/external_tuning/pytorch_nadamw_full_budget.py`
 
