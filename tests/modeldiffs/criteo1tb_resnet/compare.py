@@ -18,8 +18,8 @@ from tests.modeldiffs.diff import out_diff
 def key_transform(k):
   new_key = []
   mlp_count = None
-  resnet_block_count = None
-  mlp_block_count = None
+  resnet_block_count = 0
+  mlp_block_count = 0
   print("key before")
   print(k)
   for i in k:
