@@ -6,15 +6,18 @@ import torch
 from torch import nn
 
 
-class ResNetBlock(nn.Module):
-  """Resnet block"""""
-  def __init__(self, module):
+class DenseBlock(nn.Module):
+  """Dense block with optional residual connection."""""
+  def __init__(self, module, resnet=False):
     super().__init__()
     self.module = module
+    self.resnet = resnet
 
   def forward(self, x):
-    return self.module(x) + x
-
+    if self.resnet:
+      return self.module(x) + x
+    else:
+      return self.module(x)
   
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
@@ -85,7 +88,9 @@ class DLRMResNet(nn.Module):
       block.append(nn.ReLU(inplace=True))
       block = nn.Sequential(*block)    
       if layer_idx > 0:
-        block = ResNetBlock(block)
+        block = DenseBlock(block, resnet=True)
+      else:
+        block = DenseBlock(block)
       bot_mlp_blocks.append(block)
       input_dim = dense_dim
     self.bot_mlp = nn.Sequential(*bot_mlp_blocks)
@@ -114,7 +119,9 @@ class DLRMResNet(nn.Module):
         block.append(nn.Dropout(p=dropout_rate))
       block = nn.Sequential(*block)
       if (layer_idx != 0) and (layer_idx != num_layers_top - 1):
-        block = ResNetBlock(block)
+        block = DenseBlock(block, resnet=True)
+      else:
+        block = DenseBlock(block)
       mlp_top_blocks.append(block)
       fan_in = fan_out
     self.top_mlp = nn.Sequential(*mlp_top_blocks)

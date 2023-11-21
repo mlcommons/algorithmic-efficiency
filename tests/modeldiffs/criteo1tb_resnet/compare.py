@@ -18,8 +18,8 @@ from tests.modeldiffs.diff import out_diff
 def key_transform(k):
   new_key = []
   mlp_count = None
-  resnet_block_count = 0
-  mlp_block_count = 0
+  resnet_block_count = None
+  mlp_block_count = None
   for i in k:
     if 'Embedding' in i:
       return ('embedding_table',)
@@ -29,15 +29,15 @@ def key_transform(k):
       else:
         mlp_block_count = int(i.split('_')[1])
       continue
-    if 'ResNetBlock' in i:
+    if 'DenseBlock' in i:
       # off set resnet block count by 1 
       # since first mlp layer has no resnet connection
-      resnet_block_count = int(i.split('_')[1]) + 1
+      resnet_block_count = int(i.split('_')[1])
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
-      block_count = max([mlp_block_count, resnet_block_count])
+      block_count = mlp_block_count if mlp_block_count else dense_block_count
       i = name + '_' + str(mlp_count * 3 + block_count)
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
