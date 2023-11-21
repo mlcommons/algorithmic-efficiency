@@ -60,5 +60,5 @@ def out_diff(jax_workload,
   max_diff = np.abs(out_p.detach().numpy() - np.array(out_j)).max()
   min_diff = np.abs(out_p.detach().numpy() - np.array(out_j)).min()
 
-  logging.info(f'Max fprop difference between jax and pytorch: {max_diff}')
-  logging.info(f'Min fprop difference between jax and pytorch: {min_diff}')
+  print(f'Max fprop difference between jax and pytorch: {max_diff}')
+  print(f'Min fprop difference between jax and pytorch: {min_diff}')
