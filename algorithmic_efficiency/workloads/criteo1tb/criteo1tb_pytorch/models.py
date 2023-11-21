@@ -99,6 +99,7 @@ class DLRMResNet(nn.Module):
                         math.sqrt(1. / module.out_features))
 
     self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
+    
     # TODO: Write down the formula here instead of the constant.
     fan_in = 634
     num_layers_top = len(self.mlp_top_dims)
@@ -112,7 +113,7 @@ class DLRMResNet(nn.Module):
           layer_idx == num_layers_top - 2):
         block.append(nn.Dropout(p=dropout_rate))
       block = nn.Sequential(*block)
-      if layer_idx > 0:
+      if (layer_idx != 0) and (layer_idx != num_layers_top - 1):
         block = ResNetBlock(block)
       mlp_top_blocks.append(block)
       fan_in = fan_out
@@ -196,8 +197,8 @@ class DlrmSmall(nn.Module):
       self.register_parameter(f'embedding_chunk_{i}', chunk)
       self.embedding_table_chucks.append(chunk)
 
-    bottom_mlp_layers = []
     input_dim = self.num_dense_features
+    bottom_mlp_layers = []
     for dense_dim in self.mlp_bottom_dims:
       bottom_mlp_layers.append(nn.Linear(input_dim, dense_dim))
       bottom_mlp_layers.append(nn.ReLU(inplace=True))
@@ -206,6 +207,7 @@ class DlrmSmall(nn.Module):
       input_dim = dense_dim
     self.bot_mlp = nn.Sequential(*bottom_mlp_layers)
     for module in self.bot_mlp.modules():
+      print(module)
       if isinstance(module, nn.Linear):
         limit = math.sqrt(6. / (module.in_features + module.out_features))
         nn.init.uniform_(module.weight.data, -limit, limit)
@@ -217,8 +219,8 @@ class DlrmSmall(nn.Module):
 
     # TODO: Write down the formula here instead of the constant.
     input_dims = 506
-    top_mlp_layers = []
     num_layers_top = len(self.mlp_top_dims)
+    top_mlp_layers = []
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
       fan_in = input_dims if layer_idx == 0 \
           else self.mlp_top_dims[layer_idx - 1]
