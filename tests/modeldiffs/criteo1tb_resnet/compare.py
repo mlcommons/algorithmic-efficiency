@@ -18,7 +18,8 @@ from tests.modeldiffs.diff import out_diff
 def key_transform(k):
   new_key = []
   mlp_count = None
-  block_count = 0
+  resnet_block_count = None
+  mlp_block_count = None
   print("key before")
   print(k)
   for i in k:
@@ -27,13 +28,18 @@ def key_transform(k):
     if 'Sequential' in i:
       if mlp_count is None:
         mlp_count = int(i.split('_')[1])
+      else:
+        mlp_block_count = int(i.split('_')[1])
       continue
     if 'ResNetBlock' in i:
-      block_count = int(i.split('_')[1]) + 1
+      # off set resnet block count by 1 
+      # since first mlp layer has no resnet connection
+      resnet_block_count = int(i.split('_')[1]) + 1
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
+      block_count = max([mlp_block_count, resnet_block_count])
       i = name + '_' + str(mlp_count * 3 + block_count)
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')

@@ -144,8 +144,6 @@ class DLRMResNet(nn.Module):
     embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
-    if self.embed_ln:
-      embedded_sparse = self.embed_ln(embedded_sparse)
     # Dot product interactions.
     concatenated_dense = self.dot_interact(
         dense_features=embedded_dense, sparse_features=embedded_sparse)
