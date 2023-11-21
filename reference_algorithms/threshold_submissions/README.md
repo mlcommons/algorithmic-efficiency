@@ -1,4 +1,5 @@
 # Threshold Submissions
+TODO: link back to section in rules. 
 
 ## Externally Tuned Ruleset
 
