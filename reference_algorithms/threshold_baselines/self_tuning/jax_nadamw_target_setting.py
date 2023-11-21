@@ -27,13 +27,14 @@ from algorithmic_efficiency import spec
 _GRAD_CLIP_EPS = 1e-6
 
 HPARAMS = {
-        "dropout_rate": 0.1,
-        "learning_rate": 0.0017486387539278373,
-        "one_minus_beta1": 0.06733926164,
-        "beta2": 0.9955159689799007,
-        "weight_decay": 0.08121616522670176,
-        "warmup_factor": 0.02
-    }
+    "dropout_rate": 0.1,
+    "learning_rate": 0.0017486387539278373,
+    "one_minus_beta1": 0.06733926164,
+    "beta2": 0.9955159689799007,
+    "weight_decay": 0.08121616522670176,
+    "warmup_factor": 0.02
+}
+
 
 # Forked from
 # github.com/google/init2winit/blob/master/init2winit/optimizer_lib/alias.py
@@ -175,8 +176,8 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
   del hyperparameters
 
-  hyperparameters=HPARAMS
-  
+  hyperparameters = HPARAMS
+
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
     warmup_steps = int(hyperparameters.warmup_factor * step_hint)
@@ -192,7 +193,7 @@ def init_optimizer_state(workload: spec.Workload,
     return schedule_fn
 
   # Create optimizer + LR schedule.
-  lr_schedule_fn = jax_cosine_warmup(workload.step_hint*0.75, hyperparameters)
+  lr_schedule_fn = jax_cosine_warmup(workload.step_hint * 0.75, hyperparameters)
   opt_init_fn, opt_update_fn = nadamw(
       learning_rate=lr_schedule_fn,
       b1=1.0 - hyperparameters.one_minus_beta1,
