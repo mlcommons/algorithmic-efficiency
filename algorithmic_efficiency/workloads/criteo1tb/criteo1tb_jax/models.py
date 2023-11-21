@@ -36,7 +36,7 @@ class DLRMResNet(nn.Module):
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
-    # bottom mlp
+    # Bottom MLP
     mlp_bottom_dims = self.mlp_bottom_dims
 
     bot_mlp_input = nn.Dense(
@@ -56,28 +56,31 @@ class DLRMResNet(nn.Module):
       )(
           bot_mlp_input)
       bot_mlp_input += nn.relu(x)
-    base_init_fn = jnn.initializers.uniform(scale=1.0)
+
+    bot_mlp_output = bot_mlp_input
+    batch_size = bot_mlp_output.shape[0]
+    feature_stack = jnp.reshape(bot_mlp_output,
+                                [batch_size, -1, self.embed_dim])
     # Embedding table init and lookup for a single unified table.
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
 
     def scaled_init(key, shape, dtype=jnp.float_):
-      return base_init_fn(key, shape, dtype) / jnp.sqrt(self.vocab_size)
+      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) /
+              jnp.sqrt(self.vocab_size))
 
     embedding_table = self.param('embedding_table',
                                  scaled_init, [self.vocab_size, self.embed_dim])
 
+    idx_lookup = jnp.reshape(idx_lookup, [-1])
     embed_features = embedding_table[idx_lookup]
-    batch_size = bot_mlp_input.shape[0]
-    print('embed_features shape')
-    print(jnp.shape(embed_features))
-    print(jnp.shape(bot_mlp_input))
     embed_features = jnp.reshape(embed_features,
-                                 (batch_size, 26 * self.embed_dim))
-    top_mlp_input = jnp.concatenate([bot_mlp_input, embed_features], axis=1)
+                                 [batch_size, -1, self.embed_dim])
+    feature_stack = jnp.concatenate([feature_stack, embed_features], axis=1)
+    dot_interact_output = dot_interact(concat_features=feature_stack)
+    top_mlp_input = jnp.concatenate([bot_mlp_output, dot_interact_output],
+                                    axis=-1)
     mlp_input_dim = top_mlp_input.shape[1]
     mlp_top_dims = self.mlp_top_dims
-    num_layers_top = len(mlp_top_dims)
-    print(jnp.shape(top_mlp_input))
     top_mlp_input = nn.Dense(
         mlp_top_dims[0],
         kernel_init=jnn.initializers.normal(
