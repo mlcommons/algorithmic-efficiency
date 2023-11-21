@@ -20,8 +20,6 @@ def key_transform(k):
   mlp_count = None
   resnet_block_count = 0
   mlp_block_count = 0
-  print("key before")
-  print(k)
   for i in k:
     if 'Embedding' in i:
       return ('embedding_table',)
@@ -44,8 +42,6 @@ def key_transform(k):
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
     new_key.append(i)    
-  print("key after")
-  print(new_key)
   return tuple(new_key)
 
 

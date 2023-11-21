@@ -74,7 +74,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      aux_dropout_rate: Optional[float] = None,
+      tabulate: Optional[bool] = False,
+      ) -> spec.ModelInitState:
     """Only dropout is used."""
     del aux_dropout_rate
     if self.use_resnet:
@@ -104,11 +106,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    tabulate_fn = nn.tabulate(self._model, jax.random.PRNGKey(0),
-                            console_kwargs={'force_terminal': False,
-                                            'force_jupyter': False,
-                                            'width': 240},)
-    print(tabulate_fn(fake_inputs, train=False))
     return jax_utils.replicate(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
