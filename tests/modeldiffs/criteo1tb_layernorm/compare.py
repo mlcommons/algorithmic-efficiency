@@ -30,6 +30,9 @@ def key_transform(k):
       i = i.replace('Linear', 'Dense')
       name, count = i.split('_')
       i = name + '_' + str(s_count * 3 + int(count))
+    if 'LayerNorm' in i:
+      name, count = i.split('_')
+      i = name + '_' + str(s_count * 3 + int(count))
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
 
