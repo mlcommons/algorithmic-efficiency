@@ -178,13 +178,13 @@ class DlrmSmall(nn.Module):
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
 
     # if self.embedding_init_multiplier is None:
-    #   embedding_init_multiplier = 1 / jnp.sqrt(self.vocab_size)
+    #   scale = 1 / jnp.sqrt(self.vocab_size)
     # else:
-    #   embedding_init_multiplier = self.embedding_init_multiplier
+    #   scale = self.embedding_init_multiplier
     # embedding_init_multiplier = 1.
     def scaled_init(key, shape, dtype=jnp.float_):
-      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) /
-              jnp.sqrt(self.vocab_size))
+      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) *
+              1/jnp.sqrt(self.vocab_size))
 
     embedding_table = self.param('embedding_table',
                                  scaled_init, [self.vocab_size, self.embed_dim])
