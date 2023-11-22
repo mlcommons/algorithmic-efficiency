@@ -91,7 +91,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim,
         dropout_rate=dropout_rate,
-        use_layer_norm=self.use_layer_norm)
+        use_layer_norm=self.use_layer_norm,
+        use_embedding_init_multiplier=self.embedding_init_multiplier)
 
     params_rng, dropout_rng = jax.random.split(rng)
     init_fake_batch_size = 2
@@ -201,3 +202,24 @@ class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
   @property
   def test_target_value(self) -> float:
     return 0.126468
+
+
+class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
+
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.124286
+
+  @property
+  def test_target_value(self) -> float:
+    # Todo
+    return 0.126725
+ 
+  @property
+  def embedding_init_multiplier(self) -> float:
+    return 1.0

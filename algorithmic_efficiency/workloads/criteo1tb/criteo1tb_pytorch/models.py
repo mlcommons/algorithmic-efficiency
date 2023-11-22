@@ -63,7 +63,8 @@ class DLRMResNet(nn.Module):
                mlp_top_dims=(256, 256, 256, 256, 1),
                embed_dim=128,
                dropout_rate=0.0,
-               use_layer_norm=False):
+               use_layer_norm=False,
+               embedding_init_multiplier=None):
     super().__init__()
     self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
     self.num_dense_features = num_dense_features
@@ -185,7 +186,8 @@ class DlrmSmall(nn.Module):
                mlp_top_dims=(1024, 1024, 512, 256, 1),
                embed_dim=128,
                dropout_rate=0.0,
-               use_layer_norm=False):
+               use_layer_norm=False,
+               embedding_init_multiplier=None):
     super().__init__()
     self.vocab_size = torch.tensor(vocab_size, dtype=torch.int32)
     self.num_dense_features = num_dense_features
@@ -200,7 +202,12 @@ class DlrmSmall(nn.Module):
     num_chucks = 4
     assert vocab_size % num_chucks == 0
     self.embedding_table_chucks = []
-    scale = 1.0 / torch.sqrt(self.vocab_size)
+
+    if self.embedding_init_multiplier is None:
+      scale = 1.0 / torch.sqrt(self.vocab_size)
+    else:
+      scale = self.embedding_init_multiplier
+
     for i in range(num_chucks):
       chunk = nn.Parameter(
           torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))

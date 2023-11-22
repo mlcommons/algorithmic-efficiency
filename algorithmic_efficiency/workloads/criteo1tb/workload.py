@@ -44,6 +44,10 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     return False
 
   @property
+  def embedding_init_multiplier(self) -> float:
+    return None
+
+  @property
   def validation_target_value(self) -> float:
     return 0.123735
 
