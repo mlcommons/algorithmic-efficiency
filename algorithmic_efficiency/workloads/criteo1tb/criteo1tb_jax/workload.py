@@ -102,7 +102,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                               console_kwargs={'force_terminal': False,
                                               'force_jupyter': False,
                                               'width': 240},)
-     print(tabulate_fn(fake_inputs, train=False))
+    print(tabulate_fn(fake_inputs, train=False))
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
         {'params': params_rng, 'dropout': dropout_rng},
