@@ -157,6 +157,8 @@ class DLRMResNet(nn.Module):
     embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
+    print(embedded_sparse.shape)
+    print(embedded_dense.shape)
     top_mlp_input = torch.cat([embedded_dense, embedded_sparse], axis=1)
 
     # Final MLP.
