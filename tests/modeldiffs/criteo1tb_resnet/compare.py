@@ -6,6 +6,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import jax
 import numpy as np
 import torch
+import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
@@ -68,7 +69,14 @@ if __name__ == '__main__':
       'targets': torch.randint(low=0, high=1, size=(2,)),
       'weights': torch.ones(2),
   }
+
+  init_fake_batch_size = 2
+  num_categorical_features = 26
+  input_size = 13 + num_categorical_features
+  input_shape = (init_fake_batch_size, input_size)
+  fake_inputs = jnp.ones(input_shape, jnp.float32)
   jax_batch = {k: np.array(v) for k, v in pyt_batch.items()}
+  jax_batch['inputs'] = fake_inputs
 
   # Test outputs for identical weights and inputs.
   pytorch_model_kwargs = dict(
