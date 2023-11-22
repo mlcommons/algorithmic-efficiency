@@ -110,10 +110,8 @@ class DLRMResNet(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-    self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
-
-    # TODO: Write down the formula here instead of the constant.
-    fan_in = 634
+    # Number of sparse features = 26
+    fan_in = (26 * self.embed_dim) + self.mlp_bottom_dims[-1]
     num_layers_top = len(self.mlp_top_dims)
     mlp_top_blocks = []
     for layer_idx, fan_out in enumerate(self.mlp_top_dims):
@@ -159,12 +157,10 @@ class DLRMResNet(nn.Module):
     embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, -1, self.embed_dim])
-    # Dot product interactions.
-    concatenated_dense = self.dot_interact(
-        dense_features=embedded_dense, sparse_features=embedded_sparse)
+    top_mlp_input = torch.cat([embedded_dense, embedded_sparse], axis=1)
 
     # Final MLP.
-    logits = self.top_mlp(concatenated_dense)
+    logits = self.top_mlp(top_mlp_input)
     return logits
 
 

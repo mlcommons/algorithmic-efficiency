@@ -52,12 +52,7 @@ class DLRMResNet(nn.Module):
 
     base_init_fn = jnn.initializers.uniform(scale=1.0)
     # Embedding table init and lookup for a single unified table.
-    print("cat features")
-    print(cat_features)
-    print(jnp.shape(jnp.reshape(cat_features, [-1])))
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
-    print("idx shape")
-    print(jnp.shape(idx_lookup))
     def scaled_init(key, shape, dtype=jnp.float_):
       return base_init_fn(key, shape, dtype) / jnp.sqrt(self.vocab_size)
 
@@ -67,7 +62,6 @@ class DLRMResNet(nn.Module):
         [self.vocab_size, self.embed_dim])
 
     embed_features = embedding_table[idx_lookup]
-    print(jnp.shape(embed_features))
     batch_size = bot_mlp_input.shape[0]
     embed_features = jnp.reshape(
         embed_features, (batch_size, 26 * self.embed_dim))
