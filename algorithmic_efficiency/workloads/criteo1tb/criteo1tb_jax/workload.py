@@ -92,7 +92,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         embed_dim=self.embed_dim,
         dropout_rate=dropout_rate,
         use_layer_norm=self.use_layer_norm,
-        use_embedding_init_multiplier=self.embedding_init_multiplier)
+        embedding_init_multiplier=self.embedding_init_multiplier)
 
     params_rng, dropout_rng = jax.random.split(rng)
     init_fake_batch_size = 2
