@@ -57,14 +57,23 @@ WORKLOADS = {
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
 }
 
-BASE_WORKLOADS = ['criteo1tb', 'fastmri', ' imagenet_resnet', 'imagenet_vit', 
-                  'librispeech_conformer', 'librispeech_deepspeech', 
-                  'ogbg', 'wmt']
+BASE_WORKLOADS = [
+    'criteo1tb',
+    'fastmri',
+    ' imagenet_resnet',
+    'imagenet_vit',
+    'librispeech_conformer',
+    'librispeech_deepspeech',
+    'ogbg',
+    'wmt'
+]
+
 
 def get_base_workload_name(workload_name):
   for base_workload_name in BASE_WORKLOADS:
     if base_workload_name in workload_name:
-      return base_workload_name 
+      return base_workload_name
+
 
 def convert_filepath_to_module(path: str):
   base, extension = os.path.splitext(path)

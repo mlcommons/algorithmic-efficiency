@@ -76,7 +76,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None,
       tabulate: Optional[bool] = False,
-      ) -> spec.ModelInitState:
+  ) -> spec.ModelInitState:
     """Only dropout is used."""
     del aux_dropout_rate
     if self.use_resnet:
@@ -185,7 +185,7 @@ class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
   mlp_bottom_dims: Tuple[int, int] = (256, 256, 256)
   mlp_top_dims: Tuple[int, int, int] = (256, 256, 256, 256, 1)
   embed_dim: int = 256
- 
+
   @property
   def use_resnet(self) -> bool:
     """Whether or not to use residual connections in the model."""

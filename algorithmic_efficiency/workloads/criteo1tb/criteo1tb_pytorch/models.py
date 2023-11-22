@@ -7,7 +7,8 @@ from torch import nn
 
 
 class DenseBlock(nn.Module):
-  """Dense block with optional residual connection."""""
+  """Dense block with optional residual connection.""" ""
+
   def __init__(self, module, resnet=False):
     super().__init__()
     self.module = module
@@ -18,7 +19,8 @@ class DenseBlock(nn.Module):
       return self.module(x) + x
     else:
       return self.module(x)
-  
+
+
 class DotInteract(nn.Module):
   """Performs feature interaction operation between dense or sparse features."""
 
@@ -48,6 +50,7 @@ class DLRMResNet(nn.Module):
     mlp_top_dims: dimensions of dense layers of the top mlp.
     embed_dim: embedding dimension.
   """
+
   def __init__(self,
                vocab_size,
                num_dense_features=13,
@@ -86,7 +89,7 @@ class DLRMResNet(nn.Module):
       block = []
       block.append(nn.Linear(input_dim, dense_dim))
       block.append(nn.ReLU(inplace=True))
-      block = nn.Sequential(*block)    
+      block = nn.Sequential(*block)
       if layer_idx > 0:
         block = DenseBlock(block, resnet=True)
       else:
@@ -104,7 +107,7 @@ class DLRMResNet(nn.Module):
                         math.sqrt(1. / module.out_features))
 
     self.dot_interact = DotInteract(num_sparse_features=num_sparse_features,)
-    
+
     # TODO: Write down the formula here instead of the constant.
     fan_in = 634
     num_layers_top = len(self.mlp_top_dims)
