@@ -214,7 +214,6 @@ class DlrmSmall(nn.Module):
       input_dim = dense_dim
     self.bot_mlp = nn.Sequential(*bottom_mlp_layers)
     for module in self.bot_mlp.modules():
-      print(module)
       if isinstance(module, nn.Linear):
         limit = math.sqrt(6. / (module.in_features + module.out_features))
         nn.init.uniform_(module.weight.data, -limit, limit)
