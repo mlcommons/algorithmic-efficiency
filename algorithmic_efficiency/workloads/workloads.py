@@ -24,13 +24,10 @@ WORKLOADS = {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallLayerNormWorkload'
     },
-<<<<<<< HEAD
-=======
     'criteo1tb_embed_init': {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallEmbeddingInitWorkload'
     },
->>>>>>> criteo_workload_variants
     'criteo1tb_resnet': {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallResNetWorkload'
