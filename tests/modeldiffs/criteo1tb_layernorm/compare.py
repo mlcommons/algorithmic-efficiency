@@ -39,8 +39,8 @@ def key_transform(k):
         i = name + '_' + str(3)
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
-
     new_key.append(i)
+  print(new_key)
   return tuple(new_key)
 
 
