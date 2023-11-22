@@ -96,9 +96,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     params_rng, dropout_rng = jax.random.split(rng)
     init_fake_batch_size = 2
     num_categorical_features = 26
-    input_size = self.num_dense_features + num_categorical_features
+    num_dense_features = 13
+    input_size = num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
-
+    print(input_shape)
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
         {'params': params_rng, 'dropout': dropout_rng},
