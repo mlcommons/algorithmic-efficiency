@@ -98,6 +98,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     input_size = self.num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
 
+    tabulate_fn = nn.tabulate(self._model, jax.random.PRNGKey(0),
+                              console_kwargs={'force_terminal': False,
+                                              'force_jupyter': False,
+                                              'width': 240},)
+     print(tabulate_fn(fake_inputs, train=False))
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
         {'params': params_rng, 'dropout': dropout_rng},
