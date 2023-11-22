@@ -18,8 +18,6 @@ from tests.modeldiffs.diff import out_diff
 def key_transform(k):
   new_key = []
   s_count = None
-  print('key')
-  print(k)
   for i in k:
     if 'Sequential' in i:
       s_count = int(i.split('_')[1])
