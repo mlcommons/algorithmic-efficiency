@@ -282,11 +282,6 @@ class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
 class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
 
   @property
-  def use_layer_norm(self) -> bool:
-    """Whether or not to use LayerNorm in the model."""
-    return True
-
-  @property
   def validation_target_value(self) -> float:
     return 0.124286
 
@@ -294,7 +289,7 @@ class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
   def test_target_value(self) -> float:
     # Todo
     return 0.126725
-
+ 
   @property
   def embedding_init_multiplier(self) -> float:
     return 1.0
