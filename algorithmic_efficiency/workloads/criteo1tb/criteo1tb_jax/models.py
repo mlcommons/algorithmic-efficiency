@@ -102,32 +102,32 @@ class DLRMResNet(nn.Module):
     return logits
 
 
-def dot_interact(concat_features):
-  """Performs feature interaction operation between dense or sparse features.
-  Input tensors represent dense or sparse features.
-  Pre-condition: The tensors have been stacked along dimension 1.
-  Args:
-    concat_features: Array of features with shape [B, n_features, feature_dim].
-  Returns:
-    activations: Array representing interacted features.
-  """
-  batch_size = concat_features.shape[0]
+# def dot_interact(concat_features):
+#   """Performs feature interaction operation between dense or sparse features.
+#   Input tensors represent dense or sparse features.
+#   Pre-condition: The tensors have been stacked along dimension 1.
+#   Args:
+#     concat_features: Array of features with shape [B, n_features, feature_dim].
+#   Returns:
+#     activations: Array representing interacted features.
+#   """
+#   batch_size = concat_features.shape[0]
 
-  # Interact features, select upper or lower-triangular portion, and reshape.
-  xactions = jnp.matmul(concat_features,
-                        jnp.transpose(concat_features, [0, 2, 1]))
-  feature_dim = xactions.shape[-1]
+#   # Interact features, select upper or lower-triangular portion, and reshape.
+#   xactions = jnp.matmul(concat_features,
+#                         jnp.transpose(concat_features, [0, 2, 1]))
+#   feature_dim = xactions.shape[-1]
 
-  indices = jnp.array(jnp.triu_indices(feature_dim))
-  num_elems = indices.shape[1]
-  indices = jnp.tile(indices, [1, batch_size])
-  indices0 = jnp.reshape(
-      jnp.tile(jnp.reshape(jnp.arange(batch_size), [-1, 1]), [1, num_elems]),
-      [1, -1])
-  indices = tuple(jnp.concatenate((indices0, indices), 0))
-  activations = xactions[indices]
-  activations = jnp.reshape(activations, [batch_size, -1])
-  return activations
+#   indices = jnp.array(jnp.triu_indices(feature_dim))
+#   num_elems = indices.shape[1]
+#   indices = jnp.tile(indices, [1, batch_size])
+#   indices0 = jnp.reshape(
+#       jnp.tile(jnp.reshape(jnp.arange(batch_size), [-1, 1]), [1, num_elems]),
+#       [1, -1])
+#   indices = tuple(jnp.concatenate((indices0, indices), 0))
+#   activations = xactions[indices]
+#   activations = jnp.reshape(activations, [batch_size, -1])
+#   return activations
 
 
 class DlrmSmall(nn.Module):
