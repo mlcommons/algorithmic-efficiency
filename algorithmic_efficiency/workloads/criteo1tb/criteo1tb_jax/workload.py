@@ -210,7 +210,7 @@ class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
   def test_target_value(self) -> float:
     # Todo
     return 0.126725
- 
+
   @property
   def embedding_init_multiplier(self) -> float:
     return 1.0

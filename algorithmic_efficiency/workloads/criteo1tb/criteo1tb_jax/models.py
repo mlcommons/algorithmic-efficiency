@@ -22,10 +22,10 @@ class DLRMResNet(nn.Module):
   num_dense_features: int = 13
   mlp_bottom_dims: Sequence[int] = (256, 256, 256)
   mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
-  embed_dim: int = 128 
+  embed_dim: int = 128
   dropout_rate: float = 0.0
   use_layer_norm: bool = False  # Unused.
-  embedding_init_multiplier: float = None # Unused
+  embedding_init_multiplier: float = None  # Unused
 
   @nn.compact
   def __call__(self, x, train):
@@ -38,9 +38,9 @@ class DLRMResNet(nn.Module):
     bot_mlp_input = nn.Dense(
         mlp_bottom_dims[0],
         kernel_init=jnn.initializers.glorot_uniform(),
-        bias_init=jnn.initializers.normal(
-            stddev=1.0 / mlp_bottom_dims[0]**0.5),
-    )(bot_mlp_input)
+        bias_init=jnn.initializers.normal(stddev=1.0 / mlp_bottom_dims[0]**0.5),
+    )(
+        bot_mlp_input)
     bot_mlp_input = nn.relu(bot_mlp_input)
 
     for dense_dim in mlp_bottom_dims[1:]:
@@ -48,24 +48,24 @@ class DLRMResNet(nn.Module):
           dense_dim,
           kernel_init=jnn.initializers.glorot_uniform(),
           bias_init=jnn.initializers.normal(stddev=1.0 / dense_dim**0.5),
-      )(bot_mlp_input)
+      )(
+          bot_mlp_input)
       bot_mlp_input += nn.relu(x)
 
     base_init_fn = jnn.initializers.uniform(scale=1.0)
     # Embedding table init and lookup for a single unified table.
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
+
     def scaled_init(key, shape, dtype=jnp.float_):
       return base_init_fn(key, shape, dtype) / jnp.sqrt(self.vocab_size)
 
-    embedding_table = self.param(
-        'embedding_table',
-        scaled_init,
-        [self.vocab_size, self.embed_dim])
+    embedding_table = self.param('embedding_table',
+                                 scaled_init, [self.vocab_size, self.embed_dim])
 
     embed_features = embedding_table[idx_lookup]
     batch_size = bot_mlp_input.shape[0]
-    embed_features = jnp.reshape(
-        embed_features, (batch_size, 26 * self.embed_dim))
+    embed_features = jnp.reshape(embed_features,
+                                 (batch_size, 26 * self.embed_dim))
     top_mlp_input = jnp.concatenate([bot_mlp_input, embed_features], axis=1)
     mlp_input_dim = top_mlp_input.shape[1]
     mlp_top_dims = self.mlp_top_dims
@@ -89,8 +89,7 @@ class DLRMResNet(nn.Module):
                   top_mlp_input)
       x = nn.relu(x)
       if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
-        x = nn.Dropout(
-            rate=self.dropout_rate, deterministic=not train)(x)
+        x = nn.Dropout(rate=self.dropout_rate, deterministic=not train)(x)
       top_mlp_input += x
     # In the DLRM model the last layer width is always 1. We can hardcode that
     # below.
@@ -98,8 +97,8 @@ class DLRMResNet(nn.Module):
         1,
         kernel_init=jnn.initializers.normal(
             stddev=jnp.sqrt(2.0 / (mlp_top_dims[-2] + 1))),
-        bias_init=jnn.initializers.normal(
-            stddev=jnp.sqrt(1.0)))(top_mlp_input)
+        bias_init=jnn.initializers.normal(stddev=jnp.sqrt(1.0)))(
+            top_mlp_input)
     return logits
 
 
@@ -179,9 +178,9 @@ class DlrmSmall(nn.Module):
       scale = 1 / jnp.sqrt(self.vocab_size)
     else:
       scale = self.embedding_init_multiplier
+
     def scaled_init(key, shape, dtype=jnp.float_):
-      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) *
-              scale)
+      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) * scale)
 
     embedding_table = self.param('embedding_table',
                                  scaled_init, [self.vocab_size, self.embed_dim])
