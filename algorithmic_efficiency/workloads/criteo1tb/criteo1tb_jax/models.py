@@ -180,7 +180,7 @@ class DlrmSmall(nn.Module):
       scale = self.embedding_init_multiplier
 
     def scaled_init(key, shape, dtype=jnp.float_):
-      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) * scale)
+      return jnn.initializers.uniform(scale=1.0)(key, shape, dtype) * scale
 
     embedding_table = self.param('embedding_table',
                                  scaled_init, [self.vocab_size, self.embed_dim])

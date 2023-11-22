@@ -10,7 +10,6 @@ import numpy as np
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads import utils
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import models
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
