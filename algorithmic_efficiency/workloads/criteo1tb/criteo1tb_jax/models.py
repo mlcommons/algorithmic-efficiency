@@ -52,6 +52,9 @@ class DLRMResNet(nn.Module):
 
     base_init_fn = jnn.initializers.uniform(scale=1.0)
     # Embedding table init and lookup for a single unified table.
+    print("cat features")
+    print(cat_features)
+    print(jnp.shape(jnp.reshape(cat_features, [-1])))
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
     print("idx shape")
     print(jnp.shape(idx_lookup))
