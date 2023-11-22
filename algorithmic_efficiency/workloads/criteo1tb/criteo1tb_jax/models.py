@@ -31,8 +31,6 @@ class DLRMResNet(nn.Module):
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
-    activation_fn = model_utils.ACTIVATIONS[self.activation_function]
-
     # bottom mlp
     mlp_bottom_dims = self.mlp_bottom_dims
 
@@ -42,7 +40,7 @@ class DLRMResNet(nn.Module):
         bias_init=jnn.initializers.normal(
             stddev=1.0 / mlp_bottom_dims[0]**0.5),
     )(bot_mlp_input)
-    bot_mlp_input = activation_fn(bot_mlp_input)
+    bot_mlp_input = nn.relu(bot_mlp_input)
 
     for dense_dim in mlp_bottom_dims[1:]:
       x = nn.Dense(
@@ -50,7 +48,7 @@ class DLRMResNet(nn.Module):
           kernel_init=jnn.initializers.glorot_uniform(),
           bias_init=jnn.initializers.normal(stddev=1.0 / dense_dim**0.5),
       )(bot_mlp_input)
-      bot_mlp_input += activation_fn(x)
+      bot_mlp_input += nn.relu(x)
 
     base_init_fn = jnn.initializers.uniform(scale=1.0)
     if self.embedding_init_multiplier is None:
@@ -82,7 +80,7 @@ class DLRMResNet(nn.Module):
         bias_init=jnn.initializers.normal(
             stddev=(1.0 / mlp_top_dims[0])**0.5))(
                 top_mlp_input)
-    top_mlp_input = activation_fn(top_mlp_input)
+    top_mlp_input = nn.relu(top_mlp_input)
     for layer_idx, fan_out in list(enumerate(mlp_top_dims))[1:-1]:
       fan_in = mlp_top_dims[layer_idx - 1]
       x = nn.Dense(
@@ -92,7 +90,7 @@ class DLRMResNet(nn.Module):
           bias_init=jnn.initializers.normal(
               stddev=(1.0 / mlp_top_dims[layer_idx])**0.5))(
                   top_mlp_input)
-      x = activation_fn(x)
+      x = nn.relu(x)
       if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
         x = nn.Dropout(
             rate=self.dropout_rate, deterministic=not train)(x)
