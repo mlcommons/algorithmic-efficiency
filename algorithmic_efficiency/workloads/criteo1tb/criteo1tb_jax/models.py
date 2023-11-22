@@ -51,14 +51,10 @@ class DLRMResNet(nn.Module):
       bot_mlp_input += nn.relu(x)
 
     base_init_fn = jnn.initializers.uniform(scale=1.0)
-    if self.embedding_init_multiplier is None:
-      embedding_init_multiplier = 1 / self.vocab_size**0.5
-    else:
-      embedding_init_multiplier = self.embedding_init_multiplier
     # Embedding table init and lookup for a single unified table.
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
     def scaled_init(key, shape, dtype=jnp.float_):
-      return base_init_fn(key, shape, dtype) * embedding_init_multiplier
+      return base_init_fn(key, shape, dtype) / jnp.sqrt(self.vocab_size)
 
     embedding_table = self.param(
         'embedding_table',
@@ -76,9 +72,9 @@ class DLRMResNet(nn.Module):
     top_mlp_input = nn.Dense(
         mlp_top_dims[0],
         kernel_init=jnn.initializers.normal(
-            stddev=(2.0 / (mlp_input_dim + mlp_top_dims[0]))**0.5),
+            stddev=jnp.sqrt(2.0 / (mlp_input_dim + mlp_top_dims[0]))),
         bias_init=jnn.initializers.normal(
-            stddev=(1.0 / mlp_top_dims[0])**0.5))(
+            stddev=jnp.sqrt(1.0 / mlp_top_dims[0])))(
                 top_mlp_input)
     top_mlp_input = nn.relu(top_mlp_input)
     for layer_idx, fan_out in list(enumerate(mlp_top_dims))[1:-1]:
@@ -86,9 +82,9 @@ class DLRMResNet(nn.Module):
       x = nn.Dense(
           fan_out,
           kernel_init=jnn.initializers.normal(
-              stddev=(2.0 / (fan_in + fan_out))**0.5),
+              stddev=jnp.sqrt(2.0 / (fan_in + fan_out))),
           bias_init=jnn.initializers.normal(
-              stddev=(1.0 / mlp_top_dims[layer_idx])**0.5))(
+              stddev=jnp.sqrt(1.0 / mlp_top_dims[layer_idx])))(
                   top_mlp_input)
       x = nn.relu(x)
       if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
@@ -100,9 +96,9 @@ class DLRMResNet(nn.Module):
     logits = nn.Dense(
         1,
         kernel_init=jnn.initializers.normal(
-            stddev=(2.0 / (mlp_top_dims[-2] + 1))**0.5),
+            stddev=jnp.sqrt(2.0 / (mlp_top_dims[-2] + 1))),
         bias_init=jnn.initializers.normal(
-            stddev=1.0))(top_mlp_input)
+            stddev=jnp.sqrt(1.0)))(top_mlp_input)
     return logits
 
 
