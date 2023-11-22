@@ -188,7 +188,7 @@ class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
 class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
   mlp_bottom_dims: Tuple[int, int] = (256, 256, 256)
   mlp_top_dims: Tuple[int, int, int] = (256, 256, 256, 256, 1)
-  embed_dim: int = 256
+  embed_dim: int = 128
 
   @property
   def use_resnet(self) -> bool:
