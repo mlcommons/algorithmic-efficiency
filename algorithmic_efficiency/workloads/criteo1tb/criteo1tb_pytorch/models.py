@@ -30,6 +30,10 @@ class DotInteract(nn.Module):
                                            num_sparse_features + 1)
 
   def forward(self, dense_features, sparse_features):
+    print("Dense features shape")
+    print(dense_features.shape)
+    print(sparse_features.shape)
+    print(dense_features.unsqueeze(1).shape)
     combined_values = torch.cat((dense_features.unsqueeze(1), sparse_features),
                                 dim=1)
     interactions = torch.bmm(combined_values,
