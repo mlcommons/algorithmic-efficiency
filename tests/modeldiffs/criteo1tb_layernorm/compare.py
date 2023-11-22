@@ -32,7 +32,11 @@ def key_transform(k):
       i = name + '_' + str(s_count * 3 + int(count))
     if 'LayerNorm' in i:
       name, count = i.split('_')
-      i = name + '_' + str(s_count * 3 + int(count))
+      # There is a layernorm on embedding between bottom and top MLP
+      if s_count is not None:
+        i = name + '_' + str(s_count * 4 + int(count))
+      else: 
+        i = name + '_' + str(3)
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
 
