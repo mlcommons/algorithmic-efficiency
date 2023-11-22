@@ -37,7 +37,7 @@ def key_transform(k):
       continue
     if 'Linear' in i:
       i = i.replace('Linear', 'Dense')
-      name, count = i.split('_')
+      name, _ = i.split('_')
       block_count = mlp_block_count if mlp_block_count else resnet_block_count
       i = name + '_' + str(mlp_count * 3 + block_count)
     elif 'weight' in i:
