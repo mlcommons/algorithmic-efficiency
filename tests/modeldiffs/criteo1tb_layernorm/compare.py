@@ -35,7 +35,7 @@ def key_transform(k):
       # There is a layernorm on embedding between bottom and top MLP
       if s_count is not None:
         i = name + '_' + str(s_count * 4 + int(count))
-      else: 
+      else:
         i = name + '_' + str(3)
     elif 'weight' in i:
       if layer_norm:

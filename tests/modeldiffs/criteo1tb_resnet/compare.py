@@ -31,7 +31,7 @@ def key_transform(k):
         mlp_block_count = int(i.split('_')[1])
       continue
     if 'DenseBlock' in i:
-      # off set resnet block count by 1 
+      # off set resnet block count by 1
       # since first mlp layer has no resnet connection
       resnet_block_count = int(i.split('_')[1])
       continue
@@ -42,7 +42,7 @@ def key_transform(k):
       i = name + '_' + str(mlp_count * 3 + block_count)
     elif 'weight' in i:
       i = i.replace('weight', 'kernel')
-    new_key.append(i)    
+    new_key.append(i)
   return tuple(new_key)
 
 
