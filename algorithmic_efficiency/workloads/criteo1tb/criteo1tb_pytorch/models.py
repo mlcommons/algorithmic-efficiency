@@ -195,6 +195,7 @@ class DlrmSmall(nn.Module):
     self.mlp_bottom_dims = mlp_bottom_dims
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
+    self.embedding_init_multiplier = embedding_init_multiplier
 
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
