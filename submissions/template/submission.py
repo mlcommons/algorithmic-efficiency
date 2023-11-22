@@ -4,8 +4,9 @@ See https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#allow
 and https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disallowed-submissions
 for guidelines. 
 """
+from typing import Dict, Iterator, List, Tuple
+
 from algorithmic_efficiency import spec
-from typing import Dict, List, Tuple, Iterator
 
 
 def init_optimizer_state(workload: spec.Workload,
