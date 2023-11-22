@@ -99,6 +99,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     num_dense_features = 13
     input_size = num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
+    print('Input Shape')
     print(input_shape)
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
