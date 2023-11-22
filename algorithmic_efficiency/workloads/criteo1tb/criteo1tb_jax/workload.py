@@ -100,14 +100,10 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     num_dense_features = 13
     input_size = num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
-    print('Input Shape')
-    print(input_shape)
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
         {'params': params_rng, 'dropout': dropout_rng},
         jnp.ones(input_shape, jnp.float32))
-    fake_inputs = jnp.ones(input_shape, jnp.float32)
-    utils.print_jax_model_summary(self._model, fake_inputs)
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)

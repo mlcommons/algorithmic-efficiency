@@ -30,10 +30,6 @@ class DotInteract(nn.Module):
                                            num_sparse_features + 1)
 
   def forward(self, dense_features, sparse_features):
-    print("Dense features shape")
-    print(dense_features.shape)
-    print(sparse_features.shape)
-    print(dense_features.unsqueeze(1).shape)
     combined_values = torch.cat((dense_features.unsqueeze(1), sparse_features),
                                 dim=1)
     interactions = torch.bmm(combined_values,
@@ -158,8 +154,6 @@ class DLRMResNet(nn.Module):
     embedded_sparse = embedding_table[idx_lookup]
     embedded_sparse = torch.reshape(embedded_sparse,
                                     [batch_size, 26 * self.embed_dim])
-    print(embedded_sparse.shape)
-    print(embedded_dense.shape)
     top_mlp_input = torch.cat([embedded_dense, embedded_sparse], axis=1)
 
     # Final MLP.
