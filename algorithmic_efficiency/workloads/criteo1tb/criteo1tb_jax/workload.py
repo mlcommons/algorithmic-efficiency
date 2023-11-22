@@ -14,6 +14,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import models
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
+from algorithmic_efficiency.workloads import utils
 
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
@@ -103,6 +104,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         {'params': params_rng, 'dropout': dropout_rng},
         jnp.ones(input_shape, jnp.float32))
     fake_inputs = jnp.ones(input_shape, jnp.float32)
+    utils.print_jax_model_summary(self._model, fake_inputs)
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)

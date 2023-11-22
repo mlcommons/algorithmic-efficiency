@@ -22,7 +22,7 @@ class DLRMResNet(nn.Module):
   num_dense_features: int = 13
   mlp_bottom_dims: Sequence[int] = (256, 256, 256)
   mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
-  embed_dim: int = 256
+  embed_dim: int = 128
   dropout_rate: float = 0.0
   use_layer_norm: bool = False  # Unused.
 
@@ -31,80 +31,80 @@ class DLRMResNet(nn.Module):
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
-    # Bottom MLP
+    activation_fn = model_utils.ACTIVATIONS[self.activation_function]
+
+    # bottom mlp
     mlp_bottom_dims = self.mlp_bottom_dims
 
     bot_mlp_input = nn.Dense(
         mlp_bottom_dims[0],
         kernel_init=jnn.initializers.glorot_uniform(),
         bias_init=jnn.initializers.normal(
-            stddev=jnp.sqrt(1.0 / mlp_bottom_dims[0])),
-    )(
-        bot_mlp_input)
-    bot_mlp_input = nn.relu(bot_mlp_input)
+            stddev=1.0 / mlp_bottom_dims[0]**0.5),
+    )(bot_mlp_input)
+    bot_mlp_input = activation_fn(bot_mlp_input)
 
     for dense_dim in mlp_bottom_dims[1:]:
       x = nn.Dense(
           dense_dim,
           kernel_init=jnn.initializers.glorot_uniform(),
-          bias_init=jnn.initializers.normal(stddev=jnp.sqrt(1.0 / dense_dim)),
-      )(
-          bot_mlp_input)
-      bot_mlp_input += nn.relu(x)
+          bias_init=jnn.initializers.normal(stddev=1.0 / dense_dim**0.5),
+      )(bot_mlp_input)
+      bot_mlp_input += activation_fn(x)
 
-    bot_mlp_output = bot_mlp_input
-    batch_size = bot_mlp_output.shape[0]
-    feature_stack = jnp.reshape(bot_mlp_output,
-                                [batch_size, -1, self.embed_dim])
+    base_init_fn = jnn.initializers.uniform(scale=1.0)
+    if self.embedding_init_multiplier is None:
+      embedding_init_multiplier = 1 / self.vocab_size**0.5
+    else:
+      embedding_init_multiplier = self.embedding_init_multiplier
     # Embedding table init and lookup for a single unified table.
     idx_lookup = jnp.reshape(cat_features, [-1]) % self.vocab_size
-
     def scaled_init(key, shape, dtype=jnp.float_):
-      return (jnn.initializers.uniform(scale=1.0)(key, shape, dtype) /
-              jnp.sqrt(self.vocab_size))
+      return base_init_fn(key, shape, dtype) * embedding_init_multiplier
 
-    embedding_table = self.param('embedding_table',
-                                 scaled_init, [self.vocab_size, self.embed_dim])
+    embedding_table = self.param(
+        'embedding_table',
+        scaled_init,
+        [self.vocab_size, self.embed_dim])
 
-    idx_lookup = jnp.reshape(idx_lookup, [-1])
     embed_features = embedding_table[idx_lookup]
-    embed_features = jnp.reshape(embed_features,
-                                 [batch_size, -1, self.embed_dim])
-    feature_stack = jnp.concatenate([feature_stack, embed_features], axis=1)
-    dot_interact_output = dot_interact(concat_features=feature_stack)
-    top_mlp_input = jnp.concatenate([bot_mlp_output, dot_interact_output],
-                                    axis=-1)
+    batch_size = bot_mlp_input.shape[0]
+    embed_features = jnp.reshape(
+        embed_features, (batch_size, 26 * self.embed_dim))
+    top_mlp_input = jnp.concatenate([bot_mlp_input, embed_features], axis=1)
     mlp_input_dim = top_mlp_input.shape[1]
     mlp_top_dims = self.mlp_top_dims
+    num_layers_top = len(mlp_top_dims)
     top_mlp_input = nn.Dense(
         mlp_top_dims[0],
         kernel_init=jnn.initializers.normal(
-            stddev=jnp.sqrt(2.0 / (mlp_input_dim + mlp_top_dims[0]))),
+            stddev=(2.0 / (mlp_input_dim + mlp_top_dims[0]))**0.5),
         bias_init=jnn.initializers.normal(
-            stddev=jnp.sqrt(1.0 / mlp_top_dims[0])))(
+            stddev=(1.0 / mlp_top_dims[0])**0.5))(
                 top_mlp_input)
-    top_mlp_input = nn.relu(top_mlp_input)
+    top_mlp_input = activation_fn(top_mlp_input)
     for layer_idx, fan_out in list(enumerate(mlp_top_dims))[1:-1]:
       fan_in = mlp_top_dims[layer_idx - 1]
       x = nn.Dense(
           fan_out,
           kernel_init=jnn.initializers.normal(
-              stddev=jnp.sqrt(2.0 / (fan_in + fan_out))),
+              stddev=(2.0 / (fan_in + fan_out))**0.5),
           bias_init=jnn.initializers.normal(
-              stddev=jnp.sqrt(1.0 / mlp_top_dims[layer_idx])))(
+              stddev=(1.0 / mlp_top_dims[layer_idx])**0.5))(
                   top_mlp_input)
-      x = nn.relu(x)
+      x = activation_fn(x)
       if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
-        x = nn.Dropout(rate=self.dropout_rate, deterministic=not train)(x)
+        x = nn.Dropout(
+            rate=self.dropout_rate, deterministic=not train)(x)
       top_mlp_input += x
     # In the DLRM model the last layer width is always 1. We can hardcode that
     # below.
     logits = nn.Dense(
         1,
         kernel_init=jnn.initializers.normal(
-            stddev=jnp.sqrt(2.0 / (mlp_top_dims[-2] + 1))),
-        bias_init=jnn.initializers.normal(stddev=jnp.sqrt(1.0)))(
-            top_mlp_input)
+            stddev=(2.0 / (mlp_top_dims[-2] + 1))**0.5),
+        bias_init=jnn.initializers.normal(
+            stddev=1.0))(top_mlp_input)
     return logits
 
 
