@@ -87,7 +87,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         embed_dim=self.embed_dim,
         dropout_rate=dropout_rate,
         use_layer_norm=self.use_layer_norm,
-        embedding_init_mulitplier=self.embedding_init_multiplier)
+        embedding_init_multitplier=self.embedding_init_multiplier)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
