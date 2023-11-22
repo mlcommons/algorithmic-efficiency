@@ -45,9 +45,11 @@ def get_batch_size(workload_name):
   """
     Gets batch size for workload.
     Args: 
-      workload_name (str): Valid workload_name values are in["wmt", "ogbg", "criteo1tb", "fastmri", "imagenet_resnet", "imagenet_vit", "librispeech_deepspeech", "librispeech_conformer"]
+      workload_name (str): Valid workload_name values are: "wmt", "ogbg", 
+        "criteo1tb", "fastmri", "imagenet_resnet", "imagenet_vit", 
+        "librispeech_deepspeech", "librispeech_conformer".
     Returns:
-     int: batch_size 
+      int: batch_size 
     Raises:
       ValueError: If workload_name is not handled.
     """
