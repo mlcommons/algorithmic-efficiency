@@ -61,7 +61,7 @@ class DLRMResNet(nn.Module):
                num_sparse_features=26,
                mlp_bottom_dims=(256, 256, 256),
                mlp_top_dims=(256, 256, 256, 256, 1),
-               embed_dim=256,
+               embed_dim=128,
                dropout_rate=0.0,
                use_layer_norm=False):
     super().__init__()
