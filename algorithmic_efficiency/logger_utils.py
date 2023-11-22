@@ -2,6 +2,8 @@
 
 import collections
 import json
+import flax.linen as nn
+import jax
 import logging
 import os.path
 import platform
