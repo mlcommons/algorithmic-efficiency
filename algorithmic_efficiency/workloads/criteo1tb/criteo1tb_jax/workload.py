@@ -2,19 +2,20 @@
 
 import functools
 from typing import Dict, Optional, Tuple
+
 from absl import logging
 from flax import jax_utils
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import numpy as np
-import flax.linen as nn
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
+from algorithmic_efficiency.workloads import utils
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax import models
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
-from algorithmic_efficiency.workloads import utils
 
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):

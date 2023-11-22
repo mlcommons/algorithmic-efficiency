@@ -4,9 +4,9 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import torch
-import jax.numpy as jnp
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
