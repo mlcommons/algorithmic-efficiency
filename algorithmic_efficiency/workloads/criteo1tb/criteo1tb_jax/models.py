@@ -151,7 +151,7 @@ class DlrmSmall(nn.Module):
   embed_dim: int = 128
   dropout_rate: float = 0.0
   use_layer_norm: bool = False
-  embedding_init_multiplier = None
+  embedding_init_multiplier: float = None
 
   @nn.compact
   def __call__(self, x, train):
