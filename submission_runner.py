@@ -489,7 +489,7 @@ def score_submission_on_workload(workload: spec.Workload,
   data_selection = submission_module.data_selection
   try:
     global_batch_size = submission_module.get_batch_size(workload_name)
-  except Exception:
+  except ValueError:
     base_workload_name = workloads.get_base_workload_name(workload_name)
     global_batch_size = submission_module.get_batch_size(base_workload_name)
   # n_gpus has to be set here, because we cannot call the first Jax operation
