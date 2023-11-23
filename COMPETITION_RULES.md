@@ -79,7 +79,7 @@ Submissions must use specific versions of PyTorch and JAX, provided by Sponsor. 
 
 ## Scoring
 
-All otherwise qualified Submissions shall be scored. Submissions will be scored based on their required training time to reach the target performance on the validation set of each workload, using measuring techniques designed to give all Submissions equal parity. In the event that no Submission receives a score exceeding that of the [NAdamW baseline](https://github.com/mlcommons/algorithmic-efficiency/tree/dev/baselines/nadamw), no prizes will be awarded. The Teams with the highest scores will be determined to be winners ("Selected Teams"). In the event of a tie the prize money will be split equally between the winners.
+All otherwise qualified Submissions shall be scored. Submissions will be scored based on their required training time to reach the target performance on the validation set of each workload, using measuring techniques designed to give all Submissions equal parity. In the event that no Submission in a ruleset receives a score exceeding that of both [prize qualification baselines](./reference_algorithms/prize_qualification_baselines/README.md), no prizes will be awarded for this ruleset. The Teams with the highest scores will be determined to be winners ("Selected Teams"). In the event of a tie the prize money will be split equally between the winners.
 
 ## Submissions
 
