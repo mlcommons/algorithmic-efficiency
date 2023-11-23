@@ -255,7 +255,7 @@ Submissions are eligible for an untimed eval every `eval_period` seconds, run as
 
 The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark.
 
-Unfortunately, we can't easily write rules that make it completely clear if a submission is circumventing the spirit of the benchmark in a way that would encompass all possible cases. We want to state clearly that we welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions, however, in some cases, routines that would be allowed in principle might not be practically feasible in the provided framework.
+Unfortunately, we can't easily write rules that make it completely clear if a submission is circumventing the spirit of the benchmark in a way that would encompass all possible cases. We welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions. However, in some cases, routines that would be allowed in principle might not be practically feasible to express in the provided framework.
 
 In order to help clarify which submissions are [allowed](#allowed-submissions) and [disallowed](#disallowed-submissions), we described a few examples below. Two essential questions can help provide a general guideline for whether a submission is allowed or not:
 
