@@ -537,7 +537,7 @@ new Compute Instance with the "Deep Learning on Linux" Image in Boot disk option
 
 #### Can I submit multiple times to the benchmark competition?
 
-Our benchmark allows multiple submissions by the same team of submitters. However, we would like to prevent submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
+Our benchmark allows multiple submissions by the same team of submitters as long as they are substantially different. We disallow submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
 
 Submitters may submit algorithms marked as *baselines*. These might include existing algorithms with different search spaces or learning rate schedules. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters.
 
