@@ -221,9 +221,12 @@ def train_once(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = [
-          'librispeech_conformer', 'librispeech_conformer_gelu',
+          'librispeech_conformer', 
+          'librispeech_conformer_gelu',
+          'librispeech_conformer_layer_norm',
+          'librispeech_conformer_attention_temperature',
           'ogbg', 'criteo1tb', 
-          'imagenet_vit'
+          'imagenet_vit',
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
