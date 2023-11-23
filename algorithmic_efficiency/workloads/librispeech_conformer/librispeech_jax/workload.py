@@ -33,7 +33,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   @property
   def use_post_layer_norm(self) -> bool:
-    return False
+    return True
 
   @property
   def use_gelu(self) -> bool:
@@ -375,7 +375,7 @@ class LibriSpeechConformerAttentionTemperatureWorkload(
 
 class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
 
-  property
+  @property
   def use_post_layer_norm(self) -> bool:
     return False
 

@@ -12,6 +12,8 @@ class BaseLibrispeechWorkload(spec.Workload):
   def target_metric_name(self) -> str:
     """The name of the target metric (useful for scoring/processing code)."""
     return 'wer'
+  
+  @property
   def use_post_layer_norm(self) -> bool:
     raise NotImplemented
 
