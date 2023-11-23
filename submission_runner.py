@@ -223,7 +223,7 @@ def train_once(
       compile_error_workloads = [
           'librispeech_conformer', 
           'librispeech_conformer_gelu',
-          'librispeech_conformer_layer_norm',
+          'librispeech_conformer_layernorm',
           'librispeech_conformer_attention_temperature',
           'ogbg', 'criteo1tb', 
           'imagenet_vit',
