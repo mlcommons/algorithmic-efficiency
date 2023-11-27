@@ -388,7 +388,7 @@ def download_fastmri(data_dir,
 
 def extract(source, dest, mode='r:xz'):
   if not os.path.exists(dest):
-    os.path.makedirs(dest)
+    os.makedirs(dest)
   logging.info(f'Extracting {source} to {dest}')
   tar = tarfile.open(source, mode)
   logging.info('Opened tar')
