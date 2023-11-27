@@ -9,7 +9,6 @@ command. Usage example:
 python singularity_converter.py -i Dockerfile -o Singularity.def
 """
 
-
 import argparse
 
 from spython.main.parse.parsers import get_parser
@@ -21,8 +20,7 @@ FORCE = False  # seems to be a good default
 #
 parser = argparse.ArgumentParser(description="Custom Singularity converter")
 parser.add_argument(
-    "-i", "--input", type=str, help="Docker input path", default="Dockerfile"
-)
+    "-i", "--input", type=str, help="Docker input path", default="Dockerfile")
 parser.add_argument(
     "-o",
     "--output",
@@ -47,4 +45,4 @@ recipeWriter.recipe[key].files = []
 # convert to string and save to output file
 result = recipeWriter.convert(runscript=ENTRY_POINT, force=FORCE)
 with open(OUTPUT_SINGULARITY_PATH, "w") as f:
-    f.write(result)
+  f.write(result)
