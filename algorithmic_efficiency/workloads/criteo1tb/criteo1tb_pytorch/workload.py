@@ -10,8 +10,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import \
-    DlrmSmall
+from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch import models
 from algorithmic_efficiency.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
 
@@ -76,13 +75,19 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
-    model = DlrmSmall(
+    if self.use_resnet:
+      model_class = models.DLRMResNet
+    else:
+      model_class = models.DlrmSmall
+    model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate)
+        dropout_rate=dropout_rate,
+        use_layer_norm=self.use_layer_norm,
+        embedding_init_multiplier=self.embedding_init_multiplier)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -238,3 +243,53 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
   vocab_size: int = 32 * 128 * 16
+
+
+class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
+
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.123744
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126152
+
+
+class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+  mlp_bottom_dims: Tuple[int, int] = (256, 256, 256)
+  mlp_top_dims: Tuple[int, int, int] = (256, 256, 256, 256, 1)
+
+  @property
+  def use_resnet(self) -> bool:
+    """Whether or not to use residual connections in the model."""
+    return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.124027
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126468
+
+
+class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.124286
+
+  @property
+  def test_target_value(self) -> float:
+    # Todo
+    return 0.126725
+
+  @property
+  def embedding_init_multiplier(self) -> float:
+    return 1.0
