@@ -38,7 +38,7 @@
     - [How can I know if my code can be run on benchmarking hardware?](#how-can-i-know-if-my-code-can-be-run-on-benchmarking-hardware)
     - [Are we allowed to use our own hardware to self-report the results?](#are-we-allowed-to-use-our-own-hardware-to-self-report-the-results)
     - [What can I do if running the benchmark is too expensive for me?](#what-can-i-do-if-running-the-benchmark-is-too-expensive-for-me)
-    - [Can I submit existing (i.e. published) training algorithms as submissions?](#can-i-submit-existing-ie-published-training-algorithms-as-submissions)
+    - [Can I submit existing (i.e. published) training algorithms as submissions?](#can-i-submit-previously-published-training-algorithms-as-submissions)
 - [Disclaimers](#disclaimers)
   - [Shared Data Pipelines between JAX and PyTorch](#shared-data-pipelines-between-jax-and-pytorch)
   - [Pytorch Conformer CUDA OOM](#pytorch-conformer-cuda-oom)
@@ -253,10 +253,9 @@ Submissions are eligible for an untimed eval every `eval_period` seconds, run as
 
 #### Valid submissions
 
-The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark.
+The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark. We welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions. However, in some cases, routines that would be allowed in principle might not be practically feasible to express in the provided framework.
 
-Unfortunately, we can't easily write rules that make it completely clear if a submission is circumventing the spirit of the benchmark in a way that would encompass all possible cases. We welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions. However, in some cases, routines that would be allowed in principle might not be practically feasible to express in the provided framework.
-
+Submissions that specialize to the specific workloads in the benchmark and have not been implemented in a way that plausibly generalizes to novel workloads are prohibited.
 In order to help clarify which submissions are [allowed](#allowed-submissions) and [disallowed](#disallowed-submissions), we described a few examples below. Two essential questions can help provide a general guideline for whether a submission is allowed or not:
 
 1. What **information** is being used by the submission?
@@ -519,7 +518,7 @@ To ensure that all submitters can develop their submissions based on the same co
 #### My machine only has one GPU. How can I use this repo?
 
 You can run this repo on a machine with an arbitrary number of GPUs. However, the default batch sizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batch sizes for the submission. Note that your final submission must 'fit' on the benchmarking hardware, so if you are using fewer
-GPUs with higher per GPU memory, please monitor your memory usage to make make sure it will fit on 8xV100 GPUs with 16GB of VRAM per card.
+GPUs with higher per GPU memory, please monitor your memory usage to make sure it will fit on 8xV100 GPUs with 16GB of VRAM per card.
 
 #### How do I run this on my SLURM cluster?
 
@@ -563,16 +562,17 @@ You only have to use the benchmarking hardware for runs that are directly involv
 
 Submitters unable to self-fund scoring costs can instead self-report only on the [qualification set of workloads](/COMPETITION_RULES.md#qualification-set) that excludes some of the most expensive workloads. Based on this performance on the qualification set, the working group will provide - as funding allows - compute to evaluate and score the most promising submissions. Additionally, we encourage researchers to reach out to the [working group](mailto:algorithms@mlcommons.org) to find potential collaborators with the resources to run larger, more comprehensive experiments for both developing and scoring submissions.
 
-#### Can I submit existing (i.e. published) training algorithms as submissions?
+#### Can I submit previously published training algorithms as submissions?
 
-Yes you may, as long as it isn't an exact copy of an existing submission.
-For example, you may submit the Adam optimizer with your hyperparameters or hyperparameter search spaces, as this constitues a different training algorithm.
+Yes, you may, as long as it isn't an exact copy of an existing submission.
+For example, you may submit the Adam optimizer with your particularly effective hyperparameter search space and hyperparameter configuration, as different choices for hyperparameter values and/or search spaces constitute different training algorithms and are potential sources of innovation.
+That said, while submitting Adam with some novel heuristic to set various hyperparameters, some especially effective hyperparameter search space, or your single best hyperparameter configuration is fine, avoid making multiple submissions that only differ by their hyperparameter configuration without a convincing justification they are substantially different (see ["Can I submit multiple times to the benchmark competition?"](/COMPETITION_RULES.md#can-i-submit-multiple-times-to-the-benchmark-competition), above).
 
 ## Disclaimers
 
 ### Shared Data Pipelines between JAX and PyTorch
 
-The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT workloads are using the same TensorFlow input pipelines. Due to differences in how JAX and PyTorch distribute computations across devices, the PyTorch workloads have an additional overhead for these workloads.
+The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT workloads use the same TensorFlow input pipelines. Due to differences in how JAX and PyTorch distribute computations across devices, the PyTorch workloads have an additional overhead for these workloads.
 
 Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
 While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
