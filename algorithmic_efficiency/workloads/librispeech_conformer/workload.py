@@ -15,15 +15,15 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def use_post_layer_norm(self) -> bool:
-    raise NotImplemented
+    raise NotImplementedError
 
   @property
   def use_gelu(self) -> bool:
-    raise NotImplemented
+    raise NotImplementedError
 
   @property
   def attention_temperature(self) -> float:
-    raise NotImplemented
+    raise NotImplementedError
 
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
