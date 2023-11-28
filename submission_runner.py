@@ -228,7 +228,7 @@ def train_once(
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
-      base_workload = workloads.get_base_workload_name(FLAGS.workload)
+      base_workload = workloads.get_base_workload_name(workload)
       if base_workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
