@@ -49,8 +49,10 @@ WORKLOADS = {
         'workload_class_name': 'LibriSpeechConformerWorkload',
     },
     'librispeech_conformer_attention_temperature': {
-        'workload_path': 'librispeech_conformer/librispeech',
-        'workload_class_name': 'LibriSpeechConformerAttentionTemperatureWorkload',
+        'workload_path':
+            'librispeech_conformer/librispeech',
+        'workload_class_name':
+            'LibriSpeechConformerAttentionTemperatureWorkload',
     },
     'librispeech_conformer_layernorm': {
         'workload_path': 'librispeech_conformer/librispeech',

@@ -12,6 +12,7 @@ high-level overview of Conformer encoder layer.
   y = layer_norm(x)
 """
 
+import functools
 import math
 from typing import Any, List, Optional
 
@@ -20,7 +21,6 @@ from flax import struct
 import jax
 import jax.numpy as jnp
 import numpy as np
-import functools 
 
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
@@ -213,10 +213,9 @@ class FeedForwardModule(nn.Module):
     elif config.activation_function_name == 'gelu':
       activation_fn = nn.gelu
     else:
-      raise ValueError(
-          'Only "swish" and "gelu" are supported '
-          'config.activation_function_name values, recieved '
-          f'{config.activation_function_name}')
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{config.activation_function_name}')
     inputs = activation_fn(inputs)
     inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
         inputs, deterministic=not train)
@@ -373,8 +372,9 @@ def dot_product_attention(query,
       precision)
 
   # return weighted sum over values for each query position
-  return jnp.einsum('...hqk,...khd->...qhd',
-      attn_weights, value, precision=precision) * temperature
+  return jnp.einsum(
+      '...hqk,...khd->...qhd', attn_weights, value,
+      precision=precision) * temperature
 
 
 class MultiHeadedSelfAttention(nn.Module):
@@ -552,10 +552,9 @@ class ConvolutionBlock(nn.Module):
     elif config.activation_function_name == 'gelu':
       activation_fn = nn.gelu
     else:
-      raise ValueError(
-          'Only "swish" and "gelu" are supported '
-          'config.activation_function_name values, recieved '
-          f'{config.activation_function_name}')
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{config.activation_function_name}')
     inputs = activation_fn(inputs)
     inputs = nn.Dense(
         config.encoder_dim, kernel_init=nn.initializers.xavier_uniform())(

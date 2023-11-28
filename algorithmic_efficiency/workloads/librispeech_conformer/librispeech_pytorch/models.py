@@ -217,10 +217,9 @@ class FeedForwardModule(nn.Module):
       # Use tanh approximation of GELU which is default for jax
       activation_fn = partial(F.gelu, approximate='tanh')
     else:
-      raise ValueError(
-          'Only "swish" and "gelu" are supported '
-          'config.activation_function_name values, recieved '
-          f'{self.config.activation_function_name}')
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{self.config.activation_function_name}')
     inputs = activation_fn(inputs)
     inputs = self.dropout1(inputs)
     inputs = inputs * padding_mask
@@ -426,10 +425,9 @@ class ConvolutionBlock(nn.Module):
     elif self.config.activation_function_name == 'gelu':
       activation_fn = F.gelu
     else:
-      raise ValueError(
-          'Only "swish" and "gelu" are supported '
-          'config.activation_function_name values, recieved '
-          f'{self.config.activation_function_name}')
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{self.config.activation_function_name}')
     inputs = activation_fn(inputs)
     inputs = self.lin3(inputs)
 
