@@ -58,7 +58,7 @@ WORKLOADS = {
     },
     'librispeech_conformer_gelu': {
         'workload_path': 'librispeech_conformer/librispeech',
-        'workload_class_name': 'LibriSpeechConformerGELUWorkload',
+        'workload_class_name': 'LibriSpeechConformerGeluWorkload',
     },
     'librispeech_deepspeech': {
         'workload_path': 'librispeech_deepspeech/librispeech',
