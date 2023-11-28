@@ -1,14 +1,15 @@
-# MLCommons™ AlgoPerf: Benchmark Rules
+# MLCommons™ AlgoPerf: Technical Documentation & FAQs
 
-**Version:** 0.0.18 *(Last updated 03 Oktober 2023)*
+**Version:** 0.0.20 *(Last updated November 28, 2023)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
-> We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a [Training Algorithm Track](#training-algorithm-track) and a [Model Track](#model-track) in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks.
+> We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a *Training Algorithm Track* and a *Model Track* in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks. The following is the technical documentation for the Training Algorithm Track.
 
 ## Table of Contents <!-- omit from toc -->
 
 - [Introduction](#introduction)
-- [Training Algorithm Track](#training-algorithm-track)
+- [Technical Documentation of the Training Algorithm Track](#technical-documentation-of-the-training-algorithm-track)
+  - [Competition Rules](#competition-rules)
   - [Submissions](#submissions)
     - [Specification](#specification)
     - [Evaluation during training](#evaluation-during-training)
@@ -24,8 +25,23 @@
     - [Benchmarking hardware](#benchmarking-hardware)
     - [Defining target performance](#defining-target-performance)
     - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
-  - [Benchmark Procedure](#benchmark-procedure)
-- [Model Track](#model-track)
+  - [Version freeze](#version-freeze)
+- [FAQs](#faqs)
+  - [Setup and Platform](#setup-and-platform)
+    - [My machine only has one GPU. How can I use this repo?](#my-machine-only-has-one-gpu-how-can-i-use-this-repo)
+    - [How do I run this on my SLURM cluster?](#how-do-i-run-this-on-my-slurm-cluster)
+    - [How can I run this on my AWS/GCP/Azure cloud project?](#how-can-i-run-this-on-my-awsgcpazure-cloud-project)
+  - [Submitting](#submitting)
+    - [Can I submit multiple times to the benchmark competition?](#can-i-submit-multiple-times-to-the-benchmark-competition)
+    - [Can my submission be structured using multiple files?](#can-my-submission-be-structured-using-multiple-files)
+    - [Can I install custom dependencies?](#can-i-install-custom-dependencies)
+    - [How can I know if my code can be run on benchmarking hardware?](#how-can-i-know-if-my-code-can-be-run-on-benchmarking-hardware)
+    - [Are we allowed to use our own hardware to self-report the results?](#are-we-allowed-to-use-our-own-hardware-to-self-report-the-results)
+    - [What can I do if running the benchmark is too expensive for me?](#what-can-i-do-if-running-the-benchmark-is-too-expensive-for-me)
+    - [Can I submit existing (i.e. published) training algorithms as submissions?](#can-i-submit-previously-published-training-algorithms-as-submissions)
+- [Disclaimers](#disclaimers)
+  - [Shared Data Pipelines between JAX and PyTorch](#shared-data-pipelines-between-jax-and-pytorch)
+  - [Pytorch Conformer CUDA OOM](#pytorch-conformer-cuda-oom)
 
 ## Introduction
 
@@ -34,9 +50,11 @@ We need a more scientifically sound methodology for evaluating training speedups
 MLCommons' mission is to build fair and useful benchmarks for measuring training and inference performance of ML hardware, software, and services. Improvements in training speed can come from better hardware, better software stacks, and better algorithms.
 To date, the Closed Division of the MLPerf™ Training benchmark has been extremely successful in driving systems innovation by requiring mathematical equivalence to a reference implementation, while still allowing submissions on different hardware. Although the Open Division allows new models and training algorithms, it has several issues that make it inappropriate as a benchmark for progress in training algorithms. By allowing arbitrary hardware, it is impossible to isolate improvements due to algorithms or due to extra computation. Unrestricted hardware makes the benchmark only accessible to the most well-funded organizations, even if many academic labs and others have interesting algorithms to measure. Finally, even if we could isolate improvements due to particular algorithmic changes and make the benchmark more broadly accessible, there is still no incentive to avoid hyper-specific changes that only help the particular benchmark workload.
 
-In order to drive innovation in machine learning algorithms that reduce the time needed to create useful models, we propose a new set of benchmarks called **AlgoPerf** to evaluate the training time for different algorithms (models, optimizers, preprocessing, etc.) on a **fixed hardware configuration** (future iterations can adopt new hardware configurations as needed). Our proposal includes two tracks: (1) the [Training Algorithm Track](#training-algorithm-track) and (2) the [Model Track](#model-track). The goal of the Training Algorithm Track is to find training algorithms (optimizers, etc.) that train benchmark models to reach the goal out-of-sample error rate as fast as possible. However, to incentivize practically useful algorithms, in the Training Algorithm Track we require that a single training algorithm simultaneously performs well across all benchmark models and datasets. Similarly, the goal of the Model Track is to find models that can be trained to achieve the target solution quality (out-of-sample error) in the least amount of time on each benchmark dataset. Although submissions in the Model Track will be inherently dataset-specific, we sharply constrain what parts of the training program can be modified in the Model Track and require submitted models to be easily trainable using standard optimizers. Thus the two-track structure discourages overly specific solutions that aren't generally useful to practitioners and will hopefully produce evidence on the relative returns of speeding up training by finding new models or by developing new training algorithms.
+In order to drive innovation in machine learning algorithms that reduce the time needed to create useful models, we propose a new set of benchmarks called **AlgoPerf** to evaluate the training time for different algorithms (models, optimizers, preprocessing, etc.) on a **fixed hardware configuration** (future iterations can adopt new hardware configurations as needed). Our proposal includes two tracks: (1) the **Training Algorithm Track** and (2) the **Model Track**. The goal of the Training Algorithm Track is to find training algorithms (optimizers, etc.) that train benchmark models to reach the goal out-of-sample error rate as fast as possible. However, to incentivize practically useful algorithms, in the Training Algorithm Track we require that a single training algorithm simultaneously performs well across all benchmark models and datasets. Similarly, the goal of the Model Track is to find models that can be trained to achieve the target solution quality (out-of-sample error) in the least amount of time on each benchmark dataset. Although submissions in the Model Track will be inherently dataset-specific, we sharply constrain what parts of the training program can be modified in the Model Track and require submitted models to be easily trainable using standard optimizers. Thus the two-track structure discourages overly specific solutions that aren't generally useful to practitioners and will hopefully produce evidence on the relative returns of speeding up training by finding new models or by developing new training algorithms.
 
-## Training Algorithm Track
+In the following, we will focus on the **Training Algorithm Track** of the *AlgoPerf benchmark*.
+
+## Technical Documentation of the Training Algorithm Track
 
 The goal of the **AlgoPerf: Training Algorithm Track** is to reach the same results faster ("time to result") by using better optimizers, data ordering/weighting schemes, and weight update strategies while producing techniques that work well on a wide variety of models and datasets. We hope to encourage generally useful training algorithms that are not specific to only a small number of particular workloads.
 
@@ -46,11 +64,13 @@ Submissions to the Training Algorithm Track can be entered under two separate ru
 
 The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific [workload](#workloads) (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful. In order to further discourage submissions that overfit to the particular [fixed benchmark workloads](#fixed-workloads), submissions will also be evaluated on [held-out workloads](#randomized-workloads) specified after the submission deadline.
 
-For a description of how to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark, see the [Call for submissions](CALL_FOR_SUBMISSIONS.md), which details the entire competition process.
+### Competition Rules
+
+For a description of the competition rules and how to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark, see the [Competition Rules](/COMPETITION_RULES.md), which details the entire competition process.
 
 ### Submissions
 
-A valid submission is a piece of code that defines all of the submission functions and is able to train all benchmark workloads on the [benchmarking hardware](#benchmarking-hardware) (defined in the [Scoring](#scoring) section). Both the validation set and the test set performance will be checked regularly during training (see the [Evaluation during training](#evaluation-during-training) section), however, only the validation performance is relevant for scoring. Training halts when the workload-specific [target errors](#defining-target-performance) for the validation and test sets have been reached. For each workload, only the training time to reach the *validation* set target error is used as input to the [scoring process](#scoring) for the submission. Submissions using [external tuning](#external-tuning-ruleset) will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. The tuning trials are selected based on the time to reach the *validation* target. Submissions under either tuning ruleset may always self-tune while on the clock.
+A valid submission is a piece of code that defines all of the submission functions and is able to train all benchmark workloads on the [benchmarking hardware](#benchmarking-hardware) (defined in the [Scoring](#scoring) section). Both the validation set and the test set performance will be checked regularly during training (see the [Evaluation during training](#evaluation-during-training) section), however, only the validation performance is relevant for scoring. Training halts when the workload-specific [target performance](#defining-target-performance) for the validation and test sets have been reached. For each workload, only the training time to reach the *validation* set target error is used as input to the [scoring process](#scoring) for the submission. Submissions using [external tuning](#external-tuning-ruleset) will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. The tuning trials are selected based on the time to reach the *validation* target. Submissions under either tuning ruleset may always self-tune while on the clock.
 
 #### Specification
 
@@ -58,7 +78,7 @@ Any function defined in the reference implementations that isn't a [submission f
 
 In principle, submissions are allowed to use the available hardware systems in any data- or model-parallel manner they desire, within the constraints of the submission function APIs. However, in practice, model-parallelism may not be possible with the API. They are allowed to access any framework-specific device information necessary to exploit the hardware.
 
-Submissions provide a [per-workload batch size](#batch-size-getter) to use. Specification of the batch size for each workload is necessary to avoid running out of memory for different workloads. Therefore, submitters can determine this batch size in advance and specify it as part of the submission. Submitters may also provide per-workload batch sizes for all [randomized workloads](#randomized-workloads).  If no such batch size is provided for a randomized workload, by default, submissions will then use the batch size of the most similar [fixed workload](#fixed-workloads) (for example, if there is an ImageNet fixed workload and also a randomized workload with a similarly sized model on similarly sized images, the ImageNet batch size will be used for held-out workloads generated from this randomized workload).
+Submissions provide a [per-workload batch size](#batch-size-getter) to use. Specification of the batch size for each workload is necessary to avoid running out of memory for different workloads. Therefore, submitters can determine this batch size in advance and specify it as part of the submission. Submitters may also provide per-workload batch sizes for all [randomized workloads](#randomized-workloads). If no such batch size is provided for a randomized workload, by default, submissions will then use the batch size of the most similar [fixed workload](#fixed-workloads) (for example, if there is an ImageNet fixed workload and also a randomized workload with a similarly sized model on similarly sized images, the ImageNet batch size will be used for held-out workloads generated from this randomized workload).
 
 The **submission functions** are the *batch size getter*, *optimizer state initializer*, *variable update*, and *data selection functions*. The *fixed functions* are the *data augmentation/preprocessing*, *model initialization*, *forward pass*, and *loss function*. The trained model will be evaluated in a separate step that does not call any of the submitted code.
 
@@ -97,7 +117,7 @@ def init_model_fn(
 ) -> initial model parameters
 ```
 
-- Unlike in the [Model Track](#model-track), this function that initializes the parameters of the model, is fixed. While it can be called by the submission (e.g. to restart the model after a failed training effort) it cannot be changed.
+- Unlike in the *Model Track*, this function that initializes the parameters of the model, is fixed. While it can be called by the submission (e.g. to restart the model after a failed training effort) it cannot be changed.
 
 ###### Forward pass
 
@@ -132,7 +152,7 @@ def loss_fn(
     label_smoothing: float = 0.0) -> Dict[str, Tensor]  # differentiable
 ```
 
-- Unlike in the [Model Track](#model-track), we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
+- Unlike in the *Model Track*, we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
   - The optimizer must work with all values of the enum, which will be provided via a property on the workload object that is provided to all submissions functions.
 - The loss function does **not** include regularization. Instead, regularization can be added by the submissions in the `update_params` function.
 - The loss function returns a dict {'summed': scalar summed loss, 'n_valid_examples': scalar number of valid examples in batch, 'per_example': 1-d array of per-example losses}.
@@ -148,7 +168,7 @@ def get_batch_size(workload_name: str) -> int
 
 - Submitters define a specific batch size for each [workload](#workloads).
 - For example, in advance, they can determine the largest batch size without running out of memory for each workload.
-- For the [held-out workloads](#randomized-workloads), submitters may provide a batch size once the submission code is frozen and the held-out workloads are sampled from the randomized workloads. By default, this function will use the `workload_name` of the fixed workload it is based on.
+- For the [held-out workloads](#randomized-workloads), by default, this function will use the `workload_name` of the fixed workload it is based on.
 
 ###### Optimizer state initializer
 
@@ -195,10 +215,8 @@ def update_params(
 - **A call to this function will be considered a step**
   - The time between a call to this function and the next call to this function will be considered the per-step time.
 - Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
-  - This will be checked by the spirit jury.
 - The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
 - Cannot replace the model parameters with pre-trained ones.
-  - This will be checked by the spirit jury.
 - This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
 - Batch norm should work here because the `model_fn` will return updated batch norm moving averages when it is told to with `update_batch_norm`.
 
@@ -235,12 +253,9 @@ Submissions are eligible for an untimed eval every `eval_period` seconds, run as
 
 #### Valid submissions
 
-The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark.
+The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark. We welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions. However, in some cases, routines that would be allowed in principle might not be practically feasible to express in the provided framework.
 
-We reserve the right to disqualify submissions if they clearly violate this spirit of the benchmark, even if those submissions perform well in our benchmark. Unfortunately, we can't easily write rules that make it completely clear if a submission is circumventing the spirit of the benchmark in a way that would encompass all possible cases. Instead, we will have to prohibit these activities in the abstract and defer rulings about specific submissions to a **"spirit [of the rules] jury"** that can hear the justifications of the submitters, inspect the code, and ultimately decide if the spirit of the rules has been violated. The jury might also ask the submitters to explain how the submission was produced, for example, by disclosing their intermediate experiments.
-
-We want to state clearly that we welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions, however, in some cases, routines that would be allowed in principle might not be practically feasible in the provided framework. The spirit jury, however, will only be invoked for submissions that aim to bypass the core premise of this benchmark since submissions like this would also be irrelevant in practice.
-
+Submissions that specialize to the specific workloads in the benchmark and have not been implemented in a way that plausibly generalizes to novel workloads are prohibited.
 In order to help clarify which submissions are [allowed](#allowed-submissions) and [disallowed](#disallowed-submissions), we described a few examples below. Two essential questions can help provide a general guideline for whether a submission is allowed or not:
 
 1. What **information** is being used by the submission?
@@ -346,7 +361,7 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 ##### Software dependencies
 
-We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section. In case of doubts, these additional dependencies will be judged by the spirit jury.
+We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section.
 
 ### Tuning
 
@@ -354,9 +369,9 @@ Tuning will be substantially different for the [external](#external-tuning-rules
 
 #### External tuning ruleset
 
-For each workload, the hyperparameters are tuned using $O=20$ tuning **trials**. To estimate the variance of the results, this tuning will be repeated for $S=5$ **studies**, for a total of $S\cdot O = 100$ different hyperparameter settings. The submitters will provide a workload-agnostic search space and the working group will then return $100$ hyperparameters settings obtained using [(quasi)random search](https://arxiv.org/abs/1706.03200). The working group will also randomly partition these $100$ trials into $5$ studies of $20$ trials each. In lieu of independent samples from a search space, submissions can instead supply a fixed list of $20$ hyper-parameter points that will be sampled without replacement.
+For each workload, the hyperparameters are tuned using $O=5$ tuning **trials**. To estimate the variance of the results, this tuning will be repeated for $S=5$ **studies**, for a total of $S\cdot O = 25$ different hyperparameter settings. The submitters will provide a workload-agnostic search space and the working group will then return $25$ hyperparameters settings obtained using [(quasi)random search](https://arxiv.org/abs/1706.03200). The working group will also randomly partition these $25$ trials into $5$ studies of $5$ trials each. In lieu of independent samples from a search space, submissions can instead supply a fixed list of $5$ hyper-parameter points that will be sampled without replacement.
 
-In each trial, the tuning trial with the fastest training time to achieve the *validation target* is determined among the $O=20$ hyperparameter settings. For scoring, we use this required training time to reach the *validation targets* of those $5$ selected runs. The median of these $5$ per-study training times will be the final training time for the submission on this workload and is used in the scoring procedure (see the "[Scoring submissions](#scoring)" section). Runs that do not reach the target performance of the evaluation metric have an infinite time. Submissions are always free to perform additional self-tuning while being timed.
+In each trial, the tuning trial with the fastest training time to achieve the *validation target* is determined among the $O=5$ hyperparameter settings. For scoring, we use this required training time to reach the *validation targets* of those $5$ selected runs. The median of these $5$ per-study training times will be the final training time for the submission on this workload and is used in the scoring procedure (see the "[Scoring submissions](#scoring)" section). Runs that do not reach the target performance of the evaluation metric have an infinite time. Submissions are always free to perform additional self-tuning while being timed.
 
 #### Self-tuning ruleset
 
@@ -368,7 +383,7 @@ Submissions will run on one instance of the [benchmarking hardware](#benchmarkin
 
 For the purposes of the Training Algorithm Track, we consider a workload the combination of a `dataset`, `model`, `loss_fn`, along with a target that is defined over some evaluation metric. E.g., ResNet50 on ImageNet using the cross-entropy loss until a target error of 22.6% on the validation set has been reached, would constitute a workload. The evaluation metric, in this example the misclassification error rate, is directly implied by the dataset/task.
 
-Submissions will be scored based on their performance on the [fixed workload](#fixed-workloads). However, additionally submissions must also perform resonably well on a set of [held-out workloads](#randomized-workloads) in order for their score on the fixed workload to count (for full details see the [Scoring](#scoring) section). These held-out workloads will be generated after the submission deadline, but their randomized generating process is publicly available with the call for submissions (see "[Randomized workloads](#randomized-workloads)" section).  
+Submissions will be scored based on their performance on the [fixed workload](#fixed-workloads). However, additionally submissions must also perform resonably well on a set of [held-out workloads](#randomized-workloads) in order for their score on the fixed workload to count (for full details see the [Scoring](#scoring) section). These held-out workloads will be generated after the submission deadline, but their randomized generating process is publicly available (see "[Randomized workloads](#randomized-workloads)" section).  
 
 Furthermore, a less computationally expensive subset of the fixed workloads is collected with the [qualification set](#qualification-set). Submitters without enough compute resources to self-report on the full set of fixed and held-out workloads can instead self-report on this smaller qualification set. Well-performing submissions can thereby qualify for computational resources provided by sponsors of the benchmark to be scored on the full benchmark set.
 
@@ -401,7 +416,7 @@ Our scoring procedure uses the held-out workloads only to penalize submissions t
 
 #### Qualification set
 
-The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prize money](/SUBMISSION_PROCESS_RULES.md#awards-and-prize-money).
+The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prizes](/COMPETITION_RULES.md#prizes).
 
 The qualification set consists of the same [fixed workloads](#fixed-workloads) as mentioned above, except for both workloads on *ImageNet*, both workloads on *LibriSpeech*, and the *fastMRI* workload. The remaining three workloads (*WMT*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [randomized workloads](#randomized-workloads) in the qualification set. The qualification set of workloads aims to have a combined runtime of roughly 24 hours on the [benchmarking hardware](#benchmarking-hardware).
 
@@ -415,13 +430,17 @@ The training time until the target performance on the test set was reached is no
 
 #### Benchmarking hardware
 
-All scored runs have to be performed on the benchmarking hardware to allow for a fair comparison of training times. The benchmarking hardware has to be chosen to be easily accessible via common cloud computing providers. The exact hardware specification will be specified in the call for submissions and will most likely change with each iteration of the benchmark. As a placeholder, we are currently planning with 8xV100 GPUs with 16GB of VRAM per card, e.g. the [p3.16xlarge instance on AWS](https://aws.amazon.com/ec2/instance-types/) or the [NVIDIA V100 8 GPUs instance on GCP](https://cloud.google.com/compute/docs/gpus#nvidia_v100_gpus).
+All scored runs have to be performed on the benchmarking hardware to allow for a fair comparison of training times. The benchmarking hardware has to be chosen to be easily accessible via common cloud computing providers. The exact hardware specification will most likely change with each iteration of the benchmark. The specs of the benchmarking hardware for this iteration of the benchmark are:
+
+- 8xV100 GPUs
+- 240 GB in RAM
+- 2 TB in storage (for datasets).
 
 For self-reported results, it is acceptable to perform the tuning trials on hardware different from the benchmarking hardware, as long as the same hardware is used for all tuning trials. Once the best trial, i.e. the one that reached the *validation* target the fastest, was determined, this run has to be repeated on the competition hardware. For example, submitters can tune using their locally available hardware but have to use the benchmarking hardware, e.g. via cloud providers, for the $5$ scored runs. This allows for a fair comparison to the reported results of other submitters while allowing some flexibility in the hardware.
 
 #### Defining target performance
 
-Target performances on the validation and test sets will be defined for each [workload](#workloads) separately. For the [fixed workloads](#fixed-workloads), we take the best performance achievable by one of four standard algorithms (AdamW, NadamW, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a slightly larger tuning budget of $200$ trials to guarantee competitive performance. Once the best algorithm and its hyperparameters are determined, training is repeated $20$ times. The median of the best achieved validation errors across seeds is used as the *validation* target. Out of the $10$ repeated runs that achieved this validation target, we took the worst achieved test error across seeds as our *test* target. Taking the median validation performance after rerunning the best hyperparameter point prevents our procedure from selecting a lucky outlier.
+Target performances on the validation and test sets will be defined for each [workload](#workloads) separately. For the [fixed workloads](#fixed-workloads), we take the best performance achievable by one of four standard algorithms (AdamW, NadamW, Nesterov Momentum, and Heavy Ball Momentum). These target-setting algorithms will follow the general process of the external tuning ruleset, with a significantly larger tuning budget of $200$ trials to guarantee competitive performance. Once the best algorithm and its hyperparameters are determined, training is repeated $20$ times. The median of the best achieved validation errors across seeds is used as the *validation* target. Out of the $10$ repeated runs that achieved this validation target, we took the worst achieved test error across seeds as our *test* target. Taking the median validation performance after rerunning the best hyperparameter point prevents our procedure from selecting a lucky outlier.
 To save computational resources, we only tuned two training algorithms instead of four, for the [randomized workloads](#randomized-workloads). For each workload variant, we used NadamW and the other best-performing training algorithm on the corresponding fixed workload the randomized workload is based on.
 
 Both [tuning rulesets](#tuning) will use the same target performances. The runtime of the target-setting algorithms on each workload will be chosen to match published results and is constrained by the overall time budget of roughly a single week for all fixed workloads. The `max_runtime` for submissions on each workload is $\frac{1}{3}$ longer than the runtime of the target-setting algorithms (this `max_runtime` will be three times as much for the self-tuning ruleset, see the [Self-tuning ruleset](#self-tuning-ruleset) section).
@@ -471,7 +490,7 @@ For the benchmark score, we compute and integrate the performance profiles using
 - Reach the validation target on the held-out workload (corresponding to the fixed workload) within the maximum runtime.
 - Reach the validation target on the held-out workload (corresponding to the fixed workload) within 4x of the fastest submission. To determine the fastest submission on a held-out workload, we only consider submissions that reached the target on the corresponding fixed workload. This protects us against extremely fast submissions that only work on a specific held-out workload and are useless as general algorithms.
 
-Only if all four requirements are met, does the submission get a finite score. Otherwise, a submission will receive a training time of infinity.
+Only if all four requirements are met, does the submission get a finite score. Otherwise, a submission will receive a training time of infinity. Note that the tuning process works the same for held-out workloads as for the fixed workloads, i.e. in the external tuning ruleset there are multiple tuning trials and only the fastest trial per study is relevant for scoring.
 
 This essentially means that being unable to successfully train a held-out workload can "disqualify" a submission from getting a good score on the fixed workload it is based on. In other words, we require submissions to be robust enough to handle workload variations. This protocol ensures that we prioritize the fixed workloads for scoring since they are the most relevant version of that workload in practice. However, we also protect our benchmark from egregious workload-specific tuning and penalize brittle methods that break with slight modifications of the workload.
 
@@ -482,10 +501,82 @@ However, we believe that they are fairer and well-supported by research in machi
 
 For a given workload $\bar{w}$, we define the "speedup of a submission $\bar{s}$ over the target-setting reference" as $\frac{t_{\text{ref}, \bar{w}}}{t_{\bar{s}, \bar{w}}}$. For example, if a submission was 2x faster than the target-setting reference, this would be equal to 2. In addition to the raw  $t_{s,w}$ values, we will release the geometric mean of the speedups across all workloads, i.e. $\left(\prod_{w \in \mathcal{W}} \frac{t_{\text{ref}, w}}{t_{\bar{s}, w}}\right)^{\frac{1}{n}}$.
 
-### Benchmark Procedure
+##### Verifying scores
 
-For a description of how to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark, see the [Call for submissions](CALL_FOR_SUBMISSIONS.md), which details the entire competition process.
+The working group will independently verify the scores of the highest-scoring submissions in each ruleset. Results that have been verified by the working group will be clearly marked on the leaderboard.
 
-## Model Track
+### Version freeze
 
-🚧 **Coming soon!** 🚧
+The benchmark code base is subject to change after the call for submissions is published. For example, while interacting with the codebase, if submitters encounter bugs or API limitations, they have the option to issue a bug report. This might lead to modifications of the benchmark codebase even after the publication of the call for submissions.
+
+To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we will freeze the package versions of the codebase dependencies before the submission deadline. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will also try to minimize changes to the benchmark codebase as best as possible.
+
+## FAQs
+
+### Setup and Platform
+
+#### My machine only has one GPU. How can I use this repo?
+
+You can run this repo on a machine with an arbitrary number of GPUs. However, the default batch sizes in our reference algorithms `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms` are tuned for a machine with 8 16GB V100 GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batch sizes for the submission. Note that your final submission must 'fit' on the benchmarking hardware, so if you are using fewer
+GPUs with higher per GPU memory, please monitor your memory usage to make sure it will fit on 8xV100 GPUs with 16GB of VRAM per card.
+
+#### How do I run this on my SLURM cluster?
+
+You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [section](/GETTING_STARTED.md#using-singularityapptainer-instead-of-docker).
+
+#### How can I run this on my AWS/GCP/Azure cloud project?
+
+Depending on your virtual machine, you may have to install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
+
+1. If you don't have a VM instance yet, we recommend creating a
+new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options.
+2. To install the NVIDIA Docker toolkit, you can use `scripts/cloud-startup.sh` as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+
+### Submitting
+
+#### Can I submit multiple times to the benchmark competition?
+
+Our benchmark allows multiple submissions by the same team of submitters as long as they are substantially different. We disallow submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
+
+Submitters may submit algorithms marked as *baselines*. These might include existing algorithms with different search spaces or learning rate schedules. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters.
+
+#### Can my submission be structured using multiple files?
+
+Yes, your submission can be structured using multiple files.
+
+#### Can I install custom dependencies?
+
+You may use custom dependencies as long as they do not conflict with any of the pinned packages in `algorithmic-efficiency/setup.cfg`.
+To include your custom dependencies in your submission, please include them in a requirements.txt file. Please refer to the [Software dependencies](#software-dependencies) section of our rules.
+
+#### How can I know if my code can be run on benchmarking hardware?
+
+The benchmarking hardware specifications are documented in the [Benchmarking Hardware Section](#benchmarking-hardware). We recommend monitoring your submission's memory usage so that it does not exceed the available memory
+on the benchmarking hardware. We also recommend to do a dry run using a cloud instance.
+
+#### Are we allowed to use our own hardware to self-report the results?
+
+You only have to use the benchmarking hardware for runs that are directly involved in the scoring procedure. This includes all runs for the self-tuning ruleset, but only the runs of the best hyperparameter configuration in each study for the external tuning ruleset. For example, you could use your own (different) hardware to tune your submission and identify the best hyperparameter configuration (in each study) and then only run this configuration (i.e. 5 runs, one for each study) on the benchmarking hardware.
+
+#### What can I do if running the benchmark is too expensive for me?
+
+Submitters unable to self-fund scoring costs can instead self-report only on the [qualification set of workloads](/COMPETITION_RULES.md#qualification-set) that excludes some of the most expensive workloads. Based on this performance on the qualification set, the working group will provide - as funding allows - compute to evaluate and score the most promising submissions. Additionally, we encourage researchers to reach out to the [working group](mailto:algorithms@mlcommons.org) to find potential collaborators with the resources to run larger, more comprehensive experiments for both developing and scoring submissions.
+
+#### Can I submit previously published training algorithms as submissions?
+
+Yes, you may, as long as it isn't an exact copy of an existing submission.
+For example, you may submit the Adam optimizer with your particularly effective hyperparameter search space and hyperparameter configuration, as different choices for hyperparameter values and/or search spaces constitute different training algorithms and are potential sources of innovation.
+That said, while submitting Adam with some novel heuristic to set various hyperparameters, some especially effective hyperparameter search space, or your single best hyperparameter configuration is fine, avoid making multiple submissions that only differ by their hyperparameter configuration without a convincing justification they are substantially different (see ["Can I submit multiple times to the benchmark competition?"](/COMPETITION_RULES.md#can-i-submit-multiple-times-to-the-benchmark-competition), above).
+
+## Disclaimers
+
+### Shared Data Pipelines between JAX and PyTorch
+
+The JAX and PyTorch versions of the Criteo, FastMRI, Librispeech, OGBG, and WMT workloads use the same TensorFlow input pipelines. Due to differences in how JAX and PyTorch distribute computations across devices, the PyTorch workloads have an additional overhead for these workloads.
+
+Since we use PyTorch's [`DistributedDataParallel`](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel) implementation, there is one Python process for each device. Depending on the hardware and the settings of the cluster, running a TensorFlow input pipeline in each Python process can lead to errors, since too many threads are created in each process. See [this PR thread](https://github.com/mlcommons/algorithmic-efficiency/pull/85) for more details.
+While this issue might not affect all setups, we currently implement a different strategy: we only run the TensorFlow input pipeline in one Python process (with `rank == 0`), and [broadcast](https://pytorch.org/docs/stable/distributed.html#torch.distributed.broadcast) the batches to all other devices. This introduces an additional communication overhead for each batch. See the [implementation for the WMT workload](https://github.com/mlcommons/algorithmic-efficiency/blob/main/algorithmic_efficiency/workloads/wmt/wmt_pytorch/workload.py#L215-L288) as an example.
+
+### Pytorch Conformer CUDA OOM
+
+The Conformer PyTorch workload may run out of memory in the current state. Please set the `submission_runner.py` flag `reduce_pytorch_max_split_size` to `True` as a temporary workaround if you encounter this issue. This will set `max_split_size_mb:256`. Note that this will adversely impact the performance of the submission on this workload. See [tracking issue](https://github.com/mlcommons/algorithmic-efficiency/issues/497).
