@@ -8,9 +8,9 @@ import torch
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
-    LibriSpeechConformerGeluWorkload as JaxWorkload
+    LibriSpeechConformerGELUWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import \
-    LibriSpeechConformerGeluWorkload as PytWorkload
+    LibriSpeechConformerGELUWorkload as PytWorkload
 from tests.modeldiffs.diff import out_diff
 
 

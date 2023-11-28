@@ -346,7 +346,7 @@ class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
     return False
 
 
-class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
+class LibriSpeechConformerGELUWorkload(LibriSpeechConformerWorkload):
 
   @property
   def use_gelu(self) -> bool:
