@@ -3,6 +3,7 @@ https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.
 """
 
 from dataclasses import dataclass
+from functools import partial
 import math
 from typing import Tuple
 
@@ -213,7 +214,8 @@ class FeedForwardModule(nn.Module):
     if self.config.activation_function_name == 'swish':
       activation_fn = F.silu
     elif self.config.activation_function_name == 'gelu':
-      activation_fn = F.gelu
+      # Use tanh approximation of GELU which is default for jax
+      activation_fn = partial(F.gelu, approximate='tanh')
     else:
       raise ValueError(
           'Only "swish" and "gelu" are supported '
