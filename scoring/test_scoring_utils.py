@@ -41,5 +41,6 @@ class Test(absltest.TestCase):
         scale='linear',
         verbosity=0)
 
+
 if __name__ == '__main__':
   absltest.main()
