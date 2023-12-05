@@ -28,6 +28,7 @@ class TransformerConfig:
   dropout_rate: Optional[float] = 0.1
   #If None, defaults to 0.1.
   attention_dropout_rate: Optional[float] = 0.1
+  attention_temp: float = 1.0
   deterministic: bool = False
   decode: bool = False
   kernel_init: Callable = nn.initializers.xavier_uniform()
@@ -202,7 +203,7 @@ class Encoder1DBlock(nn.Module):
       attention_dropout_rate = 0.1
     else:
       attention_dropout_rate = cfg.attention_dropout_rate
-    x = nn.SelfAttention(
+    x = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
         qkv_features=cfg.qkv_dim,
@@ -211,7 +212,8 @@ class Encoder1DBlock(nn.Module):
         use_bias=False,
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(x, encoder_mask)
+        deterministic=cfg.deterministic)(
+            cfg.attention_temp * x, x, encoder_mask)
 
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
@@ -265,7 +267,7 @@ class EncoderDecoder1DBlock(nn.Module):
       attention_dropout_rate = 0.1
     else:
       attention_dropout_rate = cfg.attention_dropout_rate
-    x = nn.SelfAttention(
+    x = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
         qkv_features=cfg.qkv_dim,
@@ -275,7 +277,7 @@ class EncoderDecoder1DBlock(nn.Module):
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
         deterministic=cfg.deterministic,
-        decode=cfg.decode)(x, decoder_mask)
+        decode=cfg.decode)(cfg.attention_temp * x, x, decoder_mask)
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
     else:
@@ -296,7 +298,8 @@ class EncoderDecoder1DBlock(nn.Module):
         use_bias=False,
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(y, encoded, encoder_decoder_mask)
+        deterministic=cfg.deterministic)(
+            cfg.attention_temp * y, encoded, encoder_decoder_mask)
 
     y = nn.Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
