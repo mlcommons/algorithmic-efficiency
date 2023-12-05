@@ -140,7 +140,12 @@ class TransposeConvBlock(nn.Module):
   # A Transpose Convolutional Block that consists of one convolution transpose
   # layers followed by instance normalization and LeakyReLU activation.
 
-  def __init__(self, in_chans: int, out_chans: int):
+  def __init__(self, 
+              in_chans: int, 
+              out_chans: int,
+              use_tanh: bool, 
+              use_layer_norm: bool,
+              ):
     super().__init__()
     if use_layer_norm:
       norm_layer = nn.LayerNorm
