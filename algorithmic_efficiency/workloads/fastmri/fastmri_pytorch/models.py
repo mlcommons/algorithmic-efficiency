@@ -61,7 +61,7 @@ class UNet(nn.Module):
     self.up_conv.append(
         nn.Sequential(
             ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm),
-            nn.Conv2d(ch, out_chans=1, kernel_size=1, stride=1),
+            nn.Conv2d(ch, 1, kernel_size=1, stride=1),
         ))
 
     for m in self.modules():
