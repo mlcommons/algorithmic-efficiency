@@ -28,7 +28,8 @@ def _instance_norm2d(x, axes, epsilon=1e-5):
   mean2 = jnp.mean(jnp.square(x), axes)
   # mean2 - _abs_sq(mean) is not guaranteed to be non-negative due
   # to floating point round-off errors.
-  var = jnp.maximum(0., mean2 - jnp.square(mean))  stats_shape = list(x.shape)
+  var = jnp.maximum(0., mean2 - jnp.square(mean))  
+  stats_shape = list(x.shape)
   for axis in axes:
     stats_shape[axis] = 1
   mean = mean.reshape(stats_shape)
