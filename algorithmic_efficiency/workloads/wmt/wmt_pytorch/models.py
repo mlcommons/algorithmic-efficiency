@@ -106,7 +106,8 @@ class Transformer(nn.Module):
                nlayers: int = 6,
                dropout_rate: Optional[float] = 0.1,
                attention_dropout_rate: Optional[float] = 0.1,
-               layer_norm_eps: float = 1e-6):
+               layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0):
     super().__init__()
     if dropout_rate is None:
       dropout_rate = 0.1
@@ -120,14 +121,16 @@ class Transformer(nn.Module):
                            nlayers,
                            dropout_rate,
                            attention_dropout_rate,
-                           layer_norm_eps)
+                           layer_norm_eps,
+                           attention_temp)
     self.decoder = Decoder(d_model,
                            nhead,
                            d_hid,
                            nlayers,
                            dropout_rate,
                            attention_dropout_rate,
-                           layer_norm_eps)
+                           layer_norm_eps,
+                           attention_temp)
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
     self.encoder.shared_embedding = self.shared_embedding
@@ -265,7 +268,8 @@ class Encoder(nn.Module):
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
-               layer_norm_eps: float = 1e-6):
+               layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -276,7 +280,8 @@ class Encoder(nn.Module):
         d_hid,
         dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
-        layer_norm_eps=layer_norm_eps)
+        layer_norm_eps=layer_norm_eps,
+        attention_temp=attention_temp)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
@@ -301,7 +306,8 @@ class Decoder(nn.Module):
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
-               layer_norm_eps: float = 1e-6):
+               layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -551,7 +557,8 @@ class TransformerDecoder(nn.Module):
                dropout_rate,
                attention_dropout_rate,
                layer_norm_eps,
-               num_layers):
+               num_layers,
+               attention_temp):
     super().__init__()
     self.layers = nn.ModuleList([
         TransformerDecoderLayer(
@@ -560,7 +567,8 @@ class TransformerDecoder(nn.Module):
             d_hid,
             dropout_rate,
             attention_dropout_rate,
-            layer_norm_eps=layer_norm_eps) for _ in range(num_layers)
+            layer_norm_eps=layer_norm_eps,
+            attention_temp=attention_temp) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
     self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
@@ -646,6 +654,7 @@ class TransformerDecoderLayer(nn.Module):
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                layer_norm_eps: float = 1e-6,
                norm_first: bool = True,
+               attention_temp: float = 1.0,
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
@@ -655,6 +664,7 @@ class TransformerDecoderLayer(nn.Module):
         nhead,
         self_attn=True,
         dropout_rate=attention_dropout_rate,
+        attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
     self.multihead_attn = MultiheadAttention(
@@ -662,6 +672,7 @@ class TransformerDecoderLayer(nn.Module):
         nhead,
         self_attn=False,
         dropout_rate=attention_dropout_rate,
+        attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
 
@@ -790,6 +801,7 @@ class MultiheadAttention(nn.Module):
                num_heads: int,
                self_attn: bool = True,
                dropout_rate: float = 0.,
+               attention_temp: float = 1.0,
                bias: bool = False,
                device: Optional[torch.device] = None,
                dtype: Optional[torch.dtype] = None) -> None:
@@ -799,6 +811,7 @@ class MultiheadAttention(nn.Module):
     self.self_attn = self_attn
     self.dropout = dropout_rate
     self.head_dim = embed_dim // num_heads
+    self.attention_temp = attention_temp
     assert self.head_dim * num_heads == self.embed_dim, \
         'embed_dim must be divisible by num_heads.'
 
@@ -949,6 +962,7 @@ class MultiheadAttention(nn.Module):
     dropout_rate = self.dropout if self.training else 0.0
 
     # Calculate attention.
+    q.mul_(self.attention_temp)
     attn_output = torch.nn.functional.scaled_dot_product_attention(
         q, k, v, attn_mask, dropout_rate)
     # Rearrange for output projection.
