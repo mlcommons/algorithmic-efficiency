@@ -13,8 +13,7 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import \
-    UNet
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch import models
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
@@ -254,3 +253,32 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+
+class FastMRIModelSizeWorkload(FastMRIWorkload):
+
+  @property
+  def num_pool_layers(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return 3
+
+  @property
+  def num_channels(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return 64
+
+
+class FastMRITanhWorkload(FastMRIWorkload):
+
+  @property
+  def use_tanh(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return True
+
+
+class FastMRILayerNormWorkload(FastMRIWorkload):
+
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return True
