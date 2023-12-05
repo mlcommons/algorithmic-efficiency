@@ -2,8 +2,8 @@
 
 The three primary methods exposed by the `scoring` module are:
 - `compute_performance_profiles`: generates performance profiles for a set of
-  submissions over all workloads as defined in the scoring rules:
-  https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md
+  submissions over all workloads as defined in the scoring section:
+  https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md
 - `compute_leaderboard_score`: computes final scores from performance profiles.
 - `plot_performance_profiles`: plot performance profiles for a set of
   submissions.
