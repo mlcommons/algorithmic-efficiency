@@ -113,7 +113,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = UNet(dropout_rate=dropout_rate)
+    model = models.UNet(
+        num_pool_layers=self.num_pool_layers,
+        num_channels=self.num_channels,
+        use_tanh=self.use_tanh,
+        use_layer_norm=self.use_layer_norm,
+        dropout_rate=dropout_rate)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
