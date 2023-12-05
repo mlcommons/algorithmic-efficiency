@@ -184,6 +184,7 @@ def _reset_cuda_mem():
 
 def train_once(
     workload: spec.Workload,
+    workload_name: str,
     global_batch_size: int,
     global_eval_batch_size: int,
     data_dir: str,
@@ -228,7 +229,7 @@ def train_once(
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
-      base_workload = workloads.get_base_workload_name(workload)
+      base_workload = workloads.get_base_workload_name(workload_name)
       if base_workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
@@ -559,7 +560,8 @@ def score_submission_on_workload(workload: spec.Workload,
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
-        timing, metrics = train_once(workload, global_batch_size,
+        timing, metrics = train_once(workload, workload_name,
+                                     global_batch_size,
                                      global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
@@ -596,7 +598,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logger_utils.makedir(log_dir)
     with profiler.profile('Train'):
       score, _ = train_once(
-          workload, global_batch_size, global_eval_batch_size,
+          workload, workload_name, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
           None, rng_seed, rng, profiler, max_global_steps, log_dir,
