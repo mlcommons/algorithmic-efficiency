@@ -24,7 +24,7 @@ class UNet(nn.Module):
   def __init__(self,
                in_chans: int = 1,
                out_chans: int = 1,
-               chans: int = 32,
+               num_channels: int = 32,
                num_pool_layers: int = 4,
                dropout_rate: Optional[float] = 0.0,
                use_tanh: bool = False,
@@ -33,14 +33,14 @@ class UNet(nn.Module):
 
     self.in_chans = in_chans
     self.out_chans = out_chans
-    self.chans = chans
+    self.num_channels = num_channels
     self.num_pool_layers = num_pool_layers
     if dropout_rate is None:
       dropout_rate = 0.0
 
     self.down_sample_layers = nn.ModuleList(
-        [ConvBlock(in_chans, chans, dropout_rate, use_tanh, use_layer_norm)])
-    ch = chans
+        [ConvBlock(in_chans, num_channels, dropout_rate, use_tanh, use_layer_norm)])
+    ch = num_channels
     for _ in range(num_pool_layers - 1):
       self.down_sample_layers.append(
           ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm))
