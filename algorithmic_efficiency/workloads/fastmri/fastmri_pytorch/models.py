@@ -115,7 +115,6 @@ class ConvBlock(nn.Module):
 
     if use_layer_norm:
       norm_layer = nn.LayerNorm
-      norm_layer = nn.InstanceNorm2d
     else:
       norm_layer = nn.InstanceNorm2d
     if use_tanh:
@@ -124,12 +123,12 @@ class ConvBlock(nn.Module):
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        norm_layer(out_chans),
-        activation_fn,
+        nn.InstanceNorm2d(out_chans),
+        nn.LeakyReLU(negative_slope=0.2, inplace=True),
         nn.Dropout2d(dropout_rate),
         nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        norm_layer(out_chans),
-        activation_fn,
+        nn.InstanceNorm2d(out_chans),
+        nn.LeakyReLU(negative_slope=0.2, inplace=True),
         nn.Dropout2d(dropout_rate),
     )
 
