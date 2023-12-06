@@ -2,7 +2,6 @@
 
 import functools
 
-import functorch
 import torch
 import torch.nn.functional as F
 from torchvision.transforms.functional import pad as pad_fn
