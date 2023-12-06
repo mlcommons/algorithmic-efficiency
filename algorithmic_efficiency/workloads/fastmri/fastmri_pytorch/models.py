@@ -114,11 +114,11 @@ class ConvBlock(nn.Module):
     super().__init__()
 
     if use_layer_norm:
-      norm_layer = nn.LayerNorm([out_chans, 320, 320])
+      norm_layer = nn.LayerNorm([out_chans, 160, 160])
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
-      activation_fn = nn.Tanh(inplace=True)
+      activation_fn = nn.Tanh()
     else:
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.conv_layers = nn.Sequential(
@@ -152,7 +152,7 @@ class TransposeConvBlock(nn.Module):
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
-      activation_fn = nn.Tanh(inplace=True)
+      activation_fn = nn.Tanh()
     else:
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.layers = nn.Sequential(
