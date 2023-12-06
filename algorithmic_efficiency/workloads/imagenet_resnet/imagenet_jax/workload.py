@@ -10,6 +10,7 @@ import math
 from typing import Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
+from flax import linen as nn
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -91,7 +92,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del dropout_rate
     del aux_dropout_rate
     model_cls = getattr(models, 'ResNet50')
-    model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
+
+    if self.use_silu and self.use_gelu:
+      raise RuntimeError('Cannot use both GELU and SiLU activations.')
+    if self.use_silu:
+      act_fnc = nn.silu
+    elif self.use_gelu:
+      act_fnc = nn.gelu
+    else:
+      act_fnc = nn.relu
+
+    model = model_cls(num_classes=self._num_classes, act=act_fnc, bn_init_scale=self.bn_init_scale, dtype=jnp.float32)
     self._model = model
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': rng},
@@ -247,3 +258,21 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
                                 eval_metrics)
     return eval_metrics
+
+
+class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
+  @property
+  def use_silu(self) -> bool:
+    return True
+
+
+class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
+  @property
+  def use_gelu(self) -> bool:
+    return True
+
+
+class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
+  @property
+  def bn_init_scale(self) -> float:
+    return 8.0

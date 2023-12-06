@@ -28,6 +28,18 @@ WORKLOADS = {
         'workload_path': 'imagenet_resnet/imagenet',
         'workload_class_name': 'ImagenetResNetWorkload',
     },
+    'imagenet_resnet_silu': {
+        'workload_path': 'imagenet_resnet/imagenet',
+        'workload_class_name': 'ImagenetResNetSiLUWorkload',
+    },
+    'imagenet_resnet_gelu': {
+        'workload_path': 'imagenet_resnet/imagenet',
+        'workload_class_name': 'ImagenetResNetGELUWorkload',
+    },
+    'imagenet_resnet_large_bn_init': {
+        'workload_path': 'imagenet_resnet/imagenet',
+        'workload_class_name': 'ImagenetResNetLargeBNScaleWorkload',
+    },
     'imagenet_vit': {
         'workload_path': 'imagenet_vit/imagenet',
         'workload_class_name': 'ImagenetVitWorkload',

@@ -5,7 +5,7 @@ https://github.com/google/flax/blob/main/examples/imagenet/models.py.
 """
 
 import functools
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
@@ -22,6 +22,7 @@ class ResNetBlock(nn.Module):
   norm: ModuleDef
   act: Callable
   strides: Tuple[int, int] = (1, 1)
+  bn_init_scale: float = 0.
 
   @nn.compact
   def __call__(self, x: spec.Tensor) -> spec.Tensor:
@@ -30,7 +31,7 @@ class ResNetBlock(nn.Module):
     y = self.norm()(y)
     y = self.act(y)
     y = self.conv(self.filters, (3, 3))(y)
-    y = self.norm(scale_init=nn.initializers.zeros)(y)
+    y = self.norm(scale_init=nn.initializers.constant(self.bn_init_scale))(y)
 
     if residual.shape != y.shape or self.strides != (1, 1):
       residual = self.conv(
@@ -48,6 +49,7 @@ class BottleneckResNetBlock(nn.Module):
   norm: ModuleDef
   act: Callable
   strides: Tuple[int, int] = (1, 1)
+  bn_init_scale: Optional[float] = None
 
   @nn.compact
   def __call__(self, x: spec.Tensor) -> spec.Tensor:
@@ -59,7 +61,7 @@ class BottleneckResNetBlock(nn.Module):
     y = self.norm()(y)
     y = self.act(y)
     y = self.conv(self.filters * 4, (1, 1))(y)
-    y = self.norm(scale_init=nn.initializers.zeros)(y)
+    y = self.norm(scale_init=nn.initializers.constant(self.bn_init_scale))(y)
 
     if residual.shape != y.shape or self.strides != (1, 1):
       residual = self.conv(
@@ -77,6 +79,7 @@ class ResNet(nn.Module):
   num_filters: int = 64
   dtype: Any = jnp.float32
   act: Callable = nn.relu
+  bn_init_scale: float = 0.
 
   @nn.compact
   def __call__(self,
@@ -96,7 +99,7 @@ class ResNet(nn.Module):
         name='Conv_init')(
             x)
     x = norm(name='BatchNorm_init')(x)
-    x = nn.relu(x)
+    x = self.act(x)
     x = nn.max_pool(x, (3, 3), strides=(2, 2), padding=((1, 1), (1, 1)))
     for i, block_size in enumerate(self.stage_sizes):
       for j in range(block_size):
@@ -106,7 +109,8 @@ class ResNet(nn.Module):
             strides=strides,
             conv=conv,
             norm=norm,
-            act=self.act)(
+            act=self.act,
+            bn_init_scale=self.bn_init_scale)(
                 x)
     x = jnp.mean(x, axis=(1, 2))
     x = nn.Dense(
