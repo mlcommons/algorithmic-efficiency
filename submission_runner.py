@@ -226,6 +226,7 @@ def train_once(
           'ogbg',
           'criteo1tb',
           'imagenet_vit',
+          'fastmri'
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
