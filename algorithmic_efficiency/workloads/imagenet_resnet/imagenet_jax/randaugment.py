@@ -9,7 +9,7 @@ import math
 
 import tensorflow as tf
 
-# from tensorflow_addons import image as contrib_image
+from tensorflow_addons import image as contrib_image
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.

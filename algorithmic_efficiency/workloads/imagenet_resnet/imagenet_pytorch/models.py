@@ -42,16 +42,18 @@ class BasicBlock(nn.Module):
   """ResNet block."""
   expansion: int = 1
 
-  def __init__(self,
-               inplanes: int,
-               planes: int,
-               stride: int = 1,
-               downsample: Optional[nn.Module] = None,
-               groups: int = 1,
-               base_width: int = 64,
-               dilation: int = 1,
-               norm_layer: Optional[Callable[..., nn.Module]] = None,
-               act_fnc: nn.Module = nn.ReLU(inplace=True)) -> None:
+  def __init__(
+      self,
+      inplanes: int,
+      planes: int,
+      stride: int = 1,
+      downsample: Optional[nn.Module] = None,
+      groups: int = 1,
+      base_width: int = 64,
+      dilation: int = 1,
+      norm_layer: Optional[Callable[..., nn.Module]] = None,
+      act_fnc: nn.Module = nn.ReLU(inplace=True)
+  ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -92,16 +94,18 @@ class Bottleneck(nn.Module):
   """Bottleneck ResNet block."""
   expansion: int = 4
 
-  def __init__(self,
-               inplanes: int,
-               planes: int,
-               stride: int = 1,
-               downsample: Optional[nn.Module] = None,
-               groups: int = 1,
-               base_width: int = 64,
-               dilation: int = 1,
-               norm_layer: Optional[Callable[..., nn.Module]] = None,
-               act_fnc: nn.Module = nn.ReLU(inplace=True)) -> None:
+  def __init__(
+      self,
+      inplanes: int,
+      planes: int,
+      stride: int = 1,
+      downsample: Optional[nn.Module] = None,
+      groups: int = 1,
+      base_width: int = 64,
+      dilation: int = 1,
+      norm_layer: Optional[Callable[..., nn.Module]] = None,
+      act_fnc: nn.Module = nn.ReLU(inplace=True)
+  ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -178,11 +182,26 @@ class ResNet(nn.Module):
     self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
     self.layer1 = self._make_layer(block, self.act_fnc, 64, layers[0])
     self.layer2 = self._make_layer(
-        block, self.act_fnc, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
+        block,
+        self.act_fnc,
+        128,
+        layers[1],
+        stride=2,
+        dilate=replace_stride_with_dilation[0])
     self.layer3 = self._make_layer(
-        block, self.act_fnc, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
+        block,
+        self.act_fnc,
+        256,
+        layers[2],
+        stride=2,
+        dilate=replace_stride_with_dilation[1])
     self.layer4 = self._make_layer(
-        block, self.act_fnc, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
+        block,
+        self.act_fnc,
+        512,
+        layers[3],
+        stride=2,
+        dilate=replace_stride_with_dilation[2])
     self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     self.fc = nn.Linear(512 * block.expansion, num_classes)
 

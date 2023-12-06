@@ -302,18 +302,21 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
 
 class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
+
   @property
   def use_silu(self) -> bool:
     return True
 
 
 class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
+
   @property
   def use_gelu(self) -> bool:
     return True
 
 
 class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
+
   @property
   def bn_init_scale(self) -> float:
     return 8.0

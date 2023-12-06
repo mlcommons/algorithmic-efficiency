@@ -102,7 +102,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       act_fnc = nn.relu
 
-    model = model_cls(num_classes=self._num_classes, act=act_fnc, bn_init_scale=self.bn_init_scale, dtype=jnp.float32)
+    model = model_cls(
+        num_classes=self._num_classes,
+        act=act_fnc,
+        bn_init_scale=self.bn_init_scale,
+        dtype=jnp.float32)
     self._model = model
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': rng},
@@ -261,18 +265,21 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
 
 class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
+
   @property
   def use_silu(self) -> bool:
     return True
 
 
 class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
+
   @property
   def use_gelu(self) -> bool:
     return True
 
 
 class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
+
   @property
   def bn_init_scale(self) -> float:
     return 8.0
