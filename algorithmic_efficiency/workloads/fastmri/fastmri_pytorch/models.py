@@ -115,6 +115,7 @@ class ConvBlock(nn.Module):
 
     if use_layer_norm:
       norm_layer = nn.LayerNorm
+      norm_layer = nn.InstanceNorm2d
     else:
       norm_layer = nn.InstanceNorm2d
     if use_tanh:
