@@ -115,19 +115,21 @@ class ConvBlock(nn.Module):
 
     if use_layer_norm:
       norm_layer = nn.LayerNorm(out_chans)
+      norm_layer = nn.InstanceNorm2d(out_chans)
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
       activation_fn = nn.Tanh(inplace=True)
+      activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     else:
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        nn.InstanceNorm2d(out_chans),
-        nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        norm_layer,
+        activation_fn,
         nn.Dropout2d(dropout_rate),
         nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        nn.InstanceNorm2d(out_chans),
+        norm_layer,
         nn.LeakyReLU(negative_slope=0.2, inplace=True),
         nn.Dropout2d(dropout_rate),
     )
@@ -149,17 +151,19 @@ class TransposeConvBlock(nn.Module):
     super().__init__()
     if use_layer_norm:
       norm_layer = nn.LayerNorm(out_chans)
+      norm_layer = nn.InstanceNorm2d(out_chans)
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
       activation_fn = nn.Tanh(inplace=True)
+      activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     else:
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.layers = nn.Sequential(
         nn.ConvTranspose2d(
             in_chans, out_chans, kernel_size=2, stride=2, bias=False),
-        nn.InstanceNorm2d(out_chans),
-        nn.LeakyReLU(negative_slope=0.2, inplace=True),
+        norm_layer,
+        activation_fn,
     )
 
   def forward(self, x: Tensor) -> Tensor:
