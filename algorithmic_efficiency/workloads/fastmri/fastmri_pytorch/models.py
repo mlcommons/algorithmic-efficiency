@@ -124,7 +124,7 @@ class ConvBlock(nn.Module):
     self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
         norm_layer,
-        activations_fn,
+        activation_fn,
         nn.Dropout2d(dropout_rate),
         nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
         norm_layer,
