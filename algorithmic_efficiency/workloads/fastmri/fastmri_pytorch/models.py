@@ -114,7 +114,7 @@ class ConvBlock(nn.Module):
     super().__init__()
 
     if use_layer_norm:
-      norm_layer = nn.LayerNorm()
+      norm_layer = nn.LayerNorm([out_chans, 320, 320])
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
@@ -148,7 +148,7 @@ class TransposeConvBlock(nn.Module):
               ):
     super().__init__()
     if use_layer_norm:
-      norm_layer = nn.LayerNorm()
+      norm_layer = nn.LayerNorm([out_chans, 320, 320)
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
