@@ -13,6 +13,8 @@ class BaseFastMRIWorkload(spec.Workload):
   def target_metric_name(self) -> str:
     """The name of the target metric (useful for scoring/processing code)."""
     return 'ssim'
+  
+  @property
   def use_layer_norm(self) -> bool:
     """Whether or not to use LayerNorm in the model."""
     return False
