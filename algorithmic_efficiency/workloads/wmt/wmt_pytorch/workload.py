@@ -8,8 +8,8 @@ import jax
 import tensorflow as tf
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 from torch.nn import DataParallel as DP
+import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils

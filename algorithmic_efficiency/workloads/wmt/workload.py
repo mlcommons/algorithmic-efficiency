@@ -102,15 +102,15 @@ class BaseWmtWorkload(spec.Workload):
   @property
   def norm_first(self) -> bool:
     return True
-  
+
   @property
   def attention_temp(self) -> float:
     return 1.0
-  
+
   @property
   def activation(self) -> str:
     return 'relu'
-  
+
   @property
   def glu(self) -> bool:
     return False

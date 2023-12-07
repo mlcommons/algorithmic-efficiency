@@ -165,7 +165,8 @@ class MlpBlock(nn.Module):
           cfg.mlp_dim,
           dtype=cfg.dtype,
           kernel_init=cfg.kernel_init,
-          bias_init=cfg.bias_init)(inputs)
+          bias_init=cfg.bias_init)(
+              inputs)
       x = x * y
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
@@ -203,7 +204,7 @@ class Encoder1DBlock(nn.Module):
       output after transformer encoder block.
     """
     cfg = self.config
-    norm_first = cfg.norm_first 
+    norm_first = cfg.norm_first
 
     # Attention block.
     assert inputs.ndim == 3
@@ -221,8 +222,9 @@ class Encoder1DBlock(nn.Module):
         use_bias=False,
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(
-            cfg.attention_temp * x, x, encoder_mask)
+        deterministic=cfg.deterministic)(cfg.attention_temp * x,
+                                         x,
+                                         encoder_mask)
 
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
@@ -307,8 +309,9 @@ class EncoderDecoder1DBlock(nn.Module):
         use_bias=False,
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(
-            cfg.attention_temp * y, encoded, encoder_decoder_mask)
+        deterministic=cfg.deterministic)(cfg.attention_temp * y,
+                                         encoded,
+                                         encoder_decoder_mask)
 
     y = nn.Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
@@ -373,8 +376,9 @@ class Encoder(nn.Module):
       x = Encoder1DBlock(
           config=cfg, name=f'encoderblock_{lyr}')(x, encoder_mask)
 
-    encoded = (nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x) 
-               if cfg.norm_first else x)
+    encoded = (
+        nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
+        if cfg.norm_first else x)
 
     return encoded
 
@@ -445,8 +449,9 @@ class Decoder(nn.Module):
               encoded,
               decoder_mask=decoder_mask,
               encoder_decoder_mask=encoder_decoder_mask)
-    y = (nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_layernorm')(y)
-         if cfg.norm_first else y)
+    y = (
+        nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_layernorm')(y)
+        if cfg.norm_first else y)
 
     # Use the transpose of embedding matrix for logit transform.
     logits = output_embed.attend(y.astype(jnp.float32))

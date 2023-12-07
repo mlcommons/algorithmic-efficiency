@@ -487,8 +487,9 @@ class TransformerEncoderLayer(nn.Module):
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
     self.glu = glu
     if self.glu:
-      self.linear_glu = nn.Linear(
-          dim_feedforward, dim_feedforward, **factory_kwargs)
+      self.linear_glu = nn.Linear(dim_feedforward,
+                                  dim_feedforward,
+                                  **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
@@ -703,8 +704,9 @@ class TransformerDecoderLayer(nn.Module):
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
     self.glu = glu
     if self.glu:
-      self.linear_glu = nn.Linear(
-          dim_feedforward, dim_feedforward, **factory_kwargs)
+      self.linear_glu = nn.Linear(dim_feedforward,
+                                  dim_feedforward,
+                                  **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
