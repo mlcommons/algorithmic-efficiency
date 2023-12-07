@@ -225,7 +225,7 @@ def train_once(
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
-      skip_loss_compilation_workloads = ['criteo1tb']
+      loss_compilation_workloads = ['fastmri', 'librispeech_deepspeech', 'ogbg', 'wmt']
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
@@ -243,7 +243,7 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-      if FLAGS.workload not in skip_loss_compilation_workloads:
+      if FLAGS.workload in loss_compilation_workloads:
         workload.loss_fn = torch.compile(workload.loss_fn)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
