@@ -242,7 +242,7 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-      workload.loss_fn = torch.compile(workload.loss_fn)
+      # workload.loss_fn = torch.compile(workload.loss_fn)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
