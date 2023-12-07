@@ -20,12 +20,12 @@ class LayerNorm(nn.Module):
     super().__init__()
     self.normalized_shape = normalized_shape
 
-    self.scale = nn.Parameter(torch.zeros(self.dim))
-    self.bias = nn.Parameter(torch.zeros(self.dim))
+    self.scale = nn.Parameter(torch.zeros(self.normalized_shape[0]))
+    self.bias = nn.Parameter(torch.zeros(self.normalized_shape[0]))
     self.epsilon = epsilon
 
   def forward(self, x):
-    return F.layer_norm(x, normalized_shape, 1 + self.scale, self.bias, self.epsilon)
+    return F.layer_norm(x, self.normalized_shape, 1 + self.scale, self.bias, self.epsilon)
   
 
 class UNet(nn.Module):
