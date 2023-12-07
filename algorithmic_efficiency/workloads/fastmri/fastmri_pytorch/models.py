@@ -184,7 +184,7 @@ class TransposeConvBlock(nn.Module):
         nn.ConvTranspose2d(
             in_chans, out_chans, kernel_size=2, stride=2, bias=False),
         nn.GroupNorm(num_groups=1, num_channels=out_chans, eps=1e-6),
-        norm_layer,
+        norm_layer(out_chans),
         activation_fn,
     )
 
