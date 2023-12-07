@@ -62,7 +62,7 @@ class UNet(nn.Module):
       ch //= 2
 
     self.up_transpose_conv.append(
-        TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
+        TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm, size))
     size = int(size * 2)
     self.up_conv.append(
         nn.Sequential(
