@@ -12,6 +12,7 @@ high-level overview of Conformer encoder layer.
   y = layer_norm(x)
 """
 
+import functools
 import math
 from typing import Any, List, Optional
 
@@ -57,6 +58,9 @@ class ConformerConfig:
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
+  attention_temperature: float = 1.0
+  activation_function_name: str = 'swish'
+  use_post_layer_norm: bool = True
 
 
 class LayerNorm(nn.Module):
@@ -204,7 +208,15 @@ class FeedForwardModule(nn.Module):
         use_bias=True,
         kernel_init=nn.initializers.xavier_uniform())(
             inputs)
-    inputs = nn.swish(inputs)
+    if config.activation_function_name == 'swish':
+      activation_fn = nn.swish
+    elif config.activation_function_name == 'gelu':
+      activation_fn = nn.gelu
+    else:
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
         inputs, deterministic=not train)
 
@@ -300,7 +312,8 @@ def dot_product_attention(query,
                           dropout_rate=0.,
                           deterministic=False,
                           dtype=jnp.float32,
-                          precision=None):
+                          precision=None,
+                          temperature=1.0):
   """Computes dot-product attention given query, key, and value.
 
   This is the core function for applying attention based on
@@ -360,7 +373,8 @@ def dot_product_attention(query,
 
   # return weighted sum over values for each query position
   return jnp.einsum(
-      '...hqk,...khd->...qhd', attn_weights, value, precision=precision)
+      '...hqk,...khd->...qhd', attn_weights, value,
+      precision=precision) * temperature
 
 
 class MultiHeadedSelfAttention(nn.Module):
@@ -383,6 +397,8 @@ class MultiHeadedSelfAttention(nn.Module):
 
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
+    attention_fn = functools.partial(
+        dot_product_attention, temperature=config.attention_temperature)
     result = nn.SelfAttention(
         num_heads=config.num_attention_heads,
         qkv_features=config.encoder_dim,
@@ -392,7 +408,7 @@ class MultiHeadedSelfAttention(nn.Module):
         bias_init=nn.initializers.zeros,
         use_bias=True,
         broadcast_dropout=False,
-        attention_fn=dot_product_attention,
+        attention_fn=attention_fn,
         dropout_rate=config.attention_dropout_rate,
         deterministic=not train)(inputs, attention_mask)
 
@@ -531,8 +547,15 @@ class ConvolutionBlock(nn.Module):
             inputs)
 
     inputs = BatchNorm(config)(inputs, input_paddings, train)
-
-    inputs = nn.swish(inputs)
+    if config.activation_function_name == 'swish':
+      activation_fn = nn.swish
+    elif config.activation_function_name == 'gelu':
+      activation_fn = nn.gelu
+    else:
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = nn.Dense(
         config.encoder_dim, kernel_init=nn.initializers.xavier_uniform())(
             inputs)
@@ -579,7 +602,8 @@ class ConformerBlock(nn.Module):
     inputs = inputs + 0.5 * FeedForwardModule(config=self.config)(
         inputs, padding_mask, train)
 
-    inputs = LayerNorm(dim=config.encoder_dim)(inputs)
+    if config.use_post_layer_norm:
+      inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
     return inputs
 
