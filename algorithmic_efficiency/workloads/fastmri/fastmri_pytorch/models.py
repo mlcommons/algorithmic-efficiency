@@ -28,7 +28,8 @@ class UNet(nn.Module):
                num_pool_layers: int = 4,
                dropout_rate: Optional[float] = 0.0,
                use_tanh: bool = False,
-               use_layer_norm: bool = False) -> None:
+               use_layer_norm: bool = False,
+               size: int = 320) -> None:
     super().__init__()
 
     self.in_chans = in_chans
@@ -37,30 +38,35 @@ class UNet(nn.Module):
     self.num_pool_layers = num_pool_layers
     if dropout_rate is None:
       dropout_rate = 0.0
-
+    self.size = size
     self.down_sample_layers = nn.ModuleList(
-        [ConvBlock(in_chans, num_channels, dropout_rate, use_tanh, use_layer_norm)])
+        [ConvBlock(in_chans, num_channels, dropout_rate, use_tanh, use_layer_norm, size)])
+    size = size/2
     ch = num_channels
     for _ in range(num_pool_layers - 1):
       self.down_sample_layers.append(
-          ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm))
+          ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm, size))
       ch *= 2
-    self.conv = ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm)
+      size = size/2
+    self.conv = ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm, size)
+    size = size/2
 
     self.up_conv = nn.ModuleList()
     self.up_transpose_conv = nn.ModuleList()
     for _ in range(num_pool_layers - 1):
       self.up_transpose_conv.append(
-          TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
+          TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm, size))
+      size = size * 2
       self.up_conv.append(
-          ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm))
+          ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm, size))
       ch //= 2
 
     self.up_transpose_conv.append(
         TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
+    size = size * 2
     self.up_conv.append(
         nn.Sequential(
-            ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm),
+            ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm, size),
             nn.Conv2d(ch, 1, kernel_size=1, stride=1),
         ))
 
@@ -110,11 +116,12 @@ class ConvBlock(nn.Module):
                out_chans: int,
                dropout_rate: float,
                use_tanh: bool,
-               use_layer_norm: bool) -> None:
+               use_layer_norm: bool,
+               size: int) -> None:
     super().__init__()
 
     if use_layer_norm:
-      norm_layer = nn.LayerNorm([out_chans, 160, 160], eps=1e-06)
+      norm_layer = nn.LayerNorm([out_chans, size, size], eps=1e-06)
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
@@ -145,10 +152,11 @@ class TransposeConvBlock(nn.Module):
               out_chans: int,
               use_tanh: bool, 
               use_layer_norm: bool,
+              size: int,
               ):
     super().__init__()
     if use_layer_norm:
-      norm_layer = nn.LayerNorm([out_chans, 320, 320], eps=1e-06)
+      norm_layer = nn.LayerNorm([out_chans, size, size], eps=1e-06)
     else:
       norm_layer = nn.InstanceNorm2d(out_chans)
     if use_tanh:
