@@ -113,7 +113,8 @@ done
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
                 "wmt" "mnist")
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
-                 "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist" \
+                 "wmt" "wmt_post_ln" "wmt_attention_temp" "wmt_glu_tanh" \
+                 "librispeech_deepspeech" "librispeech_conformer" "mnist" \
                  "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init")
 
 
