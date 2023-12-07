@@ -43,8 +43,7 @@ class UNet(nn.Module):
                num_pool_layers: int = 4,
                dropout_rate: Optional[float] = 0.0,
                use_tanh: bool = False,
-               use_layer_norm: bool = False,
-               size: int = 320) -> None:
+               use_layer_norm: bool = False) -> None:
     super().__init__()
 
     self.in_chans = in_chans
@@ -130,7 +129,6 @@ class ConvBlock(nn.Module):
     super().__init__()
 
     if use_layer_norm:
-      size = int(size)
       norm_layer = partial(nn.GroupNorm, 1, eps=1e-6)
     else:
       norm_layer = nn.InstanceNorm2d
