@@ -35,13 +35,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         use_layer_norm=self.use_layer_norm,
         dropout_rate=dropout_rate)
     
-    tabulate_fn = nn.tabulate(
-    self._model,
-    jax.random.PRNGKey(0),
-    console_kwargs={
-        'force_terminal': False, 'force_jupyter': False, 'width': 240},
-    )
-    print(tabulate_fn(fake_batch, train=False))
     variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)

@@ -204,10 +204,7 @@ class TransposeConvBlock(nn.Module):
     x = nn.ConvTranspose(
         self.out_channels, kernel_size=(2, 2), strides=(2, 2), use_bias=False)(
             x)
-    if self.use_layer_norm:
-      x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
-    else:
-      x = _instance_norm2d(x, (1, 2))
+    x = _instance_norm2d(x, (1, 2))
     if self.use_tanh:
       activation_fn = nn.tanh
     else:
