@@ -361,26 +361,27 @@ def train_once(
 
         try:
           eval_start_time = get_time()
-          latest_eval_result = workload.eval_model(global_eval_batch_size,
-                                                   model_params,
-                                                   model_state,
-                                                   eval_rng,
-                                                   data_dir,
-                                                   imagenet_v2_data_dir,
-                                                   global_step)
-          # Check if targets reached.
-          train_state['validation_goal_reached'] = (
-              workload.has_reached_validation_target(latest_eval_result) or
-              train_state['validation_goal_reached'])
-          train_state['test_goal_reached'] = (
-              workload.has_reached_test_target(latest_eval_result) or
-              train_state['test_goal_reached'])
+          # latest_eval_result = workload.eval_model(global_eval_batch_size,
+          #                                          model_params,
+          #                                          model_state,
+          #                                          eval_rng,
+          #                                          data_dir,
+          #                                          imagenet_v2_data_dir,
+          #                                          global_step)
+          # # Check if targets reached.
+          # train_state['validation_goal_reached'] = (
+          #     workload.has_reached_validation_target(latest_eval_result) or
+          #     train_state['validation_goal_reached'])
+          # train_state['test_goal_reached'] = (
+          #     workload.has_reached_test_target(latest_eval_result) or
+          #     train_state['test_goal_reached'])
           # Save last eval time.
           eval_end_time = get_time()
           train_state['last_eval_time'] = eval_end_time
           # Accumulate eval time.
           train_state[
               'accumulated_eval_time'] += eval_end_time - eval_start_time
+          latest_eval_result = {}
 
           # Add times to eval results for logging.
           latest_eval_result['score'] = (
