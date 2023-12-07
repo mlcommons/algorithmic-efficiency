@@ -49,10 +49,10 @@ class UNet(nn.Module):
       ch *= 2
       size = int(size / 2)
     self.conv = ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm, size)
-    size = int( size / 2)
 
     self.up_conv = nn.ModuleList()
     self.up_transpose_conv = nn.ModuleList()
+    size = size * 2
     for _ in range(num_pool_layers - 1):
       self.up_transpose_conv.append(
           TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm, size))
