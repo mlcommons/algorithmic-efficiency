@@ -106,6 +106,8 @@ class Transformer(nn.Module):
                nlayers: int = 6,
                dropout_rate: Optional[float] = 0.1,
                attention_dropout_rate: Optional[float] = 0.1,
+               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0):
     super().__init__()
@@ -121,6 +123,8 @@ class Transformer(nn.Module):
                            nlayers,
                            dropout_rate,
                            attention_dropout_rate,
+                           activation,
+                           glu,
                            layer_norm_eps,
                            attention_temp)
     self.decoder = Decoder(d_model,
@@ -129,6 +133,8 @@ class Transformer(nn.Module):
                            nlayers,
                            dropout_rate,
                            attention_dropout_rate,
+                           activation,
+                           glu,
                            layer_norm_eps,
                            attention_temp)
     # Share positional encoding and embedding between encoder and decoder.
@@ -268,6 +274,8 @@ class Encoder(nn.Module):
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
+               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0):
     super().__init__()
@@ -280,6 +288,8 @@ class Encoder(nn.Module):
         d_hid,
         dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
+        activation=activation,
+        glu=glu,
         layer_norm_eps=layer_norm_eps,
         attention_temp=attention_temp)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
@@ -306,6 +316,8 @@ class Decoder(nn.Module):
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
+               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0):
     super().__init__()
@@ -317,8 +329,11 @@ class Decoder(nn.Module):
                                       d_hid,
                                       dropout_rate,
                                       attention_dropout_rate,
+                                      activation,
+                                      glu,
                                       layer_norm_eps,
-                                      nlayers)
+                                      nlayers,
+                                      attention_temp)
 
   def forward(
       self,
@@ -451,7 +466,9 @@ class TransformerEncoderLayer(nn.Module):
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0,
                norm_first: bool = True,
                device=None,
                dtype=None) -> None:
@@ -462,11 +479,16 @@ class TransformerEncoderLayer(nn.Module):
         nhead,
         self_attn=True,
         dropout_rate=attention_dropout_rate,
+        attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
 
     # Implementation of Feedforward model.
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+    self.glu = glu
+    if self.glu:
+      self.linear_glu = nn.Linear(
+          dim_feedforward, dim_feedforward, **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
@@ -476,14 +498,6 @@ class TransformerEncoderLayer(nn.Module):
     self.dropout1 = nn.Dropout(dropout_rate)
     self.dropout2 = nn.Dropout(dropout_rate)
 
-    # We can't test self.activation in forward() in TorchScript,
-    # so stash some information about it instead.
-    if activation is F.relu or isinstance(activation, torch.nn.ReLU):
-      self.activation_relu_or_gelu = 1
-    elif activation is F.gelu or isinstance(activation, torch.nn.GELU):
-      self.activation_relu_or_gelu = 2
-    else:
-      self.activation_relu_or_gelu = 0
     self.activation = activation
 
   def forward(self,
@@ -523,7 +537,11 @@ class TransformerEncoderLayer(nn.Module):
 
   # Feed forward block:
   def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+    x = self.activation(self.linear1(x))
+    if self.glu:
+      y = self.linear_glu(x)
+      x = x * y
+    x = self.linear2(self.dropout(x))
     return self.dropout2(x)
 
 
@@ -556,6 +574,8 @@ class TransformerDecoder(nn.Module):
                d_hid,
                dropout_rate,
                attention_dropout_rate,
+               activation,
+               glu,
                layer_norm_eps,
                num_layers,
                attention_temp):
@@ -567,6 +587,8 @@ class TransformerDecoder(nn.Module):
             d_hid,
             dropout_rate,
             attention_dropout_rate,
+            activation,
+            glu,
             layer_norm_eps=layer_norm_eps,
             attention_temp=attention_temp) for _ in range(num_layers)
     ])
@@ -652,6 +674,7 @@ class TransformerDecoderLayer(nn.Module):
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
                norm_first: bool = True,
                attention_temp: float = 1.0,
@@ -678,6 +701,10 @@ class TransformerDecoderLayer(nn.Module):
 
     # Implementation of Feedforward model.
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+    self.glu = glu
+    if self.glu:
+      self.linear_glu = nn.Linear(
+          dim_feedforward, dim_feedforward, **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
@@ -766,7 +793,11 @@ class TransformerDecoderLayer(nn.Module):
 
   # Feed forward block.
   def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+    x = self.activation(self.linear1(x))
+    if self.glu:
+      y = self.linear_glu(x)
+      x = x * y
+    x = self.linear2(self.dropout(x))
     return self.dropout3(x)
 
 
