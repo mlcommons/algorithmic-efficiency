@@ -5,6 +5,7 @@ import math
 from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
@@ -35,6 +36,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         dropout_rate=dropout_rate)
     variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
+    tabulate_fn = nn.tabulate(
+      self._model,
+      jax.random.PRNGKey(0),
+      console_kwargs={
+        'force_terminal': False, 'force_jupyter':False, 'width':240
+      }
+    )
+    print(tabulate_fn(fake_batch, train=False))
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     params = jax_utils.replicate(params)
