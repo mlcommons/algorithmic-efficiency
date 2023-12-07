@@ -41,7 +41,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     console_kwargs={
         'force_terminal': False, 'force_jupyter': False, 'width': 240},
     )
-    print(tabulate_fn(fake_inputs, train=False))
+    print(tabulate_fn(fake_batch, train=False))
     variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
