@@ -109,7 +109,8 @@ class Transformer(nn.Module):
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0):
+               attention_temp: float = 1.0,
+               norm_first: bool = True):
     super().__init__()
     if dropout_rate is None:
       dropout_rate = 0.1
@@ -126,7 +127,8 @@ class Transformer(nn.Module):
                            activation,
                            glu,
                            layer_norm_eps,
-                           attention_temp)
+                           attention_temp,
+                           norm_first)
     self.decoder = Decoder(d_model,
                            nhead,
                            d_hid,
@@ -136,7 +138,8 @@ class Transformer(nn.Module):
                            activation,
                            glu,
                            layer_norm_eps,
-                           attention_temp)
+                           attention_temp,
+                           norm_first)
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
     self.encoder.shared_embedding = self.shared_embedding
@@ -277,7 +280,8 @@ class Encoder(nn.Module):
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0):
+               attention_temp: float = 1.0,
+               norm_first: bool = True):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -291,7 +295,8 @@ class Encoder(nn.Module):
         activation=activation,
         glu=glu,
         layer_norm_eps=layer_norm_eps,
-        attention_temp=attention_temp)
+        attention_temp=attention_temp,
+        norm_first=norm_first)
     encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
@@ -319,7 +324,8 @@ class Decoder(nn.Module):
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0):
+               attention_temp: float = 1.0,
+               norm_first: bool = True):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -333,7 +339,8 @@ class Decoder(nn.Module):
                                       glu,
                                       layer_norm_eps,
                                       nlayers,
-                                      attention_temp)
+                                      attention_temp,
+                                      norm_first)
 
   def forward(
       self,
@@ -579,7 +586,8 @@ class TransformerDecoder(nn.Module):
                glu,
                layer_norm_eps,
                num_layers,
-               attention_temp):
+               attention_temp,
+               norm_first):
     super().__init__()
     self.layers = nn.ModuleList([
         TransformerDecoderLayer(
@@ -591,7 +599,8 @@ class TransformerDecoder(nn.Module):
             activation,
             glu,
             layer_norm_eps=layer_norm_eps,
-            attention_temp=attention_temp) for _ in range(num_layers)
+            attention_temp=attention_temp,
+            norm_first=norm_first) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
     self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
