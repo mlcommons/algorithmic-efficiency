@@ -1004,7 +1004,7 @@ class MultiheadAttention(nn.Module):
     dropout_rate = self.dropout if self.training else 0.0
 
     # Calculate attention.
-    q.mul_(self.attention_temp)
+    q = self.attention_temp * q
     attn_output = torch.nn.functional.scaled_dot_product_attention(
         q, k, v, attn_mask, dropout_rate)
     # Rearrange for output projection.
