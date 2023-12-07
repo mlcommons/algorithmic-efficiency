@@ -30,6 +30,7 @@ def sd_transform(sd):
   c = 0
   for idx, k in enumerate(keys):
     new_key = []
+    print(k)
     for idx2, i in enumerate(k):
       if 'ModuleList' in i or 'Sequential' in i:
         continue
