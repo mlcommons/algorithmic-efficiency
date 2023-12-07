@@ -225,6 +225,7 @@ def train_once(
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
+      skip_loss_compilation_workloads = ['criteo1tb']
       if FLAGS.workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
@@ -242,7 +243,8 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
-      workload.loss_fn = torch.compile(workload.loss_fn)
+      if FLAGS.workload not in skip_loss_compilation_workloads:
+        workload.loss_fn = torch.compile(workload.loss_fn)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
@@ -361,28 +363,26 @@ def train_once(
 
         try:
           eval_start_time = get_time()
-          # latest_eval_result = workload.eval_model(global_eval_batch_size,
-          #                                          model_params,
-          #                                          model_state,
-          #                                          eval_rng,
-          #                                          data_dir,
-          #                                          imagenet_v2_data_dir,
-          #                                          global_step)
-          # # Check if targets reached.
-          # train_state['validation_goal_reached'] = (
-          #     workload.has_reached_validation_target(latest_eval_result) or
-          #     train_state['validation_goal_reached'])
-          # train_state['test_goal_reached'] = (
-          #     workload.has_reached_test_target(latest_eval_result) or
-          #     train_state['test_goal_reached'])
+          latest_eval_result = workload.eval_model(global_eval_batch_size,
+                                                   model_params,
+                                                   model_state,
+                                                   eval_rng,
+                                                   data_dir,
+                                                   imagenet_v2_data_dir,
+                                                   global_step)
+          # Check if targets reached.
+          train_state['validation_goal_reached'] = (
+              workload.has_reached_validation_target(latest_eval_result) or
+              train_state['validation_goal_reached'])
+          train_state['test_goal_reached'] = (
+              workload.has_reached_test_target(latest_eval_result) or
+              train_state['test_goal_reached'])
           # Save last eval time.
           eval_end_time = get_time()
           train_state['last_eval_time'] = eval_end_time
           # Accumulate eval time.
           train_state[
               'accumulated_eval_time'] += eval_end_time - eval_start_time
-          latest_eval_result = {}
-
           # Add times to eval results for logging.
           latest_eval_result['score'] = (
               train_state['accumulated_submission_time'])
