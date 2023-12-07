@@ -24,6 +24,8 @@ class TransformerConfig:
   qkv_dim: int = 1024
   mlp_dim: int = 1024
   max_len: int = 256
+  activation: Callable = nn.relu
+  glu: bool = False
   #If None, defaults to 0.1.
   dropout_rate: Optional[float] = 0.1
   #If None, defaults to 0.1.
@@ -157,7 +159,14 @@ class MlpBlock(nn.Module):
         kernel_init=cfg.kernel_init,
         bias_init=cfg.bias_init)(
             inputs)
-    x = nn.relu(x)
+    x = cfg.activation(x)
+    if cfg.glu:
+      y = nn.Dense(
+          cfg.mlp_dim,
+          dtype=cfg.dtype,
+          kernel_init=cfg.kernel_init,
+          bias_init=cfg.bias_init)(inputs)
+      x = x * y
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
     else:
