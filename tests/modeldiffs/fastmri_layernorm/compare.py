@@ -49,7 +49,7 @@ def sd_transform(sd):
         if layernorm:
           i = i.replace('weight', 'scale')
         else:
-          i = i.replace('weight', 'dense')
+          i = i.replace('weight', 'kernel')
       new_key.append(i)
     new_key = tuple(new_key)
     sd[new_key] = sd[k]
