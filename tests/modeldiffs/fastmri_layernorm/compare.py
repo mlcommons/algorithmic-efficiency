@@ -29,6 +29,7 @@ def sd_transform(sd):
   keys = sorted(sd.keys(), key=sort_key)
   c = 0
   for idx, k in enumerate(keys):
+    print(k)
     new_key = []
     layernorm = False
     for idx2, i in enumerate(k):
