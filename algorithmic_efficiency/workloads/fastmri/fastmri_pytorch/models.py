@@ -136,8 +136,8 @@ class ConvBlock(nn.Module):
 
     if use_layer_norm:
       size = int(size)
-      norm_layer = LayerNorm
-      normalized_shape = (out_chans, size, size)
+      norm_layer = nn.GroupNorm
+      normalized_shape = (1, out_chans)
     else:
       norm_layer = nn.InstanceNorm2d
       normalized_shape = out_chans
@@ -174,8 +174,8 @@ class TransposeConvBlock(nn.Module):
     super().__init__()
     if use_layer_norm:
       size = int(size)
-      norm_layer = LayerNorm
-      normalized_shape = (out_chans, size, size)
+      norm_layer = nn.GroupNorm
+      normalized_shape = (1, out_chans)
     else:
       norm_layer = nn.InstanceNorm2d
       normalized_shape = out_chans
