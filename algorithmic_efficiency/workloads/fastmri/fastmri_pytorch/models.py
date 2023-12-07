@@ -137,7 +137,7 @@ class ConvBlock(nn.Module):
 
     if use_layer_norm:
       size = int(size)
-      norm_layer = partial(nn.GroupNorm, num_groups=1, eps=1e-6)
+      norm_layer = partial(nn.GroupNorm, 1, eps=1e-6)
     else:
       norm_layer = nn.InstanceNorm2d
     if use_tanh:
@@ -146,11 +146,11 @@ class ConvBlock(nn.Module):
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        nn.GroupNorm(num_groups=1, num_channels=out_chans, eps=1e-6),
+        norm_layer(out_chans),
         activation_fn,
         nn.Dropout2d(dropout_rate),
         nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        nn.GroupNorm(num_groups=1, num_channels=out_chans, eps=1e-6),
+        norm_layer(out_chans),
         activation_fn,
         nn.Dropout2d(dropout_rate),
     )
@@ -184,6 +184,7 @@ class TransposeConvBlock(nn.Module):
         nn.ConvTranspose2d(
             in_chans, out_chans, kernel_size=2, stride=2, bias=False),
         nn.GroupNorm(num_groups=1, num_channels=out_chans, eps=1e-6),
+        norm_layer,
         activation_fn,
     )
 
