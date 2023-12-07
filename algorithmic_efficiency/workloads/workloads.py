@@ -64,7 +64,7 @@ WORKLOADS = {
 BASE_WORKLOADS = [
     'criteo1tb',
     'fastmri',
-    ' imagenet_resnet',
+    'imagenet_resnet',
     'imagenet_vit',
     'librispeech_conformer',
     'librispeech_deepspeech',

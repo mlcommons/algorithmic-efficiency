@@ -72,13 +72,13 @@ class DLRMResNet(nn.Module):
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
     # with that of Jax, we define a single embedding matrix.
-    num_chucks = 4
-    assert vocab_size % num_chucks == 0
+    num_chunks = 4
+    assert vocab_size % num_chunks == 0
     self.embedding_table_chucks = []
     scale = 1.0 / torch.sqrt(self.vocab_size)
-    for i in range(num_chucks):
+    for i in range(num_chunks):
       chunk = nn.Parameter(
-          torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
+          torch.Tensor(self.vocab_size // num_chunks, self.embed_dim))
       chunk.data.uniform_(0, 1)
       chunk.data = scale * chunk.data
       self.register_parameter(f'embedding_chunk_{i}', chunk)
@@ -194,8 +194,8 @@ class DlrmSmall(nn.Module):
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
     # with that of Jax, we define a single embedding matrix.
-    num_chucks = 4
-    assert vocab_size % num_chucks == 0
+    num_chunks = 4
+    assert vocab_size % num_chunks == 0
     self.embedding_table_chucks = []
 
     if self.embedding_init_multiplier is None:
@@ -203,9 +203,9 @@ class DlrmSmall(nn.Module):
     else:
       scale = self.embedding_init_multiplier
 
-    for i in range(num_chucks):
+    for i in range(num_chunks):
       chunk = nn.Parameter(
-          torch.Tensor(self.vocab_size // num_chucks, self.embed_dim))
+          torch.Tensor(self.vocab_size // num_chunks, self.embed_dim))
       chunk.data.uniform_(0, 1)
       chunk.data = scale * chunk.data
       self.register_parameter(f'embedding_chunk_{i}', chunk)
