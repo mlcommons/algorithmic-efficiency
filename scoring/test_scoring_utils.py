@@ -26,18 +26,20 @@ class Test(absltest.TestCase):
       self.assertEqual(len(df.at['1', column]), NUM_EVALS)
 
   def test_get_experiment_df(self):
-    _ = scoring_utils.get_experiment_df(TEST_DIR)
-    self.assertWarnsRegex(
-        Warning,
-        f'There should be {NUM_WORKLOADS} workloads but there are 1.',
-        scoring_utils.get_experiment_df,
-        TEST_DIR)
-    self.assertWarnsRegex(
-        Warning,
-        f'There should be {NUM_TRIALS} trials for workload mnist_jax but there '
-        'are only 1.',
-        scoring_utils.get_experiment_df,
-        TEST_DIR)
+    df = scoring_utils.get_experiment_df(TEST_DIR)
+    assert len(df) == 2
+
+  def test_scores(self):
+    df = scoring_utils.get_experiment_df(TEST_DIR)
+    performance_profile_df = scoring.compute_performance_profiles(
+        {'my.submission': df},
+        time_col='score',
+        min_tau=1.0,
+        max_tau=None,
+        reference_submission_tag=None,
+        num_points=100,
+        scale='linear',
+        verbosity=0)
 
 
 if __name__ == '__main__':
