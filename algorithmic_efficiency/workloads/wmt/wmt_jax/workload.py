@@ -323,7 +323,7 @@ class WmtWorkloadAttentionTemp(WmtWorkload):
     return 4.0
 
 
-class WmtWorkloadGLU_and_TanH(WmtWorkload):
+class WmtWorkloadGLUTanH(WmtWorkload):
   """WMT Jax workload with GLU and TanH activations."""
 
   @property

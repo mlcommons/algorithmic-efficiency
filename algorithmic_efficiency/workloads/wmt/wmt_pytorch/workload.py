@@ -382,7 +382,7 @@ class WmtWorkloadAttentionTemp(WmtWorkload):
     return 4.0
 
 
-class WmtWorkloadGLU_and_TanH(WmtWorkload):
+class WmtWorkloadGLUTanH(WmtWorkload):
   """WMT PyTorch workload with GLU and TanH activations."""
 
   @property

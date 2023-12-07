@@ -47,6 +47,18 @@ WORKLOADS = {
         'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
     },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
+    'wmt_post_ln': {
+        'workload_path': 'wmt/wmt',
+        'workload_class_name': 'WmtWorkloadPostLN'
+    },
+    'wmt_attention_temp': {
+        'workload_path': 'wmt/wmt',
+        'workload_class_name': 'WmtWorkloadAttentionTemp'
+    },
+    'wmt_glu_tanh': {
+        'workload_path': 'wmt/wmt',
+        'workload_class_name': 'WmtWorkloadGLUTanH'
+    },
 }
 
 
