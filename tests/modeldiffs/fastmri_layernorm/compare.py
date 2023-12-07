@@ -28,9 +28,9 @@ def sd_transform(sd):
 
   keys = sorted(sd.keys(), key=sort_key)
   c = 0
-  jax_weights_name = 'kernel'
   for idx, k in enumerate(keys):
     new_key = []
+    jax_weights_name = 'kernel'
     for idx2, i in enumerate(k):
       if 'ModuleList' in i or 'Sequential' in i:
         continue
@@ -44,6 +44,7 @@ def sd_transform(sd):
         i = i.replace('ConvTranspose2d', 'ConvTranspose')
       if 'LayerNorm' in i:
         jax_weights_name = 'scale'
+        continue
       if 'weight' in i:
         i = i.replace('weight', jax_weights_name)
       new_key.append(i)
