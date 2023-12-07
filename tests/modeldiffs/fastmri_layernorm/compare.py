@@ -45,7 +45,6 @@ def sd_transform(sd):
         i = i.replace('ConvTranspose2d', 'ConvTranspose')
       if 'LayerNorm' in i:
         layernorm = True
-        continue
       if 'weight' in i:
         if layernorm:
           i = i.replace('weight', 'scale')
