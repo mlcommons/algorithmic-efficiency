@@ -8,9 +8,9 @@ import torch
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import \
-    FastMRIWorkload as JaxWorkload
+    FastMRITanhWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.workload import \
-    FastMRIWorkload as PytWorkload
+    FastMRITanhWorkload as PytWorkload
 from tests.modeldiffs.diff import out_diff
 
 
