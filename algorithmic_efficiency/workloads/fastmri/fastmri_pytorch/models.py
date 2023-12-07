@@ -16,16 +16,16 @@ from algorithmic_efficiency import init_utils
 
 class LayerNorm(nn.Module):
 
-  def __init__(self, dim, epsilon=1e-6):
+  def __init__(self, normalized_shape, epsilon=1e-6):
     super().__init__()
-    self.dim = dim
+    self.normalized_shape = normalized_shape
 
     self.scale = nn.Parameter(torch.zeros(self.dim))
     self.bias = nn.Parameter(torch.zeros(self.dim))
     self.epsilon = epsilon
 
   def forward(self, x):
-    return F.layer_norm(x, (self.dim,), 1 + self.scale, self.bias, self.epsilon)
+    return F.layer_norm(x, normalized_shape, 1 + self.scale, self.bias, self.epsilon)
   
 
 class UNet(nn.Module):
@@ -137,19 +137,21 @@ class ConvBlock(nn.Module):
     if use_layer_norm:
       size = int(size)
       norm_layer = LayerNorm
+      normalized_shape = (out_chans, size, size)
     else:
       norm_layer = nn.InstanceNorm2d
+      normalized_shape = out_chans
     if use_tanh:
       activation_fn = nn.Tanh()
     else:
       activation_fn = nn.LeakyReLU(negative_slope=0.2, inplace=True)
     self.conv_layers = nn.Sequential(
         nn.Conv2d(in_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        norm_layer(out_chans),
+        norm_layer(normalized_shape),
         activation_fn,
         nn.Dropout2d(dropout_rate),
         nn.Conv2d(out_chans, out_chans, kernel_size=3, padding=1, bias=False),
-        norm_layer(out_chans),
+        norm_layer(normalized_shape),
         activation_fn,
         nn.Dropout2d(dropout_rate),
     )
@@ -173,8 +175,10 @@ class TransposeConvBlock(nn.Module):
     if use_layer_norm:
       size = int(size)
       norm_layer = LayerNorm
+      normalized_shape = (out_chans, size, size)
     else:
       norm_layer = nn.InstanceNorm2d
+      normalized_shape = out_chans
     if use_tanh:
       activation_fn = nn.Tanh()
     else:
@@ -182,7 +186,7 @@ class TransposeConvBlock(nn.Module):
     self.layers = nn.Sequential(
         nn.ConvTranspose2d(
             in_chans, out_chans, kernel_size=2, stride=2, bias=False),
-        norm_layer(out_chans),
+        norm_layer(normalized_shape),
         activation_fn,
     )
 
