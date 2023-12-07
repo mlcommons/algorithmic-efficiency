@@ -155,7 +155,7 @@ class ConvBlock(nn.Module):
         strides=(1, 1),
         use_bias=False)(x)
     if self.use_layer_norm:
-      x = nn.LayerNorm()(x)
+      x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
       # DO NOT SUBMIT check that this comment edit is correct
       # InstanceNorm2d was run with no learnable params in reference code
@@ -176,7 +176,7 @@ class ConvBlock(nn.Module):
         strides=(1, 1),
         use_bias=False)(x)
     if self.use_layer_norm:
-      x = nn.LayerNorm()(x)
+      x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
       x = _instance_norm2d(x, (1, 2))
     x = activation_fn(x)
@@ -205,7 +205,7 @@ class TransposeConvBlock(nn.Module):
         self.out_channels, kernel_size=(2, 2), strides=(2, 2), use_bias=False)(
             x)
     if self.use_layer_norm:
-      x = nn.LayerNorm()(x)
+      x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
       x = _instance_norm2d(x, (1, 2))
     if self.use_tanh:
