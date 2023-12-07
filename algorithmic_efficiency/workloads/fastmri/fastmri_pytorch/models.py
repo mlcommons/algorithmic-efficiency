@@ -4,6 +4,7 @@ Adapted from fastMRI:
 https://github.com/facebookresearch/fastMRI/blob/main/fastmri/models/unet.py
 """
 
+from functools import partial
 from typing import Optional
 
 import torch
@@ -12,7 +13,6 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from algorithmic_efficiency import init_utils
-from functools import partial
 
 
 class LayerNorm(nn.Module):
