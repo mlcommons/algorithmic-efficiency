@@ -41,13 +41,13 @@ class UNet(nn.Module):
     self.size = size
     self.down_sample_layers = nn.ModuleList(
         [ConvBlock(in_chans, num_channels, dropout_rate, use_tanh, use_layer_norm, size)])
-    size = size/2
+    size = int(size / 2)
     ch = num_channels
     for _ in range(num_pool_layers - 1):
       self.down_sample_layers.append(
           ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm, size))
       ch *= 2
-      size = size/2
+      size = int(size / 2)
     self.conv = ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm, size)
     size = size/2
 
@@ -56,14 +56,14 @@ class UNet(nn.Module):
     for _ in range(num_pool_layers - 1):
       self.up_transpose_conv.append(
           TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm, size))
-      size = size * 2
+      size = int(size * 2)
       self.up_conv.append(
           ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm, size))
       ch //= 2
 
     self.up_transpose_conv.append(
         TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
-    size = size * 2
+    size = int(size * 2)
     self.up_conv.append(
         nn.Sequential(
             ConvBlock(ch * 2, ch, dropout_rate, use_tanh, use_layer_norm, size),
