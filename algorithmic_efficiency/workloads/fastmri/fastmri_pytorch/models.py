@@ -26,8 +26,12 @@ class LayerNorm(nn.Module):
     self.epsilon = epsilon
 
   def forward(self, x):
-    return F.layer_norm(x, self.normalized_shape, 1 + self.scale, self.bias, self.epsilon)
-  
+    return F.layer_norm(x,
+                        self.normalized_shape,
+                        1 + self.scale,
+                        self.bias,
+                        self.epsilon)
+
 
 class UNet(nn.Module):
   r"""U-Net model from
@@ -52,8 +56,13 @@ class UNet(nn.Module):
     self.num_pool_layers = num_pool_layers
     if dropout_rate is None:
       dropout_rate = 0.0
-    self.down_sample_layers = nn.ModuleList(
-        [ConvBlock(in_chans, num_channels, dropout_rate, use_tanh, use_layer_norm)])
+    self.down_sample_layers = nn.ModuleList([
+        ConvBlock(in_chans,
+                  num_channels,
+                  dropout_rate,
+                  use_tanh,
+                  use_layer_norm)
+    ])
     ch = num_channels
     for _ in range(num_pool_layers - 1):
       self.down_sample_layers.append(
@@ -155,12 +164,13 @@ class TransposeConvBlock(nn.Module):
   # A Transpose Convolutional Block that consists of one convolution transpose
   # layers followed by instance normalization and LeakyReLU activation.
 
-  def __init__(self, 
-              in_chans: int, 
-              out_chans: int,
-              use_tanh: bool, 
-              use_layer_norm: bool,
-              ):
+  def __init__(
+      self,
+      in_chans: int,
+      out_chans: int,
+      use_tanh: bool,
+      use_layer_norm: bool,
+  ):
     super().__init__()
     if use_tanh:
       activation_fn = nn.Tanh()

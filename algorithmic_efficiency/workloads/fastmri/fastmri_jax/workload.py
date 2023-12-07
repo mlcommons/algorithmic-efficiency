@@ -34,7 +34,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         use_tanh=self.use_tanh,
         use_layer_norm=self.use_layer_norm,
         dropout_rate=dropout_rate)
-    
+
     variables = jax.jit(self._model.init)({'params': rng}, fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
@@ -192,4 +192,3 @@ class FastMRILayerNormWorkload(FastMRIWorkload):
   def use_layer_norm(self) -> bool:
     """Whether or not to use tanh activations in the model."""
     return True
-

@@ -28,7 +28,7 @@ def _instance_norm2d(x, axes, epsilon=1e-5):
   mean2 = jnp.mean(jnp.square(x), axes)
   # mean2 - _abs_sq(mean) is not guaranteed to be non-negative due
   # to floating point round-off errors.
-  var = jnp.maximum(0., mean2 - jnp.square(mean))  
+  var = jnp.maximum(0., mean2 - jnp.square(mean))
   stats_shape = list(x.shape)
   for axis in axes:
     stats_shape[axis] = 1
@@ -128,7 +128,7 @@ class UNet(nn.Module):
     output = nn.Conv(out_channels, kernel_size=(1, 1), strides=(1, 1))(output)
     return output.squeeze(-1)
 
-    
+
 class ConvBlock(nn.Module):
   """A Convolutional Block.
   out_channels: Number of channels in the output.
@@ -153,7 +153,8 @@ class ConvBlock(nn.Module):
         features=self.out_channels,
         kernel_size=(3, 3),
         strides=(1, 1),
-        use_bias=False)(x)
+        use_bias=False)(
+            x)
     if self.use_layer_norm:
       x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
@@ -169,19 +170,22 @@ class ConvBlock(nn.Module):
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
     x = nn.Dropout(
-        self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(x)
+        self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
+            x)
     x = nn.Conv(
         features=self.out_channels,
         kernel_size=(3, 3),
         strides=(1, 1),
-        use_bias=False)(x)
+        use_bias=False)(
+            x)
     if self.use_layer_norm:
       x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
       x = _instance_norm2d(x, (1, 2))
     x = activation_fn(x)
     x = nn.Dropout(
-        self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(x)
+        self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
+            x)
     return x
 
 
