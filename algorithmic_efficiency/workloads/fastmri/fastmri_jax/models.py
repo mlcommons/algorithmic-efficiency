@@ -65,7 +65,7 @@ class UNet(nn.Module):
     if dropout_rate is None:
       dropout_rate = 0.0
 
-    # pylint: disable=C0103
+    # pylint: disable=invalid-name
     _ConvBlock = functools.partial(
         ConvBlock,
         dropout_rate=dropout_rate,
