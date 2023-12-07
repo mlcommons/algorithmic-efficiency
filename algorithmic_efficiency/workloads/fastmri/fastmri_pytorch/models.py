@@ -49,7 +49,7 @@ class UNet(nn.Module):
       ch *= 2
       size = int(size / 2)
     self.conv = ConvBlock(ch, ch * 2, dropout_rate, use_tanh, use_layer_norm, size)
-    size = size/2
+    size = int( size / 2)
 
     self.up_conv = nn.ModuleList()
     self.up_transpose_conv = nn.ModuleList()
