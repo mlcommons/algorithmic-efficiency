@@ -52,7 +52,6 @@ def sd_transform(sd):
           i = i.replace('weight', 'kernel')
       new_key.append(i)
     new_key = tuple(new_key)
-    print(new_key)
     sd[new_key] = sd[k]
     del sd[k]
   return sd
