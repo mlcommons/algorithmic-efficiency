@@ -126,7 +126,9 @@ class UNet(nn.Module):
       output = jnp.concatenate((output, downsample_layer), axis=-1)
       output = conv(output, train)
 
-    output = nn.Conv(self.out_channels, kernel_size=(1, 1), strides=(1, 1))(output)
+    output = nn.Conv(
+        self.out_channels, kernel_size=(1, 1), strides=(1, 1))(
+            output)
     return output.squeeze(-1)
 
 
