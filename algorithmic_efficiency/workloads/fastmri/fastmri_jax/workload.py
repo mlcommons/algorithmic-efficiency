@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax.models import Unet
+from algorithmic_efficiency.workloads.fastmri.fastmri_jax.models import UNet
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload

@@ -15,24 +15,6 @@ from torch.nn import functional as F
 from algorithmic_efficiency import init_utils
 
 
-class LayerNorm(nn.Module):
-
-  def __init__(self, normalized_shape, epsilon=1e-6):
-    super().__init__()
-    self.normalized_shape = normalized_shape
-
-    self.scale = nn.Parameter(torch.zeros(self.normalized_shape[0]))
-    self.bias = nn.Parameter(torch.zeros(self.normalized_shape[0]))
-    self.epsilon = epsilon
-
-  def forward(self, x):
-    return F.layer_norm(x,
-                        self.normalized_shape,
-                        1 + self.scale,
-                        self.bias,
-                        self.epsilon)
-
-
 class UNet(nn.Module):
   r"""U-Net model from
     `"U-net: Convolutional networks
