@@ -48,6 +48,20 @@ WORKLOADS = {
         'workload_path': 'librispeech_conformer/librispeech',
         'workload_class_name': 'LibriSpeechConformerWorkload',
     },
+    'librispeech_conformer_attention_temperature': {
+        'workload_path':
+            'librispeech_conformer/librispeech',
+        'workload_class_name':
+            'LibriSpeechConformerAttentionTemperatureWorkload',
+    },
+    'librispeech_conformer_layernorm': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerLayerNormWorkload',
+    },
+    'librispeech_conformer_gelu': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerGeluWorkload',
+    },
     'librispeech_deepspeech': {
         'workload_path': 'librispeech_deepspeech/librispeech',
         'workload_class_name': 'LibriSpeechDeepSpeechWorkload',

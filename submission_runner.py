@@ -184,6 +184,7 @@ def _reset_cuda_mem():
 
 def train_once(
     workload: spec.Workload,
+    workload_name: str,
     global_batch_size: int,
     global_eval_batch_size: int,
     data_dir: str,
@@ -221,20 +222,24 @@ def train_once(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = [
-          'librispeech_conformer', 'ogbg', 'criteo1tb', 'imagenet_vit'
+          'librispeech_conformer',
+          'ogbg',
+          'criteo1tb',
+          'imagenet_vit',
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
-      if FLAGS.workload in compile_error_workloads:
+      base_workload = workloads.get_base_workload_name(workload_name)
+      if base_workload in compile_error_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
             'PyTorch version. Proceeding without `torch.compile`.')
-      elif FLAGS.workload in eager_backend_workloads:
+      elif base_workload in eager_backend_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
             'PyTorch version. Proceeding with `backend=eager`.')
         model_params = torch.compile(model_params, backend='eager')
-      elif FLAGS.workload in aot_eager_backend_workloads:
+      elif base_workload in aot_eager_backend_workloads:
         logging.warning(
             'These workloads cannot be fully compiled under current '
             'PyTorch version. Proceeding with `backend=aot_eager`.')
@@ -555,7 +560,8 @@ def score_submission_on_workload(workload: spec.Workload,
       with profiler.profile('Train'):
         if 'imagenet' not in workload_name:
           imagenet_v2_data_dir = None
-        timing, metrics = train_once(workload, global_batch_size,
+        timing, metrics = train_once(workload, workload_name,
+                                     global_batch_size,
                                      global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
@@ -592,7 +598,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logger_utils.makedir(log_dir)
     with profiler.profile('Train'):
       score, _ = train_once(
-          workload, global_batch_size, global_eval_batch_size,
+          workload, workload_name, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection,
           None, rng_seed, rng, profiler, max_global_steps, log_dir,
@@ -612,7 +618,8 @@ def main(_):
   workload_metadata = WORKLOADS[FLAGS.workload]
 
   # Prevent OOM on librispeech conformer.
-  if FLAGS.workload == 'librispeech_conformer':
+  base_workload = workloads.get_base_workload_name(FLAGS.workload)
+  if base_workload == 'librispeech_conformer':
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
 
   if FLAGS.set_pytorch_max_split_size:

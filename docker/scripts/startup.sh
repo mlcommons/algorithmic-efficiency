@@ -115,7 +115,9 @@ VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
                  "wmt" "wmt_post_ln" "wmt_attention_temp" "wmt_glu_tanh" \
                  "librispeech_deepspeech" "librispeech_conformer" "mnist" \
-                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init")
+                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init" \
+                 "conformer_layernorm" "conformer_attention_temperature" \
+                 "conformer_gelu")
 
 
 # Set data and experiment paths
