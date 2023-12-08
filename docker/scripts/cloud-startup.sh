@@ -4,10 +4,10 @@
 
 # Overwrite NVIDIA driver versions and reinstall NVIDIA drivers for CUDA 11.7 
 sudo chmod 777 /opt/deeplearning/driver-version.sh
-sudo echo "export DRIVER_VERSION=515.65.01" > /opt/deeplearning/driver-version.sh
-sudo echo "export DRIVER_UBUNTU_DEB="nvidia-driver-local-repo-ubuntu1804-515.65.01_1.0-1_amd64.deb"" >> /opt/deeplearning/driver-version.sh
+sudo echo "export DRIVER_VERSION=535.104.05" > /opt/deeplearning/driver-version.sh
+sudo echo "export DRIVER_UBUNTU_DEB="nvidia-driver-local-repo-ubuntu1804-535.104.05_1.0-1_amd64.deb"" >> /opt/deeplearning/driver-version.sh
 sudo echo "export DRIVER_UBUNTU_CUDA_VERSION="11.7.1"" >> /opt/deeplearning/driver-version.sh
-sudo echo "export DRIVER_UBUNTU_PKG=nvidia-driver-515" >> /opt/deeplearning/driver-version.sh
+sudo echo "export DRIVER_UBUNTU_PKG=nvidia-driver-535" >> /opt/deeplearning/driver-version.sh
 sudo /opt/deeplearning/install-driver.sh
 
 # Install NVIDIA Container Toolkit 

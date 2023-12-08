@@ -20,6 +20,18 @@ WORKLOADS = {
         'workload_path': 'criteo1tb/criteo1tb',
         'workload_class_name': 'Criteo1TbDlrmSmallTestWorkload',
     },
+    'criteo1tb_layernorm': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallLayerNormWorkload'
+    },
+    'criteo1tb_embed_init': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallEmbeddingInitWorkload'
+    },
+    'criteo1tb_resnet': {
+        'workload_path': 'criteo1tb/criteo1tb',
+        'workload_class_name': 'Criteo1TbDlrmSmallResNetWorkload'
+    },
     'fastmri': {
         'workload_path': 'fastmri/fastmri',
         'workload_class_name': 'FastMRIWorkload',
@@ -48,6 +60,20 @@ WORKLOADS = {
         'workload_path': 'librispeech_conformer/librispeech',
         'workload_class_name': 'LibriSpeechConformerWorkload',
     },
+    'librispeech_conformer_attention_temperature': {
+        'workload_path':
+            'librispeech_conformer/librispeech',
+        'workload_class_name':
+            'LibriSpeechConformerAttentionTemperatureWorkload',
+    },
+    'librispeech_conformer_layernorm': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerLayerNormWorkload',
+    },
+    'librispeech_conformer_gelu': {
+        'workload_path': 'librispeech_conformer/librispeech',
+        'workload_class_name': 'LibriSpeechConformerGeluWorkload',
+    },
     'librispeech_deepspeech': {
         'workload_path': 'librispeech_deepspeech/librispeech',
         'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
@@ -60,6 +86,23 @@ WORKLOADS = {
     },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
 }
+
+BASE_WORKLOADS = [
+    'criteo1tb',
+    'fastmri',
+    'imagenet_resnet',
+    'imagenet_vit',
+    'librispeech_conformer',
+    'librispeech_deepspeech',
+    'ogbg',
+    'wmt'
+]
+
+
+def get_base_workload_name(workload_name):
+  for base_workload_name in BASE_WORKLOADS:
+    if base_workload_name in workload_name:
+      return base_workload_name
 
 
 def convert_filepath_to_module(path: str):

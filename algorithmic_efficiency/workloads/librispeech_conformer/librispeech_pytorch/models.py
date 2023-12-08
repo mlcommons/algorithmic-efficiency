@@ -3,6 +3,7 @@ https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.
 """
 
 from dataclasses import dataclass
+from functools import partial
 import math
 from typing import Tuple
 
@@ -42,6 +43,9 @@ class ConformerConfig:
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
+  attention_temperature: float = 1.0
+  activation_function_name: str = 'swish'
+  use_post_layer_norm: bool = True
 
 
 def initialize(m):
@@ -207,7 +211,16 @@ class FeedForwardModule(nn.Module):
   def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
-    inputs = F.silu(inputs)
+    if self.config.activation_function_name == 'swish':
+      activation_fn = F.silu
+    elif self.config.activation_function_name == 'gelu':
+      # Use tanh approximation of GELU which is default for jax
+      activation_fn = partial(F.gelu, approximate='tanh')
+    else:
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{self.config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = self.dropout1(inputs)
     inputs = inputs * padding_mask
     inputs = self.linear2(inputs)
@@ -270,6 +283,7 @@ class MHSAwithQS(nn.Module):
     self.in_proj = nn.Linear(config.encoder_dim, 3 * config.encoder_dim)
     self.out_proj = nn.Linear(config.encoder_dim, config.encoder_dim)
     self.qs = QueryScaler(dim=config.encoder_dim // config.num_attention_heads)
+    self.attention_temperature = config.attention_temperature
 
   def forward(self, inputs, key_padding_mask=None):
     batch_size, seq_len, embed_dim = inputs.shape
@@ -284,6 +298,7 @@ class MHSAwithQS(nn.Module):
         attn_mask=~key_padding_mask[:, None, None],
         dropout_p=self.dropout,
     ).transpose(1, 2).reshape(batch_size, seq_len, embed_dim)
+    out = out * self.attention_temperature
     out = self.out_proj(out)
     return out
 
@@ -405,7 +420,15 @@ class ConvolutionBlock(nn.Module):
     inputs = inputs.permute(0, 2, 1)
 
     inputs = self.bn(inputs, input_paddings)
-    inputs = F.silu(inputs)
+    if self.config.activation_function_name == 'swish':
+      activation_fn = F.silu
+    elif self.config.activation_function_name == 'gelu':
+      activation_fn = F.gelu
+    else:
+      raise ValueError('Only "swish" and "gelu" are supported '
+                       'config.activation_function_name values, recieved '
+                       f'{self.config.activation_function_name}')
+    inputs = activation_fn(inputs)
     inputs = self.lin3(inputs)
 
     inputs = self.dropout(inputs)
@@ -421,7 +444,9 @@ class ConformerBlock(nn.Module):
     self.mhsa = MultiHeadedSelfAttention(config)
     self.conv = ConvolutionBlock(config)
     self.ff2 = FeedForwardModule(config)
-    self.ln = LayerNorm(dim=config.encoder_dim)
+    self.ln = None
+    if config.use_post_layer_norm:
+      self.ln = LayerNorm(dim=config.encoder_dim)
 
   def forward(self, inputs, input_paddings):
     padding_mask = 1 - input_paddings[:, :, None]
@@ -429,7 +454,8 @@ class ConformerBlock(nn.Module):
     inputs = inputs + self.mhsa(inputs, input_paddings)
     inputs = inputs + self.conv(inputs, input_paddings)
     inputs = inputs + 0.5 * self.ff2(inputs, padding_mask)
-    inputs = self.ln(inputs)
+    if self.ln:
+      inputs = self.ln(inputs)
     return inputs
 
 

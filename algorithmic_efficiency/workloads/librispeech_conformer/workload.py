@@ -13,6 +13,18 @@ class BaseLibrispeechWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'wer'
 
+  @property
+  def use_post_layer_norm(self) -> bool:
+    raise NotImplementedError
+
+  @property
+  def use_gelu(self) -> bool:
+    raise NotImplementedError
+
+  @property
+  def attention_temperature(self) -> float:
+    raise NotImplementedError
+
   def has_reached_validation_target(self, eval_result: Dict[str,
                                                             float]) -> bool:
     return eval_result['validation/wer'] < self.validation_target_value
