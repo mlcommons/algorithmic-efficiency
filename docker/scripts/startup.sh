@@ -23,7 +23,7 @@ function usage() {
         -t | --tuning_search_space:     Path to tuning search space. If relative path, from algorithmic-efficiency top directory.
         -e | --experiment_name:         Name of experiment.
         -w | --workload:                Can be imagenet_resnet, imagenet_vit, criteo1tb, fastmri,
-                                        wmt, librispeech_deepspeech, librispeech_conformer.
+                                        wmt, librispeech_deepspeech, librispeech_conformer or variant workload.
         -a | --keep_container_alive:    If true, docker container will be kept alive. Useful for 
                                         developing or debugging.
         -m | --max_global_steps:        Maximum number of global steps for submission.
@@ -112,8 +112,12 @@ done
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
                 "wmt" "mnist")
-VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
-                 "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist")
+VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
+                 "imagenet_resnet_large_bn_init" "imagenet_vit" "fastmri" "ogbg" \
+                 "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist" \
+                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo_embed_init" \
+                 "conformer_layernorm" "conformer_attention_temperature" \
+                 "conformer_gelu")
 
 
 # Set data and experiment paths

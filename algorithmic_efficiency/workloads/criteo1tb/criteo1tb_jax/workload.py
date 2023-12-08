@@ -73,23 +73,31 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      aux_dropout_rate: Optional[float] = None,
+      tabulate: Optional[bool] = False,
+  ) -> spec.ModelInitState:
     """Only dropout is used."""
     del aux_dropout_rate
-    self._model = models.DlrmSmall(
+    if self.use_resnet:
+      model_class = models.DLRMResNet
+    else:
+      model_class = models.DlrmSmall
+    self._model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate)
+        dropout_rate=dropout_rate,
+        use_layer_norm=self.use_layer_norm,
+        embedding_init_multiplier=self.embedding_init_multiplier)
 
     params_rng, dropout_rng = jax.random.split(rng)
     init_fake_batch_size = 2
     num_categorical_features = 26
-    input_size = self.num_dense_features + num_categorical_features
+    num_dense_features = 13
+    input_size = num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
-
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
         {'params': params_rng, 'dropout': dropout_rng},
@@ -154,3 +162,53 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
   vocab_size: int = 32 * 128 * 16
+
+
+class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
+
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.123744
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126152
+
+
+class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
+  mlp_bottom_dims: Tuple[int, int] = (256, 256, 256)
+  mlp_top_dims: Tuple[int, int, int] = (256, 256, 256, 256, 1)
+
+  @property
+  def use_resnet(self) -> bool:
+    """Whether or not to use residual connections in the model."""
+    return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.124027
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.126468
+
+
+class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.124286
+
+  @property
+  def test_target_value(self) -> float:
+    # Todo
+    return 0.126725
+
+  @property
+  def embedding_init_multiplier(self) -> float:
+    return 1.0
