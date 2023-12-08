@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax import models
+from algorithmic_efficiency.workloads.fastmri.fastmri_jax.models import Unet
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
@@ -27,7 +27,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     fake_batch = jnp.zeros((13, 320, 320))
-    self._model = models.UNet(
+    self._model = UNet(
         num_pool_layers=self.num_pool_layers,
         num_channels=self.num_channels,
         use_tanh=self.use_tanh,
@@ -165,7 +165,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
 
 class FastMRIModelSizeWorkload(FastMRIWorkload):
-
   @property
   def num_pool_layers(self) -> bool:
     """Whether or not to use tanh activations in the model."""

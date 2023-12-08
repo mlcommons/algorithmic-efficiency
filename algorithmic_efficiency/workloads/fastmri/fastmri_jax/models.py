@@ -55,6 +55,7 @@ class UNet(nn.Module):
   """
   num_channels: int = 32
   num_pool_layers: int = 4
+  out_channels = 1
   dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
   use_tanh: bool = False
   use_layer_norm: bool = False
@@ -125,8 +126,7 @@ class UNet(nn.Module):
       output = jnp.concatenate((output, downsample_layer), axis=-1)
       output = conv(output, train)
 
-    out_channels = 1
-    output = nn.Conv(out_channels, kernel_size=(1, 1), strides=(1, 1))(output)
+    output = nn.Conv(self.out_channels, kernel_size=(1, 1), strides=(1, 1))(output)
     return output.squeeze(-1)
 
 

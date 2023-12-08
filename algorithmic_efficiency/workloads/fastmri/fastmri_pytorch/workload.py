@@ -13,7 +13,7 @@ from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
 from algorithmic_efficiency import spec
 import algorithmic_efficiency.random_utils as prng
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch import models
+from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.models import Unet
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.ssim import ssim
 from algorithmic_efficiency.workloads.fastmri.workload import \
     BaseFastMRIWorkload
@@ -113,7 +113,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = models.UNet(
+    model = UNet(
         num_pool_layers=self.num_pool_layers,
         num_channels=self.num_channels,
         use_tanh=self.use_tanh,
