@@ -31,6 +31,21 @@ class BaseImagenetResNetWorkload(spec.Workload):
     return 1 - 0.3440  # 0.6560
 
   @property
+  def use_silu(self) -> bool:
+    """Whether to replace all ReLU activations with SiLU."""
+    return False
+
+  @property
+  def use_gelu(self) -> bool:
+    """Whether to replace all ReLU activations with GELU."""
+    return False
+
+  @property
+  def bn_init_scale(self) -> float:
+    """The scale of the initialization of the final batch normalization."""
+    return 0.0
+
+  @property
   def loss_type(self) -> spec.LossType:
     return spec.LossType.SOFTMAX_CROSS_ENTROPY
 
