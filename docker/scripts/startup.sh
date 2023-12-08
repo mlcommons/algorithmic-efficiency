@@ -119,7 +119,6 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
                  "conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
                  "fastmri_layernorm")
 
-
 # Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"
 ROOT_DATA_DIR="${HOME_DIR}/data"
