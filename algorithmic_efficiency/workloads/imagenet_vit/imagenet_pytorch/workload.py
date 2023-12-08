@@ -28,12 +28,17 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      aux_dropout_rate: Optional[float] = None,
+      head_zeroinit: bool = True) -> spec.ModelInitState:
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     model = models.ViT(
         dropout_rate=dropout_rate,
         num_classes=self._num_classes,
+        use_glu=self.use_glu,
+        use_post_layer_norm=self.use_post_layer_norm,
+        use_map=self.use_map,
+        head_zeroinit=head_zeroinit,
         **decode_variant('S/16'))
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
@@ -77,3 +82,24 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
+
+
+class ImagenetVitGluWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_glu(self) -> bool:
+    return True
+
+
+class ImagenetViTPostLNWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_post_layer_norm(self) -> bool:
+    return True
+
+
+class ImagenetViTMapLNWorkload(ImagenetVitWorkload):
+
+  @property
+  def use_map(self) -> bool:
+    return True

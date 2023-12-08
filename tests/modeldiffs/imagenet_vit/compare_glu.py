@@ -5,9 +5,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
-    ImagenetVitWorkload as JaxWorkload
+    ImagenetVitGluWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
-    ImagenetVitWorkload as PytWorkload
+    ImagenetVitGluWorkload as PytWorkload
 from flax import jax_utils
 import jax
 import numpy as np
