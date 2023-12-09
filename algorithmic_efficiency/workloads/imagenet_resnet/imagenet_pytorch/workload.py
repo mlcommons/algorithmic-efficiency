@@ -148,7 +148,17 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del dropout_rate
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = resnet50()
+
+    if self.use_silu and self.use_gelu:
+      raise RuntimeError('Cannot use both GELU and SiLU activations.')
+    if self.use_silu:
+      act_fnc = torch.nn.SiLU(inplace=True)
+    elif self.use_gelu:
+      act_fnc = torch.nn.GELU(approximate='tanh')
+    else:
+      act_fnc = torch.nn.ReLU(inplace=True)
+
+    model = resnet50(act_fnc=act_fnc, bn_init_scale=self.bn_init_scale)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -289,3 +299,24 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       for metric in total_metrics.values():
         dist.all_reduce(metric)
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
+
+
+class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
+
+  @property
+  def use_silu(self) -> bool:
+    return True
+
+
+class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
+
+  @property
+  def use_gelu(self) -> bool:
+    return True
+
+
+class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
+
+  @property
+  def bn_init_scale(self) -> float:
+    return 8.0

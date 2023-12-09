@@ -229,6 +229,9 @@ def train_once(
       ]
       eager_backend_workloads = ['librispeech_deepspeech']
       aot_eager_backend_workloads = []
+      loss_compilation_workloads = [
+          'fastmri', 'librispeech_deepspeech', 'ogbg', 'wmt'
+      ]
       base_workload = workloads.get_base_workload_name(workload_name)
       if base_workload in compile_error_workloads:
         logging.warning(
@@ -247,6 +250,8 @@ def train_once(
       else:
         logging.info('Performing `torch.compile`.')
         model_params = torch.compile(model_params)
+      if base_workload in loss_compilation_workloads:
+        workload.loss_fn = torch.compile(workload.loss_fn)
   logging.info('Initializing optimizer.')
   with profiler.profile('Initializing optimizer'):
     optimizer_state = init_optimizer_state(workload,
