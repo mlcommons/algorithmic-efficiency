@@ -113,7 +113,8 @@ done
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
                 "wmt" "mnist")
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
-                 "imagenet_resnet_large_bn_init" "imagenet_vit" "fastmri" "ogbg" \
+                 "imagenet_resnet_large_bn_init" "imagenet_vit" "imagenet_vit_glu" \
+                 "imagenet_vit_post_ln" "imagenet_vit_map" "fastmri" "ogbg" \
                  "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist" \
                  "criteo1tb_resnet" "criteo1tb_layernorm" "criteo_embed_init" \
                  "conformer_layernorm" "conformer_attention_temperature" \

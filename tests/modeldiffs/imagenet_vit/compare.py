@@ -1,7 +1,5 @@
 import os
 
-from tests.modeldiffs.diff import out_diff
-
 # Disable GPU access for both jax and pytorch.
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
@@ -13,6 +11,7 @@ from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import 
     ImagenetVitWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
     ImagenetVitWorkload as PytWorkload
+from tests.modeldiffs.diff import out_diff
 
 
 def key_transform(k):
