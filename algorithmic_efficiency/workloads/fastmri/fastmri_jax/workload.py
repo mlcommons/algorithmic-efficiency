@@ -165,6 +165,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
 
 class FastMRIModelSizeWorkload(FastMRIWorkload):
+
   @property
   def num_pool_layers(self) -> bool:
     """Whether or not to use tanh activations in the model."""
