@@ -231,33 +231,21 @@ class TransformerEncoder(nn.Module):
 
   def forward(self,
               src: Tensor,
-              mask: Optional[Tensor] = None,
-              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+              mask: Optional[Tensor] = None) -> Tensor:
     """Pass the input through the encoder layers in turn.
 
     Args:
         src: the sequence to the encoder (required).
         mask: the mask for the src sequence (optional).
-        src_key_padding_mask: the mask for the src keys per batch (optional).
 
     Shape:
         see the docs in Transformer class.
     """
-    if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(
-          src_key_padding_mask):
-        raise AssertionError(
-            'only bool and floating types of key_padding_mask are supported')
     output = src
     convert_to_nested = False
-    src_key_padding_mask_for_layers = src_key_padding_mask
 
     for mod in self.layers:
-      output = mod(
-          output,
-          src_mask=mask,
-          src_key_padding_mask=src_key_padding_mask_for_layers)
+      output = mod(output, src_mask=mask)
 
     if convert_to_nested:
       output = output.to_padded_tensor(0.)
@@ -510,30 +498,22 @@ class TransformerEncoderLayer(nn.Module):
 
   def forward(self,
               src: Tensor,
-              src_mask: Optional[Tensor] = None,
-              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+              src_mask: Optional[Tensor] = None) -> Tensor:
     r"""Pass the input through the encoder layer.
 
     Args:
         src: the sequence to the encoder layer (required).
         src_mask: the mask for the src sequence (optional).
-        src_key_padding_mask: the mask for the src keys per batch (optional).
 
     Shape:
         see the docs in Transformer class.
     """
-    if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(
-          src_key_padding_mask):
-        raise AssertionError(
-            'Only bool and floating types of key_padding_mask are supported')
     x = src
     if self.norm_first:
       x = x + self._sa_block(self.norm1(x), src_mask)
       x = x + self._ff_block(self.norm2(x))
     else:
-      x = self.norm1(x + self._sa_block(x, src_mask, src_key_padding_mask))
+      x = self.norm1(x + self._sa_block(x, src_mask))
       x = self.norm2(x + self._ff_block(x))
 
     return x
