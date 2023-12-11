@@ -229,9 +229,7 @@ class TransformerEncoder(nn.Module):
     self.enable_nested_tensor = enable_nested_tensor
     self.mask_check = mask_check
 
-  def forward(self,
-              src: Tensor,
-              mask: Optional[Tensor] = None) -> Tensor:
+  def forward(self, src: Tensor, mask: Optional[Tensor] = None) -> Tensor:
     """Pass the input through the encoder layers in turn.
 
     Args:
@@ -494,9 +492,7 @@ class TransformerEncoderLayer(nn.Module):
 
     self.activation = activation
 
-  def forward(self,
-              src: Tensor,
-              src_mask: Optional[Tensor] = None) -> Tensor:
+  def forward(self, src: Tensor, src_mask: Optional[Tensor] = None) -> Tensor:
     r"""Pass the input through the encoder layer.
 
     Args:
