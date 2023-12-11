@@ -777,10 +777,10 @@ class TransformerDecoderLayer(nn.Module):
     return self.dropout2(x)
 
   # Feed forward block.
-  def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.activation(self.linear1(x))
+  def _ff_block(self, inputs: Tensor) -> Tensor:
+    x = self.activation(self.linear1(inputs))
     if self.glu:
-      y = self.linear_glu(x)
+      y = self.linear_glu(inputs)
       x = x * y
     x = self.linear2(self.dropout(x))
     return self.dropout3(x)
