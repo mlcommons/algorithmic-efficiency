@@ -1,4 +1,6 @@
 """WMT workload implemented in Jax."""
+
+from dataclasses import replace
 import functools
 from typing import Any, Dict, Iterator, Optional, Tuple
 
@@ -230,8 +232,8 @@ class WmtWorkload(BaseWmtWorkload):
         activation=activation,
         glu=self.glu)
     self._train_model = models.Transformer(model_config)
-    self._eval_model = models.Transformer(
-        models.TransformerConfig(deterministic=True))
+    eval_config = replace(model_config, deterministic=True)
+    self._eval_model = models.Transformer(eval_config)
     initial_variables = jax.jit(self._eval_model.init)(
         rng,
         jnp.ones(input_shape, jnp.float32),
