@@ -482,9 +482,7 @@ class TransformerEncoderLayer(nn.Module):
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
     self.glu = glu
     if self.glu:
-      self.linear_glu = nn.Linear(dim_feedforward,
-                                  dim_feedforward,
-                                  **factory_kwargs)
+      self.linear_glu = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
@@ -524,10 +522,10 @@ class TransformerEncoderLayer(nn.Module):
     return self.dropout1(x)
 
   # Feed forward block:
-  def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.activation(self.linear1(x))
+  def _ff_block(self, inputs: Tensor) -> Tensor:
+    x = self.activation(self.linear1(inputs))
     if self.glu:
-      y = self.linear_glu(x)
+      y = self.linear_glu(inputs)
       x = x * y
     x = self.linear2(self.dropout(x))
     return self.dropout2(x)
