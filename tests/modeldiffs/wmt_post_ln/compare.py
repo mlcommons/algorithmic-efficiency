@@ -49,10 +49,6 @@ def sd_transform(sd):
     k_str = ''.join(k)
     if 'SelfAttention' in k_str:
       new_key = list(k)
-      new_key = [
-          i if i != 'SelfAttention_1' else 'MultiHeadDotProductAttention_0'
-          for i in new_key
-      ]
       if 'SelfAttention_0' in k_str:
         if new_key[-2] == 'Dense_0':
           # qkv
@@ -77,6 +73,13 @@ def sd_transform(sd):
           # out
           out[(*new_key[:-2], 'out', new_key[-1])] = sd[k]
           pass
+      out = {
+          tuple(
+              k.replace('SelfAttention', 'MultiHeadDotProductAttention')
+              for k in key): value
+          for key,
+          value in out.items()
+      }
     elif 'Dense' in k_str:
       new_key = (*k[:2], 'MlpBlock_0', *k[2:])
       out[new_key] = sd[k]
