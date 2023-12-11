@@ -117,8 +117,8 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_
                  "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist" \
                  "criteo1tb_resnet" "criteo1tb_layernorm" "criteo_embed_init" \
                  "conformer_layernorm" "conformer_attention_temperature" \
-                 "conformer_gelu")
-
+                 "conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
+                 "fastmri_layernorm")
 
 # Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"

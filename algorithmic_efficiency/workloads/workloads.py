@@ -36,6 +36,18 @@ WORKLOADS = {
         'workload_path': 'fastmri/fastmri',
         'workload_class_name': 'FastMRIWorkload',
     },
+    'fastmri_model_size': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRIModelSizeWorkload',
+    },
+    'fastmri_tanh': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRITanhWorkload',
+    },
+    'fastmri_layernorm': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRILayerNormWorkload',
+    },
     'imagenet_resnet': {
         'workload_path': 'imagenet_resnet/imagenet',
         'workload_class_name': 'ImagenetResNetWorkload',

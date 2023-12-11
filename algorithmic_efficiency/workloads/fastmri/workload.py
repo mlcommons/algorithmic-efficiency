@@ -14,6 +14,26 @@ class BaseFastMRIWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'ssim'
 
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return False
+
+  @property
+  def use_tanh(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return False
+
+  @property
+  def num_pool_layers(self) -> bool:
+    """Number of pooling layers."""
+    return 4
+
+  @property
+  def num_channels(self) -> bool:
+    """Number of channels."""
+    return 32
+
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/ssim'] > self.validation_target_value
 
