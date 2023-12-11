@@ -112,7 +112,8 @@ done
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
                 "wmt" "mnist")
-VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_vit" "fastmri" "ogbg" \
+VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
+                 "imagenet_resnet_large_bn_init" "imagenet_vit" "fastmri" "ogbg" \
                  "wmt" "wmt_post_ln" "wmt_attention_temp" "wmt_glu_tanh" \
                  "librispeech_deepspeech" "librispeech_conformer" "mnist" \
                  "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init" \
