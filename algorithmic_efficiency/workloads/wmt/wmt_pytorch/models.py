@@ -283,7 +283,8 @@ class Encoder(nn.Module):
         layer_norm_eps=layer_norm_eps,
         attention_temp=attention_temp,
         norm_first=norm_first)
-    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+    encoder_norm = (
+        nn.LayerNorm(d_model, eps=layer_norm_eps) if norm_first else None)
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
   def forward(self,
@@ -577,7 +578,8 @@ class TransformerDecoder(nn.Module):
             norm_first=norm_first) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
-    self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+    self.norm = (
+        nn.LayerNorm(d_model, eps=layer_norm_eps) if norm_first else None)
 
   def forward(self,
               tgt: Tensor,
