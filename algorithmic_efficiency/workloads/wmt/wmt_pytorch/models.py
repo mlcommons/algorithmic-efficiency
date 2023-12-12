@@ -578,8 +578,7 @@ class TransformerDecoder(nn.Module):
             pre_ln=pre_ln) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
-    self.norm = (
-        nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
+    self.norm = (nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
 
   def forward(self,
               tgt: Tensor,
