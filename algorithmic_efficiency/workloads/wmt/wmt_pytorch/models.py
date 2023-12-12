@@ -106,7 +106,11 @@ class Transformer(nn.Module):
                nlayers: int = 6,
                dropout_rate: Optional[float] = 0.1,
                attention_dropout_rate: Optional[float] = 0.1,
-               layer_norm_eps: float = 1e-6):
+               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
+               layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0,
+               pre_ln: bool = True):
     super().__init__()
     if dropout_rate is None:
       dropout_rate = 0.1
@@ -120,14 +124,22 @@ class Transformer(nn.Module):
                            nlayers,
                            dropout_rate,
                            attention_dropout_rate,
-                           layer_norm_eps)
+                           activation,
+                           glu,
+                           layer_norm_eps,
+                           attention_temp,
+                           pre_ln)
     self.decoder = Decoder(d_model,
                            nhead,
                            d_hid,
                            nlayers,
                            dropout_rate,
                            attention_dropout_rate,
-                           layer_norm_eps)
+                           activation,
+                           glu,
+                           layer_norm_eps,
+                           attention_temp,
+                           pre_ln)
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
     self.encoder.shared_embedding = self.shared_embedding
@@ -217,35 +229,21 @@ class TransformerEncoder(nn.Module):
     self.enable_nested_tensor = enable_nested_tensor
     self.mask_check = mask_check
 
-  def forward(self,
-              src: Tensor,
-              mask: Optional[Tensor] = None,
-              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+  def forward(self, src: Tensor, mask: Optional[Tensor] = None) -> Tensor:
     """Pass the input through the encoder layers in turn.
 
     Args:
         src: the sequence to the encoder (required).
         mask: the mask for the src sequence (optional).
-        src_key_padding_mask: the mask for the src keys per batch (optional).
 
     Shape:
         see the docs in Transformer class.
     """
-    if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(
-          src_key_padding_mask):
-        raise AssertionError(
-            'only bool and floating types of key_padding_mask are supported')
     output = src
     convert_to_nested = False
-    src_key_padding_mask_for_layers = src_key_padding_mask
 
     for mod in self.layers:
-      output = mod(
-          output,
-          src_mask=mask,
-          src_key_padding_mask=src_key_padding_mask_for_layers)
+      output = mod(output, src_mask=mask)
 
     if convert_to_nested:
       output = output.to_padded_tensor(0.)
@@ -265,7 +263,11 @@ class Encoder(nn.Module):
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
-               layer_norm_eps: float = 1e-6):
+               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
+               layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0,
+               pre_ln: bool = True):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -276,8 +278,13 @@ class Encoder(nn.Module):
         d_hid,
         dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
-        layer_norm_eps=layer_norm_eps)
-    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+        activation=activation,
+        glu=glu,
+        layer_norm_eps=layer_norm_eps,
+        attention_temp=attention_temp,
+        pre_ln=pre_ln)
+    encoder_norm = (
+        nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
   def forward(self,
@@ -301,7 +308,11 @@ class Decoder(nn.Module):
                nlayers: int = 6,
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
-               layer_norm_eps: float = 1e-6):
+               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
+               layer_norm_eps: float = 1e-6,
+               attention_temp: float = 1.0,
+               pre_ln: bool = True):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -311,8 +322,12 @@ class Decoder(nn.Module):
                                       d_hid,
                                       dropout_rate,
                                       attention_dropout_rate,
+                                      activation,
+                                      glu,
                                       layer_norm_eps,
-                                      nlayers)
+                                      nlayers,
+                                      attention_temp,
+                                      pre_ln)
 
   def forward(
       self,
@@ -428,7 +443,7 @@ class TransformerEncoderLayer(nn.Module):
        string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
-    norm_first: if ``True``, layer norm is done prior to attention and
+    pre_ln: if ``True``, layer norm is done prior to attention and
         feedforward operations, respectivaly. Otherwise it's done after.
         Default: ``True``.
   Examples::
@@ -436,7 +451,7 @@ class TransformerEncoderLayer(nn.Module):
     >>> src = torch.rand(32, 10, 512)
     >>> out = encoder_layer(src)
   """
-  __constants__ = ['norm_first']
+  __constants__ = ['pre_ln']
 
   def __init__(self,
                d_model: int = 1024,
@@ -445,8 +460,10 @@ class TransformerEncoderLayer(nn.Module):
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
-               norm_first: bool = True,
+               attention_temp: float = 1.0,
+               pre_ln: bool = True,
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
@@ -456,56 +473,42 @@ class TransformerEncoderLayer(nn.Module):
         nhead,
         self_attn=True,
         dropout_rate=attention_dropout_rate,
+        attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
 
     # Implementation of Feedforward model.
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+    self.glu = glu
+    if self.glu:
+      self.linear_glu = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
-    self.norm_first = norm_first
+    self.pre_ln = pre_ln
     self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.dropout1 = nn.Dropout(dropout_rate)
     self.dropout2 = nn.Dropout(dropout_rate)
 
-    # We can't test self.activation in forward() in TorchScript,
-    # so stash some information about it instead.
-    if activation is F.relu or isinstance(activation, torch.nn.ReLU):
-      self.activation_relu_or_gelu = 1
-    elif activation is F.gelu or isinstance(activation, torch.nn.GELU):
-      self.activation_relu_or_gelu = 2
-    else:
-      self.activation_relu_or_gelu = 0
     self.activation = activation
 
-  def forward(self,
-              src: Tensor,
-              src_mask: Optional[Tensor] = None,
-              src_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+  def forward(self, src: Tensor, src_mask: Optional[Tensor] = None) -> Tensor:
     r"""Pass the input through the encoder layer.
 
     Args:
         src: the sequence to the encoder layer (required).
         src_mask: the mask for the src sequence (optional).
-        src_key_padding_mask: the mask for the src keys per batch (optional).
 
     Shape:
         see the docs in Transformer class.
     """
-    if src_key_padding_mask is not None:
-      _skpm_dtype = src_key_padding_mask.dtype  # pylint: disable=invalid-name
-      if _skpm_dtype != torch.bool and not torch.is_floating_point(
-          src_key_padding_mask):
-        raise AssertionError(
-            'Only bool and floating types of key_padding_mask are supported')
     x = src
-    if self.norm_first:
+    if self.pre_ln:
       x = x + self._sa_block(self.norm1(x), src_mask)
       x = x + self._ff_block(self.norm2(x))
     else:
-      x = self.norm1(x + self._sa_block(x, src_mask, src_key_padding_mask))
+      x = self.norm1(x + self._sa_block(x, src_mask))
       x = self.norm2(x + self._ff_block(x))
 
     return x
@@ -516,8 +519,12 @@ class TransformerEncoderLayer(nn.Module):
     return self.dropout1(x)
 
   # Feed forward block:
-  def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+  def _ff_block(self, inputs: Tensor) -> Tensor:
+    x = self.activation(self.linear1(inputs))
+    if self.glu:
+      y = self.linear_glu(inputs)
+      x = x * y
+    x = self.linear2(self.dropout(x))
     return self.dropout2(x)
 
 
@@ -550,8 +557,12 @@ class TransformerDecoder(nn.Module):
                d_hid,
                dropout_rate,
                attention_dropout_rate,
+               activation,
+               glu,
                layer_norm_eps,
-               num_layers):
+               num_layers,
+               attention_temp,
+               pre_ln):
     super().__init__()
     self.layers = nn.ModuleList([
         TransformerDecoderLayer(
@@ -560,10 +571,14 @@ class TransformerDecoder(nn.Module):
             d_hid,
             dropout_rate,
             attention_dropout_rate,
-            layer_norm_eps=layer_norm_eps) for _ in range(num_layers)
+            activation,
+            glu,
+            layer_norm_eps=layer_norm_eps,
+            attention_temp=attention_temp,
+            pre_ln=pre_ln) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
-    self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
+    self.norm = (nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
 
   def forward(self,
               tgt: Tensor,
@@ -626,7 +641,7 @@ class TransformerDecoderLayer(nn.Module):
         string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
-    norm_first: if ``True``, layer norm is done prior to self attention,
+    pre_ln: if ``True``, layer norm is done prior to self attention,
         multihead attention and feedforward operations, respectivaly.
         Otherwise it's done after. Default: ``True``.
   Examples::
@@ -635,7 +650,7 @@ class TransformerDecoderLayer(nn.Module):
     >>> tgt = torch.rand(32, 20, 512)
     >>> out = decoder_layer(tgt, memory)
   """
-  __constants__ = ['norm_first']
+  __constants__ = ['pre_ln']
 
   def __init__(self,
                d_model: int = 1024,
@@ -644,8 +659,10 @@ class TransformerDecoderLayer(nn.Module):
                dropout_rate: float = 0.1,
                attention_dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+               glu: bool = False,
                layer_norm_eps: float = 1e-6,
-               norm_first: bool = True,
+               pre_ln: bool = True,
+               attention_temp: float = 1.0,
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
@@ -655,6 +672,7 @@ class TransformerDecoderLayer(nn.Module):
         nhead,
         self_attn=True,
         dropout_rate=attention_dropout_rate,
+        attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
     self.multihead_attn = MultiheadAttention(
@@ -662,15 +680,21 @@ class TransformerDecoderLayer(nn.Module):
         nhead,
         self_attn=False,
         dropout_rate=attention_dropout_rate,
+        attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
 
     # Implementation of Feedforward model.
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+    self.glu = glu
+    if self.glu:
+      self.linear_glu = nn.Linear(dim_feedforward,
+                                  dim_feedforward,
+                                  **factory_kwargs)
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
-    self.norm_first = norm_first
+    self.pre_ln = pre_ln
     self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
@@ -704,7 +728,7 @@ class TransformerDecoderLayer(nn.Module):
     # see Fig. 1 of https://arxiv.org/pdf/2002.04745v1.pdf
 
     x = tgt
-    if self.norm_first:
+    if self.pre_ln:
       sa_out, cache = self._sa_block(
           self.norm1(x),
           tgt_mask,
@@ -754,8 +778,12 @@ class TransformerDecoderLayer(nn.Module):
     return self.dropout2(x)
 
   # Feed forward block.
-  def _ff_block(self, x: Tensor) -> Tensor:
-    x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+  def _ff_block(self, inputs: Tensor) -> Tensor:
+    x = self.activation(self.linear1(inputs))
+    if self.glu:
+      y = self.linear_glu(inputs)
+      x = x * y
+    x = self.linear2(self.dropout(x))
     return self.dropout3(x)
 
 
@@ -790,6 +818,7 @@ class MultiheadAttention(nn.Module):
                num_heads: int,
                self_attn: bool = True,
                dropout_rate: float = 0.,
+               attention_temp: float = 1.0,
                bias: bool = False,
                device: Optional[torch.device] = None,
                dtype: Optional[torch.dtype] = None) -> None:
@@ -799,6 +828,7 @@ class MultiheadAttention(nn.Module):
     self.self_attn = self_attn
     self.dropout = dropout_rate
     self.head_dim = embed_dim // num_heads
+    self.attention_temp = attention_temp
     assert self.head_dim * num_heads == self.embed_dim, \
         'embed_dim must be divisible by num_heads.'
 
@@ -949,6 +979,7 @@ class MultiheadAttention(nn.Module):
     dropout_rate = self.dropout if self.training else 0.0
 
     # Calculate attention.
+    q = self.attention_temp * q
     attn_output = torch.nn.functional.scaled_dot_product_attention(
         q, k, v, attn_mask, dropout_rate)
     # Rearrange for output projection.
