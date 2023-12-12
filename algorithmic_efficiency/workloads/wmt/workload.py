@@ -100,7 +100,7 @@ class BaseWmtWorkload(spec.Workload):
     return 133_333
 
   @property
-  def norm_first(self) -> bool:
+  def pre_ln(self) -> bool:
     return True
 
   @property

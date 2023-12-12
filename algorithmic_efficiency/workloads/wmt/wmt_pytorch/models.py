@@ -110,7 +110,7 @@ class Transformer(nn.Module):
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0,
-               norm_first: bool = True):
+               pre_ln: bool = True):
     super().__init__()
     if dropout_rate is None:
       dropout_rate = 0.1
@@ -128,7 +128,7 @@ class Transformer(nn.Module):
                            glu,
                            layer_norm_eps,
                            attention_temp,
-                           norm_first)
+                           pre_ln)
     self.decoder = Decoder(d_model,
                            nhead,
                            d_hid,
@@ -139,7 +139,7 @@ class Transformer(nn.Module):
                            glu,
                            layer_norm_eps,
                            attention_temp,
-                           norm_first)
+                           pre_ln)
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
     self.encoder.shared_embedding = self.shared_embedding
@@ -267,7 +267,7 @@ class Encoder(nn.Module):
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0,
-               norm_first: bool = True):
+               pre_ln: bool = True):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -282,9 +282,9 @@ class Encoder(nn.Module):
         glu=glu,
         layer_norm_eps=layer_norm_eps,
         attention_temp=attention_temp,
-        norm_first=norm_first)
+        pre_ln=pre_ln)
     encoder_norm = (
-        nn.LayerNorm(d_model, eps=layer_norm_eps) if norm_first else None)
+        nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
   def forward(self,
@@ -312,7 +312,7 @@ class Decoder(nn.Module):
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0,
-               norm_first: bool = True):
+               pre_ln: bool = True):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
@@ -327,7 +327,7 @@ class Decoder(nn.Module):
                                       layer_norm_eps,
                                       nlayers,
                                       attention_temp,
-                                      norm_first)
+                                      pre_ln)
 
   def forward(
       self,
@@ -443,7 +443,7 @@ class TransformerEncoderLayer(nn.Module):
        string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
-    norm_first: if ``True``, layer norm is done prior to attention and
+    pre_ln: if ``True``, layer norm is done prior to attention and
         feedforward operations, respectivaly. Otherwise it's done after.
         Default: ``True``.
   Examples::
@@ -451,7 +451,7 @@ class TransformerEncoderLayer(nn.Module):
     >>> src = torch.rand(32, 10, 512)
     >>> out = encoder_layer(src)
   """
-  __constants__ = ['norm_first']
+  __constants__ = ['pre_ln']
 
   def __init__(self,
                d_model: int = 1024,
@@ -463,7 +463,7 @@ class TransformerEncoderLayer(nn.Module):
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0,
-               norm_first: bool = True,
+               pre_ln: bool = True,
                device=None,
                dtype=None) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
@@ -485,7 +485,7 @@ class TransformerEncoderLayer(nn.Module):
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
-    self.norm_first = norm_first
+    self.pre_ln = pre_ln
     self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.dropout1 = nn.Dropout(dropout_rate)
@@ -504,7 +504,7 @@ class TransformerEncoderLayer(nn.Module):
         see the docs in Transformer class.
     """
     x = src
-    if self.norm_first:
+    if self.pre_ln:
       x = x + self._sa_block(self.norm1(x), src_mask)
       x = x + self._ff_block(self.norm2(x))
     else:
@@ -562,7 +562,7 @@ class TransformerDecoder(nn.Module):
                layer_norm_eps,
                num_layers,
                attention_temp,
-               norm_first):
+               pre_ln):
     super().__init__()
     self.layers = nn.ModuleList([
         TransformerDecoderLayer(
@@ -575,11 +575,11 @@ class TransformerDecoder(nn.Module):
             glu,
             layer_norm_eps=layer_norm_eps,
             attention_temp=attention_temp,
-            norm_first=norm_first) for _ in range(num_layers)
+            pre_ln=pre_ln) for _ in range(num_layers)
     ])
     self.num_layers = num_layers
     self.norm = (
-        nn.LayerNorm(d_model, eps=layer_norm_eps) if norm_first else None)
+        nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
 
   def forward(self,
               tgt: Tensor,
@@ -642,7 +642,7 @@ class TransformerDecoderLayer(nn.Module):
         string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
-    norm_first: if ``True``, layer norm is done prior to self attention,
+    pre_ln: if ``True``, layer norm is done prior to self attention,
         multihead attention and feedforward operations, respectivaly.
         Otherwise it's done after. Default: ``True``.
   Examples::
@@ -651,7 +651,7 @@ class TransformerDecoderLayer(nn.Module):
     >>> tgt = torch.rand(32, 20, 512)
     >>> out = decoder_layer(tgt, memory)
   """
-  __constants__ = ['norm_first']
+  __constants__ = ['pre_ln']
 
   def __init__(self,
                d_model: int = 1024,
@@ -662,7 +662,7 @@ class TransformerDecoderLayer(nn.Module):
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
-               norm_first: bool = True,
+               pre_ln: bool = True,
                attention_temp: float = 1.0,
                device=None,
                dtype=None) -> None:
@@ -695,7 +695,7 @@ class TransformerDecoderLayer(nn.Module):
     self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
-    self.norm_first = norm_first
+    self.pre_ln = pre_ln
     self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
@@ -729,7 +729,7 @@ class TransformerDecoderLayer(nn.Module):
     # see Fig. 1 of https://arxiv.org/pdf/2002.04745v1.pdf
 
     x = tgt
-    if self.norm_first:
+    if self.pre_ln:
       sa_out, cache = self._sa_block(
           self.norm1(x),
           tgt_mask,

@@ -227,7 +227,7 @@ class WmtWorkload(BaseWmtWorkload):
     model_config = models.TransformerConfig(
         dropout_rate=dropout_rate,
         attention_dropout_rate=aux_dropout_rate,
-        norm_first=self.norm_first,
+        pre_ln=self.pre_ln,
         attention_temp=self.attention_temp,
         activation=activation,
         glu=self.glu)
@@ -305,7 +305,7 @@ class WmtWorkloadPostLN(WmtWorkload):
     return 29.8982
 
   @property
-  def norm_first(self) -> bool:
+  def pre_ln(self) -> bool:
     return False
 
 
