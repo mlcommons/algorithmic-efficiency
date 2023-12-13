@@ -334,6 +334,7 @@ def download_criteo1tb(data_dir,
 
 
 def download_cifar(data_dir, framework):
+  data_dir = os.path.join(data_dir, 'cifar10')
   if framework == 'jax':
     tfds.builder('cifar10:3.0.2', data_dir=data_dir).download_and_prepare()
   elif framework == 'pytorch':
@@ -398,18 +399,18 @@ def extract(source, dest, mode='r:xz'):
 
 
 def setup_fastmri(data_dir, src_data_dir):
+  data_dir = os.path.join(data_dir, 'fastmri')
 
   train_tar_file_path = os.path.join(src_data_dir, FASTMRI_TRAIN_TAR_FILENAME)
   val_tar_file_path = os.path.join(src_data_dir, FASTMRI_VAL_TAR_FILENAME)
   test_tar_file_path = os.path.join(src_data_dir, FASTMRI_TEST_TAR_FILENAME)
 
   # Make train, val and test subdirectories
-  fastmri_data_dir = os.path.join(data_dir, 'fastmri')
-  train_data_dir = os.path.join(fastmri_data_dir, 'train')
+  train_data_dir = os.path.join(data_dir, 'train')
   os.makedirs(train_data_dir, exist_ok=True)
-  val_data_dir = os.path.join(fastmri_data_dir, 'val')
+  val_data_dir = os.path.join(data_dir, 'val')
   os.makedirs(val_data_dir, exist_ok=True)
-  test_data_dir = os.path.join(fastmri_data_dir, 'test')
+  test_data_dir = os.path.join(data_dir, 'test')
   os.makedirs(test_data_dir, exist_ok=True)
 
   # Unzip tar file into subdirectories
@@ -425,6 +426,7 @@ def setup_fastmri(data_dir, src_data_dir):
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   """Downloads and returns the download dir."""
+  data_dir = os.path.join(data_dir, 'imagenet')
   imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
@@ -456,6 +458,7 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
 
 
 def setup_imagenet(data_dir, framework=None):
+  data_dir = os.path.join(data_dir, 'imagenet')
   if framework == 'jax':
     setup_imagenet_jax(data_dir)
 
@@ -629,6 +632,7 @@ def download_librispeech(dataset_dir, tmp_dir):
 
 
 def download_mnist(data_dir):
+  data_dir = os.path.join(data_dir, 'MNIST')  # Capitalization to match PyTorch
   tfds.builder('mnist', data_dir=data_dir).download_and_prepare()
 
 
@@ -714,9 +718,8 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    imagenet_data_dir = os.path.join(data_dir, 'imagenet')
-    download_imagenet(imagenet_data_dir, imagenet_train_url, imagenet_val_url)
-    setup_imagenet(imagenet_data_dir, framework=FLAGS.framework)
+    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
+    setup_imagenet(data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')
