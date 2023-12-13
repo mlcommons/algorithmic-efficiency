@@ -48,6 +48,14 @@ pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax
 pip3 install -e '.[full]'
 ```
 
+*TL;DR to install the PyTorch version for GPU run:*
+
+```bash
+pip3 install -e '.[jax_cpu]'
+pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+pip3 install -e '.[full]'
+```
+
 ## Getting Started
 
 For detailed instructions on developing and scoring your own algorithm in the benchmark see the [Getting Started](/GETTING_STARTED.md) document.
