@@ -12,6 +12,7 @@ github.com/facebookresearch/fastMRI/blob/main/fastmri/pl_modules/unet_module.py
 Data:
 github.com/facebookresearch/fastMRI/tree/main/fastmri/data
 """
+import functools
 from typing import Optional
 
 import flax.linen as nn
@@ -19,7 +20,7 @@ import jax
 import jax.numpy as jnp
 
 
-def _compute_stats(x, axes):
+def _instance_norm2d(x, axes, epsilon=1e-5):
   # promote x to at least float32, this avoids half precision computation
   # but preserves double or complex floating points
   x = jnp.asarray(x, jnp.promote_types(jnp.float32, jnp.result_type(x)))
@@ -28,10 +29,6 @@ def _compute_stats(x, axes):
   # mean2 - _abs_sq(mean) is not guaranteed to be non-negative due
   # to floating point round-off errors.
   var = jnp.maximum(0., mean2 - jnp.square(mean))
-  return mean, var
-
-
-def _normalize(x, axes, mean, var, epsilon):
   stats_shape = list(x.shape)
   for axis in axes:
     stats_shape[axis] = 1
@@ -41,11 +38,6 @@ def _normalize(x, axes, mean, var, epsilon):
   mul = jnp.sqrt(var + epsilon)
   y /= mul
   return y
-
-
-def _simple_instance_norm2d(x, axes, epsilon=1e-5):
-  mean, var = _compute_stats(x, axes)
-  return _normalize(x, axes, mean, var, epsilon)
 
 
 class UNet(nn.Module):
@@ -61,35 +53,47 @@ class UNet(nn.Module):
     num_pool_layers: Number of down-sampling and up-sampling layers.
     dropout_rate: Dropout probability.
   """
-  out_channels: int = 1
-  channels: int = 32
+  num_channels: int = 32
   num_pool_layers: int = 4
+  out_channels = 1
   dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
+  use_tanh: bool = False
+  use_layer_norm: bool = False
 
   @nn.compact
   def __call__(self, x, train=True):
     dropout_rate = self.dropout_rate
     if dropout_rate is None:
       dropout_rate = 0.0
-    down_sample_layers = [ConvBlock(self.channels, dropout_rate)]
 
-    ch = self.channels
+    # pylint: disable=invalid-name
+    _ConvBlock = functools.partial(
+        ConvBlock,
+        dropout_rate=dropout_rate,
+        use_tanh=self.use_tanh,
+        use_layer_norm=self.use_layer_norm)
+    _TransposeConvBlock = functools.partial(
+        TransposeConvBlock,
+        use_tanh=self.use_tanh,
+        use_layer_norm=self.use_layer_norm)
+
+    down_sample_layers = [_ConvBlock(self.num_channels)]
+
+    ch = self.num_channels
     for _ in range(self.num_pool_layers - 1):
-      down_sample_layers.append(ConvBlock(ch * 2, dropout_rate))
+      down_sample_layers.append(_ConvBlock(ch * 2))
       ch *= 2
-    conv = ConvBlock(ch * 2, dropout_rate)
+    conv = _ConvBlock(ch * 2)
 
     up_conv = []
     up_transpose_conv = []
     for _ in range(self.num_pool_layers - 1):
-      up_transpose_conv.append(TransposeConvBlock(ch))
-      up_conv.append(ConvBlock(ch, dropout_rate))
+      up_transpose_conv.append(_TransposeConvBlock(ch))
+      up_conv.append(_ConvBlock(ch))
       ch //= 2
 
-    up_transpose_conv.append(TransposeConvBlock(ch))
-    up_conv.append(ConvBlock(ch, dropout_rate))
-
-    final_conv = nn.Conv(self.out_channels, kernel_size=(1, 1), strides=(1, 1))
+    up_transpose_conv.append(_TransposeConvBlock(ch))
+    up_conv.append(_ConvBlock(ch))
 
     stack = []
     output = jnp.expand_dims(x, axis=-1)
@@ -122,8 +126,9 @@ class UNet(nn.Module):
       output = jnp.concatenate((output, downsample_layer), axis=-1)
       output = conv(output, train)
 
-    output = final_conv(output)
-
+    output = nn.Conv(
+        self.out_channels, kernel_size=(1, 1), strides=(1, 1))(
+            output)
     return output.squeeze(-1)
 
 
@@ -134,6 +139,8 @@ class ConvBlock(nn.Module):
   """
   out_channels: int
   dropout_rate: float
+  use_tanh: bool
+  use_layer_norm: bool
 
   @nn.compact
   def __call__(self, x, train=True):
@@ -151,10 +158,18 @@ class ConvBlock(nn.Module):
         strides=(1, 1),
         use_bias=False)(
             x)
-    # InstanceNorm2d was run with no learnable params in reference code
-    # so this is a simple normalization along channels
-    x = _simple_instance_norm2d(x, (1, 2))
-    x = jax.nn.leaky_relu(x, negative_slope=0.2)
+    if self.use_layer_norm:
+      x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
+    else:
+      # DO NOT SUBMIT check that this comment edit is correct
+      # InstanceNorm2d was run with no learnable params in reference code
+      # so this is a simple normalization along spatial dims.
+      x = _instance_norm2d(x, (1, 2))
+    if self.use_tanh:
+      activation_fn = nn.tanh
+    else:
+      activation_fn = functools.partial(jax.nn.leaky_relu, negative_slope=0.2)
+    x = activation_fn(x)
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
     x = nn.Dropout(
@@ -166,12 +181,14 @@ class ConvBlock(nn.Module):
         strides=(1, 1),
         use_bias=False)(
             x)
-    x = _simple_instance_norm2d(x, (1, 2))
-    x = jax.nn.leaky_relu(x, negative_slope=0.2)
+    if self.use_layer_norm:
+      x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
+    else:
+      x = _instance_norm2d(x, (1, 2))
+    x = activation_fn(x)
     x = nn.Dropout(
         self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
             x)
-
     return x
 
 
@@ -180,6 +197,8 @@ class TransposeConvBlock(nn.Module):
   out_channels: Number of channels in the output.
   """
   out_channels: int
+  use_tanh: bool
+  use_layer_norm: bool
 
   @nn.compact
   def __call__(self, x):
@@ -192,7 +211,10 @@ class TransposeConvBlock(nn.Module):
     x = nn.ConvTranspose(
         self.out_channels, kernel_size=(2, 2), strides=(2, 2), use_bias=False)(
             x)
-    x = _simple_instance_norm2d(x, (1, 2))
-    x = jax.nn.leaky_relu(x, negative_slope=0.2)
-
+    x = _instance_norm2d(x, (1, 2))
+    if self.use_tanh:
+      activation_fn = nn.tanh
+    else:
+      activation_fn = functools.partial(jax.nn.leaky_relu, negative_slope=0.2)
+    x = activation_fn(x)
     return x

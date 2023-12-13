@@ -80,9 +80,7 @@ class MnistWorkload(BaseMnistWorkload):
           weights = torch.as_tensor(
               batch['weights'], dtype=torch.bool, device=DEVICE)
         else:
-          weights = torch.ones((batch['targets'].shape[-1],),
-                               dtype=torch.bool,
-                               device=DEVICE)
+          weights = torch.ones_like(targets, dtype=torch.bool, device=DEVICE)
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           dist.broadcast(inputs, src=0)

@@ -2,15 +2,16 @@
 
 ## Table of Contents <!-- omit from toc -->
 
-- [Setup](#setup)
+- [Contributing to MLCommons](#contributing-to-mlcommons)
+- [Setup for Contributing](#setup-for-contributing)
   - [Setting up a Linux VM on GCP](#setting-up-a-linux-vm-on-gcp)
   - [Installing GPU Drivers](#installing-gpu-drivers)
   - [Authentication for Google Cloud Container Registry](#authentication-for-google-cloud-container-registry)
 - [Installation](#installation)
-- [Docker workflows](#docker-workflows)
+- [Docker Workflows](#docker-workflows)
   - [Pre-built Images on Google Cloud Container Registry](#pre-built-images-on-google-cloud-container-registry)
-  - [Trigger rebuild and push of maintained images](#trigger-rebuild-and-push-of-maintained-images)
-    - [Trigger build and push of images on other branch](#trigger-build-and-push-of-images-on-other-branch)
+  - [Trigger Rebuild and Push of Maintained Images](#trigger-rebuild-and-push-of-maintained-images)
+    - [Trigger Build and Push of Images on Other Branch](#trigger-build-and-push-of-images-on-other-branch)
   - [GCP Data and Experiment Integration](#gcp-data-and-experiment-integration)
   - [Downloading Data from GCP](#downloading-data-from-gcp)
   - [Saving Experiments to GCP](#saving-experiments-to-gcp)
@@ -19,10 +20,12 @@
 - [Submitting PRs](#submitting-prs)
 - [Testing](#testing)
   - [Style Testing](#style-testing)
-  - [Unit and integration tests](#unit-and-integration-tests)
-  - [Regression tests](#regression-tests)
+  - [Unit and Integration Tests](#unit-and-integration-tests)
+  - [Regression Tests](#regression-tests)
 
-We invite everyone to look through our rules and codebase and submit issues and pull requests, e.g. for rules changes, clarifications, or any bugs you might encounter. If you are interested in contributing to the work of the working group and influence the benchmark's design decisions, please [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/) and consider becoming a member of the working group.
+## Contributing to MLCommons
+
+We invite everyone to look through our technical documentation and codebase and submit issues and pull requests, e.g. for changes, clarifications, or any bugs you might encounter. If you are interested in contributing to the work of the working group and influence the benchmark's design decisions, please [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/) and consider becoming a member of the working group.
 
 The best way to contribute to the MLCommons is to get involved with one of our many project communities. You find more information about getting involved with MLCommons [here](https://mlcommons.org/en/get-involved/#getting-started).
 
@@ -32,7 +35,7 @@ To get started contributing code, you or your organization needs to sign the MLC
 
 MLCommons project work is tracked with issue trackers and pull requests. Modify the project in your own fork and issue a pull request once you want other developers to take a look at what you have done and discuss the proposed changes. Ensure that cla-bot and other checks pass for your Pull requests.
 
-## Setup
+## Setup for Contributing
 
 ### Setting up a Linux VM on GCP
 
@@ -51,7 +54,7 @@ Use the gcloud credential helper as documented [here](https://cloud.google.com/a
 
 ## Installation
 
-If you have not installed the package and dependencies yet see [Installation](./README.md#installation).
+If you have not installed the package and dependencies yet see [Installation](/README.md#installation).
 
 To use the development tools such as `pytest` or `pylint` use the `dev` option:
 
@@ -62,14 +65,14 @@ pre-commit install
 
 To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
-## Docker workflows
+## Docker Workflows
 
 We recommend developing in our Docker image to ensure a consistent environment between developing, testing and scoring submissions.
 
 To get started see also:
 
-- [Installation with Docker](./README.md#docker)
-- [Running a submission inside a Docker Container](./getting_started.md#run-your-submission-in-a-docker-container)
+- [Installation with Docker](/GETTING_STARTED.md#docker)
+- [Running a submission inside a Docker Container](/GETTING_STARTED.md#run-your-submission-in-a-docker-container)
 
 ### Pre-built Images on Google Cloud Container Registry
 
@@ -100,7 +103,7 @@ Currently maintained images on the repository are:
 To reference the pulled image you will have to use the full `image_path`, e.g.
 `us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main`.
 
-### Trigger rebuild and push of maintained images
+### Trigger Rebuild and Push of Maintained Images
 
 To build and push all images (`pytorch`, `jax`, `both`) on maintained branches (`dev`, `main`).
 
@@ -108,7 +111,7 @@ To build and push all images (`pytorch`, `jax`, `both`) on maintained branches (
 bash docker/build_docker_images.sh -b <branch>
 ```
 
-#### Trigger build and push of images on other branch
+#### Trigger Build and Push of Images on Other Branch
 
 You can also use the above script to build images from a different branch.
 
@@ -121,9 +124,7 @@ You can also use the above script to build images from a different branch.
 
 ### GCP Data and Experiment Integration
 
-The Docker entrypoint script can transfer data to and from
-our GCP buckets on our internal GCP project. If
-you are an approved contributor you can get access to these resources to automatically download the datasets and upload experiment results.
+The Docker entrypoint script can transfer data to and from our GCP buckets on our internal GCP project. If you are an approved contributor you can get access to these resources to automatically download the datasets and upload experiment results.
 You can use these features by setting the `--internal_contributor` flag to 'true' for the Docker entrypoint script.
 
 ### Downloading Data from GCP
@@ -216,7 +217,7 @@ New PRs will be merged on the dev branch by default, given that they pass the pr
 
 ## Testing
 
-We run tests with GitHub Actions, configured in the [.github/workflows](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows) folder.
+We run tests with GitHub Actions, configured in the [.github/workflows](.github/workflows/) folder.
 
 ### Style Testing
 
@@ -253,14 +254,15 @@ pylint submission_runner.py
 pylint tests
 ```
 
-## Unit and integration tests
-We run unit tests and integration tests as part of the of github actions as well. 
+### Unit and Integration Tests
+
+We run unit tests and integration tests as part of the of github actions as well.
 You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/target_setting_algorithms/`.
 
-### Regression tests
+### Regression Tests
 
-We also have regression tests available in [.github/workflows/regression_tests.yml](https://github.com/mlcommons/algorithmic-efficiency/tree/main/.github/workflows/regression_tests.yml) that can be run semi-automatically.
-The regression tests are shorter end-to-end submissions run in a containerized environment across all 8 workloads, in both the jax and pytorch frameworks.
+We also have regression tests available in [.github/workflows/regression_tests.yml](.github/workflows/regression_tests.yml) that can be run semi-automatically.
+The regression tests are shorter end-to-end submissions run in a containerized environment across all 8 workloads, in both the JAX and PyTorch frameworks.
 The regression tests run on self-hosted runners and are triggered for pull requests that target the main branch. Typically these PRs will be from the `dev` branch
 so the tests will run containers based on images build from the `dev` branch.
 To run a regression test:

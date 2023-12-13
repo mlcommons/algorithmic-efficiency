@@ -1,9 +1,12 @@
 """Template submission module.
 
-See https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#allowed-submissions 
-and https://github.com/mlcommons/algorithmic-efficiency/blob/main/RULES.md#disallowed-submissions
-for guidelines. 
+See https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md#allowed-submissions
+and https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md#disallowed-submissions
+for guidelines.
 """
+from typing import Dict, Iterator, List, Tuple
+
+from algorithmic_efficiency import spec
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -41,19 +44,15 @@ def update_params(workload: spec.Workload,
 
 def get_batch_size(workload_name):
   """
-    Returns batch size for each workload.
-    Valid workload_name values are in
-    ["wmt", 
-    "ogbg", 
-    "criteo1tb", 
-    "fastmri", 
-    "imagenet_resnet",
-    "imagenet_vit", 
-    "librispeech_deepspeech",
-    "librispeech_conformer"]
+    Gets batch size for workload.
+    Args: 
+      workload_name (str): Valid workload_name values are: "wmt", "ogbg", 
+        "criteo1tb", "fastmri", "imagenet_resnet", "imagenet_vit", 
+        "librispeech_deepspeech", "librispeech_conformer".
     Returns:
-     batch_size 
-   
+      int: batch_size 
+    Raises:
+      ValueError: If workload_name is not handled.
     """
   pass
 

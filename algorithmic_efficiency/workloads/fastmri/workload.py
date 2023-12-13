@@ -14,19 +14,39 @@ class BaseFastMRIWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'ssim'
 
+  @property
+  def use_layer_norm(self) -> bool:
+    """Whether or not to use LayerNorm in the model."""
+    return False
+
+  @property
+  def use_tanh(self) -> bool:
+    """Whether or not to use tanh activations in the model."""
+    return False
+
+  @property
+  def num_pool_layers(self) -> bool:
+    """Number of pooling layers."""
+    return 4
+
+  @property
+  def num_channels(self) -> bool:
+    """Number of channels."""
+    return 32
+
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result['validation/ssim'] > self.validation_target_value
 
   @property
   def validation_target_value(self) -> float:
-    return 0.726999
+    return 0.727120
 
   def has_reached_test_target(self, eval_result: float) -> bool:
     return eval_result['test/ssim'] > self.test_target_value
 
   @property
   def test_target_value(self) -> float:
-    return 0.744254
+    return 0.744296
 
   @property
   def loss_type(self) -> spec.LossType:
@@ -51,7 +71,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def num_test_examples(self) -> int:
-    return 3548
+    return 3581
 
   @property
   def eval_batch_size(self) -> int:

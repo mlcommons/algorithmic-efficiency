@@ -24,15 +24,19 @@ class TransformerConfig:
   qkv_dim: int = 1024
   mlp_dim: int = 1024
   max_len: int = 256
+  activation: Callable = nn.relu
+  glu: bool = False
   #If None, defaults to 0.1.
   dropout_rate: Optional[float] = 0.1
   #If None, defaults to 0.1.
   attention_dropout_rate: Optional[float] = 0.1
+  attention_temp: float = 1.0
   deterministic: bool = False
   decode: bool = False
   kernel_init: Callable = nn.initializers.xavier_uniform()
   bias_init: Callable = nn.initializers.normal(stddev=1e-6)
   posemb_init: Optional[Callable] = None
+  pre_ln: bool = True
 
 
 def shift_right(x, axis=1):
@@ -155,7 +159,15 @@ class MlpBlock(nn.Module):
         kernel_init=cfg.kernel_init,
         bias_init=cfg.bias_init)(
             inputs)
-    x = nn.relu(x)
+    x = cfg.activation(x)
+    if cfg.glu:
+      y = nn.Dense(
+          cfg.mlp_dim,
+          dtype=cfg.dtype,
+          kernel_init=cfg.kernel_init,
+          bias_init=cfg.bias_init)(
+              inputs)
+      x = x * y
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
     else:
@@ -192,15 +204,16 @@ class Encoder1DBlock(nn.Module):
       output after transformer encoder block.
     """
     cfg = self.config
+    pre_ln = cfg.pre_ln
 
     # Attention block.
     assert inputs.ndim == 3
-    x = nn.LayerNorm(dtype=cfg.dtype)(inputs)
+    x = nn.LayerNorm(dtype=cfg.dtype)(inputs) if pre_ln else inputs
     if cfg.attention_dropout_rate is None:
       attention_dropout_rate = 0.1
     else:
       attention_dropout_rate = cfg.attention_dropout_rate
-    x = nn.SelfAttention(
+    x = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
         qkv_features=cfg.qkv_dim,
@@ -209,7 +222,9 @@ class Encoder1DBlock(nn.Module):
         use_bias=False,
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(x, encoder_mask)
+        deterministic=cfg.deterministic)(cfg.attention_temp * x,
+                                         x,
+                                         encoder_mask)
 
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
@@ -217,12 +232,14 @@ class Encoder1DBlock(nn.Module):
       dropout_rate = cfg.dropout_rate
     x = nn.Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + inputs
+    if not pre_ln:
+      x = nn.LayerNorm(dtype=cfg.dtype)(x)
 
     # MLP block.
-    y = nn.LayerNorm(dtype=cfg.dtype)(x)
+    y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
     y = MlpBlock(config=cfg)(y)
 
-    return x + y
+    return x + y if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(x + y)
 
 
 class EncoderDecoder1DBlock(nn.Module):
@@ -251,16 +268,17 @@ class EncoderDecoder1DBlock(nn.Module):
       output after transformer encoder-decoder block.
     """
     cfg = self.config
+    pre_ln = cfg.pre_ln
 
     # Decoder block.
     assert targets.ndim == 3
-    x = nn.LayerNorm(dtype=cfg.dtype)(targets)
+    x = nn.LayerNorm(dtype=cfg.dtype)(targets) if pre_ln else targets
 
     if cfg.attention_dropout_rate is None:
       attention_dropout_rate = 0.1
     else:
       attention_dropout_rate = cfg.attention_dropout_rate
-    x = nn.SelfAttention(
+    x = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
         qkv_features=cfg.qkv_dim,
@@ -270,16 +288,18 @@ class EncoderDecoder1DBlock(nn.Module):
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
         deterministic=cfg.deterministic,
-        decode=cfg.decode)(x, decoder_mask)
+        decode=cfg.decode)(cfg.attention_temp * x, x, decoder_mask)
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
     else:
       dropout_rate = cfg.dropout_rate
     x = nn.Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + targets
+    if not pre_ln:
+      x = nn.LayerNorm(dtype=cfg.dtype)(x)
 
     # Encoder-Decoder block.
-    y = nn.LayerNorm(dtype=cfg.dtype)(x)
+    y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
     y = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
@@ -289,16 +309,20 @@ class EncoderDecoder1DBlock(nn.Module):
         use_bias=False,
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(y, encoded, encoder_decoder_mask)
+        deterministic=cfg.deterministic)(cfg.attention_temp * y,
+                                         encoded,
+                                         encoder_decoder_mask)
 
     y = nn.Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
+    if not pre_ln:
+      y = nn.LayerNorm(dtype=cfg.dtype)(y)
 
     # MLP block.
-    z = nn.LayerNorm(dtype=cfg.dtype)(y)
+    z = nn.LayerNorm(dtype=cfg.dtype)(y) if pre_ln else y
     z = MlpBlock(config=cfg)(z)
 
-    return y + z
+    return y + z if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(y + z)
 
 
 class Encoder(nn.Module):
@@ -352,7 +376,9 @@ class Encoder(nn.Module):
       x = Encoder1DBlock(
           config=cfg, name=f'encoderblock_{lyr}')(x, encoder_mask)
 
-    encoded = nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
+    encoded = (
+        nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
+        if cfg.pre_ln else x)
 
     return encoded
 
@@ -423,7 +449,9 @@ class Decoder(nn.Module):
               encoded,
               decoder_mask=decoder_mask,
               encoder_decoder_mask=encoder_decoder_mask)
-    y = nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_layernorm')(y)
+    y = (
+        nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_layernorm')(y)
+        if cfg.pre_ln else y)
 
     # Use the transpose of embedding matrix for logit transform.
     logits = output_embed.attend(y.astype(jnp.float32))

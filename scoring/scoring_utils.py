@@ -1,18 +1,23 @@
+import copy
+import glob
 import json
 import os
 import re
-import warnings
 
 from absl import logging
 import pandas as pd
 
-from scoring.scoring import NUM_TRIALS
-from scoring.scoring import NUM_WORKLOADS
+import algorithmic_efficiency.workloads.workloads as workloads_registry
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
 METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'
 TRIAL_DIR_REGEX = 'trial_(\d+)'
 MEASUREMENTS_FILENAME = 'eval_measurements.csv'
+TIMESTAMP = r"-\d{4}(-\d{2}){5}"
+
+WORKLOADS = workloads_registry.WORKLOADS
+WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
+BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
 
 #### File IO helper functions ###
@@ -137,10 +142,12 @@ def get_trials_df(logfile):
 def get_experiment_df(experiment_dir):
   """Gets a df of per trial results from an experiment dir.
   The output df can be provided as input to 
-  scoring.compute_performance_profiles. 
+  performance_profile.compute_performance_profiles. 
   Args:
       experiment_dir: path to experiment directory containing 
-        results for workloads.
+        results for workloads. Measurements from experiments 
+        sharing the same prefix but different timestamps are 
+        collected together. 
         The directory structure is assumed to be:
         + experiment_dir
           + <workload>
@@ -151,48 +158,65 @@ def get_experiment_df(experiment_dir):
       df: DataFrame where indices are trials, columns are 
           metric names and values are lists.
           e.g 
-          +----+-----------+---------+--------------------+--------------------+
-          |    | workload  | trial   | validation/accuracy| score              |
-          |----+-----------+---------+--------------------+--------------------|
-          |  0 | mnist_jax | trial_1 | [0.0911, 0.0949]   | [10.6396, 10.6464] |
-          +----+-----------+---------+--------------------+--------------------+
+          +----+-----------+-----------------------------+--------------------+--------------------+
+          |    | workload  | trial                       | validation/accuracy| score              |
+          |----+-----------+-----------------------------+--------------------+--------------------|
+          |  0 | mnist_jax | (trial_1, <experiment_dir>) | [0.0911, 0.0949]   | [10.6396, 10.6464] |
+          +----+-----------+-----------------------------+--------------------+--------------------+
   """
   df = pd.DataFrame()
-  workload_dirs = os.listdir(experiment_dir)
-  num_workloads = len(workload_dirs)
-  if num_workloads != NUM_WORKLOADS:
-    warnings.warn(f'There should be {NUM_WORKLOADS} workloads but there are '
-                  f'{num_workloads}.')
-  for workload in workload_dirs:
-    data = {
-        'workload': workload,
-    }
-    trial_dirs = [
-        t for t in os.listdir(os.path.join(experiment_dir, workload))
-        if re.match(TRIAL_DIR_REGEX, t)
-    ]
-    workload_df = pd.DataFrame()
-    for trial in trial_dirs:
-      eval_measurements_filepath = os.path.join(
-          experiment_dir,
-          workload,
-          trial,
-          MEASUREMENTS_FILENAME,
-      )
-      try:
-        trial_df = pd.read_csv(eval_measurements_filepath)
-      except FileNotFoundError:
-        logging.info(f'Could not read {eval_measurements_filepath}')
-        continue
-      data['trial'] = trial
-      for column in trial_df.columns:
-        values = trial_df[column].to_numpy()
-        data[column] = values
-      trial_df = pd.DataFrame([data])
-      workload_df = pd.concat([workload_df, trial_df], ignore_index=True)
-    num_trials = len(workload_df)
-    if num_trials != NUM_TRIALS:
-      warnings.warn(f'There should be {NUM_TRIALS} trials for workload '
-                    f'{workload} but there are only {num_trials}.')
-    df = pd.concat([df, workload_df], ignore_index=True)
+  paths = filter(
+      lambda x: re.match(experiment_dir + TIMESTAMP, x) or x == experiment_dir,
+      glob.glob(f"{experiment_dir}*"))
+  for experiment_dir in list(paths):
+    workload_dirs = os.listdir(experiment_dir)
+    for workload in workload_dirs:
+      data = {
+          'workload': workload,
+      }
+      trial_dirs = [
+          t for t in os.listdir(os.path.join(experiment_dir, workload))
+          if re.match(TRIAL_DIR_REGEX, t)
+      ]
+      for trial in trial_dirs:
+        eval_measurements_filepath = os.path.join(
+            experiment_dir,
+            workload,
+            trial,
+            MEASUREMENTS_FILENAME,
+        )
+        try:
+          trial_df = pd.read_csv(eval_measurements_filepath)
+        except FileNotFoundError as e:
+          logging.info(f'Could not read {eval_measurements_filepath}')
+          continue
+        data['trial'] = (trial, experiment_dir)
+        for column in trial_df.columns:
+          values = trial_df[column].to_numpy()
+          data[column] = values
+        trial_df = pd.DataFrame([data])
+        df = pd.concat([df, trial_df], ignore_index=True)
   return df
+
+
+## Get workload properties
+def get_workload_validation_target(workload):
+  """Returns workload target metric name and value."""
+  workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
+  framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
+  workload_metadata = copy.copy(WORKLOADS[workload_name])
+
+  # Extend path according to framework.
+  workload_metadata['workload_path'] = os.path.join(
+      BASE_WORKLOADS_DIR,
+      workload_metadata['workload_path'] + f'{framework}',
+      'workload.py')
+  workload_init_kwargs = {}
+  workload_obj = workloads_registry.import_workload(
+      workload_path=workload_metadata['workload_path'],
+      workload_class_name=workload_metadata['workload_class_name'],
+      workload_init_kwargs=workload_init_kwargs)
+  metric_name = workload_obj.target_metric_name
+  validation_metric = f'validation/{metric_name}'
+  validation_target = workload_obj.validation_target_value
+  return validation_metric, validation_target

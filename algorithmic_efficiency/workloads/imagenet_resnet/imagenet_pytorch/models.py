@@ -42,15 +42,18 @@ class BasicBlock(nn.Module):
   """ResNet block."""
   expansion: int = 1
 
-  def __init__(self,
-               inplanes: int,
-               planes: int,
-               stride: int = 1,
-               downsample: Optional[nn.Module] = None,
-               groups: int = 1,
-               base_width: int = 64,
-               dilation: int = 1,
-               norm_layer: Optional[Callable[..., nn.Module]] = None) -> None:
+  def __init__(
+      self,
+      inplanes: int,
+      planes: int,
+      stride: int = 1,
+      downsample: Optional[nn.Module] = None,
+      groups: int = 1,
+      base_width: int = 64,
+      dilation: int = 1,
+      norm_layer: Optional[Callable[..., nn.Module]] = None,
+      act_fnc: nn.Module = nn.ReLU(inplace=True)
+  ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -62,7 +65,7 @@ class BasicBlock(nn.Module):
     # the input when stride != 1.
     self.conv1 = conv3x3(inplanes, planes, stride)
     self.bn1 = norm_layer(planes)
-    self.relu = nn.ReLU(inplace=True)
+    self.act_fnc = act_fnc
     self.conv2 = conv3x3(planes, planes)
     self.bn2 = norm_layer(planes)
     self.downsample = downsample
@@ -73,7 +76,7 @@ class BasicBlock(nn.Module):
 
     out = self.conv1(x)
     out = self.bn1(out)
-    out = self.relu(out)
+    out = self.act_fnc(out)
 
     out = self.conv2(out)
     out = self.bn2(out)
@@ -82,7 +85,7 @@ class BasicBlock(nn.Module):
       identity = self.downsample(x)
 
     out += identity
-    out = self.relu(out)
+    out = self.act_fnc(out)
 
     return out
 
@@ -91,15 +94,18 @@ class Bottleneck(nn.Module):
   """Bottleneck ResNet block."""
   expansion: int = 4
 
-  def __init__(self,
-               inplanes: int,
-               planes: int,
-               stride: int = 1,
-               downsample: Optional[nn.Module] = None,
-               groups: int = 1,
-               base_width: int = 64,
-               dilation: int = 1,
-               norm_layer: Optional[Callable[..., nn.Module]] = None) -> None:
+  def __init__(
+      self,
+      inplanes: int,
+      planes: int,
+      stride: int = 1,
+      downsample: Optional[nn.Module] = None,
+      groups: int = 1,
+      base_width: int = 64,
+      dilation: int = 1,
+      norm_layer: Optional[Callable[..., nn.Module]] = None,
+      act_fnc: nn.Module = nn.ReLU(inplace=True)
+  ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -112,7 +118,7 @@ class Bottleneck(nn.Module):
     self.bn2 = norm_layer(width)
     self.conv3 = conv1x1(width, planes * self.expansion)
     self.bn3 = norm_layer(planes * self.expansion)
-    self.relu = nn.ReLU(inplace=True)
+    self.act_fnc = act_fnc
     self.downsample = downsample
     self.stride = stride
 
@@ -121,11 +127,11 @@ class Bottleneck(nn.Module):
 
     out = self.conv1(x)
     out = self.bn1(out)
-    out = self.relu(out)
+    out = self.act_fnc(out)
 
     out = self.conv2(out)
     out = self.bn2(out)
-    out = self.relu(out)
+    out = self.act_fnc(out)
 
     out = self.conv3(out)
     out = self.bn3(out)
@@ -134,7 +140,7 @@ class Bottleneck(nn.Module):
       identity = self.downsample(x)
 
     out += identity
-    out = self.relu(out)
+    out = self.act_fnc(out)
 
     return out
 
@@ -149,7 +155,9 @@ class ResNet(nn.Module):
                groups: int = 1,
                width_per_group: int = 64,
                replace_stride_with_dilation: Optional[List[bool]] = None,
-               norm_layer: Optional[Callable[..., nn.Module]] = None) -> None:
+               norm_layer: Optional[Callable[..., nn.Module]] = None,
+               act_fnc: nn.Module = nn.ReLU(inplace=True),
+               bn_init_scale: float = 0.) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -170,15 +178,30 @@ class ResNet(nn.Module):
     self.conv1 = nn.Conv2d(
         3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
     self.bn1 = norm_layer(self.inplanes)
-    self.relu = nn.ReLU(inplace=True)
+    self.act_fnc = act_fnc
     self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-    self.layer1 = self._make_layer(block, 64, layers[0])
+    self.layer1 = self._make_layer(block, self.act_fnc, 64, layers[0])
     self.layer2 = self._make_layer(
-        block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
+        block,
+        self.act_fnc,
+        128,
+        layers[1],
+        stride=2,
+        dilate=replace_stride_with_dilation[0])
     self.layer3 = self._make_layer(
-        block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
+        block,
+        self.act_fnc,
+        256,
+        layers[2],
+        stride=2,
+        dilate=replace_stride_with_dilation[1])
     self.layer4 = self._make_layer(
-        block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
+        block,
+        self.act_fnc,
+        512,
+        layers[3],
+        stride=2,
+        dilate=replace_stride_with_dilation[2])
     self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -199,12 +222,13 @@ class ResNet(nn.Module):
     if zero_init_residual:
       for m in self.modules():
         if isinstance(m, Bottleneck):
-          nn.init.constant_(m.bn3.weight, 0)
+          nn.init.constant_(m.bn3.weight, bn_init_scale)
         elif isinstance(m, BasicBlock):
-          nn.init.constant_(m.bn2.weight, 0)
+          nn.init.constant_(m.bn2.weight, bn_init_scale)
 
   def _make_layer(self,
                   block: Type[Union[BasicBlock, Bottleneck]],
+                  act_fnc: nn.Module,
                   planes: int,
                   blocks: int,
                   stride: int = 1,
@@ -232,7 +256,8 @@ class ResNet(nn.Module):
               self.groups,
               self.base_width,
               previous_dilation,
-              norm_layer))
+              norm_layer,
+              act_fnc))
     self.inplanes = planes * block.expansion
     for _ in range(1, blocks):
       layers.append(
@@ -242,14 +267,15 @@ class ResNet(nn.Module):
               groups=self.groups,
               base_width=self.base_width,
               dilation=self.dilation,
-              norm_layer=norm_layer))
+              norm_layer=norm_layer,
+              act_fnc=act_fnc))
 
     return nn.Sequential(*layers)
 
   def forward(self, x: spec.Tensor) -> spec.Tensor:
     x = self.conv1(x)
     x = self.bn1(x)
-    x = self.relu(x)
+    x = self.act_fnc(x)
     x = self.maxpool(x)
 
     x = self.layer1(x)
