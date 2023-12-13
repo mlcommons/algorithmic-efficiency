@@ -93,6 +93,32 @@ python3 datasets/dataset_setup.py \
 --ogbg
 ```
 
+<details>
+<summary>The final directory structure should look like this:</summary>
+
+```bash
+$DATA_DIR
+├── ogbg
+│   └── ogbg_molpcba
+│       └── 0.1.3
+│           ├── dataset_info.json
+│           ├── features.json
+│           ├── metadata.json
+│           ├── ogbg_molpcba-test.tfrecord-00000-of-00001
+│           ├── ogbg_molpcba-train.tfrecord-00000-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00001-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00002-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00003-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00004-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00005-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00006-of-00008
+│           ├── ogbg_molpcba-train.tfrecord-00007-of-00008
+│           └── ogbg_molpcba-validation.tfrecord-00000-of-00001
+```
+
+In total, it should contain 13 files (via `find -type f | wc -l`) for a total of 777 MB (via `du -sch ogbg/`).
+</details>
+
 ### WMT
 
 From `algorithmic-efficiency` run:
@@ -102,6 +128,64 @@ python3 datasets/dataset_setup.py \
 --data_dir $DATA_DIR \
 --wmt
 ```
+
+<details>
+<summary>The final directory structure should look like this:</summary>
+
+```bash
+$DATA_DIR
+├── wmt
+    ├── wmt14_translate
+    │   └── de-en
+    │       └── 1.0.0
+    │           ├── dataset_info.json
+    │           ├── features.json
+    │           ├── wmt14_translate-test.tfrecord-00000-of-00001
+    │           ├── wmt14_translate-train.tfrecord-00000-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00001-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00002-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00003-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00004-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00005-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00006-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00007-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00008-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00009-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00010-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00011-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00012-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00013-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00014-of-00016
+    │           ├── wmt14_translate-train.tfrecord-00015-of-00016
+    │           └── wmt14_translate-validation.tfrecord-00000-of-00001
+    ├── wmt17_translate
+    │   └── de-en
+    │       └── 1.0.0
+    │           ├── dataset_info.json
+    │           ├── features.json
+    │           ├── wmt17_translate-test.tfrecord-00000-of-00001
+    │           ├── wmt17_translate-train.tfrecord-00000-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00001-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00002-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00003-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00004-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00005-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00006-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00007-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00008-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00009-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00010-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00011-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00012-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00013-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00014-of-00016
+    │           ├── wmt17_translate-train.tfrecord-00015-of-00016
+    │           └── wmt17_translate-validation.tfrecord-00000-of-00001
+    └── wmt_sentencepiece_model
+```
+
+In total, it should contain 43 files (via `find -type f | wc -l`) for a total of 3.3 GB (via `du -sch wmt/`).
+</details>
 
 ### FastMRI
 
@@ -117,6 +201,29 @@ python3 datasets/dataset_setup.py \
 --fastmri_knee_singlecoil_val_url '<knee_singlecoil_val_url>' \
 --fastmri_knee_singlecoil_test_url '<knee_singlecoil_test_url>'
 ```
+
+<details>
+<summary>The final directory structure should look like this:</summary>
+
+```bash
+$DATA_DIR
+├── fastmri
+│   ├── knee_singlecoil_test
+│   │   ├── file1000022.h5
+│   │   ├── [...]
+│   │   └── file1002571.h5
+│   ├── knee_singlecoil_train
+│   │   ├── file1000001.h5
+│   │   ├── [...]
+│   │   └── file1002569.h5
+│   └── knee_singlecoil_val
+│       ├── file1000000.h5
+│       ├── [...]
+│       └── file1002570.h5
+```
+
+In total, it should contain 1280 files (via `find -type f | wc -l`) for a total of 112 GB (via `du -sch fastmri/`).
+</details>
 
 ### ImageNet
 
@@ -149,6 +256,73 @@ dangerous if the user injects code into the `--data_dir` or `--temp_dir` flags. 
 do some basic sanitization in `main()`, but submitters should not let untrusted
 users run this script on their systems.
 
+<details>
+<summary>The final directory structure should look like this for ImageNet2012 (PyTorch):</summary>
+
+```bash
+$DATA_DIR
+├── imagenet
+│   ├── train
+│       ├── n01440764
+│           ├── n01440764_10026.JPEG
+│           ├── n01440764_10027.JPEG
+│           ├── n01440764_10029.JPEG
+│           ├── [...]
+│       ├── [...]
+│   └── val
+│       ├── n01440764
+│           ├── ILSVRC2012_val_00000293.JPEG
+│           ├── ILSVRC2012_val_00002138.JPEG
+│           ├── [...]
+│       ├── [...]
+```
+
+In total, it should contain 1,281,167 `train` files and 50,000 `val` (via `find -type f | wc -l`) for a total of 177 GB and 7.8 GB, respectively (via `du -sch train/` and `du -sch val/`).
+</details>
+
+**TODO**
+<details>
+<summary>The final directory structure should look like this for ImageNet2012 (JAX):</summary>
+
+```bash
+$DATA_DIR
+```
+
+In total, it should contain ?? files (via `find -type f | wc -l`) for a total of ?? GB (via `du -sch imagenet/`).
+</details>
+
+<details>
+<summary>The final directory structure should look like this for ImageNet v2:</summary>
+
+```bash
+$DATA_DIR
+├── imagenet_v2
+│   └── matched-frequency
+│       └── 3.0.0
+│           ├── dataset_info.json
+│           ├── features.json
+│           ├── imagenet_v2-test.tfrecord-00000-of-00016
+│           ├── imagenet_v2-test.tfrecord-00001-of-00016
+│           ├── imagenet_v2-test.tfrecord-00002-of-00016
+│           ├── imagenet_v2-test.tfrecord-00003-of-00016
+│           ├── imagenet_v2-test.tfrecord-00004-of-00016
+│           ├── imagenet_v2-test.tfrecord-00005-of-00016
+│           ├── imagenet_v2-test.tfrecord-00006-of-00016
+│           ├── imagenet_v2-test.tfrecord-00007-of-00016
+│           ├── imagenet_v2-test.tfrecord-00008-of-00016
+│           ├── imagenet_v2-test.tfrecord-00009-of-00016
+│           ├── imagenet_v2-test.tfrecord-00010-of-00016
+│           ├── imagenet_v2-test.tfrecord-00011-of-00016
+│           ├── imagenet_v2-test.tfrecord-00012-of-00016
+│           ├── imagenet_v2-test.tfrecord-00013-of-00016
+│           ├── imagenet_v2-test.tfrecord-00014-of-00016
+│           ├── imagenet_v2-test.tfrecord-00015-of-00016
+│           └── label.labels.txt
+```
+
+In total, it should contain 20 files (via `find -type f | wc -l`) for a total of 1.2 GB (via `du -sch imagenet_v2/`).
+</details>
+
 ### Criteo1TB
 
 ```bash
@@ -157,6 +331,17 @@ python3 datasets/dataset_setup.py \
 --temp_dir $DATA_DIR/tmp \
 --criteo1tb 
 ```
+
+**TODO**
+<details>
+<summary>The final directory structure should look like this:</summary>
+
+```bash
+$DATA_DIR
+```
+
+In total, it should contain ?? files (via `find -type f | wc -l`) for a total of ?? GB (via `du -sch criteo1tb/`).
+</details>
 
 ### LibriSpeech
 
@@ -168,6 +353,17 @@ python3 datasets/dataset_setup.py \
 --temp_dir $DATA_DIR/tmp \
 --librispeech
 ```
+
+**TODO**
+<details>
+<summary>The final directory structure should look like this:</summary>
+
+```bash
+$DATA_DIR
+```
+
+In total, it should contain ?? files (via `find -type f | wc -l`) for a total of ?? GB (via `du -sch librispeech/`).
+</details>
 
 #### Training SPM Tokenizer
 
