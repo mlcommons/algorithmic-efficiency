@@ -23,6 +23,12 @@
 
 > *AlgoPerf* is a suite of benchmarks and competitions to measure neural network training speedups due to algorithmic improvements in both training algorithms and models. This is the repository for the *AlgoPerf: Training Algorithms benchmark* and its associated competition. It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/). This repository holds the [**competition rules**](/COMPETITION_RULES.md), the [**technical documentation**](/DOCUMENTATION.md) of the benchmark, [**getting started guides**](/GETTING_STARTED.md), and the benchmark code. For a detailed description of the benchmark design, see our [**paper**](https://arxiv.org/abs/2306.07179).
 
+---
+
+> [!IMPORTANT]
+> Upcoming Deadline:
+> Registration deadline to express non-binding intent to submit: **January 28th, 2024**
+
 ## Table of Contents <!-- omit from toc -->
 
 - [Installation](#installation)
