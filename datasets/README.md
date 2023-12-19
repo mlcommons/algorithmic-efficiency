@@ -280,19 +280,38 @@ $DATA_DIR
 In total, it should contain 1,281,167 `train` files and 50,000 `val` (via `find -type f | wc -l`) for a total of 177 GB and 7.8 GB, respectively (via `du -sch train/` and `du -sch val/`).
 </details>
 
-**TODO**
 <details>
 <summary>The final directory structure should look like this for ImageNet2012 (JAX):</summary>
 
 ```bash
 $DATA_DIR
+├──imagenet
+│  ├── jax
+│  │   ├── downloads
+│  │   │   ├── extracted
+│  │   │   └── manual_
+│  │   ├── imagenet2012
+│  │   │   └── 5.1.0
+│  │   │       ├── dataset_info.json
+│  │   │       ├── features.json
+│  │   │       ├── imagenet2012-train.tfrecord-00000-of-01024
+│  │   │       ├── imagenet2012-train.tfrecord-00001-of-01024
+│  │   │       ├── [...]
+│  │   └── imagenet_v2
+│  │       └── matched-frequency
+│  │           └── 3.0.0
+│  │               ├── dataset_info.json
+│  │               ├── features.json
+│  │               ├── imagenet_v2-test.tfrecord-00000-of-00016
+│  │               ├── imagenet_v2-test.tfrecord-00001-of-00016
+│  │               ├── [...]
 ```
 
-In total, it should contain ?? files (via `find -type f | wc -l`) for a total of ?? GB (via `du -sch imagenet/`).
+In total, it should contain 1,111 files (via `find -type f | wc -l`) for a total of 145 GB (via `du -sch imagenet/jax`).
 </details>
 
 <details>
-<summary>The final directory structure should look like this for ImageNet v2:</summary>
+<summary>The final directory structure should look like this for ImageNet v2 (separate):</summary>
 
 ```bash
 $DATA_DIR
@@ -332,15 +351,20 @@ python3 datasets/dataset_setup.py \
 --criteo1tb 
 ```
 
-**TODO**
 <details>
 <summary>The final directory structure should look like this:</summary>
 
 ```bash
 $DATA_DIR
+├── criteo1tb
+│  ├── day_0_000.csv
+│  ├── day_0_001.csv
+│  ├── day_0_002.csv
+│  ├── day_0_003.csv
+│  ├── [...]
 ```
 
-In total, it should contain ?? files (via `find -type f | wc -l`) for a total of ?? GB (via `du -sch criteo1tb/`).
+In total, it should contain 885 files (via `find -type f | wc -l`) for a total of 1.1 TB (via `du -sch criteo1tb/`).
 </details>
 
 ### LibriSpeech
@@ -354,15 +378,45 @@ python3 datasets/dataset_setup.py \
 --librispeech
 ```
 
-**TODO**
 <details>
 <summary>The final directory structure should look like this:</summary>
 
 ```bash
 $DATA_DIR
+├──librispeech
+│  ├── dev-clean
+│  │   ├── 1272-128104-0000_audio.npy
+│  │   ├── 1272-128104-0000_targets.npy
+│  │   ├── [...]
+│  ├── dev-clean.csv
+│  ├── dev-other
+│  │   ├── 116-288045-0000_audio.npy
+│  │   ├── 116-288045-0000_targets.npy
+│  │   ├── [...]
+│  ├── dev-other.csv
+│  ├── spm_model.vocab
+│  ├── test-clean
+│  │   ├── 1089-134686-0000_audio.npy  
+│  │   ├── 1089-134686-0000_targets.npy
+│  │   ├── [...]
+│  ├── test-clean.csv
+│  ├── train-clean-100
+│  │   ├── 103-1240-0000_audio.npy
+│  │   ├── 103-1240-0000_targets.npy
+│  │   ├── [...]
+│  ├── train-clean-100.csv
+│  ├── train-clean-360
+│  │   ├── 100-121669-0000_audio.npy
+│  │   ├── 100-121669-0000_targets.npy
+│  │   ├── [...]
+│  ├── train-clean-360.csv
+│  │   ├── 985-126228-0050_audio.npy
+│  │   └── 985-126228-0050_targets.npy
+│  │   ├── [...]
+│  └── train-other-500.csv
 ```
 
-In total, it should contain ?? files (via `find -type f | wc -l`) for a total of ?? GB (via `du -sch librispeech/`).
+In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 338 GB (via `du -sch librispeech/`).
 </details>
 
 #### Training SPM Tokenizer
