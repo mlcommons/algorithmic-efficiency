@@ -79,7 +79,6 @@ from datasets import librispeech_tokenizer
 
 import functools
 import os
-import resource
 import shutil
 import subprocess
 import tarfile
