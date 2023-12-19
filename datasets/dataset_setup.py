@@ -26,17 +26,19 @@ and final data dir locations are on the same drive.
 
 Criteo 1TB download size: ~350GB
 Criteo 1TB final disk size: ~1TB
-FastMRI download size:
-FastMRI final disk size:
-LibriSpeech download size:
-LibriSpeech final disk size:
-OGBG download size:
-OGBG final disk size:
-WMT download size: (1.58 GiB + ) =
-WMT final disk size:
+FastMRI download size: ~90GB
+FastMRI final disk size: ~110GB
+ImageNet download size: ~150GB
+ImageNet final disk size: ~150GB
+LibriSpeech download size: ~60GB
+LibriSpeech final disk size: ~350GB
+OGBG download size: ~37MB
+OGBG final disk size: ~800MB
+WMT download size: ~3GB
+WMT final disk size: ~3GB
 _______________________
-Total download size:
-Total disk size:
+Total download size: ~650GB
+Total disk size: ~1.1TB
 
 Some datasets require signing a form before downloading:
 
@@ -49,8 +51,8 @@ ImageNet:
 Register on https://image-net.org/ and run this script with the links to the
 ILSVRC2012 train and validation images.
 
-Note for tfds ImageNet, you may have to increase the max number of files allowed
-open at once using `ulimit -n 8192`.
+Note for tfds ImageNet, you may have to increase the max number of files
+allowed open at once using `ulimit -n 8192`.
 
 Example command:
 
