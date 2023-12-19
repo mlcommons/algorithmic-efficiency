@@ -399,30 +399,34 @@ def extract(source, dest, mode='r:xz'):
   tar.close()
 
 
-def setup_fastmri(data_dir, src_data_dir):
-  data_dir = os.path.join(data_dir, 'fastmri')
-
-  train_tar_file_path = os.path.join(src_data_dir, FASTMRI_TRAIN_TAR_FILENAME)
-  val_tar_file_path = os.path.join(src_data_dir, FASTMRI_VAL_TAR_FILENAME)
-  test_tar_file_path = os.path.join(src_data_dir, FASTMRI_TEST_TAR_FILENAME)
-
-  # Make train, val and test subdirectories
-  train_data_dir = os.path.join(data_dir, 'train')
-  os.makedirs(train_data_dir, exist_ok=True)
-  val_data_dir = os.path.join(data_dir, 'val')
-  os.makedirs(val_data_dir, exist_ok=True)
-  test_data_dir = os.path.join(data_dir, 'test')
-  os.makedirs(test_data_dir, exist_ok=True)
+def setup_fastmri(data_dir):
+  train_tar_file_path = os.path.join(data_dir, FASTMRI_TRAIN_TAR_FILENAME)
+  val_tar_file_path = os.path.join(data_dir, FASTMRI_VAL_TAR_FILENAME)
+  test_tar_file_path = os.path.join(data_dir, FASTMRI_TEST_TAR_FILENAME)
 
   # Unzip tar file into subdirectories
-  logging.info('Unzipping {} to {}'.format(train_tar_file_path, train_data_dir))
-  extract(train_tar_file_path, train_data_dir)
-  logging.info('Unzipping {} to {}'.format(val_tar_file_path, val_data_dir))
-  extract(val_tar_file_path, val_data_dir)
-  logging.info('Unzipping {} to {}'.format(test_tar_file_path, test_data_dir))
-  extract(test_tar_file_path, test_data_dir)
-  logging.info('Set up fastMRI dataset complete')
+  logging.info('Unzipping {} to {}'.format(train_tar_file_path, data_dir))
+  extract(train_tar_file_path, data_dir)
+  logging.info('Unzipping {} to {}'.format(val_tar_file_path, data_dir))
+  extract(val_tar_file_path, data_dir)
+  logging.info('Unzipping {} to {}'.format(test_tar_file_path, data_dir))
+  extract(test_tar_file_path, data_dir)
   logging.info('Extraction completed!')
+
+  # Rename folders to match what the workload expects
+  os.rename(
+      os.path.join(data_dir, "singlecoil_train"),
+      os.path.join(data_dir, "knee_singlecoil_train"),
+  )
+  os.rename(
+      os.path.join(data_dir, "singlecoil_val"),
+      os.path.join(data_dir, "knee_singlecoil_val"),
+  )
+  os.rename(
+      os.path.join(data_dir, "singlecoil_test"),
+      os.path.join(data_dir, "knee_singlecoil_test"),
+  )
+  logging.info("Set up fastMRI dataset complete")
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
