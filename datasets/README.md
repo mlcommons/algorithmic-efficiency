@@ -351,6 +351,8 @@ python3 datasets/dataset_setup.py \
 --criteo1tb 
 ```
 
+Note, that this requries the [`pigz` library](https://zlib.net/pigz/) to be installed.
+
 <details>
 <summary>The final directory structure should look like this:</summary>
 
@@ -377,6 +379,8 @@ python3 datasets/dataset_setup.py \
 --temp_dir $DATA_DIR/tmp \
 --librispeech
 ```
+
+Note, that this requries the [`ffmpeg` toolbox](https://ffmpeg.org/) to be installed.
 
 <details>
 <summary>The final directory structure should look like this:</summary>
