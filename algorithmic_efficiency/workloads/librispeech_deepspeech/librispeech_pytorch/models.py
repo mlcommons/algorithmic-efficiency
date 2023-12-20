@@ -195,7 +195,7 @@ class FeedForwardModule(nn.Module):
     super().__init__()
     self.config = config
 
-    if self.config.layernorm_everywhere:
+    if config.layernorm_everywhere:
       self.normalization_layer = LayerNorm(config.encoder_dim)
     else:
       self.normalization_layer = BatchNorm(
@@ -211,7 +211,11 @@ class FeedForwardModule(nn.Module):
 
   def forward(self, inputs, input_paddings):
     padding_mask = (1 - input_paddings)[:, :, None]
-    inputs = self.normalization_layer(inputs, input_paddings)
+    if self.config.layernorm_everywhere:
+      inputs = self.normalization_layer(inputs)
+    else: # batchnorm
+      inputs = self.normalization_layer(inputs, input_paddings)
+      
     inputs = self.lin(inputs)
    
     if self.config.use_tanh:
@@ -299,7 +303,10 @@ class BatchRNN(nn.Module):
           input_size=input_size, hidden_size=hidden_size, batch_first=True)
 
   def forward(self, inputs, input_paddings):
-    inputs = self.normalization_layer(inputs, input_paddings)
+    if self.config.layernorm_everywhere:
+      inputs = self.normalization_layer(inputs)
+    else:
+      inputs = self.normalization_layer(inputs, input_paddings)
     lengths = torch.sum(1 - input_paddings, dim=1).detach().cpu().numpy()
     packed_inputs = torch.nn.utils.rnn.pack_padded_sequence(
         inputs, lengths, batch_first=True, enforce_sorted=False)
