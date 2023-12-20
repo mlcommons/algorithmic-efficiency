@@ -1,4 +1,6 @@
 """WMT workload implemented in Jax."""
+
+from dataclasses import replace
 import functools
 from typing import Any, Dict, Iterator, Optional, Tuple
 
@@ -215,11 +217,23 @@ class WmtWorkload(BaseWmtWorkload):
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
 
+    if self.activation == 'relu':
+      activation = nn.relu
+    elif self.activation == 'tanh':
+      activation = jnp.tanh
+    else:
+      raise ValueError(f'Unknown activation function {self.activation}.')
+
     model_config = models.TransformerConfig(
-        dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
+        dropout_rate=dropout_rate,
+        attention_dropout_rate=aux_dropout_rate,
+        pre_ln=self.pre_ln,
+        attention_temp=self.attention_temp,
+        activation=activation,
+        glu=self.glu)
     self._train_model = models.Transformer(model_config)
-    self._eval_model = models.Transformer(
-        models.TransformerConfig(deterministic=True))
+    eval_config = replace(model_config, deterministic=True)
+    self._eval_model = models.Transformer(eval_config)
     initial_variables = jax.jit(self._eval_model.init)(
         rng,
         jnp.ones(input_shape, jnp.float32),
@@ -277,3 +291,55 @@ class WmtWorkload(BaseWmtWorkload):
     del num_examples
     eval_denominator = total_metrics.pop('denominator')
     return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)
+
+
+class WmtWorkloadPostLN(WmtWorkload):
+  """WMT Jax workload with post instead of pre layer norm."""
+
+  @property
+  def validation_target_value(self) -> float:
+    return 30.2003
+
+  @property
+  def test_target_value(self) -> float:
+    return 29.8982
+
+  @property
+  def pre_ln(self) -> bool:
+    return False
+
+
+class WmtWorkloadAttentionTemp(WmtWorkload):
+  """WMT Jax workload with attention temperature = 4.0."""
+
+  @property
+  def validation_target_value(self) -> float:
+    return 30.0756
+
+  @property
+  def test_target_value(self) -> float:
+    return 29.8094
+
+  @property
+  def attention_temp(self) -> float:
+    return 4.0
+
+
+class WmtWorkloadGLUTanH(WmtWorkload):
+  """WMT Jax workload with GLU and TanH activations."""
+
+  @property
+  def validation_target_value(self) -> float:
+    return 30.0002
+
+  @property
+  def test_target_value(self) -> float:
+    return 29.8139
+
+  @property
+  def activation(self) -> str:
+    return 'tanh'
+
+  @property
+  def glu(self) -> bool:
+    return True

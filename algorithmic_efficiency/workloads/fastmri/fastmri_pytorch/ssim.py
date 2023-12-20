@@ -2,7 +2,6 @@
 
 import functools
 
-import functorch
 import torch
 import torch.nn.functional as F
 from torchvision.transforms.functional import pad as pad_fn
@@ -47,7 +46,7 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   std = std.view((-1,) + (1,) * (len(logits.shape) - 1))
   logits = logits * std + mean
   targets = targets * std + mean
-  ssims = functorch.vmap(structural_similarity)(logits, targets, volume_max)
+  ssims = torch.vmap(structural_similarity)(logits, targets, volume_max)
   return ssims
 
 
