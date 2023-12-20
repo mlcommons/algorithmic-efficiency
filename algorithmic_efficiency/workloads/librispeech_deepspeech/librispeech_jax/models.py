@@ -158,7 +158,7 @@ class Conv2dSubsampling(nn.Module):
 
     if self.use_tanh:
       outputs = nn.tanh(outputs)
-    else: 
+    else:
       outputs = nn.relu(outputs)
 
 

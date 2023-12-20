@@ -45,6 +45,8 @@ class DeepspeechConfig:
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
+  use_tanh: bool = False
+  layernorm_everywhere = False 
 
 
 class LayerNorm(nn.Module):
@@ -77,9 +79,9 @@ class Subsample(nn.Module):
     self.encoder_dim = encoder_dim
 
     self.conv1 = Conv2dSubsampling(
-        input_channels=1, output_channels=encoder_dim)
+        input_channels=1, output_channels=encoder_dim, use_tanh=config.use_tanh)
     self.conv2 = Conv2dSubsampling(
-        input_channels=encoder_dim, output_channels=encoder_dim)
+        input_channels=encoder_dim, output_channels=encoder_dim, use_tanh=config.use_tanh)
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
@@ -115,7 +117,8 @@ class Conv2dSubsampling(nn.Module):
                filter_stride: Tuple[int] = (2, 2),
                padding: str = 'SAME',
                batch_norm_momentum: float = 0.999,
-               batch_norm_epsilon: float = 0.001):
+               batch_norm_epsilon: float = 0.001,
+               use_tanh: bool = False):
     super().__init__()
 
     self.input_channels = input_channels
@@ -128,6 +131,8 @@ class Conv2dSubsampling(nn.Module):
     self.kernel = nn.Parameter(
         nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
     self.bias = nn.Parameter(torch.zeros(output_channels))
+
+    self.use_tanh = use_tanh
 
   def get_same_padding(self, input_shape):
     in_height, in_width = input_shape[2:]
@@ -162,7 +167,10 @@ class Conv2dSubsampling(nn.Module):
         dilation=(1, 1),
         groups=groups)
 
-    outputs = F.relu(outputs)
+    if self.use_tanh:
+      outputs = F.tanh(outputs)
+    else:
+      outputs = F.relu(outputs)
 
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
@@ -202,7 +210,12 @@ class FeedForwardModule(nn.Module):
     padding_mask = (1 - input_paddings)[:, :, None]
     inputs = self.bn(inputs, input_paddings)
     inputs = self.lin(inputs)
-    inputs = F.relu(inputs)
+   
+    if self.config.use_tanh:
+      inputs = F.tanh(inputs)
+    else:
+      inputs = F.relu(inputs)
+   
     inputs = inputs * padding_mask
     inputs = self.dropout(inputs)
 
