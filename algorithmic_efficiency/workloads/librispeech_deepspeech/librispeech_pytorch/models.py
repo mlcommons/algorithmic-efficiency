@@ -46,7 +46,7 @@ class DeepspeechConfig:
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
   use_tanh: bool = False
-  layernorm_everywhere = False 
+  layernorm_everywhere: bool = False
 
 
 class LayerNorm(nn.Module):
@@ -195,10 +195,13 @@ class FeedForwardModule(nn.Module):
     super().__init__()
     self.config = config
 
-    self.bn = BatchNorm(
-        dim=config.encoder_dim,
-        batch_norm_momentum=config.batch_norm_momentum,
-        batch_norm_epsilon=config.batch_norm_epsilon)
+    if self.config.layernorm_everywhere:
+      self.normalization_layer = LayerNorm(config.encoder_dim)
+    else:
+      self.normalization_layer = BatchNorm(
+          dim=config.encoder_dim,
+          batch_norm_momentum=config.batch_norm_momentum,
+          batch_norm_epsilon=config.batch_norm_epsilon)
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
     if config.feed_forward_dropout_rate is None:
       feed_forward_dropout_rate = 0.1
@@ -208,7 +211,7 @@ class FeedForwardModule(nn.Module):
 
   def forward(self, inputs, input_paddings):
     padding_mask = (1 - input_paddings)[:, :, None]
-    inputs = self.bn(inputs, input_paddings)
+    inputs = self.normalization_layer(inputs, input_paddings)
     inputs = self.lin(inputs)
    
     if self.config.use_tanh:
@@ -278,9 +281,12 @@ class BatchRNN(nn.Module):
     bidirectional = config.bidirectional
     self.bidirectional = bidirectional
 
-    self.bn = BatchNorm(config.encoder_dim,
-                        config.batch_norm_momentum,
-                        config.batch_norm_epsilon)
+    if config.layernorm_everywhere:
+      self.normalization_layer = nn.LayerNorm(config.encoder_dim)
+    else:
+      self.normalization_layer = BatchNorm(config.encoder_dim,
+                          config.batch_norm_momentum,
+                          config.batch_norm_epsilon)
 
     if bidirectional:
       self.lstm = nn.LSTM(
@@ -293,7 +299,7 @@ class BatchRNN(nn.Module):
           input_size=input_size, hidden_size=hidden_size, batch_first=True)
 
   def forward(self, inputs, input_paddings):
-    inputs = self.bn(inputs, input_paddings)
+    inputs = self.normalization_layer(inputs, input_paddings)
     lengths = torch.sum(1 - input_paddings, dim=1).detach().cpu().numpy()
     packed_inputs = torch.nn.utils.rnn.pack_padded_sequence(
         inputs, lengths, batch_first=True, enforce_sorted=False)
@@ -342,7 +348,7 @@ class DeepspeechEncoderDecoder(nn.Module):
         [FeedForwardModule(config) for _ in range(config.num_ffn_layers)])
 
     if config.enable_decoder_layer_norm:
-      self.ln = LayerNorm(config.encoder_dim)
+      self.ln = nn.LayerNorm(config.encoder_dim)
     else:
       self.ln = nn.Identity()
 
