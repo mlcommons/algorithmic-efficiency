@@ -627,7 +627,7 @@ def download_librispeech(data_dir, tmp_dir):
         f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
         shell=True).communicate()
 
-  tokenizer_vocab_path = os.path.join(data_dir, 'spm_model.vocab')
+  tokenizer_vocab_path = os.path.join(final_data_dir, 'spm_model.vocab')
 
   if not os.path.exists(tokenizer_vocab_path):
     librispeech_tokenizer.run(
