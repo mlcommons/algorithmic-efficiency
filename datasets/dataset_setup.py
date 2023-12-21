@@ -588,13 +588,13 @@ def download_imagenet_v2(data_dir):
       data_dir=data_dir).download_and_prepare()
 
 
-def download_librispeech(dataset_dir, tmp_dir):
+def download_librispeech(data_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
   tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
   extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
-  final_data_dir = os.path.join(dataset_dir, 'librispeech')
+  final_data_dir = os.path.join(data_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
   _maybe_mkdir(final_data_dir)
@@ -627,10 +627,13 @@ def download_librispeech(dataset_dir, tmp_dir):
         f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
         shell=True).communicate()
 
-  tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
+  tokenizer_vocab_path = os.path.join(data_dir, 'spm_model.vocab')
 
   if not os.path.exists(tokenizer_vocab_path):
-    librispeech_tokenizer.run(train=True, data_dir=extracted_data_dir)
+    librispeech_tokenizer.run(
+        train=True,
+        input_dir=extracted_data_dir,
+        tokenizer_vocab_path=tokenizer_vocab_path)
 
   librispeech_preprocess.run(
       input_dir=extracted_data_dir,
