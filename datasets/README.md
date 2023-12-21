@@ -388,36 +388,39 @@ Note, that this requries the [`ffmpeg` toolbox](https://ffmpeg.org/) to be insta
 ```bash
 $DATA_DIR
 ├──librispeech
+│  ├── dev-clean.csv
+│  ├── dev-other.csv
+│  ├── spm_model.vocab
+│  ├── test-clean.csv
+│  ├── train-clean-100.csv
+│  ├── train-clean-360.csv
+│  ├── train-clean-500.csv
 │  ├── dev-clean
 │  │   ├── 1272-128104-0000_audio.npy
 │  │   ├── 1272-128104-0000_targets.npy
+│  │   ├── 1272-128104-0001_audio.npy
+│  │   ├── 1272-128104-0001_targets.npy
 │  │   ├── [...]
-│  ├── dev-clean.csv
 │  ├── dev-other
 │  │   ├── 116-288045-0000_audio.npy
 │  │   ├── 116-288045-0000_targets.npy
 │  │   ├── [...]
-│  ├── dev-other.csv
-│  ├── spm_model.vocab
 │  ├── test-clean
 │  │   ├── 1089-134686-0000_audio.npy  
 │  │   ├── 1089-134686-0000_targets.npy
 │  │   ├── [...]
-│  ├── test-clean.csv
 │  ├── train-clean-100
 │  │   ├── 103-1240-0000_audio.npy
 │  │   ├── 103-1240-0000_targets.npy
 │  │   ├── [...]
-│  ├── train-clean-100.csv
 │  ├── train-clean-360
 │  │   ├── 100-121669-0000_audio.npy
 │  │   ├── 100-121669-0000_targets.npy
 │  │   ├── [...]
-│  ├── train-clean-360.csv
-│  │   ├── 985-126228-0050_audio.npy
-│  │   └── 985-126228-0050_targets.npy
+│  ├── train-other-500
+│  │   ├── 1006-135212-0000_audio.npy
+│  │   ├── 1006-135212-0000_targets.npy
 │  │   ├── [...]
-│  └── train-other-500.csv
 ```
 
 In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 338 GB (via `du -sch librispeech/`).
