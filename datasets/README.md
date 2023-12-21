@@ -359,10 +359,10 @@ Note, that this requries the [`pigz` library](https://zlib.net/pigz/) to be inst
 ```bash
 $DATA_DIR
 ├── criteo1tb
-│  ├── day_0_000.csv
-│  ├── day_0_001.csv
-│  ├── day_0_002.csv
-│  ├── day_0_003.csv
+│  ├── day_0_00
+│  ├── day_0_01
+│  ├── day_0_02
+│  ├── day_0_03
 │  ├── [...]
 ```
 
@@ -428,8 +428,8 @@ In total, it should contain 543,323 files (via `find -type f | wc -l`) for a tot
 
 #### Training SPM Tokenizer
 
- A simple sentence piece tokenizer is trained over librispeech training
- data. This tokenizer is then used in later preprocessing step to tokenize transcripts.
+During the above commands, a simple sentence piece tokenizer is trained over librispeech training data.
+This tokenizer is then used in later preprocessing step to tokenize transcripts.
 This command generates `spm_model.vocab` file in `$DATA_DIR/librispeech`:
 
 ```bash
