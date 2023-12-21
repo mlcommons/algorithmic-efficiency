@@ -601,6 +601,8 @@ def download_librispeech(dataset_dir, tmp_dir):
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
+      if split == 'test' and version == 'other':
+        continue
       wget_cmd = (
           f'wget --directory-prefix={tmp_librispeech_dir} '
           f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
