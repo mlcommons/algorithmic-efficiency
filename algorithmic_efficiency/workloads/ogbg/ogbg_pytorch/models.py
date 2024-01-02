@@ -1,5 +1,6 @@
 # Ported to PyTorch from
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
+from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax.tree_util as tree
@@ -46,7 +47,7 @@ class GNN(nn.Module):
     if activation_fn_name == 'relu':
       activation_fn = nn.ReLU
     elif activation_fn_name == 'gelu':
-      activation_fn = nn.GeLU
+      activation_fn = partial(nn.GeLU, approximate='tanh')
     elif activation_fn_name == 'silu':
       activation_fn = nn.Silu
     else:
