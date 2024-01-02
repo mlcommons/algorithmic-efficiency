@@ -144,7 +144,11 @@ class OgbgWorkload(BaseOgbgWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = GNN(num_outputs=self._num_outputs, dropout_rate=dropout_rate)
+    model = GNN(num_outputs=self._num_outputs, 
+                dropout_rate=dropout_rate,
+                hidden_dims=self.hidden_dims,
+                latent_dim=self.latent_dim,
+                num_message_passing_steps=self.num_message_passing_steps)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -235,3 +239,33 @@ class OgbgWorkload(BaseOgbgWorkload):
     """Normalize eval metrics."""
     del num_examples
     return {k: float(v) for k, v in total_metrics.compute().items()}
+
+
+class OgbgGeluWorkload(OgbgWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'gelu'
+
+
+class OgbgSiluWorkload(OgbgWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'silu'
+
+class OgbgModelSizeWorkload(OgbgWorkload):
+ 
+  @property
+  def hidden_dims(self) -> Tuple[int]:
+    return (256, 256)
+
+  @property
+  def latent_dim(self) -> int:
+    return 128
+
+  @property
+  def num_message_passing_steps(self) -> int:
+    return 5

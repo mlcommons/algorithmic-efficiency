@@ -3,7 +3,7 @@
 import abc
 import itertools
 import math
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import jax
 
@@ -21,6 +21,23 @@ class BaseOgbgWorkload(spec.Workload):
   def target_metric_name(self) -> str:
     """The name of the target metric (useful for scoring/processing code)."""
     return 'mean_average_precision'
+
+  @property 
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'relu'
+
+  @property
+  def hidden_dims(self) -> Tuple[int]:
+    return (256,)
+
+  @property
+  def latent_dim(self) -> int:
+    return 128
+
+  @property
+  def num_message_passing_steps(self) -> int:
+    return 5
 
   def has_reached_validation_target(self, eval_result: float) -> bool:
     return eval_result[
