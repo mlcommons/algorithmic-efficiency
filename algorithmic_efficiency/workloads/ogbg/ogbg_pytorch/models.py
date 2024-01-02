@@ -28,15 +28,18 @@ class GNN(nn.Module):
   The model assumes the input data is a jraph.GraphsTuple without global
   variables. The final prediction will be encoded in the globals.
   """
-  latent_dim: int = 256
-  hidden_dims: Tuple[int] = (256,)
-  num_message_passing_steps: int = 5
 
   def __init__(self,
                num_outputs: int = 128,
                dropout_rate: Optional[float] = 0.1,
-               activation_fn_name: str = 'relu') -> None:
+               activation_fn_name: str = 'relu',
+               latent_dim: int = 256,
+               hidden_dims: Tuple[int] = (256,),
+               num_message_passing_steps: int = 5) -> None:
     super().__init__()
+    self.latent_dim = latent_dim
+    self.hidden_dims = hidden_dims
+    self.num_message_passing_steps = num_message_passing_steps
     self.num_outputs = num_outputs
     if dropout_rate is None:
       dropout_rate = 0.1
