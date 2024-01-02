@@ -17,7 +17,7 @@ def _make_mlp(in_dim, hidden_dims, dropout_rate, activation_fn):
   for dim in hidden_dims:
     layers.add_module('dense', nn.Linear(in_features=in_dim, out_features=dim))
     layers.add_module('norm', nn.LayerNorm(dim, eps=1e-6))
-    layers.add_module('activation_fn', activation_fn)
+    layers.add_module('activation_fn', activation_fn())
     layers.add_module('dropout', nn.Dropout(dropout_rate))
   return layers
 
