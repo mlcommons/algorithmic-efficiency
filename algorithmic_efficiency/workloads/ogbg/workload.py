@@ -33,7 +33,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def latent_dim(self) -> int:
-    return 128
+    return 256
 
   @property
   def num_message_passing_steps(self) -> int:
