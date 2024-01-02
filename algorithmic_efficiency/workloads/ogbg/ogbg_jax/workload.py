@@ -151,3 +151,4 @@ class OgbgModelSizeWorkload(OgbgWorkload):
   @property
   def num_message_passing_steps(self) -> int:
     return 5
+  
