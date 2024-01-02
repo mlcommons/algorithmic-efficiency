@@ -264,7 +264,7 @@ class OgbgModelSizeWorkload(OgbgWorkload):
 
   @property
   def latent_dim(self) -> int:
-    return 256
+    return 128
 
   @property
   def num_message_passing_steps(self) -> int:
