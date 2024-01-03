@@ -182,12 +182,6 @@ class GraphNetwork(nn.Module):
       # giving us tensors of shape [num_nodes, global_feat].
       global_attributes = tree.tree_map(
           lambda g: torch.repeat_interleave(g, n_node, dim=0), globals_)
-      print('SHAPES')
-      print(nodes.shape, sent_attributes.shape, received_attributes.shape, global_attributes.shape)
-      print(senders.shape)
-      print(receivers.shape)
-      print(sum_n_node)
-      print(edges.shape)
       node_fn_inputs = torch.cat(
           [nodes, sent_attributes, received_attributes, global_attributes],
           dim=-1)
