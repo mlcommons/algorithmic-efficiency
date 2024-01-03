@@ -183,6 +183,8 @@ class GraphNetwork(nn.Module):
       print(nodes.shape, sent_attributes.shape, received_attributes.shape, global_attributes.shape)
       print(senders.shape)
       print(receivers.shape)
+      print(sum_n_node)
+      print(edges.shape)
       node_fn_inputs = torch.cat(
           [nodes, sent_attributes, received_attributes, global_attributes],
           dim=-1)
