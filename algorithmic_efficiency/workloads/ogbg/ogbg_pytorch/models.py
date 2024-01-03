@@ -64,7 +64,7 @@ class GNN(nn.Module):
       if st == 0:
         in_dim_edge_fn = self.latent_dim * 3 + self.num_outputs
         in_dim_node_fn = self.latent_dim + self.hidden_dims[-1] * 2 + self.num_outputs
-        last_in_dim = self.latent_dim * 2 + self.num_outputs
+        last_in_dim = self.hidden_dims[-1] * 2 + self.num_outputs
       else:
         in_dim_edge_fn = self.hidden_dims[-1] * 4
         in_dim_node_fn = self.hidden_dims[-1] * 4
