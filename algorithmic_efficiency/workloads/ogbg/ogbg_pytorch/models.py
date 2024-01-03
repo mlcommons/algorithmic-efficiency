@@ -59,20 +59,23 @@ class GNN(nn.Module):
 
     graph_network_layers = []
     for st in range(self.num_message_passing_steps):
-      # Constants in in_dims are based on the requirements of the GraphNetwork.
+      # Constants in in_dims are based on forward call of GraphNetwork:
+      # specifically update_edge_fn update_node_fn and update_global_fn.
       if st == 0:
-        in_dim = self.latent_dim * 3 + self.num_outputs
+        in_dim_edge_fn = self.latent_dim * 3 + self.num_outputs
+        in_dim_node_fn = self.latent_dim + self.hidden_dims[-1] * 2 + self.num_outs
         last_in_dim = self.latent_dim * 2 + self.num_outputs
       else:
-        in_dim = self.hidden_dims[-1] * 4
+        in_dim_edge_fn = self.hidden_dims[-1] * 4
+        in_dim_node_fn = self.hidden_dims[-1] * 4
         last_in_dim = self.hidden_dims[-1] * 3
 
       graph_network_layers.append(
           GraphNetwork(
               update_edge_fn=_make_mlp(
-                  in_dim, self.hidden_dims, dropout_rate, activation_fn),
+                  in_dim_edge_fn, self.hidden_dims, dropout_rate, activation_fn),
               update_node_fn=_make_mlp(
-                  in_dim, self.hidden_dims, dropout_rate, activation_fn),
+                  in_dim_node_fn, self.hidden_dims, dropout_rate, activation_fn),
               update_global_fn=_make_mlp(
                   last_in_dim, self.hidden_dims, dropout_rate, activation_fn)))
     self.graph_network = nn.Sequential(*graph_network_layers)
