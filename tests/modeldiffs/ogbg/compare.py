@@ -18,7 +18,7 @@ from tests.modeldiffs.diff import out_diff
 
 hidden_dims  = JaxWorkload().hidden_dims
 
-def key_transform(k, hidden_dims):
+def key_transform(k):
   new_key = []
   bn = False
   ln = False
