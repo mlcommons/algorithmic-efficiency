@@ -17,6 +17,7 @@ from tests.modeldiffs.diff import out_diff
 
 
 hidden_dims = len(JaxWorkload().hidden_dims)
+num_graphs= JaxWorkload().num_message_passing_steps
 
 def key_transform(k):
   new_key = []
@@ -46,6 +47,9 @@ def key_transform(k):
         i = 'node_embedding'
       elif layer_index == 1:
         i = 'edge_embedding'
+      elif layer_index == 2:
+        count = num_graphs * 3 * hidden_dims
+        i = 
     elif 'LayerNorm' in i:
       layer_index = int(i.split('_')[1])
       count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
@@ -64,20 +68,6 @@ def sd_transform(sd):
   # pylint: disable=locally-disabled, modified-iterating-dict, consider-using-dict-items
   keys = list(sd.keys())
   out = {}
-  for k in keys:
-    new_key = k
-    if len(k) == 5:
-      _, gn_id, seq_id = k[:3]
-      gn_id = int(gn_id.split('_')[1])
-      seq_id = int(seq_id.split('_')[1])
-      if 'LayerNorm' in k[3]:
-        new_key = (k[3].replace('0', f'{gn_id*3+seq_id}'), k[4])
-      else:
-        new_key = (k[3].replace('0', f'{gn_id*3+seq_id+2}'), k[4])
-    elif len(k) == 2 and k[0] == 'Dense_2':
-      new_key = ('Dense_17', k[1])
-    out[new_key] = sd[k]
-
   return out
 
 
