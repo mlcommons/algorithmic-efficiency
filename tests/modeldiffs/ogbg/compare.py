@@ -20,6 +20,7 @@ def key_transform(k):
   new_key = []
   bn = False
   ln = False
+  print("Key transform input ", k)
   for i in k:
     bn = bn or 'BatchNorm' in i
     ln = ln or 'LayerNorm' in i
@@ -42,6 +43,7 @@ def key_transform(k):
       else:
         i = i.replace('weight', 'kernel')
     new_key.append(i)
+  print("New key output", new_key)
   return tuple(new_key)
 
 
