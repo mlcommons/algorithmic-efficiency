@@ -95,14 +95,14 @@ class ImagenetVitGluWorkload(ImagenetVitWorkload):
     return True
 
 
-class ImagenetViTPostLNWorkload(ImagenetVitWorkload):
+class ImagenetVitPostLNWorkload(ImagenetVitWorkload):
 
   @property
   def use_post_layer_norm(self) -> bool:
     return True
 
 
-class ImagenetViTMapLNWorkload(ImagenetVitWorkload):
+class ImagenetVitMapWorkload(ImagenetVitWorkload):
 
   @property
   def use_map(self) -> bool:
