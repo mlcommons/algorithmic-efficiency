@@ -25,7 +25,7 @@ def key_transform(k):
   graph_network = False
   "Sequential_0', 'GraphNetwork_0', 'Sequential_0', 'Linear_0', 'weight'"
   print("Key transform input ", k)
-  graph_network_index = 0
+  graph_index = 0
   seq_index = 0
   for i in k:
     bn = bn or 'BatchNorm' in i
@@ -35,7 +35,7 @@ def key_transform(k):
       seq_index = i.split('_')[1]
       continue
     elif 'GraphNetwork' in i:
-      graph_network_index = i.split('_')[1]
+      graph_index = i.split('_')[1]
       continue
     elif 'Linear' in i:
       layer_index = i.split('_')[1]
