@@ -37,7 +37,7 @@ def key_transform(k):
     if 'GraphNetwork' in i:
       graph_index = int(i.split('_')[1])
       continue
-    elif 'Linear' in i:
+    if 'Linear' in i:
       layer_index = int(i.split('_')[1])
       if graph_network:
         count = (
