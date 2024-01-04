@@ -34,7 +34,7 @@ def key_transform(k):
     if 'Sequential' in i:
       seq_index = int(i.split('_')[1])
       continue
-    elif 'GraphNetwork' in i:
+    if 'GraphNetwork' in i:
       graph_index = int(i.split('_')[1])
       continue
     elif 'Linear' in i:
