@@ -36,6 +36,18 @@ WORKLOADS = {
         'workload_path': 'fastmri/fastmri',
         'workload_class_name': 'FastMRIWorkload',
     },
+    'fastmri_model_size': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRIModelSizeWorkload',
+    },
+    'fastmri_tanh': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRITanhWorkload',
+    },
+    'fastmri_layernorm': {
+        'workload_path': 'fastmri/fastmri',
+        'workload_class_name': 'FastMRILayerNormWorkload',
+    },
     'imagenet_resnet': {
         'workload_path': 'imagenet_resnet/imagenet',
         'workload_class_name': 'ImagenetResNetWorkload',
@@ -97,6 +109,16 @@ WORKLOADS = {
         'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
     },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
+    'wmt_post_ln': {
+        'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkloadPostLN'
+    },
+    'wmt_attention_temp': {
+        'workload_path': 'wmt/wmt',
+        'workload_class_name': 'WmtWorkloadAttentionTemp'
+    },
+    'wmt_glu_tanh': {
+        'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkloadGLUTanH'
+    },
 }
 
 BASE_WORKLOADS = [

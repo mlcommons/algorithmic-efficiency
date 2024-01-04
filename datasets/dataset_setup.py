@@ -324,7 +324,7 @@ def download_criteo1tb(data_dir,
       unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
       unzipped_paths.append(unzipped_path)
       split_path = os.path.join(criteo_dir, f'day_{day}_')
-      split_cmd = ('split -a 3 -d -l 5000000 --additional-suffix=.csv '
+      split_cmd = ('split -a 2 -d -l 5000000 '
                    f'"{unzipped_path}" "{split_path}"')
       logging.info(f'Running Criteo 1TB split command:\n{split_cmd}')
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))

@@ -8,9 +8,9 @@ import torch
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
-    WmtWorkload as JaxWorkload
+    WmtWorkloadAttentionTemp as JaxWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
-    WmtWorkload as PytWorkload
+    WmtWorkloadAttentionTemp as PytWorkload
 from tests.modeldiffs.diff import out_diff
 
 

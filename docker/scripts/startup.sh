@@ -115,11 +115,12 @@ VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
                  "imagenet_resnet_large_bn_init" "imagenet_vit" "imagenet_vit_glu" \
                  "imagenet_vit_post_ln" "imagenet_vit_map" "fastmri" "ogbg" \
-                 "wmt" "librispeech_deepspeech" "librispeech_conformer" "mnist" \
-                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo_embed_init" \
+                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init" \
+                 "wmt" "wmt_post_ln" "wmt_attention_temp" "wmt_glu_tanh" \
+                 "librispeech_deepspeech" "librispeech_conformer" "mnist" \
                  "conformer_layernorm" "conformer_attention_temperature" \
-                 "conformer_gelu")
-
+                 "conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
+                 "fastmri_layernorm")
 
 # Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"

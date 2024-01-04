@@ -9,6 +9,7 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 from torch.nn import DataParallel as DP
+import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algorithmic_efficiency import param_utils
@@ -171,8 +172,21 @@ class WmtWorkload(BaseWmtWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """aux_dropout_rate is used as attention_dropout_rate."""
     torch.random.manual_seed(rng[0])
+
+    if self.activation == 'relu':
+      activation = F.relu
+    elif self.activation == 'tanh':
+      activation = F.tanh
+    else:
+      raise ValueError(f'Unknown activation function {self.activation}.')
+
     model = Transformer(
-        dropout_rate=dropout_rate, attention_dropout_rate=aux_dropout_rate)
+        dropout_rate=dropout_rate,
+        attention_dropout_rate=aux_dropout_rate,
+        pre_ln=self.pre_ln,
+        attention_temp=self.attention_temp,
+        activation=activation,
+        glu=self.glu)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -334,3 +348,55 @@ class WmtWorkload(BaseWmtWorkload):
     total_metrics = {k: v.item() for k, v in total_metrics.items()}
     eval_denominator = total_metrics.pop('denominator')
     return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)
+
+
+class WmtWorkloadPostLN(WmtWorkload):
+  """WMT PyTorch workload with post instead of pre layer norm."""
+
+  @property
+  def validation_target_value(self) -> float:
+    return 30.2003
+
+  @property
+  def test_target_value(self) -> float:
+    return 29.8982
+
+  @property
+  def pre_ln(self) -> bool:
+    return False
+
+
+class WmtWorkloadAttentionTemp(WmtWorkload):
+  """WMT PyTorch workload with attention temperature = 4.0."""
+
+  @property
+  def validation_target_value(self) -> float:
+    return 30.0756
+
+  @property
+  def test_target_value(self) -> float:
+    return 29.8094
+
+  @property
+  def attention_temp(self) -> float:
+    return 4.0
+
+
+class WmtWorkloadGLUTanH(WmtWorkload):
+  """WMT PyTorch workload with GLU and TanH activations."""
+
+  @property
+  def validation_target_value(self) -> float:
+    return 30.0002
+
+  @property
+  def test_target_value(self) -> float:
+    return 29.8139
+
+  @property
+  def activation(self) -> str:
+    return 'tanh'
+
+  @property
+  def glu(self) -> bool:
+    return True

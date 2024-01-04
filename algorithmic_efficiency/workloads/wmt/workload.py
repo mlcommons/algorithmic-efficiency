@@ -99,6 +99,22 @@ class BaseWmtWorkload(spec.Workload):
     """Max num steps the baseline algo was given to reach the target."""
     return 133_333
 
+  @property
+  def pre_ln(self) -> bool:
+    return True
+
+  @property
+  def attention_temp(self) -> float:
+    return 1.0
+
+  @property
+  def activation(self) -> str:
+    return 'relu'
+
+  @property
+  def glu(self) -> bool:
+    return False
+
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,
