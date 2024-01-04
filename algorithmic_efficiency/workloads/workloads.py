@@ -68,6 +68,18 @@ WORKLOADS = {
         'workload_path': 'imagenet_vit/imagenet',
         'workload_class_name': 'ImagenetVitWorkload',
     },
+    'imagenet_vit_glu': {
+        'workload_path': 'imagenet_vit/imagenet',
+        'workload_class_name': 'ImagenetVitGluWorkload',
+    },
+    'imagenet_vit_post_ln': {
+        'workload_path': 'imagenet_vit/imagenet',
+        'workload_class_name': 'ImagenetViTPostLNWorkload',
+    },
+    'imagenet_vit_map': {
+        'workload_path': 'imagenet_vit/imagenet',
+        'workload_class_name': 'ImagenetViTMapLNWorkload',
+    },
     'librispeech_conformer': {
         'workload_path': 'librispeech_conformer/librispeech',
         'workload_class_name': 'LibriSpeechConformerWorkload',
