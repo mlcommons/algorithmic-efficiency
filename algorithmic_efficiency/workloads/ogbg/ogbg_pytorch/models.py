@@ -51,9 +51,9 @@ class GNN(nn.Module):
     if activation_fn_name == 'relu':
       activation_fn = nn.ReLU
     elif activation_fn_name == 'gelu':
-      activation_fn = partial(nn.GeLU, approximate='tanh')
+      activation_fn = partial(nn.GELU, approximate='tanh')
     elif activation_fn_name == 'silu':
-      activation_fn = nn.Silu
+      activation_fn = nn.SiLU
     else:
       raise ValueError(
           f'Invalid activation function name: {self.activation_fn_name}')
