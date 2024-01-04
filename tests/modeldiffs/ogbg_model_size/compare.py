@@ -16,53 +16,59 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
 from tests.modeldiffs.diff import out_diff
 
 
+hidden_dims = len(JaxWorkload().hidden_dims)
+num_graphs= JaxWorkload().num_message_passing_steps
+
 def key_transform(k):
   new_key = []
   bn = False
   ln = False
+  graph_network = False
+  "Sequential_0', 'GraphNetwork_0', 'Sequential_0', 'Linear_0', 'weight'"
+  print("Key transform input ", k)
+  graph_index = 0
+  seq_index = 0
   for i in k:
     bn = bn or 'BatchNorm' in i
     ln = ln or 'LayerNorm' in i
-    if 'ModuleList' in i:
+    graph_network = graph_network or 'GraphNetwork'  in i
+    if 'Sequential' in i:
+      seq_index = int(i.split('_')[1])
       continue
-    if 'CustomBatchNorm' in i:
+    elif 'GraphNetwork' in i:
+      graph_index = int(i.split('_')[1])
       continue
-    if 'Linear' in i:
-      if 'NonDynamicallyQuantizableLinear' in i:
-        i = 'out'
-      else:
-        i = i.replace('Linear', 'Dense')
-    elif 'Conv1d' in i:
-      i = i.replace('Conv1d', 'Conv')
-    elif 'MHSAwithQS' in i:
-      i = i.replace('MHSAwithQS', 'SelfAttention')
+    elif 'Linear' in i:
+      layer_index = int(i.split('_')[1])
+      if graph_network:
+        count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
+        i = 'Dense_' + str(count)
+      elif layer_index == 0:
+        i = 'node_embedding'
+      elif layer_index == 1:
+        i = 'edge_embedding'
+      elif layer_index == 2:
+        count = num_graphs * 3 * hidden_dims
+        i = 'Dense_' + str(count)
+    elif 'LayerNorm' in i:
+      layer_index = int(i.split('_')[1])
+      count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
+      i = 'LayerNorm_' + str(count)
     elif 'weight' in i:
       if bn or ln:
         i = i.replace('weight', 'scale')
       else:
         i = i.replace('weight', 'kernel')
     new_key.append(i)
+  print("New key output", new_key)
   return tuple(new_key)
 
 
 def sd_transform(sd):
   # pylint: disable=locally-disabled, modified-iterating-dict, consider-using-dict-items
-  keys = list(sd.keys())
   out = {}
-  for k in keys:
-    new_key = k
-    if len(k) == 5:
-      _, gn_id, seq_id = k[:3]
-      gn_id = int(gn_id.split('_')[1])
-      seq_id = int(seq_id.split('_')[1])
-      if 'LayerNorm' in k[3]:
-        new_key = (k[3].replace('0', f'{gn_id*3+seq_id}'), k[4])
-      else:
-        new_key = (k[3].replace('0', f'{gn_id*3+seq_id+2}'), k[4])
-    elif len(k) == 2 and k[0] == 'Dense_2':
-      new_key = ('Dense_17', k[1])
-    out[new_key] = sd[k]
-
+  for k in sd:
+    out[k] = sd[k]
   return out
 
 
@@ -70,7 +76,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   pyt_batch = dict(
       n_node=torch.LongTensor([5]),
@@ -111,3 +117,4 @@ if __name__ == '__main__':
       key_transform=key_transform,
       sd_transform=sd_transform,
       out_transform=None)
+      
