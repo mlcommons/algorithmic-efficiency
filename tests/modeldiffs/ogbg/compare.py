@@ -85,7 +85,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   pyt_batch = dict(
       n_node=torch.LongTensor([5]),
