@@ -66,8 +66,9 @@ def key_transform(k):
 
 def sd_transform(sd):
   # pylint: disable=locally-disabled, modified-iterating-dict, consider-using-dict-items
-  keys = list(sd.keys())
   out = {}
+  for k in sd:
+    out[k] = sd[k]
   return out
 
 
