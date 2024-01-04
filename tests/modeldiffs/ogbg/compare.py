@@ -16,7 +16,7 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
 from tests.modeldiffs.diff import out_diff
 
 
-hidden_dims  = JaxWorkload().hidden_dims
+hidden_dims = len(JaxWorkload().hidden_dims)
 
 def key_transform(k):
   new_key = []
