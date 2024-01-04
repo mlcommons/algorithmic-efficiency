@@ -80,7 +80,7 @@ class Torch2Jax:
     print('pytorch sd')
     print(self.pytorch_sd.keys())
     print('jax sd')
-    print(self.jax_sd.key())
+    print(self.flattened_jax_model.key())
     self.pytorch_sd = {
         k: v_transform_fn(k, self.pytorch_sd[k], self.flattened_jax_model[k])
         for k in self.pytorch_sd
