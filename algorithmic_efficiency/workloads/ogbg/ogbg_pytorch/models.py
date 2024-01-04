@@ -19,6 +19,7 @@ def _make_mlp(in_dim, hidden_dims, dropout_rate, activation_fn):
     layers.add_module(f'norm_{i}', nn.LayerNorm(dim, eps=1e-6))
     layers.add_module(f'activation_fn_{i}', activation_fn())
     layers.add_module(f'dropout_{i}', nn.Dropout(dropout_rate))
+    in_dim = dim
   return layers
 
 
