@@ -148,7 +148,8 @@ class OgbgWorkload(BaseOgbgWorkload):
                 dropout_rate=dropout_rate,
                 hidden_dims=self.hidden_dims,
                 latent_dim=self.latent_dim,
-                num_message_passing_steps=self.num_message_passing_steps)
+                num_message_passing_steps=self.num_message_passing_steps,
+                activation_fn_name=self.activation_fn_name)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -256,6 +257,7 @@ class OgbgSiluWorkload(OgbgWorkload):
   def activation_fn_name(self) -> str:
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'silu'
+
 
 class OgbgModelSizeWorkload(OgbgWorkload):
  
