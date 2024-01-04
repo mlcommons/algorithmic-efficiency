@@ -12,7 +12,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
     OgbgModelSizeWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
-    OgbgModelSizeWorkload as PytWorkload
+    OgbgModelSizeWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
@@ -117,4 +117,3 @@ if __name__ == '__main__':
       key_transform=key_transform,
       sd_transform=sd_transform,
       out_transform=None)
-      

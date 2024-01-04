@@ -12,7 +12,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
     OgbgSiluWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
-    OgbgSiluWorkload as PytWorkload
+    OgbgSiluWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
