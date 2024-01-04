@@ -47,7 +47,7 @@ def key_transform(k):
       elif layer_index == 1:
         i = 'edge_embedding'
     elif 'LayerNorm' in i:
-      layer_index = i.split('_')[1]
+      layer_index = int(i.split('_')[1])
       count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
       i = 'LayerNorm_' + str(count)
     elif 'weight' in i:
