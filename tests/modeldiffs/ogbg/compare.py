@@ -32,13 +32,13 @@ def key_transform(k):
     ln = ln or 'LayerNorm' in i
     graph_network = graph_network or 'GraphNetwork'  in i
     if 'Sequential' in i:
-      seq_index = i.split('_')[1]
+      seq_index = int(i.split('_')[1])
       continue
     elif 'GraphNetwork' in i:
-      graph_index = i.split('_')[1]
+      graph_index = int(i.split('_')[1])
       continue
     elif 'Linear' in i:
-      layer_index = i.split('_')[1]
+      layer_index = int(i.split('_')[1])
       if graph_network:
         count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
         i = 'Dense_' + str(count)
