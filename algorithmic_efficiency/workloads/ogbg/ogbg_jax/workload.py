@@ -44,14 +44,6 @@ class OgbgWorkload(BaseOgbgWorkload):
         receivers=jnp.asarray([0]))
     params = init_fn({'params': params_rng, 'dropout': dropout_rng}, fake_batch)
     params = params['params']
-    tabulate_fn = nn.tabulate(
-      self._model,
-      jax.random.PRNGKey(0),
-      console_kwargs={
-          'force_terminal': False, 'force_jupyter': False, 'width': 240
-      },
-    )
-    print(tabulate_fn(fake_batch, train=False))
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     return jax_utils.replicate(params), None

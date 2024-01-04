@@ -16,16 +16,16 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
 from tests.modeldiffs.diff import out_diff
 
 
+# Todo: refactor tests to use workload properties in cleaner way
 hidden_dims = len(JaxWorkload().hidden_dims)
 num_graphs= JaxWorkload().num_message_passing_steps
+
 
 def key_transform(k):
   new_key = []
   bn = False
   ln = False
   graph_network = False
-  "Sequential_0', 'GraphNetwork_0', 'Sequential_0', 'Linear_0', 'weight'"
-  print("Key transform input ", k)
   graph_index = 0
   seq_index = 0
   for i in k:
@@ -60,7 +60,6 @@ def key_transform(k):
       else:
         i = i.replace('weight', 'kernel')
     new_key.append(i)
-  print("New key output", new_key)
   return tuple(new_key)
 
 
@@ -117,3 +116,4 @@ if __name__ == '__main__':
       key_transform=key_transform,
       sd_transform=sd_transform,
       out_transform=None)
+  
