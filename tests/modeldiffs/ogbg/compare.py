@@ -15,9 +15,10 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
     OgbgWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
-MLP_HIDDEN_DIMS = len(PyTorchWorkload.hidden_dims)
 
-def key_transform(k):
+hidden_dims  = JaxWorkload().hidden_dims
+
+def key_transform(k, hidden_dims):
   new_key = []
   bn = False
   ln = False
@@ -39,7 +40,7 @@ def key_transform(k):
     elif 'Linear' in i:
       layer_index = i.split('_')[1]
       if graph_network:
-        count = graph_index * 3 * MLP_HIDDEN_DIMS + seq_index * MLP_HIDDEN_DIMS + layer_index
+        count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
         i = 'Dense_' + str(count)
       elif layer_index == 0:
         i = 'node_embedding'
@@ -47,7 +48,7 @@ def key_transform(k):
         i = 'edge_embedding'
     elif 'LayerNorm' in i:
       layer_index = i.split('_')[1]
-      count = graph_index * 3 * MLP_HIDDEN_DIMS + seq_index * MLP_HIDDEN_DIMS + layer_index
+      count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
       i = 'LayerNorm_' + str(count)
     elif 'weight' in i:
       if bn or ln:
