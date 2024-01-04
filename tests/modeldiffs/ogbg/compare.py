@@ -49,7 +49,7 @@ def key_transform(k):
         i = 'edge_embedding'
       elif layer_index == 2:
         count = num_graphs * 3 * hidden_dims
-        i = 
+        i = 'Dense_' + str(count)
     elif 'LayerNorm' in i:
       layer_index = int(i.split('_')[1])
       count = graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
