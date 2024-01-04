@@ -12,31 +12,43 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
     OgbgWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
-    OgbgWorkload as PytWorkload
+    OgbgWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
+MLP_HIDDEN_DIMS = len(PyTorchWorkload.hidden_dims)
 
 def key_transform(k):
   new_key = []
   bn = False
   ln = False
+  graph_network = False
+  "Sequential_0', 'GraphNetwork_0', 'Sequential_0', 'Linear_0', 'weight'"
   print("Key transform input ", k)
+  graph_network_index = 0
+  seq_index = 0
   for i in k:
     bn = bn or 'BatchNorm' in i
     ln = ln or 'LayerNorm' in i
-    if 'ModuleList' in i:
+    graph_network = graph_network or 'GraphNetwork'  in i
+    if 'Sequential' in i:
+      seq_index = i.split('_')[1]
       continue
-    if 'CustomBatchNorm' in i:
+    elif 'GraphNetwork' in i:
+      graph_network_index = i.split('_')[1]
       continue
-    if 'Linear' in i:
-      if 'NonDynamicallyQuantizableLinear' in i:
-        i = 'out'
-      else:
-        i = i.replace('Linear', 'Dense')
-    elif 'Conv1d' in i:
-      i = i.replace('Conv1d', 'Conv')
-    elif 'MHSAwithQS' in i:
-      i = i.replace('MHSAwithQS', 'SelfAttention')
+    elif 'Linear' in i:
+      layer_index = i.split('_')[1]
+      if graph_network:
+        count = graph_index * 3 * MLP_HIDDEN_DIMS + seq_index * MLP_HIDDEN_DIMS + layer_index
+        i = 'Dense_' + str(count)
+      elif layer_index == 0:
+        i = 'node_embedding'
+      elif layer_index == 1:
+        i = 'edge_embedding'
+    elif 'LayerNorm' in i:
+      layer_index = i.split('_')[1]
+      count = graph_index * 3 * MLP_HIDDEN_DIMS + seq_index * MLP_HIDDEN_DIMS + layer_index
+      i = 'LayerNorm_' + str(count)
     elif 'weight' in i:
       if bn or ln:
         i = i.replace('weight', 'scale')
