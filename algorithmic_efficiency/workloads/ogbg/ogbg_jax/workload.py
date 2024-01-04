@@ -139,6 +139,7 @@ class OgbgSiluWorkload(OgbgWorkload):
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'silu'
 
+
 class OgbgModelSizeWorkload(OgbgWorkload):
 
   @property
@@ -152,4 +153,3 @@ class OgbgModelSizeWorkload(OgbgWorkload):
   @property
   def num_message_passing_steps(self) -> int:
     return 3
-  

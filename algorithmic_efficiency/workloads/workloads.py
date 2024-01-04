@@ -103,7 +103,8 @@ WORKLOADS = {
         'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgSiluWorkload'
     },
     'ogbg_model_size': {
-        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgModelSizeWorkload'
+        'workload_path': 'ogbg/ogbg',
+        'workload_class_name': 'OgbgModelSizeWorkload'
     },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
     'wmt_post_ln': {

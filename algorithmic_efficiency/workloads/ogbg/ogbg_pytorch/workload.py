@@ -144,12 +144,13 @@ class OgbgWorkload(BaseOgbgWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     torch.random.manual_seed(rng[0])
-    model = GNN(num_outputs=self._num_outputs, 
-                dropout_rate=dropout_rate,
-                hidden_dims=self.hidden_dims,
-                latent_dim=self.latent_dim,
-                num_message_passing_steps=self.num_message_passing_steps,
-                activation_fn_name=self.activation_fn_name)
+    model = GNN(
+        num_outputs=self._num_outputs,
+        dropout_rate=dropout_rate,
+        hidden_dims=self.hidden_dims,
+        latent_dim=self.latent_dim,
+        num_message_passing_steps=self.num_message_passing_steps,
+        activation_fn_name=self.activation_fn_name)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -259,7 +260,7 @@ class OgbgSiluWorkload(OgbgWorkload):
 
 
 class OgbgModelSizeWorkload(OgbgWorkload):
- 
+
   @property
   def hidden_dims(self) -> Tuple[int]:
     return (256, 256)

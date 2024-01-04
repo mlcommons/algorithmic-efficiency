@@ -15,10 +15,9 @@ from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
     OgbgSiluWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
-
 # Todo: refactor tests to use workload properties in cleaner way
 hidden_dims = len(JaxWorkload().hidden_dims)
-num_graphs= JaxWorkload().num_message_passing_steps
+num_graphs = JaxWorkload().num_message_passing_steps
 
 
 def key_transform(k):
@@ -31,7 +30,7 @@ def key_transform(k):
   for i in k:
     bn = bn or 'BatchNorm' in i
     ln = ln or 'LayerNorm' in i
-    graph_network = graph_network or 'GraphNetwork'  in i
+    graph_network = graph_network or 'GraphNetwork' in i
     if 'Sequential' in i:
       seq_index = int(i.split('_')[1])
       continue
@@ -116,4 +115,3 @@ if __name__ == '__main__':
       key_transform=key_transform,
       sd_transform=sd_transform,
       out_transform=None)
-  

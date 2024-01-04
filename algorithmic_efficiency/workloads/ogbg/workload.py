@@ -22,7 +22,7 @@ class BaseOgbgWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'mean_average_precision'
 
-  @property 
+  @property
   def activation_fn_name(self) -> str:
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'relu'
