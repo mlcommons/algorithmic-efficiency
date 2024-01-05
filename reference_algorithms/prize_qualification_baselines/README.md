@@ -48,10 +48,10 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
 
 ### JAX
 
-The prize qualification baseline submissionss for jax are:
+The prize qualification baseline submissions for jax are:
 
-- `reference_algorithms/prize_qualification_baselines/external_tuning/jax_nadamw_target_setting.py`
-- `feference_algorithms/prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py`
+- `reference_algorithms/prize_qualification_baselines/self_tuning/jax_nadamw_target_setting.py`
+- `feference_algorithms/prize_qualification_baselines/self_tuning/jax_nadamw_full_budget.py`
 
 Example command:
 
@@ -62,7 +62,7 @@ python3 submission_runner.py \
     --experiment_dir=<experiment_dir> \
     --experiment_name=<experiment_name> \
     --workload=<workload> \
-    --submission_path=reference_algorithms/prize_qualification_baselines/external_tuning/jax_nadamw_target_setting.py \
+    --submission_path=reference_algorithms/prize_qualification_baselines/self_tuning/jax_nadamw_target_setting.py \
     --tuning_ruleset=self
 ```
 
@@ -70,8 +70,8 @@ python3 submission_runner.py \
 
 The prize qualification baseline submissionss for PyTorch are:
 
-- `reference_algorithms/prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py`
-- `feference_algorithms/prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py`
+- `reference_algorithms/prize_qualification_baselines/self_tuning/pytorch_nadamw_target_setting.py`
+- `feference_algorithms/prize_qualification_baselines/self_tuning/pytorch_nadamw_full_budget.py`
 
 Example command:
 
@@ -82,6 +82,6 @@ torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc
     --experiment_dir=<experiment_dir> \
     --experiment_name=t<experiment_name> \
     --workload=<workload>\
-    --submission_path=reference_algorithms/prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py \
+    --submission_path=reference_algorithms/prize_qualification_baselines/self_tuning/pytorch_nadamw_target_setting.py \
     --tuning_ruleset=self
 ```
