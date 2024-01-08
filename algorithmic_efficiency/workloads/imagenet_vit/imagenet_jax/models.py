@@ -153,7 +153,7 @@ class MAPHead(nn.Module):
     probe = jnp.tile(probe, [n, 1, 1])
 
     x = nn.MultiHeadDotProductAttention(
-        num_heads=self.num_heads,
+        num_heads=self.num_heads,use_bias=False,
         kernel_init=nn.initializers.xavier_uniform())(probe, x)
 
     y = nn.LayerNorm()(x)
