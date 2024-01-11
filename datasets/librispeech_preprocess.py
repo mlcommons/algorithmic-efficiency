@@ -31,8 +31,7 @@ librispeech_example_counts = {
     'train-clean-100': 28539,
     'train-clean-360': 104014,
     'train-other-500': 148688,
-    'test-clean': 2620,
-    'test-other': 2939,
+    'test-clean': 2620,  # 'test-other': 2939,
     'dev-clean': 2703,
     'dev-other': 2864,
 }
@@ -153,8 +152,7 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
       'train-other-500',
       'dev-clean',
       'dev-other',
-      'test-clean',
-      'test-other',
+      'test-clean',  # 'test-other',
   ]
   for subset in subset_list:
     logging.info('Processing split = %s...', subset)
