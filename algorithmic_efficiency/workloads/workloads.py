@@ -108,6 +108,16 @@ WORKLOADS = {
     'ogbg': {
         'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgWorkload'
     },
+    'ogbg_gelu': {
+        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgGeluWorkload'
+    },
+    'ogbg_silu': {
+        'workload_path': 'ogbg/ogbg', 'workload_class_name': 'OgbgSiluWorkload'
+    },
+    'ogbg_model_size': {
+        'workload_path': 'ogbg/ogbg',
+        'workload_class_name': 'OgbgModelSizeWorkload'
+    },
     'wmt': {'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkload'},
     'wmt_post_ln': {
         'workload_path': 'wmt/wmt', 'workload_class_name': 'WmtWorkloadPostLN'
