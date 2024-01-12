@@ -18,8 +18,8 @@ jobs:
     - name: Run pylint
       run: |
         pylint algorithmic_efficiency
-        pylint baselines
         pylint reference_algorithms
+        pylint prize_qualification_baselines
         pylint submission_runner.py
         pylint tests
 

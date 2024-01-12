@@ -75,8 +75,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=baselines/adamw/jax/submission.py \
-    --tuning_search_space=baselines/adamw/tuning_search_space.json
+    --submission_path=reference_algorithms/paper_baselines/adamw/jax/submission.py \
+    --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
 ```
 
 *TL;DR running a PyTorch workload:*
@@ -87,8 +87,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=baselines/adamw/jax/submission.py \
-    --tuning_search_space=baselines/adamw/tuning_search_space.json
+    --submission_path=reference_algorithms/paper_baselines/adamw/jax/submission.py \
+    --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
 ```
 
 ## Call for Submissions
