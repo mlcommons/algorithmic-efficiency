@@ -41,7 +41,7 @@ The Competition is open to English-speaking individuals and teams (made of indiv
 
 The Competition begins at 12:01am (ET) on November 28, 2023 and ends at 11:59pm (ET) on May 28, 2024, all according to Sponsor's time clock, which decisions are final (the "Competition Period"). There are several deadlines contained within the Competition Period:
 
-- **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on January 28, 2024.
+- **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on February 28, 2024.
 - **Submission Period.** You must complete your Submission and enter it after the Intention to Submit deadline, but no later than 11:59pm ET on March 28, 2024.
 - **Deadline for self-reporting results.** 11:59pm ET on May 28, 2024.
 

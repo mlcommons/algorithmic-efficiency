@@ -27,7 +27,8 @@
 
 > [!IMPORTANT]
 > Upcoming Deadline:
-> Registration deadline to express non-binding intent to submit: **January 28th, 2024**
+> Registration deadline to express non-binding intent to submit: **February 28th, 2024**.\
+> **If you consider submitting, please fill out the** (mandatory but non-binding) [**registration form**](https://forms.gle/K7ty8MaYdi2AxJ4N8).
 
 ## Table of Contents <!-- omit from toc -->
 
