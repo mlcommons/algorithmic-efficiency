@@ -61,6 +61,21 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
     return 1 - 0.3481  # 0.6519
 
   @property
+  def use_post_layer_norm(self) -> bool:
+    """Whether to use layer normalization after the residual branch."""
+    return False
+
+  @property
+  def use_map(self) -> bool:
+    """Whether to use multihead attention pooling."""
+    return False
+
+  @property
+  def use_glu(self) -> bool:
+    """Whether to use GLU in the MLPBlock."""
+    return False
+
+  @property
   def eval_batch_size(self) -> int:
     return 2048
 

@@ -10,9 +10,9 @@ import torch
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
-    OgbgWorkload as JaxWorkload
+    OgbgSiluWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
-    OgbgWorkload as PyTorchWorkload
+    OgbgSiluWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 # Todo: refactor tests to use workload properties in cleaner way

@@ -25,7 +25,13 @@ class OgbgWorkload(BaseOgbgWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
-    self._model = models.GNN(self._num_outputs, dropout_rate=dropout_rate)
+    self._model = models.GNN(
+        self._num_outputs,
+        dropout_rate=dropout_rate,
+        activation_fn_name=self.activation_fn_name,
+        hidden_dims=self.hidden_dims,
+        latent_dim=self.latent_dim,
+        num_message_passing_steps=self.num_message_passing_steps)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
     fake_batch = jraph.GraphsTuple(
         n_node=jnp.asarray([1]),
@@ -115,3 +121,34 @@ class OgbgWorkload(BaseOgbgWorkload):
     del num_examples
     total_metrics = total_metrics.reduce()
     return {k: float(v) for k, v in total_metrics.compute().items()}
+
+
+class OgbgGeluWorkload(OgbgWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'gelu'
+
+
+class OgbgSiluWorkload(OgbgWorkload):
+
+  @property
+  def activation_fn_name(self) -> str:
+    """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
+    return 'silu'
+
+
+class OgbgModelSizeWorkload(OgbgWorkload):
+
+  @property
+  def hidden_dims(self) -> Tuple[int]:
+    return (256, 256)
+
+  @property
+  def latent_dim(self) -> int:
+    return 128
+
+  @property
+  def num_message_passing_steps(self) -> int:
+    return 3

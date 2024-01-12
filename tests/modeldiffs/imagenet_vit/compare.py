@@ -16,7 +16,7 @@ from tests.modeldiffs.diff import out_diff
 
 def key_transform(k):
   if 'Conv' in k[0]:
-    k = ('embedding', *k[1:])
+    k = ('conv_patch_extract', *k[1:])
   elif k[0] == 'Linear_0':
     k = ('pre_logits', *k[1:])
   elif k[0] == 'Linear_1':
