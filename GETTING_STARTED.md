@@ -163,6 +163,7 @@ singularity build --fakeroot <singularity_image_name>.sif Singularity.def
 ```
 
 Note that this can take several minutes. Then, to start a shell session with GPU support (by using the `--nv` flag), we can run
+
 ```bash
 singularity shell --bind $HOME/data:/data,$HOME/experiment_runs:/experiment_runs \
     --nv <singularity_image_name>.sif
@@ -194,7 +195,7 @@ Make a submissions subdirectory to store your submission modules e.g. `algorithm
 
 ### Coding your Submission
 
-You can find examples of sumbission modules under `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms`. \
+You can find examples of submission modules under `algorithmic-efficiency/prize_qualification_baselines` and `algorithmic-efficiency/reference_algorithms`. \
 A submission for the external ruleset will consist of a submission module and a tuning search space definition.
 
 1. Copy the template submission module `submissions/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
@@ -210,7 +211,7 @@ A submission for the external ruleset will consist of a submission module and a 
         }
         ```
 
-        For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
+        For a complete example see [tuning_search_space.json](/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
     2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
 
@@ -224,7 +225,7 @@ A submission for the external ruleset will consist of a submission module and a 
         }
         ```
 
-        For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/baselines/nadamw/tuning_search_space.json).
+        For a complete example see [tuning_search_space.json](/reference_algorithms/paper_baselines/nadamw/tuning_search_space.json).
 
 ## Run your Submission
 
@@ -342,6 +343,6 @@ To produce performance profile and performance table:
 python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> --output_dir=<output_dir>
 ```
 
-We provide the scores and performance profiles for the baseline algorithms in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
+We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
 **Good Luck!**

@@ -1,4 +1,4 @@
-"""Submission file for a Shampoo optimizer with warmup+cosine LR in Jax."""
+"""Submission file for an Adafactor optimizer with warmup+cosine LR in Jax."""
 
 import functools
 from typing import Dict, Iterator, List, Tuple
@@ -10,7 +10,8 @@ import jax.numpy as jnp
 import optax
 
 from algorithmic_efficiency import spec
-from baselines.shampoo.jax.distributed_shampoo import distributed_shampoo
+from reference_algorithms.paper_baselines.adafactor.jax.sharded_adafactor import \
+    sharded_adafactor
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -20,7 +21,7 @@ def init_optimizer_state(workload: spec.Workload,
                          model_state: spec.ModelAuxiliaryState,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
-  """Creates a Shampoo optimizer and a learning rate schedule."""
+  """Creates an Adafactor optimizer and a learning rate schedule."""
   del model_params
   del model_state
   del rng
@@ -41,13 +42,10 @@ def init_optimizer_state(workload: spec.Workload,
 
   # Create optimizer + LR schedule.
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
-  opt_init_fn, opt_update_fn = distributed_shampoo(
+  opt_init_fn, opt_update_fn = sharded_adafactor(
       learning_rate=lr_schedule_fn,
       beta1=1.0 - hyperparameters.one_minus_beta1,
-      beta2=hyperparameters.beta2,
-      weight_decay=hyperparameters.weight_decay,
-      batch_axis_name='batch',
-      eigh=False)
+      weight_decay=hyperparameters.weight_decay)
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)

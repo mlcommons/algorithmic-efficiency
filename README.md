@@ -18,6 +18,7 @@
 [![Lint](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml/badge.svg)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/mlcommons/algorithmic-efficiency/blob/main/LICENSE.md)
 [![Code style: yapf](https://img.shields.io/badge/code%20style-yapf-orange)](https://github.com/google/yapf)
+[![Discord](https://dcbadge.vercel.app/api/server/5FPXK7SMt6?style=flat)](https://discord.gg/5FPXK7SMt6)
 
 ---
 
@@ -27,7 +28,8 @@
 
 > [!IMPORTANT]
 > Upcoming Deadline:
-> Registration deadline to express non-binding intent to submit: **January 28th, 2024**
+> Registration deadline to express non-binding intent to submit: **February 28th, 2024**.\
+> **If you consider submitting, please fill out the** (mandatory but non-binding) [**registration form**](https://forms.gle/K7ty8MaYdi2AxJ4N8).
 
 ## Table of Contents <!-- omit from toc -->
 
@@ -41,6 +43,9 @@
 - [Paper and Citing the AlgoPerf Benchmark](#paper-and-citing-the-algoperf-benchmark)
 
 ## Installation
+
+> [!TIP]
+> **If you have any questions about the benchmark competition or you run into any issues, please feel free to contact us.** Either [file an issue](https://github.com/mlcommons/algorithmic-efficiency/issues), ask a question on [our Discord](https://discord.gg/5FPXK7SMt6) or [join our weekly meetings](https://mlcommons.org/en/groups/research-algorithms/).
 
 You can install this package and dependencies in a [Python virtual environment](/GETTING_STARTED.md#python-virtual-environment) or use a [Docker/Singularity/Apptainer container](/GETTING_STARTED.md#docker) (recommended).
 We recommend using a Docker container (or alternatively, a Singularity/Apptainer container) to ensure a similar environment to our scoring and testing environments.
@@ -74,8 +79,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=baselines/adamw/jax/submission.py \
-    --tuning_search_space=baselines/adamw/tuning_search_space.json
+    --submission_path=reference_algorithms/paper_baselines/adamw/jax/submission.py \
+    --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
 ```
 
 *TL;DR running a PyTorch workload:*
@@ -86,8 +91,8 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=baselines/adamw/jax/submission.py \
-    --tuning_search_space=baselines/adamw/tuning_search_space.json
+    --submission_path=reference_algorithms/paper_baselines/adamw/jax/submission.py \
+    --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
 ```
 
 ## Call for Submissions
