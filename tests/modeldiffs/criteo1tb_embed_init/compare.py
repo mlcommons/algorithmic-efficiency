@@ -11,7 +11,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
     Criteo1TbDlrmSmallEmbedInitWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.workload import \
-    Criteo1TbDlrmSmallEmbedInitWorkload as PytWorkload
+    Criteo1TbDlrmSmallEmbedInitWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   pyt_batch = {
       'inputs': torch.ones((2, 13 + 26)),

@@ -10,7 +10,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
     LibriSpeechConformerAttentionTemperatureWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import \
-    LibriSpeechConformerAttentionTemperatureWorkload as PytWorkload
+    LibriSpeechConformerAttentionTemperatureWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   # Test outputs for identical weights and inputs.
   wave = torch.randn(2, 320000)
