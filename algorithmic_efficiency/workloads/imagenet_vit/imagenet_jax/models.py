@@ -154,7 +154,7 @@ class MAPHead(nn.Module):
 
     x = nn.MultiHeadDotProductAttention(
         num_heads=self.num_heads,
-        use_bias=False,
+        use_bias=True,
         kernel_init=nn.initializers.xavier_uniform())(probe, x)
 
     y = nn.LayerNorm()(x)
