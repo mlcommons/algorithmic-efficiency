@@ -47,6 +47,8 @@ frameworks = [
     'jax',
 ]
 
+baseline_path = "reference_algorithms/paper_baselines"
+
 named_parameters = []
 for f in frameworks:
   for b in baselines[f]:
@@ -55,8 +57,9 @@ for f in frameworks:
             testcase_name=f'{b}_{f}',
             workload='mnist',
             framework=f'{f}',
-            submission_path=f'baselines/{b}/{f}/submission.py',
-            tuning_search_space=f'baselines/{b}/tuning_search_space.json'))
+            submission_path=f'{baseline_path}/{b}/{f}/submission.py',
+            tuning_search_space=f'{baseline_path}/{b}/tuning_search_space.json')
+    )
 
 
 class BaselineTest(parameterized.TestCase):

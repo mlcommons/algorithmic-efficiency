@@ -41,7 +41,7 @@ The Competition is open to English-speaking individuals and teams (made of indiv
 
 The Competition begins at 12:01am (ET) on November 28, 2023 and ends at 11:59pm (ET) on May 28, 2024, all according to Sponsor's time clock, which decisions are final (the "Competition Period"). There are several deadlines contained within the Competition Period:
 
-- **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on January 28, 2024.
+- **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on February 28, 2024.
 - **Submission Period.** You must complete your Submission and enter it after the Intention to Submit deadline, but no later than 11:59pm ET on March 28, 2024.
 - **Deadline for self-reporting results.** 11:59pm ET on May 28, 2024.
 
@@ -79,7 +79,7 @@ Submissions must use specific versions of PyTorch and JAX, provided by Sponsor. 
 
 ## Scoring
 
-All otherwise qualified Submissions shall be scored. Submissions will be scored based on their required training time to reach the target performance on the validation set of each workload, using measuring techniques designed to give all Submissions equal parity. In the event that no Submission in a ruleset receives a score exceeding that of both [prize qualification baselines](./reference_algorithms/prize_qualification_baselines/README.md), no prizes will be awarded for this ruleset. The Teams with the highest scores will be determined to be winners ("Selected Teams"). In the event of a tie the prize money will be split equally between the winners.
+All otherwise qualified Submissions shall be scored. Submissions will be scored based on their required training time to reach the target performance on the validation set of each workload, using measuring techniques designed to give all Submissions equal parity. In the event that no Submission in a ruleset receives a score exceeding that of both [prize qualification baselines](./prize_qualification_baselines/README.md), no prizes will be awarded for this ruleset. The Teams with the highest scores will be determined to be winners ("Selected Teams"). In the event of a tie the prize money will be split equally between the winners.
 
 ## Submissions
 
