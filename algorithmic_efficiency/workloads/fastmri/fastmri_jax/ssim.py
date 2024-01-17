@@ -41,11 +41,11 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   targets = targets * std + mean
   ssims = jax.vmap(structural_similarity)(logits, targets, volume_max)
 
-  # NOTE(kasimbeg): map out-of-bounds ssims to 1 and -1, the theoretical
+  # map out-of-bounds ssims to 1 and -1, the theoretical
   # maximum and minimum values of SSIM.
   ssims = jnp.where(ssims > 1, jnp.ones_like(ssims), ssims)
   ssims = jnp.where(ssims < -1, jnp.ones_like(ssims) * -1, ssims)
-  
+
   return ssims
 
 
