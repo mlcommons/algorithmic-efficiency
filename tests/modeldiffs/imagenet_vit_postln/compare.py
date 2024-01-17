@@ -11,7 +11,7 @@ import torch
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
-    ImagenetViTPostLNWorkload as JaxWorkload
+    ImagenetVitPostLNWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
     ImagenetViTPostLNWorkload as PyTorchWorkload
 
