@@ -102,7 +102,7 @@ class ImagenetVitPostLNWorkload(ImagenetVitWorkload):
   @property
   def use_post_layer_norm(self) -> bool:
     return True
- 
+
   @property
   def validation_target_value(self) -> float:
     return 0.24688
