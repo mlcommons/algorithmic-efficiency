@@ -249,7 +249,7 @@ class OgbgGeluWorkload(OgbgWorkload):
   def activation_fn_name(self) -> str:
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'gelu'
-  
+
   @property
   def validation_target_value(self) -> float:
     return 0.27771
@@ -265,7 +265,7 @@ class OgbgSiluWorkload(OgbgWorkload):
   def activation_fn_name(self) -> str:
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'silu'
-  
+
   @property
   def validation_target_value(self) -> float:
     return 0.282178

@@ -386,7 +386,7 @@ class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
   @property
   def use_post_layer_norm(self) -> bool:
     return False
- 
+
   @property
   def validation_target_value(self) -> float:
     return 0.085371

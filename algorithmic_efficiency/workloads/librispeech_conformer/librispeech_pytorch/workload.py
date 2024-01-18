@@ -337,7 +337,7 @@ class LibriSpeechConformerAttentionTemperatureWorkload(
   @property
   def attention_temperature(self) -> float:
     return 1.6
-  
+
   @property
   def validation_target_value(self) -> float:
     return 0.082665
@@ -352,7 +352,7 @@ class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
   @property
   def use_post_layer_norm(self) -> bool:
     return False
- 
+
   @property
   def validation_target_value(self) -> float:
     return 0.085371

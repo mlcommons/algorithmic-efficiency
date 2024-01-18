@@ -284,7 +284,7 @@ class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
   @property
   def use_gelu(self) -> bool:
     return True
-  
+
   @property
   def validation_target_value(self) -> float:
     return 0.22077
