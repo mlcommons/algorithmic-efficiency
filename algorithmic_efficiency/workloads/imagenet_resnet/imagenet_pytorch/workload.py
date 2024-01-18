@@ -306,6 +306,14 @@ class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
   @property
   def use_silu(self) -> bool:
     return True
+  
+  @property
+  def validation_target_value(self) -> float:
+    return 0.22009
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.342
 
 
 class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
@@ -313,6 +321,14 @@ class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
   @property
   def use_gelu(self) -> bool:
     return True
+ 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.22077
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.3402
 
 
 class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
