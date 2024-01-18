@@ -175,6 +175,14 @@ class FastMRIModelSizeWorkload(FastMRIWorkload):
   def num_channels(self) -> bool:
     """Whether or not to use tanh activations in the model."""
     return 64
+  
+  @property
+  def validation_target_value(self) -> float:
+    return 0.723559
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.740726
 
 
 class FastMRITanhWorkload(FastMRIWorkload):

@@ -288,7 +288,7 @@ class FastMRITanhWorkload(FastMRIWorkload):
   def use_tanh(self) -> bool:
     """Whether or not to use tanh activations in the model."""
     return True
- 
+
   @property
   def validation_target_value(self) -> float:
     return 0.717840
@@ -304,7 +304,7 @@ class FastMRILayerNormWorkload(FastMRIWorkload):
   def use_layer_norm(self) -> bool:
     """Whether or not to use tanh activations in the model."""
     return True
-  
+ 
   @property
   def validation_target_value(self) -> float:
     return 0.723284
