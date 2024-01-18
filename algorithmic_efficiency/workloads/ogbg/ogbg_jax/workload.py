@@ -129,6 +129,14 @@ class OgbgGeluWorkload(OgbgWorkload):
   def activation_fn_name(self) -> str:
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'gelu'
+ 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.27771
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.262926
 
 
 class OgbgSiluWorkload(OgbgWorkload):
@@ -138,6 +146,13 @@ class OgbgSiluWorkload(OgbgWorkload):
     """Name of the activation function to use. One of 'relu', 'gelu', 'silu'."""
     return 'silu'
 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.282178
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.272144
 
 class OgbgModelSizeWorkload(OgbgWorkload):
 
@@ -152,3 +167,11 @@ class OgbgModelSizeWorkload(OgbgWorkload):
   @property
   def num_message_passing_steps(self) -> int:
     return 3
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.269446
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.253051
