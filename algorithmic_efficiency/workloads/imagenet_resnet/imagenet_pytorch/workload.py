@@ -336,7 +336,7 @@ class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
   @property
   def bn_init_scale(self) -> float:
     return 8.0
-  
+
   @property
   def validation_target_value(self) -> float:
     return 0.23474
