@@ -22,6 +22,11 @@ flags.DEFINE_string('output_dir',
 flags.DEFINE_boolean('compute_performance_profiles',
                      False,
                      'Whether or not to compute the performance profiles.')
+flags.DEFINE_boolean(
+    'strict',
+    False,
+    'Whether to enforce scoring criteria  on variant'
+    'performance and on 5-trial median performance')
 FLAGS = flags.FLAGS
 
 
@@ -57,6 +62,7 @@ def main(_):
   results = {
       FLAGS.submission_tag: df,
   }
+  print(df)
 
   dfs = []
   for workload, group in df.groupby('workload'):
@@ -64,7 +70,7 @@ def main(_):
     dfs.append(summary_df)
 
   df = pd.concat(dfs)
-  logging.info(tabulate(df, headers='keys', tablefmt='psql'))
+  logging.info('\n' + tabulate(df, headers='keys', tablefmt='psql'))
 
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
@@ -75,7 +81,8 @@ def main(_):
         reference_submission_tag=None,
         num_points=100,
         scale='linear',
-        verbosity=0)
+        verbosity=0,
+        strict=FLAGS.strict)
     if not os.path.exists(FLAGS.output_dir):
       os.mkdir(FLAGS.output_dir)
     performance_profile.plot_performance_profiles(
