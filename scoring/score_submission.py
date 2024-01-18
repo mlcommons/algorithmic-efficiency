@@ -27,6 +27,11 @@ flags.DEFINE_boolean(
     False,
     'Whether to enforce scoring criteria  on variant'
     'performance and on 5-trial median performance')
+flags.DEFINE_boolean(
+    'self_tuning_ruleset',
+    False,
+    'Whether to score on self-tuning ruleset or externally tuned ruleset'
+)
 FLAGS = flags.FLAGS
 
 
@@ -82,6 +87,7 @@ def main(_):
         num_points=100,
         scale='linear',
         verbosity=0,
+        self_tuning_ruleset=FLAGS.self_tuning_ruleset,
         strict=FLAGS.strict)
     if not os.path.exists(FLAGS.output_dir):
       os.mkdir(FLAGS.output_dir)
