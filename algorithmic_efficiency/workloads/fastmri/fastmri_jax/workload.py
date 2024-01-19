@@ -176,6 +176,14 @@ class FastMRIModelSizeWorkload(FastMRIWorkload):
     """Whether or not to use tanh activations in the model."""
     return 64
 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.723559
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.740726
+
 
 class FastMRITanhWorkload(FastMRIWorkload):
 
@@ -184,6 +192,14 @@ class FastMRITanhWorkload(FastMRIWorkload):
     """Whether or not to use tanh activations in the model."""
     return True
 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.717840
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.734505
+
 
 class FastMRILayerNormWorkload(FastMRIWorkload):
 
@@ -191,3 +207,11 @@ class FastMRILayerNormWorkload(FastMRIWorkload):
   def use_layer_norm(self) -> bool:
     """Whether or not to use tanh activations in the model."""
     return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.723284
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.739996
