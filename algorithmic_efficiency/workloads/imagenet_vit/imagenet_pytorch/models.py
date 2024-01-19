@@ -256,7 +256,7 @@ class MAPHead(nn.Module):
     nn.init.xavier_uniform_(self.probe.data)
 
     self.mha = MultiheadAttention(
-        self.width, num_heads=self.num_heads, self_attn=False, bias=False)
+        self.width, num_heads=self.num_heads, self_attn=False, bias=True)
     self.layer_norm = nn.LayerNorm(self.width, eps=1e-6)
     self.mlp = MlpBlock(width=self.width, mlp_dim=self.mlp_dim)
 

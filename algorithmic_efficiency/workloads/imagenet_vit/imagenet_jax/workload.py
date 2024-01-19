@@ -94,6 +94,14 @@ class ImagenetVitGluWorkload(ImagenetVitWorkload):
   def use_glu(self) -> bool:
     return True
 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.2233
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.3455
+
 
 class ImagenetVitPostLNWorkload(ImagenetVitWorkload):
 
@@ -101,9 +109,25 @@ class ImagenetVitPostLNWorkload(ImagenetVitWorkload):
   def use_post_layer_norm(self) -> bool:
     return True
 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.24688
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.3714
+
 
 class ImagenetVitMapWorkload(ImagenetVitWorkload):
 
   @property
   def use_map(self) -> bool:
     return True
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.22886
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.3477
