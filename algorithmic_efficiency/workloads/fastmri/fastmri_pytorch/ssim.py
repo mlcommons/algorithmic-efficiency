@@ -47,6 +47,12 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   logits = logits * std + mean
   targets = targets * std + mean
   ssims = torch.vmap(structural_similarity)(logits, targets, volume_max)
+
+  # map out-of-bounds ssims to 1 and -1, the theoretical
+  # maximum and minimum values of SSIM.
+  ssims = torch.where(ssims > 1, torch.ones_like(ssims), ssims)
+  ssims = torch.where(ssims < -1, torch.ones_like(ssims) * -1, ssims)
+
   return ssims
 
 
