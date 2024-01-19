@@ -29,7 +29,7 @@ flags.DEFINE_string('tuning_search_space',
                     'prize_qualification_baselines/external_tuning/tuning_search_space.json',
                     'Path to tuning search space.')
 flags.DEFINE_string('framework',
-                    None,
+                    'jax',
                     'Can be either PyTorch or JAX.')
 flags.DEFINE_boolean('dry_run', False, 'Whether or not to actually run the command')
 
@@ -62,6 +62,19 @@ WORKLOADS = {
              'librispeech_conformer': {'max_steps': 80_000,
                                        'dataset': 'librispeech'},
              }
+
+
+HELDOUT_WORKLOADS = {
+    'librispeech': ['librispeech_conformer_attention_temperature', 'librispeech_conformer_layernorm',
+                    'librispeech_conformer_gelu'],
+    'imagenet': ['imagenet_resnet_silu', 'imagenet_resnet_gelu', 'imagenet_resnet_large_bn_init',
+                 'imagenet_vit_gelu', 'imagenet_vit_post_ln', 'imagenet_vit_map'
+    ],
+    'ogbg': ['ogbg_gelu', 'ogbg_silu', 'ogbg_model_size'],
+    'wmt': ['wmt_post_ln', 'wmt_attention_temp', 'wmt_glu_tanh'],
+    'fastmri': ['fastmri_model_size', 'fastmri_tanh', 'fastmri_layernorm']
+    'criteo1tb':['criteo1tb_layernorm', 'criteo1tb_embed_init', 'criteo1tb_resnet']
+}
 
 def container_running():
     docker_client = docker.from_env()
@@ -135,7 +148,5 @@ def main(_):
 
 
 if __name__ == '__main__':
-    flags.mark_flag_as_required('framework')
-    flags.mark_flag_as_required()
 
     app.run(main)
