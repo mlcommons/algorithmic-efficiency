@@ -1,7 +1,7 @@
 """
 Example Usage:
-python run_all_workloads.py --framework jax \
---experiment_basename my_first_experiment \
+python run_workloads.py --framework jax \
+--experiment_name my_first_experiment \
 --docker_image_url <url_for_docker_image> \
 --tag <some_docker_tag> \
 --run_percentage 10 \
@@ -16,10 +16,9 @@ import docker
 import time 
 
 
-flags.DEFINE_string('tag', None, 'Optional Docker image tag')
 flags.DEFINE_string('docker_image_url', 'us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev', 'URL to docker image') 
 flags.DEFINE_integer('run_percentage', 100, 'Percentage of max num steps to run for.')
-flags.DEFINE_string('experiment_basename', 'my_experiment', 'Name of top sub directory in experiment dir.')
+flags.DEFINE_string('experiment_name', 'my_experiment', 'Name of top sub directory in experiment dir.')
 flags.DEFINE_boolean('rsync_data', True, 'Whether or not to transfer the data from GCP w rsync.')
 flags.DEFINE_boolean('local', False, 'Mount local algorithmic-efficiency repo.')
 flags.DEFINE_string('submission_path',
@@ -72,7 +71,7 @@ HELDOUT_WORKLOADS = {
     ],
     'ogbg': ['ogbg_gelu', 'ogbg_silu', 'ogbg_model_size'],
     'wmt': ['wmt_post_ln', 'wmt_attention_temp', 'wmt_glu_tanh'],
-    'fastmri': ['fastmri_model_size', 'fastmri_tanh', 'fastmri_layernorm']
+    'fastmri': ['fastmri_model_size', 'fastmri_tanh', 'fastmri_layernorm'],
     'criteo1tb':['criteo1tb_layernorm', 'criteo1tb_embed_init', 'criteo1tb_resnet']
 }
 
@@ -91,13 +90,10 @@ def wait_until_container_not_running(sleep_interval=5*60):
     
 def main(_):
     framework = FLAGS.framework
-    algorithm = FLAGS.algorithm
-    tag = f':{FLAGS.tag}' if FLAGS.tag is not None else ''
     run_fraction = FLAGS.run_percentage/100.
-    experiment_basename=FLAGS.experiment_basename
-    rsync_data = 'true' if FLAGS.rsync_data else 'false'
+    experiment_name=FLAGS.experiment_name
     docker_image_url = FLAGS.docker_image_url
-    submission_path = FLAGS.submisison_path
+    submission_path = FLAGS.submission_path
     tuning_search_space = FLAGS.tuning_search_space
 
     # For each runnable workload check if there are any containers running and if not launch next container command
@@ -107,7 +103,6 @@ def main(_):
         print('='*100)
         dataset = WORKLOADS[workload]['dataset']
         max_steps = int(WORKLOADS[workload]['max_steps'] * run_fraction)
-        experiment_name = f'{experiment_basename}/{algorithm}'
         mount_repo_flag = ''
         if FLAGS.local:
             mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
@@ -116,7 +111,7 @@ def main(_):
                    '-v $HOME/experiment_runs/logs:/logs '
                    f'{mount_repo_flag}'
                    '--gpus all --ipc=host '
-                   f'{docker_image_url}{tag} '
+                   f'{docker_image_url} '
                    f'-d {dataset} '
                    f'-f {framework} '
                    f'-s {submission_path} '
@@ -126,7 +121,6 @@ def main(_):
                    f'-m {max_steps} '
                    '-c false '
                    '-o true ' 
-                   f'-r {rsync_data} '
                    '-i true ')
         if not FLAGS.dry_run:
             print('Running docker container command')
@@ -135,11 +129,11 @@ def main(_):
         else:
             return_code = 0
         if return_code == 0:
-            print(f'SUCCESS: container for {framework} {workload} {algorithm} launched successfully')
+            print(f'SUCCESS: container for {framework} {workload} launched successfully')
             print(f'Command: {command}')
             print(f'Results will be logged to {experiment_name}')
         else:
-            print(f'Failed: container for {framework} {workload} {algorithm} failed with exit code {return_code}.')
+            print(f'Failed: container for {framework} {workload} failed with exit code {return_code}.')
             print(f'Command: {command}')
         wait_until_container_not_running()
         os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'") # clear caches

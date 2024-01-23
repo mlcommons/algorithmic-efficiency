@@ -44,6 +44,9 @@ HOME_DIR=""
 RSYNC_DATA="true"
 OVERWRITE="false"
 SAVE_CHECKPOINTS="true"
+NUM_TUNING_TRIALS="1"
+HPARAM_START_INDEX="None"
+HPARAM_END_INDEX="None"
 
 # Pass flag
 while [ "$1" != "" ]; do
@@ -99,6 +102,18 @@ while [ "$1" != "" ]; do
         -h | --home_dir)
             shift
             HOME_DIR=$1
+            ;;
+        --num_tuning_trials)
+            shift
+            NUM_TUNING_TRIALS=$1
+            ;;
+        --hparam_start_index)
+            shift
+            HPARAM_START_INDEX=$1
+            ;;
+        --hparam_end_index)
+            shift
+            HPARAM_END_INDEX=$1
             ;;
         *) 
             usage 
@@ -204,6 +219,9 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
+        --num_tuning_trials={NUM_TUNING_TRIALS} \
+        --hparam_start_index={HPARAM_START_INDEX} \
+        --hparam_end_index={HPARAM_END_INDEX} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
