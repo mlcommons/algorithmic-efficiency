@@ -11,9 +11,13 @@ python run_workloads.py --framework jax \
 
 from absl import flags
 from absl import app
+from absl import logging
 import os
 import docker
 import time 
+import struct
+
+from algorithmic_efficiency import random_utils as prng
 
 
 flags.DEFINE_string('docker_image_url', 'us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev', 'URL to docker image') 
@@ -31,6 +35,15 @@ flags.DEFINE_string('framework',
                     'jax',
                     'Can be either PyTorch or JAX.')
 flags.DEFINE_boolean('dry_run', False, 'Whether or not to actually run the command')
+flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
+flags.DEFINE_string('study_start_index', None, 'Start index for studies.')
+flags.DEFINE_string('study_end_index', None, 'End index for studies.')
+flags.DEFINE_integer('num_tuning_trials', 5, 'Number of tuning trials.')
+flags.DEFINE_integer('hparam_start_index', None, 'Start index for tuning trials.')
+flags.DEFINE_integer('hparam_end_index', None, 'End index for tuning trials.')
+flags.DEFINE_integer('seed', None, 'Random seed for scoring.')
+flags.DEFINE_integer('submission_id', 0, 'Submission ID to generate study and hparam seeds.')
+flags.DEFINE_string('held_out_workloads_config_path', None, 'Path to config containing held-out workloads')
 
 
 FLAGS = flags.FLAGS
@@ -63,18 +76,6 @@ WORKLOADS = {
              }
 
 
-HELDOUT_WORKLOADS = {
-    'librispeech': ['librispeech_conformer_attention_temperature', 'librispeech_conformer_layernorm',
-                    'librispeech_conformer_gelu'],
-    'imagenet': ['imagenet_resnet_silu', 'imagenet_resnet_gelu', 'imagenet_resnet_large_bn_init',
-                 'imagenet_vit_gelu', 'imagenet_vit_post_ln', 'imagenet_vit_map'
-    ],
-    'ogbg': ['ogbg_gelu', 'ogbg_silu', 'ogbg_model_size'],
-    'wmt': ['wmt_post_ln', 'wmt_attention_temp', 'wmt_glu_tanh'],
-    'fastmri': ['fastmri_model_size', 'fastmri_tanh', 'fastmri_layernorm'],
-    'criteo1tb':['criteo1tb_layernorm', 'criteo1tb_embed_init', 'criteo1tb_resnet']
-}
-
 def container_running():
     docker_client = docker.from_env()
     containers = docker_client.containers.list()
@@ -95,50 +96,76 @@ def main(_):
     docker_image_url = FLAGS.docker_image_url
     submission_path = FLAGS.submission_path
     tuning_search_space = FLAGS.tuning_search_space
+    num_studies = FLAGS.num_studies
+    num_tuning_trials = FLAGS.num_tuning_trials
+    hparam_start_index = FLAGS.hparam_start_index
+    hparam_end_index = FLAGS.hparam_end_index
+    study_start_index = FLAGS.study_start_index if FLAGS.study_start_index else 0
+    study_end_index = FLAGS.study_end_index if FLAGS.study_end_index else num_studies - 1 
+    submission_id = FLAGS.submission_id
+    rng_seed = FLAGS.seed
 
-    # For each runnable workload check if there are any containers running and if not launch next container command
-    for workload in WORKLOADS.keys():
-        wait_until_container_not_running()
-        os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'") # clear caches
-        print('='*100)
-        dataset = WORKLOADS[workload]['dataset']
-        max_steps = int(WORKLOADS[workload]['max_steps'] * run_fraction)
-        mount_repo_flag = ''
-        if FLAGS.local:
-            mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
-        command = ('docker run -t -d -v $HOME/data/:/data/ '
-                   '-v $HOME/experiment_runs/:/experiment_runs '
-                   '-v $HOME/experiment_runs/logs:/logs '
-                   f'{mount_repo_flag}'
-                   '--gpus all --ipc=host '
-                   f'{docker_image_url} '
-                   f'-d {dataset} '
-                   f'-f {framework} '
-                   f'-s {submission_path} '
-                   f'-w {workload} '
-                   f'-t {tuning_search_space} '
-                   f'-e {experiment_name} '
-                   f'-m {max_steps} '
-                   '-c false '
-                   '-o true ' 
-                   '-i true ')
-        if not FLAGS.dry_run:
-            print('Running docker container command')
-            print('Container ID: ')
-            return_code = os.system(command)
-        else:
-            return_code = 0
-        if return_code == 0:
-            print(f'SUCCESS: container for {framework} {workload} launched successfully')
-            print(f'Command: {command}')
-            print(f'Results will be logged to {experiment_name}')
-        else:
-            print(f'Failed: container for {framework} {workload} failed with exit code {return_code}.')
-            print(f'Command: {command}')
-        wait_until_container_not_running()
-        os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'") # clear caches
+    if not rng_seed:
+        rng_seed = struct.unpack('I', os.urandom(4))[0]
 
-        print('='*100)
+    logging.info('Using RNG seed %d', rng_seed)
+    rng_key = prng.fold_in(prng.PRNGKey(rng_seed), submission_id)
+    rng_keys = prng.split(rng_key, 5)
+
+    for study_index, rng_key in zip(range(study_start_index, study_end_index), rng_keys):
+        print('-' * 100)
+        print('*' * 40, f'Starting study {study_index}/{num_studies}', '*' * 40)
+        print('-' * 100)
+        _, rng_seed = rng_key
+        study_dir = os.path.join(experiment_name, f'study_{index}')
+
+        # For each runnable workload check if there are any containers running and if not launch next container command
+        for workload in WORKLOADS.keys():
+            wait_until_container_not_running()
+            os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'") # clear caches
+            print('='*100)
+            dataset = WORKLOADS[workload]['dataset']
+            max_steps = int(WORKLOADS[workload]['max_steps'] * run_fraction)
+            mount_repo_flag = ''
+            if FLAGS.local:
+                mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
+            command = ('docker run -t -d -v $HOME/data/:/data/ '
+                    '-v $HOME/experiment_runs/:/experiment_runs '
+                    '-v $HOME/experiment_runs/logs:/logs '
+                    f'{mount_repo_flag}'
+                    '--gpus all --ipc=host '
+                    f'{docker_image_url} '
+                    f'-d {dataset} '
+                    f'-f {framework} '
+                    f'-s {submission_path} '
+                    f'-w {workload} '
+                    f'-t {tuning_search_space} '
+                    f'-e {study_dir} '
+                    f'-m {max_steps} '
+                    f'--num_tuning_trials {num_tuning_trials} '
+                    f'--hparam_start_index {hparam_start_index} '
+                    f'--hparam_end_index {hparam_end_index} '
+                    f'--rng_seed {rng_seed} '
+                    '-c false '
+                    '-o true ' 
+                    '-i true ')
+            if not FLAGS.dry_run:
+                print('Running docker container command')
+                print('Container ID: ')
+                return_code = os.system(command)
+            else:
+                return_code = 0
+            if return_code == 0:
+                print(f'SUCCESS: container for {framework} {workload} launched successfully')
+                print(f'Command: {command}')
+                print(f'Results will be logged to {experiment_name}')
+            else:
+                print(f'Failed: container for {framework} {workload} failed with exit code {return_code}.')
+                print(f'Command: {command}')
+            wait_until_container_not_running()
+            os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'") # clear caches
+
+            print('='*100)
 
 
 if __name__ == '__main__':
