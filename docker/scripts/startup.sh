@@ -228,9 +228,9 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
-        --num_tuning_trials={NUM_TUNING_TRIALS} \
-        --hparam_start_index={HPARAM_START_INDEX} \
-        --hparam_end_index={HPARAM_END_INDEX} \
+        --num_tuning_trials=${NUM_TUNING_TRIALS} \
+        --hparam_start_index=${HPARAM_START_INDEX} \
+        --hparam_end_index=${HPARAM_END_INDEX} \
         --rng_seed={RNG_SEED} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
