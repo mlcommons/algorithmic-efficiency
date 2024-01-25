@@ -29,8 +29,7 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean(
     'self_tuning_ruleset',
     False,
-    'Whether to score on self-tuning ruleset or externally tuned ruleset'
-)
+    'Whether to score on self-tuning ruleset or externally tuned ruleset')
 FLAGS = flags.FLAGS
 
 
@@ -59,6 +58,7 @@ def get_summary_df(workload, workload_df):
       lambda x: x['submission time'] if x['target reached'] else np.inf, axis=1)
 
   return summary_df
+
 
 def print_submission_summary(df):
   dfs = []
