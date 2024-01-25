@@ -10,7 +10,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import \
     FastMRITanhWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.workload import \
-    FastMRITanhWorkload as PytWorkload
+    FastMRITanhWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   # Test outputs for identical weights and inputs.
   image = torch.randn(2, 320, 320)
