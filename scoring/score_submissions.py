@@ -12,7 +12,7 @@ from tabulate import tabulate
 from scoring import performance_profile
 
 flags.DEFINE_string(
-    'submission_directory,
+    'submission_directory',
     None,
     'Path to submission directory containing experiment directories.')
 flags.DEFINE_string('output_dir',
