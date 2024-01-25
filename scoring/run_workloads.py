@@ -131,11 +131,12 @@ def main(_):
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
 
-  for study_index in range(study_start_index, study_end_index):
+  rng_subkeys = prng.split(rng_key, num_studies)[study_start_index:study_end_index:]
+
+  for study_index, rng_subkey in zip(range(study_start_index, study_end_index), rng_subkeys):
     print('-' * 100)
     print('*' * 40, f'Starting study {study_index}/{num_studies}', '*' * 40)
     print('-' * 100)
-    rng_key, rng_subkey = prng.split(rng_key)
     study_dir = os.path.join(experiment_name, f'study_{study_index}')
 
     # For each runnable workload check if there are any containers running and if not launch next container command
