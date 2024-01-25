@@ -10,9 +10,9 @@ import jax.numpy as jnp
 from algorithmic_efficiency import random_utils as prng
 
 
-flags.DEFINE_integer('seed', None, 'Random seed for scoring.')
-flags.DEFINE_string('framework', 'jax', "JAX or")
+flags.DEFINE_integer('held_out_workloads_seed', None, 'Random seed for scoring.')
 flags.DEFINE_string('output_filename', 'held_out_workloads.json', 'Path to file to record sampled held_out workloads.')
+flags.DEFINE_string('framework', 'jax', 'JAX or PyTorch')
 FLAGS = flags.FLAGS
 
 
@@ -34,15 +34,8 @@ def save_held_out_workloads(held_out_workloads, filename):
         json.dump(held_out_workloads, f)
 
 
-def read_held_out_workloads(filename):
-    with open(filename, "r") as f:
-        held_out_workloads = json.load(f)
-    return held_out_workloads
-
-
-
 def main(_):
-    rng_seed = FLAGS.seed
+    rng_seed = FLAGS.held_out_workloads_seed
     output_filename = FLAGS.output_filename
 
     if not rng_seed:
@@ -65,8 +58,3 @@ def main(_):
 
 if __name__ == '__main__':
     app.run(main)
-
-
-
-
-print(h)

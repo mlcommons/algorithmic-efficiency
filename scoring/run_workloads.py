@@ -16,9 +16,10 @@ import os
 import docker
 import time 
 import struct
+import json
 
 from algorithmic_efficiency import random_utils as prng
-from scoring.generate_held_out_workloads import read_held_out_workloads
+from algorithmic_efficiency.workloads.workloads import get_base_workload_name
 
 
 flags.DEFINE_string('docker_image_url', 'us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev', 'URL to docker image') 
@@ -77,6 +78,13 @@ WORKLOADS = {
              }
 
 
+
+def read_held_out_workloads(filename):
+    with open(filename, "r") as f:
+        held_out_workloads = json.load(f)
+    return held_out_workloads
+
+
 def container_running():
     docker_client = docker.from_env()
     containers = docker_client.containers.list()
@@ -110,23 +118,32 @@ def main(_):
         rng_seed = struct.unpack('I', os.urandom(4))[0]
 
     logging.info('Using RNG seed %d', rng_seed)
-    rng_key = prng.fold_in(prng.PRNGKey(rng_seed), submission_id)
-    rng_keys = prng.split(rng_key, 5)
+    rng_key = (prng.fold_in(prng.PRNGKey(rng_seed), submission_id))
 
-    for study_index, rng_key in zip(range(study_start_index, study_end_index), rng_keys):
+    workloads = [w for w in WORKLOADS.keys()]
+
+    # Read held-out workloads
+    if FLAGS.held_out_workloads_config_path:
+        held_out_workloads = read_held_out_workloads(FLAGS.held_out_workloads_config_path)
+        workloads = workloads + held_out_workloads
+
+    for study_index in range(study_start_index, study_end_index):
         print('-' * 100)
         print('*' * 40, f'Starting study {study_index}/{num_studies}', '*' * 40)
         print('-' * 100)
-        _, rng_seed = rng_key
-        study_dir = os.path.join(experiment_name, f'study_{index}')
+        rng_key, rng_subkey = prng.split(rng_key)
+        study_dir = os.path.join(experiment_name, f'study_{study_index}')
 
         # For each runnable workload check if there are any containers running and if not launch next container command
-        for workload in WORKLOADS.keys():
+        for workload in workloads:
+            rng_subkey, run_key = prng.split(rng_subkey)
+            run_seed = run_key[0] # arbitrary
+            base_workload_name = get_base_workload_name(workload)
             wait_until_container_not_running()
             os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'") # clear caches
             print('='*100)
-            dataset = WORKLOADS[workload]['dataset']
-            max_steps = int(WORKLOADS[workload]['max_steps'] * run_fraction)
+            dataset = WORKLOADS[base_workload_name]['dataset']
+            max_steps = int(WORKLOADS[base_workload_name]['max_steps'] * run_fraction)
             mount_repo_flag = ''
             if FLAGS.local:
                 mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
@@ -146,7 +163,7 @@ def main(_):
                     f'--num_tuning_trials {num_tuning_trials} '
                     f'--hparam_start_index {hparam_start_index} '
                     f'--hparam_end_index {hparam_end_index} '
-                    f'--rng_seed {rng_seed} '
+                    f'--rng_seed {run_seed} '
                     '-c false '
                     '-o true ' 
                     '-i true ')
