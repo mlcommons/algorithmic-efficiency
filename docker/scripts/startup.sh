@@ -34,6 +34,10 @@ function usage() {
                                         from internal GCP bucket.
         -i | --internal_contributor:    If true, allow rsync of data and transfer of experiment results 
                                         with GCP project.
+        --num_tuning_trials             Number of tuning trials for externally tuned ruleset submission.
+        --hparam_start_index            Should be > 0 and < num_tuning_trials - 1.
+        --hparam_end_index              Should be > 0 and < num_tuning_trials - 1.
+        --rng_seed                      RNG seed to pass to workload submission_runner.
 USAGE
     exit 1
 }
@@ -47,6 +51,7 @@ SAVE_CHECKPOINTS="true"
 NUM_TUNING_TRIALS="1"
 HPARAM_START_INDEX="None"
 HPARAM_END_INDEX="None"
+RNG_SEED="None"
 
 # Pass flag
 while [ "$1" != "" ]; do
@@ -114,6 +119,10 @@ while [ "$1" != "" ]; do
         --hparam_end_index)
             shift
             HPARAM_END_INDEX=$1
+            ;;
+        --rng_seed)
+            shift
+            RNG_SEED=$1
             ;;
         *) 
             usage 
@@ -222,6 +231,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --num_tuning_trials={NUM_TUNING_TRIALS} \
         --hparam_start_index={HPARAM_START_INDEX} \
         --hparam_end_index={HPARAM_END_INDEX} \
+        --rng_seed={RNG_SEED} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
