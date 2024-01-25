@@ -18,6 +18,7 @@ import time
 import struct
 
 from algorithmic_efficiency import random_utils as prng
+from scoring.generate_held_out_workloads import read_held_out_workloads
 
 
 flags.DEFINE_string('docker_image_url', 'us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev', 'URL to docker image') 
