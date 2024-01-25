@@ -9,52 +9,64 @@ import jax
 import jax.numpy as jnp
 from algorithmic_efficiency import random_utils as prng
 
-
-flags.DEFINE_integer('held_out_workloads_seed', None, 'Random seed for scoring.')
-flags.DEFINE_string('output_filename', 'held_out_workloads.json', 'Path to file to record sampled held_out workloads.')
+flags.DEFINE_integer('held_out_workloads_seed',
+                     None,
+                     'Random seed for scoring.')
+flags.DEFINE_string('output_filename',
+                    'held_out_workloads.json',
+                    'Path to file to record sampled held_out workloads.')
 flags.DEFINE_string('framework', 'jax', 'JAX or PyTorch')
 FLAGS = flags.FLAGS
 
-
 HELD_OUT_WORKLOADS = {
-    'librispeech': ['librispeech_conformer_attention_temperature', 'librispeech_conformer_layernorm',
-                    'librispeech_conformer_gelu'],
-    'imagenet': ['imagenet_resnet_silu', 'imagenet_resnet_gelu', 'imagenet_resnet_large_bn_init',
-                 'imagenet_vit_gelu', 'imagenet_vit_post_ln', 'imagenet_vit_map'
+    'librispeech': [
+        'librispeech_conformer_attention_temperature',
+        'librispeech_conformer_layernorm',
+        'librispeech_conformer_gelu'
+    ],
+    'imagenet': [
+        'imagenet_resnet_silu',
+        'imagenet_resnet_gelu',
+        'imagenet_resnet_large_bn_init',
+        'imagenet_vit_gelu',
+        'imagenet_vit_post_ln',
+        'imagenet_vit_map'
     ],
     'ogbg': ['ogbg_gelu', 'ogbg_silu', 'ogbg_model_size'],
     'wmt': ['wmt_post_ln', 'wmt_attention_temp', 'wmt_glu_tanh'],
     'fastmri': ['fastmri_model_size', 'fastmri_tanh', 'fastmri_layernorm'],
-    'criteo1tb':['criteo1tb_layernorm', 'criteo1tb_embed_init', 'criteo1tb_resnet']
+    'criteo1tb': [
+        'criteo1tb_layernorm', 'criteo1tb_embed_init', 'criteo1tb_resnet'
+    ]
 }
 
 
 def save_held_out_workloads(held_out_workloads, filename):
-    with open(filename, "w") as f:
-        json.dump(held_out_workloads, f)
+  with open(filename, "w") as f:
+    json.dump(held_out_workloads, f)
 
 
 def main(_):
-    rng_seed = FLAGS.held_out_workloads_seed
-    output_filename = FLAGS.output_filename
+  rng_seed = FLAGS.held_out_workloads_seed
+  output_filename = FLAGS.output_filename
 
-    if not rng_seed:
-        rng_seed = struct.unpack('I', os.urandom(4))[0]
-    
-    logging.info('Using RNG seed %d', rng_seed)
-    rng_key = prng.PRNGKey(rng_seed)
+  if not rng_seed:
+    rng_seed = struct.unpack('I', os.urandom(4))[0]
 
-    sampled_held_out_workloads = []
-    for k, v in HELD_OUT_WORKLOADS.items():
-        rng_key, rng_sub_key = prng.split(rng_key, 2)
-        p = jnp.array([1/len(v) for w in v])
-        sampled_index = jax.random.categorical(rng_sub_key, p)
-        sampled_held_out_workloads.append(v[sampled_index])
+  logging.info('Using RNG seed %d', rng_seed)
+  rng_key = prng.PRNGKey(rng_seed)
 
-    logging.info(f"Sampled held-out workloads: {sampled_held_out_workloads}")
+  sampled_held_out_workloads = []
+  for k, v in HELD_OUT_WORKLOADS.items():
+    rng_key, rng_sub_key = prng.split(rng_key, 2)
+    p = jnp.array([1 / len(v) for w in v])
+    sampled_index = jax.random.categorical(rng_sub_key, p)
+    sampled_held_out_workloads.append(v[sampled_index])
 
-    save_held_out_workloads(sampled_held_out_workloads, output_filename)
+  logging.info(f"Sampled held-out workloads: {sampled_held_out_workloads}")
+
+  save_held_out_workloads(sampled_held_out_workloads, output_filename)
 
 
 if __name__ == '__main__':
-    app.run(main)
+  app.run(main)
