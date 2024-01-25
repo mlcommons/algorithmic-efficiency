@@ -49,8 +49,8 @@ flags.DEFINE_boolean('dry_run',
                      False,
                      'Whether or not to actually run the command')
 flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
-flags.DEFINE_string('study_start_index', None, 'Start index for studies.')
-flags.DEFINE_string('study_end_index', None, 'End index for studies.')
+flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
+flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
 flags.DEFINE_integer('num_tuning_trials', 5, 'Number of tuning trials.')
 flags.DEFINE_integer('hparam_start_index',
                      None,
