@@ -231,7 +231,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --num_tuning_trials=${NUM_TUNING_TRIALS} \
         --hparam_start_index=${HPARAM_START_INDEX} \
         --hparam_end_index=${HPARAM_END_INDEX} \
-        --rng_seed={RNG_SEED} \
+        --rng_seed=${RNG_SEED} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
