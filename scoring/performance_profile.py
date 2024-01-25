@@ -35,8 +35,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import algorithmic_efficiency.workloads.workloads as workloads_registry
 from algorithmic_efficiency.workloads.workloads import get_base_workload_name
+import algorithmic_efficiency.workloads.workloads as workloads_registry
 from scoring import scoring_utils
 
 WORKLOADS = workloads_registry.WORKLOADS

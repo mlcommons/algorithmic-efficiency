@@ -9,17 +9,18 @@ python run_workloads.py --framework jax \
 --tuning_search_space <path_to_tuning_search_space_json> 
 """
 
-from absl import flags
-from absl import app
-from absl import logging
-import os
-import docker
-import time
-import struct
 import json
+import os
+import struct
+import time
+
+from absl import app
+from absl import flags
+from absl import logging
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.workloads.workloads import get_base_workload_name
+import docker
 
 flags.DEFINE_string(
     'docker_image_url',

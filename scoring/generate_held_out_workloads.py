@@ -1,12 +1,13 @@
+import json
+import os
+import struct
+
 from absl import app
 from absl import flags
 from absl import logging
-import struct
-import os
-
-import json
 import jax
 import jax.numpy as jnp
+
 from algorithmic_efficiency import random_utils as prng
 
 flags.DEFINE_integer('held_out_workloads_seed',
