@@ -110,8 +110,10 @@ def main(_):
   tuning_search_space = FLAGS.tuning_search_space
   num_studies = FLAGS.num_studies
   num_tuning_trials = FLAGS.num_tuning_trials
-  hparam_start_index = FLAGS.hparam_start_index
-  hparam_end_index = FLAGS.hparam_end_index
+  if FLAGS.hparam_start_index:
+    hparam_start_index_flag = f'--hparam_start_index {FLAGS.hparam_start_index} '
+  if FLAGS.hparam_end_index:
+    hparam_end_index_flag = f'--hparam_end_index {FLAGS.hparam_end_index} '
   study_start_index = FLAGS.study_start_index if FLAGS.study_start_index else 0
   study_end_index = FLAGS.study_end_index if FLAGS.study_end_index else num_studies - 1
   submission_id = FLAGS.submission_id
@@ -168,8 +170,8 @@ def main(_):
                  f'-e {study_dir} '
                  f'-m {max_steps} '
                  f'--num_tuning_trials {num_tuning_trials} '
-                 f'--hparam_start_index {hparam_start_index} '
-                 f'--hparam_end_index {hparam_end_index} '
+                 f'{hparam_start_index_flag} '
+                 f'{hparam_end_index_flag} '
                  f'--rng_seed {run_seed} '
                  '-c false '
                  '-o true '
