@@ -136,7 +136,7 @@ def main(_):
 
   for study_index, rng_subkey in zip(range(study_start_index, study_end_index), rng_subkeys):
     print('-' * 100)
-    print('*' * 40, f'Starting study {study_index}/{num_studies - 1}', '*' * 40)
+    print('*' * 40, f'Starting study {study_index + 1}/{num_studies}', '*' * 40)
     print('-' * 100)
     study_dir = os.path.join(experiment_name, f'study_{study_index}')
 
