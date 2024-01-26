@@ -110,6 +110,8 @@ def main(_):
   tuning_search_space = FLAGS.tuning_search_space
   num_studies = FLAGS.num_studies
   num_tuning_trials = FLAGS.num_tuning_trials
+  hparam_start_index_flag = ''
+  hparam_end_index_flag = ''
   if FLAGS.hparam_start_index:
     hparam_start_index_flag = f'--hparam_start_index {FLAGS.hparam_start_index} '
   if FLAGS.hparam_end_index:
