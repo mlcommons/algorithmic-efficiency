@@ -209,8 +209,6 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi
 
     if [[ ! -z ${HPARAM_END_INDEX+x} ]]; then 
-        echo "SETTING FLAGGGGGG"
-        echo ${HPARAM_END_INDEX}
         HPARAM_END_INDEX_FLAG="--hparam_end_index=${HPARAM_END_INDEX}"
     fi
 
