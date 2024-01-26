@@ -38,6 +38,7 @@
     },
     {
         "dropout_rate": 0.1,
+        "label_smoothing": 0.1,
         "learning_rate": 0.0017486387539278373,
         "one_minus_beta1": 0.06733926164,
         "beta2": 0.9955159689799007,
