@@ -205,10 +205,11 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi
 
     if [[ ! -z ${HPARAM_START_INDEX+x} ]]; then 
-        HPARAM_START_INDEX_FLAG="--hparam_start_index=blabla"
+        HPARAM_START_INDEX_FLAG="--hparam_start_index=${HPARAM_START_INDEX}"
     fi
 
     if [[ ! -z ${HPARAM_END_INDEX+x} ]]; then 
+        echo "SETTING FLAGGGGGG"
         HPARAM_END_INDEX_FLAG="--hparam_end_index=${HPARAM_END_INDEX}"
     fi
 
