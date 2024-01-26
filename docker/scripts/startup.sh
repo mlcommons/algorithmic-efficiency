@@ -48,10 +48,6 @@ HOME_DIR=""
 RSYNC_DATA="true"
 OVERWRITE="false"
 SAVE_CHECKPOINTS="true"
-NUM_TUNING_TRIALS="1"
-HPARAM_START_INDEX="None"
-HPARAM_END_INDEX="None"
-RNG_SEED="None"
 
 # Pass flag
 while [ "$1" != "" ]; do
@@ -204,6 +200,22 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         MAX_STEPS_FLAG="--max_global_steps=${MAX_GLOBAL_STEPS}"
     fi
 
+    if [[ ! -z ${NUM_TUNING_TRIALS+x} ]]; then 
+        NUM_TUNING_TRIALS_FLAG="--num_tuning_trials=${NUM_TUNING_TRIALS}"
+    fi
+
+    if [[ ! -z ${HPARAM_START_INDEX+x} ]]; then 
+        HPARAM_START_INDEX_FLAG="--hparam_start_index=${HPARAM_START_INDEX}"
+    fi
+
+    if [[ ! -z ${HPARAM_END_INDEX+x} ]]; then 
+        HPARAM_END_INDEX_FLAG="--hparam_end_index=${HPARAM_END_INDEX}"
+    fi
+
+    if [[ ! -z ${RNG_SEED+x} ]]; then 
+        RNG_SEED_FLAG="--rng_seed=${RNG_SEED}"
+    fi
+
     # Define special flags for imagenet and librispeech workloads
     if [[ ${DATASET} == "imagenet" ]]; then 
         SPECIAL_FLAGS="--imagenet_v2_data_dir=${DATA_DIR}"
@@ -228,10 +240,10 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
-        --num_tuning_trials=${NUM_TUNING_TRIALS} \
-        --hparam_start_index=${HPARAM_START_INDEX} \
-        --hparam_end_index=${HPARAM_END_INDEX} \
-        --rng_seed=${RNG_SEED} \
+        ${NUM_TUNING_TRIALS_FLAG} \
+        ${HPARAM_START_INDEX_FLAG} \
+        ${HPARAM_END_INDEX_FLAG} \
+        ${RNG_SEED_FLAG} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
