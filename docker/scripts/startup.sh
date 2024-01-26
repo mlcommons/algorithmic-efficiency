@@ -205,7 +205,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi
 
     if [[ ! -z ${HPARAM_START_INDEX+x} ]]; then 
-        HPARAM_START_INDEX_FLAG="--hparam_start_index=${HPARAM_START_INDEX}"
+        HPARAM_START_INDEX_FLAG="--hparam_start_index=blabla"
     fi
 
     if [[ ! -z ${HPARAM_END_INDEX+x} ]]; then 
