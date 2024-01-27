@@ -179,7 +179,8 @@ def get_experiment_df(experiment_dir):
         }
         logging.info(os.path.join(experiment_dir, study_dir, workload))
         trial_dirs = [
-            t for t in os.listdir(os.path.join(experiment_dir, study_dir, workload))
+            t for t in os.listdir(
+                os.path.join(experiment_dir, study_dir, workload))
             if re.match(TRIAL_DIR_REGEX, t)
         ]
         for trial in trial_dirs:

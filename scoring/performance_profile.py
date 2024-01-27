@@ -190,16 +190,16 @@ def get_times_for_submission(submission,
     if num_studies != NUM_STUDIES:
       if strict:
         raise ValueError(f'Expecting {NUM_STUDIES} trials for workload '
-                          f'{workload} but found {num_studies} trials.')
+                         f'{workload} but found {num_studies} trials.')
       else:
         logging.warning(f'Expecting {NUM_STUDIES} trials for workload '
-                          f'{workload} but found {num_studies} trials.')
+                        f'{workload} but found {num_studies} trials.')
     for study, group in group.groupby('study'):
       num_trials = len(group)
       if num_trials != NUM_TRIALS and not self_tuning_ruleset:
         if strict:
           raise ValueError(f'Expecting {NUM_TRIALS} trials for workload '
-                          f'{workload} but found {num_trials} trials.')
+                           f'{workload} but found {num_trials} trials.')
         else:
           logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
                           f'{workload} but found {num_trials} trials.')
@@ -211,7 +211,6 @@ def get_times_for_submission(submission,
       else:
         time_val = float('inf')
       time_vals_per_study.append(time_val)
-    
 
     workloads.append({
         'submission': submission_name,
