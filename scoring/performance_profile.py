@@ -50,6 +50,7 @@ BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 NUM_BASE_WORKLOADS = 8
 NUM_VARIANT_WORKLOADS = 6
 NUM_TRIALS = 5
+NUM_STUDIES = 5
 
 MIN_EVAL_METRICS = [
     'ce_loss',
@@ -151,6 +152,7 @@ def get_index_that_reaches_target(workload_df,
   else:
     index_reached = target_reached.apply(np.argmax)
     trial = index_reached.idxmin()
+    print(trial, index_reached[trial])
     return trial, index_reached[trial]
 
 
@@ -182,27 +184,40 @@ def get_times_for_submission(submission,
         f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
         f'but found {num_workloads} workloads.')
   for workload, group in submission.groupby('workload'):
-    num_trials = len(group)
-    if num_trials != NUM_TRIALS and not self_tuning_ruleset:
-      if strict:
-        raise ValueError(f'Expecting {NUM_TRIALS} trials for workload '
-                         f'{workload} but found {num_trials} trials.')
-      else:
-        logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
-                        f'{workload} but found {num_trials} trials.')
     validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
 
-    trial_idx, time_idx = get_index_that_reaches_target(
-        group, validation_metric, validation_target)
-    if time_idx > -1:
-      time_val = group[time_col].loc[trial_idx][time_idx]
-    else:
-      time_val = float('inf')
+    time_vals_per_study = []
+    num_studies = len(group.groupby('study'))
+    if num_studies != NUM_STUDIES:
+      if strict:
+        raise ValueError(f'Expecting {NUM_STUDIES} trials for workload '
+                          f'{workload} but found {num_studies} trials.')
+      else:
+        logging.warning(f'Expecting {NUM_STUDIES} trials for workload '
+                          f'{workload} but found {num_studies} trials.')
+    for study, group in group.groupby('study'):
+      num_trials = len(group)
+      if num_trials != NUM_TRIALS and not self_tuning_ruleset:
+        if strict:
+          raise ValueError(f'Expecting {NUM_TRIALS} trials for workload '
+                          f'{workload} but found {num_trials} trials.')
+        else:
+          logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
+                          f'{workload} but found {num_trials} trials.')
+
+      trial_idx, time_idx = get_index_that_reaches_target(
+          group, validation_metric, validation_target)
+      if time_idx > -1:
+        time_val = group[time_col].loc[trial_idx][time_idx]
+      else:
+        time_val = float('inf')
+      time_vals_per_study.append(time_val)
+    
 
     workloads.append({
         'submission': submission_name,
         'workload': workload,
-        time_col: time_val,
+        time_col: np.median(time_val),
     })
 
     if verbosity > 0:
@@ -215,9 +230,7 @@ def get_times_for_submission(submission,
         print('Submission did not reach target')
 
   df = pd.DataFrame.from_records(workloads)
-  print(df)
   df = df.pivot(index='submission', columns='workload', values=time_col)
-  print(time_col)
 
   return df
 

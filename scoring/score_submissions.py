@@ -73,9 +73,12 @@ def print_submission_summary(df):
 def main(_):
   results = {}
 
-  for submission in os.path.listdir(FLAGS.submission_directory):
-    df = scoring_utils.get_experiment_df(FLAGS.experiment_path)
+  for submission in os.listdir(FLAGS.submission_directory):
+    experiment_path = os.path.join(FLAGS.submission_directory, submission)
+    df = scoring_utils.get_experiment_df(experiment_path)
     results[submission] = df
+    print('SUMMARY ')
+    print(df.keys())
     print_submission_summary(df)
 
   if FLAGS.compute_performance_profiles:
@@ -100,5 +103,5 @@ def main(_):
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('experiment_path')
+  # flags.mark_flag_as_required('submission_directory')
   app.run(main)
