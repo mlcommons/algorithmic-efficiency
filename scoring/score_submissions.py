@@ -77,8 +77,6 @@ def main(_):
     experiment_path = os.path.join(FLAGS.submission_directory, submission)
     df = scoring_utils.get_experiment_df(experiment_path)
     results[submission] = df
-    print('SUMMARY ')
-    print(df.keys())
     print_submission_summary(df)
 
   if FLAGS.compute_performance_profiles:

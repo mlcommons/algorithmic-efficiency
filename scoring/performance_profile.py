@@ -152,7 +152,6 @@ def get_index_that_reaches_target(workload_df,
   else:
     index_reached = target_reached.apply(np.argmax)
     trial = index_reached.idxmin()
-    print(trial, index_reached[trial])
     return trial, index_reached[trial]
 
 
