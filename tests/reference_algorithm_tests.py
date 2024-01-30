@@ -197,7 +197,7 @@ def _make_one_batch_workload(workload_class,
             f'tests.modeldiffs.{workload_name}.compare')
         jax_params, model_state, _ = diff_utils.torch2jax(
           jax_workload=super(),
-          pytorch_workload=compare_module.PytWorkload(**self.init_kwargs),
+          pytorch_workload=compare_module.PyTorchWorkload(**self.init_kwargs),
           key_transform=compare_module.key_transform,
           sd_transform=compare_module.sd_transform)
         return (FrozenDict(**jax_utils.replicate(jax_params)),

@@ -14,8 +14,8 @@ function usage() {
         $0  [--dataset dataset] [--framework framework] [--submission_path submission_path]
             [--tuning_search_space tuning_search_space] [--experiment_name experiment_name] 
             [--workload workload] [--max_global_steps max_global_steps] [--rsync_data rsync_data]
-            [--internal_contributor true]        
-     
+            [--internal_contributor true] [--traindiffs_test false]
+
     Options:
         -d | --dataset:                 Can be imagenet, criteo1tb, ogbg, fastmri, wmt, librispeech.
         -f | --framework:               Can be jax or pytorch.
@@ -38,11 +38,13 @@ function usage() {
         --hparam_start_index            Should be > 0 and < num_tuning_trials - 1.
         --hparam_end_index              Should be > 0 and < num_tuning_trials - 1.
         --rng_seed                      RNG seed to pass to workload submission_runner.
+        --traindiffs_test:              If true, ignore all other options and run the traindiffs test.
 USAGE
     exit 1
 }
 
 # Defaults
+TEST="false"
 INTERNAL_CONTRIBUTOR_MODE="false"
 HOME_DIR=""
 RSYNC_DATA="true"
@@ -51,7 +53,11 @@ SAVE_CHECKPOINTS="true"
 
 # Pass flag
 while [ "$1" != "" ]; do
-    case $1 in 
+    case $1 in
+	--traindiffs_test)
+	    shift
+            TEST=$1
+	    ;;
         -d | --dataset) 
             shift
             DATASET=$1
@@ -126,8 +132,15 @@ while [ "$1" != "" ]; do
             ;;
     esac
     shift 
-done 
+done
 
+if [[ ${TEST} == "true" ]]; then
+  cd algorithmic-efficiency
+  COMMAND="python3 tests/test_traindiffs.py"
+  echo $COMMAND
+  eval $COMMAND
+  exit
+fi
 
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
