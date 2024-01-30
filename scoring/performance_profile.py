@@ -215,7 +215,7 @@ def get_times_for_submission(submission,
     workloads.append({
         'submission': submission_name,
         'workload': workload,
-        time_col: np.median(time_val),
+        time_col: np.median(time_vals_per_study),
     })
 
     if verbosity > 0:
