@@ -343,7 +343,7 @@ In other words, the total number of runs expected for official scoring is:
 - for external ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
 - for internal ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies)
 
-You may have the time or compute resources to run all required runs, so our scoring scripts will allow some flexibility. 
+
 
 ### Running workloads
 To run workloads for scoring you may specify a "virtual" list of held-out workloads. It is important 
@@ -372,7 +372,10 @@ python scoring/run_workloads.py \
 
 Note that to run the above script you will need the minimum jax_cpu and pytorch_cpu installations of the algorithmic-efficiency package.
 
-Finally to get the raw scores and performance profiles of group of submissions or single submission:
+During submission development, it might be useful to do faster, approximate scoring (e.g. without 5 different s
+tudies or when some trials are missing) so the scoring scripts allow some flexibility. To simulate official scoring,
+pass the `--strict=True` flag in score_submission.py. To get the raw scores and performance profiles of group of 
+submissions or single submission:
 
 ```bash
 python score_submissions.py --submission_directory <directory_with_submissions> --output_dir <output_dir> --compute_performance_profiles
