@@ -135,7 +135,7 @@ def main(_):
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
 
-  rng_subkeys = prng.split(rng_key, num_studies)[:num_studies:]
+  rng_subkeys = prng.split(rng_key, num_studies)
 
   for study_index, rng_subkey in zip(range(study_start_index, study_end_index), rng_subkeys):
     print('-' * 100)
