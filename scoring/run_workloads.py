@@ -63,10 +63,10 @@ flags.DEFINE_integer('submission_id',
 flags.DEFINE_string('held_out_workloads_config_path',
                     None,
                     'Path to config containing held-out workloads')
+flags.DEFINE_string('')
 
 FLAGS = flags.FLAGS
 
-DATASETS = ['imagenet', 'fastmri', 'ogbg', 'wmt', 'librispeech', 'criteo1tb']
 
 WORKLOADS = {
     'imagenet_resnet': {'max_steps': 186_666, 'dataset': 'imagenet'},

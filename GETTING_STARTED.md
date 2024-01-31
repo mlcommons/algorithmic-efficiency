@@ -337,9 +337,11 @@ docker exec -it <container_id> /bin/bash
 
 ## Score your Submission
 To score your submission we will score over all workloads, held-out workloads and studies as described in the rules. 
+We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled
+held-out workloads in the scoring criteria for the matching base workloads. 
 In other words, the total number of runs expected for official scoring is:
-- for external ruleset 8 (workloads) + 6 (held-out workloads) x 5 (studies) x 5
-- for internal ruleset 8 (workloads) + 6 (held-out workloads) x 5 (studies)
+- for external ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
+- for internal ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies)
 
 You may have the time or compute resources to run all required runs, so our scoring scripts will allow some flexibility. 
 
