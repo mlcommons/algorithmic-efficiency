@@ -1,14 +1,11 @@
 import json
 import os
+import numpy as np
 import struct
 
 from absl import app
 from absl import flags
 from absl import logging
-import jax
-import jax.numpy as jnp
-
-from algorithmic_efficiency import random_utils as prng
 
 flags.DEFINE_integer('held_out_workloads_seed',
                      None,
@@ -55,17 +52,14 @@ def main(_):
     rng_seed = struct.unpack('I', os.urandom(4))[0]
 
   logging.info('Using RNG seed %d', rng_seed)
-  rng_key = prng.PRNGKey(rng_seed)
+  rng = np.random.default_rng(rng_seed)
 
   sampled_held_out_workloads = []
   for k, v in HELD_OUT_WORKLOADS.items():
-    rng_key, rng_sub_key = prng.split(rng_key, 2)
-    p = jnp.array([1 / len(v) for w in v])
-    sampled_index = jax.random.categorical(rng_sub_key, p)
+    sampled_index = rng.integers(len(v))
     sampled_held_out_workloads.append(v[sampled_index])
 
   logging.info(f"Sampled held-out workloads: {sampled_held_out_workloads}")
-
   save_held_out_workloads(sampled_held_out_workloads, output_filename)
 
 
