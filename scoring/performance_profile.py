@@ -166,7 +166,7 @@ def get_times_for_submission(submission,
   Args:
     submission: A DataFrame containing one row for each trial in each workload
       for a given submission.
-    submission_name: Globally unique identified for a submission.
+    submission_name: Globally unique identifier for a submission.
     time_col: A string indicating which column to use for time.
     verbosity: Debug level of information; choice of (1, 2, 3).
 
