@@ -24,8 +24,9 @@ flags.DEFINE_boolean('compute_performance_profiles',
 flags.DEFINE_boolean(
     'strict',
     False,
-    'Whether to enforce scoring criteria  on variant'
-    'performance and on 5-trial median performance')
+    'Whether to enforce scoring criteria on variant performance and on'
+    '5-trial median performance. Note that during official scoring this '
+    'flag will be set to True.')
 flags.DEFINE_boolean(
     'self_tuning_ruleset',
     False,
@@ -78,6 +79,12 @@ def main(_):
     df = scoring_utils.get_experiment_df(experiment_path)
     results[submission] = df
     print_submission_summary(df)
+  
+  if not FLAGS.strict:
+    logging.warning('You are running with strict=False. This will relax '
+    'scoring criteria on the held-out workloads, number of trials and number '
+    'of studies. Your score may not be an accurate representation '
+    'under competition scoring rules. To enforce the criteria set strict=True.')
 
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
