@@ -56,7 +56,7 @@ flags.DEFINE_integer('hparam_start_index',
                      None,
                      'Start index for tuning trials.')
 flags.DEFINE_integer('hparam_end_index', None, 'End index for tuning trials.')
-flags.DEFINE_integer('seed', None, 'Random seed for scoring.')
+flags.DEFINE_integer('seed', None, 'Random seed for evaluating a submission.')
 flags.DEFINE_integer('submission_id',
                      0,
                      'Submission ID to generate study and hparam seeds.')
@@ -125,7 +125,7 @@ def main(_):
     rng_seed = struct.unpack('I', os.urandom(4))[0]
 
   logging.info('Using RNG seed %d', rng_seed)
-  rng_key = (prng.fold_in(prng.PRNGKey(rng_seed), submission_id))
+  rng_key = (prng.fold_in(prng.PRNGKey(rng_seed), hash(submission_id)))
 
   workloads = [w for w in WORKLOADS.keys()]
 
@@ -145,7 +145,7 @@ def main(_):
 
     # For each runnable workload check if there are any containers running and if not launch next container command
     for workload in workloads:
-      rng_subkey, run_key = prng.split(rng_subkey)
+      run_key = prng.fold_in(rng_subkey, hash(workload))
       run_seed = run_key[0]  # arbitrary
       base_workload_name = get_base_workload_name(workload)
       wait_until_container_not_running()
