@@ -34,6 +34,10 @@ function usage() {
                                         from internal GCP bucket.
         -i | --internal_contributor:    If true, allow rsync of data and transfer of experiment results 
                                         with GCP project.
+        --num_tuning_trials             Number of tuning trials for externally tuned ruleset submission.
+        --hparam_start_index            Should be > 0 and < num_tuning_trials - 1.
+        --hparam_end_index              Should be > 0 and < num_tuning_trials - 1.
+        --rng_seed                      RNG seed to pass to workload submission_runner.
         --traindiffs_test:              If true, ignore all other options and run the traindiffs test.
 USAGE
     exit 1
@@ -105,6 +109,22 @@ while [ "$1" != "" ]; do
         -h | --home_dir)
             shift
             HOME_DIR=$1
+            ;;
+        --num_tuning_trials)
+            shift
+            NUM_TUNING_TRIALS=$1
+            ;;
+        --hparam_start_index)
+            shift
+            HPARAM_START_INDEX=$1
+            ;;
+        --hparam_end_index)
+            shift
+            HPARAM_END_INDEX=$1
+            ;;
+        --rng_seed)
+            shift
+            RNG_SEED=$1
             ;;
         *) 
             usage 
@@ -193,6 +213,22 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         MAX_STEPS_FLAG="--max_global_steps=${MAX_GLOBAL_STEPS}"
     fi
 
+    if [[ ! -z ${NUM_TUNING_TRIALS+x} ]]; then 
+        NUM_TUNING_TRIALS_FLAG="--num_tuning_trials=${NUM_TUNING_TRIALS}"
+    fi
+
+    if [[ ! -z ${HPARAM_START_INDEX+x} ]]; then 
+        HPARAM_START_INDEX_FLAG="--hparam_start_index=${HPARAM_START_INDEX}"
+    fi
+
+    if [[ ! -z ${HPARAM_END_INDEX+x} ]]; then 
+        HPARAM_END_INDEX_FLAG="--hparam_end_index=${HPARAM_END_INDEX}"
+    fi
+
+    if [[ ! -z ${RNG_SEED+x} ]]; then 
+        RNG_SEED_FLAG="--rng_seed=${RNG_SEED}"
+    fi
+
     # Define special flags for imagenet and librispeech workloads
     if [[ ${DATASET} == "imagenet" ]]; then 
         SPECIAL_FLAGS="--imagenet_v2_data_dir=${DATA_DIR}"
@@ -217,6 +253,10 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
+        ${NUM_TUNING_TRIALS_FLAG} \
+        ${HPARAM_START_INDEX_FLAG} \
+        ${HPARAM_END_INDEX_FLAG} \
+        ${RNG_SEED_FLAG} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
