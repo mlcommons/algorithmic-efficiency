@@ -1,11 +1,11 @@
 import json
 import os
-import numpy as np
 import struct
 
 from absl import app
 from absl import flags
 from absl import logging
+import numpy as np
 
 flags.DEFINE_integer('held_out_workloads_seed',
                      None,
