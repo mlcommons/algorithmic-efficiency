@@ -45,11 +45,10 @@ flags.DEFINE_string(
     'prize_qualification_baselines/external_tuning/tuning_search_space.json',
     'Path to tuning search space.')
 flags.DEFINE_string('framework', 'jax', 'Can be either PyTorch or JAX.')
-flags.DEFINE_boolean(
-    'dry_run',
-    False,
-    'Whether or not to actually run the docker containers. '
-    'If False, simply print the docker run commands. ')
+flags.DEFINE_boolean('dry_run',
+                     False,
+                     'Whether or not to actually run the docker containers. ' 
+                     'If False, simply print the docker run commands. ')
 flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
@@ -65,16 +64,15 @@ flags.DEFINE_integer('submission_id',
 flags.DEFINE_string('held_out_workloads_config_path',
                     None,
                     'Path to config containing held-out workloads')
-flags.DEFINE_string(
-    'workload_meta_data_config_path',
-    None,
-    'Path to config containing dataset and maximum number of steps per workload.'
-    'The default values of these are set to the full budgets as determined '
-    'via the target-setting procedure. '
-    'Note that training will be interrupted at either the set maximum number '
-    'of steps or the fixed workload maximum run time, whichever comes first. '
-    'If your algorithm has a smaller per step time than our baselines '
-    'you may want to increase the number of steps per workload.')
+flags.DEFINE_string('workload_meta_data_config_path',
+                    'workload_meta_data.json',
+                    'Path to config containing dataset and maximum number of steps per workload.'
+                    'The default values of these are set to the full budgets as determined '
+                    'via the target-setting procedure. '
+                    'Note that training will be interrupted at either the set maximum number '
+                    'of steps or the fixed workload maximum run time, whichever comes first. '
+                    'If your algorithm has a smaller per step time than our baselines '
+                    'you may want to increase the number of steps per workload.')
 
 FLAGS = flags.FLAGS
 
@@ -155,8 +153,7 @@ def main(_):
           "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")  # clear caches
       print('=' * 100)
       dataset = workload_meta_data[base_workload_name]['dataset']
-      max_steps = int(workload_meta_data[base_workload_name]['max_steps'] *
-                      run_fraction)
+      max_steps = int(workload_meta_data[base_workload_name]['max_steps'] * run_fraction)
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
@@ -205,6 +202,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('workload_meta_data_config_path')
-
   app.run(main)
