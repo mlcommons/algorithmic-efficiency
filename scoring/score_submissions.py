@@ -79,12 +79,14 @@ def main(_):
     df = scoring_utils.get_experiment_df(experiment_path)
     results[submission] = df
     print_submission_summary(df)
-  
+
   if not FLAGS.strict:
-    logging.warning('You are running with strict=False. This will relax '
-    'scoring criteria on the held-out workloads, number of trials and number '
-    'of studies. Your score may not be an accurate representation '
-    'under competition scoring rules. To enforce the criteria set strict=True.')
+    logging.warning(
+        'You are running with strict=False. This will relax '
+        'scoring criteria on the held-out workloads, number of trials and number '
+        'of studies. Your score may not be an accurate representation '
+        'under competition scoring rules. To enforce the criteria set strict=True.'
+    )
 
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
