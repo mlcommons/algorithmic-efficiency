@@ -36,14 +36,14 @@ def _signed_to_unsigned(seed: SeedType) -> SeedType:
 def _fold_in(seed: SeedType, data: int) -> SeedType:
   rng_1 = np.random.RandomState(seed=_signed_to_unsigned(seed))
   new_seed_1 = rng_1.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
-  rng_2 = np.random.RandomState(seed=_signed_to_unsigned(data))
+  rng_2 = np.random.RandomState(seed=(_signed_to_unsigned(data) & 0xffffffff))
   new_seed_2 = rng_2.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
   return new_seed_1 + new_seed_2
 
 
 def _split(seed: SeedType, num: int = 2) -> SeedType:
   rng = np.random.RandomState(seed=_signed_to_unsigned(seed))
-  return rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32, size=[num, 2])
+  return rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32, size=[num])
 
 
 def _PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
@@ -58,6 +58,11 @@ def _check_jax_install() -> None:
     raise ValueError(
         'Must install jax to use the jax RNG library, or use PyTorch and pass '
         '--framework=pytorch to use the Numpy version instead.')
+
+
+def _randint(seed: SeedType) -> int:
+  rng = np.random.RandomState(_signed_to_unsigned(seed))
+  return rng.randint(MAX_INT32)
 
 
 def fold_in(seed: SeedType, data: int) -> SeedType:
@@ -79,3 +84,10 @@ def PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
     _check_jax_install()
     return jax_rng.PRNGKey(seed)
   return _PRNGKey(seed)
+
+
+def randint(seed:SeedType) -> int:
+  if FLAGS.framework == 'jax':
+    _check_jax_install()
+    return jax_rng.randint(seed, )
+  return _randint(seed)
