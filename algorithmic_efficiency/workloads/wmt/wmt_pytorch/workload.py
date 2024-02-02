@@ -171,7 +171,7 @@ class WmtWorkload(BaseWmtWorkload):
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """aux_dropout_rate is used as attention_dropout_rate."""
-    torch.random.manual_seed(rng[0])
+    torch.random.manual_seed(rng)
 
     if self.activation == 'relu':
       activation = F.relu

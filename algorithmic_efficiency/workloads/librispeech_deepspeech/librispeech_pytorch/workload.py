@@ -32,7 +32,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
     as input_dropout_rate.
     """
-    torch.random.manual_seed(rng[0])
+    torch.random.manual_seed(rng)
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
             feed_forward_dropout_rate=dropout_rate,

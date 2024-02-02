@@ -58,7 +58,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
     input_dropout_rate.
     """
-    torch.random.manual_seed(rng[0])
+    torch.random.manual_seed(rng)
     # Configure torch backends to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
     torch.backends.cuda.enable_flash_sdp(False)
