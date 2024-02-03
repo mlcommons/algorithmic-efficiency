@@ -60,9 +60,10 @@ def _check_jax_install() -> None:
         '--framework=pytorch to use the Numpy version instead.')
 
 
-def _randint(seed: SeedType) -> int:
+def _bits(seed: SeedType) -> int:
   rng = np.random.RandomState(_signed_to_unsigned(seed))
-  return rng.randint(MAX_INT32)
+  b = rng.bytes(4)
+  return int.from_bytes(b, byteorder='little')
 
 
 def fold_in(seed: SeedType, data: int) -> SeedType:
@@ -90,4 +91,4 @@ def bits(seed: SeedType) -> int:
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.bits(seed)
-  return _randint(seed)
+  return _bits(seed)
