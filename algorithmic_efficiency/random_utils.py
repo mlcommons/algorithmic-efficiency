@@ -89,5 +89,5 @@ def PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
 def randint(seed: SeedType) -> int:
   if FLAGS.framework == 'jax':
     _check_jax_install()
-    return jax_rng.randint(seed,)
+    return jax_rng.randint(seed, (0), 0, MAX_INT32)
   return _randint(seed)
