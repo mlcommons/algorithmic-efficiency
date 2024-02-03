@@ -1,6 +1,6 @@
 """Proxy functions in front of the Jax RNG API or a compatible Numpy RNG API."""
 
-from typing import Any, List, Union
+from typing import Union
 
 from absl import flags
 from absl import logging
@@ -36,7 +36,7 @@ def _signed_to_unsigned(seed: SeedType) -> SeedType:
 def _fold_in(seed: SeedType, data: int) -> SeedType:
   rng_1 = np.random.RandomState(seed=_signed_to_unsigned(seed))
   new_seed_1 = rng_1.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
-  rng_2 = np.random.RandomState(seed=(_signed_to_unsigned(data) & 0xffffffff))
+  rng_2 = np.random.RandomState(seed=_signed_to_unsigned(data) & 0xffffffff)
   new_seed_2 = rng_2.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
   return new_seed_1 + new_seed_2
 
