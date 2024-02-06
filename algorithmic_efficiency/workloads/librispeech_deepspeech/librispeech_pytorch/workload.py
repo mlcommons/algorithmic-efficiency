@@ -108,30 +108,21 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     return 10
 
 
-class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechConformerWorkload):
-
-  def eval_batch_size(self) -> int:
-    return 128
+class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
   def use_tanh(self) -> bool:
     return True
 
 
-class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechConformerWorkload):
-
-  def eval_batch_size(self) -> int:
-    return 128
+class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
   def enable_residual_connections(self) -> bool:
     return False
 
 
-class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechConformerWorkload):
-
-  def eval_batch_size(self) -> int:
-    return 128
+class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
   def enable_decoder_layer_norm(self) -> bool:
