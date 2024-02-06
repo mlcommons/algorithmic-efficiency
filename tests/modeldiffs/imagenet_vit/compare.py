@@ -10,13 +10,13 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
     ImagenetVitWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
-    ImagenetVitWorkload as PytWorkload
+    ImagenetVitWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
 def key_transform(k):
   if 'Conv' in k[0]:
-    k = ('embedding', *k[1:])
+    k = ('conv_patch_extract', *k[1:])
   elif k[0] == 'Linear_0':
     k = ('pre_logits', *k[1:])
   elif k[0] == 'Linear_1':
@@ -25,24 +25,32 @@ def key_transform(k):
   new_key = []
   bn = False
   attention = False
+  pool_head = 'MAPHead' in k[0]
   ln = False
   enc_block = False
   for idx, i in enumerate(k):
     bn = bn or 'BatchNorm' in i
     ln = ln or 'LayerNorm' in i
-    attention = attention or 'SelfAttention' in i
+    attention = attention or 'SelfAttention' in i or 'MultiheadAttention' in i
     if 'ModuleList' in i or 'Sequential' in i:
       continue
     if 'CustomBatchNorm' in i:
       continue
     if 'Linear' in i:
       if attention:
-        i = {
-            'Linear_0': 'query',
-            'Linear_1': 'key',
-            'Linear_2': 'value',
-            'Linear_3': 'out',
-        }[i]
+        if pool_head:
+          i = {
+              'Linear_0': 'query',
+              'Linear_1': 'key_value',
+              'Linear_2': 'out',
+          }[i]
+        else:
+          i = {
+              'Linear_0': 'query',
+              'Linear_1': 'key',
+              'Linear_2': 'value',
+              'Linear_3': 'out',
+          }[i]
       else:
         i = i.replace('Linear', 'Dense')
     elif 'Conv2d' in i:
@@ -54,11 +62,13 @@ def key_transform(k):
       i = 'Transformer'
     elif enc_block and 'SelfAttention' in i:
       i = 'MultiHeadDotProductAttention_1'
+    elif pool_head and 'MultiheadAttention' in i:
+      i = i.replace('MultiheadAttention', 'MultiHeadDotProductAttention')
     elif enc_block and i == 'LayerNorm_1':
       i = 'LayerNorm_2'
     elif enc_block and 'MlpBlock' in i:
       i = 'MlpBlock_3'
-    elif idx == 1 and i == 'LayerNorm_0':
+    elif idx == 1 and i == 'LayerNorm_0' and not pool_head:
       i = 'encoder_layernorm'
     elif 'weight' in i:
       if bn or ln:
@@ -75,7 +85,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   # Test outputs for identical weights and inputs.
   image = torch.randn(2, 3, 224, 224)

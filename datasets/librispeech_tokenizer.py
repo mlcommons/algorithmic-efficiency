@@ -108,17 +108,16 @@ def load_tokenizer(model_filepath):
   return sp_tokenizer
 
 
-def run(train, data_dir):
-  logging.info('Data dir: %s', data_dir)
-  vocab_path = os.path.join(data_dir, 'spm_model.vocab')
-  logging.info('vocab_path = ', vocab_path)
+def run(train, input_dir, tokenizer_vocab_path):
+  logging.info('Data dir: %s', input_dir)
+  logging.info('vocab_path = %s', tokenizer_vocab_path)
 
   if train:
     logging.info('Training...')
     splits = ['train-clean-100']
-    train_tokenizer(data_dir, splits, model_path=vocab_path)
+    train_tokenizer(input_dir, splits, model_path=tokenizer_vocab_path)
   else:
-    tokenizer = load_tokenizer(vocab_path)
+    tokenizer = load_tokenizer(tokenizer_vocab_path)
     test_input = 'OPEN SOURCE ROCKS'
     tokens = tokenizer.tokenize(test_input)
     detokenized = tokenizer.detokenize(tokens).numpy().decode('utf-8')

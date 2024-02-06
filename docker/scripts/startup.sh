@@ -14,8 +14,8 @@ function usage() {
         $0  [--dataset dataset] [--framework framework] [--submission_path submission_path]
             [--tuning_search_space tuning_search_space] [--experiment_name experiment_name] 
             [--workload workload] [--max_global_steps max_global_steps] [--rsync_data rsync_data]
-            [--internal_contributor true]        
-     
+            [--internal_contributor true] [--traindiffs_test false]
+
     Options:
         -d | --dataset:                 Can be imagenet, criteo1tb, ogbg, fastmri, wmt, librispeech.
         -f | --framework:               Can be jax or pytorch.
@@ -34,11 +34,17 @@ function usage() {
                                         from internal GCP bucket.
         -i | --internal_contributor:    If true, allow rsync of data and transfer of experiment results 
                                         with GCP project.
+        --num_tuning_trials             Number of tuning trials for externally tuned ruleset submission.
+        --hparam_start_index            Should be > 0 and < num_tuning_trials - 1.
+        --hparam_end_index              Should be > 0 and < num_tuning_trials - 1.
+        --rng_seed                      RNG seed to pass to workload submission_runner.
+        --traindiffs_test:              If true, ignore all other options and run the traindiffs test.
 USAGE
     exit 1
 }
 
 # Defaults
+TEST="false"
 INTERNAL_CONTRIBUTOR_MODE="false"
 HOME_DIR=""
 RSYNC_DATA="true"
@@ -47,7 +53,11 @@ SAVE_CHECKPOINTS="true"
 
 # Pass flag
 while [ "$1" != "" ]; do
-    case $1 in 
+    case $1 in
+	--traindiffs_test)
+	    shift
+            TEST=$1
+	    ;;
         -d | --dataset) 
             shift
             DATASET=$1
@@ -100,27 +110,52 @@ while [ "$1" != "" ]; do
             shift
             HOME_DIR=$1
             ;;
+        --num_tuning_trials)
+            shift
+            NUM_TUNING_TRIALS=$1
+            ;;
+        --hparam_start_index)
+            shift
+            HPARAM_START_INDEX=$1
+            ;;
+        --hparam_end_index)
+            shift
+            HPARAM_END_INDEX=$1
+            ;;
+        --rng_seed)
+            shift
+            RNG_SEED=$1
+            ;;
         *) 
             usage 
             exit 1
             ;;
     esac
     shift 
-done 
+done
 
+if [[ ${TEST} == "true" ]]; then
+  cd algorithmic-efficiency
+  COMMAND="python3 tests/test_traindiffs.py"
+  echo $COMMAND
+  eval $COMMAND
+  exit
+fi
 
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
                 "wmt" "mnist")
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
-                 "imagenet_resnet_large_bn_init" "imagenet_vit" "fastmri" "ogbg" \
+                 "imagenet_resnet_large_bn_init" "imagenet_vit" "imagenet_vit_glu" \
+                 "imagenet_vit_post_ln" "imagenet_vit_map" "fastmri" "ogbg" \
+                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init" \
                  "wmt" "wmt_post_ln" "wmt_attention_temp" "wmt_glu_tanh" \
                  "librispeech_deepspeech" "librispeech_conformer" "mnist" \
-                 "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init" \
                  "conformer_layernorm" "conformer_attention_temperature" \
                  "conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
-                 "fastmri_layernorm" "librispeech_deepspeech_tanh" \
-                 "librispeech_deepspeech_no_resnet" "librispeech_deepspeech_norm_and_spec_aug")
+                 "librispeech_deepspeech_tanh" \
+                 "librispeech_deepspeech_no_resnet" "librispeech_deepspeech_norm_and_spec_aug"
+                 "fastmri_layernorm" "ogbg_gelu" "ogbg_silu" "ogbg_model_size")
 
 # Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"
@@ -180,6 +215,22 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         MAX_STEPS_FLAG="--max_global_steps=${MAX_GLOBAL_STEPS}"
     fi
 
+    if [[ ! -z ${NUM_TUNING_TRIALS+x} ]]; then 
+        NUM_TUNING_TRIALS_FLAG="--num_tuning_trials=${NUM_TUNING_TRIALS}"
+    fi
+
+    if [[ ! -z ${HPARAM_START_INDEX+x} ]]; then 
+        HPARAM_START_INDEX_FLAG="--hparam_start_index=${HPARAM_START_INDEX}"
+    fi
+
+    if [[ ! -z ${HPARAM_END_INDEX+x} ]]; then 
+        HPARAM_END_INDEX_FLAG="--hparam_end_index=${HPARAM_END_INDEX}"
+    fi
+
+    if [[ ! -z ${RNG_SEED+x} ]]; then 
+        RNG_SEED_FLAG="--rng_seed=${RNG_SEED}"
+    fi
+
     # Define special flags for imagenet and librispeech workloads
     if [[ ${DATASET} == "imagenet" ]]; then 
         SPECIAL_FLAGS="--imagenet_v2_data_dir=${DATA_DIR}"
@@ -204,6 +255,10 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
+        ${NUM_TUNING_TRIALS_FLAG} \
+        ${HPARAM_START_INDEX_FLAG} \
+        ${HPARAM_END_INDEX_FLAG} \
+        ${RNG_SEED_FLAG} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
         ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"

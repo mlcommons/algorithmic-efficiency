@@ -163,6 +163,7 @@ singularity build --fakeroot <singularity_image_name>.sif Singularity.def
 ```
 
 Note that this can take several minutes. Then, to start a shell session with GPU support (by using the `--nv` flag), we can run
+
 ```bash
 singularity shell --bind $HOME/data:/data,$HOME/experiment_runs:/experiment_runs \
     --nv <singularity_image_name>.sif
@@ -194,7 +195,7 @@ Make a submissions subdirectory to store your submission modules e.g. `algorithm
 
 ### Coding your Submission
 
-You can find examples of sumbission modules under `algorithmic-efficiency/baselines` and `algorithmic-efficiency/reference_algorithms`. \
+You can find examples of submission modules under `algorithmic-efficiency/prize_qualification_baselines` and `algorithmic-efficiency/reference_algorithms`. \
 A submission for the external ruleset will consist of a submission module and a tuning search space definition.
 
 1. Copy the template submission module `submissions/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
@@ -210,7 +211,7 @@ A submission for the external ruleset will consist of a submission module and a 
         }
         ```
 
-        For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
+        For a complete example see [tuning_search_space.json](/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
     2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
 
@@ -224,7 +225,7 @@ A submission for the external ruleset will consist of a submission module and a 
         }
         ```
 
-        For a complete example see [tuning_search_space.json](https://github.com/mlcommons/algorithmic-efficiency/blob/main/baselines/nadamw/tuning_search_space.json).
+        For a complete example see [tuning_search_space.json](/reference_algorithms/paper_baselines/nadamw/tuning_search_space.json).
 
 ## Run your Submission
 
@@ -335,13 +336,51 @@ docker exec -it <container_id> /bin/bash
 ```
 
 ## Score your Submission
+To score your submission we will score over all workloads, held-out workloads and studies as described in the rules. 
+We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled
+held-out workloads in the scoring criteria for the matching base workloads. 
+In other words, the total number of runs expected for official scoring is:
+- for external ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
+- for internal ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies)
 
-To produce performance profile and performance table:
+
+
+### Running workloads
+To run workloads for scoring you may specify a "virtual" list of held-out workloads. It is important 
+to note that the official set of held-out workloads will be sampled by the competition organizers during scoring time.
+
+An example config for held-out workloads is stored in `scoring/held_workloads_example.json`.
+To generate a new sample of held out workloads run:
 
 ```bash
-python3 scoring/score_submission.py --experiment_path=<path_to_experiment_dir> --output_dir=<output_dir>
+python3 generate_held_out_workloads.py --seed <optional_rng_seed> --output_filename <output_filename>
 ```
 
-We provide the scores and performance profiles for the baseline algorithms in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
+To run a number of studies and trials over all workload using Docker containers for each run:
+
+```bash
+python scoring/run_workloads.py \
+--framework <framework> \
+--experiment_name <experiment_name> \
+--docker_image_url <docker_image_url> \
+--submission_path <sumbission_path> \
+--tuning_search_space <submission_path> \
+--held_out_workloads_config_path held_out_workloads_example.json \
+--num_studies <num_studies>
+--seed <rng_seed>
+```
+
+Note that to run the above script you will need the minimum jax_cpu and pytorch_cpu installations of the algorithmic-efficiency package.
+
+During submission development, it might be useful to do faster, approximate scoring (e.g. without 5 different s
+tudies or when some trials are missing) so the scoring scripts allow some flexibility. To simulate official scoring,
+pass the `--strict=True` flag in score_submission.py. To get the raw scores and performance profiles of group of 
+submissions or single submission:
+
+```bash
+python score_submissions.py --submission_directory <directory_with_submissions> --output_dir <output_dir> --compute_performance_profiles
+```
+
+We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
 **Good Luck!**

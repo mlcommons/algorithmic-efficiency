@@ -26,17 +26,19 @@ and final data dir locations are on the same drive.
 
 Criteo 1TB download size: ~350GB
 Criteo 1TB final disk size: ~1TB
-FastMRI download size:
-FastMRI final disk size:
-LibriSpeech download size:
-LibriSpeech final disk size:
-OGBG download size:
-OGBG final disk size:
-WMT download size: (1.58 GiB + ) =
-WMT final disk size:
+FastMRI download size: ~90GB
+FastMRI final disk size: ~110GB
+ImageNet download size: ~150GB
+ImageNet final disk size: ~150GB
+LibriSpeech download size: ~60GB
+LibriSpeech final disk size: ~350GB
+OGBG download size: ~37MB
+OGBG final disk size: ~800MB
+WMT download size: ~3GB
+WMT final disk size: ~3GB
 _______________________
-Total download size:
-Total disk size:
+Total download size: ~650GB
+Total disk size: ~1.1TB
 
 Some datasets require signing a form before downloading:
 
@@ -49,8 +51,8 @@ ImageNet:
 Register on https://image-net.org/ and run this script with the links to the
 ILSVRC2012 train and validation images.
 
-Note for tfds ImageNet, you may have to increase the max number of files allowed
-open at once using `ulimit -n 8192`.
+Note for tfds ImageNet, you may have to increase the max number of files
+allowed open at once using `ulimit -n 8192`.
 
 Example command:
 
@@ -77,7 +79,6 @@ from datasets import librispeech_tokenizer
 
 import functools
 import os
-import resource
 import shutil
 import subprocess
 import tarfile
@@ -324,7 +325,7 @@ def download_criteo1tb(data_dir,
       unzipped_path = os.path.join(criteo_dir, f'day_{day}.csv')
       unzipped_paths.append(unzipped_path)
       split_path = os.path.join(criteo_dir, f'day_{day}_')
-      split_cmd = ('split -a 3 -d -l 5000000 --additional-suffix=.csv '
+      split_cmd = ('split -a 2 -d -l 5000000 '
                    f'"{unzipped_path}" "{split_path}"')
       logging.info(f'Running Criteo 1TB split command:\n{split_cmd}')
       batch_processes.append(subprocess.Popen(split_cmd, shell=True))
@@ -334,6 +335,7 @@ def download_criteo1tb(data_dir,
 
 
 def download_cifar(data_dir, framework):
+  data_dir = os.path.join(data_dir, 'cifar10')
   if framework == 'jax':
     tfds.builder('cifar10:3.0.2', data_dir=data_dir).download_and_prepare()
   elif framework == 'pytorch':
@@ -397,34 +399,39 @@ def extract(source, dest, mode='r:xz'):
   tar.close()
 
 
-def setup_fastmri(data_dir, src_data_dir):
-
-  train_tar_file_path = os.path.join(src_data_dir, FASTMRI_TRAIN_TAR_FILENAME)
-  val_tar_file_path = os.path.join(src_data_dir, FASTMRI_VAL_TAR_FILENAME)
-  test_tar_file_path = os.path.join(src_data_dir, FASTMRI_TEST_TAR_FILENAME)
-
-  # Make train, val and test subdirectories
-  fastmri_data_dir = os.path.join(data_dir, 'fastmri')
-  train_data_dir = os.path.join(fastmri_data_dir, 'train')
-  os.makedirs(train_data_dir, exist_ok=True)
-  val_data_dir = os.path.join(fastmri_data_dir, 'val')
-  os.makedirs(val_data_dir, exist_ok=True)
-  test_data_dir = os.path.join(fastmri_data_dir, 'test')
-  os.makedirs(test_data_dir, exist_ok=True)
+def setup_fastmri(data_dir):
+  train_tar_file_path = os.path.join(data_dir, FASTMRI_TRAIN_TAR_FILENAME)
+  val_tar_file_path = os.path.join(data_dir, FASTMRI_VAL_TAR_FILENAME)
+  test_tar_file_path = os.path.join(data_dir, FASTMRI_TEST_TAR_FILENAME)
 
   # Unzip tar file into subdirectories
-  logging.info('Unzipping {} to {}'.format(train_tar_file_path, train_data_dir))
-  extract(train_tar_file_path, train_data_dir)
-  logging.info('Unzipping {} to {}'.format(val_tar_file_path, val_data_dir))
-  extract(val_tar_file_path, val_data_dir)
-  logging.info('Unzipping {} to {}'.format(test_tar_file_path, test_data_dir))
-  extract(test_tar_file_path, test_data_dir)
-  logging.info('Set up fastMRI dataset complete')
+  logging.info('Unzipping {} to {}'.format(train_tar_file_path, data_dir))
+  extract(train_tar_file_path, data_dir)
+  logging.info('Unzipping {} to {}'.format(val_tar_file_path, data_dir))
+  extract(val_tar_file_path, data_dir)
+  logging.info('Unzipping {} to {}'.format(test_tar_file_path, data_dir))
+  extract(test_tar_file_path, data_dir)
   logging.info('Extraction completed!')
+
+  # Rename folders to match what the workload expects
+  os.rename(
+      os.path.join(data_dir, "singlecoil_train"),
+      os.path.join(data_dir, "knee_singlecoil_train"),
+  )
+  os.rename(
+      os.path.join(data_dir, "singlecoil_val"),
+      os.path.join(data_dir, "knee_singlecoil_val"),
+  )
+  os.rename(
+      os.path.join(data_dir, "singlecoil_test"),
+      os.path.join(data_dir, "knee_singlecoil_test"),
+  )
+  logging.info("Set up fastMRI dataset complete")
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   """Downloads and returns the download dir."""
+  data_dir = os.path.join(data_dir, 'imagenet')
   imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
@@ -456,6 +463,7 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
 
 
 def setup_imagenet(data_dir, framework=None):
+  data_dir = os.path.join(data_dir, 'imagenet')
   if framework == 'jax':
     setup_imagenet_jax(data_dir)
 
@@ -580,19 +588,21 @@ def download_imagenet_v2(data_dir):
       data_dir=data_dir).download_and_prepare()
 
 
-def download_librispeech(dataset_dir, tmp_dir):
+def download_librispeech(data_dir, tmp_dir):
   # After extraction the result is a folder named Librispeech containing audio
   # files in .flac format along with transcripts containing name of audio file
   # and corresponding transcription.
   tmp_librispeech_dir = os.path.join(tmp_dir, 'librispeech')
   extracted_data_dir = os.path.join(tmp_librispeech_dir, 'LibriSpeech')
-  final_data_dir = os.path.join(dataset_dir, 'librispeech')
+  final_data_dir = os.path.join(data_dir, 'librispeech')
 
   _maybe_mkdir(tmp_librispeech_dir)
   _maybe_mkdir(final_data_dir)
 
   for split in ['dev', 'test']:
     for version in ['clean', 'other']:
+      if split == 'test' and version == 'other':
+        continue
       wget_cmd = (
           f'wget --directory-prefix={tmp_librispeech_dir} '
           f'http://www.openslr.org/resources/12/{split}-{version}.tar.gz')
@@ -617,10 +627,13 @@ def download_librispeech(dataset_dir, tmp_dir):
         f'tar xzvf {tar_path} --directory {tmp_librispeech_dir}',
         shell=True).communicate()
 
-  tokenizer_vocab_path = os.path.join(extracted_data_dir, 'spm_model.vocab')
+  tokenizer_vocab_path = os.path.join(final_data_dir, 'spm_model.vocab')
 
   if not os.path.exists(tokenizer_vocab_path):
-    librispeech_tokenizer.run(train=True, data_dir=extracted_data_dir)
+    librispeech_tokenizer.run(
+        train=True,
+        input_dir=extracted_data_dir,
+        tokenizer_vocab_path=tokenizer_vocab_path)
 
   librispeech_preprocess.run(
       input_dir=extracted_data_dir,
@@ -629,6 +642,7 @@ def download_librispeech(dataset_dir, tmp_dir):
 
 
 def download_mnist(data_dir):
+  data_dir = os.path.join(data_dir, 'MNIST')  # Capitalization to match PyTorch
   tfds.builder('mnist', data_dir=data_dir).download_and_prepare()
 
 
@@ -714,9 +728,8 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    imagenet_data_dir = os.path.join(data_dir, 'imagenet')
-    download_imagenet(imagenet_data_dir, imagenet_train_url, imagenet_val_url)
-    setup_imagenet(imagenet_data_dir, framework=FLAGS.framework)
+    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
+    setup_imagenet(data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
     logging.info('Downloading Librispeech...')

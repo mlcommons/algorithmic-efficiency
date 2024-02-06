@@ -1,5 +1,6 @@
 # Ported to PyTorch from
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
+from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax.tree_util as tree
@@ -10,14 +11,16 @@ from torch import nn
 from algorithmic_efficiency import init_utils
 
 
-def _make_mlp(in_dim, hidden_dims, dropout_rate):
+def _make_mlp(in_dim, hidden_dims, dropout_rate, activation_fn):
   """Creates a MLP with specified dimensions."""
   layers = nn.Sequential()
-  for dim in hidden_dims:
-    layers.add_module('dense', nn.Linear(in_features=in_dim, out_features=dim))
-    layers.add_module('norm', nn.LayerNorm(dim, eps=1e-6))
-    layers.add_module('relu', nn.ReLU())
-    layers.add_module('dropout', nn.Dropout(dropout_rate))
+  for i, dim in enumerate(hidden_dims):
+    layers.add_module(f'dense_{i}',
+                      nn.Linear(in_features=in_dim, out_features=dim))
+    layers.add_module(f'norm_{i}', nn.LayerNorm(dim, eps=1e-6))
+    layers.add_module(f'activation_fn_{i}', activation_fn())
+    layers.add_module(f'dropout_{i}', nn.Dropout(dropout_rate))
+    in_dim = dim
   return layers
 
 
@@ -27,14 +30,18 @@ class GNN(nn.Module):
   The model assumes the input data is a jraph.GraphsTuple without global
   variables. The final prediction will be encoded in the globals.
   """
-  latent_dim: int = 256
-  hidden_dims: Tuple[int] = (256,)
-  num_message_passing_steps: int = 5
 
   def __init__(self,
                num_outputs: int = 128,
-               dropout_rate: Optional[float] = 0.1) -> None:
+               dropout_rate: Optional[float] = 0.1,
+               activation_fn_name: str = 'relu',
+               latent_dim: int = 256,
+               hidden_dims: Tuple[int] = (256,),
+               num_message_passing_steps: int = 5) -> None:
     super().__init__()
+    self.latent_dim = latent_dim
+    self.hidden_dims = hidden_dims
+    self.num_message_passing_steps = num_message_passing_steps
     self.num_outputs = num_outputs
     if dropout_rate is None:
       dropout_rate = 0.1
@@ -42,23 +49,44 @@ class GNN(nn.Module):
     self.node_embedder = nn.Linear(in_features=9, out_features=self.latent_dim)
     self.edge_embedder = nn.Linear(in_features=3, out_features=self.latent_dim)
 
+    if activation_fn_name == 'relu':
+      activation_fn = nn.ReLU
+    elif activation_fn_name == 'gelu':
+      activation_fn = partial(nn.GELU, approximate='tanh')
+    elif activation_fn_name == 'silu':
+      activation_fn = nn.SiLU
+    else:
+      raise ValueError(
+          f'Invalid activation function name: {self.activation_fn_name}')
+
     graph_network_layers = []
     for st in range(self.num_message_passing_steps):
-      # Constants in in_dims are based on the requirements of the GraphNetwork.
+      # Constants in in_dims are based on forward call of GraphNetwork:
+      # specifically update_edge_fn update_node_fn and update_global_fn.
       if st == 0:
-        in_dim = self.latent_dim * 3 + self.num_outputs
-        last_in_dim = self.latent_dim * 2 + self.num_outputs
+        in_dim_edge_fn = self.latent_dim * 3 + self.num_outputs
+        in_dim_node_fn = self.latent_dim + self.hidden_dims[
+            -1] * 2 + self.num_outputs
+        last_in_dim = self.hidden_dims[-1] * 2 + self.num_outputs
       else:
-        in_dim = self.hidden_dims[-1] * 4
+        in_dim_edge_fn = self.hidden_dims[-1] * 4
+        in_dim_node_fn = self.hidden_dims[-1] * 4
         last_in_dim = self.hidden_dims[-1] * 3
 
       graph_network_layers.append(
           GraphNetwork(
-              update_edge_fn=_make_mlp(in_dim, self.hidden_dims, dropout_rate),
-              update_node_fn=_make_mlp(in_dim, self.hidden_dims, dropout_rate),
+              update_edge_fn=_make_mlp(in_dim_edge_fn,
+                                       self.hidden_dims,
+                                       dropout_rate,
+                                       activation_fn),
+              update_node_fn=_make_mlp(in_dim_node_fn,
+                                       self.hidden_dims,
+                                       dropout_rate,
+                                       activation_fn),
               update_global_fn=_make_mlp(last_in_dim,
                                          self.hidden_dims,
-                                         dropout_rate)))
+                                         dropout_rate,
+                                         activation_fn)))
     self.graph_network = nn.Sequential(*graph_network_layers)
 
     self.decoder = nn.Linear(
@@ -147,7 +175,6 @@ class GraphNetwork(nn.Module):
     # giving us tensors of shape [num_edges, global_feat].
     global_edge_attributes = tree.tree_map(
         lambda g: torch.repeat_interleave(g, n_edge, dim=0), globals_)
-
     if self.update_edge_fn:
       edge_fn_inputs = torch.cat(
           [edges, sent_attributes, received_attributes, global_edge_attributes],

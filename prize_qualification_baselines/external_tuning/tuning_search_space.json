@@ -19,6 +19,7 @@
     },
     {
         "dropout_rate": 0.0,
+        "label_smoothing": 0.0,
         "learning_rate": 0.001308209823469072,
         "one_minus_beta1": 0.02686663061,
         "beta2": 0.9981232922116359,
@@ -27,6 +28,7 @@
     },
     {
         "dropout_rate": 0.0,
+        "label_smoothing": 0.0,
         "learning_rate": 0.004958460849689891,
         "one_minus_beta1": 0.13625575743,
         "beta2": 0.6291854735396584,
@@ -35,6 +37,7 @@
     },
     {
         "dropout_rate": 0.1,
+        "label_smoothing": 0.0,
         "learning_rate": 0.0017486387539278373,
         "one_minus_beta1": 0.06733926164,
         "beta2": 0.9955159689799007,

@@ -10,7 +10,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
     WmtWorkloadPostLN as JaxWorkload
 from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
-    WmtWorkloadPostLN as PytWorkload
+    WmtWorkloadPostLN as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   # Test outputs for identical weights and inputs.
   inp_tokens = torch.randint(low=0, high=32000, size=(2, 256))

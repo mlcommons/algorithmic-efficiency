@@ -13,8 +13,9 @@ Submissions can compete under two hyperparameter tuning rulesets (with separate 
 
 ## Dates
 
-- **Call for submissions: November 28th, 2023**
-- Registration deadline to express non-binding intent to submit: January 28th, 2024
+- Call for submissions: November 28th, 2023
+- **Registration deadline to express non-binding intent to submit: February 28th, 2024**.\
+Please fill out the (mandatory but non-binding) [**registration form**](https://forms.gle/K7ty8MaYdi2AxJ4N8).
 - **Submission deadline: March 28th, 2024**
 - **Deadline for self-reporting preliminary results: May 28th, 2024**
 - [tentative] Announcement of all results: July 15th, 2024
