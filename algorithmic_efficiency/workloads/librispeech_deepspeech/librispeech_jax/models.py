@@ -61,6 +61,7 @@ class DeepspeechConfig:
   use_tanh: bool = False
   layernorm_everywhere: bool = False
 
+
 class Subsample(nn.Module):
   """Module to perform strided convolution in order to subsample inputs.
 
@@ -161,7 +162,6 @@ class Conv2dSubsampling(nn.Module):
     else:
       outputs = nn.relu(outputs)
 
-
     # Computing correct paddings post input convolution.
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
@@ -196,9 +196,11 @@ class FeedForwardModule(nn.Module):
       inputs = LayerNorm(config.encoder_dim)(inputs)
     else:
       inputs = BatchNorm(config.encoder_dim,
-                        config.dtype,
-                        config.batch_norm_momentum,
-                        config.batch_norm_epsilon)(inputs, input_paddings, train)
+                         config.dtype,
+                         config.batch_norm_momentum,
+                         config.batch_norm_epsilon)(inputs,
+                                                    input_paddings,
+                                                    train)
     inputs = nn.Dense(
         config.encoder_dim,
         use_bias=True,
@@ -436,9 +438,11 @@ class BatchRNN(nn.Module):
       inputs = LayerNorm(config.encoder_dim)(inputs)
     else:
       inputs = BatchNorm(config.encoder_dim,
-                        config.dtype,
-                        config.batch_norm_momentum,
-                        config.batch_norm_epsilon)(inputs, input_paddings, train)
+                         config.dtype,
+                         config.batch_norm_momentum,
+                         config.batch_norm_epsilon)(inputs,
+                                                    input_paddings,
+                                                    train)
     output = CudnnLSTM(
         features=config.encoder_dim // 2,
         bidirectional=config.bidirectional,

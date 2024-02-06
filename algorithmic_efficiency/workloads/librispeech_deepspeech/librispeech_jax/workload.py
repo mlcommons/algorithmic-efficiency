@@ -36,7 +36,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
         layernorm_everywhere=self.layernorm_everywhere,
         freq_mask_count=self.freq_mask_count,
         time_mask_count=self.time_mask_count,
-        )
+    )
     self._model = models.Deepspeech(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
@@ -83,7 +83,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
   def enable_residual_connections(self) -> bool:
     return True
 
-  @property 
+  @property
   def enable_decoder_layer_norm(self) -> bool:
     return True
 
@@ -114,7 +114,8 @@ class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
     return False
 
 
-class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload):
+class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
+                                                 ):
 
   @property
   def eval_batch_size(self) -> int:

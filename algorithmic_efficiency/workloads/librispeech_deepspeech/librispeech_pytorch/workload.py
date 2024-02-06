@@ -91,7 +91,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
   def enable_residual_connections(self) -> bool:
     return True
 
-  @property 
+  @property
   def enable_decoder_layer_norm(self) -> bool:
     return True
 
@@ -122,7 +122,8 @@ class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
     return False
 
 
-class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload):
+class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
+                                                 ):
 
   @property
   def eval_batch_size(self) -> int:

@@ -81,7 +81,9 @@ class Subsample(nn.Module):
     self.conv1 = Conv2dSubsampling(
         input_channels=1, output_channels=encoder_dim, use_tanh=config.use_tanh)
     self.conv2 = Conv2dSubsampling(
-        input_channels=encoder_dim, output_channels=encoder_dim, use_tanh=config.use_tanh)
+        input_channels=encoder_dim,
+        output_channels=encoder_dim,
+        use_tanh=config.use_tanh)
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
@@ -213,16 +215,16 @@ class FeedForwardModule(nn.Module):
     padding_mask = (1 - input_paddings)[:, :, None]
     if self.config.layernorm_everywhere:
       inputs = self.normalization_layer(inputs)
-    else: # batchnorm
+    else:  # batchnorm
       inputs = self.normalization_layer(inputs, input_paddings)
-      
+
     inputs = self.lin(inputs)
-   
+
     if self.config.use_tanh:
       inputs = F.tanh(inputs)
     else:
       inputs = F.relu(inputs)
-   
+
     inputs = inputs * padding_mask
     inputs = self.dropout(inputs)
 
@@ -289,8 +291,8 @@ class BatchRNN(nn.Module):
       self.normalization_layer = nn.LayerNorm(config.encoder_dim)
     else:
       self.normalization_layer = BatchNorm(config.encoder_dim,
-                          config.batch_norm_momentum,
-                          config.batch_norm_epsilon)
+                                           config.batch_norm_momentum,
+                                           config.batch_norm_epsilon)
 
     if bidirectional:
       self.lstm = nn.LSTM(
