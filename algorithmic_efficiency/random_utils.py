@@ -21,9 +21,11 @@ FLAGS = flags.FLAGS
 MAX_INT32 = 2**31
 MIN_INT32 = -MAX_INT32
 
-# SALT constants 
-_SALT1 = np.random.RandomState(seed=5).randint(MIN_INT32, MAX_INT32, dtype=np.int32)
-_SALT2 = np.random.RandomState(seed=6).randint(MIN_INT32, MAX_INT32, dtype=np.int32)
+# SALT constants
+_SALT1 = np.random.RandomState(seed=5).randint(
+    MIN_INT32, MAX_INT32, dtype=np.int32)
+_SALT2 = np.random.RandomState(seed=6).randint(
+    MIN_INT32, MAX_INT32, dtype=np.int32)
 
 SeedType = Union[int, list, np.ndarray]
 
@@ -37,10 +39,13 @@ def _signed_to_unsigned(seed: SeedType) -> SeedType:
     return np.array([s + 2**32 if s < 0 else s for s in seed.tolist()])
 
 
-def _fold_in(seed, data, verbose = True):
-  a = np.random.RandomState(seed=_signed_to_unsigned(seed ^ _SALT1)).randint(MIN_INT32, MAX_INT32, dtype=np.int32)
-  b = np.random.RandomState(seed=_signed_to_unsigned(data ^ _SALT2)).randint(MIN_INT32, MAX_INT32, dtype=np.int32)
-  c = np.random.RandomState(seed=_signed_to_unsigned(a ^ b)).randint(MIN_INT32, MAX_INT32, dtype=np.int32)
+def _fold_in(seed, data, verbose=True):
+  a = np.random.RandomState(seed=_signed_to_unsigned(seed ^ _SALT1)).randint(
+      MIN_INT32, MAX_INT32, dtype=np.int32)
+  b = np.random.RandomState(seed=_signed_to_unsigned(data ^ _SALT2)).randint(
+      MIN_INT32, MAX_INT32, dtype=np.int32)
+  c = np.random.RandomState(seed=_signed_to_unsigned(a ^ b)).randint(
+      MIN_INT32, MAX_INT32, dtype=np.int32)
   return c
 
 
