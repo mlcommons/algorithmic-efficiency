@@ -278,24 +278,23 @@ def train_once(
 
   # Loggers and checkpoint setup.
   logging.info('Initializing checkpoint and logger.')
-  if log_dir is not None:
-    # If the checkpoint exists, load from the checkpoint.
-    (optimizer_state,
-     model_params,
-     model_state,
-     train_state,
-     eval_results,
-     global_step,
-     preemption_count) = checkpoint_utils.maybe_restore_checkpoint(
-         FLAGS.framework,
-         optimizer_state,
-         model_params,
-         model_state,
-         train_state,
-         eval_results,
-         global_step,
-         preemption_count,
-         checkpoint_dir=log_dir)
+  (optimizer_state,
+   model_params,
+   model_state,
+   train_state,
+   eval_results,
+   global_step,
+   preemption_count) = checkpoint_utils.maybe_restore_checkpoint(
+    FLAGS.framework,
+    optimizer_state,
+    model_params,
+    model_state,
+    train_state,
+    eval_results,
+    global_step,
+    preemption_count,
+    checkpoint_dir=log_dir)
+  if log_dir is not None and RANK == 0:
     meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
     logging.info(f'Saving meta data to {meta_file_name}.')
     meta_data = logger_utils.get_meta_data(workload, rng_seed)
@@ -411,7 +410,7 @@ def train_once(
 
           logging_start_time = get_time()
 
-          if log_dir is not None:
+          if log_dir is not None and RANK == 0:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
                 global_step=global_step,
@@ -449,7 +448,7 @@ def train_once(
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
-  if log_dir is not None:
+  if log_dir is not None and RANK == 0:
     metrics_logger.append_scalar_metrics(
         {'score': train_state['accumulated_submission_time']},
         global_step=global_step,
