@@ -334,9 +334,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 class LibriSpeechConformerAttentionTemperatureWorkload(
     LibriSpeechConformerWorkload):
 
-  def eval_batch_size(self) -> int:
-    return 128
-
   @property
   def attention_temperature(self) -> float:
     return 1.6
@@ -344,18 +341,12 @@ class LibriSpeechConformerAttentionTemperatureWorkload(
 
 class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
 
-  def eval_batch_size(self) -> int:
-    return 128
-
   @property
   def use_post_layer_norm(self) -> bool:
     return False
 
 
 class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
-
-  def eval_batch_size(self) -> int:
-    return 128
 
   @property
   def use_gelu(self) -> bool:
