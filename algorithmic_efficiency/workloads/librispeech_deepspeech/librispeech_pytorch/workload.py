@@ -125,6 +125,10 @@ class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
 class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
+  def eval_batch_size(self) -> int:
+    return 128
+
+  @property
   def enable_decoder_layer_norm(self) -> bool:
     return False
 
