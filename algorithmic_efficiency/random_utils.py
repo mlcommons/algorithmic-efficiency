@@ -36,6 +36,7 @@ def _signed_to_unsigned(seed: SeedType) -> SeedType:
 def _fold_in(seed: SeedType, data: int) -> SeedType:
   rng_1 = np.random.RandomState(seed=_signed_to_unsigned(seed))
   new_seed_1 = rng_1.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
+  # Truncate data to 32-bits, since numpy does not support 64-bit ints.
   rng_2 = np.random.RandomState(seed=_signed_to_unsigned(data) & 0xffffffff)
   new_seed_2 = rng_2.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
   return new_seed_1 + new_seed_2
