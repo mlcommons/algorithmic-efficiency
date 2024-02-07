@@ -69,9 +69,7 @@ def _check_jax_install() -> None:
 
 
 def _bits(seed: SeedType) -> int:
-  rng = np.random.RandomState(_signed_to_unsigned(seed))
-  b = rng.bytes(4)
-  return int.from_bytes(b, byteorder='little')
+  return seed
 
 
 def fold_in(seed: SeedType, data: int) -> SeedType:
