@@ -55,7 +55,7 @@ def _build_mnist_dataset(
 
   if shuffle:
     ds = ds.repeat()
-    ds = ds.shuffle(16 * global_batch_size, seed=data_rng[0])
+    ds = ds.shuffle(16 * global_batch_size, seed=prng.bits(data_rng))
   ds = ds.batch(global_batch_size, drop_remainder=is_train)
 
   if repeat_final_dataset:

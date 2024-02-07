@@ -148,7 +148,7 @@ def main(_):
     # For each runnable workload check if there are any containers running and if not launch next container command
     for workload in workloads:
       run_key = prng.fold_in(rng_subkey, hash(workload))
-      run_seed = run_key[0]  # arbitrary
+      run_seed = prng.bits(run_key)
       base_workload_name = get_base_workload_name(workload)
       wait_until_container_not_running()
       os.system(

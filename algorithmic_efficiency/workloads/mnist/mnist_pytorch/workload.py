@@ -133,7 +133,7 @@ class MnistWorkload(BaseMnistWorkload):
         self._model.reset_parameters()
       return self._model, None
 
-    torch.random.manual_seed(rng[0])
+    torch.random.manual_seed(rng)
     self._model = _Model()
     self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
