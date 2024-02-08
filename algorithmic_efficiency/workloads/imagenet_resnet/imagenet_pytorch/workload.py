@@ -103,7 +103,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     if split == 'eval_train':
       indices = list(range(self.num_train_examples))
-      random.Random(data_rng).shuffle(indices)
+      random.Random(data_rng[0]).shuffle(indices)
       dataset = torch.utils.data.Subset(dataset,
                                         indices[:self.num_eval_train_examples])
 
@@ -147,7 +147,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     """Dropout is unused."""
     del dropout_rate
     del aux_dropout_rate
-    torch.random.manual_seed(rng)
+    torch.random.manual_seed(rng[0])
 
     if self.use_silu and self.use_gelu:
       raise RuntimeError('Cannot use both GELU and SiLU activations.')

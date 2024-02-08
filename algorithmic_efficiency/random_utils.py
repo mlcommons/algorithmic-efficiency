@@ -1,6 +1,6 @@
 """Proxy functions in front of the Jax RNG API or a compatible Numpy RNG API."""
 
-from typing import Union
+from typing import Any, List, Union
 
 from absl import flags
 from absl import logging
@@ -21,12 +21,6 @@ FLAGS = flags.FLAGS
 MAX_INT32 = 2**31
 MIN_INT32 = -MAX_INT32
 
-# SALT constants
-_SALT1 = np.random.RandomState(seed=5).randint(
-    MIN_INT32, MAX_INT32, dtype=np.int32)
-_SALT2 = np.random.RandomState(seed=6).randint(
-    MIN_INT32, MAX_INT32, dtype=np.int32)
-
 SeedType = Union[int, list, np.ndarray]
 
 
@@ -39,19 +33,15 @@ def _signed_to_unsigned(seed: SeedType) -> SeedType:
     return np.array([s + 2**32 if s < 0 else s for s in seed.tolist()])
 
 
-def _fold_in(seed: SeedType, data: int) -> SeedType:
-  a = np.random.RandomState(seed=_signed_to_unsigned(seed ^ _SALT1)).randint(
-      MIN_INT32, MAX_INT32, dtype=np.int32)
-  b = np.random.RandomState(seed=_signed_to_unsigned(data ^ _SALT2)).randint(
-      MIN_INT32, MAX_INT32, dtype=np.int32)
-  c = np.random.RandomState(seed=_signed_to_unsigned(a ^ b)).randint(
-      MIN_INT32, MAX_INT32, dtype=np.int32)
-  return c
+def _fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
+  rng = np.random.RandomState(seed=_signed_to_unsigned(seed))
+  new_seed = rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32)
+  return [new_seed, data]
 
 
 def _split(seed: SeedType, num: int = 2) -> SeedType:
   rng = np.random.RandomState(seed=_signed_to_unsigned(seed))
-  return rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32, size=[num])
+  return rng.randint(MIN_INT32, MAX_INT32, dtype=np.int32, size=[num, 2])
 
 
 def _PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
@@ -68,11 +58,7 @@ def _check_jax_install() -> None:
         '--framework=pytorch to use the Numpy version instead.')
 
 
-def _bits(seed: SeedType) -> int:
-  return seed
-
-
-def fold_in(seed: SeedType, data: int) -> SeedType:
+def fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
   if FLAGS.framework == 'jax':
     _check_jax_install()
     return jax_rng.fold_in(seed, data)
@@ -91,10 +77,3 @@ def PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
     _check_jax_install()
     return jax_rng.PRNGKey(seed)
   return _PRNGKey(seed)
-
-
-def bits(seed: SeedType) -> int:
-  if FLAGS.framework == 'jax':
-    _check_jax_install()
-    return jax_rng.bits(seed)
-  return _bits(seed)
