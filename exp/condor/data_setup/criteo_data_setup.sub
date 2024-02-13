@@ -1,0 +1,13 @@
+# Define variables
+LOGS_DIR = /fast/najroldi/exp/algoperf/log
+N_GPU = 1
+
+# Submission args
+executable = /home/najroldi/algorithmic-efficiency/exp/condor/data_setup/criteo_data_setup.sh
+error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
+output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
+log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
+request_memory = 24000
+request_cpus = 4
+request_gpus = $(N_GPU)
+queue

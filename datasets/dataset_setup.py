@@ -712,7 +712,8 @@ def main(_):
                                         knee_singlecoil_test_url)
 
     logging.info('fastMRI download completed. Extracting...')
-    setup_fastmri(data_dir, updated_data_dir)
+    #setup_fastmri(data_dir, updated_data_dir)
+    setup_fastmri(updated_data_dir)
 
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')

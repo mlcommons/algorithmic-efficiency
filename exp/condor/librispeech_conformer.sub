@@ -1,0 +1,14 @@
+# Define variables
+LOGS_DIR = /fast/najroldi/exp/algoperf/log
+N_GPU = 4
+
+# Submission args
+executable = /home/najroldi/algorithmic-efficiency/exp/condor/librispeech_conformer.sh
+error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
+output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
+log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
+request_memory = 250000
+request_cpus = 32
+request_gpus = $(N_GPU)
+requirements = TARGET.CUDACapability == 8.0
+queue
