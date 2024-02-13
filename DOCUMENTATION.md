@@ -484,10 +484,12 @@ The integral is normalized by the total integration area, with higher benchmark 
 
 For the benchmark score, we compute and integrate the performance profiles using the training times of only the fixed workloads. But we use the submission's performance on the held-out workloads to penalize submissions. Specifically, if a submission is unable to train a held-out workload, we score the submission on the corresponding fixed workload as if that submission did not reach the target. In other words, for a submission to receive a finite training time on a fixed workload, it needs to:
 
-- Reach the validation target on the fixed workload within the maximum runtime.
-- Reach the validation target fixed workload within 4x of the fastest submission.
-- Reach the validation target on the held-out workload (corresponding to the fixed workload) within the maximum runtime.
-- Reach the validation target on the held-out workload (corresponding to the fixed workload) within 4x of the fastest submission. To determine the fastest submission on a held-out workload, we only consider submissions that reached the target on the corresponding fixed workload. This protects us against extremely fast submissions that only work on a specific held-out workload and are useless as general algorithms.
+1. Reach the validation target on the fixed workload within the maximum runtime.
+2. Reach the validation target fixed workload within 4x of the fastest submission.
+3. Reach the validation target on the held-out workload (corresponding to the fixed workload) within the maximum runtime.
+4. Reach the validation target on the held-out workload (corresponding to the fixed workload) within 4x of the fastest submission. To determine the fastest submission on a held-out workload, we only consider submissions that reached the target on the corresponding fixed workload. This protects us against extremely fast submissions that only work on a specific held-out workload and are useless as general algorithms.
+
+For fixed workloads without a corresponding held-out workload (e.g. in this iteration this is the case for one ImageNet and one LibriSpeech workload, since we only sample one held-out workload *per dataset*), requirements 3 and 4 are automatically satisfied.
 
 Only if all four requirements are met, does the submission get a finite score. Otherwise, a submission will receive a training time of infinity. Note that the tuning process works the same for held-out workloads as for the fixed workloads, i.e. in the external tuning ruleset there are multiple tuning trials and only the fastest trial per study is relevant for scoring.
 
