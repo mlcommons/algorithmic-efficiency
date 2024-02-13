@@ -54,10 +54,7 @@ SAVE_CHECKPOINTS="true"
 # Pass flag
 while [ "$1" != "" ]; do
     case $1 in
-	--traindiffs_test)
-	    shift
-            TEST=$1
-	    ;;
+
         -d | --dataset) 
             shift
             DATASET=$1
@@ -126,6 +123,10 @@ while [ "$1" != "" ]; do
             shift
             RNG_SEED=$1
             ;;
+        --traindiffs_test)
+	        shift
+            TEST=$1
+	        ;;
         *) 
             usage 
             exit 1
