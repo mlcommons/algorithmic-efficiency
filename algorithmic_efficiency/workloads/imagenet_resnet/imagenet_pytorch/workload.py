@@ -126,7 +126,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4 if is_train else 0,
+        num_workers=4, #if is_train else 0,
         pin_memory=True,
         drop_last=is_train,
         persistent_workers=is_train)
