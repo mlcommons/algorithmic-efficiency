@@ -21,15 +21,14 @@ trials=1
 name="exp_01"
 
 # GPUs (this should coincide with 'request_gpus' in .sub)
-num_gpu=4
+num_gpu=2
 
 # Print GPU infos
 nvidia-smi
 
 # Execute python script
     # --nnodes=1 \
-# torchrun --redirects 1:0 \
-torchrun --redirects 1:0,2:0,3:0 \
+torchrun --redirects 1:0 \
     --standalone \
     --nproc_per_node=$num_gpu \
     $CODE_DIR/submission_runner.py \
