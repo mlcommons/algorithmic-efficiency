@@ -1,13 +1,7 @@
 #!/bin/bash
 
-# add conda TODO: make it more portable!
-source ~/miniconda3/etc/profile.d/conda.sh
-
-# Activate conda environment TODO: should I use source activate alpe instead?
-conda activate alpe
-
-# Env vars
-export DATA_DIR=/fast/najroldi/data
+# activate conda env, export DATA_DIR
+source exp/data_setup/set_env.sh
 
 python3 datasets/dataset_setup.py \
     --data_dir $DATA_DIR \

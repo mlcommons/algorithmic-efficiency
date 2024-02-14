@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # activate conda env, export DATA_DIR
-source data_setup/set_env.sh
+source exp/data_setup/set_env.sh
 
 # URLS (private!)
-train_url=<train_url> # task 1&2
-val_url=<val_url>
+train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar # task 1&2
+val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar
 
 # Ececute python command
 python3 datasets/dataset_setup.py \

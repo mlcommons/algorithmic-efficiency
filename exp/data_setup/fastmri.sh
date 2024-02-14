@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # activate conda env, export DATA_DIR
-source data_setup/set_env.sh
+source exp/data_setup/set_env.sh
 
 train_url=...
 valid_url=...
