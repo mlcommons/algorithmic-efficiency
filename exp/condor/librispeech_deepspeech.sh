@@ -18,24 +18,24 @@ dataset=librispeech
 submission='reference_algorithms/paper_baselines/adamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 trials=1
-name="librispeech_deepspeech_01"
+name="exp_01"
 
 # GPUs (this should coincide with 'request_gpus' in .sub)
-num_gpu=4
+num_gpu=2
 
 # Print GPU infos
 nvidia-smi
 
 # Execute python script
     # --nnodes=1 \
-torchrun --redirects 1:0,2:0,3:0 \
+torchrun --redirects 1:0 \
     --standalone \
     --nproc_per_node=$num_gpu \
     $CODE_DIR/submission_runner.py \
     --workload=$workload \
+    --librispeech_tokenizer_vocab_path=$DATA_DIR/librispeech/spm_model.vocab \
     --framework=pytorch \
     --tuning_ruleset=external \
-    --librispeech_tokenizer_vocab_path=$DATA_DIR/librispeech/spm_model.vocab \
     --data_dir=$DATA_DIR/$dataset \
     --submission_path=$submission \
     --tuning_search_space=$search_space \

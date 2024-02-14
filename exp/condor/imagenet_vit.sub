@@ -1,17 +1,17 @@
 # Define variables
 LOGS_DIR = /fast/najroldi/exp/algoperf/log
-EXE = /home/najroldi/algorithmic-efficiency/exp/condor/librispeech_conformer.sh
+EXE = /home/najroldi/algorithmic-efficiency/exp/condor/imagenet_vit.sh
 
 # Number of GPUs
-N_GPU = 2
+N_GPU = 4
 
 # Submission args
 executable = $(EXE)
 error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
 output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
 log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
-request_memory = 512000
-request_cpus = 16
+request_memory = 1024000
+request_cpus = 64
 request_gpus = $(N_GPU)
 requirements = \
     (TARGET.CUDACapability == 8.0) && \

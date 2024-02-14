@@ -13,22 +13,23 @@ export EXP_DIR=/fast/najroldi/exp/algoperf/exp
 export DATA_DIR=/fast/najroldi/data
 
 # Job specific vars
-workload=criteo1tb
-dataset=criteo1tb
+workload=imagenet_vit
+dataset=imagenet_old
 submission='reference_algorithms/paper_baselines/adamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 trials=1
 name="exp_01"
 
 # GPUs (this should coincide with 'request_gpus' in .sub)
-num_gpu=2
+num_gpu=4
 
 # Print GPU infos
 nvidia-smi
 
 # Execute python script
     # --nnodes=1 \
-torchrun --redirects 1:0 \
+# torchrun --redirects 1:0 \
+torchrun --redirects 1:0,2:0,3:0 \
     --standalone \
     --nproc_per_node=$num_gpu \
     $CODE_DIR/submission_runner.py \
