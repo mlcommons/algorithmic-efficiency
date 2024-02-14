@@ -19,16 +19,6 @@
             2714
         ]
     },
-    "decay_steps_factor": {
-        "feasible_points": [
-            0.984398
-        ]
-    },
-    "end_factor": {
-        "feasible_points": [
-            0.01
-        ]
-    },
     "weight_decay": {
         "feasible_points": [
             0.01371235755699044
