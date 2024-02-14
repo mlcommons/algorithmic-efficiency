@@ -9,10 +9,11 @@ test_url=...
 
 python datasets/dataset_setup.py \
     --data_dir $DATA_DIR \
-    --fastmri \
-    --fastmri_knee_singlecoil_train_url=$train_url \
-    --fastmri_knee_singlecoil_val_url=$valid_url \
-    --fastmri_knee_singlecoil_test_url=$test_url
+    --fastmri
+#    
+#    --fastmri_knee_singlecoil_train_url=$train_url \
+#    --fastmri_knee_singlecoil_val_url=$valid_url \
+#    --fastmri_knee_singlecoil_test_url=$test_url
 
 
 # MANUAL DOWNLOAD
