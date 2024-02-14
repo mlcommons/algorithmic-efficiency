@@ -37,7 +37,13 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
         DeepspeechConfig(
             feed_forward_dropout_rate=dropout_rate,
             use_specaug=self.use_specaug,
-            input_dropout_rate=aux_dropout_rate)).eval()
+            input_dropout_rate=aux_dropout_rate,
+            use_tanh=self.use_tanh,
+            enable_residual_connections=self.enable_residual_connections,
+            enable_decoder_layer_norm=self.enable_decoder_layer_norm,
+            layernorm_everywhere=self.layernorm_everywhere,
+            freq_mask_count=self.freq_mask_count,
+            time_mask_count=self.time_mask_count)).eval()
     self.ctc_loss = torch.nn.CTCLoss(blank=0, reduction='none')
     # Run model once to initialize lazy layers.
     t = MAX_INPUT_LENGTH
@@ -76,3 +82,65 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
   @property
   def max_allowed_runtime_sec(self) -> int:
     return 55_506  # ~15.4 hours
+
+  @property
+  def use_tanh(self) -> bool:
+    return False
+
+  @property
+  def enable_residual_connections(self) -> bool:
+    return True
+
+  @property
+  def enable_decoder_layer_norm(self) -> bool:
+    return True
+
+  @property
+  def layernorm_everywhere(self) -> bool:
+    return False
+
+  @property
+  def freq_mask_count(self) -> int:
+    return 2
+
+  @property
+  def time_mask_count(self) -> int:
+    return 10
+
+
+class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechDeepSpeechWorkload):
+
+  @property
+  def use_tanh(self) -> bool:
+    return True
+
+
+class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
+
+  @property
+  def enable_residual_connections(self) -> bool:
+    return False
+
+
+class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
+                                                 ):
+
+  @property
+  def eval_batch_size(self) -> int:
+    return 128
+
+  @property
+  def enable_decoder_layer_norm(self) -> bool:
+    return False
+
+  @property
+  def layernorm_everywhere(self) -> bool:
+    return True
+
+  @property
+  def freq_mask_count(self) -> int:
+    return 4
+
+  @property
+  def time_mask_count(self) -> int:
+    return 15

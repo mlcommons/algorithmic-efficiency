@@ -153,6 +153,8 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_
                  "librispeech_deepspeech" "librispeech_conformer" "mnist" \
                  "conformer_layernorm" "conformer_attention_temperature" \
                  "conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
+                 "librispeech_deepspeech_tanh" \
+                 "librispeech_deepspeech_no_resnet" "librispeech_deepspeech_norm_and_spec_aug"
                  "fastmri_layernorm" "ogbg_gelu" "ogbg_silu" "ogbg_model_size")
 
 # Set data and experiment paths
