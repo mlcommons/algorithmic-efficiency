@@ -513,8 +513,14 @@ def score_submission_on_workload(workload: spec.Workload,
     # If the user specifies the eval batch size, use the provided one.
     global_eval_batch_size = submission_module.get_eval_batch_size(
         workload_name)
+    # print(" ####### global_eval_batch_size = {}".format(global_eval_batch_size))
+    # logging.info(' ####### global_eval_batch_size =  %d', global_eval_batch_size)
+    # raise ValueError("STOP")
   else:
     global_eval_batch_size = workload.eval_batch_size
+    # print(" ####### global_eval_batch_size = {}".format(global_eval_batch_size))
+    # logging.info(' ####### global_eval_batch_size =  %d', global_eval_batch_size)
+    # raise ValueError("STOP")
   if global_eval_batch_size % n_gpus != 0:
     raise ValueError(
         f'The global eval batch size ({global_eval_batch_size}) has to be '

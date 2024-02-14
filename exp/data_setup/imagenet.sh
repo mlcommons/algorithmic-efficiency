@@ -3,9 +3,15 @@
 # activate conda env, export DATA_DIR
 source exp/data_setup/set_env.sh
 
+# Check if exactly two arguments are given
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 train_url val_url"
+    exit 1
+fi
+
 # URLS (private!)
-train_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar # task 1&2
-val_url=https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar
+train_url=$1 # task 1&2
+val_url=$2
 
 # Ececute python command
 python3 datasets/dataset_setup.py \

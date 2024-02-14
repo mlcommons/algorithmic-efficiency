@@ -11,7 +11,7 @@ error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
 output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
 log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
 request_memory = 500000
-request_cpus = 16
+request_cpus = 32
 request_gpus = $(N_GPU)
 requirements = \
     (TARGET.CUDACapability == 8.0) && \
