@@ -16,14 +16,14 @@ workload=imagenet_resnet
 submission='reference_algorithms/paper_baselines/adamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 trials=1
-name="imagenet_resnet_01"
+name="imagenet_resnet_seal_01"
 
 # GPUs
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
-num_gpu=8
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+num_gpu=6
 
 # Execute python script
-torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 \
+torchrun --redirects 1:0,2:0,3:0,4:0,5:0 \
     --standalone \
     --nproc_per_node=$num_gpu \
     $CODE_DIR/submission_runner.py \

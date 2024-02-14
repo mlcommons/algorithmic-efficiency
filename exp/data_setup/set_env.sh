@@ -7,4 +7,9 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate alpe
 
 # Env vars
-export DATA_DIR=/fast/najroldi/data
+
+# MPI-IS cluster
+# export DATA_DIR=/fast/najroldi/data
+
+# Workstation
+export DATA_DIR=$HOME/data
