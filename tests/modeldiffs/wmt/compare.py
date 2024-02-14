@@ -76,7 +76,8 @@ def sd_transform(sd):
       out = {
           tuple(
               k.replace('SelfAttention', 'MultiHeadDotProductAttention')
-              for k in key): value
+              for k in key):
+              value
           for key,
           value in out.items()
       }
