@@ -1,4 +1,4 @@
-name: Containerized training differences tests between Jax and PyTorch
+name: Containerized Training Differences Tests Jax vs PyTorch
 
 on: 
   pull_request:
