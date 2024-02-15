@@ -43,10 +43,10 @@ flags.DEFINE_boolean(
     False,
     'Whether or not to actually run the docker containers. '
     'If False, simply print the docker run commands. ')
-flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
+flags.DEFINE_integer('num_studies', 1, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
-flags.DEFINE_integer('num_tuning_trials', 5, 'Number of tuning trials.')
+flags.DEFINE_integer('num_tuning_trials', 1, 'Number of tuning trials.')
 flags.DEFINE_integer('hparam_start_index',
                      None,
                      'Start index for tuning trials.')
