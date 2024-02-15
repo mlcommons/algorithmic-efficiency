@@ -6,6 +6,7 @@ python run_workloads.py \
 --experiment_name my_first_experiment \
 --docker_image_url us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev \
 --run_percentage 10 \
+--workload_config_path workload_config.json \
 --dry_run 
 """
 
