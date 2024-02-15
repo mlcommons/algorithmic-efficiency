@@ -13,6 +13,10 @@ fi
 train_url=$1 # task 1&2
 val_url=$2
 
+# Imagenet dataset processsing is resource intensive. 
+# To avoid potential ResourcExhausted errors increase the maximum number of open file descriptors:
+ulimit -n 8192
+
 # Ececute python command
 python3 datasets/dataset_setup.py \
     --data_dir=$DATA_DIR \
