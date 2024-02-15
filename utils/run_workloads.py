@@ -147,7 +147,7 @@ def main(_):
       dataset = workload_config[workload]['dataset']
       max_steps = int(workload_config[workload]['max_steps'] *
                       run_fraction)
-      submission_path = workload_config[workload]['tuning_search_space']
+      submission_path = workload_config[workload]['submission_path']
       tuning_search_space = workload_config[workload]['tuning_search_space']
 
 
