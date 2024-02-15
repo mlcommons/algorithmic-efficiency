@@ -25,7 +25,7 @@ To get started you will have to make a few decisions and install the repository 
 1. Decide if you would like to develop your submission in either PyTorch or JAX.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](/DOCUMENTATION.md#benchmarking-hardware).
 The specs on the benchmarking machines are:
-    - 8xV100 GPUs
+    - 8xV100 16GB GPUs
     - 240 GB in RAM
     - 2 TB in storage (for datasets).
 3. Install the algorithmic package and dependencies either in a [Python virtual environment](#python-virtual-environment) or use a [Docker](#docker) (recommended) or [Singularity/Apptainer container](#using-singularityapptainer-instead-of-docker).
