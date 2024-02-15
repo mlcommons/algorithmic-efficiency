@@ -39,7 +39,7 @@ for w in WORKLOADS:
 class ModelDiffTest(parameterized.TestCase):
 
   @parameterized.named_parameters(*named_parameters)
-  def test_workload(self):
+  def test_workload(self, workload):
     # pylint: disable=line-too-long, unnecessary-lambda-assignment
     """
     Compares the multi-gpu jax and ddp-pytorch models for each workload and compares the train and eval metrics collected
