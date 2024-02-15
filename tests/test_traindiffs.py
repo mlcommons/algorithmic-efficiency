@@ -9,6 +9,7 @@ from subprocess import run
 from subprocess import STDOUT
 
 from absl import flags
+from absl.testing import absltest
 from absl.testing import parameterized
 from numpy import allclose
 
@@ -100,7 +101,7 @@ class ModelDiffTest(parameterized.TestCase):
                     jax_results['scalars'][i]['loss'],
                     pyt_results['scalars'][i]['loss'],
                 ])
-                
+
       self.assertTrue(
           allclose(
               jax_results['eval_results'][i][k],
