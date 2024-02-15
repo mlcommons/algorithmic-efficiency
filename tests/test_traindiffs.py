@@ -31,11 +31,8 @@ NUM_TRAIN_STEPS = 10
 
 named_parameters = []
 for w in WORKLOADS:
-  named_parameters.append(
-      dict(
-          testcase_name=f'{w}',
-          workload=w)
-  )
+  named_parameters.append(dict(testcase_name=f'{w}', workload=w))
+
 
 class ModelDiffTest(parameterized.TestCase):
 
@@ -80,7 +77,7 @@ class ModelDiffTest(parameterized.TestCase):
     k = next(
         iter(
             filter(lambda k: 'train' in k and 'loss' in k,
-                  jax_results['eval_results'][0])))
+                   jax_results['eval_results'][0])))
     header = [
         'Iter',
         'Eval (jax)',
@@ -112,25 +109,21 @@ class ModelDiffTest(parameterized.TestCase):
       print(fmt([f'{i}', *row]))
     print('=' * len(header))
 
-    self.assertTrue( # eval_results
+    self.assertTrue(  # eval_results
         allclose(
             jax_results['eval_results'][i][k],
             pyt_results['eval_results'][i][k],
-            rtol=rtol)
-    )
-    self.assertTrue( # grad_norms
+            rtol=rtol))
+    self.assertTrue(  # grad_norms
         allclose(
             jax_results['scalars'][i]['grad_norm'],
             pyt_results['scalars'][i]['grad_norm'],
-            rtol=rtol)
-    )
-    self.assertTrue( # loss
+            rtol=rtol))
+    self.assertTrue(  # loss
         allclose(
             jax_results['scalars'][i]['loss'],
             pyt_results['scalars'][i]['loss'],
-            rtol=rtol)
-    )
-
+            rtol=rtol))
 
 
 if __name__ == '__main__':
