@@ -116,7 +116,7 @@ $DATA_DIR
 │           └── ogbg_molpcba-validation.tfrecord-00000-of-00001
 ```
 
-In total, it should contain 13 files (via `find -type f | wc -l`) for a total of 777 MB (via `du -sch ogbg/`).
+In total, it should contain 13 files (via `find -type f | wc -l`) for a total of 830 MB (via `du -sch --apparent-size ogbg/`).
 </details>
 
 ### WMT
@@ -184,7 +184,7 @@ $DATA_DIR
     └── wmt_sentencepiece_model
 ```
 
-In total, it should contain 43 files (via `find -type f | wc -l`) for a total of 3.3 GB (via `du -sch wmt/`).
+In total, it should contain 43 files (via `find -type f | wc -l`) for a total of 3.3 GB (via `du -sch --apparent-size wmt/`).
 </details>
 
 ### FastMRI
@@ -222,7 +222,7 @@ $DATA_DIR
 │       └── file1002570.h5
 ```
 
-In total, it should contain 1280 files (via `find -type f | wc -l`) for a total of 112 GB (via `du -sch fastmri/`).
+In total, it should contain 1280 files (via `find -type f | wc -l`) for a total of 113 GB (via `du -sch --apparent-size fastmri/`).
 </details>
 
 ### ImageNet
@@ -277,11 +277,11 @@ $DATA_DIR
 │       ├── [...]
 ```
 
-In total, it should contain 1,281,167 `train` files and 50,000 `val` (via `find -type f | wc -l`) for a total of 177 GB and 7.8 GB, respectively (via `du -sch train/` and `du -sch val/`).
+In total, it should contain 1,281,167 `train` files and 50,000 `val` (via `find -type f | wc -l`) for a total of 137 GB and 6.3 GB, respectively (via `du -sch --apparent-size train/` and `du -sch --apparent-size val/`).
 </details>
 
 <details>
-<summary>The final directory structure should look like this for ImageNet2012 (JAX):</summary>
+<summary>The final directory structure should look like this for ImageNet2012 (JAX) (including v2):</summary>
 
 ```bash
 $DATA_DIR
@@ -289,7 +289,7 @@ $DATA_DIR
 │  ├── jax
 │  │   ├── downloads
 │  │   │   ├── extracted
-│  │   │   └── manual_
+│  │   │   └── manual
 │  │   ├── imagenet2012
 │  │   │   └── 5.1.0
 │  │   │       ├── dataset_info.json
@@ -307,7 +307,7 @@ $DATA_DIR
 │  │               ├── [...]
 ```
 
-In total, it should contain 1,111 files (via `find -type f | wc -l`) for a total of 145 GB (via `du -sch imagenet/jax`).
+In total, it should contain 1,111 files (via `find -type f | wc -l`) for a total of 145 GB (via `du -sch --apparent-size imagenet/jax`).
 </details>
 
 <details>
@@ -339,7 +339,7 @@ $DATA_DIR
 │           └── label.labels.txt
 ```
 
-In total, it should contain 20 files (via `find -type f | wc -l`) for a total of 1.2 GB (via `du -sch imagenet_v2/`).
+In total, it should contain 20 files (via `find -type f | wc -l`) for a total of 1.2 GB (via `du -sch --apparent-size imagenet_v2/`).
 </details>
 
 ### Criteo1TB
@@ -366,7 +366,7 @@ $DATA_DIR
 │  ├── [...]
 ```
 
-In total, it should contain 885 files (via `find -type f | wc -l`) for a total of 1.1 TB (via `du -sch criteo1tb/`).
+In total, it should contain 885 files (via `find -type f | wc -l`) for a total of 1.1 TB (via `du -sch --apparent-size criteo1tb/`).
 </details>
 
 ### LibriSpeech
@@ -423,7 +423,7 @@ $DATA_DIR
 │  │   ├── [...]
 ```
 
-In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 388 GB (via `du -sch librispeech/`).
+In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 387 GB (via `du -sch librispeech/`).
 </details>
 
 #### Training SPM Tokenizer
