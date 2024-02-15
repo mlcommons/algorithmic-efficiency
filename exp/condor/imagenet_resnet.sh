@@ -18,7 +18,7 @@ dataset=imagenet_old
 submission='reference_algorithms/paper_baselines/adamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 trials=1
-name="imagenet_errorino"
+name="exp_01"
 
 # GPUs (this should coincide with 'request_gpus' in .sub)
 num_gpu=2
