@@ -51,7 +51,7 @@ class ModelDiffTest(parameterized.TestCase):
     name = f'Testing {workload}'
     jax_logs = '/tmp/jax_log.pkl'
     pyt_logs = '/tmp/pyt_log.pkl'
-    try: 
+    try:
       run(
           f'python3 -m tests.reference_algorithm_tests --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}'
           f' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
@@ -61,7 +61,7 @@ class ModelDiffTest(parameterized.TestCase):
           check=True)
     except subprocess.CalledProcessError as e:
       print("Error:", e)
-    try: 
+    try:
       run(
           f'torchrun --standalone --nnodes 1 --nproc_per_node 8 -m tests.reference_algorithm_tests --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}'
           f' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
@@ -75,7 +75,7 @@ class ModelDiffTest(parameterized.TestCase):
       jax_results = pickle.load(f)
     with open(pyt_logs, 'rb') as f:
       pyt_results = pickle.load(f)
-    
+
     # PRINT RESULTS
     k = next(
         iter(
@@ -99,7 +99,7 @@ class ModelDiffTest(parameterized.TestCase):
 
     for i in range(NUM_TRAIN_STEPS):
       rtol = 1
-      
+
       row = map(lambda x: str(round(x, 5)),
                 [
                     jax_results['eval_results'][i][k],
