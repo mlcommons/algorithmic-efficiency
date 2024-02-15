@@ -68,7 +68,7 @@ class ModelDiffTest(parameterized.TestCase):
       jax_results = pickle.load(f)
     with open(pyt_logs, 'rb') as f:
       pyt_results = pickle.load(f)
-
+    
     # PRINT RESULTS
     k = next(
         iter(
@@ -89,6 +89,7 @@ class ModelDiffTest(parameterized.TestCase):
     print('=' * pad, name, '=' * (len(header) - len(name) - pad), sep='')
     print(header)
     print('=' * len(header))
+
     for i in range(NUM_TRAIN_STEPS):
       rtol = 1e-1 if workload == 'librispeech_deepspeech' else 5e-3
       
@@ -101,31 +102,28 @@ class ModelDiffTest(parameterized.TestCase):
                     jax_results['scalars'][i]['loss'],
                     pyt_results['scalars'][i]['loss'],
                 ])
-
-      self.assertTrue(
-          allclose(
-              jax_results['eval_results'][i][k],
-              pyt_results['eval_results'][i][k],
-              rtol=rtol)
-      )
-      self.assertTrue(
-          allclose(
-              jax_results['scalars'][i]['grad_norm'],
-              pyt_results['scalars'][i]['grad_norm'],
-              rtol=rtol)
-      )
-      self.assertTrue(
-          allclose(
-              jax_results['scalars'][i]['loss'],
-              pyt_results['scalars'][i]['loss'],
-              rtol=rtol)
-      )
-
-
-
       print(fmt([f'{i}', *row]))
-
     print('=' * len(header))
+
+    self.assertTrue(
+        allclose(
+            jax_results['eval_results'][i][k],
+            pyt_results['eval_results'][i][k],
+            rtol=rtol)
+    )
+    self.assertTrue(
+        allclose(
+            jax_results['scalars'][i]['grad_norm'],
+            pyt_results['scalars'][i]['grad_norm'],
+            rtol=rtol)
+    )
+    self.assertTrue(
+        allclose(
+            jax_results['scalars'][i]['loss'],
+            pyt_results['scalars'][i]['loss'],
+            rtol=rtol)
+    )
+
 
 
 if __name__ == '__main__':
