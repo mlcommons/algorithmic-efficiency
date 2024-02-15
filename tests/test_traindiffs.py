@@ -21,7 +21,7 @@ WORKLOADS = [
     'imagenet_vit',
     'wmt',
     'librispeech_conformer',
-    'librispeech_deepspeech',git 
+    'librispeech_deepspeech',
     'fastmri',
     'ogbg',
     'criteo1tb'
