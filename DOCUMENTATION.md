@@ -431,7 +431,7 @@ The training time until the target performance on the test set was reached is no
 
 All scored runs have to be performed on the benchmarking hardware to allow for a fair comparison of training times. The benchmarking hardware has to be chosen to be easily accessible via common cloud computing providers. The exact hardware specification will most likely change with each iteration of the benchmark. The specs of the benchmarking hardware for this iteration of the benchmark are:
 
-- 8xV100 GPUs
+- 8xV100 16GB GPUs
 - 240 GB in RAM
 - 2 TB in storage (for datasets).
 
