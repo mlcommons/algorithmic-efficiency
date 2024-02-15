@@ -7,6 +7,7 @@ import pickle
 from subprocess import DEVNULL
 from subprocess import run
 from subprocess import STDOUT
+import subprocess
 
 from absl import flags
 from absl.testing import absltest
