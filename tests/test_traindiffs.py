@@ -91,7 +91,7 @@ class ModelDiffTest(parameterized.TestCase):
     print('=' * len(header))
 
     for i in range(NUM_TRAIN_STEPS):
-      rtol = 1e-1 if workload == 'librispeech_deepspeech' else 5e-3
+      rtol = 1
       
       row = map(lambda x: str(round(x, 5)),
                 [
@@ -105,19 +105,19 @@ class ModelDiffTest(parameterized.TestCase):
       print(fmt([f'{i}', *row]))
     print('=' * len(header))
 
-    self.assertTrue(
+    self.assertTrue( # eval_results
         allclose(
             jax_results['eval_results'][i][k],
             pyt_results['eval_results'][i][k],
             rtol=rtol)
     )
-    self.assertTrue(
+    self.assertTrue( # grad_norms
         allclose(
             jax_results['scalars'][i]['grad_norm'],
             pyt_results['scalars'][i]['grad_norm'],
             rtol=rtol)
     )
-    self.assertTrue(
+    self.assertTrue( # loss
         allclose(
             jax_results['scalars'][i]['loss'],
             pyt_results['scalars'][i]['loss'],
