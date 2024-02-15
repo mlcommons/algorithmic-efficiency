@@ -131,8 +131,7 @@ def main(_):
     workload_config = json.load(f)
   workloads = [w for w in workload_config.keys()]
 
-
-  for study_index, rng_subkey in zip(range(study_start_index, study_end_index), rng_subkeys):
+  for study_index, rng_subkey in zip(range(study_start_index, study_end_index + 1), rng_subkeys):
     print('-' * 100)
     print('*' * 40, f'Starting study {study_index + 1}/{num_studies}', '*' * 40)
     print('-' * 100)
