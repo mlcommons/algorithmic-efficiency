@@ -19,8 +19,6 @@ from absl import app
 from absl import flags
 from absl import logging
 
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency.workloads.workloads import get_base_workload_name
 import docker
 
 flags.DEFINE_string(
@@ -123,8 +121,6 @@ def main(_):
     rng_seed = struct.unpack('I', os.urandom(4))[0]
 
   logging.info('Using RNG seed %d', rng_seed)
-  rng_key = (prng.fold_in(prng.PRNGKey(rng_seed), hash(submission_id)))
-  rng_subkeys = prng.split(rng_key, num_studies)
 
   # Read workload specifications to run 
   with open(FLAGS.workload_config_path) as f:
@@ -146,9 +142,6 @@ def main(_):
           "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")
       print('=' * 100)
 
-      # Get workload keys
-      run_key = prng.fold_in(rng_subkey, hash(workload))
-      run_seed = run_key[0]  # arbitrary
 
       # Get workload dataset, max step, algorithm path and tuning search space
       dataset = workload_config[workload]['dataset']
