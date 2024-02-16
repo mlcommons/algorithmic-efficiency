@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=imagenet_resnet_slurm_check
-#SBATCH --output=~/log/algoperf/job.%j.%N.out
-#SBATCH --error=~/log/algoperf/job.%j.%N.err
+#SBATCH --output=/u/najroldi/log/algoperf/job.%j.%N.out
+#SBATCH --error=/u/najroldi/log/algoperf/job.%j.%N.err
 
 #SBATCH --time=1:00:00
 
