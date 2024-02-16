@@ -18,4 +18,4 @@
 
 LOG_DIR=~/log/algoperf
 
-srun ~/algorithmic-efficiency/exp/slurm/prova_exe.sh  > $LOG_DIR/job.%j.%N.log
+srun ~/algorithmic-efficiency/exp/slurm/prova_exe.sh > $LOG_DIR/job.%j.%N.log
