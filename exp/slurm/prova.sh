@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=imagenet_resnet_slurm_check
-#SBATCH --output=/u/najroldi/log/algoperf/job.%j.%N.out
-#SBATCH --error=/u/najroldi/log/algoperf/job.%j.%N.err
+#SBATCH --output=/u/najroldi/log/algoperf/job_%j.out
+#SBATCH --error=/u/najroldi/log/algoperf/job_%j.%N.err
 
 #SBATCH --time=1:00:00
 
@@ -16,6 +16,4 @@
 #SBATCH --gres=gpu:2
 
 LOG_DIR=~/log/algoperf
-srun ~/algorithmic-efficiency/exp/slurm/prova_exe.sh
-
-# > $LOG_DIR/job.%j.%N.log
+srun ~/algorithmic-efficiency/exp/slurm/prova_exe.sh > $LOG_DIR/job.%j.%N.log
