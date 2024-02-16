@@ -18,4 +18,4 @@
 
 LOG_DIR=~/log/algoperf
 
-srun ~/algorithmic-efficiency/exp/shell/imagenet_resnet.sh  > $LOG_DIR/job.%j.%N.log
+srun ~/algorithmic-efficiency/exp/shell/imagenet_resnet_slurm.sh  > $LOG_DIR/job.%j.%N.log
