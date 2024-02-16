@@ -9,14 +9,12 @@
 #SBATCH --ntasks 1
 #SBATCH --requeue
 #SBATCH --cpus-per-task 16
-#SBATCH --mem=500G
+#SBATCH --mem=200000M
 
 # Get node with GPUs
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:2
 
-# Get an A100
-#SBATCH --constraint=icelake,gpu
 
 LOG_DIR=~/log/algoperf
 
