@@ -24,4 +24,5 @@ python3 datasets/dataset_setup.py \
     --temp_dir=$DATA_DIR/tmp \
     --imagenet_train_url=$train_url \
     --imagenet_val_url=$val_url \
-    --framework=pytorch
+    --framework=pytorch \
+    --interactive_deletion=False

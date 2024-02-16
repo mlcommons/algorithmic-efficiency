@@ -18,4 +18,4 @@ python3 datasets/dataset_setup.py \
     --imagenet_train_url=$train_url \
     --imagenet_val_url=$val_url \
     --framework=pytorch \
-    --interactive_deletion
+    --interactive_deletion=False

@@ -7,4 +7,7 @@ export CUDA_VISIBLE_DEVICES=0
 
 python3 datasets/dataset_setup.py \
     --data_dir $DATA_DIR \
-    --wmt
+    --temp_dir $DATA_DIR/tmp \
+    --wmt \
+    --framework=pytorch \
+    --interactive_deletion=False

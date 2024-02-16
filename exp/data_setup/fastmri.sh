@@ -15,11 +15,13 @@ test_url=$3
 
 python datasets/dataset_setup.py \
     --data_dir $DATA_DIR \
+    --temp_dir $DATA_DIR/tmp \
     --fastmri \
+    --framework=pytorch \
     --fastmri_knee_singlecoil_train_url=$train_url \
     --fastmri_knee_singlecoil_val_url=$valid_url \
-    --fastmri_knee_singlecoil_test_url=$test_url
-
+    --fastmri_knee_singlecoil_test_url=$test_url \
+    --interactive_deletion=False
 
 # OR MANUAL DOWNLOAD
 # curl -C $train_url --output knee_singlecoil_train.tar.xz
