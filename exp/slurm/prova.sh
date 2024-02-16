@@ -4,16 +4,17 @@
 #SBATCH --output=/u/najroldi/log/algoperf/job_%j.out
 #SBATCH --error=/u/najroldi/log/algoperf/job_%j.err
 
-#SBATCH --time=1:00:00
-
+#SBATCH --time=10:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
-#SBATCH --cpus-per-task 16
-#SBATCH --mem=200000M
+
+#SBATCH --cpus-per-task 8
+#SBATCH --mem=100M
 
 # Get node with GPUs
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
+#SBATCH --constraint="gpu&^gpu-bw"
+# the constraint ensures that we are not reserving gpu-bw
 
-LOG_DIR=~/log/algoperf
-srun ~/algorithmic-efficiency/exp/slurm/prova_exe.sh > $LOG_DIR/job.%j.%N.log
+srun ~/algorithmic-efficiency/exp/slurm/prova_exe.sh
