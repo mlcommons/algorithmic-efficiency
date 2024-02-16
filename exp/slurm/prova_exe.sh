@@ -7,6 +7,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate alpe
 
 echo "ECCOCI"
+echo $HOME
 
 # print gpu infos
 nvidia-smi
