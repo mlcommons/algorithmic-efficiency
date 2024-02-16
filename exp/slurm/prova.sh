@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=imagenet_resnet_slurm_check
 #SBATCH --output=/u/najroldi/log/algoperf/job_%j.out
-#SBATCH --error=/u/najroldi/log/algoperf/job_%j.%N.err
+#SBATCH --error=/u/najroldi/log/algoperf/job_%j.err
 
 #SBATCH --time=1:00:00
 
