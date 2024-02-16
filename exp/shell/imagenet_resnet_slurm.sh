@@ -7,7 +7,7 @@
 conda activate alpe
 
 # Env vars
-export HOME=/home/najroldi
+export HOME=/u/najroldi
 export CODE_DIR=/home/najroldi/algorithmic-efficiency
 export EXP_DIR=/u/najroldi/exp/algoperf/exp
 export DATA_DIR=/u/najroldi/data
