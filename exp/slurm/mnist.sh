@@ -13,7 +13,7 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 
 # Job specific vars
 workload=mnist
-dataset=mnist
+dataset=MNIST
 submission='reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py'
 search_space='reference_algorithms/development_algorithms/mnist/tuning_search_space.json'
 trials=1
