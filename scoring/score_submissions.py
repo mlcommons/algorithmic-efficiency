@@ -12,16 +12,25 @@ from tabulate import tabulate
 from scoring import performance_profile
 
 flags.DEFINE_string(
-    'experiment_path',
+    'submission_directory',
     None,
-    'Path to experiment directory containing workload directories.')
-flags.DEFINE_string('submission_tag', 'my.submission', 'Submission tag.')
+    'Path to submission directory containing experiment directories.')
 flags.DEFINE_string('output_dir',
                     'scoring_results',
                     'Path to save performance profile table and plot.')
 flags.DEFINE_boolean('compute_performance_profiles',
                      False,
                      'Whether or not to compute the performance profiles.')
+flags.DEFINE_boolean(
+    'strict',
+    False,
+    'Whether to enforce scoring criteria on variant performance and on'
+    '5-trial median performance. Note that during official scoring this '
+    'flag will be set to True.')
+flags.DEFINE_boolean(
+    'self_tuning_ruleset',
+    False,
+    'Whether to score on self-tuning ruleset or externally tuned ruleset')
 FLAGS = flags.FLAGS
 
 
@@ -52,19 +61,32 @@ def get_summary_df(workload, workload_df):
   return summary_df
 
 
-def main(_):
-  df = scoring_utils.get_experiment_df(FLAGS.experiment_path)
-  results = {
-      FLAGS.submission_tag: df,
-  }
-
+def print_submission_summary(df):
   dfs = []
   for workload, group in df.groupby('workload'):
     summary_df = get_summary_df(workload, group)
     dfs.append(summary_df)
 
   df = pd.concat(dfs)
-  logging.info(tabulate(df, headers='keys', tablefmt='psql'))
+  logging.info('\n' + tabulate(df, headers='keys', tablefmt='psql'))
+
+
+def main(_):
+  results = {}
+
+  for submission in os.listdir(FLAGS.submission_directory):
+    experiment_path = os.path.join(FLAGS.submission_directory, submission)
+    df = scoring_utils.get_experiment_df(experiment_path)
+    results[submission] = df
+    print_submission_summary(df)
+
+  if not FLAGS.strict:
+    logging.warning(
+        'You are running with strict=False. This will relax '
+        'scoring criteria on the held-out workloads, number of trials and number '
+        'of studies. Your score may not be an accurate representation '
+        'under competition scoring rules. To enforce the criteria set strict=True.'
+    )
 
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
@@ -75,7 +97,9 @@ def main(_):
         reference_submission_tag=None,
         num_points=100,
         scale='linear',
-        verbosity=0)
+        verbosity=0,
+        self_tuning_ruleset=FLAGS.self_tuning_ruleset,
+        strict=FLAGS.strict)
     if not os.path.exists(FLAGS.output_dir):
       os.mkdir(FLAGS.output_dir)
     performance_profile.plot_performance_profiles(
@@ -86,5 +110,5 @@ def main(_):
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('experiment_path')
+  # flags.mark_flag_as_required('submission_directory')
   app.run(main)

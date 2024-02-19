@@ -1,0 +1,32 @@
+name: Containerized Training Differences Tests Jax vs PyTorch
+
+on: 
+  pull_request:
+    branches:
+      - 'main' 
+
+jobs:
+  build_and_push_docker_image:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build and push docker image
+      run: |
+        GIT_BRANCH=${{ github.head_ref || github.ref_name }}
+        FRAMEWORK=both
+        IMAGE_NAME="algoperf_${GIT_BRANCH}"
+        cd $HOME/algorithmic-efficiency/docker
+        docker build --no-cache -t $IMAGE_NAME . --build-arg framework=$FRAMEWORK --build-arg branch=$GIT_BRANCH
+        BUILD_RETURN=$?
+        if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
+        docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+        docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+  traindiffs_tests:
+      runs-on: self-hosted
+      needs: build_and_push_docker_image
+      steps:
+      - uses: actions/checkout@v2
+      - name: Run containerized traindiffs test
+        run: |
+          docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_${{ github.head_ref || github.ref_name }}  
+          docker run -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_${{ github.head_ref || github.ref_name }} --traindiffs_test true

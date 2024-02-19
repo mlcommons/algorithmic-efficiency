@@ -58,6 +58,8 @@ class DeepspeechConfig:
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
+  use_tanh: bool = False
+  layernorm_everywhere: bool = False
 
 
 class Subsample(nn.Module):
@@ -80,7 +82,9 @@ class Subsample(nn.Module):
         batch_norm_momentum=config.batch_norm_momentum,
         batch_norm_epsilon=config.batch_norm_epsilon,
         input_channels=1,
-        output_channels=config.encoder_dim)(outputs, output_paddings, train)
+        output_channels=config.encoder_dim,
+        use_tanh=config.use_tanh
+        )(outputs, output_paddings, train)
 
     outputs, output_paddings = Conv2dSubsampling(
         encoder_dim=config.encoder_dim,
@@ -88,7 +92,8 @@ class Subsample(nn.Module):
         batch_norm_momentum=config.batch_norm_momentum,
         batch_norm_epsilon=config.batch_norm_epsilon,
         input_channels=config.encoder_dim,
-        output_channels=config.encoder_dim)(outputs, output_paddings, train)
+        output_channels=config.encoder_dim,
+        use_tanh=config.use_tanh)(outputs, output_paddings, train)
 
     batch_size, subsampled_lengths, subsampled_dims, channels = outputs.shape
 
@@ -127,6 +132,7 @@ class Conv2dSubsampling(nn.Module):
   dtype: Any = jnp.float32
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
+  use_tanh: bool = False
 
   def setup(self):
     self.filter_shape = (3, 3, self.input_channels, self.output_channels)
@@ -150,7 +156,11 @@ class Conv2dSubsampling(nn.Module):
         feature_group_count=feature_group_count)
 
     outputs += jnp.reshape(self.bias, (1,) * (outputs.ndim - 1) + (-1,))
-    outputs = nn.relu(outputs)
+
+    if self.use_tanh:
+      outputs = nn.tanh(outputs)
+    else:
+      outputs = nn.relu(outputs)
 
     # Computing correct paddings post input convolution.
     input_length = paddings.shape[1]
@@ -182,16 +192,24 @@ class FeedForwardModule(nn.Module):
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
     config = self.config
 
-    inputs = BatchNorm(config.encoder_dim,
-                       config.dtype,
-                       config.batch_norm_momentum,
-                       config.batch_norm_epsilon)(inputs, input_paddings, train)
+    if config.layernorm_everywhere:
+      inputs = LayerNorm(config.encoder_dim)(inputs)
+    else:
+      inputs = BatchNorm(config.encoder_dim,
+                         config.dtype,
+                         config.batch_norm_momentum,
+                         config.batch_norm_epsilon)(inputs,
+                                                    input_paddings,
+                                                    train)
     inputs = nn.Dense(
         config.encoder_dim,
         use_bias=True,
         kernel_init=nn.initializers.xavier_uniform())(
             inputs)
-    inputs = nn.relu(inputs)
+    if config.use_tanh:
+      inputs = nn.tanh(inputs)
+    else:
+      inputs = nn.relu(inputs)
     inputs *= padding_mask
 
     if config.feed_forward_dropout_rate is None:
@@ -416,10 +434,15 @@ class BatchRNN(nn.Module):
   def __call__(self, inputs, input_paddings, train):
     config = self.config
 
-    inputs = BatchNorm(config.encoder_dim,
-                       config.dtype,
-                       config.batch_norm_momentum,
-                       config.batch_norm_epsilon)(inputs, input_paddings, train)
+    if config.layernorm_everywhere:
+      inputs = LayerNorm(config.encoder_dim)(inputs)
+    else:
+      inputs = BatchNorm(config.encoder_dim,
+                         config.dtype,
+                         config.batch_norm_momentum,
+                         config.batch_norm_epsilon)(inputs,
+                                                    input_paddings,
+                                                    train)
     output = CudnnLSTM(
         features=config.encoder_dim // 2,
         bidirectional=config.bidirectional,

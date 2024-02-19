@@ -13,7 +13,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
     ImagenetVitGluWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
-    ImagenetVitGluWorkload as PytWorkload
+    ImagenetVitGluWorkload as PyTorchWorkload
 
 sd_transform = None
 
@@ -21,7 +21,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   # Test outputs for identical weights and inputs.
   image = torch.randn(2, 3, 224, 224)

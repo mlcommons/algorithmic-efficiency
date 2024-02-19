@@ -10,7 +10,7 @@ from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetSiLUWorkload as JaxWorkload
 from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.workload import \
-    ImagenetResNetSiLUWorkload as PytWorkload
+    ImagenetResNetSiLUWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 from tests.modeldiffs.imagenet_resnet.compare import key_transform
 from tests.modeldiffs.imagenet_resnet.compare import sd_transform
@@ -19,7 +19,7 @@ if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable
 
   jax_workload = JaxWorkload()
-  pytorch_workload = PytWorkload()
+  pytorch_workload = PyTorchWorkload()
 
   # Test outputs for identical weights and inputs.
   image = torch.randn(2, 3, 224, 224)

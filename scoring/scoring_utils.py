@@ -150,52 +150,59 @@ def get_experiment_df(experiment_dir):
         collected together. 
         The directory structure is assumed to be:
         + experiment_dir
-          + <workload>
-            + <trial>
-              - eval_measurements.csv
+          + study
+            + <workload>
+              + <trial>
+                - eval_measurements.csv
 
   Returns:
       df: DataFrame where indices are trials, columns are 
-          metric names and values are lists.
+          metric names and values are lists of length num evals.
           e.g 
-          +----+-----------+-----------------------------+--------------------+--------------------+
-          |    | workload  | trial                       | validation/accuracy| score              |
-          |----+-----------+-----------------------------+--------------------+--------------------|
-          |  0 | mnist_jax | (trial_1, <experiment_dir>) | [0.0911, 0.0949]   | [10.6396, 10.6464] |
-          +----+-----------+-----------------------------+--------------------+--------------------+
+          +----+-----------+--------+----------------------------+--------------------+--------------------+
+          |    | workload  | study  |trial                       | validation/accuracy| score              |
+          |----+-----------+--------+----------------------------+--------------------+--------------------|
+          |  0 | mnist_jax | 0      |(trial_1, <experiment_dir>) | [0.0911, 0.0949]   | [10.6396, 10.6464] |
+          +----+-----------+--------+----------------------------+--------------------+--------------------+
   """
   df = pd.DataFrame()
   paths = filter(
       lambda x: re.match(experiment_dir + TIMESTAMP, x) or x == experiment_dir,
       glob.glob(f"{experiment_dir}*"))
   for experiment_dir in list(paths):
-    workload_dirs = os.listdir(experiment_dir)
-    for workload in workload_dirs:
-      data = {
-          'workload': workload,
-      }
-      trial_dirs = [
-          t for t in os.listdir(os.path.join(experiment_dir, workload))
-          if re.match(TRIAL_DIR_REGEX, t)
-      ]
-      for trial in trial_dirs:
-        eval_measurements_filepath = os.path.join(
-            experiment_dir,
-            workload,
-            trial,
-            MEASUREMENTS_FILENAME,
-        )
-        try:
-          trial_df = pd.read_csv(eval_measurements_filepath)
-        except FileNotFoundError as e:
-          logging.info(f'Could not read {eval_measurements_filepath}')
-          continue
-        data['trial'] = (trial, experiment_dir)
-        for column in trial_df.columns:
-          values = trial_df[column].to_numpy()
-          data[column] = values
-        trial_df = pd.DataFrame([data])
-        df = pd.concat([df, trial_df], ignore_index=True)
+    study_dirs = os.listdir(experiment_dir)
+    for study_dir in study_dirs:
+      workload_dirs = os.listdir(os.path.join(experiment_dir, study_dir))
+      for workload in workload_dirs:
+        data = {
+            'workload': workload,
+        }
+        logging.info(os.path.join(experiment_dir, study_dir, workload))
+        trial_dirs = [
+            t for t in os.listdir(
+                os.path.join(experiment_dir, study_dir, workload))
+            if re.match(TRIAL_DIR_REGEX, t)
+        ]
+        for trial in trial_dirs:
+          eval_measurements_filepath = os.path.join(
+              experiment_dir,
+              study_dir,
+              workload,
+              trial,
+              MEASUREMENTS_FILENAME,
+          )
+          try:
+            trial_df = pd.read_csv(eval_measurements_filepath)
+          except FileNotFoundError as e:
+            logging.info(f'Could not read {eval_measurements_filepath}')
+            continue
+          data['trial'] = (trial, experiment_dir)
+          data['study'] = study_dir
+          for column in trial_df.columns:
+            values = trial_df[column].to_numpy()
+            data[column] = values
+          trial_df = pd.DataFrame([data])
+          df = pd.concat([df, trial_df], ignore_index=True)
   return df
 
 
