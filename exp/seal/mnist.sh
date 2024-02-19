@@ -12,7 +12,7 @@ echo "------ $CONDA_DEFAULT_ENV ------"
 export CODE_DIR=$HOME/algorithmic-efficiency
 export EXP_DIR=$HOME/exp/algoperf/exp
 export DATA_DIR=~/data
-
+export CUDA_VISIBLE_DEVICE=0
 # Job specific vars
 workload=mnist
 dataset=MNIST
