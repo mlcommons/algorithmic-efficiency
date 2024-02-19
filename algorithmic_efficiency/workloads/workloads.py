@@ -102,6 +102,18 @@ WORKLOADS = {
         'workload_path': 'librispeech_deepspeech/librispeech',
         'workload_class_name': 'LibriSpeechDeepSpeechWorkload',
     },
+    'librispeech_deepspeech_tanh': {
+        'workload_path': 'librispeech_deepspeech/librispeech',
+        'workload_class_name': 'LibriSpeechDeepSpeechTanhWorkload',
+    },
+    'librispeech_deepspeech_no_resnet': {
+        'workload_path': 'librispeech_deepspeech/librispeech',
+        'workload_class_name': 'LibriSpeechDeepSpeechNoResNetWorkload',
+    },
+    'librispeech_deepspeech_norm_and_spec_aug': {
+        'workload_path': 'librispeech_deepspeech/librispeech',
+        'workload_class_name': 'LibriSpeechDeepSpeechNormAndSpecAugWorkload',
+    },
     'mnist': {
         'workload_path': 'mnist/mnist', 'workload_class_name': 'MnistWorkload'
     },

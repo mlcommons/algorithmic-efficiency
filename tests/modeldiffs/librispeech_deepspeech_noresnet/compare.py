@@ -7,52 +7,13 @@ import jax
 import torch
 
 from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
-    LibriSpeechConformerLayerNormWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import \
-    LibriSpeechConformerLayerNormWorkload as PyTorchWorkload
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_jax.workload import \
+    LibriSpeechDeepSpeechTanhWorkload as JaxWorkload
+from algorithmic_efficiency.workloads.librispeech_deepspeech.librispeech_pytorch.workload import \
+    LibriSpeechDeepSpeechTanhWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
-
-
-def key_transform(k):
-  new_key = []
-  for i in k:
-    if 'ModuleList' in i:
-      continue
-    if 'Linear' in i:
-      if 'NonDynamicallyQuantizableLinear' in i:
-        i = 'out'
-      else:
-        i = i.replace('Linear', 'Dense')
-    elif 'Conv1d' in i:
-      i = i.replace('Conv1d', 'Conv')
-    elif 'MHSAwithQS' in i:
-      i = i.replace('MHSAwithQS', 'SelfAttention')
-    elif 'weight' in i:
-      i = i.replace('weight', 'kernel')
-    new_key.append(i)
-  return tuple(new_key)
-
-
-def sd_transform(sd):
-  out = {}
-  for k in sd:
-    if 'Attention' in ''.join(k):
-      if 'Dense_0' in k[-2]:
-        # In-proj
-        new_key = k[:-2]
-        chunks = sd[k].chunk(3)
-        for t, c in zip(['query', 'key', 'value'], chunks):
-          out[new_key + (t, k[-1])] = c
-      elif 'Dense_1' in k[-2]:
-        # Out-proj
-        out[(*k[:-2], 'out', k[-1])] = sd[k]
-      else:
-        out[k] = sd[k]
-    else:
-      out[k] = sd[k]
-  return out
-
+from tests.modeldiffs.librispeech_deepspeech.compare import key_transform
+from tests.modeldiffs.librispeech_deepspeech.compare import sd_transform
 
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable

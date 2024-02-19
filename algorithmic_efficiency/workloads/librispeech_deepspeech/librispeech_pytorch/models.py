@@ -45,6 +45,8 @@ class DeepspeechConfig:
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
+  use_tanh: bool = False
+  layernorm_everywhere: bool = False
 
 
 class LayerNorm(nn.Module):
@@ -77,9 +79,11 @@ class Subsample(nn.Module):
     self.encoder_dim = encoder_dim
 
     self.conv1 = Conv2dSubsampling(
-        input_channels=1, output_channels=encoder_dim)
+        input_channels=1, output_channels=encoder_dim, use_tanh=config.use_tanh)
     self.conv2 = Conv2dSubsampling(
-        input_channels=encoder_dim, output_channels=encoder_dim)
+        input_channels=encoder_dim,
+        output_channels=encoder_dim,
+        use_tanh=config.use_tanh)
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
@@ -115,7 +119,8 @@ class Conv2dSubsampling(nn.Module):
                filter_stride: Tuple[int] = (2, 2),
                padding: str = 'SAME',
                batch_norm_momentum: float = 0.999,
-               batch_norm_epsilon: float = 0.001):
+               batch_norm_epsilon: float = 0.001,
+               use_tanh: bool = False):
     super().__init__()
 
     self.input_channels = input_channels
@@ -128,6 +133,8 @@ class Conv2dSubsampling(nn.Module):
     self.kernel = nn.Parameter(
         nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
     self.bias = nn.Parameter(torch.zeros(output_channels))
+
+    self.use_tanh = use_tanh
 
   def get_same_padding(self, input_shape):
     in_height, in_width = input_shape[2:]
@@ -162,7 +169,10 @@ class Conv2dSubsampling(nn.Module):
         dilation=(1, 1),
         groups=groups)
 
-    outputs = F.relu(outputs)
+    if self.use_tanh:
+      outputs = F.tanh(outputs)
+    else:
+      outputs = F.relu(outputs)
 
     input_length = paddings.shape[1]
     stride = self.filter_stride[0]
@@ -187,10 +197,13 @@ class FeedForwardModule(nn.Module):
     super().__init__()
     self.config = config
 
-    self.bn = BatchNorm(
-        dim=config.encoder_dim,
-        batch_norm_momentum=config.batch_norm_momentum,
-        batch_norm_epsilon=config.batch_norm_epsilon)
+    if config.layernorm_everywhere:
+      self.normalization_layer = LayerNorm(config.encoder_dim)
+    else:
+      self.bn_normalization_layer = BatchNorm(
+          dim=config.encoder_dim,
+          batch_norm_momentum=config.batch_norm_momentum,
+          batch_norm_epsilon=config.batch_norm_epsilon)
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
     if config.feed_forward_dropout_rate is None:
       feed_forward_dropout_rate = 0.1
@@ -200,9 +213,18 @@ class FeedForwardModule(nn.Module):
 
   def forward(self, inputs, input_paddings):
     padding_mask = (1 - input_paddings)[:, :, None]
-    inputs = self.bn(inputs, input_paddings)
+    if self.config.layernorm_everywhere:
+      inputs = self.normalization_layer(inputs)
+    else:  # batchnorm
+      inputs = self.bn_normalization_layer(inputs, input_paddings)
+
     inputs = self.lin(inputs)
-    inputs = F.relu(inputs)
+
+    if self.config.use_tanh:
+      inputs = F.tanh(inputs)
+    else:
+      inputs = F.relu(inputs)
+
     inputs = inputs * padding_mask
     inputs = self.dropout(inputs)
 
@@ -265,9 +287,12 @@ class BatchRNN(nn.Module):
     bidirectional = config.bidirectional
     self.bidirectional = bidirectional
 
-    self.bn = BatchNorm(config.encoder_dim,
-                        config.batch_norm_momentum,
-                        config.batch_norm_epsilon)
+    if config.layernorm_everywhere:
+      self.normalization_layer = LayerNorm(config.encoder_dim)
+    else:
+      self.bn_normalization_layer = BatchNorm(config.encoder_dim,
+                                              config.batch_norm_momentum,
+                                              config.batch_norm_epsilon)
 
     if bidirectional:
       self.lstm = nn.LSTM(
@@ -280,7 +305,10 @@ class BatchRNN(nn.Module):
           input_size=input_size, hidden_size=hidden_size, batch_first=True)
 
   def forward(self, inputs, input_paddings):
-    inputs = self.bn(inputs, input_paddings)
+    if self.config.layernorm_everywhere:
+      inputs = self.normalization_layer(inputs)
+    else:
+      inputs = self.bn_normalization_layer(inputs, input_paddings)
     lengths = torch.sum(1 - input_paddings, dim=1).detach().cpu().numpy()
     packed_inputs = torch.nn.utils.rnn.pack_padded_sequence(
         inputs, lengths, batch_first=True, enforce_sorted=False)
