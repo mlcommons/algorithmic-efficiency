@@ -7,8 +7,8 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate alpe
 
 # Env vars
-export CODE_DIR=/u/najroldi/algorithmic-efficiency
-export DATA_DIR=/u/najroldi/data
+export CODE_DIR=~/algorithmic-efficiency
+export DATA_DIR=~/data
 export EXP_DIR=/ptmp/najroldi/exp/algoperf
 
 # Job specific vars

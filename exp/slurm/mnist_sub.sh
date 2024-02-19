@@ -16,4 +16,4 @@
 #SBATCH --gres=gpu:1
 # the last constraint ensures that we are not reserving gpu-bw
 
-srun ~/algorithmic-efficiency/exp/shell/mnist.sh
+srun ~/algorithmic-efficiency/exp/slurm/mnist.sh
