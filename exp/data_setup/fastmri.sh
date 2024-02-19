@@ -15,7 +15,7 @@ test_url=$3
 
 python datasets/dataset_setup.py \
     --data_dir $DATA_DIR \
-    --temp_dir $DATA_DIR/tmp \
+    --temp_dir=$TMP_DIR \
     --fastmri \
     --framework=pytorch \
     --fastmri_knee_singlecoil_train_url=$train_url \

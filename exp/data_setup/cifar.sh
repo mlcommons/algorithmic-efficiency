@@ -3,9 +3,10 @@
 # activate conda env, export DATA_DIR
 source exp/data_setup/set_env.sh
 
+## MNIST
 python3 datasets/dataset_setup.py \
-    --data_dir $DATA_DIR \
+    --data_dir=$DATA_DIR \
     --temp_dir=$TMP_DIR \
-    --criteo1tb \
+    --cifar \
     --framework=pytorch \
     --interactive_deletion=False

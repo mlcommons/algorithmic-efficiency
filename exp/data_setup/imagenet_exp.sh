@@ -14,7 +14,7 @@ ulimit -n 8192
 python3 datasets/dataset_setup.py \
     --data_dir=$DATA_DIR \
     --imagenet \
-    --temp_dir=$DATA_DIR/tmp \
+    --temp_dir=$TMP_DIR \
     --imagenet_train_url=$train_url \
     --imagenet_val_url=$val_url \
     --framework=pytorch \

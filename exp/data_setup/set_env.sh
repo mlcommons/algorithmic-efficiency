@@ -10,6 +10,12 @@ conda activate alpe
 
 # MPI-IS cluster
 # export DATA_DIR=/fast/najroldi/data
+# export TMP_DIR=/fast/najroldi/data/tmp
 
-# Workstation & MPCDF raven cluster
-export DATA_DIR=$HOME/data
+# Workstation
+# export DATA_DIR=~/data
+# export TMP_DIR=~/data//tmp
+
+# Raven cluster
+export DATA_DIR=~/data
+export TMP_DIR=/ptmp/najroldi/data
