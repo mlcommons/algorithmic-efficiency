@@ -4,7 +4,7 @@
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
 
-#SBATCH --time=00:5:00
+#SBATCH --time=00:05:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 

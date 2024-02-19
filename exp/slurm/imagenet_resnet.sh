@@ -8,8 +8,8 @@ conda activate alpe
 
 # Env vars
 export CODE_DIR=~/algorithmic-efficiency
-export EXP_DIR=~/exp/algoperf/exp
 export DATA_DIR=~/data
+export EXP_DIR=/ptmp/najroldi/exp/algoperf
 
 # Job specific vars
 workload=imagenet_resnet
@@ -17,7 +17,7 @@ dataset=imagenet
 submission='reference_algorithms/paper_baselines/adamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 trials=1
-name="slurm_check"
+name="imagenet_resnet_slurm_01"
 
 # GPUs (this should coincide with 'request_gpus' in .sub)
 num_gpu=4
@@ -26,7 +26,6 @@ num_gpu=4
 nvidia-smi
 
 # Execute python script
-    # --nnodes=1 \
 torchrun --redirects 1:0,2:0,3:0 \
     --standalone \
     --nproc_per_node=$num_gpu \
