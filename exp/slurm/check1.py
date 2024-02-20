@@ -1,5 +1,6 @@
 import psutil
 
+
 def check_disk_io_counters_support():
     try:
         disk_io = psutil.disk_io_counters()
