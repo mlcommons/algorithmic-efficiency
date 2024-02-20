@@ -1,5 +1,6 @@
 #!/bin/bash -l
 
+
 # add conda TODO: make it more portable!
 source ~/miniconda3/etc/profile.d/conda.sh
 
@@ -11,8 +12,9 @@ echo "------ $CONDA_DEFAULT_ENV ------"
 # Env vars
 export CODE_DIR=~/algorithmic-efficiency
 export DATA_DIR=~/data
-export EXP_DIR=/ptmp/najroldi/exp/algoperf
-# export CUDA_VISIBLE_DEVICES=0
+export EXP_DIR=~/exp/algoperf
+# export EXP_DIR=/ptmp/najroldi/exp/algoperf
+export CUDA_VISIBLE_DEVICES=0
 
 # Job specific vars
 workload=mnist
@@ -36,4 +38,5 @@ python3 $CODE_DIR/submission_runner.py \
     --num_tuning_trials=$trials \
     --experiment_dir=$EXP_DIR  \
     --experiment_name=$name \
+    --use_wandb \
     --overwrite

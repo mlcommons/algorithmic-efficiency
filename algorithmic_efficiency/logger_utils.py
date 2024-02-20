@@ -267,8 +267,8 @@ def get_meta_data(workload: spec.Workload,
   meta_data = {}
   workload_properties = _get_workload_properties(workload)
   meta_data.update(workload_properties)
-  utilization_measurements = _get_utilization()
-  meta_data.update(utilization_measurements)
+  # utilization_measurements = _get_utilization()
+  # meta_data.update(utilization_measurements)
   system_software_info = _get_system_software_info()
   meta_data.update(system_software_info)
   system_hardware_info = _get_system_hardware_info()
