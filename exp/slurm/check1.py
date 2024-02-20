@@ -12,4 +12,5 @@ def check_disk_io_counters_support():
   except psutil.Error as e:
     print(f"An error occurred: {e}")
 
+
 check_disk_io_counters_support()
