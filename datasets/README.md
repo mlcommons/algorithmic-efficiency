@@ -423,7 +423,7 @@ $DATA_DIR
 │  │   ├── [...]
 ```
 
-In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 387 GB (via `du -sch librispeech/`).
+In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 387 GB (via `du -sch --apparent-size librispeech/`).
 </details>
 
 #### Training SPM Tokenizer
