@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# add conda TODO: make it more portable!
-source ~/miniconda3/etc/profile.d/conda.sh
+# provvisorio
+source ~/.bashrc
+
+# # add conda TODO: make it more portable!
+# source ~/miniconda3/etc/profile.d/conda.sh
 
 # Activate conda environment TODO: should I use source activate alpe instead?
 conda activate alpe
@@ -26,19 +29,20 @@ num_gpu=4
 nvidia-smi
 
 # Execute python script
-torchrun --redirects 1:0,2:0,3:0 \
-    --standalone \
-    --nproc_per_node=$num_gpu \
-    $CODE_DIR/submission_runner.py \
-    --workload=$workload \
-    --framework=pytorch \
-    --tuning_ruleset=external \
-    --data_dir=$DATA_DIR/imagenet/pytorch \
-    --imagenet_v2_data_dir=$DATA_DIR/imagenet/pytorch/imagenet_v2 \
-    --submission_path=$submission \
-    --tuning_search_space=$search_space \
-    --num_tuning_trials=$trials \
-    --experiment_dir=$EXP_DIR  \
-    --experiment_name=$name \
-    --use_wandb \
-    --overwrite
+torchrun \
+  --redirects 1:0,2:0,3:0 \
+  --standalone \
+  --nproc_per_node=$num_gpu \
+  $CODE_DIR/submission_runner.py \
+  --workload=$workload \
+  --framework=pytorch \
+  --tuning_ruleset=external \
+  --data_dir=$DATA_DIR/imagenet/pytorch \
+  --imagenet_v2_data_dir=$DATA_DIR/imagenet/pytorch \
+  --submission_path=$submission \
+  --tuning_search_space=$search_space \
+  --num_tuning_trials=$trials \
+  --experiment_dir=$EXP_DIR  \
+  --experiment_name=$name \
+  --use_wandb \
+  --overwrite

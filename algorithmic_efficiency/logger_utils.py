@@ -135,10 +135,10 @@ def _get_utilization() -> Dict:
   util_data['mem.used'] = memory_util.used
   util_data['mem.percent_used'] = memory_util.percent
 
-  # Disk
-  disk_io_counters = psutil.disk_io_counters()
-  util_data['mem.read_bytes_since_boot'] = disk_io_counters.read_bytes
-  util_data['mem.write_bytes_since_boot'] = disk_io_counters.write_bytes
+  # # Disk
+  # disk_io_counters = psutil.disk_io_counters()
+  # util_data['mem.read_bytes_since_boot'] = disk_io_counters.read_bytes
+  # util_data['mem.write_bytes_since_boot'] = disk_io_counters.write_bytes
 
   # Network
   net_io_counters = psutil.net_io_counters()
@@ -267,8 +267,8 @@ def get_meta_data(workload: spec.Workload,
   meta_data = {}
   workload_properties = _get_workload_properties(workload)
   meta_data.update(workload_properties)
-  # utilization_measurements = _get_utilization()
-  # meta_data.update(utilization_measurements)
+  utilization_measurements = _get_utilization()
+  meta_data.update(utilization_measurements)
   system_software_info = _get_system_software_info()
   meta_data.update(system_software_info)
   system_hardware_info = _get_system_hardware_info()
