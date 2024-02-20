@@ -13,7 +13,6 @@ flags.DEFINE_integer('held_out_workloads_seed',
 flags.DEFINE_string('output_filename',
                     'held_out_workloads.json',
                     'Path to file to record sampled held_out workloads.')
-flags.DEFINE_string('framework', 'jax', 'JAX or PyTorch')
 FLAGS = flags.FLAGS
 
 HELD_OUT_WORKLOADS = {
@@ -55,7 +54,7 @@ def main(_):
   rng = np.random.default_rng(rng_seed)
 
   sampled_held_out_workloads = []
-  for k, v in HELD_OUT_WORKLOADS.items():
+  for _, v in HELD_OUT_WORKLOADS.items():
     sampled_index = rng.integers(len(v))
     sampled_held_out_workloads.append(v[sampled_index])
 
