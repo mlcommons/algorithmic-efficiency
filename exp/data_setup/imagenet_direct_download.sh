@@ -22,6 +22,9 @@
 #  ├── ......
 #
 
+source ~/.bashrc
+conda activate alpe
+
 #
 # Download training data
 #
@@ -29,7 +32,10 @@ cd $HOME/data
 mkdir imagenet
 cd imagenet
 echo "Downloading training data"
-curl -C -v https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar
+curl -C - "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar" --output ILSVRC2012_img_train.tar
+
+
+sleep 10
 
 #
 # Extract the training data:
@@ -41,11 +47,15 @@ tar -xvf ILSVRC2012_img_train.tar && rm -f ILSVRC2012_img_train.tar
 find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
 cd ..
 
+sleep 10
+
 #
 # Download validation data
 #
 echo "Downloading validation data"
-curl -C -v https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar
+curl -C - "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar" --output ILSVRC2012_img_val.tar
+
+sleep 10
 
 #
 # Extract the validation data and move images to subfolders:
