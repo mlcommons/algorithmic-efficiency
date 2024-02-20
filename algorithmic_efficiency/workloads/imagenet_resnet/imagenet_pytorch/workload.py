@@ -308,6 +308,10 @@ class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
     return True
 
   @property
+  def eval_batch_size(self) -> int:
+    return 512
+
+  @property
   def validation_target_value(self) -> float:
     return 0.22009
 
@@ -321,6 +325,10 @@ class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
   @property
   def use_gelu(self) -> bool:
     return True
+
+  @property
+  def eval_batch_size(self) -> int:
+    return 512
 
   @property
   def validation_target_value(self) -> float:
