@@ -3,6 +3,8 @@
 
 def get_batch_size(workload_name):
   # Return the global batch size.
+  print("=======")
+  print(workload_name)
   if workload_name == 'criteo1tb':
     return 262_144
   elif workload_name == 'fastmri':
