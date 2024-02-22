@@ -378,6 +378,9 @@ def train_once(
                                                    imagenet_v2_data_dir,
                                                    global_step)
           # Check if targets reached.
+          # Note that this is one of the stopping conditions for the length of
+          # a training run. To score the run we only consider the time
+          # to validation target retrospectively.
           train_state['validation_goal_reached'] = (
               workload.has_reached_validation_target(latest_eval_result) or
               train_state['validation_goal_reached'])

@@ -1,8 +1,7 @@
 from absl.testing import absltest
 
+from scoring import performance_profile
 from scoring import scoring_utils
-from scoring.scoring import NUM_TRIALS
-from scoring.scoring import NUM_WORKLOADS
 
 TEST_LOGFILE = 'scoring/test_data/adamw_fastmri_jax_04-18-2023-13-10-58.log'
 TEST_DIR = 'scoring/test_data/experiment_dir'
@@ -31,7 +30,7 @@ class Test(absltest.TestCase):
 
   def test_scores(self):
     df = scoring_utils.get_experiment_df(TEST_DIR)
-    performance_profile_df = scoring.compute_performance_profiles(
+    _ = performance_profile.compute_performance_profiles(
         {'my.submission': df},
         time_col='score',
         min_tau=1.0,
