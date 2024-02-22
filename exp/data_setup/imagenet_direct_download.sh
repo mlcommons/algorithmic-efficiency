@@ -29,13 +29,10 @@ conda activate alpe
 # Download training data
 #
 cd $HOME/data
-mkdir imagenet
+# mkdir imagenet
 cd imagenet
 echo "Downloading training data"
-curl -C - "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar" --output ILSVRC2012_img_train.tar
-
-
-sleep 10
+curl -L -C - "https://www.image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar" --output ILSVRC2012_img_train.tar
 
 #
 # Extract the training data:
@@ -47,21 +44,17 @@ tar -xvf ILSVRC2012_img_train.tar && rm -f ILSVRC2012_img_train.tar
 find . -name "*.tar" | while read NAME ; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}"; rm -f "${NAME}"; done
 cd ..
 
-sleep 10
+#
+# Download validation data (UNCOMMENT)
+#
+# echo "Downloading validation data"
+# curl -C - "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar" --output ILSVRC2012_img_val.tar
 
 #
-# Download validation data
+# Extract the validation data and move images to subfolders: (UNCOMMENT)
 #
-echo "Downloading validation data"
-curl -C - "https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar" --output ILSVRC2012_img_val.tar
-
-sleep 10
-
-#
-# Extract the validation data and move images to subfolders:
-#
-mkdir val && mv ILSVRC2012_img_val.tar val/ && cd val && tar -xvf ILSVRC2012_img_val.tar
-wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
+# mkdir val && mv ILSVRC2012_img_val.tar val/ && cd val && tar -xvf ILSVRC2012_img_val.tar
+# wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh | bash
 #
 # Check total files after extract
 #
