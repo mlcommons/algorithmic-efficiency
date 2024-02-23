@@ -19,8 +19,8 @@ workload=mnist
 dataset=MNIST
 submission='reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py'
 search_space='reference_algorithms/development_algorithms/mnist/tuning_search_space.json'
-trials=1
-name="mnist_01"
+trials=2
+name="mnist_check/study_2"
 
 # Print GPU infos
 # nvidia-smi
@@ -37,4 +37,6 @@ python3 $CODE_DIR/submission_runner.py \
     --experiment_dir=$EXP_DIR  \
     --experiment_name=$name \
     --use_wandb \
-    --overwrite
+    --overwrite \
+    --max_global_steps 50 \
+    --save_checkpoints=False
