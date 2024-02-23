@@ -14,8 +14,8 @@ conda activate alpe
 
 # Workstation
 # export DATA_DIR=~/data
-# export TMP_DIR=~/data//tmp
+# export TMP_DIR=~/data/tmp
 
 # Raven cluster
-export DATA_DIR=~/data
-export TMP_DIR=/ptmp/najroldi/data
+export DATA_DIR=/ptmp/najroldi/data
+export TMP_DIR=/ptmp/najroldi/tmp
