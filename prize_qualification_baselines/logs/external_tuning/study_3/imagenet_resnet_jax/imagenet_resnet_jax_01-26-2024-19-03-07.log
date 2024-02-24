@@ -1,0 +1,62 @@
+python3 submission_runner.py --framework=jax --workload=imagenet_resnet --submission_path=prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py --tuning_search_space=prize_qualification_baselines/external_tuning/tuning_search_space.json --data_dir=/data/imagenet/jax --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=prize_qualification/study_3 --overwrite=true --save_checkpoints=false --num_tuning_trials=5 --rng_seed=1684988446 --max_global_steps=186666 --imagenet_v2_data_dir=/data/imagenet/jax 2>&1 | tee -a /logs/imagenet_resnet_jax_01-26-2024-19-03-07.log
+/usr/local/lib/python3.8/dist-packages/tensorflow_addons/utils/tfa_eol_msg.py:23: UserWarning: 
+
+TensorFlow Addons (TFA) has ended development and introduction of new features.
+TFA has entered a minimal maintenance and release mode until a planned end of life in May 2024.
+Please modify downstream libraries to take dependencies from other repositories in our TensorFlow community (e.g. Keras, Keras-CV, and Keras-NLP). 
+
+For more information see: https://github.com/tensorflow/addons/issues/2807 
+
+  warnings.warn(
+I0126 19:03:28.635403 140464308266816 logger_utils.py:76] Creating experiment directory at /experiment_runs/prize_qualification/study_3/imagenet_resnet_jax.
+I0126 19:03:29.705187 140464308266816 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter Host CUDA
+I0126 19:03:29.706334 140464308266816 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0126 19:03:29.706489 140464308266816 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0126 19:03:29.707639 140464308266816 submission_runner.py:542] Using RNG seed 1684988446
+I0126 19:03:30.917642 140464308266816 submission_runner.py:551] --- Tuning run 1/5 ---
+I0126 19:03:30.917879 140464308266816 submission_runner.py:556] Creating tuning directory at /experiment_runs/prize_qualification/study_3/imagenet_resnet_jax/trial_1.
+I0126 19:03:30.918106 140464308266816 logger_utils.py:92] Saving hparams to /experiment_runs/prize_qualification/study_3/imagenet_resnet_jax/trial_1/hparams.json.
+I0126 19:03:31.106108 140464308266816 submission_runner.py:206] Initializing dataset.
+I0126 19:03:31.122707 140464308266816 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0126 19:03:31.133769 140464308266816 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0126 19:03:31.514601 140464308266816 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+I0126 19:03:32.682048 140464308266816 submission_runner.py:213] Initializing model.
+I0126 19:03:43.087620 140464308266816 submission_runner.py:255] Initializing optimizer.
+I0126 19:03:44.772584 140464308266816 submission_runner.py:262] Initializing metrics bundle.
+I0126 19:03:44.772763 140464308266816 submission_runner.py:280] Initializing checkpoint and logger.
+I0126 19:03:44.773936 140464308266816 checkpoints.py:915] Found no checkpoint files in /experiment_runs/prize_qualification/study_3/imagenet_resnet_jax/trial_1 with prefix checkpoint_
+I0126 19:03:44.774076 140464308266816 submission_runner.py:300] Saving meta data to /experiment_runs/prize_qualification/study_3/imagenet_resnet_jax/trial_1/meta_data_0.json.
+fatal: detected dubious ownership in repository at '/algorithmic-efficiency'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /algorithmic-efficiency
+I0126 19:03:45.080375 140464308266816 logger_utils.py:220] Unable to record git information. Continuing without it.
+I0126 19:03:45.363021 140464308266816 submission_runner.py:304] Saving flags to /experiment_runs/prize_qualification/study_3/imagenet_resnet_jax/trial_1/flags_0.json.
+I0126 19:03:45.372649 140464308266816 submission_runner.py:314] Starting training loop.
+I0126 19:04:38.729161 140302031492864 logging_writer.py:48] [0] global_step=0, grad_norm=0.6224818825721741, loss=6.934564113616943
+I0126 19:04:38.747034 140464308266816 spec.py:321] Evaluating on the training split.
+I0126 19:04:39.703317 140464308266816 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0126 19:04:39.713724 140464308266816 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0126 19:04:39.800544 140464308266816 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+2024-01-26 19:04:46.678099: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 4 failed: INTERNAL: Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.gemm' failed: an internal operation failed.
+2024-01-26 19:04:56.594813: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.595019: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.595153: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.595262: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.595408: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.602742: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.605594: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:04:56.679752: F external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2614] Replicated computation launch failed, but not all replicas terminated. Aborting process to work around deadlock. Failure message (there may have been multiple failures, see the error log for all failures): 
+
+Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.gemm' failed: an internal operation failed.
+Fatal Python error: Aborted
+
+Current thread 0x00007fc06532a740 (most recent call first):
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/workload.py", line 253 in _eval_model_on_split
+  File "/algorithmic-efficiency/algorithmic_efficiency/spec.py", line 322 in eval_model
+  File "submission_runner.py", line 373 in train_once
+  File "submission_runner.py", line 568 in score_submission_on_workload
+  File "submission_runner.py", line 657 in main
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254 in _run_main
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308 in run
+  File "submission_runner.py", line 689 in <module>
