@@ -20,7 +20,7 @@ dataset=MNIST
 submission='reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py'
 search_space='reference_algorithms/development_algorithms/mnist/tuning_search_space.json'
 trials=2
-name="mnist_check/study_2"
+name="mnist_check/study_3"
 
 # Print GPU infos
 # nvidia-smi

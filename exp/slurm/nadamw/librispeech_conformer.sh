@@ -1,7 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=conformer_s1
+#SBATCH --job-name=conformer_s3
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
+#SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.out
 #SBATCH --time=24:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
@@ -25,7 +26,7 @@ workload=librispeech_conformer
 # Job specific vars
 submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
-name="nadamw_1/study_1"
+name="nadamw_1/study_3"
 trials=5
 
 # Execute python script
