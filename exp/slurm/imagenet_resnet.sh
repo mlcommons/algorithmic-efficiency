@@ -9,9 +9,11 @@ source ~/.bashrc
 # Activate conda environment TODO: should I use source activate alpe instead?
 conda activate alpe
 
+echo "OMP_NUM_THREADS = $OMP_NUM_THREADS"
+
 # Env vars
 export CODE_DIR=~/algorithmic-efficiency
-export DATA_DIR=~/data
+export DATA_DIR=/ptmp/najroldi/data
 export EXP_DIR=/ptmp/najroldi/exp/algoperf
 
 # Job specific vars
@@ -24,9 +26,6 @@ name="imagenet_resnet_slurm_01"
 
 # GPUs (this should coincide with 'request_gpus' in .sub)
 num_gpu=4
-
-# Print GPU infos
-nvidia-smi
 
 # Execute python script
 torchrun \
@@ -44,5 +43,5 @@ torchrun \
   --num_tuning_trials=$trials \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$name \
-  --use_wandb \
-  --overwrite
+  --resume_last_run \
+  --use_wandb
