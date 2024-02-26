@@ -302,7 +302,7 @@ class MetricLogger(object):
         wandb.init(
             dir=events_dir, 
             tags=[flags.FLAGS.workload, flags.FLAGS.framework],
-            resume=True, 
+            resume="allow", 
             id="_".join(events_dir.split("/")[-4:])
             )
         wandb.config.update(configs)
