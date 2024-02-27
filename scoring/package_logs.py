@@ -21,8 +21,6 @@ def move_logs(experiment_dir, destination_dir):
         experiment_dir: Path to experiment dir.
         destination_dir: Path to destination dir.
     """
-  print('in move logs')
-  print(destination_dir)
   if not os.path.exists(experiment_dir):
     raise IOError(f'Directory does not exist {destination_dir}')
 
