@@ -2,6 +2,7 @@
 
 #SBATCH --job-name=mnist_trials_resume
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
+#SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
 #SBATCH --time=00:05:00
 #SBATCH --ntasks 1
 #SBATCH --requeue

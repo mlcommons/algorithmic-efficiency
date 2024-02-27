@@ -30,7 +30,7 @@ BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
 
 submission_directory = "/ptmp/najroldi/exp/algoperf"
 submission = "nadamw_1"
-study_dir = "study_2
+study_dir = "study_1
 workload = "criteo1tb_pytorch"
 experiment_dir = os.path.join(submission_directory, submission)
 
