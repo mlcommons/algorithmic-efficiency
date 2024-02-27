@@ -20,7 +20,7 @@ dataset=MNIST
 submission='reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py'
 search_space='reference_algorithms/development_algorithms/mnist/tuning_search_space.json'
 trials=3
-name="pt_trial_1/study_1"
+name="resume_debug_01"
 
 # Print GPU infos
 # nvidia-smi
@@ -36,14 +36,12 @@ python3 $CODE_DIR/submission_runner.py \
     --num_tuning_trials=$trials \
     --experiment_dir=$EXP_DIR  \
     --experiment_name=$name \
-    --overwrite \
-    --use_wandb \
-    --max_global_steps 1000
+    --resume_last_run \
+    --use_wandb
 
     # --use_wandb \
-    # --save_checkpoints=True \
+    # --save_checkpoints=False \
     # --resume_last_run \
     # --rng_seed=1996
-
     # --overwrite \
     # --max_global_steps 1000 \
