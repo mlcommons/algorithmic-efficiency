@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=criteo1tb_s1
+#SBATCH --job-name=debug_02
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
-#SBATCH --time=24:00:00
+#SBATCH --time=01:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -26,7 +26,7 @@ workload=criteo1tb
 # Job specific vars
 submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
-name="nadamw_1/study_1"
+name="nadamw_debug_02"
 trials=5
 
 # Execute python script

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=vit_s3
+#SBATCH --job-name=vit_s1
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
-#SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.out
+#SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
 #SBATCH --time=24:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
@@ -26,7 +26,7 @@ workload=imagenet_vit
 # Job specific vars
 submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
-name="nadamw_1/study_3"
+name="nadamw_1/study_1"
 trials=5
 
 # Execute python script
