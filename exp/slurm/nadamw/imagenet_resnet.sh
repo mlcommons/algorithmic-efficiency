@@ -3,7 +3,7 @@
 #SBATCH --job-name=resnet_s1
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
-#SBATCH --time=00:30:00
+#SBATCH --time=00:40:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -24,10 +24,9 @@ dataset=imagenet
 workload=imagenet_resnet
 
 # Job specific vars
-submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
-search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
-name="nadamw_debug_1"
-# name="nadamw_debug_1/study_1"
+submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
+search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
+name="nadamw_full_b/study_1"
 trials=5
 
 # Execute python script
