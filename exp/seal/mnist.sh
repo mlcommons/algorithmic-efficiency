@@ -36,7 +36,14 @@ python3 $CODE_DIR/submission_runner.py \
     --num_tuning_trials=$trials \
     --experiment_dir=$EXP_DIR  \
     --experiment_name=$name \
-    --use_wandb \
     --overwrite \
-    --max_global_steps 50 \
-    --save_checkpoints=False
+    --use_wandb \
+    --max_global_steps 1000
+
+    # --use_wandb \
+    # --save_checkpoints=True \
+    # --resume_last_run \
+    # --rng_seed=1996
+
+    # --overwrite \
+    # --max_global_steps 1000 \

@@ -306,7 +306,7 @@ class MetricLogger(object):
             id="_".join(events_dir.split("/")[-4:])
         )
         wandb.config.update(configs)
-        wandb.config.update(hyperparameters._asdict())
+        wandb.config.update(hyperparameters._asdict(), allow_val_change=True)
 
   def append_scalar_metrics(self,
                             metrics: Dict,
