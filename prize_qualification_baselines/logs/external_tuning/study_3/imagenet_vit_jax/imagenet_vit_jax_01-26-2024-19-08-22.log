@@ -1,0 +1,67 @@
+python3 submission_runner.py --framework=jax --workload=imagenet_vit --submission_path=prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py --tuning_search_space=prize_qualification_baselines/external_tuning/tuning_search_space.json --data_dir=/data/imagenet/jax --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=prize_qualification/study_3 --overwrite=true --save_checkpoints=false --num_tuning_trials=5 --rng_seed=2446427171 --max_global_steps=186666 --imagenet_v2_data_dir=/data/imagenet/jax 2>&1 | tee -a /logs/imagenet_vit_jax_01-26-2024-19-08-22.log
+/usr/local/lib/python3.8/dist-packages/tensorflow_addons/utils/tfa_eol_msg.py:23: UserWarning: 
+
+TensorFlow Addons (TFA) has ended development and introduction of new features.
+TFA has entered a minimal maintenance and release mode until a planned end of life in May 2024.
+Please modify downstream libraries to take dependencies from other repositories in our TensorFlow community (e.g. Keras, Keras-CV, and Keras-NLP). 
+
+For more information see: https://github.com/tensorflow/addons/issues/2807 
+
+  warnings.warn(
+I0126 19:08:43.191627 140416384943936 logger_utils.py:76] Creating experiment directory at /experiment_runs/prize_qualification/study_3/imagenet_vit_jax.
+I0126 19:08:44.211645 140416384943936 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter CUDA Host
+I0126 19:08:44.212360 140416384943936 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0126 19:08:44.212489 140416384943936 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0126 19:08:44.213683 140416384943936 submission_runner.py:542] Using RNG seed 2446427171
+I0126 19:08:45.295921 140416384943936 submission_runner.py:551] --- Tuning run 1/5 ---
+I0126 19:08:45.296133 140416384943936 submission_runner.py:556] Creating tuning directory at /experiment_runs/prize_qualification/study_3/imagenet_vit_jax/trial_1.
+I0126 19:08:45.296329 140416384943936 logger_utils.py:92] Saving hparams to /experiment_runs/prize_qualification/study_3/imagenet_vit_jax/trial_1/hparams.json.
+I0126 19:08:45.476011 140416384943936 submission_runner.py:206] Initializing dataset.
+I0126 19:08:45.491095 140416384943936 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0126 19:08:45.501281 140416384943936 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0126 19:08:45.867739 140416384943936 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+I0126 19:08:54.097820 140416384943936 submission_runner.py:213] Initializing model.
+I0126 19:09:02.932375 140416384943936 submission_runner.py:255] Initializing optimizer.
+I0126 19:09:03.886077 140416384943936 submission_runner.py:262] Initializing metrics bundle.
+I0126 19:09:03.886272 140416384943936 submission_runner.py:280] Initializing checkpoint and logger.
+I0126 19:09:03.887408 140416384943936 checkpoints.py:915] Found no checkpoint files in /experiment_runs/prize_qualification/study_3/imagenet_vit_jax/trial_1 with prefix checkpoint_
+I0126 19:09:03.887546 140416384943936 submission_runner.py:300] Saving meta data to /experiment_runs/prize_qualification/study_3/imagenet_vit_jax/trial_1/meta_data_0.json.
+fatal: detected dubious ownership in repository at '/algorithmic-efficiency'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /algorithmic-efficiency
+I0126 19:09:04.206663 140416384943936 logger_utils.py:220] Unable to record git information. Continuing without it.
+I0126 19:09:04.502589 140416384943936 submission_runner.py:304] Saving flags to /experiment_runs/prize_qualification/study_3/imagenet_vit_jax/trial_1/flags_0.json.
+I0126 19:09:04.511157 140416384943936 submission_runner.py:314] Starting training loop.
+2024-01-26 19:09:41.806463: E external/xla/xla/stream_executor/cuda/cuda_blas.cc:190] failed to create cublas handle: the resource allocation failed
+2024-01-26 19:09:41.806532: E external/xla/xla/stream_executor/cuda/cuda_blas.cc:193] Failure to initialize cublas may be due to OOM (cublas needs some free memory when you initialize it, and your deep-learning framework may have preallocated more than its fair share), or may be because this binary was not built with support for the GPU in your machine.
+2024-01-26 19:09:41.806757: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 4 failed: INTERNAL: Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.conv.backward.filter' failed: CUDNN_STATUS_INTERNAL_ERROR
+in external/xla/xla/stream_executor/cuda/cuda_dnn.cc(5333): 'status'.
+2024-01-26 19:09:41.806862: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 1 failed: INTERNAL: Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.gemm' failed: Attempting to perform BLAS operation using StreamExecutor without BLAS support.
+2024-01-26 19:09:41.808629: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 6 failed: INTERNAL: Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.conv.backward.filter' failed: CUDNN_STATUS_EXECUTION_FAILED
+in external/xla/xla/stream_executor/cuda/cuda_dnn.cc(5333): 'status'.
+2024-01-26 19:09:41.810581: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 5 failed: INTERNAL: Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.conv.backward.filter' failed: CUDNN_STATUS_EXECUTION_FAILED
+in external/xla/xla/stream_executor/cuda/cuda_dnn.cc(5333): 'status'.
+2024-01-26 19:09:41.812312: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 7 failed: INTERNAL: Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.conv.backward.filter' failed: CUDNN_STATUS_EXECUTION_FAILED
+in external/xla/xla/stream_executor/cuda/cuda_dnn.cc(5333): 'status'.
+2024-01-26 19:09:50.743332: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:09:51.186394: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:09:51.573738: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-01-26 19:09:51.808872: F external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2614] Replicated computation launch failed, but not all replicas terminated. Aborting process to work around deadlock. Failure message (there may have been multiple failures, see the error log for all failures): 
+
+Failed to execute XLA Runtime executable: run time error: custom call 'xla.gpu.conv.backward.filter' failed: CUDNN_STATUS_INTERNAL_ERROR
+in external/xla/xla/stream_executor/cuda/cuda_dnn.cc(5333): 'status'.
+Fatal Python error: Aborted
+
+Current thread 0x00007fb53cbec740 (most recent call first):
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/pxla.py", line 1346 in __call__
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/profiler.py", line 314 in wrapper
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/api.py", line 1779 in cache_miss
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166 in reraise_with_filtered_traceback
+  File "/algorithmic-efficiency/prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py", line 281 in update_params
+  File "submission_runner.py", line 336 in train_once
+  File "submission_runner.py", line 568 in score_submission_on_workload
+  File "submission_runner.py", line 657 in main
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254 in _run_main
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308 in run
+  File "submission_runner.py", line 689 in <module>
