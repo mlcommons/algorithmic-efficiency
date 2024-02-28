@@ -81,10 +81,11 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
-flags.DEFINE_integer('trial_index',
-                     None,
-                     'Only run trial trial_index/num_tuning_trials, '
-                     'should range from 1 to num_tuning_trials')
+flags.DEFINE_integer(
+    'trial_index',
+    None,
+    'Only run trial trial_index/num_tuning_trials, '
+    'should range from 1 to num_tuning_trials')
 flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/data',
@@ -366,8 +367,8 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         del batch
         _reset_cuda_mem()
@@ -541,18 +542,18 @@ def score_submission_on_workload(workload: spec.Workload,
           json.load(search_space_file), num_tuning_trials)
 
     if trial_index is not None:
-      if trial_index<1 or trial_index>num_tuning_trials:
-        raise ValueError('trial_index should be \in [1, num_tuning_trials]')
-      tuning_search_space.sort()
-    
+      if trial_index < 1 or trial_index > num_tuning_trials:
+        raise ValueError('trial_index should be in [1, num_tuning_trials]')
+    tuning_search_space.sort()
+
     all_timings = []
     all_metrics = []
     tuning_search_space_iter = itertools.islice(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
     for hi, hyperparameters in tuning_search_space_iter:
 
-      if trial_index is not None and (hi+1) != trial_index:
-        continue 
+      if trial_index is not None and (hi + 1) != trial_index:
+        continue
 
       # Generate a new seed from hardware sources of randomness for each trial.
       if not rng_seed:
