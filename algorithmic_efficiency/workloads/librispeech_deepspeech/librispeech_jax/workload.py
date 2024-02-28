@@ -47,7 +47,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state = variables['batch_stats']
+    model_state = variables['batch_stats'] if not self.layernorm_everywhere else {}
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
