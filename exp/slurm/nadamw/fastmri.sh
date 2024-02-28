@@ -1,7 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=fastmri_s3
+#SBATCH --job-name=fastmri_s5
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
+#SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
 #SBATCH --time=24:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
@@ -23,9 +24,9 @@ dataset=fastmri
 workload=fastmri
 
 # Job specific vars
-submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
-search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
-name="nadamw_1/study_3"
+submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
+search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
+name="nadamw_full_b/study_5"
 trials=5
 
 # Execute python script

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=vit_s1
+#SBATCH --job-name=debug_02
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
-#SBATCH --time=24:00:00
+#SBATCH --time=01:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -20,13 +20,13 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=imagenet
-workload=imagenet_vit
+dataset=criteo1tb
+workload=criteo1tb
 
 # Job specific vars
-submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
-search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
-name="nadamw_full_b/study_1"
+submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
+search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
+name="nadamw_debug_02"
 trials=5
 
 # Execute python script
