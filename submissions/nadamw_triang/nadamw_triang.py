@@ -219,6 +219,9 @@ def init_optimizer_state(workload: spec.Workload,
     return SequentialLR(
         optimizer, schedulers=[warmup, linear_decay], milestones=[warmup_steps])
 
+  # TODO: Change after test
+  # optimizer_state['scheduler'] = pytorch_triangular(
+  #     workload.step_hint, hyperparameters, optimizer_state['optimizer'])
   optimizer_state['scheduler'] = pytorch_triangular(
       workload.step_hint, hyperparameters, optimizer_state['optimizer'])
 
