@@ -3,7 +3,7 @@
 #SBATCH --job-name=resnet_s1
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
-#SBATCH --time=00:40:00
+#SBATCH --time=24:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
