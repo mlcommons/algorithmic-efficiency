@@ -18,7 +18,7 @@ workload=ogbg
 # Job specific vars
 submission='reference_algorithms/paper_baselines/nadamw/pytorch/submission.py'
 search_space='reference_algorithms/paper_baselines/nadamw/tuning_search_space.json'
-name="resume_debug_04"
+name="resume_debug_06"
 trials=5
 
 # Execute python script
