@@ -5,7 +5,7 @@
 # docker build -t <image_name> --build-arg framework=pytorch
 
 # To build Docker image
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu20.04
 
 # Installing machine packages
 RUN echo "Setting up machine"
@@ -47,12 +47,12 @@ RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
         && pip install -e '.[jax_cpu]' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
+        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'; \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd /algorithmic-efficiency \
         && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
+        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'; \
     else \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
