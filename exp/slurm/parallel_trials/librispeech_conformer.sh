@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=vit_s1
-#SBATCH --error=/ptmp/najroldi/logs/algoperf/job_%j.err
-#SBATCH --output=/ptmp/najroldi/logs/algoperf/job_%j.out
+#SBATCH --job-name=conformer_s1
+#SBATCH --array=1-5
+#SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%A_%a.err
+#SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%A_%a.out
 #SBATCH --time=24:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
@@ -20,14 +21,22 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=imagenet
-workload=imagenet_vit
+dataset=librispeech
+workload=librispeech_conformer
 
-# Job specific vars
+# Submission
 submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
 search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
-name="nadamw_full_b/study_1"
-trials=5
+
+# Experiment name, study
+base_name="nadamw_full_budget"
+study=1
+
+# Set config
+experiment_name="${base_name}/study_${study}"
+num_tuning_trials=$SLURM_ARRAY_TASK_MAX
+trial_index=$SLURM_ARRAY_TASK_ID
+rng_seed=$study # same seed across trials
 
 # Execute python script
 torchrun \
@@ -41,10 +50,13 @@ torchrun \
   --tuning_ruleset=external \
   --data_dir=$DATA_DIR/$dataset \
   --imagenet_v2_data_dir=$DATA_DIR/$dataset \
+  --librispeech_tokenizer_vocab_path=$DATA_DIR/librispeech/spm_model.vocab \
   --submission_path=$submission \
   --tuning_search_space=$search_space \
-  --num_tuning_trials=$trials \
+  --num_tuning_trials=$num_tuning_trials \
+  --trial_index=$trial_index \
+  --rng_seed=$rng_seed \
   --experiment_dir=$EXP_DIR  \
-  --experiment_name=$name \
+  --experiment_name=$experiment_name \
   --resume_last_run \
   --use_wandb

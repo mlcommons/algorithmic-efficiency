@@ -81,6 +81,11 @@ flags.DEFINE_string(
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
+flags.DEFINE_integer(
+    'trial_index',
+    None,
+    'Only run trial trial_index/num_tuning_trials, '
+    'should range from 1 to num_tuning_trials')
 flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/data',
@@ -362,8 +367,8 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         del batch
         _reset_cuda_mem()
@@ -483,6 +488,7 @@ def score_submission_on_workload(workload: spec.Workload,
                                  imagenet_v2_data_dir: Optional[str] = None,
                                  tuning_search_space: Optional[str] = None,
                                  num_tuning_trials: Optional[int] = None,
+                                 trial_index: Optional[int] = None,
                                  log_dir: Optional[str] = None,
                                  save_checkpoints: Optional[bool] = True,
                                  hparam_start_index: Optional[bool] = None,
@@ -534,11 +540,22 @@ def score_submission_on_workload(workload: spec.Workload,
     with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
       tuning_search_space = halton.generate_search(
           json.load(search_space_file), num_tuning_trials)
+
+    if trial_index is not None:
+      if trial_index < 1 or trial_index > num_tuning_trials:
+        raise ValueError('trial_index should be in [1, num_tuning_trials]')
+    # halton.generate_search always produce the same list, but order may vary
+    tuning_search_space.sort()
+
     all_timings = []
     all_metrics = []
     tuning_search_space_iter = itertools.islice(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
     for hi, hyperparameters in tuning_search_space_iter:
+
+      if trial_index is not None and (hi + 1) != trial_index:
+        continue
+
       # Generate a new seed from hardware sources of randomness for each trial.
       if not rng_seed:
         rng_seed = struct.unpack('I', os.urandom(4))[0]
@@ -585,9 +602,9 @@ def score_submission_on_workload(workload: spec.Workload,
       all_metrics.append(metrics)
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[hi]}')
-      logging.info(f'Metrics: {all_metrics[hi]}')
-      logging.info(f'Timing: {all_timings[hi]}')
-      num_evals = len(all_metrics[hi]['eval_results'])
+      logging.info(f'Metrics: {metrics}')
+      logging.info(f'Timing: {timing}')
+      num_evals = len(metrics['eval_results'])
       logging.info(f'Total number of evals: {num_evals}')
       logging.info('=' * 20)
     score = min(all_timings)
@@ -668,6 +685,7 @@ def main(_):
       imagenet_v2_data_dir=FLAGS.imagenet_v2_data_dir,
       tuning_search_space=FLAGS.tuning_search_space,
       num_tuning_trials=FLAGS.num_tuning_trials,
+      trial_index=FLAGS.trial_index,
       log_dir=logging_dir_path,
       save_checkpoints=FLAGS.save_checkpoints,
       hparam_start_index=FLAGS.hparam_start_index,
