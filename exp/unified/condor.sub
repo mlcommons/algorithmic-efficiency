@@ -1,0 +1,44 @@
+# Define variables
+LOGS_DIR = /fast/najroldi/exp/algoperf/log
+EXE = /home/najroldi/algorithmic-efficiency/exp/condor/criteo.sh
+
+# Job specific vars
+workload = criteo1tb
+dataset = criteo1tb
+submission = 'reference_algorithms/paper_baselines/adamw/pytorch/submission.py'
+search_space = 'reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
+name = "exp_01"
+study = 1
+num_tuning_trials = 1
+
+# Submission args
+executable = $(EXE)
+arguments = \
+  $(workload) \
+  $(dataset) \
+  $(submission) \
+  $(search_space) \
+  $(name) \
+  $(study) \
+  $(num_tuning_trials)
+
+# Env Vars
+environment = \
+  'HOME="/home/najroldi"; \
+  CODE_DIR="/home/najroldi/algorithmic-efficiency"; \
+  EXP_DIR="/fast/najroldi/exp/algoperf/exp"; \
+  DATA_DIR="/fast/najroldi/data"'
+
+# Logs
+error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
+output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
+log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
+
+# Request
+request_memory = 500000
+request_cpus = 48
+request_gpus = 4
+requirements = \
+    (TARGET.CUDACapability == 8.0)
+
+queue
