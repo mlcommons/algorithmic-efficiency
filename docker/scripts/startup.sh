@@ -259,7 +259,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
 
     # Flags for rulesets
     if [[ ${TUNING_RULESET} == "external" ]]; then
-        TUNING_SEARCH_SPACE_FLAG = "--submission_path=${SUBMISSION_PATH}"
+        TUNING_SEARCH_SPACE_FLAG="--submission_path=${SUBMISSION_PATH}"
     fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
