@@ -36,7 +36,7 @@ The specs on the benchmarking machines are:
 > **Prerequisites:**
 >
 > - Python minimum requirement >= 3.8
-> - CUDA 11.8
+> - CUDA 12.1
 > - NVIDIA Driver version 535.104.05
 
 To set up a virtual enviornment and install this repository
