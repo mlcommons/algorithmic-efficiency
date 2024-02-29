@@ -191,6 +191,7 @@ if [[ -n ${TUNING_RULESET+x} ]]; then
         exit 1
     fi
 fi
+TUNING_RULESET_FLAG="--tuning_ruleset=${TUNING_RULESET}"
 
 # Set run command prefix depending on framework
 if [[ "${FRAMEWORK}" == "jax" ]]; then
