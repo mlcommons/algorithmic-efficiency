@@ -70,18 +70,19 @@ flags.DEFINE_string('held_out_workloads_config_path',
                     None,
                     'Path to config containing held-out workloads')
 flags.DEFINE_string(
-    'workload_meta_data_config_path',
-    'workload_meta_data.json',
+    'workload_metadata_path',
+     None,
     'Path to config containing dataset and maximum number of steps per workload.'
     'The default values of these are set to the full budgets as determined '
     'via the target-setting procedure. '
+    'We provide workload_metadata_external_tuning.json and '
+    'workload_metadata_self_tuning.json as references.'
     'Note that training will be interrupted at either the set maximum number '
     'of steps or the fixed workload maximum run time, whichever comes first. '
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
 
 FLAGS = flags.FLAGS
-
 
 def read_held_out_workloads(filename):
   with open(filename, "r") as f:
@@ -130,10 +131,10 @@ def main(_):
   logging.info('Using RNG seed %d', rng_seed)
   rng_key = (prng.fold_in(prng.PRNGKey(rng_seed), hash(submission_id)))
 
-  with open(FLAGS.workload_meta_data_config_path) as f:
-    workload_meta_data = json.load(f)
+  with open(FLAGS.workload_metadata_path) as f:
+    workload_metadata = json.load(f)
 
-  workloads = [w for w in workload_meta_data.keys()]
+  workloads = [w for w in workload_metadata.keys()]
 
   # Read held-out workloads
   if FLAGS.held_out_workloads_config_path:
@@ -158,8 +159,8 @@ def main(_):
       os.system(
           "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")  # clear caches
       print('=' * 100)
-      dataset = workload_meta_data[base_workload_name]['dataset']
-      max_steps = int(workload_meta_data[base_workload_name]['max_steps'] *
+      dataset = workload_metadata[base_workload_name]['dataset']
+      max_steps = int(workload_metadata[base_workload_name]['max_steps'] *
                       run_fraction)
       mount_repo_flag = ''
       if FLAGS.local:
@@ -174,16 +175,29 @@ def main(_):
                  f'-f {framework} '
                  f'-s {submission_path} '
                  f'-w {workload} '
-                 f'-t {tuning_search_space} '
                  f'-e {study_dir} '
                  f'-m {max_steps} '
                  f'--num_tuning_trials {num_tuning_trials} '
-                 f'{hparam_start_index_flag} '
-                 f'{hparam_end_index_flag} '
                  f'--rng_seed {run_seed} '
                  '-c false '
                  '-o true '
                  '-i true ')
+
+      # Append tuning ruleset flags
+      tuning_ruleset_flags = ''
+      if FLAGS.tuning_ruleset == 'external':
+        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
+        tuning_ruleset_flags += f'-t {tuning_search_space} '
+        tuning_ruleset_flags += f'{hparam_start_index_flag} '
+        tuning_ruleset_flags += f'{hparam_end_index_flag}'
+      else:
+        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
+
+      command += tuning_ruleset_flags
+
+
+
+
       if not FLAGS.dry_run:
         print('Running docker container command')
         print('Container ID: ')
@@ -209,4 +223,5 @@ def main(_):
 
 
 if __name__ == '__main__':
+  flags.mark_flag_as_required('workload_metadata_path')
   app.run(main)
