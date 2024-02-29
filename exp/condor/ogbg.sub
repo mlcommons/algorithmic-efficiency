@@ -1,20 +1,37 @@
 # Define variables
-LOGS_DIR = /fast/najroldi/exp/algoperf/log
-EXE = /home/najroldi/algorithmic-efficiency/exp/condor/ogbg.sh
+LOGS_DIR = /fast/najroldi/logs/algoperf
+EXE = /home/najroldi/algorithmic-efficiency/exp/condor/auto_run.sh
 
-# Number of GPUs
-N_GPU = 2
+# Job specific vars
++JobName=ogbg
+dataset=ogbg
+workload=ogbg
+submission=prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py
+search_space=prize_qualification_baselines/external_tuning/tuning_search_space.json
+exp_name=test_script_05
+study=1
+num_tuning_trials=5
 
-# Submission args
+# Args
 executable = $(EXE)
+arguments = \
+  $(dataset) \
+  $(workload) \
+  $(submission) \
+  $(search_space) \
+  $(exp_name) \
+  $(study) \
+  $(num_tuning_trials)
+
+# Logs
 error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
 output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
 log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
+
+# Specs
 request_memory = 500000
-request_cpus = 16
-request_gpus = $(N_GPU)
-requirements = \
-    (TARGET.CUDACapability == 8.0) && \
-    (TARGET.CUDAGlobalMemoryMb >= 80000)
+request_cpus = 48
+request_gpus = 4
+requirements = (TARGET.CUDACapability == 8.0)
 
 queue

@@ -1,0 +1,17 @@
+# Define variables
+LOGS_DIR = /fast/najroldi/logs/algoperf
+EXE = /home/najroldi/algorithmic-efficiency/exp/condor/criteo.sh
+
+# Submission args
+executable = $(EXE)
+error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
+output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
+log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
+
+# Specs
+request_memory = 500000
+request_cpus = 48
+request_gpus = 4
+requirements = (TARGET.CUDACapability == 8.0)
+
+queue
