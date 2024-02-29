@@ -1,5 +1,6 @@
 [
     {
+        "aux_dropout_rate": 0.1,
         "dropout_rate": 0.1,
         "label_smoothing": 0.0,
         "learning_rate": 0.0033313215673016375,

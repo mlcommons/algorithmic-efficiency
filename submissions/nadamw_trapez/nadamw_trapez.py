@@ -8,6 +8,7 @@ import torch
 from torch import Tensor
 import torch.distributed.nn as dist_nn
 from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import ConstantLR
 from torch.optim.lr_scheduler import SequentialLR
 
 from algorithmic_efficiency import spec
@@ -208,18 +209,22 @@ def init_optimizer_state(workload: spec.Workload,
               weight_decay=hyperparameters.weight_decay),
   }
 
-  def pytorch_triangular(step_hint: int, hyperparameters, optimizer):
+  def pytorch_trapezoid(step_hint: int, hyperparameters, optimizer):
     warmup_steps = int(hyperparameters.warmup_factor * step_hint)
     warmup = LinearLR(
         optimizer, start_factor=1e-10, end_factor=1., total_iters=warmup_steps)
-    decay_steps = step_hint - warmup_steps
+    decay_steps = int(hyperparameters.decay_factor * step_hint)
+    constant_steps = step_hint - warmup_steps - decay_steps
+    constant = ConstantLR(optimizer, factor=1.0, total_iters=constant_steps)
     linear_decay = LinearLR(
         optimizer, start_factor=1., end_factor=0., total_iters=decay_steps)
     return SequentialLR(
-        optimizer, schedulers=[warmup, linear_decay], milestones=[warmup_steps])
+        optimizer,
+        schedulers=[warmup, linear_decay, constant],
+        milestones=[warmup_steps, constant_steps + warmup_steps])
 
-  optimizer_state['scheduler'] = pytorch_triangular(
-      workload.step_hint, hyperparameters, optimizer_state['optimizer'])
+  optimizer_state['scheduler'] = pytorch_trapezoid(
+   workload.step_hint, hyperparameters, optimizer_state['optimizer'])
 
   return optimizer_state
 

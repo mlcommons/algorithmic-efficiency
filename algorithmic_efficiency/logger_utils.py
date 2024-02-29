@@ -299,18 +299,18 @@ class MetricLogger(object):
     if events_dir:
       self._tb_metric_writer = metric_writers.create_default_writer(events_dir)
       if wandb is not None and self.use_wandb:
-        if not configs.resume_last_run or configs.overwrite:
-          # default init
-          wandb.init(
-              dir=events_dir,
-              tags=[flags.FLAGS.workload, flags.FLAGS.framework])
-        else:
+        if configs.wandb_resume and configs.resume_last_run:
           # define an id, and allow resume
           wandb.init(
               dir=events_dir,
               tags=[flags.FLAGS.workload, flags.FLAGS.framework],
               resume="allowed",
               id="_".join(events_dir.split("/")[-4:]))
+        else:
+          # default init
+          wandb.init(
+              dir=events_dir,
+              tags=[flags.FLAGS.workload, flags.FLAGS.framework])
         wandb.config.update(configs)
         wandb.config.update(hyperparameters._asdict(), allow_val_change=True)
 

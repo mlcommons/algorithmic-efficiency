@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=criteo_best03_tar
+#SBATCH --job-name=trapez
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%j.out
-#SBATCH --time=24:00:00
+#SBATCH --time=01:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -24,14 +24,9 @@ dataset=criteo1tb
 workload=criteo1tb
 
 # Job specific vars
-
-# submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py'
-# submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
-
-# search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
-search_space='exp/slurm/nadamw/criteo_search_space.json'
-name="criteo_best03_tar/study_1"
-# name="nadamw_full_b/study_5"
+submission='submissions/nadamw_trapez/nadamw_trapez.py'
+search_space='submissions/nadamw_trapez/tuning_search_space.json'
+name="trapez_1"
 trials=1
 
 # Execute python script
@@ -51,5 +46,5 @@ torchrun \
   --num_tuning_trials=$trials \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$name \
-  --resume_last_run \
+  --overwrite \
   --use_wandb

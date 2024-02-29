@@ -29,7 +29,7 @@ submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_bu
 search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
 
 # Experiment name, study
-base_name="nadamw_full_budget"
+base_name="nadamw_full_b"
 study=1
 
 # Set config
@@ -56,7 +56,9 @@ torchrun \
   --num_tuning_trials=$num_tuning_trials \
   --trial_index=$trial_index \
   --rng_seed=$rng_seed \
+  --rng_seed=$rng_seed \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$experiment_name \
+  --save_intermediate_checkpoints=False \
   --resume_last_run \
   --use_wandb

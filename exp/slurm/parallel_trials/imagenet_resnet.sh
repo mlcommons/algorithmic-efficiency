@@ -57,5 +57,6 @@ torchrun \
   --rng_seed=$rng_seed \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$experiment_name \
+  --save_intermediate_checkpoints=False \
   --resume_last_run \
   --use_wandb
