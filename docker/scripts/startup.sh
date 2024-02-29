@@ -263,11 +263,10 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
-    COMMAND="${COMMAND_PREFIX} submission_runner.py \
+    BASE_COMMAND="${COMMAND_PREFIX} submission_runner.py \
         --framework=${FRAMEWORK}  \
         --workload=${WORKLOAD} \
         --submission_path=${SUBMISSION_PATH}  \
-        --tuning_search_space=${TUNING_SEARCH_SPACE}  \
         --data_dir=${DATA_DIR} \
         --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
@@ -280,22 +279,22 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         ${TORCH_COMPILE_FLAG}"
     
     if [[ ${TUNING_RULESET} == "external" ]]; then
-        COMMAND = "${COMMAND} \
+        COMMAND = "${BASE_COMMAND} \
                    ${TUNING_RULESET_FLAG} \
                    ${TUNING_SEARCH_SPACE_FLAG} \
                    ${NUM_TUNING_TRIALS_FLAG} \
                    ${HPARAM_START_INDEX_FLAG} \
                    ${HPARAM_END_INDEX_FLAG}"
     else 
-        COMMAND = "${COMMAND} \
+        COMMAND = "${BASE_COMMAND} \
                    ${TUNING_RULESET_FLAG}"
     fi
 
-    COMMAND = "$COMMAND 2>&1 | tee -a ${LOG_FILE}"
+    FINAL_COMMAND = "$COMMAND 2>&1 | tee -a ${LOG_FILE}"
 
-    echo $COMMAND > ${LOG_FILE}
-    echo $COMMAND
-    eval $COMMAND
+    echo $FINAL_COMMAND > ${LOG_FILE}
+    echo $FINAL_COMMAND
+    eval $FINAL_COMMAND
     RETURN_CODE=$?
 
     if [[ $INTERNAL_CONTRIBUTOR_MODE == "true" ]]; then 
