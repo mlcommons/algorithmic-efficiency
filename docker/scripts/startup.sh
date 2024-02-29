@@ -187,7 +187,7 @@ fi
 
 if [[ -n ${TUNING_RULESET+x} ]]; then 
     if [[ ! " ${VALID_RULESETS[@]} " =~ " $TUNING_RULESET " ]]; then
-        echo "Error: invalid argument $TUNING_RULESET gtfor tuning ruleset (tuning_ruleset)."
+        echo "Error: invalid argument $TUNING_RULESET for tuning ruleset (tuning_ruleset)."
         exit 1
     fi
 fi
@@ -260,6 +260,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     # Flags for rulesets
     if [[ ${TUNING_RULESET} == "external" ]]; then
         TUNING_SEARCH_SPACE_FLAG = "--submission_path=${SUBMISSION_PATH}"
+    fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
     COMMAND="${COMMAND_PREFIX} submission_runner.py \
@@ -285,7 +286,6 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
                    ${NUM_TUNING_TRIALS_FLAG} \
                    ${HPARAM_START_INDEX_FLAG} \
                    ${HPARAM_END_INDEX_FLAG}"
-
     else 
         COMMAND = "${COMMAND} \
                    ${TUNING_RULESET_FLAG}"
