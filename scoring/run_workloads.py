@@ -50,6 +50,10 @@ flags.DEFINE_boolean(
     False,
     'Whether or not to actually run the docker containers. '
     'If False, simply print the docker run commands. ')
+flags.DEFINE_enum('tuning_ruleset', 
+                    'external', 
+                    enum_values=['external', 'self'],
+                    help='Can be either external of self.')
 flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
