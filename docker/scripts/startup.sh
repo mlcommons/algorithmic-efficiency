@@ -279,22 +279,22 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         ${TORCH_COMPILE_FLAG}"
     
     if [[ ${TUNING_RULESET} == "external" ]]; then
-        COMMAND = "${BASE_COMMAND} \
+        COMMAND="${BASE_COMMAND} \
                    ${TUNING_RULESET_FLAG} \
                    ${TUNING_SEARCH_SPACE_FLAG} \
                    ${NUM_TUNING_TRIALS_FLAG} \
                    ${HPARAM_START_INDEX_FLAG} \
                    ${HPARAM_END_INDEX_FLAG}"
     else 
-        COMMAND = "${BASE_COMMAND} \
+        COMMAND="${BASE_COMMAND} \
                    ${TUNING_RULESET_FLAG}"
     fi
 
-    FINAL_COMMAND = "$COMMAND 2>&1 | tee -a ${LOG_FILE}"
+    COMMAND="$COMMAND 2>&1 | tee -a ${LOG_FILE}"
 
-    echo $FINAL_COMMAND > ${LOG_FILE}
-    echo $FINAL_COMMAND
-    eval $FINAL_COMMAND
+    echo $COMMAND > ${LOG_FILE}
+    echo $COMMAND
+    eval $COMMAND
     RETURN_CODE=$?
 
     if [[ $INTERNAL_CONTRIBUTOR_MODE == "true" ]]; then 
