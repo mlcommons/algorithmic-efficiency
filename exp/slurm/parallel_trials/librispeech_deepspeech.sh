@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=deepspeech_s1
+#SBATCH --job-name=deepspeech_tar_set
 #SBATCH --array=1-5
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%A_%a.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%A_%a.out
@@ -25,11 +25,11 @@ dataset=librispeech
 workload=librispeech_deepspeech
 
 # Submission
-submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
+submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py'
 search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
 
 # Experiment name, study
-base_name="nadamw_full_b"
+base_name="nadamw_tar_set"
 study=1
 
 # Set config

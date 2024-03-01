@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=fastmri_s5
+#SBATCH --job-name=fastmri_tar_set
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%j.out
 #SBATCH --time=24:00:00
@@ -23,11 +23,17 @@ export DATA_DIR=/ptmp/najroldi/data
 dataset=fastmri
 workload=fastmri
 
-# Job specific vars
-submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
+# Submission
+submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py'
 search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
-name="nadamw_full_b/study_5"
-trials=5
+
+# Experiment name, study
+base_name="nadamw_tar_set"
+study=1
+num_tuning_trials=5
+
+# Set experient name
+experiment_name="${base_name}/study_${study}"
 
 # Execute python script
 torchrun \
@@ -43,8 +49,9 @@ torchrun \
   --imagenet_v2_data_dir=$DATA_DIR/$dataset \
   --submission_path=$submission \
   --tuning_search_space=$search_space \
-  --num_tuning_trials=$trials \
+  --num_tuning_trials=$num_tuning_trials \
   --experiment_dir=$EXP_DIR  \
-  --experiment_name=$name \
+  --experiment_name=$experiment_name \
+  --save_intermediate_checkpoints=False \
   --resume_last_run \
   --use_wandb
