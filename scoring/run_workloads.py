@@ -50,10 +50,11 @@ flags.DEFINE_boolean(
     False,
     'Whether or not to actually run the docker containers. '
     'If False, simply print the docker run commands. ')
-flags.DEFINE_enum('tuning_ruleset', 
-                    'external', 
-                    enum_values=['external', 'self'],
-                    help='Can be either external of self.')
+flags.DEFINE_enum(
+    'tuning_ruleset',
+    'external',
+    enum_values=['external', 'self'],
+    help='Can be either external of self.')
 flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
@@ -71,7 +72,7 @@ flags.DEFINE_string('held_out_workloads_config_path',
                     'Path to config containing held-out workloads')
 flags.DEFINE_string(
     'workload_metadata_path',
-     None,
+    None,
     'Path to config containing dataset and maximum number of steps per workload.'
     'The default values of these are set to the full budgets as determined '
     'via the target-setting procedure. '
@@ -83,6 +84,7 @@ flags.DEFINE_string(
     'you may want to increase the number of steps per workload.')
 
 FLAGS = flags.FLAGS
+
 
 def read_held_out_workloads(filename):
   with open(filename, "r") as f:
@@ -194,9 +196,6 @@ def main(_):
         tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
 
       command += tuning_ruleset_flags
-
-
-
 
       if not FLAGS.dry_run:
         print('Running docker container command')
