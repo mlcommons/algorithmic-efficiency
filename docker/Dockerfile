@@ -36,8 +36,6 @@ ARG git_url=https://github.com/mlcommons/algorithmic-efficiency.git
 RUN git clone $git_url && cd /algorithmic-efficiency 
 RUN cd /algorithmic-efficiency && git checkout $branch
 
-RUN cd /algorithmic-efficiency && pip install -e '.[full]'
-
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
@@ -57,6 +55,8 @@ RUN if [ "$framework" = "jax" ] ; then \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
     fi
+
+RUN cd /algorithmic-efficiency && pip install -e '.[full]'
 
 RUN cd /algorithmic-efficiency && pip install -e '.[wandb]'
 
