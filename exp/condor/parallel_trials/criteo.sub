@@ -1,0 +1,39 @@
+# Define variables
+LOGS_DIR=/fast/najroldi/logs/algoperf
+EXE=/home/najroldi/algorithmic-efficiency/exp/condor/parallel_trials/auto_run_array.sh
+
+# Job specific vars
++JobName=criteo
+dataset=criteo1tb
+workload=criteo1tb
+submission=prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py
+search_space=prize_qualification_baselines/external_tuning/tuning_search_space.json
+exp_name=test_mpi_pt
+study=1
+num_tuning_trials=5
+
+# Args
+executable = $(EXE)
+arguments = \
+  $(dataset) \
+  $(workload) \
+  $(submission) \
+  $(search_space) \
+  $(exp_name) \
+  $(study) \
+  $(num_tuning_trials) \
+  $(Process)
+
+# Logs
+error=$(LOGS_DIR)/err/job.$(Cluster).$(Process).err
+output=$(LOGS_DIR)/out/job.$(Cluster).$(Process).out
+log=$(LOGS_DIR)/log/job.$(Cluster).$(Process).log
+
+# Specs
+request_memory = 500000
+request_cpus = 48
+request_gpus = 4
+requirements = (TARGET.CUDACapability == 8.0)
+
+# Submit 5 parallel jobs
+queue 5
