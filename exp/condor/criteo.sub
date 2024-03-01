@@ -6,11 +6,11 @@ EXE = /home/najroldi/algorithmic-efficiency/exp/condor/auto_run.sh
 +JobName=criteo
 dataset=criteo1tb
 workload=criteo1tb
-submission=prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py
-search_space=prize_qualification_baselines/external_tuning/tuning_search_space.json
-exp_name=test_script_05
+submission=prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py
+search_space=exp/json/nadamw_opt_list.json
+exp_name=nadamw_fb_optlist
 study=1
-num_tuning_trials=5
+num_tuning_trials=20
 
 # Args
 executable = $(EXE)
@@ -24,9 +24,9 @@ arguments = \
   $(num_tuning_trials)
 
 # Logs
-error = $(LOGS_DIR)/job.$(Cluster).$(Process).err
-output = $(LOGS_DIR)/job.$(Cluster).$(Process).out
-log = $(LOGS_DIR)/job.$(Cluster).$(Process).log
+error = $(LOGS_DIR)/err/job.$(Cluster).$(Process).err
+output = $(LOGS_DIR)/out/job.$(Cluster).$(Process).out
+log = $(LOGS_DIR)/log/job.$(Cluster).$(Process).log
 
 # Specs
 request_memory = 500000

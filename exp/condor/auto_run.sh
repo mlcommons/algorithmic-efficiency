@@ -7,7 +7,7 @@ conda activate alpe
 export OMP_NUM_THREADS=48
 export HOME=/home/najroldi
 export CODE_DIR=/home/najroldi/algorithmic-efficiency
-export EXP_DIR=/fast/najroldi/exp/algoperf/exp
+export EXP_DIR=/fast/najroldi/exp/algoperf
 export DATA_DIR=/fast/najroldi/data
 
 # Job specific vars
@@ -17,7 +17,7 @@ submission=$3
 search_space=$4
 name=$5
 study=$6
-num_tuning_trials=$6
+num_tuning_trials=$7
 
 # Experiment name
 experiment_name="${name}/study_${study}"
