@@ -88,7 +88,7 @@ class DLRMResNet(nn.Module):
               stddev=jnp.sqrt(1.0 / mlp_top_dims[layer_idx])))(
                   top_mlp_input)
       x = nn.relu(x)
-      if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+      if self.dropout_rate and layer_idx == num_layers_top - 2:
         x = nn.Dropout(rate=self.dropout_rate, deterministic=not train)(x)
       top_mlp_input += x
     # In the DLRM model the last layer width is always 1. We can hardcode that
