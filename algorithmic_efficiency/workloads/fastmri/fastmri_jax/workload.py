@@ -34,8 +34,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         use_layer_norm=self.use_layer_norm,
         dropout_rate=dropout_rate)
     params_rng, dropout_rng = jax.random.split(rng)
-    variables = jax.jit(self._model.init)(
-        {'params': params_rng, 'dropout': dropout_rng}, fake_batch)
+    variables = jax.jit(
+        self._model.init)({'params': params_rng, 'dropout': dropout_rng},
+                          fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
