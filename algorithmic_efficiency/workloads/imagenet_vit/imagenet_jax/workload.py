@@ -21,8 +21,7 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
 # Make sure we inherit from the ViT base workload first.
 class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
-  def initialized(self,
-                  key: spec.RandomState,
+  def initialized(self, key: spec.RandomState,
                   model: nn.Module) -> spec.ModelInitState:
     input_shape = (1, 224, 224, 3)
     params_rng, dropout_rng = jax.random.split(key)
