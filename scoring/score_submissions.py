@@ -70,6 +70,18 @@ def print_submission_summary(df):
   df = pd.concat(dfs)
   logging.info('\n' + tabulate(df, headers='keys', tablefmt='psql'))
 
+# nico: save scores to csv
+def save_submission_summary(df, submission, output_dir):
+  dfs = []
+  for workload, group in df.groupby('workload'):
+    summary_df = get_summary_df(workload, group)
+    dfs.append(summary_df)
+  df = pd.concat(dfs)
+
+  if not os.path.exists(output_dir):
+    os.mkdir(output_dir)
+  csv_file_path = os.path.join(output_dir, 'scores_{}.csv'.format(submission))
+  df.to_csv(csv_file_path, index=False)
 
 def main(_):
   results = {}
@@ -79,6 +91,7 @@ def main(_):
     df = scoring_utils.get_experiment_df(experiment_path)
     results[submission] = df
     print_submission_summary(df)
+    save_submission_summary(df, submission, FLAGS.output_dir) # nico
 
   if not FLAGS.strict:
     logging.warning(
