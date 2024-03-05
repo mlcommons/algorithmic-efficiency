@@ -234,10 +234,11 @@ class WmtWorkload(BaseWmtWorkload):
     self._train_model = models.Transformer(model_config)
     eval_config = replace(model_config, deterministic=True)
     self._eval_model = models.Transformer(eval_config)
-    initial_variables = jax.jit(self._eval_model.init)(
-        rng,
-        jnp.ones(input_shape, jnp.float32),
-        jnp.ones(target_shape, jnp.float32))
+    params_rng, dropout_rng = jax.random.split(rng)
+    initial_variables = jax.jit(
+        self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
+                               jnp.ones(input_shape, jnp.float32),
+                               jnp.ones(target_shape, jnp.float32))
 
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
