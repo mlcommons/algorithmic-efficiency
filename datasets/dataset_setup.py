@@ -679,6 +679,7 @@ def main(_):
   if any(s in tmp_dir for s in bad_chars):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
+  tmp_dir = os.path.abspath(os.path.expanduser(data_dir))
   logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo1tb:
