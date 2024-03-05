@@ -180,14 +180,14 @@ def init_optimizer_state(workload: spec.Workload,
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
-    warmup_steps = int(hyperparameters.warmup_factor * step_hint)
+    warmup_steps = int(hyperparameters['warmup_factor'] * step_hint)
     warmup_fn = optax.linear_schedule(
         init_value=0.,
-        end_value=hyperparameters.learning_rate,
+        end_value=hyperparameters['learning_rate'],
         transition_steps=warmup_steps)
     cosine_steps = max(step_hint - warmup_steps, 1)
     cosine_fn = optax.cosine_decay_schedule(
-        init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
+        init_value=hyperparameters['learning_rate'], decay_steps=cosine_steps)
     schedule_fn = optax.join_schedules(
         schedules=[warmup_fn, cosine_fn], boundaries=[warmup_steps])
     return schedule_fn
@@ -196,10 +196,10 @@ def init_optimizer_state(workload: spec.Workload,
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
   opt_init_fn, opt_update_fn = nadamw(
       learning_rate=lr_schedule_fn,
-      b1=1.0 - hyperparameters.one_minus_beta1,
-      b2=hyperparameters.beta2,
+      b1=1.0 - hyperparameters['one_minus_beta1'],
+      b2=hyperparameters['beta2'],
       eps=1e-8,
-      weight_decay=hyperparameters.weight_decay)
+      weight_decay=hyperparameters['weight_decay'])
   params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
@@ -286,11 +286,11 @@ def update_params(workload: spec.Workload,
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
-    label_smoothing = hyperparameters.label_smoothing
+    label_smoothing = hyperparameters['label_smoothing']
   else:
     label_smoothing = 0.0
   if hasattr(hyperparameters, 'grad_clip'):
-    grad_clip = hyperparameters.grad_clip
+    grad_clip = hyperparameters['grad_clip']
   else:
     grad_clip = None
   outputs = pmapped_train_step(workload,

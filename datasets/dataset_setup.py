@@ -706,13 +706,13 @@ def main(_):
           'to download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
 
-    updated_data_dir = download_fastmri(data_dir,
-                                        knee_singlecoil_train_url,
-                                        knee_singlecoil_val_url,
-                                        knee_singlecoil_test_url)
+    download_fastmri(data_dir,
+                     knee_singlecoil_train_url,
+                     knee_singlecoil_val_url,
+                     knee_singlecoil_test_url)
 
     logging.info('fastMRI download completed. Extracting...')
-    setup_fastmri(data_dir, updated_data_dir)
+    setup_fastmri(data_dir)
 
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')

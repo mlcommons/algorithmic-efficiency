@@ -26,7 +26,7 @@ WORKLOADS = {
     },
     'criteo1tb_embed_init': {
         'workload_path': 'criteo1tb/criteo1tb',
-        'workload_class_name': 'Criteo1TbDlrmSmallEmbeddingInitWorkload'
+        'workload_class_name': 'Criteo1TbDlrmSmallEmbedInitWorkload'
     },
     'criteo1tb_resnet': {
         'workload_path': 'criteo1tb/criteo1tb',
