@@ -300,7 +300,7 @@ def download_criteo1tb(data_dir,
         break
       logging.info('Invalid response. Try again.')
     if overwrite == 'n':
-      logging.info(f'Skipping download URL {url} to {file_path}')
+      logging.info(f'Skipping download to {all_days_zip_filepath}')
       download = False
 
   if download:
