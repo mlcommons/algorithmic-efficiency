@@ -34,5 +34,5 @@
         "dataset": "wmt",
         "submission_path": "reference_algorithms/target_setting_algorithms/jax_adamw.py",
         "tuning_search_space": "reference_algorithms/target_setting_algorithms/wmt_post_ln/tuning_search_space.json"
-    },
+    }
 }
