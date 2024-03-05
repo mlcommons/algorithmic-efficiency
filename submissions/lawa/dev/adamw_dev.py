@@ -53,6 +53,8 @@ def init_optimizer_state(workload: spec.Workload,
               eps=1e-8,
               weight_decay=hyperparameters.weight_decay,
               fused=False),
+      'last_eval_time': 0,
+      'last_eval_step': 0,
   }
 
   def pytorch_cosine_warmup(step_hint: int, hyperparameters, optimizer):
@@ -140,6 +142,15 @@ def update_params(workload: spec.Workload,
                  global_step,
                  loss.item(),
                  grad_norm.item())
+
+  # next is eval step?
+  current_time = get_time()
+  logging.info("=== time:{} ===".format(current_time))
+  # time from last eval
+  import pdb
+  pdb.set_trace()
+  logging.info("=== time:{} ===".format(current_time))
+  elapsed = current_time - eval_results[1]
 
   return (optimizer_state, current_param_container, new_model_state)
 
