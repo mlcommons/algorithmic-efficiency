@@ -1,6 +1,6 @@
 # Change Log
 
-## algoperf-benchmark-0.1.2 (2024-03-02)
+## algoperf-benchmark-0.1.2 (2024-03-04)
 Workload variant additions and fixes:
 - Add Deepspeech workload variant
 - Fix bugs in Imagenet ResNet, WMT and Criteo1tb variants
