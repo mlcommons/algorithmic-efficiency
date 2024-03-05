@@ -157,8 +157,8 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_
                  "criteo1tb_resnet" "criteo1tb_layernorm" "criteo1tb_embed_init" \
                  "wmt" "wmt_post_ln" "wmt_attention_temp" "wmt_glu_tanh" \
                  "librispeech_deepspeech" "librispeech_conformer" "mnist" \
-                 "conformer_layernorm" "conformer_attention_temperature" \
-                 "conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
+                 "librispeech_conformer_layernorm" "librispeech_conformer_attention_temperature" \
+                 "librispeech_conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
                  "librispeech_deepspeech_tanh" \
                  "librispeech_deepspeech_no_resnet" "librispeech_deepspeech_norm_and_spec_aug"
                  "fastmri_layernorm" "ogbg_gelu" "ogbg_silu" "ogbg_model_size")
@@ -260,7 +260,7 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
 
     # Flags for rulesets
     if [[ ${TUNING_RULESET} == "external" ]]; then
-        TUNING_SEARCH_SPACE_FLAG="--submission_path=${SUBMISSION_PATH}"
+        TUNING_SEARCH_SPACE_FLAG="--tuning_search_space=${TUNING_SEARCH_SPACE}"
     fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
