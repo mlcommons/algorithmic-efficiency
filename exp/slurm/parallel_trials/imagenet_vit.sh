@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=vit_tar_set
+#SBATCH --job-name=vit_full_b
 #SBATCH --array=1-5
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%A_%a.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%A_%a.out
@@ -25,11 +25,11 @@ dataset=imagenet
 workload=imagenet_vit
 
 # Submission
-submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py'
+submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
 search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
 
 # Experiment name, study
-base_name="nadamw_tar_set"
+base_name="scored_submissions/nadamw_full_b"
 study=1
 
 # Set config
@@ -59,4 +59,4 @@ torchrun \
   --experiment_name=$experiment_name \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
-  --use_wandb
+  --use_wandb=False

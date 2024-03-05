@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#SBATCH --job-name=wmt_full_b
-#SBATCH --array=1-5
+#SBATCH --job-name=trapez
+#SBATCH --array=1-20
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%A_%a.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%A_%a.out
-#SBATCH --time=24:00:00
+#SBATCH --time=04:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -21,22 +21,25 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=wmt
-workload=wmt
+dataset=fastmri
+workload=fastmri
 
 # Submission
-submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_full_budget.py'
-search_space='prize_qualification_baselines/external_tuning/tuning_search_space.json'
+# submission='submissions/nadamw_triang/nadamw_triang.py'
+# search_space='submissions/nadamw_triang/space_1.json'
+submission='submissions/nadamw_trapez/nadamw_trapez.py'
+search_space='submissions/nadamw_trapez/space_1.json'
 
 # Experiment name, study
-base_name="scored_submissions/nadamw_full_b"
+# base_name="nadamw_triang_01"
+base_name="nadamw_trapez_01"
 study=1
 
 # Set config
 experiment_name="${base_name}/study_${study}"
 num_tuning_trials=$SLURM_ARRAY_TASK_MAX
 trial_index=$SLURM_ARRAY_TASK_ID
-rng_seed=$study # same seed across trials
+rng_seed=1166838470 #$study # same seed across trials
 
 # Execute python script
 torchrun \
@@ -59,4 +62,4 @@ torchrun \
   --experiment_name=$experiment_name \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
-  --use_wandb=False
+  --use_wandb

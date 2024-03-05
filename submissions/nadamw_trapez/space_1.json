@@ -1,0 +1,26 @@
+{
+  "label_smoothing": {
+      "feasible_points": [0.0]
+  },
+  "dropout_rate": {
+      "feasible_points": [0.1]
+  },
+  "learning_rate": {
+    "feasible_points": [1e-2, 5e-3, 1e-3, 5e-4, 1e-4]
+  },
+  "one_minus_beta1": {
+      "feasible_points": [0.06733926164]
+  },
+  "beta2": {
+      "feasible_points": [0.9955159689799007]
+  },
+  "warmup_factor": {
+      "feasible_points": [0.02, 0.05, 0.1]
+  },
+  "decay_factor": {
+      "feasible_points": [0.7, 0.8, 0.9]
+  },
+  "weight_decay": {
+      "feasible_points": [0.08121616522670176]
+  }
+}
