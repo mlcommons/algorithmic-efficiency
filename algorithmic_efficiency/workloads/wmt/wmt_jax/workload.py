@@ -121,7 +121,7 @@ class WmtWorkload(BaseWmtWorkload):
                    max_decode_len: int,
                    beam_size: int = 4) -> spec.Tensor:
     """Predict translation with fast decoding beam search on a batch."""
-    config = models.TransformerConfig(deterministic=True, decode=True)
+    config = replace(self._eval_model.config, decode=True)
     # Prepare transformer fast-decoder call for beam search: for beam search, we
     # need to set up our decoder model to handle a batch size equal to
     # batch_size * beam_size, where each batch item's data is expanded in-place

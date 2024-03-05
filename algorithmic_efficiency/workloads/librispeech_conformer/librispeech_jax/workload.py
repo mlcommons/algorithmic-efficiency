@@ -327,7 +327,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
-    if model_state is not None:
+    if model_state is not None and len(model_state) > 0:
       # Sync batch statistics across replicas before evaluating.
       model_state = self.sync_batch_stats(model_state)
 

@@ -1,6 +1,8 @@
 # Prize Qualification Baselines
 
-This directory contains the baseline(s) that submissions must beat to qualify for prizes, see the [Scoring Section](/COMPETITION_RULES.md#scoring) of the competition rules.
+This directory contains the baseline(s) that submissions must beat to qualify for prizes, see the [Scoring Section](/COMPETITION_RULES.md#scoring) of the competition rules. For each ruleset there are 2 baselines (`*_target_setting.py` and `*_full_budget.py`). A submission must beat both baselines to be eligible for prizes.
+
+The experiment logs with training metrics are in `prize_qualification_baselines/logs`
 
 ## Externally Tuned Ruleset
 

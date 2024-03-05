@@ -17,6 +17,7 @@
   - [Run your Submission in a Docker Container](#run-your-submission-in-a-docker-container)
     - [Docker Tips](#docker-tips)
 - [Score your Submission](#score-your-submission)
+  - [Running workloads](#running-workloads)
 
 ## Set Up and Installation
 
@@ -25,7 +26,7 @@ To get started you will have to make a few decisions and install the repository 
 1. Decide if you would like to develop your submission in either PyTorch or JAX.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](/DOCUMENTATION.md#benchmarking-hardware).
 The specs on the benchmarking machines are:
-    - 8xV100 GPUs
+    - 8xV100 16GB GPUs
     - 240 GB in RAM
     - 2 TB in storage (for datasets).
 3. Install the algorithmic package and dependencies either in a [Python virtual environment](#python-virtual-environment) or use a [Docker](#docker) (recommended) or [Singularity/Apptainer container](#using-singularityapptainer-instead-of-docker).
@@ -336,18 +337,17 @@ docker exec -it <container_id> /bin/bash
 ```
 
 ## Score your Submission
-To score your submission we will score over all workloads, held-out workloads and studies as described in the rules. 
-We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled
-held-out workloads in the scoring criteria for the matching base workloads. 
+
+To score your submission we will score over all fixed workloads, held-out workloads and studies as described in the rules.
+We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled held-out workloads in the scoring criteria for the matching fixed base workloads.
 In other words, the total number of runs expected for official scoring is:
-- for external ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
-- for internal ruleset (8 (workloads) + 6 (held-out workloads)) x 5 (studies)
 
-
+- for external tuning ruleset: **350** = (8 (fixed workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
+- for self-tuning ruleset: **70** = (8 (fixed workloads) + 6 (held-out workloads)) x 5 (studies)
 
 ### Running workloads
-To run workloads for scoring you may specify a "virtual" list of held-out workloads. It is important 
-to note that the official set of held-out workloads will be sampled by the competition organizers during scoring time.
+
+To run workloads for (a mock) scoring you may specify a "virtual" list of held-out workloads. It is important to note that the official set of held-out workloads will be sampled by the competition organizers during scoring time.
 
 An example config for held-out workloads is stored in `scoring/held_workloads_example.json`.
 To generate a new sample of held out workloads run:
@@ -370,17 +370,24 @@ python scoring/run_workloads.py \
 --seed <rng_seed>
 ```
 
-Note that to run the above script you will need the minimum jax_cpu and pytorch_cpu installations of the algorithmic-efficiency package.
+Note that to run the above script you will need at least the `jax_cpu` and `pytorch_cpu` installations of the `algorithmic-efficiency` package.
 
-During submission development, it might be useful to do faster, approximate scoring (e.g. without 5 different s
-tudies or when some trials are missing) so the scoring scripts allow some flexibility. To simulate official scoring,
-pass the `--strict=True` flag in score_submission.py. To get the raw scores and performance profiles of group of 
-submissions or single submission:
+During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow someflexibility.
+To simulate official scoring, pass the `--strict=True` flag in `score_submission.py`. To get the raw scores and performance profiles of group of submissions or single submission:
 
 ```bash
 python score_submissions.py --submission_directory <directory_with_submissions> --output_dir <output_dir> --compute_performance_profiles
 ```
 
 We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
+
+## Package Submission for Self-Reporting
+To prepare your submission for self reporting run:
+
+```
+python3 package_logs.py --experiment_dir <experiment_dir> --destination_dir <destination_dir>
+```
+
+The destination directiory will contain the logs packed in studies and trials required for self-reporting. 
 
 **Good Luck!**

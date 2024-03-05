@@ -50,6 +50,7 @@ HOME_DIR=""
 RSYNC_DATA="true"
 OVERWRITE="false"
 SAVE_CHECKPOINTS="true"
+TUNING_RULESET="external"
 
 # Pass flag
 while [ "$1" != "" ]; do
@@ -107,6 +108,10 @@ while [ "$1" != "" ]; do
             shift
             HOME_DIR=$1
             ;;
+        --tuning_ruleset)
+            shift
+            TUNING_RULESET=$1
+            ;;
         --num_tuning_trials)
             shift
             NUM_TUNING_TRIALS=$1
@@ -157,6 +162,7 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_
                  "librispeech_deepspeech_tanh" \
                  "librispeech_deepspeech_no_resnet" "librispeech_deepspeech_norm_and_spec_aug"
                  "fastmri_layernorm" "ogbg_gelu" "ogbg_silu" "ogbg_model_size")
+VALID_RULESETS=("self" "external")
 
 # Set data and experiment paths
 ROOT_DATA_BUCKET="gs://mlcommons-data"
@@ -167,17 +173,25 @@ EXPERIMENT_DIR="${HOME_DIR}/experiment_runs"
 
 if [[ -n ${DATASET+x} ]]; then 
     if [[ ! " ${VALID_DATASETS[@]} " =~ " $DATASET " ]]; then
-        echo "Error: invalid argument for dataset (d)."
+        echo "Error: invalid argument $DATASET for dataset (d)."
         exit 1
     fi
 fi
 
 if [[ -n ${WORKLOAD+x} ]]; then 
     if [[ ! " ${VALID_WORKLOADS[@]} " =~ " $WORKLOAD " ]]; then
-        echo "Error: invalid argument for workload (w)."
+        echo "Error: invalid argument $WORKLOAD for workload (w)."
         exit 1
     fi
 fi
+
+if [[ -n ${TUNING_RULESET+x} ]]; then 
+    if [[ ! " ${VALID_RULESETS[@]} " =~ " $TUNING_RULESET " ]]; then
+        echo "Error: invalid argument $TUNING_RULESET for tuning ruleset (tuning_ruleset)."
+        exit 1
+    fi
+fi
+TUNING_RULESET_FLAG="--tuning_ruleset=${TUNING_RULESET}"
 
 # Set run command prefix depending on framework
 if [[ "${FRAMEWORK}" == "jax" ]]; then
@@ -243,26 +257,42 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
     if [[ ${FRAMEWORK} == "pytorch" ]]; then
         TORCH_COMPILE_FLAG="--torch_compile=true"
     fi
+
+    # Flags for rulesets
+    if [[ ${TUNING_RULESET} == "external" ]]; then
+        TUNING_SEARCH_SPACE_FLAG="--submission_path=${SUBMISSION_PATH}"
+    fi
     
     # The TORCH_RUN_COMMAND_PREFIX is only set if FRAMEWORK is "pytorch"
-    COMMAND="${COMMAND_PREFIX} submission_runner.py \
+    BASE_COMMAND="${COMMAND_PREFIX} submission_runner.py \
         --framework=${FRAMEWORK}  \
         --workload=${WORKLOAD} \
         --submission_path=${SUBMISSION_PATH}  \
-        --tuning_search_space=${TUNING_SEARCH_SPACE}  \
         --data_dir=${DATA_DIR} \
         --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
         --save_checkpoints=${SAVE_CHECKPOINTS} \
-        ${NUM_TUNING_TRIALS_FLAG} \
-        ${HPARAM_START_INDEX_FLAG} \
-        ${HPARAM_END_INDEX_FLAG} \
         ${RNG_SEED_FLAG} \
         ${MAX_STEPS_FLAG}  \
         ${SPECIAL_FLAGS} \
-        ${TORCH_COMPILE_FLAG} 2>&1 | tee -a ${LOG_FILE}"
+        ${TORCH_COMPILE_FLAG}"
+    
+    if [[ ${TUNING_RULESET} == "external" ]]; then
+        COMMAND="${BASE_COMMAND} \
+                   ${TUNING_RULESET_FLAG} \
+                   ${TUNING_SEARCH_SPACE_FLAG} \
+                   ${NUM_TUNING_TRIALS_FLAG} \
+                   ${HPARAM_START_INDEX_FLAG} \
+                   ${HPARAM_END_INDEX_FLAG}"
+    else 
+        COMMAND="${BASE_COMMAND} \
+                   ${TUNING_RULESET_FLAG}"
+    fi
+
+    COMMAND="$COMMAND 2>&1 | tee -a ${LOG_FILE}"
+
     echo $COMMAND > ${LOG_FILE}
     echo $COMMAND
     eval $COMMAND
