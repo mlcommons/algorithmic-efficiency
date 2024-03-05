@@ -302,8 +302,8 @@ def download_criteo1tb(data_dir,
     if overwrite == 'n':
       logging.info(f'Skipping download URL {url} to {file_path}')
       download = False
-  
-  if download: 
+
+  if download:
     with open(all_days_zip_filepath, 'wb') as f:
       for chunk in download_request.iter_content(chunk_size=1024):
         f.write(chunk)
