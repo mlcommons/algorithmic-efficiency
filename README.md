@@ -29,6 +29,7 @@
 > [!IMPORTANT]
 > Upcoming Deadline:
 > Submission deadline: **March 28th, 2024**.\
+> For other key dates please see [Call for Submissions](/CALL_FOR_SUBMISSIONS.md).
 
 ## Table of Contents <!-- omit from toc -->
 
