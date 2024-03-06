@@ -27,13 +27,13 @@ class CifarWorkload(BaseCifarWorkload):
 
   @property
   def num_workers(self) -> int:
-      if self._num_workers is None:
-          raise ValueError('num_workers property must be set before workload is used.')
-      return self._num_workers
+    if self._num_workers is None:
+      raise ValueError('num_workers property must be set before workload is used.')
+    return self._num_workers
 
   @num_workers.setter
   def num_workers(self, num_workers: int):
-      self._num_workers = num_workers
+    self._num_workers = num_workers
 
   def _build_dataset(
       self,
