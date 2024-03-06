@@ -51,6 +51,16 @@ def imagenet_v2_to_torch(
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
+  @property
+  def num_workers(self) -> int:
+      if self._num_workers is None:
+          raise ValueError('num_workers property must be set before workload is used.')
+      return self._num_workers
+
+  @num_workers.setter
+  def num_workers(self, num_workers: int):
+      self._num_workers = num_workers
+
   def _build_dataset(
       self,
       data_rng: spec.RandomState,
@@ -126,7 +136,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4 if is_train else 0,
+        num_workers=self.num_workers,
         pin_memory=True,
         drop_last=is_train,
         persistent_workers=is_train)
