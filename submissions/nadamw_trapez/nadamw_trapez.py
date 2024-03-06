@@ -285,6 +285,12 @@ def update_params(workload: spec.Workload,
         current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
+  
+  import wandb
+  wandb.log({
+      'lr': optimizer_state['scheduler'].get_last_lr(), 
+      'lr_step': global_step,
+      })
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:

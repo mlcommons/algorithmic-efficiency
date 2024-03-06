@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=trapez
+#SBATCH --job-name=trapez_check
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%j.out
 #SBATCH --time=01:00:00
@@ -20,14 +20,20 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=criteo1tb
-workload=criteo1tb
+dataset=fastmri
+workload=fastmri
 
-# Job specific vars
+# Submission
 submission='submissions/nadamw_trapez/nadamw_trapez.py'
-search_space='submissions/nadamw_trapez/tuning_search_space.json'
-name="trapez_1"
-trials=1
+search_space='submissions/nadamw_trapez/dev/space_1.json'
+
+# Experiment name, study
+base_name="trapez_check"
+study=1
+num_tuning_trials=1
+
+# Set experient name
+experiment_name="${base_name}"
 
 # Execute python script
 torchrun \
