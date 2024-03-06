@@ -400,12 +400,12 @@ The currently eight fixed workloads are:
 
 |            | **Task**                      | **Dataset** | **Model**               | **Loss** | **Metric** | Validation<br>**Target** | Test<br>**Target**   | Maximum<br>**Runtime** <br>(in secs) |
 |------------|-------------------------------|-------------|-------------------------|----------|------------|--------------------------|----------------------|------------------------|
-| **1**      | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall               | CE       | CE         | 0.123649                 | 0.126060                |       21,600                 |
-| **2**      | MRI reconstruction            | fastMRI     | U-Net                   | L1       | SSIM       | 0.7344                   | 0.741652             |          10,800              |
-| **3<br>4** | Image classification          | ImageNet    | ResNet-50<br>ViT        | CE       | ER         | 0.22569<br>0.22691        | 0.3440<br>0.3481    |        111,600    <br> 111,600            |
-| **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.078477<br>0.1162     | 0.046973<br>0.068093 |       <br>72,000                 |
-| **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       12,000                 |
-| **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       80,000                 |
+| **1**      | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall               | CE       | CE         | 0.123735                 | 0.126041                |       7,703                 |
+| **2**      | MRI reconstruction            | fastMRI     | U-Net                   | L1       | SSIM       | 0.723653                   | 0.740633             |          8,859              |
+| **3<br>4** | Image classification          | ImageNet    | ResNet-50<br>ViT        | CE       | ER         | 0.22569<br>0.22691        | 0.3440<br>0.3481    |        63,008    <br> 77,520            |
+| **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.085884<br>0.119936     | 0.052981<br>0.074143 |       61,068<br>55,506                 |
+| **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       18,477                 |
+| **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       48,151                 |
 
 #### Randomized workloads
 
