@@ -291,9 +291,22 @@ def download_criteo1tb(data_dir,
       stream=True)
 
   all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all_days.zip')
-  with open(all_days_zip_filepath, 'wb') as f:
-    for chunk in download_request.iter_content(chunk_size=1024):
-      f.write(chunk)
+  download = True
+  if os.path.exists(all_days_zip_filepath):
+    while True:
+      overwrite = input('File already exists {}.\n Overwrite? (Y/n)'.format(
+          all_days_zip_filepath)).lower()
+      if overwrite in ['y', 'n']:
+        break
+      logging.info('Invalid response. Try again.')
+    if overwrite == 'n':
+      logging.info(f'Skipping download to {all_days_zip_filepath}')
+      download = False
+
+  if download:
+    with open(all_days_zip_filepath, 'wb') as f:
+      for chunk in download_request.iter_content(chunk_size=1024):
+        f.write(chunk)
 
   unzip_cmd = f'unzip {all_days_zip_filepath} -d {tmp_criteo_dir}'
   logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
@@ -679,6 +692,7 @@ def main(_):
   if any(s in tmp_dir for s in bad_chars):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
+  tmp_dir = os.path.abspath(os.path.expanduser(tmp_dir))
   logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo1tb:
@@ -706,13 +720,13 @@ def main(_):
           'to download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
 
-    updated_data_dir = download_fastmri(data_dir,
-                                        knee_singlecoil_train_url,
-                                        knee_singlecoil_val_url,
-                                        knee_singlecoil_test_url)
+    download_fastmri(data_dir,
+                     knee_singlecoil_train_url,
+                     knee_singlecoil_val_url,
+                     knee_singlecoil_test_url)
 
     logging.info('fastMRI download completed. Extracting...')
-    setup_fastmri(data_dir, updated_data_dir)
+    setup_fastmri(data_dir)
 
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')

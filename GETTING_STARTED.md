@@ -388,4 +388,13 @@ python score_submissions.py --submission_directory <directory_with_submissions> 
 
 We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
+## Package Submission for Self-Reporting
+To prepare your submission for self reporting run:
+
+```
+python3 package_logs.py --experiment_dir <experiment_dir> --destination_dir <destination_dir>
+```
+
+The destination directiory will contain the logs packed in studies and trials required for self-reporting. 
+
 **Good Luck!**
