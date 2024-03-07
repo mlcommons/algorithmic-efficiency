@@ -1,0 +1,20 @@
+{
+  "learning_rate": {
+    "feasible_points": [5e-3]
+  },
+  "one_minus_beta_1": {
+      "feasible_points": [0.06733926164]
+  },
+  "epsilon": {
+      "feasible_points": [0.9]
+  },
+  "warmup_factor": {
+      "feasible_points": [0.1]
+  },
+  "decay_factor": {
+      "feasible_points": [0.5]
+  },
+  "weight_decay": {
+      "feasible_points": [0.08121616522670176]
+  }
+}

@@ -15,7 +15,7 @@ workload=mnist
 
 # Submission
 submission='submissions/nadamw_trapez/dev/adam_mnist.py'
-search_space='submissions/nadamw_trapez/dev/space_1.json'
+search_space='submissions/nadamw_trapez/dev/space_mnist.json'
 
 # Experiment name, study
 base_name="trapez_check"
