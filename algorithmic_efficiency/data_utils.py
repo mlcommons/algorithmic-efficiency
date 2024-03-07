@@ -231,7 +231,7 @@ def cycle(iterable: Iterable,
 class PrefetchedWrapper:
 
   def __init__(self,
-               dataloader: torch.utils.data.DataLoader,
+               dataloader: DataLoader,
                device: torch.device,
                start_epoch: int = 0) -> None:
     self.dataloader = dataloader
