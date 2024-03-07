@@ -44,7 +44,8 @@ def update_params(workload: spec.Workload,
 
 def get_batch_size(workload_name):
   """
-    Gets batch size for workload.
+    Gets batch size for workload. 
+    Note that these batch sizes only apply during training and not during evals.
     Args: 
       workload_name (str): Valid workload_name values are: "wmt", "ogbg", 
         "criteo1tb", "fastmri", "imagenet_resnet", "imagenet_vit", 
