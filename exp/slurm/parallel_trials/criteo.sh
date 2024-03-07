@@ -21,17 +21,17 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=criteo
-workload=criteo
+dataset=criteo1tb
+workload=criteo1tb
 
 # Submission
 submission='submissions/nadamw_triang/nadamw_triang.py'
-search_space='submissions/nadamw_triang/space_3.json'
+search_space='submissions/nadamw_triang/space_1.json'
 # submission='submissions/nadamw_trapez/nadamw_trapez.py'
 # search_space='submissions/nadamw_trapez/space_3.json'
 
 # Experiment name, study
-base_name="nadamw_triang_03"
+base_name="nadamw_triang_01"
 # base_name="nadamw_trapez_03"
 study=1
 
