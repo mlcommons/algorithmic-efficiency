@@ -182,6 +182,8 @@ flags.DEFINE_integer(
 
 flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
 
+flags.DEFINE_boolean('skip_download', False, 'Skips data download.')
+
 FLAGS = flags.FLAGS
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -443,11 +445,14 @@ def setup_fastmri(data_dir):
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
-  """Downloads and returns the download dir."""
+  """Downloads imagenet tar files to $DATA_DIR/imagenet/."""
   data_dir = os.path.join(data_dir, 'imagenet')
   imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
+  # If the data was already downloaded for JAX it will have
+  # been moved to the manual_download_dir.
+  # Get paths in manual_download_dir.
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
   manual_download_dir = os.path.join(imagenet_jax_data_dir,
                                      'downloads',
@@ -457,7 +462,7 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   imagenet_val_download_filepath = os.path.join(manual_download_dir,
                                                 IMAGENET_VAL_TAR_FILENAME)
 
-  # Download imagnet train dataset
+  # Download imagenet train dataset
   if not os.path.exists(imagenet_train_filepath) and not os.path.exists(
       imagenet_train_download_filepath):
     logging.info(
@@ -543,22 +548,25 @@ def setup_imagenet_pytorch(data_dir):
 
   # Setup pytorch dataset dir
   imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
-  os.makedirs(imagenet_pytorch_data_dir)
-  os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
-  os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
+  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'train')):
+    os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
+  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'val')):
+    os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
 
   # Move tar files and imagenet_v2 into pytorch directory
-  logging.info('Moving {} to {}'.format(train_tar_file_path,
-                                        imagenet_pytorch_data_dir))
-  shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
-  logging.info('Moving {} to {}'.format(val_tar_file_path,
-                                        imagenet_pytorch_data_dir))
-  shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
+  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+    logging.info('Moving {} to {}'.format(train_tar_file_path,
+                                          imagenet_pytorch_data_dir))
+    shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
+  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME)):
+    logging.info('Moving {} to {}'.format(val_tar_file_path,
+                                          imagenet_pytorch_data_dir))
+    shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
   if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')):
     logging.info('Moving imagenet_v2 to {}'.format(
         os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')))
-  shutil.move(test_dir_path,
-              os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
+    shutil.move(test_dir_path,
+                os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
 
   # Extract train data\
   logging.info('Extracting imagenet train data')
@@ -720,10 +728,11 @@ def main(_):
           'to download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
 
-    download_fastmri(data_dir,
-                     knee_singlecoil_train_url,
-                     knee_singlecoil_val_url,
-                     knee_singlecoil_test_url)
+    if not FLAGS.skip_download:
+      download_fastmri(data_dir,
+                      knee_singlecoil_train_url,
+                      knee_singlecoil_val_url,
+                      knee_singlecoil_test_url)
 
     logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir)
@@ -742,7 +751,8 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
+    if not FLAGS.skip_download:
+      download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:
