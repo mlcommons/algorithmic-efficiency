@@ -197,12 +197,12 @@ def main(_):
       # Append tuning ruleset flags
       tuning_ruleset_flags = ''
       if FLAGS.tuning_ruleset == 'external':
-        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
+        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset} '
         tuning_ruleset_flags += f'-t {tuning_search_space} '
         tuning_ruleset_flags += f'{hparam_start_index_flag} '
-        tuning_ruleset_flags += f'{hparam_end_index_flag}'
+        tuning_ruleset_flags += f'{hparam_end_index_flag} '
       else:
-        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
+        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset} '
 
       command += tuning_ruleset_flags
 
