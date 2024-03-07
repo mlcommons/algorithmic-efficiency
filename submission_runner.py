@@ -50,6 +50,8 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 from algorithmic_efficiency.workloads import workloads
 
+from algorithmic_efficiency import fixed_space
+
 # disable only for deepspeech if it works fine for other workloads.
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 
@@ -86,6 +88,10 @@ flags.DEFINE_integer(
     None,
     'Only run trial trial_index/num_tuning_trials, '
     'should range from 1 to num_tuning_trials')
+flags.DEFINE_boolean(
+    'fixed_space',
+    False,
+    'Fixed space: no sampling from grid.')
 flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
                     '~/data',
@@ -542,10 +548,15 @@ def score_submission_on_workload(workload: spec.Workload,
       raise ValueError(
           'Must provide a tuning search space JSON file when using external '
           'tuning.')
+  
     with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
-      tuning_search_space = halton.generate_search(
-          json.load(search_space_file), num_tuning_trials)
-
+      if not FLAGS.fixed_space:
+        tuning_search_space = halton.generate_search(
+            json.load(search_space_file), num_tuning_trials)
+      else:
+        tuning_search_space = fixed_space.generate_search(
+            json.load(search_space_file), num_tuning_trials)
+    
     if trial_index is not None:
       if trial_index < 1 or trial_index > num_tuning_trials:
         raise ValueError('trial_index should be in [1, num_tuning_trials]')
