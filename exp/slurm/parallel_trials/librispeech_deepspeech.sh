@@ -60,4 +60,6 @@ torchrun \
   --experiment_name=$experiment_name \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
-  --use_wandb
+  --use_wandb \
+  --fixed_space \
+  --fixed_space

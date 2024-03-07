@@ -14,6 +14,8 @@ from torch.optim.lr_scheduler import SequentialLR
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
+import wandb
+
 USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
@@ -291,11 +293,9 @@ def update_params(workload: spec.Workload,
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
   
-  import wandb
   if wandb.run is not None:
     wandb.log({
-        'lr': optimizer_state['scheduler'].get_last_lr()[0], 
-        'lr_step': global_step,
+        'lr': optimizer_state['scheduler'].get_last_lr()[0]
         })
 
   # Log training metrics - loss, grad_norm, batch_size.
