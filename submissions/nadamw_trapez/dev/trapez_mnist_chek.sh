@@ -3,7 +3,7 @@
 source ~/.bashrc
 conda activate alpe
 
-export CUDA_VISILE_DEVICES=7
+# export CUDA_VISILE_DEVICES=4,5,6,7
 
 export CODE_DIR=~/algorithmic-efficiency
 export EXP_DIR=/is/sg2/najroldi/exp
@@ -26,6 +26,11 @@ num_tuning_trials=1
 experiment_name="${base_name}"
 
 # Execute python script
+# torchrun \
+#   --redirects 1:0,2:0,3:0 \
+#   --standalone \
+#   --nnodes=1 \
+#   --nproc_per_node=4 \
 python \
   $CODE_DIR/submission_runner.py \
   --workload=$workload \
