@@ -63,7 +63,7 @@ pip3 install -e '.[full]'
 
 ```bash
 pip3 install -e '.[jax_cpu]'
-pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
 pip3 install -e '.[full]'
 ```
 
