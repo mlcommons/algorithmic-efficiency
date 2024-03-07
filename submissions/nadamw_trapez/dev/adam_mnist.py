@@ -36,6 +36,8 @@ def init_optimizer_state(workload: spec.Workload,
 
   def pytorch_trapezoid(step_hint: int, hyperparameters, optimizer):
     
+    step_hint = 1000
+    
     warmup_steps = int(hyperparameters.warmup_factor * step_hint)
     decay_start_step = int(hyperparameters.decay_factor * step_hint)
     constant_steps = decay_start_step - warmup_steps
@@ -76,7 +78,7 @@ def update_params(workload: spec.Workload,
   del loss_type
   del current_params_types
   del eval_results
-  del global_step
+  # del global_step
 
   current_model = current_param_container
   current_model.train()
@@ -96,7 +98,7 @@ def update_params(workload: spec.Workload,
   loss = loss_dict['summed'] / loss_dict['n_valid_examples']
   loss.backward()
   optimizer_state['optimizer'].step()
-
+  optimizer_state['scheduler'].step()
 
   import wandb
   if wandb.run is not None:
