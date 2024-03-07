@@ -23,7 +23,7 @@ def init_optimizer_state(workload: spec.Workload,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   del model_state
-  del workload
+  # del workload
   del rng
   optimizer_state = {
       'optimizer':
@@ -54,7 +54,7 @@ def init_optimizer_state(workload: spec.Workload,
         milestones=[warmup_steps, decay_start_step])
 
   optimizer_state['scheduler'] = pytorch_trapezoid(
-   workload.step_hint, hyperparameters, optimizer_state['optimizer'])
+    workload.step_hint, hyperparameters, optimizer_state['optimizer'])
 
 
   return optimizer_state
