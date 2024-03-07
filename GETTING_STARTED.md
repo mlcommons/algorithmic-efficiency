@@ -36,7 +36,7 @@ The specs on the benchmarking machines are:
 > **Prerequisites:**
 >
 > - Python minimum requirement >= 3.8
-> - CUDA 11.8
+> - CUDA 12.1
 > - NVIDIA Driver version 535.104.05
 
 To set up a virtual enviornment and install this repository
@@ -68,11 +68,18 @@ To set up a virtual enviornment and install this repository
 
     For **PyTorch**
 
+    Note: the below command assumes you have CUDA 12.1 installed locally.
+    This is the default in the provided Docker image.
+    We recommend you match this CUDA version but if you decide to run
+    with a different local CUDA version, please find the appropriate wheel
+    url to pass to the `pip install` command for `pytorch`.
+
     ```bash
     pip3 install -e '.[jax_cpu]'
-    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
     pip3 install -e '.[full]'
     ```
+
 
 <details>
 <summary>
