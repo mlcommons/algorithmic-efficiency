@@ -573,7 +573,7 @@ def setup_imagenet_pytorch(data_dir):
     if tar_filename.endswith('.tar'):
       dir_name = tar_filename[:-4]
       extract(
-          os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME),
+          os.path.join(imagenet_pytorch_data_dir, tar_filename),
           os.path.join(imagenet_pytorch_data_dir, 'train', dir_name),
           mode='r:')
 
