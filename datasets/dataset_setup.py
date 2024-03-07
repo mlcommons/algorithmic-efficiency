@@ -293,22 +293,23 @@ def download_criteo1tb(data_dir,
       stream=True)
 
   all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all_days.zip')
-  download = True
-  if os.path.exists(all_days_zip_filepath):
-    while True:
-      overwrite = input('File already exists {}.\n Overwrite? (Y/n)'.format(
-          all_days_zip_filepath)).lower()
-      if overwrite in ['y', 'n']:
-        break
-      logging.info('Invalid response. Try again.')
-    if overwrite == 'n':
-      logging.info(f'Skipping download to {all_days_zip_filepath}')
-      download = False
+  if not FLAGS.skip_download:
+    download = True
+    if os.path.exists(all_days_zip_filepath):
+      while True:
+        overwrite = input('File already exists {}.\n Overwrite? (Y/n)'.format(
+            all_days_zip_filepath)).lower()
+        if overwrite in ['y', 'n']:
+          break
+        logging.info('Invalid response. Try again.')
+      if overwrite == 'n':
+        logging.info(f'Skipping download to {all_days_zip_filepath}')
+        download = False
 
-  if download:
-    with open(all_days_zip_filepath, 'wb') as f:
-      for chunk in download_request.iter_content(chunk_size=1024):
-        f.write(chunk)
+    if download:
+      with open(all_days_zip_filepath, 'wb') as f:
+        for chunk in download_request.iter_content(chunk_size=1024):
+          f.write(chunk)
 
   unzip_cmd = f'unzip {all_days_zip_filepath} -d {tmp_criteo_dir}'
   logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
