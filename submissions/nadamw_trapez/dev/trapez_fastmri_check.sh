@@ -3,7 +3,7 @@
 #SBATCH --job-name=trapez_check
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%j.out
-#SBATCH --time=01:00:00
+#SBATCH --time=03:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -49,8 +49,8 @@ torchrun \
   --imagenet_v2_data_dir=$DATA_DIR/$dataset \
   --submission_path=$submission \
   --tuning_search_space=$search_space \
-  --num_tuning_trials=$trials \
+  --num_tuning_trials=$num_tuning_trials \
   --experiment_dir=$EXP_DIR  \
-  --experiment_name=$name \
+  --experiment_name=$experiment_name \
   --overwrite \
   --use_wandb

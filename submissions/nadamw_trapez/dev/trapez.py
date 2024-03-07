@@ -21,22 +21,31 @@ model = SimpleModel()
 # Define an optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.1)
 
+step_hint = 100
+warmup_factor = 0.1
+decay_factor = 0.6
+
+warmup_steps = int(warmup_factor * step_hint)
+decay_start_step = int(decay_factor * step_hint)
+constant_steps = decay_start_step - warmup_steps
+decay_steps = step_hint - decay_start_step
+
 # Scheduler
-warmup_steps = 10
+# warmup_steps = 10
 warmup = LinearLR(
     optimizer, start_factor=1e-10, end_factor=1., total_iters=warmup_steps)
 
-constant_steps = 40
+# constant_steps = 40
 constant = ConstantLR(optimizer, factor=1.0, total_iters=constant_steps)
 
-decay_steps = 50
+# decay_steps = 50
 linear_decay = LinearLR(
     optimizer, start_factor=1., end_factor=0., total_iters=decay_steps)
 
 scheduler = SequentialLR(
     optimizer,
     schedulers=[warmup, constant, linear_decay],
-    milestones=[warmup_steps, constant_steps+warmup_steps])
+    milestones=[warmup_steps, decay_start_step])
 
 wandb.init(project='exp')
 
