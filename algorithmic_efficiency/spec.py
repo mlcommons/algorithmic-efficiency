@@ -101,7 +101,7 @@ class Workload(metaclass=abc.ABCMeta):
     self._eval_iters: Dict[str, Iterator] = {}
     self.metrics_logger = None
     # Is set in submission_runner.py for workloads with PyTorch data loaders.
-    self._num_workers = None
+    self._eval_num_workers = None
 
   @property
   @abc.abstractmethod

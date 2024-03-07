@@ -152,7 +152,7 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('set_pytorch_max_split_size',
                      False,
                      'If true, set pytorch max_split_size_mb to 256')
-flags.DEFINE_integer('pytorch_num_workers',
+flags.DEFINE_integer('pytorch_eval_num_workers',
                      4,
                      'Number of workers for PyTorch data loaders.')
 FLAGS = flags.FLAGS
@@ -207,9 +207,9 @@ def train_once(
 
   # Workload setup.
   logging.info('Initializing dataset.')
-  if hasattr(workload, 'num_workers'):
+  if hasattr(workload, 'eval_num_workers'):
     # Set the number of workers for PyTorch data loaders.
-    workload.num_workers = FLAGS.pytorch_num_workers
+    workload.eval_num_workers = FLAGS.pytorch_eval_num_workers
   with profiler.profile('Initializing dataset'):
     input_queue = workload._build_input_queue(
         data_rng,
