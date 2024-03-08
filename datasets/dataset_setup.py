@@ -596,9 +596,14 @@ def setup_imagenet_pytorch(data_dir):
   valprep_command = [
       'wget',
       '-qO-',
-      'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh']
+      'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh'
+  ]
   valprep_download = subprocess.Popen(valprep_command, stdout=subprocess.PIPE)
-  valprep_process = subprocess.Popen(['bash'], stdin=valprep_download.stdout, cwd=os.path.expanduser(os.path.join(imagenet_pytorch_data_dir, 'val')))
+  valprep_process = subprocess.Popen(['bash'],
+                                     stdin=valprep_download.stdout,
+                                     cwd=os.path.expanduser(
+                                         os.path.join(imagenet_pytorch_data_dir,
+                                                      'val')))
   valprep_download.stdout.close()
   valprep_process.communicate()
   logging.info('Set up imagenet dataset for pytorch framework complete')
@@ -732,9 +737,9 @@ def main(_):
 
     if not FLAGS.skip_download:
       download_fastmri(data_dir,
-                      knee_singlecoil_train_url,
-                      knee_singlecoil_val_url,
-                      knee_singlecoil_test_url)
+                       knee_singlecoil_train_url,
+                       knee_singlecoil_val_url,
+                       knee_singlecoil_test_url)
 
     logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir)
