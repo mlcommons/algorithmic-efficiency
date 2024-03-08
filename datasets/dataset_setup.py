@@ -530,76 +530,76 @@ def setup_imagenet_jax(data_dir):
 
 
 def setup_imagenet_pytorch(data_dir):
-  train_tar_file_path = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
-  val_tar_file_path = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
-  test_dir_path = os.path.join(data_dir, 'imagenet_v2')
+  # train_tar_file_path = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
+  # val_tar_file_path = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
+  # test_dir_path = os.path.join(data_dir, 'imagenet_v2')
 
-  # Check if downloaded data has been moved
-  manual_download_dir = os.path.join(data_dir, 'jax', 'downloads', 'manual')
-  if not os.path.exists(train_tar_file_path):
-    if os.path.exists(
-        os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
-      train_tar_file_path = os.path.join(manual_download_dir,
-                                         IMAGENET_TRAIN_TAR_FILENAME)
-  if not os.path.exists(val_tar_file_path):
-    if os.path.exists(
-        os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
-      val_tar_file_path = os.path.join(manual_download_dir,
-                                       IMAGENET_VAL_TAR_FILENAME)
+  # # Check if downloaded data has been moved
+  # manual_download_dir = os.path.join(data_dir, 'jax', 'downloads', 'manual')
+  # if not os.path.exists(train_tar_file_path):
+  #   if os.path.exists(
+  #       os.path.join(manual_download_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+  #     train_tar_file_path = os.path.join(manual_download_dir,
+  #                                        IMAGENET_TRAIN_TAR_FILENAME)
+  # if not os.path.exists(val_tar_file_path):
+  #   if os.path.exists(
+  #       os.path.join(manual_download_dir, IMAGENET_VAL_TAR_FILENAME)):
+  #     val_tar_file_path = os.path.join(manual_download_dir,
+  #                                      IMAGENET_VAL_TAR_FILENAME)
 
-  # Setup pytorch dataset dir
-  imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'train')):
-    os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'val')):
-    os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
+  # # Setup pytorch dataset dir
+  # imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
+  # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'train')):
+  #   os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
+  # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'val')):
+  #   os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
 
-  # Move tar files and imagenet_v2 into pytorch directory
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME)):
-    logging.info('Moving {} to {}'.format(train_tar_file_path,
-                                          imagenet_pytorch_data_dir))
-    shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME)):
-    logging.info('Moving {} to {}'.format(val_tar_file_path,
-                                          imagenet_pytorch_data_dir))
-    shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')):
-    logging.info('Moving imagenet_v2 to {}'.format(
-        os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')))
-    shutil.move(test_dir_path,
-                os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
+  # # Move tar files and imagenet_v2 into pytorch directory
+  # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+  #   logging.info('Moving {} to {}'.format(train_tar_file_path,
+  #                                         imagenet_pytorch_data_dir))
+  #   shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
+  # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME)):
+  #   logging.info('Moving {} to {}'.format(val_tar_file_path,
+  #                                         imagenet_pytorch_data_dir))
+  #   shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
+  # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')):
+  #   logging.info('Moving imagenet_v2 to {}'.format(
+  #       os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')))
+  #   shutil.move(test_dir_path,
+  #               os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
 
-  # Extract train data\
-  logging.info('Extracting imagenet train data')
-  extract(
-      os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME),
-      os.path.join(imagenet_pytorch_data_dir, 'train'),
-      mode='r:')
+  # # Extract train data\
+  # logging.info('Extracting imagenet train data')
+  # extract(
+  #     os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME),
+  #     os.path.join(imagenet_pytorch_data_dir, 'train'),
+  #     mode='r:')
 
-  train_tar_filenames = os.listdir(
-      os.path.join(imagenet_pytorch_data_dir, 'train'))
-  for tar_filename in train_tar_filenames:
-    if tar_filename.endswith('.tar'):
-      dir_name = tar_filename[:-4]
-      extract(
-          os.path.join(imagenet_pytorch_data_dir, 'train', tar_filename),
-          os.path.join(imagenet_pytorch_data_dir, 'train', dir_name),
-          mode='r:')
+  # train_tar_filenames = os.listdir(
+  #     os.path.join(imagenet_pytorch_data_dir, 'train'))
+  # for tar_filename in train_tar_filenames:
+  #   if tar_filename.endswith('.tar'):
+  #     dir_name = tar_filename[:-4]
+  #     extract(
+  #         os.path.join(imagenet_pytorch_data_dir, 'train', tar_filename),
+  #         os.path.join(imagenet_pytorch_data_dir, 'train', dir_name),
+  #         mode='r:')
 
-  # Extract val data
-  logging.info('Extracting imagenet val data')
-  extract(
-      os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME),
-      os.path.join(imagenet_pytorch_data_dir, 'val'),
-      mode='r:')
+  # # Extract val data
+  # logging.info('Extracting imagenet val data')
+  # extract(
+  #     os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME),
+  #     os.path.join(imagenet_pytorch_data_dir, 'val'),
+  #     mode='r:')
 
   valprep_command = [
       'wget',
       '-qO-',
-      ('https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/'
-       'valprep.sh'),
-  ]
-  valprep_process = subprocess.Popen(valprep_command, shell=True)
+      'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh']
+  valprep_download = subprocess.Popen(valprep_command, stdout=subprocess.PIPE)
+  valprep_process = subprocess.Popen(['bash'], stdin=valprep_download.stdout, cwd=os.path.expanduser(os.path.join(imagenet_pytorch_data_dir, 'val')))
+  valprep_download.stdout.close()
   valprep_process.communicate()
   logging.info('Set up imagenet dataset for pytorch framework complete')
 
@@ -741,7 +741,6 @@ def main(_):
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
     flags.mark_flag_as_required('imagenet_val_url')
-    logging.info('Downloading ImageNet...')
     imagenet_train_url = FLAGS.imagenet_train_url
     imagenet_val_url = FLAGS.imagenet_val_url
     if imagenet_train_url is None or imagenet_val_url is None:
@@ -753,6 +752,7 @@ def main(_):
           'Please specify either jax or pytorch framework through framework '
           'flag.')
     if not FLAGS.skip_download:
+      logging.info('Downloading ImageNet...')
       download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
 
