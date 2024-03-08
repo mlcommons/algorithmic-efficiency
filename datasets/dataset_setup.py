@@ -702,7 +702,8 @@ def main(_):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
   tmp_dir = os.path.abspath(os.path.expanduser(tmp_dir))
-  logging.info('Downloading data to %s...', data_dir)
+  if not FLAGS.skip_download:
+    logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo1tb:
     logging.info('Downloading criteo1tb...')
