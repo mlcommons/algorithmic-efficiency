@@ -3,12 +3,8 @@
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate alpe
 
-# export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0
 # export OMP_NUM_THREADS=32
-export HOME=/home/najroldi
-export CODE_DIR=/home/najroldi/algorithmic-efficiency
-export EXP_DIR=/fast/najroldi/exp/algoperf
-export DATA_DIR=/fast/najroldi/data
 
 # Workload
 dataset=MNIST
@@ -16,8 +12,12 @@ workload=mnist
 
 # Job specific vars
 submission='submissions/lawa/dev/adamw_mnist.py'
+name="lawa_dev_seed"
+
+# submission='reference_algorithms/development_algorithms/mnist/mnist_pytorch/submission.py'
+# name="mnist_dev_seed"
+
 search_space='submissions/lawa/dev/space_1.json'
-name="lawa_dev_01"
 trials=1
 
 # Execute python script
@@ -38,4 +38,9 @@ python \
   --num_tuning_trials=$trials \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$name \
-  --overwrite
+  --overwrite \
+  --fixed_space \
+  --rng_seed=1996 \
+  --use_wandb
+
+#resume_last_run

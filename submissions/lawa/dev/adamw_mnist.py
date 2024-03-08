@@ -3,14 +3,60 @@
 from typing import Dict, Iterator, List, Tuple
 
 import torch
+import wandb
 
+from copy import deepcopy
+
+import pdb
 from algorithmic_efficiency import spec
-
+from collections import deque
 
 def get_batch_size(workload_name):
   # Return the global batch size.
   batch_sizes = {'mnist': 1024}
   return batch_sizes[workload_name]
+
+
+class LAWAQueue(object): # TODO
+  def __init__(self, maxlen) -> None:
+    self._maxlen = int(maxlen)
+    self._queue = deque(maxlen=self._maxlen)
+  
+  def state_dict(self):
+    return {key: value for key, value in self.__dict__.items()}
+  
+  def load_state_dict(self, state_dict):
+    self.__dict__.update(state_dict)
+    
+  def push(self, params):
+    self._queue.append([p.detach().clone(memory_format=torch.preserve_format) for p in params])
+  
+  def full(self):
+    return (len(self._queue)==self._maxlen)
+
+  def get_avg(self):
+    if not self.full():
+      raise ValueError("q should be full to compute avg")
+    
+    q = self._queue
+    k = float(self._maxlen)
+    q_avg = [torch.zeros_like(p, device=p.device) for p in q[0]]
+    for chkpts in q:
+      for p_avg,p in zip(q_avg, chkpts):
+        p_avg.add_(p/k)
+    
+    return q_avg
+
+# just a wrapper of dict, with a state_dict) and load_state_dict() method
+class MyDict(object):
+  def __init__(self, d) -> None:
+    self.dict = d
+
+  def state_dict(self):
+    return self.dict
+
+  def load_state_dict(self, state_dict):
+    self.dict.update(state_dict)
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -28,6 +74,9 @@ def init_optimizer_state(workload: spec.Workload,
               lr=hyperparameters.learning_rate,
               betas=(1.0 - hyperparameters.one_minus_beta_1, 0.999),
               eps=hyperparameters.epsilon),
+        # 'queue': deque(maxlen=int(hyperparameters.k)),
+        'queue': LAWAQueue(maxlen=hyperparameters.k),
+        'previous_state': MyDict(model_params.state_dict()),
   }
   return optimizer_state
 
@@ -35,7 +84,7 @@ def init_optimizer_state(workload: spec.Workload,
 def update_params(workload: spec.Workload,
                   current_param_container: spec.ParameterContainer,
                   current_params_types: spec.ParameterTypeTree,
-                  model_state: spec.ModelAuxiliaryState,
+                  model_state: spec.ModelAuxiliaryState, # sempre None da workload.model_fn()
                   hyperparameters: spec.Hyperparameters,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
@@ -44,13 +93,17 @@ def update_params(workload: spec.Workload,
                   global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
-  del hyperparameters
   del loss_type
   del current_params_types
   del eval_results
-  del global_step
-
+  
   current_model = current_param_container
+  queue = optimizer_state['queue']
+  
+  # Discard average and load previous params
+  if queue.full():
+    current_model.load_state_dict(optimizer_state['previous_state'].state_dict())
+  
   current_model.train()
   for param in current_model.parameters():
     param.grad = None
@@ -68,7 +121,27 @@ def update_params(workload: spec.Workload,
   loss = loss_dict['summed'] / loss_dict['n_valid_examples']
   loss.backward()
   optimizer_state['optimizer'].step()
-
+  
+  # Update queue
+  queue.push(current_model.parameters())
+  
+  # Save params for next iteration TODO: cannot checkpoint it
+  optimizer_state['previous_state'] = MyDict(current_param_container.state_dict())
+  
+  if queue.full():
+    # Compute avg
+    avg = queue.get_avg()
+    # Load avg into model
+    for p, p_avg in zip(current_model.parameters(), avg):
+      assert p.data.shape == p_avg.shape, "Shape mismatch"
+      p.data = p_avg.clone()
+    
+    # if wandb.run is not None:
+    #   wandb.log({
+    #     "current_model_dict": current_param_container.state_dict(),
+    #     "previous_state_dict": optimizer_state['previous_state_dict']
+    #   })
+    
   return (optimizer_state, current_param_container, new_model_state)
 
 
