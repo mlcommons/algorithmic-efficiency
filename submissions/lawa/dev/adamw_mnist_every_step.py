@@ -14,9 +14,6 @@ import pdb
 from algorithmic_efficiency import spec
 from collections import deque
 
-def mynorm(params):
-  return torch.norm(torch.stack([torch.norm(p.detach().clone(), 2) for p in params]), 2)
-      
 def get_batch_size(workload_name):
   # Return the global batch size.
   batch_sizes = {'mnist': 1024}
@@ -93,13 +90,31 @@ def update_params(workload: spec.Workload,
   
   current_model = current_param_container
   queue = optimizer_state['queue']
-  lawa_start_step = hyperparameters.lawa_start_step
   
-  # Discard average and load previous params
-  if global_step > lawa_start_step and queue.full():
-    for p,p_old in zip(current_model.parameters(), queue.get_last()):
+  # ### check that at new iteration, params are same as avg
+  # if wandb.run is not None and queue.full():
+  #   def mynorm(params):
+  #     return torch.norm(torch.stack([torch.norm(p.detach().clone(), 2) for p in params]), 2)
+  #   wandb.log({
+  #       'norm_model': mynorm(current_model.parameters()),
+  #       'norm_avg': mynorm(queue.get_avg()),
+  #   })
+    
+  # Discard average and load previous params after loading
+  if queue.full():
+    for p,p_old in zip(current_model.parameters(), 
+                       queue.get_last()):
       p.data = p_old.clone()
   
+  # ### check that model params equal prev_params
+  # if wandb.run is not None and queue.full():
+  #   def mynorm(params):
+  #     return torch.norm(torch.stack([torch.norm(p.detach().clone(), 2) for p in params]), 2)
+  #   wandb.log({
+  #       'norm_model': mynorm(current_model.parameters()),
+  #       'norm_prev': mynorm(queue.get_last()),
+  #   })
+    
   current_model.train()
   for param in current_model.parameters():
     param.grad = None
@@ -118,31 +133,27 @@ def update_params(workload: spec.Workload,
   loss.backward()
   optimizer_state['optimizer'].step()
   
-  if global_step >= lawa_start_step:
-
-    # Update queue
-    queue.push(current_model.parameters())
-
-    # Compute avg, load avg into model
-    if queue.full():
-      avg = queue.get_avg()
-      for p, p_avg in zip(current_model.parameters(), avg):
-        assert p.data.shape == p_avg.shape, "Shape mismatch"
-        p.data = p_avg.clone()
-      
-  # ### check logs before return
-  # if wandb.run is not None:
-  #   if queue.full():
-  #     wandb.log({
-  #         'w_step': global_step,
-  #         'norm_prev': mynorm(queue.get_last()),
-  #         'norm_avg': mynorm(queue.get_avg()),
-  #         'norm_model': mynorm(current_model.parameters())})
-  #   else:
-  #     wandb.log({
-  #         'w_step': global_step,
-  #         'norm_model': mynorm(current_model.parameters())})
-        
+  # Update queue
+  queue.push(current_model.parameters())
+  
+  if queue.full():
+    # Compute avg
+    avg = queue.get_avg()
+    # Load avg into model
+    for p, p_avg in zip(current_model.parameters(), avg):
+      assert p.data.shape == p_avg.shape, "Shape mismatch"
+      p.data = p_avg.clone()
+    
+    # ### check that Load avg into model does not affect previous_state_dict
+    # if wandb.run is not None:
+    #   def mynorm(params):
+    #     return torch.norm(torch.stack([torch.norm(p.detach().clone(), 2) for p in params]), 2)
+    #   wandb.log({
+    #       'norm_avg': mynorm(avg),
+    #       'norm_model': mynorm(current_model.parameters()),
+    #       'norm_prev': mynorm(queue.get_last()),
+    #   })
+  
   return (optimizer_state, current_param_container, new_model_state)
 
 

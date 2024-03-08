@@ -10,5 +10,8 @@
   },
   "k": {
       "feasible_points": [5]
+  },
+  "lawa_start_step": {
+      "feasible_points": [100]
   }
 }

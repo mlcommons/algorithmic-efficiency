@@ -93,12 +93,15 @@ def update_params(workload: spec.Workload,
   
   current_model = current_param_container
   queue = optimizer_state['queue']
-  lawa_start_step = hyperparameters.lawa_start_step
+  lawa_interval = hyperparameters.lawa_interval
+  wait_steps = hyperparameters.lawa_wait_steps
   
-  # Discard average and load previous params
-  if global_step > lawa_start_step and queue.full():
-    for p,p_old in zip(current_model.parameters(), queue.get_last()):
-      p.data = p_old.clone()
+  # Discard average and load previous params after loading
+  if global_step > wait_steps and (global_step-1) % lawa_interval == 0:
+    if queue.full():
+      for p,p_old in zip(current_model.parameters(), 
+                        queue.get_last()):
+        p.data = p_old.clone()
   
   current_model.train()
   for param in current_model.parameters():
@@ -118,7 +121,7 @@ def update_params(workload: spec.Workload,
   loss.backward()
   optimizer_state['optimizer'].step()
   
-  if global_step >= lawa_start_step:
+  if global_step > wait_steps and global_step % hyperparameters.lawa_interval == 0:
 
     # Update queue
     queue.push(current_model.parameters())
@@ -130,18 +133,20 @@ def update_params(workload: spec.Workload,
         assert p.data.shape == p_avg.shape, "Shape mismatch"
         p.data = p_avg.clone()
       
-  # ### check logs before return
-  # if wandb.run is not None:
-  #   if queue.full():
-  #     wandb.log({
-  #         'w_step': global_step,
-  #         'norm_prev': mynorm(queue.get_last()),
-  #         'norm_avg': mynorm(queue.get_avg()),
-  #         'norm_model': mynorm(current_model.parameters())})
-  #   else:
-  #     wandb.log({
-  #         'w_step': global_step,
-  #         'norm_model': mynorm(current_model.parameters())})
+  ### check before return
+  if wandb.run is not None:
+    if queue.full():
+      wandb.log({
+          'w_step': global_step,
+          'norm_prev': mynorm(queue.get_last()),
+          'norm_avg': mynorm(queue.get_avg()),
+          'norm_model': mynorm(current_model.parameters()),
+      })
+    else:
+      wandb.log({
+          'w_step': global_step,
+          'norm_model': mynorm(current_model.parameters()),
+      })
         
   return (optimizer_state, current_param_container, new_model_state)
 

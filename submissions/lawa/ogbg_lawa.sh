@@ -3,8 +3,9 @@
 source ~/.bashrc
 conda activate alpe
 
+export CUDA_VISIBLE_DEVICES=0
 # export CUDA_VISIBLE_DEVICES=0
-# export OMP_NUM_THREADS=32
+
 export CODE_DIR=~/algorithmic-efficiency
 export EXP_DIR=/is/sg2/najroldi/exp/algoperf
 export DATA_DIR=/is/sg2/najroldi/data
@@ -14,9 +15,9 @@ dataset=ogbg
 workload=ogbg
 
 # Job specific vars
-submission='submissions/lawa/dev/adamw_dev.py'
-search_space='submissions/lawa/dev/space_1.json'
-name="lawa_dev_01"
+submission='submissions/lawa/nadamw_cos.py'
+search_space='submissions/lawa/space_1.json'
+name="lawa_ogbg_01"
 trials=1
 
 # Execute python script
@@ -37,4 +38,6 @@ python \
   --num_tuning_trials=$trials \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$name \
-  --overwrite
+  --overwrite \
+  --rng_seed=1996 \
+  --use_wandb
