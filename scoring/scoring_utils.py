@@ -167,9 +167,10 @@ def get_experiment_df(experiment_dir):
   """
   df = pd.DataFrame()
   paths = filter(
-      lambda x: re.match(experiment_dir + TIMESTAMP, x) or x == experiment_dir,
+      lambda x: (re.match(experiment_dir + TIMESTAMP, x) or x == experiment_dir),
       glob.glob(f"{experiment_dir}*"))
-  for experiment_dir in list(paths):
+
+  for experiment_dir in paths:
     study_dirs = os.listdir(experiment_dir)
     for study_dir in study_dirs:
       workload_dirs = os.listdir(os.path.join(experiment_dir, study_dir))
