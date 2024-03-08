@@ -555,11 +555,13 @@ def setup_imagenet_pytorch(data_dir):
     os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
 
   # Move tar files and imagenet_v2 into pytorch directory
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+  if not os.path.exists(
+      os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME)):
     logging.info('Moving {} to {}'.format(train_tar_file_path,
                                           imagenet_pytorch_data_dir))
     shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
-  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME)):
+  if not os.path.exists(
+      os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME)):
     logging.info('Moving {} to {}'.format(val_tar_file_path,
                                           imagenet_pytorch_data_dir))
     shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
