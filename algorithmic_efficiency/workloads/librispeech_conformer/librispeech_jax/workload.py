@@ -32,6 +32,17 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self.use_specaug = use_specaug
 
   @property
+  def eval_num_workers(self) -> int:
+    if self._eval_num_workers is None:
+      raise ValueError(
+          'num_workers property must be set before workload is used.')
+    return self._eval_num_workers
+
+  @eval_num_workers.setter
+  def eval_num_workers(self, eval_num_workers: int):
+    self._eval_num_workers = eval_num_workers
+
+  @property
   def use_post_layer_norm(self) -> bool:
     return True
 
@@ -147,7 +158,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             batch_size=global_batch_size,
             shuffle=train,
             sampler=None,
-            num_workers=4,
+            num_workers=4 if train else self.eval_num_workers,
             prefetch_factor=10,
             pin_memory=False,
             drop_last=train,

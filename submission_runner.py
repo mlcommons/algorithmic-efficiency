@@ -143,7 +143,7 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     'hparam_end_index',
     None,
-    'End index to slice set of hyperparameters in tuning spearch space.')
+    'End index to slice set of hyperparameters in tuning search space.')
 flags.DEFINE_integer(
     'rng_seed',
     None,
@@ -152,6 +152,9 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('set_pytorch_max_split_size',
                      False,
                      'If true, set pytorch max_split_size_mb to 256')
+flags.DEFINE_integer('pytorch_eval_num_workers',
+                     4,
+                     'Number of workers for PyTorch evaluation data loaders.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -204,6 +207,9 @@ def train_once(
 
   # Workload setup.
   logging.info('Initializing dataset.')
+  if hasattr(workload, 'eval_num_workers'):
+    # Set the number of workers for PyTorch data loaders.
+    workload.eval_num_workers = FLAGS.pytorch_eval_num_workers
   with profiler.profile('Initializing dataset'):
     input_queue = workload._build_input_queue(
         data_rng,
