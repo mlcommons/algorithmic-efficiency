@@ -548,7 +548,7 @@ def setup_imagenet_pytorch(data_dir):
   #                                      IMAGENET_VAL_TAR_FILENAME)
 
   # # Setup pytorch dataset dir
-  # imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
+  imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
   # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'train')):
   #   os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
   # if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'val')):
