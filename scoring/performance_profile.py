@@ -141,17 +141,15 @@ def get_index_that_reaches_target(workload_df,
   validation_target_reached = validation_series.apply(
       lambda x: op(x, validation_target))
   target_reached = pd.Series(validation_target_reached)
-
   # Remove trials that never reach the target
   target_reached = target_reached[target_reached.apply(np.any)]
 
-  # If no trials reach the target return -1. Else, return the eval index
+  # If less than 3 trials reach the target, the submission will be scored as
+  # missing the target on this workload; return -1. Else, return the eval index
   # of the earliest point the target is reached.
-  if len(target_reached) == 0:
+  if len(target_reached) < 3:
     return -1, -1
   else:
-    print(target_reached)
-    print(target_reached)
     index_reached = target_reached.apply(np.argmax)
     trial = index_reached.idxmin()
     return trial, index_reached[trial]
@@ -176,8 +174,6 @@ def get_times_for_submission(submission,
     DataFrame with columns `submission`, `workload`, and time_col.
   """
   workloads = []
-  print(submission)
-  print(submission.columns)
   num_workloads = len(submission.groupby('workload'))
   if num_workloads != NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS:
     if strict:
@@ -316,8 +312,6 @@ def compute_performance_profiles(results,
     if workload_ not in BASE_WORKLOADS:
       # If variants do not have finite score set base_workload score to inf
       base_workload = get_base_workload_name(workload_)
-      print(base_workload)
-      print(workload_)
       df[base_workload] = df.apply(
           variant_criteria_filter(base_workload + f'_{framework}', workload),
           axis=1)
