@@ -256,6 +256,10 @@ dangerous if the user injects code into the `--data_dir` or `--temp_dir` flags. 
 do some basic sanitization in `main()`, but submitters should not let untrusted
 users run this script on their systems.
 
+Clean up: we do not remove the leftover `.tar` files in preprocessing. If setting
+up this dataset for the `pytorch` framework, please remove leftover `.tar`
+files `$DATA_DIR/imagenet/pytorch` and `$DATA_DIR/imagenet/pytorch/train`.
+
 <details>
 <summary>The final directory structure should look like this for ImageNet2012 (PyTorch):</summary>
 
