@@ -379,7 +379,7 @@ python scoring/run_workloads.py \
 
 Note that to run the above script you will need at least the `jax_cpu` and `pytorch_cpu` installations of the `algorithmic-efficiency` package.
 
-During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow someflexibility.
+During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow some flexibility.
 To simulate official scoring, pass the `--strict=True` flag in `score_submission.py`. To get the raw scores and performance profiles of group of submissions or single submission:
 
 ```bash
