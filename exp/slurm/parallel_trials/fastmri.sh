@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=trapez_03
-#SBATCH --array=1-80
+#SBATCH --job-name=trapez_04
+#SBATCH --array=1-60
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%A_%a.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%A_%a.out
 #SBATCH --time=04:00:00
@@ -26,13 +26,13 @@ workload=fastmri
 
 # Submission
 # submission='submissions/nadamw_triang/nadamw_triang.py'
-# search_space='submissions/nadamw_triang/space_3.json'
+# search_space='submissions/nadamw_triang/space_4.json'
 submission='submissions/nadamw_trapez/nadamw_trapez.py'
-search_space='submissions/nadamw_trapez/space_3.json'
+search_space='submissions/nadamw_trapez/space_4.json'
 
 # Experiment name, study
-# base_name="nadamw_triang_03"
-base_name="nadamw_trapez_03"
+# base_name="nadamw_triang_04"
+base_name="nadamw_trapez_04"
 study=1
 
 # Set config
@@ -62,4 +62,5 @@ torchrun \
   --experiment_name=$experiment_name \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
-  --use_wandb
+  --use_wandb \
+  --fixed_space

@@ -59,4 +59,5 @@ torchrun \
   --experiment_name=$experiment_name \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
-  --use_wandb=False
+  --use_wandb=False \
+  --fixed_space
