@@ -87,42 +87,9 @@ def check_if_minimized(col_name):
                    'either a column name or a substring of a column name.')
 
 
-def get_index_that_reaches_best(workload_df, metric_col):
-  """Get the eval index in which a workload reaches the best on metric_col.
-  This is just a helper function for summarizing metrics over a run
-  and is not used for scoring.
-
-  Args:
-    workload_df: A subset of a submission's trials DataFrame that
-      includes only the trials in a single workload.
-    metric_col: Name of array column in workload_df 
-      (e.g., `validation/l1_loss`).
-
-  Returns:
-    Tuple of trial index, time index, and best value where the workload
-      reached the best metric_col. Return (-1, -1, -1) if no undiverged trials.
-  """
-  is_minimized = check_if_minimized(metric_col)
-  series = workload_df[metric_col]
-
-  series = series[series != np.nan]
-
-  op = np.min if is_minimized else np.max
-  best = series.apply(op)
-
-  op_idx = np.argmin if is_minimized else np.argmax
-  best_idx = series.apply(op_idx)
-
-  if best.empty:
-    return -1, -1, -1
-  else:
-    trial = best.idxmin() if is_minimized else best.idxmax()
-    return trial, best_idx[trial], best[trial]
-
-
 def get_best_trial_index(workload_df,
                         validation_metric,
-                        validation_target):
+                        validation_target=None):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
@@ -157,7 +124,7 @@ def get_best_trial_index(workload_df,
     return trial, index_reached[trial]
 
 
-def get_times_for_submission(submission,
+def get_workloads_time_to_target(submission,
                              submission_name,
                              time_col='global_step',
                              verbosity=1,
@@ -293,7 +260,7 @@ def compute_performance_profiles(results,
         f'{submission_tag}')
     # Get time to targets for each submission across studies and trials
     dfs.append(
-        get_times_for_submission(result,
+        get_workloads_time_to_target(result,
                                  submission_tag,
                                  time_col,
                                  verbosity,
