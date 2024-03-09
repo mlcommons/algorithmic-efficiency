@@ -70,7 +70,7 @@ def get_summary_df(workload, workload_df):
   summary_df['submission time (s)'] = workload_df.apply(
       lambda x: x['accumulated_submission_time'][x['index best eval']], axis=1)
   summary_df['submission time to target (s)'] = summary_df.apply(
-      lambda x: x['submission time'] if x['target reached'] else np.inf, axis=1)
+      lambda x: x['submission time (s)'] if x['target reached'] else np.inf, axis=1)
 
   return summary_df
 
