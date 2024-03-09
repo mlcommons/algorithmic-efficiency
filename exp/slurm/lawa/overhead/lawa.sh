@@ -1,10 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=triang_03_criteo
-#SBATCH --array=1-25
-#SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%x_%A_%a.err
-#SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%x_%A_%a.out
-#SBATCH --time=04:00:00
+#SBATCH --job-name=fastmri_lawa
+#SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%j.err
+#SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%j.out
+#SBATCH --time=24:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -21,25 +20,20 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=criteo1tb
-workload=criteo1tb
+dataset=fastmri
+workload=fastmri
 
 # Submission
-submission='submissions/nadamw_triang/nadamw_triang.py'
-search_space='submissions/nadamw_triang/space_1.json'
-# submission='submissions/nadamw_trapez/nadamw_trapez.py'
-# search_space='submissions/nadamw_trapez/space_3.json'
+submission='submissions/lawa/nadamw_cos.py'
+search_space='exp/slurm/lawa/overhead/lawa.json'
 
 # Experiment name, study
-base_name="nadamw_triang_01"
-# base_name="nadamw_trapez_03"
+base_name="lawa_overhead_lawa"
 study=1
+num_tuning_trials=2
 
-# Set config
+# Set experient name
 experiment_name="${base_name}/study_${study}"
-num_tuning_trials=$SLURM_ARRAY_TASK_MAX
-trial_index=$SLURM_ARRAY_TASK_ID
-rng_seed=3429199924 #$study # same seed across trials
 
 # Execute python script
 torchrun \
@@ -56,11 +50,10 @@ torchrun \
   --submission_path=$submission \
   --tuning_search_space=$search_space \
   --num_tuning_trials=$num_tuning_trials \
-  --trial_index=$trial_index \
-  --rng_seed=$rng_seed \
   --experiment_dir=$EXP_DIR  \
   --experiment_name=$experiment_name \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
   --use_wandb \
-  --fixed_space
+  --max_global_steps=2000 \
+  --rng_seed=1996

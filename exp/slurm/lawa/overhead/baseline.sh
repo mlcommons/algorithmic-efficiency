@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=fastmri
+#SBATCH --job-name=criteo1tb_baseline
 #SBATCH --error=/ptmp/najroldi/logs/algoperf/err/%j.err
 #SBATCH --output=/ptmp/najroldi/logs/algoperf/out/%j.out
-#SBATCH --time=24:00:00
+#SBATCH --time=02:00:00
 #SBATCH --ntasks 1
 #SBATCH --requeue
 # --- 4 GPUs on a full node ---
@@ -20,8 +20,8 @@ export EXP_DIR=/ptmp/najroldi/exp/algoperf
 export DATA_DIR=/ptmp/najroldi/data
 
 # Workload
-dataset=fastmri
-workload=fastmri
+dataset=criteo1tb
+workload=criteo1tb
 
 # Submission
 submission='prize_qualification_baselines/external_tuning/pytorch_nadamw_target_setting.py'
@@ -55,5 +55,5 @@ torchrun \
   --save_intermediate_checkpoints=False \
   --resume_last_run \
   --use_wandb \
-  --max_global_steps=1000 \
+  --max_global_steps=2000 \
   --rng_seed=1996
