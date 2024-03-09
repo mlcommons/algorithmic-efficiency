@@ -8,10 +8,16 @@
   "epsilon": {
       "feasible_points": [1e-8]
   },
-  "k": {
-      "feasible_points": [5]
-  },
   "lawa_start_step": {
       "feasible_points": [100]
+  },
+  "lawa_interval": {
+      "feasible_points": [25]
+  },
+  "k": {
+      "feasible_points": [4]
+  },
+  "wandb_log": {
+      "feasible_points": [1]
   }
 }

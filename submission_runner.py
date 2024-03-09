@@ -52,6 +52,9 @@ from algorithmic_efficiency.workloads import workloads
 
 from algorithmic_efficiency import fixed_space
 
+# nico
+import wandb
+
 # disable only for deepspeech if it works fine for other workloads.
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 
@@ -384,6 +387,12 @@ def train_once(
 
         try:
           eval_start_time = get_time()
+          # nico
+          if wandb.run is not None:
+            wandb.log({
+              'my_step': global_step,
+              'is_eval_step': 1,
+              'is_eval_step_2': 2})
           latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
