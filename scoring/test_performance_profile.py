@@ -18,9 +18,8 @@ class Test(absltest.TestCase):
   def test_get_best_trial_index(self):
     pass
 
-  def test_get_trials_df(self):
-
-
+  def test_compute_performance_profiles(self):
+    pass
 
 
 if __name__ == '__main__':

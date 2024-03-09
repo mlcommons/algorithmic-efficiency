@@ -88,8 +88,8 @@ def check_if_minimized(col_name):
 
 
 def get_best_trial_index(workload_df,
-                        validation_metric,
-                        validation_target=None):
+                         validation_metric,
+                         validation_target=None):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
@@ -125,11 +125,11 @@ def get_best_trial_index(workload_df,
 
 
 def get_workloads_time_to_target(submission,
-                             submission_name,
-                             time_col='global_step',
-                             verbosity=1,
-                             self_tuning_ruleset=False,
-                             strict=False):
+                                 submission_name,
+                                 time_col='global_step',
+                                 verbosity=1,
+                                 self_tuning_ruleset=False,
+                                 strict=False):
   """Get times to target for each workload in a submission.
 
   Args:
@@ -148,8 +148,9 @@ def get_workloads_time_to_target(submission,
   num_workloads = len(submission.groupby('workload'))
   if num_workloads != NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS:
     if strict:
-      raise ValueError(f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads'
-                       f'but found {num_workloads} workloads.')
+      raise ValueError(
+          f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads'
+          f'but found {num_workloads} workloads.')
     logging.warning(
         f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
         f'but found {num_workloads} workloads.')
@@ -261,11 +262,11 @@ def compute_performance_profiles(results,
     # Get time to targets for each submission across studies and trials
     dfs.append(
         get_workloads_time_to_target(result,
-                                 submission_tag,
-                                 time_col,
-                                 verbosity,
-                                 self_tuning_ruleset,
-                                 strict))
+                                     submission_tag,
+                                     time_col,
+                                     verbosity,
+                                     self_tuning_ruleset,
+                                     strict))
   df = pd.concat(dfs)
 
   # Set score to inf if not within 4x of fastest submission
