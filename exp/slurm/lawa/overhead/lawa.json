@@ -1,0 +1,15 @@
+[
+  {
+      "dropout_rate": 0.0,
+      "label_smoothing": 0.1,
+      "learning_rate": 0.001,
+      "one_minus_beta1": 0.02,
+      "beta2": 0.998,
+      "weight_decay": 0.1,
+      "warmup_factor": 0.1,
+      "lawa_start_factor": 0.001,
+      "lawa_interval": 25,
+      "k": 4,
+      "wandb_log": 1
+  }
+]
