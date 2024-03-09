@@ -219,7 +219,7 @@ def variant_criteria_filter(base_workload, variant_workload):
   return filter
 
 
-def compute_performance_profiles(results,
+def compute_performance_profiles(submissions,
                                  time_col='global_step',
                                  min_tau=1.0,
                                  max_tau=None,
@@ -255,13 +255,13 @@ def compute_performance_profiles(results,
   """
   dfs = []
 
-  for submission_tag, result in results.items():
+  for submission_tag, submission in submissions.items():
     logging.info(
         f'\nComputing performance profile with respect to `{time_col}` for '
         f'{submission_tag}')
     # Get time to targets for each submission across studies and trials
     dfs.append(
-        get_workloads_time_to_target(result,
+        get_workloads_time_to_target(submission,
                                      submission_tag,
                                      time_col,
                                      verbosity,
