@@ -101,8 +101,6 @@ def main(_):
         'of studies. Your score may not be an accurate representation '
         'under competition scoring rules. To enforce the criteria set strict=True.'
     )
-  df = results['external_tuning']
-  print(df.describe())
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
         results,

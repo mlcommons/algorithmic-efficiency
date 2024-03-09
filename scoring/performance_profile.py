@@ -270,7 +270,6 @@ def compute_performance_profiles(results,
   df = pd.concat(dfs)
 
   # Set score to inf if not within 4x of fastest submission
-  df.describe()
   best_scores = df.min(axis=0)
   df[df.apply(lambda x: x > 4 * best_scores, axis=1)] = np.inf
 

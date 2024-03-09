@@ -28,7 +28,6 @@ class Test(absltest.TestCase):
 
   def test_get_experiment_df(self):
     df = scoring_utils.get_experiment_df(TEST_DIR)
-    print(df)
     assert df is not None
 
 
