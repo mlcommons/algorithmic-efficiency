@@ -1,9 +1,9 @@
+import os
+
 from absl.testing import absltest
 
 from scoring import performance_profile
 from scoring import scoring_utils
-
-import os
 
 TEST_LOGFILE = 'test_data/adamw_fastmri_jax_04-18-2023-13-10-58.log'
 TEST_DIR = 'test_data/experiment_dir'
