@@ -89,6 +89,8 @@ def check_if_minimized(col_name):
 
 def get_index_that_reaches_best(workload_df, metric_col):
   """Get the eval index in which a workload reaches the best on metric_col.
+  This is just a helper function for summarizing metrics over a run
+  and is not used for scoring.
 
   Args:
     workload_df: A subset of a submission's trials DataFrame that
@@ -118,9 +120,9 @@ def get_index_that_reaches_best(workload_df, metric_col):
     return trial, best_idx[trial], best[trial]
 
 
-def get_index_that_reaches_target(workload_df,
-                                  validation_metric,
-                                  validation_target):
+def get_best_trial_index(workload_df,
+                        validation_metric,
+                        validation_target):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
@@ -150,8 +152,6 @@ def get_index_that_reaches_target(workload_df,
   if len(target_reached) == 0:
     return -1, -1
   else:
-    print(target_reached)
-    print(target_reached)
     index_reached = target_reached.apply(np.argmax)
     trial = index_reached.idxmin()
     return trial, index_reached[trial]
@@ -176,19 +176,22 @@ def get_times_for_submission(submission,
     DataFrame with columns `submission`, `workload`, and time_col.
   """
   workloads = []
-  print(submission)
-  print(submission.columns)
+
+  # Check number of workloads in submission
   num_workloads = len(submission.groupby('workload'))
   if num_workloads != NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS:
     if strict:
-      raise ValueError(f'Expecting {NUM_TRIALS} trials for workload '
-                       f'{workload} but found {num_trials} trials.')
+      raise ValueError(f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads'
+                       f'but found {num_workloads} workloads.')
     logging.warning(
         f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
         f'but found {num_workloads} workloads.')
+
+  # For each workload get submission time get the submission times to target.
   for workload, group in submission.groupby('workload'):
     validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
 
+    # Check number of studies
     time_vals_per_study = []
     num_studies = len(group.groupby('study'))
     if num_studies != NUM_STUDIES:
@@ -198,7 +201,11 @@ def get_times_for_submission(submission,
       else:
         logging.warning(f'Expecting {NUM_STUDIES} trials for workload '
                         f'{workload} but found {num_studies} trials.')
+
+    # For each study check trials
     for study, group in group.groupby('study'):
+
+      # Check number of trials per study
       num_trials = len(group)
       if num_trials != NUM_TRIALS and not self_tuning_ruleset:
         if strict:
@@ -208,7 +215,8 @@ def get_times_for_submission(submission,
           logging.warning(f'Expecting {NUM_TRIALS} trials for workload '
                           f'{workload} but found {num_trials} trials.')
 
-      trial_idx, time_idx = get_index_that_reaches_target(
+      # Get trial and time index that reaches target
+      trial_idx, time_idx = get_best_trial_index(
           group, validation_metric, validation_target)
       if time_idx > -1:
         time_val = group[time_col].loc[trial_idx][time_idx]
@@ -221,15 +229,6 @@ def get_times_for_submission(submission,
         'workload': workload,
         time_col: np.median(time_vals_per_study),
     })
-
-    if verbosity > 0:
-      print('  hparams:')
-      if time_idx > -1:
-        hparams = group.loc[trial_idx, 'hparams']
-        for key, val in hparams.items():
-          print(f'  - {key}: {val}')
-      else:
-        print('Submission did not reach target')
 
   df = pd.DataFrame.from_records(workloads)
   df = df.pivot(index='submission', columns='workload', values=time_col)
@@ -292,6 +291,7 @@ def compute_performance_profiles(results,
     logging.info(
         f'\nComputing performance profile with respect to `{time_col}` for '
         f'{submission_tag}')
+    # Get time to targets for each submission across studies and trials
     dfs.append(
         get_times_for_submission(result,
                                  submission_tag,
@@ -301,9 +301,8 @@ def compute_performance_profiles(results,
                                  strict))
   df = pd.concat(dfs)
 
-  # if strict:
-
   # Set score to inf if not within 4x of fastest submission
+  df.describe()
   best_scores = df.min(axis=0)
   df[df.apply(lambda x: x > 4 * best_scores, axis=1)] = np.inf
 

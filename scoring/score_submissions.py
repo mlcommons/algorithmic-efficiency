@@ -1,8 +1,15 @@
 """This script can
 1. Summarize the raw submission times for each workload run in a set of studies and trials.
 2. Produce the performance profiles and scores of a group of submissions. 
-Note that to produce the performance profiles, at least the submissions must contain at
-least 2 submissions. 
+Note that for performance profiles and final scores are computed w.r.t. a group of submissions.
+If you only have logs for one submission you may group it with some reference submission
+to compare the performance.
+
+Example usage:
+python3 score_submissions.py \
+  --submission_directory $HOME/algorithmic-efficiency/prize_qualification_baselines/logs \
+  --strict True
+  --compute_performance_profiles
 """
 
 import operator
@@ -94,7 +101,8 @@ def main(_):
         'of studies. Your score may not be an accurate representation '
         'under competition scoring rules. To enforce the criteria set strict=True.'
     )
-
+  df = results['external_tuning']
+  print(df.describe())
   if FLAGS.compute_performance_profiles:
     performance_profile_df = performance_profile.compute_performance_profiles(
         results,
