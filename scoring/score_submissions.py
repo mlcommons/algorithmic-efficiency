@@ -1,3 +1,10 @@
+"""This script can
+1. Summarize the raw submission times for each workload run in a set of studies and trials.
+2. Produce the performance profiles and scores of a group of submissions. 
+Note that to produce the performance profiles, at least the submissions must contain at
+least 2 submissions. 
+"""
+
 import operator
 import os
 
