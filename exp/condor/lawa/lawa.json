@@ -1,0 +1,41 @@
+[
+  {
+      "dropout_rate": 0.0,
+      "label_smoothing": 0.0,
+      "learning_rate": 0.0001,
+      "one_minus_beta1": 0.02,
+      "beta2": 0.998,
+      "weight_decay": 0.1,
+      "warmup_factor": 0.02,
+      "lawa_start_factor": 0.0,
+      "lawa_interval": 1,
+      "k": 5,
+      "wandb_log": 1
+  },
+  {
+      "dropout_rate": 0.0,
+      "label_smoothing": 0.0,
+      "learning_rate": 0.0001,
+      "one_minus_beta1": 0.02,
+      "beta2": 0.998,
+      "weight_decay": 0.1,
+      "warmup_factor": 0.02,
+      "lawa_start_factor": 0.0,
+      "lawa_interval": 1,
+      "k": 10,
+      "wandb_log": 1
+  },
+  {
+      "dropout_rate": 0.0,
+      "label_smoothing": 0.0,
+      "learning_rate": 0.0001,
+      "one_minus_beta1": 0.02,
+      "beta2": 0.998,
+      "weight_decay": 0.1,
+      "warmup_factor": 0.02,
+      "lawa_start_factor": 0.0,
+      "lawa_interval": 1,
+      "k": 20,
+      "wandb_log": 1
+  }
+]
