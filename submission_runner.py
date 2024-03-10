@@ -208,7 +208,8 @@ def train_once(
   # Workload setup.
   logging.info('Initializing dataset.')
   try:
-    # Set the number of workers for PyTorch evaluation data loaders (not all workloads).
+    # Set the number of workers for PyTorch evaluation data loaders
+    # (not all workloads).
     workload.eval_num_workers = FLAGS.pytorch_eval_num_workers
   except AttributeError:
     pass
