@@ -25,6 +25,12 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 class CifarWorkload(BaseCifarWorkload):
 
+  def __init__(self, *args, **kwargs) -> None:
+    super().__init__(*args, **kwargs)
+    # Is set in submission_runner.py for workloads with PyTorch evaluation
+    # data loaders via the `eval_num_workers` property.
+    self._eval_num_workers = None
+
   @property
   def eval_num_workers(self) -> int:
     if self._eval_num_workers is None:

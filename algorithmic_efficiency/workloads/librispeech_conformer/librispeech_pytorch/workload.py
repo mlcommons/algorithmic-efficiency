@@ -35,6 +35,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     super().__init__()
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
     self.use_specaug = use_specaug
+    # Is set in submission_runner.py for workloads with PyTorch evaluation
+    # data loaders via the `eval_num_workers` property.
+    self._eval_num_workers = None
 
   @property
   def eval_num_workers(self) -> int:

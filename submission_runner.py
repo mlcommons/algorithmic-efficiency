@@ -207,12 +207,10 @@ def train_once(
 
   # Workload setup.
   logging.info('Initializing dataset.')
-  try:
+  if hasattr(workload, '_eval_num_workers'):
     # Set the number of workers for PyTorch evaluation data loaders
-    # (not all workloads).
+    # (not all workloads have them).
     workload.eval_num_workers = FLAGS.pytorch_eval_num_workers
-  except AttributeError:
-    pass
   with profiler.profile('Initializing dataset'):
     input_queue = workload._build_input_queue(
         data_rng,
