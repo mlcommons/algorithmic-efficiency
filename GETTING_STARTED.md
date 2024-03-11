@@ -36,7 +36,7 @@ The specs on the benchmarking machines are:
 > **Prerequisites:**
 >
 > - Python minimum requirement >= 3.8
-> - CUDA 11.8
+> - CUDA 12.1
 > - NVIDIA Driver version 535.104.05
 
 To set up a virtual enviornment and install this repository
@@ -68,11 +68,18 @@ To set up a virtual enviornment and install this repository
 
     For **PyTorch**
 
+    Note: the below command assumes you have CUDA 12.1 installed locally.
+    This is the default in the provided Docker image.
+    We recommend you match this CUDA version but if you decide to run
+    with a different local CUDA version, please find the appropriate wheel
+    url to pass to the `pip install` command for `pytorch`.
+
     ```bash
     pip3 install -e '.[jax_cpu]'
-    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
     pip3 install -e '.[full]'
     ```
+
 
 <details>
 <summary>
@@ -372,7 +379,7 @@ python scoring/run_workloads.py \
 
 Note that to run the above script you will need at least the `jax_cpu` and `pytorch_cpu` installations of the `algorithmic-efficiency` package.
 
-During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow someflexibility.
+During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow some flexibility.
 To simulate official scoring, pass the `--strict=True` flag in `score_submission.py`. To get the raw scores and performance profiles of group of submissions or single submission:
 
 ```bash
