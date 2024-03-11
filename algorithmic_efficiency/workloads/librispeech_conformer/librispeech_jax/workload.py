@@ -30,12 +30,15 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
     self.use_specaug = use_specaug
+    # Is set in submission_runner.py for workloads with PyTorch evaluation
+    # data loaders via the `eval_num_workers` property.
+    self._eval_num_workers = None
 
   @property
   def eval_num_workers(self) -> int:
     if self._eval_num_workers is None:
       raise ValueError(
-          'num_workers property must be set before workload is used.')
+          'eval_num_workers property must be set before workload is used.')
     return self._eval_num_workers
 
   @eval_num_workers.setter
