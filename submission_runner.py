@@ -622,7 +622,6 @@ def score_submission_on_workload(workload: spec.Workload,
 
 
 def main(_):
-  logging.info(f'Data directory is set to {FLAGS.data_dir}')
   if FLAGS.profile:
     profiler = Profiler()
   else:

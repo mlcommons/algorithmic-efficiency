@@ -5,7 +5,6 @@ import os
 from typing import Dict, Iterator, Optional, Tuple
 
 from absl import flags
-from absl import logging
 import torch.distributed as dist
 
 from algorithmic_efficiency import spec
@@ -142,7 +141,6 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
-      logging.info(f"BUILDING split with {data_dir} ")
       self._eval_iters[split] = self._build_input_queue(
           data_rng=rng,
           split=split,
