@@ -83,7 +83,7 @@ flags.DEFINE_integer('num_tuning_trials',
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
-                    '~/data',
+                    None,
                     'Dataset location for ImageNet-v2.')
 flags.DEFINE_string('librispeech_tokenizer_vocab_path',
                     '',
@@ -543,8 +543,8 @@ def score_submission_on_workload(workload: spec.Workload,
     with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
       tuning_search_space = halton.generate_search(
           json.load(search_space_file), num_tuning_trials)
-    all_timings = []
-    all_metrics = []
+    all_timings = {}
+    all_metrics = {}
     tuning_search_space_iter = itertools.islice(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
     for hi, hyperparameters in tuning_search_space_iter:
@@ -575,8 +575,6 @@ def score_submission_on_workload(workload: spec.Workload,
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
-        if 'imagenet' not in workload_name:
-          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, workload_name,
                                      global_batch_size,
                                      global_eval_batch_size,
@@ -590,8 +588,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      max_global_steps,
                                      tuning_dir_name,
                                      save_checkpoints=save_checkpoints,)
-      all_timings.append(timing)
-      all_metrics.append(metrics)
+      all_timings[hi] = timing
+      all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[hi]}')
       logging.info(f'Metrics: {all_metrics[hi]}')
