@@ -1,20 +1,8 @@
 {
-    "librispeech_conformer_layernorm": {
-        "max_steps": 80000,
+    "librispeech_deepspeech_norm_and_spec_aug": {
+        "max_steps": 48900,
         "dataset": "librispeech",
         "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_conformer_layernorm/tuning_search_space.json"
-    },
-    "librispeech_conformer_gelu": {
-        "max_steps": 80000,
-        "dataset": "librispeech",
-        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_conformer_gelu/tuning_search_space.json"
-    },
-    "librispeech_conformer_attention_temperature": {
-        "max_steps": 80000,
-        "dataset": "librispeech",
-        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_conformer_attention_temperature/tuning_search_space.json"
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_deepspeech_norm_and_spec_aug/tuning_search_space.json"
     }
 }
