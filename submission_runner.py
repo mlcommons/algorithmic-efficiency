@@ -83,7 +83,7 @@ flags.DEFINE_integer('num_tuning_trials',
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
-                    '~/data',
+                    None,
                     'Dataset location for ImageNet-v2.')
 flags.DEFINE_string('librispeech_tokenizer_vocab_path',
                     '',
@@ -575,8 +575,6 @@ def score_submission_on_workload(workload: spec.Workload,
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
-        if 'imagenet' not in workload_name:
-          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, workload_name,
                                      global_batch_size,
                                      global_eval_batch_size,
