@@ -416,6 +416,7 @@ def extract(source, dest, mode='r:xz'):
 
 
 def setup_fastmri(data_dir):
+  data_dir = os.path.join(data_dir, 'fastmri')
   train_tar_file_path = os.path.join(data_dir, FASTMRI_TRAIN_TAR_FILENAME)
   val_tar_file_path = os.path.join(data_dir, FASTMRI_VAL_TAR_FILENAME)
   test_tar_file_path = os.path.join(data_dir, FASTMRI_TEST_TAR_FILENAME)
