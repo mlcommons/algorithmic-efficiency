@@ -543,8 +543,8 @@ def score_submission_on_workload(workload: spec.Workload,
     with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
       tuning_search_space = halton.generate_search(
           json.load(search_space_file), num_tuning_trials)
-    all_timings = []
-    all_metrics = []
+    all_timings = {}
+    all_metrics = {}
     tuning_search_space_iter = itertools.islice(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
     for hi, hyperparameters in tuning_search_space_iter:
@@ -590,8 +590,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      max_global_steps,
                                      tuning_dir_name,
                                      save_checkpoints=save_checkpoints,)
-      all_timings.append(timing)
-      all_metrics.append(metrics)
+      all_timings[hi] = timing
+      all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[hi]}')
       logging.info(f'Metrics: {all_metrics[hi]}')
