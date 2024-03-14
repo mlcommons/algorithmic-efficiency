@@ -111,7 +111,7 @@ def get_criteo1tb_dataset(split: str,
   is_training = split == 'train'
   shuffle = is_training or split == 'eval_train'
   ds = tf.data.Dataset.list_files(
-      file_paths, shuffle=shuffle, seed=shuffle_rng[0])
+      file_paths, shuffle=shuffle, seed=shuffle_rng)
 
   if shuffle:
     ds = ds.shuffle(buffer_size=1024)

@@ -10,6 +10,8 @@ import numpy as np
 import tensorflow_datasets as tfds
 import torch
 
+from algorithmic_efficiency import random_utils
+
 AVG_NODES_PER_GRAPH = 26
 AVG_EDGES_PER_GRAPH = 56
 
@@ -24,9 +26,8 @@ TFDS_SPLIT_NAME = {
 def _load_dataset(split, should_shuffle, data_rng, data_dir):
   """Loads a dataset split from TFDS."""
   if should_shuffle:
-    file_data_rng, dataset_data_rng = jax.random.split(data_rng)
-    file_data_rng = file_data_rng[0]
-    dataset_data_rng = dataset_data_rng[0]
+    file_data_rng = random_utils.bits(data_rng)
+    dataset_data_rng = random_utils.bits(file_data_rng)
   else:
     file_data_rng = None
     dataset_data_rng = None
