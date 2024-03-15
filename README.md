@@ -28,8 +28,8 @@
 
 > [!IMPORTANT]
 > Upcoming Deadline:
-> Registration deadline to express non-binding intent to submit: **February 28th, 2024**.\
-> **If you consider submitting, please fill out the** (mandatory but non-binding) [**registration form**](https://forms.gle/K7ty8MaYdi2AxJ4N8).
+> Submission deadline: **March 28th, 2024**.\
+> For other key dates please see [Call for Submissions](/CALL_FOR_SUBMISSIONS.md).
 
 ## Table of Contents <!-- omit from toc -->
 
@@ -63,7 +63,7 @@ pip3 install -e '.[full]'
 
 ```bash
 pip3 install -e '.[jax_cpu]'
-pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'
+pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
 pip3 install -e '.[full]'
 ```
 
@@ -97,7 +97,7 @@ python3 submission_runner.py \
 
 ## Call for Submissions
 
-The [Call for Submissions](/CALL_FOR_SUBMISSIONS.md) announces the first iteration of the AlgoPerf: Training Algorithms competition based on the benchmark by the same name.
+The [Call for Submissions](/CALL_FOR_SUBMISSIONS.md) announces the first iteration of the AlgoPerf: Training Algorithms competition based on the benchmark by the same name. This document also contains the schedule and key dates for the competition. 
 
 ### Competition Rules
 

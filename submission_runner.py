@@ -83,7 +83,7 @@ flags.DEFINE_integer('num_tuning_trials',
                      'The number of external hyperparameter trials to run.')
 flags.DEFINE_string('data_dir', '~/data', 'Dataset location.')
 flags.DEFINE_string('imagenet_v2_data_dir',
-                    '~/data',
+                    None,
                     'Dataset location for ImageNet-v2.')
 flags.DEFINE_string('librispeech_tokenizer_vocab_path',
                     '',
@@ -143,7 +143,7 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     'hparam_end_index',
     None,
-    'End index to slice set of hyperparameters in tuning spearch space.')
+    'End index to slice set of hyperparameters in tuning search space.')
 flags.DEFINE_integer(
     'rng_seed',
     None,
@@ -152,6 +152,9 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('set_pytorch_max_split_size',
                      False,
                      'If true, set pytorch max_split_size_mb to 256')
+flags.DEFINE_integer('pytorch_eval_num_workers',
+                     4,
+                     'Number of workers for PyTorch evaluation data loaders.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -204,6 +207,10 @@ def train_once(
 
   # Workload setup.
   logging.info('Initializing dataset.')
+  if hasattr(workload, '_eval_num_workers'):
+    # Set the number of workers for PyTorch evaluation data loaders
+    # (not all workloads have them).
+    workload.eval_num_workers = FLAGS.pytorch_eval_num_workers
   with profiler.profile('Initializing dataset'):
     input_queue = workload._build_input_queue(
         data_rng,
@@ -536,8 +543,8 @@ def score_submission_on_workload(workload: spec.Workload,
     with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
       tuning_search_space = halton.generate_search(
           json.load(search_space_file), num_tuning_trials)
-    all_timings = []
-    all_metrics = []
+    all_timings = {}
+    all_metrics = {}
     tuning_search_space_iter = itertools.islice(
         enumerate(tuning_search_space), hparam_start_index, hparam_end_index)
     for hi, hyperparameters in tuning_search_space_iter:
@@ -568,8 +575,6 @@ def score_submission_on_workload(workload: spec.Workload,
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
-        if 'imagenet' not in workload_name:
-          imagenet_v2_data_dir = None
         timing, metrics = train_once(workload, workload_name,
                                      global_batch_size,
                                      global_eval_batch_size,
@@ -583,8 +588,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      max_global_steps,
                                      tuning_dir_name,
                                      save_checkpoints=save_checkpoints,)
-      all_timings.append(timing)
-      all_metrics.append(metrics)
+      all_timings[hi] = timing
+      all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
       logging.info(f'Hyperparameters: {tuning_search_space[hi]}')
       logging.info(f'Metrics: {all_metrics[hi]}')

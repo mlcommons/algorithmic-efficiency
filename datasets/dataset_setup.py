@@ -182,6 +182,8 @@ flags.DEFINE_integer(
 
 flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
 
+flags.DEFINE_boolean('skip_download', False, 'Skips data download.')
+
 FLAGS = flags.FLAGS
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -291,22 +293,23 @@ def download_criteo1tb(data_dir,
       stream=True)
 
   all_days_zip_filepath = os.path.join(tmp_criteo_dir, 'all_days.zip')
-  download = True
-  if os.path.exists(all_days_zip_filepath):
-    while True:
-      overwrite = input('File already exists {}.\n Overwrite? (Y/n)'.format(
-          all_days_zip_filepath)).lower()
-      if overwrite in ['y', 'n']:
-        break
-      logging.info('Invalid response. Try again.')
-    if overwrite == 'n':
-      logging.info(f'Skipping download to {all_days_zip_filepath}')
-      download = False
+  if not FLAGS.skip_download:
+    download = True
+    if os.path.exists(all_days_zip_filepath):
+      while True:
+        overwrite = input('File already exists {}.\n Overwrite? (Y/n)'.format(
+            all_days_zip_filepath)).lower()
+        if overwrite in ['y', 'n']:
+          break
+        logging.info('Invalid response. Try again.')
+      if overwrite == 'n':
+        logging.info(f'Skipping download to {all_days_zip_filepath}')
+        download = False
 
-  if download:
-    with open(all_days_zip_filepath, 'wb') as f:
-      for chunk in download_request.iter_content(chunk_size=1024):
-        f.write(chunk)
+    if download:
+      with open(all_days_zip_filepath, 'wb') as f:
+        for chunk in download_request.iter_content(chunk_size=1024):
+          f.write(chunk)
 
   unzip_cmd = f'unzip {all_days_zip_filepath} -d {tmp_criteo_dir}'
   logging.info(f'Running Criteo 1TB unzip command:\n{unzip_cmd}')
@@ -413,6 +416,7 @@ def extract(source, dest, mode='r:xz'):
 
 
 def setup_fastmri(data_dir):
+  data_dir = os.path.join(data_dir, 'fastmri')
   train_tar_file_path = os.path.join(data_dir, FASTMRI_TRAIN_TAR_FILENAME)
   val_tar_file_path = os.path.join(data_dir, FASTMRI_VAL_TAR_FILENAME)
   test_tar_file_path = os.path.join(data_dir, FASTMRI_TEST_TAR_FILENAME)
@@ -443,11 +447,14 @@ def setup_fastmri(data_dir):
 
 
 def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
-  """Downloads and returns the download dir."""
+  """Downloads imagenet tar files to $DATA_DIR/imagenet/."""
   data_dir = os.path.join(data_dir, 'imagenet')
   imagenet_train_filepath = os.path.join(data_dir, IMAGENET_TRAIN_TAR_FILENAME)
   imagenet_val_filepath = os.path.join(data_dir, IMAGENET_VAL_TAR_FILENAME)
 
+  # If the data was already downloaded for JAX it will have
+  # been moved to the manual_download_dir.
+  # Get paths in manual_download_dir.
   imagenet_jax_data_dir = os.path.join(data_dir, 'jax')
   manual_download_dir = os.path.join(imagenet_jax_data_dir,
                                      'downloads',
@@ -457,7 +464,7 @@ def download_imagenet(data_dir, imagenet_train_url, imagenet_val_url):
   imagenet_val_download_filepath = os.path.join(manual_download_dir,
                                                 IMAGENET_VAL_TAR_FILENAME)
 
-  # Download imagnet train dataset
+  # Download imagenet train dataset
   if not os.path.exists(imagenet_train_filepath) and not os.path.exists(
       imagenet_train_download_filepath):
     logging.info(
@@ -543,22 +550,27 @@ def setup_imagenet_pytorch(data_dir):
 
   # Setup pytorch dataset dir
   imagenet_pytorch_data_dir = os.path.join(data_dir, 'pytorch')
-  os.makedirs(imagenet_pytorch_data_dir)
-  os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
-  os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
+  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'train')):
+    os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'train'))
+  if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'val')):
+    os.makedirs(os.path.join(imagenet_pytorch_data_dir, 'val'))
 
   # Move tar files and imagenet_v2 into pytorch directory
-  logging.info('Moving {} to {}'.format(train_tar_file_path,
-                                        imagenet_pytorch_data_dir))
-  shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
-  logging.info('Moving {} to {}'.format(val_tar_file_path,
-                                        imagenet_pytorch_data_dir))
-  shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
+  if not os.path.exists(
+      os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME)):
+    logging.info('Moving {} to {}'.format(train_tar_file_path,
+                                          imagenet_pytorch_data_dir))
+    shutil.move(train_tar_file_path, imagenet_pytorch_data_dir)
+  if not os.path.exists(
+      os.path.join(imagenet_pytorch_data_dir, IMAGENET_VAL_TAR_FILENAME)):
+    logging.info('Moving {} to {}'.format(val_tar_file_path,
+                                          imagenet_pytorch_data_dir))
+    shutil.move(val_tar_file_path, imagenet_pytorch_data_dir)
   if not os.path.exists(os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')):
     logging.info('Moving imagenet_v2 to {}'.format(
         os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2')))
-  shutil.move(test_dir_path,
-              os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
+    shutil.move(test_dir_path,
+                os.path.join(imagenet_pytorch_data_dir, 'imagenet_v2'))
 
   # Extract train data\
   logging.info('Extracting imagenet train data')
@@ -573,7 +585,7 @@ def setup_imagenet_pytorch(data_dir):
     if tar_filename.endswith('.tar'):
       dir_name = tar_filename[:-4]
       extract(
-          os.path.join(imagenet_pytorch_data_dir, IMAGENET_TRAIN_TAR_FILENAME),
+          os.path.join(imagenet_pytorch_data_dir, 'train', tar_filename),
           os.path.join(imagenet_pytorch_data_dir, 'train', dir_name),
           mode='r:')
 
@@ -587,10 +599,15 @@ def setup_imagenet_pytorch(data_dir):
   valprep_command = [
       'wget',
       '-qO-',
-      ('https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/'
-       'valprep.sh'),
+      'https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh'
   ]
-  valprep_process = subprocess.Popen(valprep_command, shell=True)
+  valprep_download = subprocess.Popen(valprep_command, stdout=subprocess.PIPE)
+  valprep_process = subprocess.Popen(['bash'],
+                                     stdin=valprep_download.stdout,
+                                     cwd=os.path.expanduser(
+                                         os.path.join(imagenet_pytorch_data_dir,
+                                                      'val')))
+  valprep_download.stdout.close()
   valprep_process.communicate()
   logging.info('Set up imagenet dataset for pytorch framework complete')
 
@@ -693,7 +710,8 @@ def main(_):
     raise ValueError(f'Invalid temp_dir: {tmp_dir}.')
   data_dir = os.path.abspath(os.path.expanduser(data_dir))
   tmp_dir = os.path.abspath(os.path.expanduser(tmp_dir))
-  logging.info('Downloading data to %s...', data_dir)
+  if not FLAGS.skip_download:
+    logging.info('Downloading data to %s...', data_dir)
 
   if FLAGS.all or FLAGS.criteo1tb:
     logging.info('Downloading criteo1tb...')
@@ -720,10 +738,11 @@ def main(_):
           'to download the FastMRI dataset.\nSign up for the URLs at '
           'https://fastmri.med.nyu.edu/.')
 
-    download_fastmri(data_dir,
-                     knee_singlecoil_train_url,
-                     knee_singlecoil_val_url,
-                     knee_singlecoil_test_url)
+    if not FLAGS.skip_download:
+      download_fastmri(data_dir,
+                       knee_singlecoil_train_url,
+                       knee_singlecoil_val_url,
+                       knee_singlecoil_test_url)
 
     logging.info('fastMRI download completed. Extracting...')
     setup_fastmri(data_dir)
@@ -731,7 +750,6 @@ def main(_):
   if FLAGS.all or FLAGS.imagenet:
     flags.mark_flag_as_required('imagenet_train_url')
     flags.mark_flag_as_required('imagenet_val_url')
-    logging.info('Downloading ImageNet...')
     imagenet_train_url = FLAGS.imagenet_train_url
     imagenet_val_url = FLAGS.imagenet_val_url
     if imagenet_train_url is None or imagenet_val_url is None:
@@ -742,7 +760,9 @@ def main(_):
       raise ValueError(
           'Please specify either jax or pytorch framework through framework '
           'flag.')
-    download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
+    if not FLAGS.skip_download:
+      logging.info('Downloading ImageNet...')
+      download_imagenet(data_dir, imagenet_train_url, imagenet_val_url)
     setup_imagenet(data_dir, framework=FLAGS.framework)
 
   if FLAGS.all or FLAGS.librispeech:

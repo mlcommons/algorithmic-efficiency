@@ -35,6 +35,20 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     super().__init__()
     self.tokenizer = metrics.load_tokenizer(tokenizer_vocab_path)
     self.use_specaug = use_specaug
+    # Is set in submission_runner.py for workloads with PyTorch evaluation
+    # data loaders via the `eval_num_workers` property.
+    self._eval_num_workers = None
+
+  @property
+  def eval_num_workers(self) -> int:
+    if self._eval_num_workers is None:
+      raise ValueError(
+          'eval_num_workers property must be set before workload is used.')
+    return self._eval_num_workers
+
+  @eval_num_workers.setter
+  def eval_num_workers(self, eval_num_workers: int):
+    self._eval_num_workers = eval_num_workers
 
   @property
   def use_post_layer_norm(self) -> bool:
@@ -173,7 +187,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4,
+        num_workers=4 if is_train else self.eval_num_workers,
         pin_memory=True,
         drop_last=is_train)
 

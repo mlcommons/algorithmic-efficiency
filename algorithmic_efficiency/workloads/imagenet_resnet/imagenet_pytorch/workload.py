@@ -51,6 +51,23 @@ def imagenet_v2_to_torch(
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
+  def __init__(self, *args, **kwargs) -> None:
+    super().__init__(*args, **kwargs)
+    # Is set in submission_runner.py for workloads with PyTorch evaluation
+    # data loaders via the `eval_num_workers` property.
+    self._eval_num_workers = None
+
+  @property
+  def eval_num_workers(self) -> int:
+    if self._eval_num_workers is None:
+      raise ValueError(
+          'eval_num_workers property must be set before workload is used.')
+    return self._eval_num_workers
+
+  @eval_num_workers.setter
+  def eval_num_workers(self, eval_num_workers: int):
+    self._eval_num_workers = eval_num_workers
+
   def _build_dataset(
       self,
       data_rng: spec.RandomState,
@@ -126,7 +143,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4 if is_train else 0,
+        num_workers=4 if is_train else self.eval_num_workers,
         pin_memory=True,
         drop_last=is_train,
         persistent_workers=is_train)
@@ -309,11 +326,11 @@ class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.22009
+    return 1 - 0.22009
 
   @property
   def test_target_value(self) -> float:
-    return 0.342
+    return 1 - 0.342
 
 
 class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
@@ -324,11 +341,11 @@ class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.22077
+    return 1 - 0.22077
 
   @property
   def test_target_value(self) -> float:
-    return 0.3402
+    return 1 - 0.3402
 
 
 class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
@@ -339,8 +356,8 @@ class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.23474
+    return 1 - 0.23474
 
   @property
   def test_target_value(self) -> float:
-    return 0.3577
+    return 1- 0.3577

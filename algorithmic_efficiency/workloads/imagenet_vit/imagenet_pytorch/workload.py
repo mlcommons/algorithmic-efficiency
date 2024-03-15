@@ -105,11 +105,11 @@ class ImagenetVitPostLNWorkload(ImagenetVitWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.24688
+    return 1 - 0.24688
 
   @property
   def test_target_value(self) -> float:
-    return 0.3714
+    return 1 - 0.3714
 
 
 class ImagenetVitMapWorkload(ImagenetVitWorkload):
@@ -120,8 +120,8 @@ class ImagenetVitMapWorkload(ImagenetVitWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.22886
+    return 1 - 0.22886
 
   @property
   def test_target_value(self) -> float:
-    return 0.3477
+    return 1 - 0.3477
