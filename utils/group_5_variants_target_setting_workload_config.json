@@ -1,8 +1,20 @@
 {
-    "imagenet_resnet_gelu": {
+    "imagenet_vit_glu": {
         "max_steps": 186666,
         "dataset": "imagenet",
-        "submission_path": "reference_algorithms/target_setting_algorithms/jax_momentum.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_resnet_gelu/tuning_search_space.json"
+        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_vit_glu/tuning_search_space.json"
+    },
+    "imagenet_vit_map": {
+        "max_steps": 186666,
+        "dataset": "imagenet",
+        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_vit_map/tuning_search_space.json"
+    },
+    "imagenet_vit_post_ln": {
+        "max_steps": 186666,
+        "dataset": "imagenet",
+        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_vit_post_ln/tuning_search_space.json"
     }
 }
