@@ -291,7 +291,7 @@ class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
 
   @property
   def test_target_value(self) -> float:
-    return 1- 0.3402
+    return 1 - 0.3402
 
 
 class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):

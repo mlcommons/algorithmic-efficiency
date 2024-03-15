@@ -360,4 +360,4 @@ class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
 
   @property
   def test_target_value(self) -> float:
-    return 1- 0.3577
+    return 1 - 0.3577
