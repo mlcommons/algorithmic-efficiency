@@ -161,4 +161,3 @@ class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
   @property
   def test_target_value(self) -> float:
     return 0.082442
-  
