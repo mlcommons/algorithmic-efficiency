@@ -81,6 +81,8 @@ files are not cleaned up.
 
 By default, a user will be prompted before any files are deleted. If you do not want any temp files to be deleted, you can pass `--interactive_deletion=false` and then all files will be downloaded to the provided `--temp_dir`, and the user can manually delete these after downloading has finished.
 
+For reference, we report the output of `tree {dirname} --filelimit 30` and `checksumdir {dirname}`. You may need to first run `pip install checksumdir`.  
+
 ## Individual Dataset Instructions
 
 ### OGBG
@@ -115,6 +117,28 @@ $DATA_DIR
 │           ├── ogbg_molpcba-train.tfrecord-00007-of-00008
 │           └── ogbg_molpcba-validation.tfrecord-00000-of-00001
 ```
+The output of `tree $DATA_DIR/ogbg --filelimit 30`.
+```bash
+data/ogbg
+└── ogbg_molpcba
+    └── 0.1.3
+        ├── dataset_info.json
+        ├── features.json
+        ├── metadata.json
+        ├── ogbg_molpcba-test.tfrecord-00000-of-00001
+        ├── ogbg_molpcba-train.tfrecord-00000-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00001-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00002-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00003-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00004-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00005-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00006-of-00008
+        ├── ogbg_molpcba-train.tfrecord-00007-of-00008
+        └── ogbg_molpcba-validation.tfrecord-00000-of-00001
+
+2 directories, 13 files
+```
+`checksumdir $DATA_DIR/ogbg`: 1c26b1cbbeb113850390eae85104aaf8
 
 In total, it should contain 13 files (via `find -type f | wc -l`) for a total of 830 MB (via `du -sch --apparent-size ogbg/`).
 </details>
@@ -183,6 +207,59 @@ $DATA_DIR
     │           └── wmt17_translate-validation.tfrecord-00000-of-00001
     └── wmt_sentencepiece_model
 ```
+After download (before generating `wmt_sentencepiece_model`), the output of `tree $DATA_DIR/wmt --filelimit 30`:
+```bash
+data/wmt
+├── wmt14_translate
+│   └── de-en
+│       └── 1.0.0
+│           ├── dataset_info.json
+│           ├── features.json
+│           ├── wmt14_translate-test.tfrecord-00000-of-00001
+│           ├── wmt14_translate-train.tfrecord-00000-of-00016
+│           ├── wmt14_translate-train.tfrecord-00001-of-00016
+│           ├── wmt14_translate-train.tfrecord-00002-of-00016
+│           ├── wmt14_translate-train.tfrecord-00003-of-00016
+│           ├── wmt14_translate-train.tfrecord-00004-of-00016
+│           ├── wmt14_translate-train.tfrecord-00005-of-00016
+│           ├── wmt14_translate-train.tfrecord-00006-of-00016
+│           ├── wmt14_translate-train.tfrecord-00007-of-00016
+│           ├── wmt14_translate-train.tfrecord-00008-of-00016
+│           ├── wmt14_translate-train.tfrecord-00009-of-00016
+│           ├── wmt14_translate-train.tfrecord-00010-of-00016
+│           ├── wmt14_translate-train.tfrecord-00011-of-00016
+│           ├── wmt14_translate-train.tfrecord-00012-of-00016
+│           ├── wmt14_translate-train.tfrecord-00013-of-00016
+│           ├── wmt14_translate-train.tfrecord-00014-of-00016
+│           ├── wmt14_translate-train.tfrecord-00015-of-00016
+│           └── wmt14_translate-validation.tfrecord-00000-of-00001
+└── wmt17_translate
+    └── de-en
+        └── 1.0.0
+            ├── dataset_info.json
+            ├── features.json
+            ├── wmt17_translate-test.tfrecord-00000-of-00001
+            ├── wmt17_translate-train.tfrecord-00000-of-00016
+            ├── wmt17_translate-train.tfrecord-00001-of-00016
+            ├── wmt17_translate-train.tfrecord-00002-of-00016
+            ├── wmt17_translate-train.tfrecord-00003-of-00016
+            ├── wmt17_translate-train.tfrecord-00004-of-00016
+            ├── wmt17_translate-train.tfrecord-00005-of-00016
+            ├── wmt17_translate-train.tfrecord-00006-of-00016
+            ├── wmt17_translate-train.tfrecord-00007-of-00016
+            ├── wmt17_translate-train.tfrecord-00008-of-00016
+            ├── wmt17_translate-train.tfrecord-00009-of-00016
+            ├── wmt17_translate-train.tfrecord-00010-of-00016
+            ├── wmt17_translate-train.tfrecord-00011-of-00016
+            ├── wmt17_translate-train.tfrecord-00012-of-00016
+            ├── wmt17_translate-train.tfrecord-00013-of-00016
+            ├── wmt17_translate-train.tfrecord-00014-of-00016
+            ├── wmt17_translate-train.tfrecord-00015-of-00016
+            └── wmt17_translate-validation.tfrecord-00000-of-00001
+
+6 directories, 40 files
+```
+`checksumdir $DATA_DIR/wmt`: 65f20144afb63fd62314f0cd9bd89cd2
 
 In total, it should contain 43 files (via `find -type f | wc -l`) for a total of 3.3 GB (via `du -sch --apparent-size wmt/`).
 </details>
@@ -221,6 +298,17 @@ $DATA_DIR
 │       ├── [...]
 │       └── file1002570.h5
 ```
+
+The output of `tree $DATA_DIR/fastmri --filelimit 30`:
+```bash
+data/fastmri
+├── knee_singlecoil_test [108 entries exceeds filelimit, not opening dir]
+├── knee_singlecoil_train [973 entries exceeds filelimit, not opening dir]
+└── knee_singlecoil_val [199 entries exceeds filelimit, not opening dir]
+
+3 directories, 0 files
+```
+`checksumdir $DATA_DIR/fastmri`: cd8c6452d9fa5fe89d050df969e98f70
 
 In total, it should contain 1280 files (via `find -type f | wc -l`) for a total of 113 GB (via `du -sch --apparent-size fastmri/`).
 </details>
@@ -281,6 +369,39 @@ $DATA_DIR
 │       ├── [...]
 ```
 
+The output of `tree $DATA_DIR/imagenet --filelimit 30`:
+```bash
+data/imagenet
+├── imagenet_v2
+│   └── matched-frequency
+│       └── 3.0.0
+│           ├── dataset_info.json
+│           ├── features.json
+│           ├── imagenet_v2-test.tfrecord-00000-of-00016
+│           ├── imagenet_v2-test.tfrecord-00001-of-00016
+│           ├── imagenet_v2-test.tfrecord-00002-of-00016
+│           ├── imagenet_v2-test.tfrecord-00003-of-00016
+│           ├── imagenet_v2-test.tfrecord-00004-of-00016
+│           ├── imagenet_v2-test.tfrecord-00005-of-00016
+│           ├── imagenet_v2-test.tfrecord-00006-of-00016
+│           ├── imagenet_v2-test.tfrecord-00007-of-00016
+│           ├── imagenet_v2-test.tfrecord-00008-of-00016
+│           ├── imagenet_v2-test.tfrecord-00009-of-00016
+│           ├── imagenet_v2-test.tfrecord-00010-of-00016
+│           ├── imagenet_v2-test.tfrecord-00011-of-00016
+│           ├── imagenet_v2-test.tfrecord-00012-of-00016
+│           ├── imagenet_v2-test.tfrecord-00013-of-00016
+│           ├── imagenet_v2-test.tfrecord-00014-of-00016
+│           ├── imagenet_v2-test.tfrecord-00015-of-00016
+│           └── label.labels.txt
+├── train [1000 entries exceeds filelimit, not opening dir]
+└── val [1000 entries exceeds filelimit, not opening dir]
+
+5 directories, 19 files
+```
+`checksumdir $DATA_DIR/imagenet`: 8f0c5a5efb0a992fd3655fa13902dab7
+
+
 In total, it should contain 1,281,167 `train` files and 50,000 `val` (via `find -type f | wc -l`) for a total of 137 GB and 6.3 GB, respectively (via `du -sch --apparent-size train/` and `du -sch --apparent-size val/`).
 </details>
 
@@ -311,7 +432,44 @@ $DATA_DIR
 │  │               ├── [...]
 ```
 
+The output of `tree $DATA_DIR/imagenet --filelimit 30`:
+```bash
+data/imagenet
+├── downloads
+│   ├── extracted
+│   └── manual_
+├── imagenet2012
+│   └── 5.1.0 [1091 entries exceeds filelimit, not opening dir]
+└── imagenet_v2
+    └── matched-frequency
+        └── 3.0.0
+            ├── dataset_info.json
+            ├── features.json
+            ├── imagenet_v2-test.tfrecord-00000-of-00016
+            ├── imagenet_v2-test.tfrecord-00001-of-00016
+            ├── imagenet_v2-test.tfrecord-00002-of-00016
+            ├── imagenet_v2-test.tfrecord-00003-of-00016
+            ├── imagenet_v2-test.tfrecord-00004-of-00016
+            ├── imagenet_v2-test.tfrecord-00005-of-00016
+            ├── imagenet_v2-test.tfrecord-00006-of-00016
+            ├── imagenet_v2-test.tfrecord-00007-of-00016
+            ├── imagenet_v2-test.tfrecord-00008-of-00016
+            ├── imagenet_v2-test.tfrecord-00009-of-00016
+            ├── imagenet_v2-test.tfrecord-00010-of-00016
+            ├── imagenet_v2-test.tfrecord-00011-of-00016
+            ├── imagenet_v2-test.tfrecord-00012-of-00016
+            ├── imagenet_v2-test.tfrecord-00013-of-00016
+            ├── imagenet_v2-test.tfrecord-00014-of-00016
+            ├── imagenet_v2-test.tfrecord-00015-of-00016
+            └── label.labels.txt
+
+8 directories, 19 files
+```
+`checksumdir $DATA_DIR/imagenet`: dbd1dcd891688b650d80a42d49e6dec0
+
 In total, it should contain 1,111 files (via `find -type f | wc -l`) for a total of 145 GB (via `du -sch --apparent-size imagenet/jax`).
+
+
 </details>
 
 <details>
@@ -371,6 +529,14 @@ $DATA_DIR
 ```
 
 In total, it should contain 885 files (via `find -type f | wc -l`) for a total of 1.1 TB (via `du -sch --apparent-size criteo1tb/`).
+
+The output of `tree $DATA_DIR/criteo1tb --filelimit 30`:
+```bash
+data/criteo1tb [347 entries exceeds filelimit, not opening dir]
+
+0 directories, 0 files
+```
+`checksumdir $DATA_DIR/criteo1tb`: d065bd988e4c91e9126c7700f489bd5b
 </details>
 
 ### LibriSpeech
@@ -428,6 +594,28 @@ $DATA_DIR
 ```
 
 In total, it should contain 543,323 files (via `find -type f | wc -l`) for a total of 387 GB (via `du -sch --apparent-size librispeech/`).
+
+After download (before generating `spm_model.vocab`), the output of `tree $DATA_DIR/librispeech --filelimit 30`:
+```bash
+data/librispeech
+├── dev-clean [5132 entries exceeds filelimit, not opening dir]
+├── dev-clean.csv
+├── dev-other [5564 entries exceeds filelimit, not opening dir]
+├── dev-other.csv
+├── test-clean [4944 entries exceeds filelimit, not opening dir]
+├── test-clean.csv
+├── test-other [5702 entries exceeds filelimit, not opening dir]
+├── test-other.csv
+├── train-clean-100 [53184 entries exceeds filelimit, not opening dir]
+├── train-clean-100.csv
+├── train-clean-360 [192892 entries exceeds filelimit, not opening dir]
+├── train-clean-360.csv
+├── train-other-500 [281600 entries exceeds filelimit, not opening dir]
+└── train-other-500.csv
+
+7 directories, 7 files
+```
+`checksumdir $DATA_DIR/librispeech`:5c2d7a5a8661e14bd8cc952103f12882
 </details>
 
 #### Training SPM Tokenizer
