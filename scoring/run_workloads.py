@@ -83,9 +83,9 @@ flags.DEFINE_string(
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
 flags.DEFINE_string(
-  'workload',
-  None,
-  'If not None, only run this workload, else run all workloads in workload_metadata_path.'
+    'workload',
+    None,
+    'If not None, only run this workload, else run all workloads in workload_metadata_path.'
 )
 
 FLAGS = flags.FLAGS
@@ -148,11 +148,11 @@ def main(_):
     held_out_workloads = read_held_out_workloads(
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
-  
+
   # Filter for single workload
   if FLAGS.workload and (FLAGS.workload in workloads):
     workloads = [FLAGS.workload]
-  
+
   rng_subkeys = prng.split(rng_key, num_studies)
 
   for study_index, rng_subkey in zip(range(study_start_index, study_end_index + 1), rng_subkeys):
