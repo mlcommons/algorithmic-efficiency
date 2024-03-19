@@ -95,7 +95,7 @@ def main(_):
   # Framework
   framework = FLAGS.framework
 
-  # 
+  #
   run_fraction = FLAGS.run_percentage / 100.
   experiment_name = FLAGS.experiment_name
 
@@ -112,7 +112,7 @@ def main(_):
     hparam_start_index_flag = f'--hparam_start_index {FLAGS.hparam_start_index} '
   if FLAGS.hparam_end_index:
     hparam_end_index_flag = f'--hparam_end_index {FLAGS.hparam_end_index} '
-  
+
   # Generate rng keys from submission_id and seed
   submission_id = FLAGS.submission_id
   rng_seed = FLAGS.seed
@@ -122,7 +122,7 @@ def main(_):
 
   logging.info('Using RNG seed %d', rng_seed)
 
-  # Read workload specifications to run 
+  # Read workload specifications to run
   with open(FLAGS.workload_config_path) as f:
     workload_config = json.load(f)
   workloads = [w for w in workload_config.keys()]
@@ -134,24 +134,20 @@ def main(_):
     study_dir = os.path.join(experiment_name, f'study_{study_index}')
 
     for workload in workloads:
-      # For each runnable workload check if there are any containers running 
+      # For each runnable workload check if there are any containers running
       wait_until_container_not_running()
 
       # Clear caches
-      os.system(
-          "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")
+      os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")
       print('=' * 100)
-
 
       # Get workload dataset, max step, algorithm path and tuning search space
       dataset = workload_config[workload]['dataset']
-      max_steps = int(workload_config[workload]['max_steps'] *
-                      run_fraction)
+      max_steps = int(workload_config[workload]['max_steps'] * run_fraction)
       submission_path = workload_config[workload]['submission_path']
       tuning_search_space = workload_config[workload]['tuning_search_space']
 
-
-      # Optionally, define flag to mount local algorithmic-efficiency repo 
+      # Optionally, define flag to mount local algorithmic-efficiency repo
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
