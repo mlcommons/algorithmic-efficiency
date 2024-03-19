@@ -303,16 +303,17 @@ def train_once(
          global_step,
          preemption_count,
          checkpoint_dir=log_dir)
-    meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
-    logging.info(f'Saving meta data to {meta_file_name}.')
-    meta_data = logger_utils.get_meta_data(workload, rng_seed)
-    logger_utils.write_json(meta_file_name, meta_data)
-    flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
-    logging.info(f'Saving flags to {flag_file_name}.')
-    logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
-    metrics_logger = logger_utils.set_up_loggers(log_dir,
-                                                 flags.FLAGS,
-                                                 hyperparameters)
+    if RANK == 0:
+      meta_file_name = os.path.join(log_dir, f'meta_data_{preemption_count}.json')
+      logging.info(f'Saving meta data to {meta_file_name}.')
+      meta_data = logger_utils.get_meta_data(workload, rng_seed)
+      logger_utils.write_json(meta_file_name, meta_data)
+      flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
+      logging.info(f'Saving flags to {flag_file_name}.')
+      logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
+      metrics_logger = logger_utils.set_up_loggers(log_dir,
+                                                   flags.FLAGS,
+                                                   hyperparameters)
     workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = get_time()
@@ -423,7 +424,7 @@ def train_once(
 
           logging_start_time = get_time()
 
-          if log_dir is not None:
+          if log_dir is not None and RANK == 0:
             metrics_logger.append_scalar_metrics(
                 latest_eval_result,
                 global_step=global_step,
@@ -461,7 +462,7 @@ def train_once(
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
-  if log_dir is not None:
+  if log_dir is not None and RANK == 0:
     metrics_logger.append_scalar_metrics(
         {'score': train_state['accumulated_submission_time']},
         global_step=global_step,

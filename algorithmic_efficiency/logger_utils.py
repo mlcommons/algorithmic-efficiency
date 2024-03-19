@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 from typing import Any, Dict, Optional
+import torch.distributed as dist
 
 from absl import flags
 from clu import metric_writers
@@ -43,9 +44,6 @@ def get_log_dir(
     resume_last_run: bool,
     overwrite: bool,
 ) -> Optional[str]:
-  if RANK != 0:
-    return
-
   # Construct path to experiment workload directory.
   experiment_dir = os.path.expanduser(experiment_dir)
   workload_dir_name = f'{workload}_{framework}'
@@ -56,7 +54,7 @@ def get_log_dir(
                                    experiment_name,
                                    workload_dir_name)
 
-  if os.path.exists(experiment_path):
+  if os.path.exists(experiment_path) and RANK == 0:
     if overwrite:
       logging.info(
           f'Removing existing experiment directory {experiment_path} because '
@@ -72,9 +70,10 @@ def get_log_dir(
           'to resume training from this dir? [y/N]:'.format(experiment_path))
       if resume.lower() != 'y':
         sys.exit()
-
-  logging.info(f'Creating experiment directory at {experiment_path}.')
-  makedir(experiment_path)
+    logging.info(f'Creating experiment directory at {experiment_path}.')
+    makedir(experiment_path)
+  if USE_PYTORCH_DDP:
+    dist.barrier()
   return experiment_path
 
 
