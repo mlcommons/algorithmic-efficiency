@@ -206,9 +206,9 @@ class FeedForwardModule(nn.Module):
     else:
       feed_forward_residual_dropout_rate = (
           config.feed_forward_residual_dropout_rate)
-    self.dropout2 = nn.Dropout(p=feed_forward_residual_dropout_rate,
-                               inplace=True)
-
+    self.dropout2 = nn.Dropout(
+        p=feed_forward_residual_dropout_rate, inplace=True)
+  
   def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
