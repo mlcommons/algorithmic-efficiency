@@ -314,7 +314,7 @@ def train_once(
       metrics_logger = logger_utils.set_up_loggers(log_dir,
                                                    flags.FLAGS,
                                                    hyperparameters)
-    workload.attach_metrics_logger(metrics_logger)
+      workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
