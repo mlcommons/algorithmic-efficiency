@@ -149,7 +149,7 @@ def get_workloads_time_to_target(submission,
   if num_workloads != NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS:
     if strict:
       raise ValueError(
-          f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads'
+          f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
           f'but found {num_workloads} workloads.')
     logging.warning(
         f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
