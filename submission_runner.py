@@ -111,8 +111,8 @@ flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
 flags.DEFINE_boolean(
     'save_checkpoints',
     True,
-    'Whether or not to save checkpoints of the model at every eval and after training.',
-)
+    'Whether or not to save checkpoints of the model and optimizer '
+    'at every eval and after training.')
 flags.DEFINE_boolean(
     'save_intermediate_checkpoints',
     True,
