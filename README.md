@@ -28,7 +28,7 @@
 
 > [!IMPORTANT]
 > Upcoming Deadline:
-> Submission deadline: **March 28th, 2024**.\
+> Submission deadline: **April 04th, 2024** (*moved by a week*) \
 > For other key dates please see [Call for Submissions](/CALL_FOR_SUBMISSIONS.md).
 
 ## Table of Contents <!-- omit from toc -->
@@ -97,7 +97,7 @@ python3 submission_runner.py \
 
 ## Call for Submissions
 
-The [Call for Submissions](/CALL_FOR_SUBMISSIONS.md) announces the first iteration of the AlgoPerf: Training Algorithms competition based on the benchmark by the same name. This document also contains the schedule and key dates for the competition. 
+The [Call for Submissions](/CALL_FOR_SUBMISSIONS.md) announces the first iteration of the AlgoPerf: Training Algorithms competition based on the benchmark by the same name. This document also contains the schedule and key dates for the competition.
 
 ### Competition Rules
 
