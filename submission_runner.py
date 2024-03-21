@@ -109,6 +109,10 @@ flags.DEFINE_string(
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
 flags.DEFINE_boolean(
+    'save_checkpoints',
+    True,
+    'Whether or not to save checkpoints of the model at every eval and after training.')
+flags.DEFINE_boolean(
     'save_intermediate_checkpoints',
     True,
     'Whether to save any intermediate checkpoints. '
@@ -133,9 +137,6 @@ flags.DEFINE_boolean(
     False,
     'Whether to overwrite the experiment with identical experiment_dir and'
     'experiment_name.')
-flags.DEFINE_boolean('save_checkpoints',
-                     True,
-                     'Whether or not to checkpoint the model at every eval.')
 flags.DEFINE_integer(
     'hparam_start_index',
     None,
@@ -369,8 +370,8 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
       with profiler.profile('Evaluation'):
         del batch
         _reset_cuda_mem()
@@ -467,17 +468,18 @@ def train_once(
         global_step=global_step,
         preemption_count=preemption_count)
     metrics_logger.finish()
-    checkpoint_utils.save_checkpoint(
-        framework=FLAGS.framework,
-        optimizer_state=optimizer_state,
-        model_params=model_params,
-        model_state=model_state,
-        train_state=train_state,
-        eval_results=eval_results,
-        global_step=global_step,
-        preemption_count=preemption_count,
-        checkpoint_dir=log_dir,
-        save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
+    if save_checkpoints:
+      checkpoint_utils.save_checkpoint(
+          framework=FLAGS.framework,
+          optimizer_state=optimizer_state,
+          model_params=model_params,
+          model_state=model_state,
+          train_state=train_state,
+          eval_results=eval_results,
+          global_step=global_step,
+          preemption_count=preemption_count,
+          checkpoint_dir=log_dir,
+          save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
 
   return train_state['accumulated_submission_time'], metrics
 
