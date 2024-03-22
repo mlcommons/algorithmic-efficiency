@@ -109,6 +109,11 @@ flags.DEFINE_string(
     'an absolute path rather than a relative path.')
 flags.DEFINE_string('experiment_name', None, 'Name of the experiment.')
 flags.DEFINE_boolean(
+    'save_checkpoints',
+    True,
+    'Whether or not to save checkpoints of the model and optimizer '
+    'at every eval and after training.')
+flags.DEFINE_boolean(
     'save_intermediate_checkpoints',
     True,
     'Whether to save any intermediate checkpoints. '
@@ -133,9 +138,6 @@ flags.DEFINE_boolean(
     False,
     'Whether to overwrite the experiment with identical experiment_dir and'
     'experiment_name.')
-flags.DEFINE_boolean('save_checkpoints',
-                     True,
-                     'Whether or not to checkpoint the model at every eval.')
 flags.DEFINE_integer(
     'hparam_start_index',
     None,
@@ -467,17 +469,18 @@ def train_once(
         global_step=global_step,
         preemption_count=preemption_count)
     metrics_logger.finish()
-    checkpoint_utils.save_checkpoint(
-        framework=FLAGS.framework,
-        optimizer_state=optimizer_state,
-        model_params=model_params,
-        model_state=model_state,
-        train_state=train_state,
-        eval_results=eval_results,
-        global_step=global_step,
-        preemption_count=preemption_count,
-        checkpoint_dir=log_dir,
-        save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
+    if save_checkpoints:
+      checkpoint_utils.save_checkpoint(
+          framework=FLAGS.framework,
+          optimizer_state=optimizer_state,
+          model_params=model_params,
+          model_state=model_state,
+          train_state=train_state,
+          eval_results=eval_results,
+          global_step=global_step,
+          preemption_count=preemption_count,
+          checkpoint_dir=log_dir,
+          save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
 
   return train_state['accumulated_submission_time'], metrics
 
