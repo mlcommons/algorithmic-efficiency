@@ -25,7 +25,7 @@ HELD_OUT_WORKLOADS = {
         'imagenet_resnet_silu',
         'imagenet_resnet_gelu',
         'imagenet_resnet_large_bn_init',
-        'imagenet_vit_gelu',
+        'imagenet_vit_glu',
         'imagenet_vit_post_ln',
         'imagenet_vit_map'
     ],

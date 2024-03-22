@@ -78,7 +78,7 @@ WORKLOADS = {
     },
     'imagenet_vit_map': {
         'workload_path': 'imagenet_vit/imagenet',
-        'workload_class_name': 'ImagenetVitMapLNWorkload',
+        'workload_class_name': 'ImagenetVitMapWorkload',
     },
     'librispeech_conformer': {
         'workload_path': 'librispeech_conformer/librispeech',

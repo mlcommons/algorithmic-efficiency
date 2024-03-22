@@ -1,0 +1,34 @@
+{
+  "imagenet_resnet": {
+    "max_steps": 186666,
+    "dataset": "imagenet"
+  },
+  "imagenet_vit": {
+    "max_steps": 186666,
+    "dataset": "imagenet"
+  },
+  "fastmri": {
+    "max_steps": 36189,
+    "dataset": "fastmri"
+  },
+  "ogbg": {
+    "max_steps": 80000,
+    "dataset": "ogbg"
+  },
+  "wmt": {
+    "max_steps": 133333,
+    "dataset": "wmt"
+  },
+  "librispeech_deepspeech": {
+    "max_steps": 48000,
+    "dataset": "librispeech"
+  },
+  "criteo1tb": {
+    "max_steps": 10666,
+    "dataset": "criteo1tb"
+  },
+  "librispeech_conformer": {
+    "max_steps": 80000,
+    "dataset": "librispeech"
+  }
+}

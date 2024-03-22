@@ -63,7 +63,7 @@ def get_summary_df(workload, workload_df):
 
   summary_df['target reached'] = workload_df[validation_metric].apply(
       lambda x: target_op(x, validation_target)).apply(np.any)
-  summary_df['best metric valueyapf'] = workload_df[validation_metric].apply(
+  summary_df['best metric value'] = workload_df[validation_metric].apply(
       lambda x: best_op(x))
   workload_df['index best eval'] = workload_df[validation_metric].apply(
       lambda x: idx_op(x))

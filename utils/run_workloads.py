@@ -1,12 +1,13 @@
 """
 Example Usage:
-python run_workloads.py --framework jax \
+python run_workloads.py \
+--workload_config_path workload_config.json \
+--framework jax \
 --experiment_name my_first_experiment \
---docker_image_url <url_for_docker_image> \
---tag <some_docker_tag> \
+--docker_image_url us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev \
 --run_percentage 10 \
---submission_path <path_to_submission_py_file> \
---tuning_search_space <path_to_tuning_search_space_json> 
+--workload_config_path workload_config.json \
+--dry_run 
 """
 
 import json
@@ -18,8 +19,6 @@ from absl import app
 from absl import flags
 from absl import logging
 
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency.workloads.workloads import get_base_workload_name
 import docker
 
 flags.DEFINE_string(
@@ -36,29 +35,16 @@ flags.DEFINE_boolean('rsync_data',
                      True,
                      'Whether or not to transfer the data from GCP w rsync.')
 flags.DEFINE_boolean('local', False, 'Mount local algorithmic-efficiency repo.')
-flags.DEFINE_string(
-    'submission_path',
-    'prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py',
-    'Path to reference submission.')
-flags.DEFINE_string(
-    'tuning_search_space',
-    'prize_qualification_baselines/external_tuning/tuning_search_space.json',
-    'Path to tuning search space.')
 flags.DEFINE_string('framework', 'jax', 'Can be either PyTorch or JAX.')
 flags.DEFINE_boolean(
     'dry_run',
     False,
     'Whether or not to actually run the docker containers. '
     'If False, simply print the docker run commands. ')
-flags.DEFINE_enum(
-    'tuning_ruleset',
-    'external',
-    enum_values=['external', 'self'],
-    help='Can be either external of self.')
-flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
+flags.DEFINE_integer('num_studies', 1, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
-flags.DEFINE_integer('num_tuning_trials', 5, 'Number of tuning trials.')
+flags.DEFINE_integer('num_tuning_trials', 1, 'Number of tuning trials.')
 flags.DEFINE_integer('hparam_start_index',
                      None,
                      'Start index for tuning trials.')
@@ -67,31 +53,21 @@ flags.DEFINE_integer('seed', None, 'Random seed for evaluating a submission.')
 flags.DEFINE_integer('submission_id',
                      0,
                      'Submission ID to generate study and hparam seeds.')
-flags.DEFINE_string('held_out_workloads_config_path',
-                    None,
-                    'Path to config containing held-out workloads')
 flags.DEFINE_string(
-    'workload_metadata_path',
-    None,
+    'workload_config_path',
+    'workload_confing.json',
     'Path to config containing dataset and maximum number of steps per workload.'
     'The default values of these are set to the full budgets as determined '
     'via the target-setting procedure. '
-    'We provide workload_metadata_external_tuning.json and '
-    'workload_metadata_self_tuning.json as references.'
     'Note that training will be interrupted at either the set maximum number '
     'of steps or the fixed workload maximum run time, whichever comes first. '
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
-flags.DEFINE_string(
-    'workload',
-    None,
-    'If not None, only run this workload, else run all workloads in workload_metadata_path.'
-)
 
 FLAGS = flags.FLAGS
 
 
-def read_held_out_workloads(filename):
+def read_workloads(filename):
   with open(filename, "r") as f:
     held_out_workloads = json.load(f)
   return held_out_workloads
@@ -113,13 +89,22 @@ def wait_until_container_not_running(sleep_interval=5 * 60):
 
 
 def main(_):
+  # What Docker image to run the container with
+  docker_image_url = FLAGS.docker_image_url
+
+  # Framework
   framework = FLAGS.framework
+
+  #
   run_fraction = FLAGS.run_percentage / 100.
   experiment_name = FLAGS.experiment_name
-  docker_image_url = FLAGS.docker_image_url
-  submission_path = FLAGS.submission_path
-  tuning_search_space = FLAGS.tuning_search_space
+
+  # Get study and trial interval arguments
   num_studies = FLAGS.num_studies
+  study_start_index = FLAGS.study_start_index if FLAGS.study_start_index else 0
+  study_end_index = FLAGS.study_end_index if FLAGS.study_end_index else num_studies - 1
+
+  # Get trial arguments
   num_tuning_trials = FLAGS.num_tuning_trials
   hparam_start_index_flag = ''
   hparam_end_index_flag = ''
@@ -127,8 +112,8 @@ def main(_):
     hparam_start_index_flag = f'--hparam_start_index {FLAGS.hparam_start_index} '
   if FLAGS.hparam_end_index:
     hparam_end_index_flag = f'--hparam_end_index {FLAGS.hparam_end_index} '
-  study_start_index = FLAGS.study_start_index if FLAGS.study_start_index else 0
-  study_end_index = FLAGS.study_end_index if FLAGS.study_end_index else num_studies - 1
+
+  # Generate rng keys from submission_id and seed
   submission_id = FLAGS.submission_id
   rng_seed = FLAGS.seed
 
@@ -136,46 +121,37 @@ def main(_):
     rng_seed = struct.unpack('I', os.urandom(4))[0]
 
   logging.info('Using RNG seed %d', rng_seed)
-  rng_key = (prng.fold_in(prng.PRNGKey(rng_seed), hash(submission_id)))
 
-  with open(FLAGS.workload_metadata_path) as f:
-    workload_metadata = json.load(f)
+  # Read workload specifications to run
+  with open(FLAGS.workload_config_path) as f:
+    workload_config = json.load(f)
+  workloads = [w for w in workload_config.keys()]
 
-  workloads = [w for w in workload_metadata.keys()]
-
-  # Read held-out workloads
-  if FLAGS.held_out_workloads_config_path:
-    held_out_workloads = read_held_out_workloads(
-        FLAGS.held_out_workloads_config_path)
-    workloads = workloads + held_out_workloads
-
-  # Filter for single workload
-  if FLAGS.workload and (FLAGS.workload in workloads):
-    workloads = [FLAGS.workload]
-
-  rng_subkeys = prng.split(rng_key, num_studies)
-
-  for study_index, rng_subkey in zip(range(study_start_index, study_end_index + 1), rng_subkeys):
+  for study_index in range(study_start_index, study_end_index + 1):
     print('-' * 100)
     print('*' * 40, f'Starting study {study_index + 1}/{num_studies}', '*' * 40)
     print('-' * 100)
     study_dir = os.path.join(experiment_name, f'study_{study_index}')
 
-    # For each runnable workload check if there are any containers running and if not launch next container command
     for workload in workloads:
-      run_key = prng.fold_in(rng_subkey, hash(workload))
-      run_seed = run_key[0]  # arbitrary
-      base_workload_name = get_base_workload_name(workload)
+      # For each runnable workload check if there are any containers running
       wait_until_container_not_running()
-      os.system(
-          "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")  # clear caches
+
+      # Clear caches
+      os.system("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")
       print('=' * 100)
-      dataset = workload_metadata[base_workload_name]['dataset']
-      max_steps = int(workload_metadata[base_workload_name]['max_steps'] *
-                      run_fraction)
+
+      # Get workload dataset, max step, algorithm path and tuning search space
+      dataset = workload_config[workload]['dataset']
+      max_steps = int(workload_config[workload]['max_steps'] * run_fraction)
+      submission_path = workload_config[workload]['submission_path']
+      tuning_search_space = workload_config[workload]['tuning_search_space']
+
+      # Optionally, define flag to mount local algorithmic-efficiency repo
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
+
       command = ('docker run -t -d -v $HOME/data/:/data/ '
                  '-v $HOME/experiment_runs/:/experiment_runs '
                  '-v $HOME/experiment_runs/logs:/logs '
@@ -186,26 +162,16 @@ def main(_):
                  f'-f {framework} '
                  f'-s {submission_path} '
                  f'-w {workload} '
+                 f'-t {tuning_search_space} '
                  f'-e {study_dir} '
                  f'-m {max_steps} '
                  f'--num_tuning_trials {num_tuning_trials} '
-                 f'--rng_seed {run_seed} '
+                 f'{hparam_start_index_flag} '
+                 f'{hparam_end_index_flag} '
+                 f'--rng_seed {rng_seed} '
                  '-c false '
                  '-o true '
                  '-i true ')
-
-      # Append tuning ruleset flags
-      tuning_ruleset_flags = ''
-      if FLAGS.tuning_ruleset == 'external':
-        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset} '
-        tuning_ruleset_flags += f'-t {tuning_search_space} '
-        tuning_ruleset_flags += f'{hparam_start_index_flag} '
-        tuning_ruleset_flags += f'{hparam_end_index_flag} '
-      else:
-        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset} '
-
-      command += tuning_ruleset_flags
-
       if not FLAGS.dry_run:
         print('Running docker container command')
         print('Container ID: ')
@@ -231,5 +197,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  flags.mark_flag_as_required('workload_metadata_path')
   app.run(main)
