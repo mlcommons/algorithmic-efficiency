@@ -158,7 +158,7 @@ class Conv2dSubsampling(nn.Module):
     outputs += jnp.reshape(self.bias, (1,) * (outputs.ndim - 1) + (-1,))
 
     if self.use_tanh:
-      outputs = nn.tanh(outputs)
+      outputs = jnp.tanh(outputs)
     else:
       outputs = nn.relu(outputs)
 
@@ -207,7 +207,7 @@ class FeedForwardModule(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(
             inputs)
     if config.use_tanh:
-      inputs = nn.tanh(inputs)
+      inputs = jnp.tanh(inputs)
     else:
       inputs = nn.relu(inputs)
     inputs *= padding_mask
