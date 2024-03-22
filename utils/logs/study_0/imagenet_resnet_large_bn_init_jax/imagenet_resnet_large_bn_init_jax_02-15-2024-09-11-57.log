@@ -1,0 +1,26 @@
+python3 submission_runner.py --framework=jax --workload=imagenet_resnet_large_bn_init --submission_path=reference_algorithms/target_setting_algorithms/jax_momentum.py --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet_large_bn_init/tuning_search_space.json --data_dir=/data/imagenet/jax --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=3956205755 --max_global_steps=186666 --imagenet_v2_data_dir=/data/imagenet/jax 2>&1 | tee -a /logs/imagenet_resnet_large_bn_init_jax_02-15-2024-09-11-57.log
+/usr/local/lib/python3.8/dist-packages/tensorflow_addons/utils/tfa_eol_msg.py:23: UserWarning: 
+
+TensorFlow Addons (TFA) has ended development and introduction of new features.
+TFA has entered a minimal maintenance and release mode until a planned end of life in May 2024.
+Please modify downstream libraries to take dependencies from other repositories in our TensorFlow community (e.g. Keras, Keras-CV, and Keras-NLP). 
+
+For more information see: https://github.com/tensorflow/addons/issues/2807 
+
+  warnings.warn(
+I0215 09:12:21.305138 140248832509760 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/imagenet_resnet_large_bn_init_jax.
+I0215 09:12:22.333485 140248832509760 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter Host CUDA
+I0215 09:12:22.334253 140248832509760 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0215 09:12:22.334387 140248832509760 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 531, in score_submission_on_workload
+    with open(tuning_search_space, 'r', encoding='UTF-8') as search_space_file:
+FileNotFoundError: [Errno 2] No such file or directory: 'reference_algorithms/target_setting_algorithms/imagenet_resnet_large_bn_init/tuning_search_space.json'

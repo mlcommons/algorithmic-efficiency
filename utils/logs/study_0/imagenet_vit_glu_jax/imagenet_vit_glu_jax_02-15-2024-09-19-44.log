@@ -1,0 +1,1201 @@
+python3 submission_runner.py --framework=jax --workload=imagenet_vit_glu --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit_glu/tuning_search_space.json --data_dir=/data/imagenet/jax --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=3377931912 --max_global_steps=186666 --imagenet_v2_data_dir=/data/imagenet/jax 2>&1 | tee -a /logs/imagenet_vit_glu_jax_02-15-2024-09-19-44.log
+/usr/local/lib/python3.8/dist-packages/tensorflow_addons/utils/tfa_eol_msg.py:23: UserWarning: 
+
+TensorFlow Addons (TFA) has ended development and introduction of new features.
+TFA has entered a minimal maintenance and release mode until a planned end of life in May 2024.
+Please modify downstream libraries to take dependencies from other repositories in our TensorFlow community (e.g. Keras, Keras-CV, and Keras-NLP). 
+
+For more information see: https://github.com/tensorflow/addons/issues/2807 
+
+  warnings.warn(
+I0215 09:20:05.116093 140704177350464 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/imagenet_vit_glu_jax.
+I0215 09:20:06.077574 140704177350464 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter Host CUDA
+I0215 09:20:06.078252 140704177350464 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0215 09:20:06.078406 140704177350464 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0215 09:20:06.085292 140704177350464 submission_runner.py:542] Using RNG seed 3377931912
+I0215 09:20:07.141373 140704177350464 submission_runner.py:551] --- Tuning run 1/1 ---
+I0215 09:20:07.141618 140704177350464 submission_runner.py:556] Creating tuning directory at /experiment_runs/variants_target_setting/study_0/imagenet_vit_glu_jax/trial_1.
+I0215 09:20:07.142125 140704177350464 logger_utils.py:92] Saving hparams to /experiment_runs/variants_target_setting/study_0/imagenet_vit_glu_jax/trial_1/hparams.json.
+I0215 09:20:07.328965 140704177350464 submission_runner.py:206] Initializing dataset.
+I0215 09:20:07.345372 140704177350464 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:20:07.356705 140704177350464 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0215 09:20:07.754760 140704177350464 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:20:16.625289 140704177350464 submission_runner.py:213] Initializing model.
+I0215 09:20:27.409710 140704177350464 submission_runner.py:255] Initializing optimizer.
+I0215 09:20:28.623954 140704177350464 submission_runner.py:262] Initializing metrics bundle.
+I0215 09:20:28.624156 140704177350464 submission_runner.py:280] Initializing checkpoint and logger.
+I0215 09:20:28.625355 140704177350464 checkpoints.py:915] Found no checkpoint files in /experiment_runs/variants_target_setting/study_0/imagenet_vit_glu_jax/trial_1 with prefix checkpoint_
+I0215 09:20:28.625499 140704177350464 submission_runner.py:300] Saving meta data to /experiment_runs/variants_target_setting/study_0/imagenet_vit_glu_jax/trial_1/meta_data_0.json.
+fatal: detected dubious ownership in repository at '/algorithmic-efficiency'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /algorithmic-efficiency
+I0215 09:20:28.917088 140704177350464 logger_utils.py:220] Unable to record git information. Continuing without it.
+I0215 09:20:29.185325 140704177350464 submission_runner.py:304] Saving flags to /experiment_runs/variants_target_setting/study_0/imagenet_vit_glu_jax/trial_1/flags_0.json.
+I0215 09:20:29.195432 140704177350464 submission_runner.py:314] Starting training loop.
+2024-02-15 09:21:20.196804: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 0 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.198898: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 1 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:a
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.199377: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 3 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.200974: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 2 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.203581: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 6 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.205944: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 7 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.208341: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 4 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+2024-02-15 09:21:20.210628: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 5 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 336, in train_once
+    optimizer_state, model_params, model_state = update_params(
+  File "/algorithmic-efficiency/reference_algorithms/target_setting_algorithms/jax_submission_base.py", line 98, in update_params
+    new_optimizer_state, new_params, new_model_state, loss, grad_norm = pmapped_train_step( # pylint: disable=line-too-long
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/api.py", line 1779, in cache_miss
+    out = map_bind_continuation(execute(*tracers))
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/profiler.py", line 314, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/pxla.py", line 1346, in __call__
+    results = self.xla_executable.execute_sharded(input_bufs)
+jax._src.traceback_util.UnfilteredStackTrace: jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+: while running replica 0 and partition 0 of a replicated computation (other replicas may have failed as well).
+
+The stack trace below excludes JAX-internal frames.
+The preceding is the original exception that occurred, unmodified.
+
+--------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 336, in train_once
+    optimizer_state, model_params, model_state = update_params(
+  File "/algorithmic-efficiency/reference_algorithms/target_setting_algorithms/jax_submission_base.py", line 98, in update_params
+    new_optimizer_state, new_params, new_model_state, loss, grad_norm = pmapped_train_step( # pylint: disable=line-too-long
+jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12032963352 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  651.37MiB
+              constant allocation:        12B
+        maybe_live_out allocation:  577.39MiB
+     preallocated temp allocation:   11.21GiB
+  preallocated temp fragmentation:       468B (0.00%)
+                 total allocation:   11.84GiB
+              total fragmentation:    43.8KiB (0.00%)
+Peak buffers:
+	Buffer 1:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 2:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 3:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_4/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 4:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 5:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 6:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_3/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 7:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 8:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 9:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_2/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 10:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 11:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 12:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_1/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 13:
+		Size: 147.00MiB
+		XLA Label: fusion
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 14:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_1/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+	Buffer 15:
+		Size: 147.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ViT)/Transformer/encoderblock_0/MlpBlock_3/Dense_0/dot_general[dimension_numbers=(((2,), (0,)), ((), ())) precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=206
+		XLA Label: custom-call
+		Shape: f32[25088,1536]
+		==========================
+
+: while running replica 0 and partition 0 of a replicated computation (other replicas may have failed as well).

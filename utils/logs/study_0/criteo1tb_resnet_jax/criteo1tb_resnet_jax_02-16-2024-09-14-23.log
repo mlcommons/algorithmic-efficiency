@@ -1,0 +1,97 @@
+python3 submission_runner.py --framework=jax --workload=criteo1tb_resnet --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb_resnet/tuning_search_space.json --data_dir=/data/criteo1tb --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=1884662704 --max_global_steps=10666 2>&1 | tee -a /logs/criteo1tb_resnet_jax_02-16-2024-09-14-23.log
+I0216 09:14:46.698412 140060180432704 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/criteo1tb_resnet_jax.
+I0216 09:14:48.569889 140060180432704 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter Host CUDA
+I0216 09:14:48.570697 140060180432704 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0216 09:14:48.570925 140060180432704 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0216 09:14:48.578145 140060180432704 submission_runner.py:542] Using RNG seed 1884662704
+I0216 09:14:49.847790 140060180432704 submission_runner.py:551] --- Tuning run 1/1 ---
+I0216 09:14:49.847989 140060180432704 submission_runner.py:556] Creating tuning directory at /experiment_runs/variants_target_setting/study_0/criteo1tb_resnet_jax/trial_1.
+I0216 09:14:49.848172 140060180432704 logger_utils.py:92] Saving hparams to /experiment_runs/variants_target_setting/study_0/criteo1tb_resnet_jax/trial_1/hparams.json.
+I0216 09:14:50.037141 140060180432704 submission_runner.py:206] Initializing dataset.
+I0216 09:14:50.037358 140060180432704 submission_runner.py:213] Initializing model.
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 221, in train_once
+    model_params, model_state = workload.init_model_fn(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/criteo1tb/criteo1tb_jax/workload.py", line 102, in init_model_fn
+    initial_variables = jax.jit(init_fn)(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/pjit.py", line 208, in cache_miss
+    outs, out_flat, out_tree, args_flat = _python_pjit_helper(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/pjit.py", line 150, in _python_pjit_helper
+    args_flat, _, params, in_tree, out_tree, _ = infer_params_fn(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/api.py", line 301, in infer_params
+    return pjit.common_infer_params(pjit_info_args, *args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/pjit.py", line 474, in common_infer_params
+    jaxpr, consts, canonicalized_out_shardings_flat = _pjit_jaxpr(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/pjit.py", line 935, in _pjit_jaxpr
+    jaxpr, final_consts, out_type = _create_pjit_jaxpr(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/linear_util.py", line 345, in memoized_fun
+    ans = call(fun, *args)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/pjit.py", line 888, in _create_pjit_jaxpr
+    jaxpr, global_out_avals, consts = pe.trace_to_jaxpr_dynamic(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/profiler.py", line 314, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/partial_eval.py", line 2150, in trace_to_jaxpr_dynamic
+    jaxpr, out_avals, consts = trace_to_subjaxpr_dynamic(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/partial_eval.py", line 2172, in trace_to_subjaxpr_dynamic
+    ans = fun.call_wrapped(*in_tracers_)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/linear_util.py", line 188, in call_wrapped
+    ans = self.f(*args, **dict(self.params, **kwargs))
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 1640, in init
+    _, v_out = self.init_with_output(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 1545, in init_with_output
+    return init_with_output(
+  File "/usr/local/lib/python3.8/dist-packages/flax/core/scope.py", line 965, in wrapper
+    return apply(fn, mutable=mutable, flags=init_flags)({}, *args, rngs=rngs,
+  File "/usr/local/lib/python3.8/dist-packages/flax/core/scope.py", line 933, in wrapper
+    y = fn(root, *args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 2121, in scope_fn
+    return fn(module.clone(parent=scope), *args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 432, in wrapped_module_method
+    return self._call_wrapped_method(fun, args, kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 864, in _call_wrapped_method
+    y = fun(self, *args, **kwargs)
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/criteo1tb/criteo1tb_jax/models.py", line 91, in __call__
+    if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+jax._src.traceback_util.UnfilteredStackTrace: TypeError: '>' not supported between instances of 'NoneType' and 'float'
+
+The stack trace below excludes JAX-internal frames.
+The preceding is the original exception that occurred, unmodified.
+
+--------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 221, in train_once
+    model_params, model_state = workload.init_model_fn(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/criteo1tb/criteo1tb_jax/workload.py", line 102, in init_model_fn
+    initial_variables = jax.jit(init_fn)(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/criteo1tb/criteo1tb_jax/models.py", line 91, in __call__
+    if self.dropout_rate > 0.0 and layer_idx == num_layers_top - 2:
+TypeError: '>' not supported between instances of 'NoneType' and 'float'

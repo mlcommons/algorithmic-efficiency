@@ -1,0 +1,9 @@
+{
+  "learning_rate": 4.131896390902391,
+  "beta1": 0.9274758113254791,
+  "warmup_steps": 6999,
+  "decay_steps_factor": 0.9007765761611038,
+  "end_factor": 0.01,
+  "weight_decay": 5.6687777311501786e-06,
+  "label_smoothing": 0.2
+}

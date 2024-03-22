@@ -1,0 +1,13 @@
+python3 submission_runner.py --framework=jax --workload=criteo1tb_embed_init --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb_embed_init/tuning_search_space.json --data_dir=/data/criteo1tb --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=3377931912 --max_global_steps=10666 2>&1 | tee -a /logs/criteo1tb_embed_init_jax_02-17-2024-09-27-59.log
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 642, in main
+    workload = workloads.import_workload(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/workloads.py", line 207, in import_workload
+    raise ValueError(
+ValueError: Could not find member Criteo1TbDlrmSmallEmbeddingInitWorkload in algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload. Make sure the Workload class is spelled correctly and defined in the top scope of the module.

@@ -1,0 +1,29 @@
+python3 submission_runner.py --framework=jax --workload=librispeech_deepspeech_norm_and_spec_aug --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json --data_dir=/data/librispeech --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=1692305324 --max_global_steps=48000 --librispeech_tokenizer_vocab_path=/data/librispeech/spm_model.vocab 2>&1 | tee -a /logs/librispeech_deepspeech_norm_and_spec_aug_jax_02-17-2024-17-22-51.log
+I0217 17:23:12.495794 140655435593536 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/librispeech_deepspeech_norm_and_spec_aug_jax.
+I0217 17:23:13.501297 140655435593536 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter Host CUDA
+I0217 17:23:13.502485 140655435593536 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0217 17:23:13.502640 140655435593536 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0217 17:23:13.509023 140655435593536 submission_runner.py:542] Using RNG seed 1692305324
+I0217 17:23:14.548629 140655435593536 submission_runner.py:551] --- Tuning run 1/1 ---
+I0217 17:23:14.548837 140655435593536 submission_runner.py:556] Creating tuning directory at /experiment_runs/variants_target_setting/study_0/librispeech_deepspeech_norm_and_spec_aug_jax/trial_1.
+I0217 17:23:14.549018 140655435593536 logger_utils.py:92] Saving hparams to /experiment_runs/variants_target_setting/study_0/librispeech_deepspeech_norm_and_spec_aug_jax/trial_1/hparams.json.
+I0217 17:23:14.747695 140655435593536 submission_runner.py:206] Initializing dataset.
+I0217 17:23:14.747938 140655435593536 submission_runner.py:213] Initializing model.
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 221, in train_once
+    model_params, model_state = workload.init_model_fn(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/librispeech_deepspeech/librispeech_jax/workload.py", line 50, in init_model_fn
+    model_state = variables['batch_stats']
+  File "/usr/local/lib/python3.8/dist-packages/flax/core/frozen_dict.py", line 66, in __getitem__
+    v = self._dict[key]
+KeyError: 'batch_stats'

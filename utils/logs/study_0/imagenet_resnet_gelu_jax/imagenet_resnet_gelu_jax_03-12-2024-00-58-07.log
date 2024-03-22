@@ -1,0 +1,40 @@
+python3 submission_runner.py --framework=jax --workload=imagenet_resnet_gelu --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py --data_dir=/data/imagenet/jax --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --rng_seed=1331867001 --max_global_steps=186666 --imagenet_v2_data_dir=/data/imagenet/jax --tuning_ruleset=external --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet_gelu/tuning_search_space.json --num_tuning_trials=1 2>&1 | tee -a /logs/imagenet_resnet_gelu_jax_03-12-2024-00-58-07.log
+/usr/local/lib/python3.8/dist-packages/tensorflow_addons/utils/tfa_eol_msg.py:23: UserWarning: 
+
+TensorFlow Addons (TFA) has ended development and introduction of new features.
+TFA has entered a minimal maintenance and release mode until a planned end of life in May 2024.
+Please modify downstream libraries to take dependencies from other repositories in our TensorFlow community (e.g. Keras, Keras-CV, and Keras-NLP). 
+
+For more information see: https://github.com/tensorflow/addons/issues/2807 
+
+  warnings.warn(
+I0312 00:58:28.825967 140648280016704 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax.
+I0312 00:58:29.809633 140648280016704 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Host Interpreter CUDA
+I0312 00:58:29.810456 140648280016704 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0312 00:58:29.810632 140648280016704 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0312 00:58:29.817313 140648280016704 submission_runner.py:547] Using RNG seed 1331867001
+I0312 00:58:30.965557 140648280016704 submission_runner.py:556] --- Tuning run 1/1 ---
+I0312 00:58:30.965753 140648280016704 submission_runner.py:561] Creating tuning directory at /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1.
+I0312 00:58:30.965922 140648280016704 logger_utils.py:92] Saving hparams to /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1/hparams.json.
+I0312 00:58:31.142798 140648280016704 submission_runner.py:206] Initializing dataset.
+I0312 00:58:31.158388 140648280016704 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0312 00:58:31.168268 140648280016704 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0312 00:58:31.537313 140648280016704 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+I0312 00:58:32.723360 140648280016704 submission_runner.py:213] Initializing model.
+I0312 00:58:43.091917 140648280016704 submission_runner.py:255] Initializing optimizer.
+Traceback (most recent call last):
+  File "submission_runner.py", line 694, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 662, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 573, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 257, in train_once
+    optimizer_state = init_optimizer_state(workload,
+  File "/algorithmic-efficiency/reference_algorithms/target_setting_algorithms/jax_nadamw.py", line 166, in init_optimizer_state
+    b2=hyperparameters.beta2,
+AttributeError: 'Hyperparameters' object has no attribute 'beta2'

@@ -1,0 +1,1000 @@
+python3 submission_runner.py --framework=jax --workload=imagenet_resnet_gelu --submission_path=reference_algorithms/target_setting_algorithms/jax_momentum.py --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet_gelu/tuning_search_space.json --data_dir=/data/imagenet/jax --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=3377931912 --max_global_steps=186666 --imagenet_v2_data_dir=/data/imagenet/jax 2>&1 | tee -a /logs/imagenet_resnet_gelu_jax_02-15-2024-09-14-17.log
+/usr/local/lib/python3.8/dist-packages/tensorflow_addons/utils/tfa_eol_msg.py:23: UserWarning: 
+
+TensorFlow Addons (TFA) has ended development and introduction of new features.
+TFA has entered a minimal maintenance and release mode until a planned end of life in May 2024.
+Please modify downstream libraries to take dependencies from other repositories in our TensorFlow community (e.g. Keras, Keras-CV, and Keras-NLP). 
+
+For more information see: https://github.com/tensorflow/addons/issues/2807 
+
+  warnings.warn(
+I0215 09:14:38.228738 140175312729920 logger_utils.py:61] Removing existing experiment directory /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax because --overwrite was set.
+I0215 09:14:38.229834 140175312729920 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax.
+I0215 09:14:39.233328 140175312729920 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: Interpreter CUDA Host
+I0215 09:14:39.233932 140175312729920 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0215 09:14:39.234066 140175312729920 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0215 09:14:39.242177 140175312729920 submission_runner.py:542] Using RNG seed 3377931912
+I0215 09:14:40.298933 140175312729920 submission_runner.py:551] --- Tuning run 1/1 ---
+I0215 09:14:40.299109 140175312729920 submission_runner.py:556] Creating tuning directory at /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1.
+I0215 09:14:40.299479 140175312729920 logger_utils.py:92] Saving hparams to /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1/hparams.json.
+I0215 09:14:40.481285 140175312729920 submission_runner.py:206] Initializing dataset.
+I0215 09:14:40.498848 140175312729920 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:14:40.510747 140175312729920 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0215 09:14:40.885997 140175312729920 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:14:42.078194 140175312729920 submission_runner.py:213] Initializing model.
+I0215 09:14:52.691622 140175312729920 submission_runner.py:255] Initializing optimizer.
+I0215 09:14:54.205734 140175312729920 submission_runner.py:262] Initializing metrics bundle.
+I0215 09:14:54.205909 140175312729920 submission_runner.py:280] Initializing checkpoint and logger.
+I0215 09:14:54.206913 140175312729920 checkpoints.py:915] Found no checkpoint files in /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1 with prefix checkpoint_
+I0215 09:14:54.207065 140175312729920 submission_runner.py:300] Saving meta data to /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1/meta_data_0.json.
+fatal: detected dubious ownership in repository at '/algorithmic-efficiency'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /algorithmic-efficiency
+I0215 09:14:54.493727 140175312729920 logger_utils.py:220] Unable to record git information. Continuing without it.
+I0215 09:14:54.757894 140175312729920 submission_runner.py:304] Saving flags to /experiment_runs/variants_target_setting/study_0/imagenet_resnet_gelu_jax/trial_1/flags_0.json.
+I0215 09:14:54.766722 140175312729920 submission_runner.py:314] Starting training loop.
+I0215 09:15:40.792944 140011664041728 logging_writer.py:48] [0] global_step=0, grad_norm=0.3489149510860443, loss=6.914760112762451
+I0215 09:15:40.807809 140175312729920 spec.py:321] Evaluating on the training split.
+I0215 09:15:41.739551 140175312729920 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:15:41.748725 140175312729920 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0215 09:15:41.831111 140175312729920 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split train, from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:15:54.852627 140175312729920 spec.py:333] Evaluating on the validation split.
+I0215 09:15:56.373805 140175312729920 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:15:56.393014 140175312729920 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0215 09:15:56.467270 140175312729920 logging_logger.py:49] Constructing tf.data.Dataset imagenet2012 for split validation, from /data/imagenet/jax/imagenet2012/5.1.0
+I0215 09:16:12.590488 140175312729920 spec.py:349] Evaluating on the test split.
+I0215 09:16:13.365822 140175312729920 dataset_info.py:578] Load dataset info from /data/imagenet/jax/imagenet_v2/matched-frequency/3.0.0
+I0215 09:16:13.372142 140175312729920 dataset_builder.py:528] Reusing dataset imagenet_v2 (/data/imagenet/jax/imagenet_v2/matched-frequency/3.0.0)
+I0215 09:16:13.409456 140175312729920 logging_logger.py:49] Constructing tf.data.Dataset imagenet_v2 for split test, from /data/imagenet/jax/imagenet_v2/matched-frequency/3.0.0
+I0215 09:16:17.646643 140175312729920 submission_runner.py:408] Time since start: 82.88s, 	Step: 1, 	{'train/accuracy': 0.0006377550889737904, 'train/loss': 6.907766819000244, 'validation/accuracy': 0.0007200000109151006, 'validation/loss': 6.9077677726745605, 'validation/num_examples': 50000, 'test/accuracy': 0.0006000000284984708, 'test/loss': 6.907774448394775, 'test/num_examples': 10000, 'score': 46.041006326675415, 'total_duration': 82.87984991073608, 'accumulated_submission_time': 46.041006326675415, 'accumulated_eval_time': 36.83876323699951, 'accumulated_logging_time': 0}
+I0215 09:16:17.665744 139990138865408 logging_writer.py:48] [1] accumulated_eval_time=36.838763, accumulated_logging_time=0, accumulated_submission_time=46.041006, global_step=1, preemption_count=0, score=46.041006, test/accuracy=0.000600, test/loss=6.907774, test/num_examples=10000, total_duration=82.879850, train/accuracy=0.000638, train/loss=6.907767, validation/accuracy=0.000720, validation/loss=6.907768, validation/num_examples=50000
+2024-02-15 09:16:27.689914: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 6 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.690396: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 7 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.692370: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 2 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.692549: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 4 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.692715: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 1 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.693842: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 5 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.694474: E external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2469] Execution of replica 3 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+2024-02-15 09:16:27.716242: E external/xla/xla/service/rendezvous.cc:31] This thread has been waiting for 10 seconds and may be stuck:
+2024-02-15 09:16:37.691524: F external/xla/xla/pjrt/pjrt_stream_executor_client.cc:2614] Replicated computation launch failed, but not all replicas terminated. Aborting process to work around deadlock. Failure message (there may have been multiple failures, see the error log for all failures): 
+
+Out of memory while trying to allocate 12160188744 bytes.
+BufferAssignment OOM Debugging.
+BufferAssignment stats:
+             parameter allocation:  268.69MiB
+              constant allocation:         8B
+        maybe_live_out allocation:  195.19MiB
+     preallocated temp allocation:   11.32GiB
+  preallocated temp fragmentation:  415.68MiB (3.58%)
+                 total allocation:   11.59GiB
+              total fragmentation:  422.37MiB (3.56%)
+Peak buffers:
+	Buffer 1:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_2/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 2:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 3:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1703"
+		XLA Label: fusion
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 4:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_1/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 5:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_proj/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 6:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_0/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,256,56,56]
+		==========================
+
+	Buffer 7:
+		Size: 392.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/Conv_init/conv_general_dilated[window_strides=(2, 2) padding=((3, 3), (3, 3)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,64,112,112]
+		==========================
+
+	Buffer 8:
+		Size: 203.06MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=59
+		XLA Label: fusion
+		Shape: f32[128,128,57,57]
+		==========================
+
+	Buffer 9:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72 deduplicated_name="fusion.1711"
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 10:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_4/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 11:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 12:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/mul" source_file="/algorithmic-efficiency/algorithmic_efficiency/workloads/imagenet_resnet/imagenet_jax/models.py" source_line=72
+		XLA Label: fusion
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 13:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_proj/conv_general_dilated[window_strides=(2, 2) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 14:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_2/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,512,28,28]
+		==========================
+
+	Buffer 15:
+		Size: 196.00MiB
+		Operator: op_name="pmap(pmapped_train_step)/jit(main)/jvp(ResNet)/BottleneckResNetBlock_3/Conv_0/conv_general_dilated[window_strides=(1, 1) padding=((0, 0), (0, 0)) lhs_dilation=(1, 1) rhs_dilation=(1, 1) dimension_numbers=ConvDimensionNumbers(lhs_spec=(0, 3, 1, 2), rhs_spec=(3, 2, 0, 1), out_spec=(0, 3, 1, 2)) feature_group_count=1 batch_group_count=1 precision=None preferred_element_type=None]" source_file="/usr/local/lib/python3.8/dist-packages/flax/linen/linear.py" source_line=449
+		XLA Label: custom-call
+		Shape: f32[128,128,56,56]
+		==========================
+
+
+Fatal Python error: Aborted
+
+Current thread 0x00007f7d1bb8b740 (most recent call first):
+  File "/algorithmic-efficiency/reference_algorithms/target_setting_algorithms/jax_submission_base.py", line 98 in update_params
+  File "submission_runner.py", line 336 in train_once
+  File "submission_runner.py", line 568 in score_submission_on_workload
+  File "submission_runner.py", line 657 in main
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254 in _run_main
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308 in run
+  File "submission_runner.py", line 689 in <module>

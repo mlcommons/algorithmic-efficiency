@@ -1,0 +1,150 @@
+python3 submission_runner.py --framework=jax --workload=wmt_post_ln --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt_post_ln/tuning_search_space.json --data_dir=/data/wmt --num_tuning_trials=1 --experiment_dir=/experiment_runs --experiment_name=variants_target_setting/study_0 --overwrite=true --save_checkpoints=false --num_tuning_trials=1 --rng_seed=1884662704 --max_global_steps=133333 2>&1 | tee -a /logs/wmt_post_ln_jax_02-15-2024-19-53-02.log
+I0215 19:53:26.714210 140161277318976 logger_utils.py:76] Creating experiment directory at /experiment_runs/variants_target_setting/study_0/wmt_post_ln_jax.
+I0215 19:53:27.707081 140161277318976 xla_bridge.py:455] Unable to initialize backend 'rocm': NOT_FOUND: Could not find registered platform with name: "rocm". Available platform names are: CUDA Interpreter Host
+I0215 19:53:27.707911 140161277318976 xla_bridge.py:455] Unable to initialize backend 'tpu': module 'jaxlib.xla_extension' has no attribute 'get_tpu_client'
+I0215 19:53:27.708054 140161277318976 xla_bridge.py:455] Unable to initialize backend 'plugin': xla_extension has no attributes named get_plugin_device_client. Compile TensorFlow with //tensorflow/compiler/xla/python:enable_plugin_device set to true (defaults to false) to enable this.
+I0215 19:53:27.715845 140161277318976 submission_runner.py:542] Using RNG seed 1884662704
+I0215 19:53:28.952820 140161277318976 submission_runner.py:551] --- Tuning run 1/1 ---
+I0215 19:53:28.953026 140161277318976 submission_runner.py:556] Creating tuning directory at /experiment_runs/variants_target_setting/study_0/wmt_post_ln_jax/trial_1.
+I0215 19:53:28.953228 140161277318976 logger_utils.py:92] Saving hparams to /experiment_runs/variants_target_setting/study_0/wmt_post_ln_jax/trial_1/hparams.json.
+I0215 19:53:29.140458 140161277318976 submission_runner.py:206] Initializing dataset.
+I0215 19:53:29.151689 140161277318976 dataset_info.py:578] Load dataset info from /data/wmt/wmt17_translate/de-en/1.0.0
+I0215 19:53:29.158585 140161277318976 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0215 19:53:29.316691 140161277318976 logging_logger.py:49] Constructing tf.data.Dataset wmt17_translate for split train, from /data/wmt/wmt17_translate/de-en/1.0.0
+I0215 19:53:31.419732 140161277318976 submission_runner.py:213] Initializing model.
+I0215 19:53:40.345127 140161277318976 submission_runner.py:255] Initializing optimizer.
+I0215 19:53:41.370326 140161277318976 submission_runner.py:262] Initializing metrics bundle.
+I0215 19:53:41.370522 140161277318976 submission_runner.py:280] Initializing checkpoint and logger.
+I0215 19:53:41.371652 140161277318976 checkpoints.py:915] Found no checkpoint files in /experiment_runs/variants_target_setting/study_0/wmt_post_ln_jax/trial_1 with prefix checkpoint_
+I0215 19:53:41.371793 140161277318976 submission_runner.py:300] Saving meta data to /experiment_runs/variants_target_setting/study_0/wmt_post_ln_jax/trial_1/meta_data_0.json.
+I0215 19:53:41.371994 140161277318976 logger_utils.py:257] Unable to record workload.train_mean information. Continuing without it.
+I0215 19:53:41.372075 140161277318976 logger_utils.py:257] Unable to record workload.train_stddev information. Continuing without it.
+fatal: detected dubious ownership in repository at '/algorithmic-efficiency'
+To add an exception for this directory, call:
+
+	git config --global --add safe.directory /algorithmic-efficiency
+I0215 19:53:41.693068 140161277318976 logger_utils.py:220] Unable to record git information. Continuing without it.
+I0215 19:53:41.984205 140161277318976 submission_runner.py:304] Saving flags to /experiment_runs/variants_target_setting/study_0/wmt_post_ln_jax/trial_1/flags_0.json.
+I0215 19:53:41.994248 140161277318976 submission_runner.py:314] Starting training loop.
+I0215 19:54:20.265331 139995801188096 logging_writer.py:48] [0] global_step=0, grad_norm=7.689823627471924, loss=10.707682609558105
+I0215 19:54:20.281487 140161277318976 spec.py:321] Evaluating on the training split.
+I0215 19:54:20.284964 140161277318976 dataset_info.py:578] Load dataset info from /data/wmt/wmt17_translate/de-en/1.0.0
+I0215 19:54:20.287844 140161277318976 dataset_info.py:669] Fields info.[splits, supervised_keys] from disk and from code do not match. Keeping the one from code.
+I0215 19:54:20.325754 140161277318976 logging_logger.py:49] Constructing tf.data.Dataset wmt17_translate for split train, from /data/wmt/wmt17_translate/de-en/1.0.0
+I0215 19:54:28.191900 140161277318976 workload.py:181] Translating evaluation dataset.
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 373, in train_once
+    latest_eval_result = workload.eval_model(global_eval_batch_size,
+  File "/algorithmic-efficiency/algorithmic_efficiency/spec.py", line 322, in eval_model
+    train_metrics = self._eval_model_on_split(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/workload.py", line 188, in _eval_model_on_split
+    eval_results['bleu'] = self.translate_and_calculate_bleu(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/workload.py", line 186, in translate_and_calculate_bleu
+    predicted = self.predict_step(pred_batch['inputs'],
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/api.py", line 1778, in cache_miss
+    execute = pxla.xla_pmap_impl_lazy(fun_, *tracers, **params)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/pxla.py", line 411, in xla_pmap_impl_lazy
+    compiled_fun, fingerprint = parallel_callable(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/linear_util.py", line 345, in memoized_fun
+    ans = call(fun, *args)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/pxla.py", line 678, in parallel_callable
+    pmap_computation = lower_parallel_callable(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/profiler.py", line 314, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/pxla.py", line 825, in lower_parallel_callable
+    jaxpr, consts, replicas, shards = stage_parallel_callable(pci, fun)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/pxla.py", line 748, in stage_parallel_callable
+    jaxpr, out_sharded_avals, consts = pe.trace_to_jaxpr_final(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/profiler.py", line 314, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/partial_eval.py", line 2228, in trace_to_jaxpr_final
+    jaxpr, out_avals, consts = trace_to_subjaxpr_dynamic(
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/interpreters/partial_eval.py", line 2172, in trace_to_subjaxpr_dynamic
+    ans = fun.call_wrapped(*in_tracers_)
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/linear_util.py", line 188, in call_wrapped
+    ans = self.f(*args, **dict(self.params, **kwargs))
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/workload.py", line 132, in predict_step
+    models.Transformer(config).apply({'params': params},
+  File "/usr/local/lib/python3.8/dist-packages/jax/_src/traceback_util.py", line 166, in reraise_with_filtered_traceback
+    return fun(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 1489, in apply
+    return apply(
+  File "/usr/local/lib/python3.8/dist-packages/flax/core/scope.py", line 933, in wrapper
+    y = fn(root, *args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 2060, in scope_fn
+    return fn(module.clone(parent=scope), *args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 432, in wrapped_module_method
+    return self._call_wrapped_method(fun, args, kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 864, in _call_wrapped_method
+    y = fun(self, *args, **kwargs)
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/models.py", line 512, in encode
+    return self.encoder(
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 432, in wrapped_module_method
+    return self._call_wrapped_method(fun, args, kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 864, in _call_wrapped_method
+    y = fun(self, *args, **kwargs)
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/models.py", line 380, in __call__
+    nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 432, in wrapped_module_method
+    return self._call_wrapped_method(fun, args, kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 864, in _call_wrapped_method
+    y = fun(self, *args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/normalization.py", line 339, in __call__
+    return _normalize(
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/normalization.py", line 150, in _normalize
+    scale = mdl.param('scale', scale_init, reduced_feature_shape,
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/module.py", line 1241, in param
+    v = self.scope.param(name, init_fn, *init_args, unbox=unbox)
+  File "/usr/local/lib/python3.8/dist-packages/flax/core/scope.py", line 841, in param
+    raise errors.ScopeParamNotFoundError(name, self.path_text)
+jax._src.traceback_util.UnfilteredStackTrace: flax.errors.ScopeParamNotFoundError: Could not find parameter named "scale" in scope "/encoder/encoder_layernorm". (https://flax.readthedocs.io/en/latest/api_reference/flax.errors.html#flax.errors.ScopeParamNotFoundError)
+
+The stack trace below excludes JAX-internal frames.
+The preceding is the original exception that occurred, unmodified.
+
+--------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "submission_runner.py", line 689, in <module>
+    app.run(main)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 308, in run
+    _run_main(main, args)
+  File "/usr/local/lib/python3.8/dist-packages/absl/app.py", line 254, in _run_main
+    sys.exit(main(argv))
+  File "submission_runner.py", line 657, in main
+    score = score_submission_on_workload(
+  File "submission_runner.py", line 568, in score_submission_on_workload
+    timing, metrics = train_once(workload, workload_name,
+  File "submission_runner.py", line 373, in train_once
+    latest_eval_result = workload.eval_model(global_eval_batch_size,
+  File "/algorithmic-efficiency/algorithmic_efficiency/spec.py", line 322, in eval_model
+    train_metrics = self._eval_model_on_split(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/workload.py", line 188, in _eval_model_on_split
+    eval_results['bleu'] = self.translate_and_calculate_bleu(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/workload.py", line 186, in translate_and_calculate_bleu
+    predicted = self.predict_step(pred_batch['inputs'],
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/workload.py", line 132, in predict_step
+    models.Transformer(config).apply({'params': params},
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/models.py", line 512, in encode
+    return self.encoder(
+  File "/algorithmic-efficiency/algorithmic_efficiency/workloads/wmt/wmt_jax/models.py", line 380, in __call__
+    nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/normalization.py", line 339, in __call__
+    return _normalize(
+  File "/usr/local/lib/python3.8/dist-packages/flax/linen/normalization.py", line 150, in _normalize
+    scale = mdl.param('scale', scale_init, reduced_feature_shape,
+flax.errors.ScopeParamNotFoundError: Could not find parameter named "scale" in scope "/encoder/encoder_layernorm". (https://flax.readthedocs.io/en/latest/api_reference/flax.errors.html#flax.errors.ScopeParamNotFoundError)
