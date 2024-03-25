@@ -54,7 +54,7 @@ def _check_submission_module(submission_dir):
         contents = os.listdir(os.path.join(root, submission_dir))
         if SUBMISSION_MODULE not in contents:
           logging.info(
-              f'CHECK FAILED: {parent_dir} does not contain {SUBMISSION_MODULE}'
+              f'CHECK FAILED: {parent_dir}/{submission_dir} does not contain {SUBMISSION_MODULE}'
           )
           return False
   return True
@@ -68,7 +68,7 @@ def _check_tuning_search_space_file(submission_dir):
         contents = os.listdir(os.path.join(root, submission_dir))
         if TUNING_SEARCH_SPACE_FILENAME not in contents:
           logging.info(
-              f'CHECK FAILED: {parent_dir} does not contain {TUNING_SEARCH_SPACE_FILENAME}'
+              f'CHECK FAILED: {parent_dir}/{submission_dir} does not contain {TUNING_SEARCH_SPACE_FILENAME}'
           )
           return False
   return True
@@ -80,17 +80,13 @@ def run_checks(submission_dir):
     """
   logging.info('Running repository checks.')
 
-  # Get files and directories
-  files = list_files_recursively(submission_dir)
-  dirs = list_dirs_recursively(submission_dir)
-
   # Execute checks
   contains_ruleset_subdirs = _check_ruleset_subdirs(submission_dir)
   contains_submission_module = _check_submission_module(submission_dir)
   contains_tuning_search_space_file = _check_tuning_search_space_file(
       submission_dir)
 
-  if not (contains_ruleset_subdirs or contains_submission_module or
+  if not (contains_ruleset_subdirs and contains_submission_module and
           contains_tuning_search_space_file):
     logging.info('TESTS FAILED.')
     return False
