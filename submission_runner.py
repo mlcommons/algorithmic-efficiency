@@ -345,7 +345,9 @@ def train_once(
         ((train_state['last_step_end_time'] - train_state['last_eval_time']) >=
         workload.eval_period_time_sec):
       is_eval_step = True
-    
+    else:
+      is_eval_step = False
+
     try:
       with profiler.profile('Update parameters'):
         optimizer_state, model_params, model_state = update_params(

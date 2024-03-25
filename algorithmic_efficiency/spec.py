@@ -425,7 +425,7 @@ def update_params(workload: Workload,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: RandomState,
-                  is_eval_step: bool) -> UpdateReturn:
+                  is_eval_step: bool = False) -> UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
 

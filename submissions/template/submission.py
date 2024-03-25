@@ -32,7 +32,8 @@ def update_params(workload: spec.Workload,
                   optimizer_state: spec.OptimizerState,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+                  rng: spec.RandomState,
+                  is_eval_step: bool) -> spec.UpdateReturn:
   """
     Returns:
      (new_optimizer_state, update_fn)

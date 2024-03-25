@@ -234,11 +234,13 @@ def update_params(workload: spec.Workload,
                   optimizer_state: spec.OptimizerState,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+                  rng: spec.RandomState,
+                  is_eval_step: bool = False) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
   del eval_results
+  del is_eval_step
 
   current_model = current_param_container
   current_model.train()
