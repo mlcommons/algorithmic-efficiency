@@ -282,6 +282,7 @@ def train_once(
   global_step = 0
   eval_results = []
   preemption_count = 0
+  is_eval_step = False
 
   # Loggers and checkpoint setup.
   logging.info('Initializing checkpoint and logger.')
@@ -325,7 +326,7 @@ def train_once(
   while train_state['is_time_remaining'] and \
       not goals_reached and \
       not train_state['training_complete']:
-
+    
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
 
@@ -338,6 +339,13 @@ def train_once(
                              hyperparameters,
                              global_step,
                              data_select_rng)
+      
+    # Check if submission is eligible for an untimed eval *before* update_params
+    if global_step >=1 and \
+        ((train_state['last_step_end_time'] - train_state['last_eval_time']) >=
+        workload.eval_period_time_sec):
+      is_eval_step = True
+    
     try:
       with profiler.profile('Update parameters'):
         optimizer_state, model_params, model_state = update_params(
@@ -351,7 +359,8 @@ def train_once(
             optimizer_state=optimizer_state,
             eval_results=eval_results,
             global_step=global_step,
-            rng=update_rng)
+            rng=update_rng,
+            is_eval_step=is_eval_step)
     except spec.TrainingCompleteError:
       train_state['training_complete'] = True
     global_step += 1
@@ -369,8 +378,7 @@ def train_once(
     train_state['is_time_remaining'] = (
         train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if is_eval_step or train_state['training_complete']:
       with profiler.profile('Evaluation'):
         del batch
         _reset_cuda_mem()
