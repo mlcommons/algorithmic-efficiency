@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > Upcoming Deadline:
 > Submission deadline: **April 04th, 2024** (*moved by a week*). \
-> For submission instructions please see [Getting Started](/GETTING_STARTED.md#package-your-submission-code) document.\
+> For submission instructions please see [Packaging your Submission Code](/GETTING_STARTED.md#package-your-submission-code) section in the Getting Started document.\
 > For other key dates please see [Call for Submissions](CALL_FOR_SUBMISSIONS.md).
 
 ## Table of Contents <!-- omit from toc -->
