@@ -1,27 +1,27 @@
 {
     "learning_rate": {
         "feasible_points": [
-            0.001308209823469072
+            0.0007852999990476642
         ]
     },
     "beta1": {
         "feasible_points": [
-            0.9731333693827139
+            0.6994142393023162
         ]
     },
     "beta2": {
         "feasible_points": [
-            0.9981232922116359
+            0.9918636824608852
         ]
     },
     "warmup_steps": {
         "feasible_points": [
-            9999
+            6000
         ]
     },
     "weight_decay": {
         "feasible_points": [
-            0.16375311233774334
+            0.07286322158086678
         ]
     }
 }

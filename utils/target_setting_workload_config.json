@@ -176,7 +176,7 @@
     "librispeech_conformer_attention_temperature": {
         "max_steps": 80000,
         "dataset": "librispeech",
-        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
+        "submission_path": "reference_algorithms/target_setting_algorithms/jax_adamw.py",
         "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_conformer_attention_temperature/tuning_search_space.json"
     },
     "librispeech_conformer_gelu": {
