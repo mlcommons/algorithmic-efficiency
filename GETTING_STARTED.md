@@ -417,7 +417,7 @@ Specifically we require that:
 1. There exist subdirectories in the the submission folder named after the ruleset: `external_tuning` or `self_tuning`.
 2. The ruleset subdirectories contain directories named according to 
 some identifier of the algorithm. 
-3. The algorithm subdirectories contain the `submission.py` module. Additional helper modules are allowed. If there are additional python packages that have to be installed for the algorithm also include the `requirements.txt` in the algorithm folder. 
+3. Each algorithm subdirectory contains a `submission.py` module. Additional helper modules are allowed. If there are additional python packages that have to be installed for the algorithm also include the `requirements.txt` in the algorithm subdirectory. 
 4. For `external_tuning` algorithms the algorithm subdirectory
 should contain a `tuning_search_space.json`.
 
