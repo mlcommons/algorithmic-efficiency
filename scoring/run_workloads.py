@@ -82,6 +82,11 @@ flags.DEFINE_string(
     'of steps or the fixed workload maximum run time, whichever comes first. '
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
+flags.DEFINE_string(
+    'workload',
+    None,
+    'If not None, only run this workload, else run all workloads in workload_metadata_path.'
+)
 
 FLAGS = flags.FLAGS
 
@@ -144,9 +149,13 @@ def main(_):
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
 
+  # Filter for single workload
+  if FLAGS.workload and (FLAGS.workload in workloads):
+    workloads = [FLAGS.workload]
+
   rng_subkeys = prng.split(rng_key, num_studies)
 
-  for study_index, rng_subkey in zip(range(study_start_index, study_end_index), rng_subkeys):
+  for study_index, rng_subkey in zip(range(study_start_index, study_end_index + 1), rng_subkeys):
     print('-' * 100)
     print('*' * 40, f'Starting study {study_index + 1}/{num_studies}', '*' * 40)
     print('-' * 100)
@@ -188,12 +197,12 @@ def main(_):
       # Append tuning ruleset flags
       tuning_ruleset_flags = ''
       if FLAGS.tuning_ruleset == 'external':
-        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
+        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset} '
         tuning_ruleset_flags += f'-t {tuning_search_space} '
         tuning_ruleset_flags += f'{hparam_start_index_flag} '
-        tuning_ruleset_flags += f'{hparam_end_index_flag}'
+        tuning_ruleset_flags += f'{hparam_end_index_flag} '
       else:
-        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset}'
+        tuning_ruleset_flags += f'--tuning_ruleset {FLAGS.tuning_ruleset} '
 
       command += tuning_ruleset_flags
 

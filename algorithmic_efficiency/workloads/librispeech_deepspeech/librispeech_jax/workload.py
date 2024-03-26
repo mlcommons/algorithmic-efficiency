@@ -107,12 +107,28 @@ class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechDeepSpeechWorkload):
   def use_tanh(self) -> bool:
     return True
 
+  @property
+  def validation_target_value(self) -> float:
+    return 0.133449
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.079810
+
 
 class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
   def enable_residual_connections(self) -> bool:
     return False
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.105042
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.060388
 
 
 class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
@@ -137,3 +153,11 @@ class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
   @property
   def time_mask_count(self) -> int:
     return 15
+
+  @property
+  def validation_target_value(self) -> float:
+    return 0.131553
+
+  @property
+  def test_target_value(self) -> float:
+    return 0.082442
