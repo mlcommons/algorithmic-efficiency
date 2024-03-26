@@ -391,7 +391,7 @@ We provide the scores and performance profiles for the [paper baseline algorithm
 ## Package your Submission code
 
 If you have registered for the AlgoPerf competition you will receive
-an email with a link to a UI to upload a compressed submission folder.
+an email on 3/27/2024 with a link to a UI to upload a compressed submission folder.
 
 To package your submission modules please make sure your submission folder is structured as follows:
 
@@ -417,7 +417,7 @@ Specifically we require that:
 1. There exist subdirectories in the the submission folder named after the ruleset: `external_tuning` or `self_tuning`.
 2. The ruleset subdirectories contain directories named according to 
 some identifier of the algorithm. 
-3. Each algorithm subdirectory contains a `submission.py` module. Additional helper modules are allowed. If there are additional python packages that have to be installed for the algorithm also include the `requirements.txt` in the algorithm subdirectory. 
+3. Each algorithm subdirectory contains a `submission.py` module. Additional helper modules are allowed if prefer to you organize your code into multiple files. If there are additional python packages that have to be installed for the algorithm also include a `requirements.txt` with package names and versions in the algorithm subdirectory. 
 4. For `external_tuning` algorithms the algorithm subdirectory
 should contain a `tuning_search_space.json`.
 
