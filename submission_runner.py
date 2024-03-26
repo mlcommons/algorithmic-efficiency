@@ -155,7 +155,7 @@ flags.DEFINE_boolean('set_pytorch_max_split_size',
                      False,
                      'If true, set pytorch max_split_size_mb to 256')
 flags.DEFINE_integer('pytorch_eval_num_workers',
-                     4,
+                     0,
                      'Number of workers for PyTorch evaluation data loaders.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
