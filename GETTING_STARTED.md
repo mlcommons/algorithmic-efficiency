@@ -388,7 +388,42 @@ python score_submissions.py --submission_directory <directory_with_submissions> 
 
 We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
-## Package Submission for Self-Reporting
+## Package your Submission code
+
+If you have registered for the AlgoPerf competition you will receive
+an email with a link to a UI to upload a compressed submission folder.
+
+To package your submission modules please make sure your submission folder is structured as follows:
+
+```bash
+submission_folder/
+├── external_tuning
+│   ├── algorithm_name
+│   │   ├── helper_module.py
+│   │   ├── requirements.txt
+│   │   ├── submission.py
+│   │   └── tuning_search_space.json
+│   └── other_algorithm_name
+│       ├── requirements.txt
+│       ├── submission.py
+│       └── tuning_search_space.json
+└── self_tuning
+    └── algorithm_name
+        ├── requirements.txt
+        └── submission.py
+```
+
+Specifically we require that:
+1. There exist subdirectories in the the submission folder named after the ruleset: `external_tuning` or `self_tuning`.
+2. The ruleset subdirectories contain directories named according to 
+some identifier of the algorithm. 
+3. The algorithm subdirectories contain the `submission.py` module. Additional helper modules are allowed. If there are additional python packages that have to be installed for the algorithm also include the `requirements.txt` in the algorithm folder. 
+4. For `external_tuning` algorithms the algorithm subdirectory
+should contain a `tuning_search_space.json`.
+
+To check that your submission folder meets the above requirements you can run the `submissions/repo_checker.py` script.
+
+## Package Logs for Self-Reporting Submissions
 To prepare your submission for self reporting run:
 
 ```
