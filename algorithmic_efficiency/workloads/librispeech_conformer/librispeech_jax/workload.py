@@ -161,7 +161,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             batch_size=global_batch_size,
             shuffle=train,
             sampler=None,
-            num_workers=4 if train else self.eval_num_workers,
+            num_workers=4,
             prefetch_factor=10,
             pin_memory=False,
             drop_last=train,
