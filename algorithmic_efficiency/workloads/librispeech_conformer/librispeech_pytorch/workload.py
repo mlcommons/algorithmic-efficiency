@@ -187,7 +187,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         batch_size=ds_iter_batch_size,
         shuffle=not USE_PYTORCH_DDP and is_train,
         sampler=sampler,
-        num_workers=4 if is_train else self.eval_num_workers,
+        num_workers=4,
         pin_memory=True,
         drop_last=is_train)
 
