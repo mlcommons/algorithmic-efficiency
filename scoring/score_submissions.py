@@ -69,9 +69,11 @@ def get_summary_df(workload, workload_df, include_test_split=False):
   workload_df['index best eval on val'] = workload_df[validation_metric].apply(
       lambda x: idx_op(x))
   summary_df['time to best eval on val (s)'] = workload_df.apply(
-      lambda x: x['accumulated_submission_time'][x['index best eval on val']], axis=1)
+      lambda x: x['accumulated_submission_time'][x['index best eval on val']],
+      axis=1)
   summary_df['time to target on val (s)'] = summary_df.apply(
-      lambda x: x['time to best eval on val (s)'] if x['val target reached'] else np.inf,
+      lambda x: x['time to best eval on val (s)']
+      if x['val target reached'] else np.inf,
       axis=1)
 
   # test metrics
@@ -88,9 +90,12 @@ def get_summary_df(workload, workload_df, include_test_split=False):
     workload_df['index best eval on test'] = workload_df[test_metric].apply(
         lambda x: idx_op(x))
     summary_df['time to best eval on test (s)'] = workload_df.apply(
-        lambda x: x['accumulated_submission_time'][x['index best eval on test']], axis=1)
+        lambda x: x['accumulated_submission_time'][x['index best eval on test']
+                                                  ],
+        axis=1)
     summary_df['time to target on test (s)'] = summary_df.apply(
-        lambda x: x['time to best eval on test (s)'] if x['test target reached'] else np.inf,
+        lambda x: x['time to best eval on test (s)']
+        if x['test target reached'] else np.inf,
         axis=1)
 
   return summary_df
@@ -99,7 +104,8 @@ def get_summary_df(workload, workload_df, include_test_split=False):
 def print_submission_summary(df, include_test_split=True):
   dfs = []
   for workload, group in df.groupby('workload'):
-    summary_df = get_summary_df(workload, group, include_test_split=include_test_split)
+    summary_df = get_summary_df(
+        workload, group, include_test_split=include_test_split)
     dfs.append(summary_df)
 
   df = pd.concat(dfs)

@@ -230,10 +230,10 @@ def get_workload_metrics_and_targets(workload, split='validation'):
       workload_class_name=workload_metadata['workload_class_name'],
       workload_init_kwargs=workload_init_kwargs)
   metric_name = workload_obj.target_metric_name
-  if split=='validation':
+  if split == 'validation':
     metric = f'validation/{metric_name}'
     target = workload_obj.validation_target_value
-  elif split=='test':
+  elif split == 'test':
     metric = f'test/{metric_name}'
     target = workload_obj.test_target_value
-  return metric,target
+  return metric, target
