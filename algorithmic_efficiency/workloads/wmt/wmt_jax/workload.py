@@ -323,7 +323,7 @@ class WmtWorkloadAttentionTemp(WmtWorkload):
 
   @property
   def attention_temp(self) -> float:
-    return 1.6
+    return 4.0
 
 
 class WmtWorkloadGLUTanH(WmtWorkload):
