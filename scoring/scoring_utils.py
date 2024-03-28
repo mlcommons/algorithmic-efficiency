@@ -174,6 +174,11 @@ def get_experiment_df(experiment_dir):
     study_dirs = os.listdir(experiment_dir)
     for study_dir in study_dirs:
       workload_dirs = os.listdir(os.path.join(experiment_dir, study_dir))
+      workload_dirs = [
+          w for w in workload_dirs
+          if os.path.isdir(os.path.join(experiment_dir, study_dir, w))
+      ]
+      print(workload_dirs)
       for workload in workload_dirs:
         data = {
             'workload': workload,
@@ -208,7 +213,7 @@ def get_experiment_df(experiment_dir):
 
 
 ## Get workload properties
-def get_workload_validation_target(workload):
+def get_workload_metrics_and_targets(workload, split='validation'):
   """Returns workload target metric name and value."""
   workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
   framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
@@ -225,6 +230,10 @@ def get_workload_validation_target(workload):
       workload_class_name=workload_metadata['workload_class_name'],
       workload_init_kwargs=workload_init_kwargs)
   metric_name = workload_obj.target_metric_name
-  validation_metric = f'validation/{metric_name}'
-  validation_target = workload_obj.validation_target_value
-  return validation_metric, validation_target
+  if split=='validation':
+    metric = f'validation/{metric_name}'
+    target = workload_obj.validation_target_value
+  elif split=='test':
+    metric = f'test/{metric_name}'
+    target = workload_obj.test_target_value
+  return metric,target

@@ -254,7 +254,7 @@ class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.123744
+    return 0.1237562372
 
   @property
   def test_target_value(self) -> float:
@@ -272,23 +272,23 @@ class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.124027
+    return 0.1241490923
 
   @property
   def test_target_value(self) -> float:
-    return 0.126468
+    return 0.1264799502
 
 
 class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.124286
+    return 0.129656005
 
   @property
   def test_target_value(self) -> float:
     # Todo
-    return 0.126725
+    return 0.1319666458
 
   @property
   def embedding_init_multiplier(self) -> float:

@@ -48,8 +48,9 @@ flags.DEFINE_boolean(
 FLAGS = flags.FLAGS
 
 
-def get_summary_df(workload, workload_df):
-  validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
+def get_summary_df(workload, workload_df, include_test_split=False):
+  validation_metric, validation_target = scoring_utils.get_workload_metrics_and_targets(workload, split='validation')
+
   is_minimized = performance_profile.check_if_minimized(validation_metric)
   target_op = operator.le if is_minimized else operator.ge
   best_op = min if is_minimized else max
@@ -58,32 +59,52 @@ def get_summary_df(workload, workload_df):
   summary_df = pd.DataFrame()
   summary_df['workload'] = workload_df['workload']
   summary_df['trial'] = workload_df['trial'].apply(lambda x: x[0])
-  summary_df['target metric name'] = validation_metric
-  summary_df['target metric value'] = validation_target
+  summary_df['val target metric name'] = validation_metric
+  summary_df['val target metric value'] = validation_target
 
-  summary_df['target reached'] = workload_df[validation_metric].apply(
+  summary_df['val target reached'] = workload_df[validation_metric].apply(
       lambda x: target_op(x, validation_target)).apply(np.any)
-  summary_df['best metric value'] = workload_df[validation_metric].apply(
+  summary_df['best metric value on val'] = workload_df[validation_metric].apply(
       lambda x: best_op(x))
-  workload_df['index best eval'] = workload_df[validation_metric].apply(
+  workload_df['index best eval on val'] = workload_df[validation_metric].apply(
       lambda x: idx_op(x))
-  summary_df['time to best eval (s)'] = workload_df.apply(
-      lambda x: x['accumulated_submission_time'][x['index best eval']], axis=1)
-  summary_df['time to target (s)'] = summary_df.apply(
-      lambda x: x['time to best eval (s)'] if x['target reached'] else np.inf,
+  summary_df['time to best eval on val (s)'] = workload_df.apply(
+      lambda x: x['accumulated_submission_time'][x['index best eval on val']], axis=1)
+  summary_df['time to target on val (s)'] = summary_df.apply(
+      lambda x: x['time to best eval on val (s)'] if x['val target reached'] else np.inf,
       axis=1)
+
+  # test metrics
+  if include_test_split:
+    test_metric, test_target = scoring_utils.get_workload_metrics_and_targets(workload, split='test')
+
+    summary_df['test target metric name'] = test_metric
+    summary_df['test target metric value'] = test_target
+
+    summary_df['test target reached'] = workload_df[test_metric].apply(
+        lambda x: target_op(x, test_target)).apply(np.any)
+    summary_df['best metric value on test'] = workload_df[test_metric].apply(
+        lambda x: best_op(x))
+    workload_df['index best eval on test'] = workload_df[test_metric].apply(
+        lambda x: idx_op(x))
+    summary_df['time to best eval on test (s)'] = workload_df.apply(
+        lambda x: x['accumulated_submission_time'][x['index best eval on test']], axis=1)
+    summary_df['time to target on test (s)'] = summary_df.apply(
+        lambda x: x['time to best eval on test (s)'] if x['test target reached'] else np.inf,
+        axis=1)
 
   return summary_df
 
 
-def print_submission_summary(df):
+def print_submission_summary(df, include_test_split=True):
   dfs = []
   for workload, group in df.groupby('workload'):
-    summary_df = get_summary_df(workload, group)
+    summary_df = get_summary_df(workload, group, include_test_split=include_test_split)
     dfs.append(summary_df)
 
   df = pd.concat(dfs)
   logging.info('\n' + tabulate(df, headers='keys', tablefmt='psql'))
+  return df
 
 
 def main(_):
@@ -93,7 +114,10 @@ def main(_):
     experiment_path = os.path.join(FLAGS.submission_directory, submission)
     df = scoring_utils.get_experiment_df(experiment_path)
     results[submission] = df
-    print_submission_summary(df)
+    summary_df = print_submission_summary(df)
+    with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+              'w') as fout:
+      summary_df.to_csv(fout)
 
   if not FLAGS.strict:
     logging.warning(
