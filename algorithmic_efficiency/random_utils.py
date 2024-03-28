@@ -26,11 +26,11 @@ SeedType = Union[int, list, np.ndarray]
 
 def _signed_to_unsigned(seed: SeedType) -> SeedType:
   if isinstance(seed, int):
-    return seed + 2**32 if seed < 0 else seed
+    return seed % 2**32
   if isinstance(seed, list):
-    return [s + 2**32 if s < 0 else s for s in seed]
+    return [s % 2**32 for s in seed]
   if isinstance(seed, np.ndarray):
-    return np.array([s + 2**32 if s < 0 else s for s in seed.tolist()])
+    return np.array([s % 2**32 for s in seed.tolist()])
 
 
 def _fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
