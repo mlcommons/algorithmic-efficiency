@@ -93,7 +93,7 @@ class Subsample(nn.Module):
         out_features=self.encoder_dim,
         bias=True)
     self.pos_encode = AddPositionalEmbedding(embedding_dim=self.encoder_dim)
-    self.dropout = nn.Dropout(p=self.input_dropout_rate)
+    self.dropout = nn.Dropout(p=self.input_dropout_rate, inplace=True)
 
   def forward(self, inputs, input_paddings):
     output_paddings = input_paddings
@@ -195,7 +195,7 @@ class FeedForwardModule(nn.Module):
         in_features=config.encoder_dim,
         out_features=config.encoder_dim * config.feed_forward_expansion_factor,
         bias=True)
-    self.dropout1 = nn.Dropout(p=config.feed_forward_dropout_rate)
+    self.dropout1 = nn.Dropout(p=config.feed_forward_dropout_rate, inplace=True)
     self.linear2 = nn.Linear(
         in_features=config.encoder_dim * config.feed_forward_expansion_factor,
         out_features=config.encoder_dim,
@@ -206,8 +206,9 @@ class FeedForwardModule(nn.Module):
     else:
       feed_forward_residual_dropout_rate = (
           config.feed_forward_residual_dropout_rate)
-    self.dropout2 = nn.Dropout(p=feed_forward_residual_dropout_rate)
-
+    self.dropout2 = nn.Dropout(
+        p=feed_forward_residual_dropout_rate, inplace=True)
+  
   def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
@@ -316,7 +317,7 @@ class MultiHeadedSelfAttention(nn.Module):
       attention_residual_dropout_rate = 0.1
     else:
       attention_residual_dropout_rate = config.attention_residual_dropout_rate
-    self.dropout = nn.Dropout(p=attention_residual_dropout_rate)
+    self.dropout = nn.Dropout(p=attention_residual_dropout_rate, inplace=True)
 
   def forward(self, outputs, paddings):
     outputs = self.ln(outputs)
@@ -407,7 +408,7 @@ class ConvolutionBlock(nn.Module):
       conv_residual_dropout_rate = 0.0
     else:
       conv_residual_dropout_rate = config.conv_residual_dropout_rate
-    self.dropout = nn.Dropout(p=conv_residual_dropout_rate)
+    self.dropout = nn.Dropout(p=conv_residual_dropout_rate, inplace=True)
 
   def forward(self, inputs, input_paddings):
     inputs = self.ln(inputs)
