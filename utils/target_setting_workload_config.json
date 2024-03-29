@@ -123,25 +123,25 @@
         "max_steps": 48000,
         "dataset": "librispeech",
         "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json"
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json"
     },
     "librispeech_deepspeech_no_resnet": {
         "max_steps": 48000,
         "dataset": "librispeech",
         "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json"
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_deepspeech_no_resnet/tuning_search_space.json"
     },
     "librispeech_deepspeech_norm_and_spec_aug": {
         "max_steps": 48000,
         "dataset": "librispeech",
         "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json"
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_deepspeech_norm_and_spec_aug/tuning_search_space.json"
     },
     "librispeech_deepspeech_tanh": {
         "max_steps": 48000,
         "dataset": "librispeech",
         "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
-        "tuning_search_space": "reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json"
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_deepspeech_tanh/tuning_search_space.json"
     },
     "criteo1tb": {
         "max_steps": 10666,
@@ -176,7 +176,7 @@
     "librispeech_conformer_attention_temperature": {
         "max_steps": 80000,
         "dataset": "librispeech",
-        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
+        "submission_path": "reference_algorithms/target_setting_algorithms/jax_adamw.py",
         "tuning_search_space": "reference_algorithms/target_setting_algorithms/librispeech_conformer_attention_temperature/tuning_search_space.json"
     },
     "librispeech_conformer_gelu": {

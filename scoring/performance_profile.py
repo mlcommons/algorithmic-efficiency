@@ -157,7 +157,7 @@ def get_workloads_time_to_target(submission,
 
   # For each workload get submission time get the submission times to target.
   for workload, group in submission.groupby('workload'):
-    validation_metric, validation_target = scoring_utils.get_workload_validation_target(workload)
+    validation_metric, validation_target = scoring_utils.get_workload_metrics_and_targets(workload)
 
     # Check number of studies
     time_vals_per_study = []

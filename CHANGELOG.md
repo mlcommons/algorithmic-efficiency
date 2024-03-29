@@ -1,5 +1,23 @@
 # Change Log
 
+## algoperf-benchmark-0.1.4 (2024-03-26)
+
+Upgrade CUDA version to CUDA 12.1:
+- Upgrade CUDA version in Dockerfiles that will be used for scoring.
+- Update Jax and PyTorch package version tags to use local CUDA installation.
+
+Add flag for completely disabling checkpointing. 
+- Note that we will run with checkpointing off at scoring time.
+
+Update Deepspeech and Conformer variant target setting configurations. 
+- Note that variant targets are not final. 
+
+Fixed bug in scoring code to take best trial in a study for external-tuning ruleset.
+
+Added instructions for submission. 
+
+Changed default number of workers for PyTorch data loaders to 0. Running with >0 may lead to incorrect eval results see https://github.com/mlcommons/algorithmic-efficiency/issues/732. 
+
 ## algoperf-benchmark-0.1.2 (2024-03-04)
 Workload variant additions and fixes:
 - Add Deepspeech workload variant
