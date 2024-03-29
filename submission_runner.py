@@ -637,6 +637,12 @@ def main(_):
   if FLAGS.framework == 'pytorch':
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
+  # TODO: remove once issue resolved.
+  if FLAGS.pytorch_eval_num_workers != 0:
+    logging.warning(
+        'WARNING: Setting pytorch_eval_num_workers != 0, will result '
+        'in incorrect evals currently, see issues/732.')
+
   workload_metadata = WORKLOADS[FLAGS.workload]
 
   # Prevent OOM on librispeech conformer.
