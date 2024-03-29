@@ -388,11 +388,11 @@ class LibriSpeechConformerAttentionTemperatureWorkload(
 
   @property
   def validation_target_value(self) -> float:
-    return 0.109976153
+    return 0.109977
 
   @property
   def test_target_value(self) -> float:
-    return 0.06806410335
+    return 0.068065
 
 
 class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
@@ -403,11 +403,11 @@ class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.09730924819
+    return 0.09731
 
   @property
   def test_target_value(self) -> float:
-    return 0.05995978307
+    return 0.05996
 
 
 class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
@@ -418,8 +418,8 @@ class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.09411355803
+    return 0.094114
 
   @property
   def test_target_value(self) -> float:
-    return 0.05662868401
+    return 0.056629

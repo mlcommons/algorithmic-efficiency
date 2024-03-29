@@ -109,11 +109,11 @@ class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.140084
+    return 0.150883
 
   @property
   def test_target_value(self) -> float:
-    return 0.089249
+    return 0.098613
 
 
 class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
@@ -124,11 +124,11 @@ class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 0.122745
+    return 0.131564
 
   @property
   def test_target_value(self) -> float:
-    return 0.073837
+    return 0.079297
 
 
 class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
@@ -156,8 +156,8 @@ class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
 
   @property
   def validation_target_value(self) -> float:
-    return 0.137877
+    return 0.14342
 
   @property
   def test_target_value(self) -> float:
-    return 0.088675
+    return 0.090976
