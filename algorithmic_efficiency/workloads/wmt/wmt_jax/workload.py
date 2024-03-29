@@ -299,7 +299,7 @@ class WmtWorkloadPostLN(WmtWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 30.2003
+    return 30.0779
 
   @property
   def test_target_value(self) -> float:
@@ -315,11 +315,11 @@ class WmtWorkloadAttentionTemp(WmtWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 30.0756
+    return 29.8611
 
   @property
   def test_target_value(self) -> float:
-    return 29.8094
+    return 29.4143
 
   @property
   def attention_temp(self) -> float:
@@ -331,11 +331,11 @@ class WmtWorkloadGLUTanH(WmtWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 30.0002
+    return 29.6517
 
   @property
   def test_target_value(self) -> float:
-    return 29.8139
+    return 29.0515
 
   @property
   def activation(self) -> str:

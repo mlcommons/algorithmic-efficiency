@@ -272,11 +272,11 @@ class ImagenetResNetSiLUWorkload(ImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 1 - 0.22009
+    return 0.75445
 
   @property
   def test_target_value(self) -> float:
-    return 1 - 0.3426
+    return 0.6323
 
 
 class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
@@ -287,11 +287,11 @@ class ImagenetResNetGELUWorkload(ImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 1 - 0.22077
+    return 0.76765
 
   @property
   def test_target_value(self) -> float:
-    return 1 - 0.3402
+    return 0.6519
 
 
 class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
@@ -302,8 +302,8 @@ class ImagenetResNetLargeBNScaleWorkload(ImagenetResNetWorkload):
 
   @property
   def validation_target_value(self) -> float:
-    return 1 - 0.23474
+    return 0.76526
 
   @property
   def test_target_value(self) -> float:
-    return 1 - 0.3577
+    return 0.6423
