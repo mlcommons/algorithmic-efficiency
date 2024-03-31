@@ -1,5 +1,12 @@
 # Change Log
 
+## algoperf-benchmark-0.1.5 (2024-03-26)
+
+- Finalized variant workload targets.
+- Fix in random_utils helper function.
+- For conformer PyTorch Dropout layers set `inplace=True`. 
+- Clear CUDA cache at begining of each trial for PyTorch.
+
 ## algoperf-benchmark-0.1.4 (2024-03-26)
 
 Upgrade CUDA version to CUDA 12.1:
