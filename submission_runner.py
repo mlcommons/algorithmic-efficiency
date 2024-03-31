@@ -154,9 +154,12 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('set_pytorch_max_split_size',
                      False,
                      'If true, set pytorch max_split_size_mb to 256')
-flags.DEFINE_integer('pytorch_eval_num_workers',
-                     0,
-                     'Number of workers for PyTorch evaluation data loaders.')
+flags.DEFINE_integer(
+    'pytorch_eval_num_workers',
+    0,
+    'Number of workers for ImageNet PyTorch evaluation data loaders.'
+    'WARNING: Setting pytorch_eval_num_workers != 0, will result '
+    'in incorrect evals currently, see issues/732.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -205,6 +208,7 @@ def train_once(
     log_dir: Optional[str] = None,
     save_checkpoints: Optional[bool] = True
 ) -> Tuple[spec.Timing, Dict[str, Any]]:
+  _reset_cuda_mem()
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
 
   # Workload setup.
@@ -632,6 +636,12 @@ def main(_):
 
   if FLAGS.framework == 'pytorch':
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
+
+  # TODO: remove once issue resolved.
+  if FLAGS.pytorch_eval_num_workers != 0:
+    logging.warning(
+        'WARNING: Setting pytorch_eval_num_workers != 0, will result '
+        'in incorrect evals currently, see issues/732.')
 
   workload_metadata = WORKLOADS[FLAGS.workload]
 
