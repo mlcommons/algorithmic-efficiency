@@ -3,7 +3,7 @@ name: Containerized Regression Tests for Workload Variants
 on: 
   pull_request:
     branches:
-      - 'dev'  # temp disable
+      - 'main'
 
 jobs:
   build_and_push_jax_docker_image:
