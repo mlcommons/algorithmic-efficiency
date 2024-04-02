@@ -99,12 +99,12 @@ def get_criteo1tb_dataset(split: str,
   elif split == 'validation':
     # Assumes files are of the format day_23_04.
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
+        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.csv')
         for s in range(num_test_files, _NUM_DAY_23_FILES)
     ]
   else:
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
+        os.path.join(data_dir, f'day_23_{str(s).zfill(3)}.csv')
         for s in range(0, num_test_files)
     ]
 
