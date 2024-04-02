@@ -348,7 +348,7 @@ def update_params(workload: spec.Workload,
   if index != optimizer_state['index']:
     # Reset model weights
     # TODO: maybe move this to function
-    checkpoint_state = {'model_params': current_param_container}
+    checkpoint_state = {'model_params': jax_utils.unreplicate(current_param_container)}
     latest_ckpt = flax_checkpoints.restore_checkpoint(
         '/tmp/', target=checkpoint_state)
     checkpoint_state = replicate_checkpoint(
