@@ -230,8 +230,8 @@ def init_optimizer_state(workload: spec.Workload,
         weight_decay=hyperparameters['weight_decay'])
     params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                     workload.param_shapes)
-    optimizer_state = opt_init_fn(params_zeros_like)
-    optimizer_state['optimizers'].append((jax_utils.replicate(optimizer_state), opt_update_fn))
+    sub_optimizer_state = opt_init_fn(params_zeros_like)
+    optimizer_state['optimizers'].append((jax_utils.replicate(sub_optimizer_state), opt_update_fn))
     optimizer_state['index'] = 0
     # TODO: Clean up
     # SAVE model weights
@@ -243,8 +243,6 @@ def init_optimizer_state(workload: spec.Workload,
         step=0,
         overwrite=True,
         keep=1)
-
-    optimizer_state['initial_model_weights_path'] = '/tmp'
 
   return optimizer_state
 
@@ -343,7 +341,7 @@ def update_params(workload: spec.Workload,
 
   hyperparameters = HPARAMS[index]
 
-  optimizer_state, opt_update_fn = optimizer_state['optimizers'][index]
+  sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][index]
 
   per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
@@ -357,15 +355,15 @@ def update_params(workload: spec.Workload,
   outputs = pmapped_train_step(workload,
                                opt_update_fn,
                                model_state,
-                               optimizer_state,
+                               sub_optimizer_state,
                                current_param_container,
                                batch,
                                per_device_rngs,
                                grad_clip,
                                label_smoothing)
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
+  new_sub_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
-  optimizer_state['optimizers'][index] = (new_optimizer_state, opt_update_fn)
+  optimizer_state['optimizers'][index] = (new_sub_optimizer_state, opt_update_fn)
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
@@ -374,7 +372,7 @@ def update_params(workload: spec.Workload,
             'loss': loss[0],
             'grad_norm': grad_norm[0],
         }, global_step)
-  return (new_optimizer_state, opt_update_fn), new_params, new_model_state
+  return (optimizer_state, opt_update_fn), new_params, new_model_state
 
 
 def get_batch_size(workload_name):
