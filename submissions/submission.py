@@ -237,7 +237,7 @@ def init_optimizer_state(workload: spec.Workload,
     model_params = jax.device_get(jax_utils.unreplicate(model_params))
     checkpoint_state = {'model_params': model_params}
     flax_checkpoints.save_checkpoint(
-        checkpoint_dir = '/tmp',
+        '/tmp',
         target=checkpoint_state,
         step=0,
         overwrite=True,
