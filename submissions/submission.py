@@ -22,6 +22,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 from flax.training import checkpoints as flax_checkpoints
+from typing import Sequence
 
 from algorithmic_efficiency import spec
 
