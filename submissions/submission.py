@@ -37,7 +37,31 @@ HPARAMS = [{
     "beta2": 0.9955159689799007,
     "weight_decay": 0.08121616522670176,
     "warmup_factor": 0.02
-}]
+},
+           {
+               "dropout_rate": 0.1,
+               "learning_rate": 0.0017486387539278373,
+               "one_minus_beta1": 0.06733926164,
+               "beta2": 0.9955159689799007,
+               "weight_decay": 0.08121616522670176,
+               "warmup_factor": 0.02
+           },
+           {
+               "dropout_rate": 0.1,
+               "learning_rate": 0.0017486387539278373,
+               "one_minus_beta1": 0.06733926164,
+               "beta2": 0.9955159689799007,
+               "weight_decay": 0.08121616522670176,
+               "warmup_factor": 0.02
+           },
+           {
+               "dropout_rate": 0.1,
+               "learning_rate": 0.0017486387539278373,
+               "one_minus_beta1": 0.06733926164,
+               "beta2": 0.9955159689799007,
+               "weight_decay": 0.08121616522670176,
+               "warmup_factor": 0.02
+           }]
 
 
 def replicate_checkpoint(latest: dict,
@@ -61,6 +85,7 @@ def replicate_checkpoint(latest: dict,
   extra_dict = {k: latest[k] for k in latest.keys() if k not in pytree_keys}
   pytree.update(extra_dict)
   return pytree
+
 
 # Forked from
 # github.com/google/init2winit/blob/master/init2winit/optimizer_lib/alias.py
@@ -228,20 +253,17 @@ def init_optimizer_state(workload: spec.Workload,
         eps=1e-8,
         weight_decay=hyperparameters['weight_decay'])
     params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
-                                    workload.param_shapes)
+                                     workload.param_shapes)
     sub_optimizer_state = opt_init_fn(params_zeros_like)
-    optimizer_state['optimizers'].append((jax_utils.replicate(sub_optimizer_state), opt_update_fn))
+    optimizer_state['optimizers'].append(
+        (jax_utils.replicate(sub_optimizer_state), opt_update_fn))
     optimizer_state['index'] = 0
     # TODO: Clean up
     # SAVE model weights
     model_params = jax.device_get(jax_utils.unreplicate(model_params))
     checkpoint_state = {'model_params': model_params}
     flax_checkpoints.save_checkpoint(
-        '/tmp',
-        target=checkpoint_state,
-        step=0,
-        overwrite=True,
-        keep=1)
+        '/tmp', target=checkpoint_state, step=0, overwrite=True, keep=1)
 
   return optimizer_state
 
@@ -330,8 +352,7 @@ def update_params(workload: spec.Workload,
     latest_ckpt = flax_checkpoints.restore_checkpoint(
         '/tmp/', target=checkpoint_state)
     checkpoint_state = replicate_checkpoint(
-        latest_ckpt,
-        pytree_keys=[
+        latest_ckpt, pytree_keys=[
             'model_params',
         ])
     current_param_container = checkpoint_state['model_params']
@@ -362,7 +383,8 @@ def update_params(workload: spec.Workload,
                                label_smoothing)
   new_sub_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
-  optimizer_state['optimizers'][index] = (new_sub_optimizer_state, opt_update_fn)
+  optimizer_state['optimizers'][index] = (new_sub_optimizer_state,
+                                          opt_update_fn)
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
