@@ -305,9 +305,9 @@ def update_params(workload: spec.Workload,
   if index != optimizer_state['index']:
     # Reset model weights
     # TODO: maybe move this to function
-    checkpoint_state = {'model_params': model_params}
+    checkpoint_state = {'model_params': current_param_container}
     latest_ckpt = flax_checkpoints.restore_checkpoint(
-        checkpoint_dir, target=checkpoint_state)
+        '/tmp/', target=checkpoint_state)
     checkpoint_state = replicate_checkpoint(
         latest_ckpt,
         pytree_keys=[
