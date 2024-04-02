@@ -360,6 +360,14 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 </details>
 
+##### Submissions vs. Baselines
+
+Submitters may also submit algorithms marked as *baselines*. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters. Baseline algorithms will still appear on the leaderboard but will be clearly marked as such. We highly encourage the submission of baselines for educational purposes.
+
+Baseline algorithms might, for example, include existing algorithms with different search spaces or learning rate schedules.
+Another example involves porting submissions to different frameworks. For instance, a participant may wish to assess their algorithm in both JAX and PyTorch to demonstrate the impact of the framework. However, in such cases, one of these submissions must be designated as eligible for prize consideration, while the other is marked as a baseline. This prevents circumventing of tuning rules and the spirit of the benchmark by creating additional "lottery tickets".
+Baselines might not be prioritized when using the compute resources by the sponsors of the benchmark.
+
 ##### Software dependencies
 
 We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section.
@@ -545,7 +553,7 @@ new Compute Instance with the "Deep Learning on Linux" Image in Boot disk option
 
 Our benchmark allows multiple submissions by the same team of submitters as long as they are substantially different. We disallow submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
 
-Submitters may submit algorithms marked as *baselines*. These might include existing algorithms with different search spaces or learning rate schedules. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters.
+Submitters may submit algorithms marked as *baselines*. These might include existing algorithms with different search spaces or learning rate schedules. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters. See the [Submissions vs. Baselines](#submissions-vs-baselines) Section.
 
 #### Can my submission be structured using multiple files?
 
