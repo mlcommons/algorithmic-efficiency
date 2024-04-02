@@ -38,6 +38,29 @@ HPARAMS = [{
     "warmup_factor": 0.02
 }]
 
+
+def replicate_checkpoint(latest: dict,
+                         pytree_keys: Sequence[str],
+                         replicate: bool = True) -> dict:
+  """Restores from the provided checkpoint.
+
+  Args:
+    latest: A dict representing the state of the
+      checkpoint we want to restore.
+    pytree_keys: A sequence of keys into `latest` that are pytrees, which will
+      be replicated if replicate=True.
+    replicate: If set, replicate the state across devices.
+
+  Returns:
+    A JAX pytree holding the arrays that need to be replicated/unreplicated.
+  """
+  pytree = {k: latest[k] for k in pytree_keys}
+  if replicate:
+    pytree = jax_utils.replicate(pytree)
+  extra_dict = {k: latest[k] for k in latest.keys() if k not in pytree_keys}
+  pytree.update(extra_dict)
+  return pytree
+
 # Forked from
 # github.com/google/init2winit/blob/master/init2winit/optimizer_lib/alias.py
 def nadamw(
@@ -300,7 +323,7 @@ def update_params(workload: spec.Workload,
   del hyperparameters
 
   # TODO unpack this
-  index = steps // int(workload.step_hint * TRAINING_HORIZON_FRACTION)
+  index = global_step // int(workload.step_hint * TRAINING_HORIZON_FRACTION)
 
   if index != optimizer_state['index']:
     # Reset model weights
