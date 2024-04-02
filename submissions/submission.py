@@ -21,6 +21,7 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
+from flax.training import checkpoints as flax_checkpoints
 
 from algorithmic_efficiency import spec
 
@@ -207,6 +208,19 @@ def init_optimizer_state(workload: spec.Workload,
                                     workload.param_shapes)
     optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append((jax_utils.replicate(optimizer_state), opt_update_fn))
+    optimizer_state['index'] = 0
+    # TODO: Clean up
+    # SAVE model weights
+    model_params = jax.device_get(jax_utils.unreplicate(model_params))
+    checkpoint_state = {'model_params': model_params}
+    flax_checkpoints.save_checkpoint(
+        checkpoint_dir = '/tmp',
+        target=checkpoint_state,
+        step=0,
+        overwrite=True,
+        keep=1)
+
+    optimizer_state['initial_model_weights_path'] = '/tmp'
 
   return optimizer_state
 
@@ -287,6 +301,22 @@ def update_params(workload: spec.Workload,
 
   # TODO unpack this
   index = steps // int(workload.step_hint * TRAINING_HORIZON_FRACTION)
+
+  if index != optimizer_state['index']:
+    # Reset model weights
+    # TODO: maybe move this to function
+    checkpoint_state = {'model_params': model_params}
+    latest_ckpt = flax_checkpoints.restore_checkpoint(
+        checkpoint_dir, target=checkpoint_state)
+    checkpoint_state = replicate_checkpoint(
+        latest_ckpt,
+        pytree_keys=[
+            'model_params',
+        ])
+    current_param_container = checkpoint_state['model_params']
+    # Todo tie this back to model state
+    optimizer_state['index'] = index
+
   hyperparameters = HPARAMS[index]
 
   optimizer_state, opt_update_fn = optimizer_state['optimizers'][index]
