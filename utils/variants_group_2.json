@@ -1,0 +1,8 @@
+{
+    "wmt_glu_tanh": {
+        "max_steps": 133333,
+        "dataset": "wmt",
+        "submission_path": "reference_algorithms/target_setting_algorithms/jax_nadamw.py",
+        "tuning_search_space": "reference_algorithms/target_setting_algorithms/wmt_attention_temp/tuning_search_space.json"
+    }
+}

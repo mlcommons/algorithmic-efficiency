@@ -26,7 +26,7 @@
     },
     "label_smoothing": {
         "feasible_points": [
-            0.0
+            0.1
         ]
     }
 }
