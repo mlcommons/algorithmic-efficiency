@@ -196,7 +196,7 @@ def init_optimizer_state(workload: spec.Workload,
     return schedule_fn
 
   # Create optimizer + LR schedule.
-  for hyperparameters in hyperparmeters_list:
+  for hyperparameters in hyperparameters_list:
     lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
     opt_init_fn, opt_update_fn = nadamw(
         learning_rate=lr_schedule_fn,
