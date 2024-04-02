@@ -31,13 +31,13 @@ _GRAD_CLIP_EPS = 1e-6
 TRAINING_HORIZON_FRACTION = 0.75
 
 HPARAMS = [{
-    "dropout_rate": 0.1,
-    "learning_rate": 0.0017486387539278373,
-    "one_minus_beta1": 0.06733926164,
-    "beta2": 0.9955159689799007,
-    "weight_decay": 0.08121616522670176,
-    "warmup_factor": 0.02
-},
+              "dropout_rate": 0.1,
+              "learning_rate": 0.0017486387539278373,
+              "one_minus_beta1": 0.06733926164,
+              "beta2": 0.9955159689799007,
+              "weight_decay": 0.08121616522670176,
+              "warmup_factor": 0.02
+           },
            {
                "dropout_rate": 0.1,
                "learning_rate": 0.0017486387539278373,
@@ -260,7 +260,7 @@ def init_optimizer_state(workload: spec.Workload,
     optimizer_state['index'] = 0
     # TODO: Clean up
     # SAVE model weights
-    model_params = jax.device_get(jax_utils.unreplicate(model_params))
+    model_params = jax.device_get(model_params)
     checkpoint_state = {'model_params': model_params}
     flax_checkpoints.save_checkpoint(
         '/tmp', target=checkpoint_state, step=0, overwrite=True, keep=1)
