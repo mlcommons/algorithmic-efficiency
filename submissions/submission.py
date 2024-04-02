@@ -371,7 +371,7 @@ def update_params(workload: spec.Workload,
             'loss': loss[0],
             'grad_norm': grad_norm[0],
         }, global_step)
-  return (optimizer_state, opt_update_fn), new_params, new_model_state
+  return optimizer_state, new_params, new_model_state
 
 
 def get_batch_size(workload_name):
