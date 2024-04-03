@@ -21,6 +21,7 @@ import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
+import math
 from flax.training import checkpoints as flax_checkpoints
 from typing import Sequence
 
@@ -30,13 +31,25 @@ _GRAD_CLIP_EPS = 1e-6
 
 TRAINING_HORIZON_FRACTION = 0.75
 
+# Make sure the traning horizons for all points add up to 3
+# since they are w.r.t. the external tuning stephint
 HPARAMS = [{
-              "dropout_rate": 0.1,
-              "learning_rate": 0.0017486387539278373,
-              "one_minus_beta1": 0.06733926164,
-              "beta2": 0.9955159689799007,
-              "weight_decay": 0.08121616522670176,
-              "warmup_factor": 0.02
+    "dropout_rate": 0.1,
+    "learning_rate": 0.0017486387539278373,
+    "one_minus_beta1": 0.06733926164,
+    "beta2": 0.9955159689799007,
+    "weight_decay": 0.08121616522670176,
+    "warmup_factor": 0.02,
+    "training_horizon": 1,
+},
+           {
+               "dropout_rate": 0.1,
+               "learning_rate": 0.0017486387539278373,
+               "one_minus_beta1": 0.06733926164,
+               "beta2": 0.9955159689799007,
+               "weight_decay": 0.08121616522670176,
+               "warmup_factor": 0.02,
+               "training_horizon": 0.75
            },
            {
                "dropout_rate": 0.1,
@@ -44,7 +57,8 @@ HPARAMS = [{
                "one_minus_beta1": 0.06733926164,
                "beta2": 0.9955159689799007,
                "weight_decay": 0.08121616522670176,
-               "warmup_factor": 0.02
+               "warmup_factor": 0.02,
+               "training_horizon": 0.75
            },
            {
                "dropout_rate": 0.1,
@@ -52,15 +66,8 @@ HPARAMS = [{
                "one_minus_beta1": 0.06733926164,
                "beta2": 0.9955159689799007,
                "weight_decay": 0.08121616522670176,
-               "warmup_factor": 0.02
-           },
-           {
-               "dropout_rate": 0.1,
-               "learning_rate": 0.0017486387539278373,
-               "one_minus_beta1": 0.06733926164,
-               "beta2": 0.9955159689799007,
-               "weight_decay": 0.08121616522670176,
-               "warmup_factor": 0.02
+               "warmup_factor": 0.5,
+               "training_horizon": 0.75
            }]
 
 
@@ -226,8 +233,8 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
   del hyperparameters
 
-  hyperparameters_list = HPARAMS
   optimizer_state = {'optimizers': []}
+  optimizer_state['hyperparameters'] = HPARAMS
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
@@ -244,8 +251,12 @@ def init_optimizer_state(workload: spec.Workload,
     return schedule_fn
 
   # Create optimizer + LR schedule.
-  for hyperparameters in hyperparameters_list:
-    lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
+  end_step = 0
+  for hyperparameters in optimizer_state['hyperparameters']:
+    horizon_steps = math.ceil(hyperparameters.training_horizon *
+                              workload.step_hint)
+    end_step = end_step + horizon_steps + 1
+    lr_schedule_fn = jax_cosine_warmup(horizon_steps, hyperparameters)
     opt_init_fn, opt_update_fn = nadamw(
         learning_rate=lr_schedule_fn,
         b1=1.0 - hyperparameters['one_minus_beta1'],
@@ -256,14 +267,14 @@ def init_optimizer_state(workload: spec.Workload,
                                      workload.param_shapes)
     sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append(
-        (jax_utils.replicate(sub_optimizer_state), opt_update_fn))
+        end_step, (jax_utils.replicate(sub_optimizer_state), opt_update_fn))
     optimizer_state['index'] = 0
-    # TODO: Clean up
-    # SAVE model weights
-    model_params = jax.device_get(model_params)
-    checkpoint_state = {'model_params': model_params}
-    flax_checkpoints.save_checkpoint(
-        '/tmp', target=checkpoint_state, step=0, overwrite=True, keep=1)
+
+  # Save initial model weights
+  model_params = jax.device_get(model_params)
+  checkpoint_state = {'model_params': model_params}
+  flax_checkpoints.save_checkpoint(
+      '/tmp', target=checkpoint_state, step=0, overwrite=True, keep=1)
 
   return optimizer_state
 
@@ -342,24 +353,24 @@ def update_params(workload: spec.Workload,
   del eval_results
   del hyperparameters
 
-  # TODO unpack this
-  index = global_step // int(workload.step_hint * TRAINING_HORIZON_FRACTION)
+  # End step of the current point
+  horizon_end_step, sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][optimizer_state['index']]
 
-  if index != optimizer_state['index']:
+  # If we have reached the end of the current opt point horizon progress the index
+  if global_step == horizon_end_step:
     # Reset model weights
-    # TODO: maybe move this to function
-    checkpoint_state = {'model_params': jax_utils.unreplicate(current_param_container)}
-    ckpt = flax_checkpoints.restore_checkpoint(
-        '/tmp/', target=checkpoint_state)
+    checkpoint_state = {
+        'model_params': jax_utils.unreplicate(current_param_container)
+    }
+    ckpt = flax_checkpoints.restore_checkpoint('/tmp/', target=checkpoint_state)
     current_param_container = ckpt['model_params']
-    # Todo tie this back to model state
-    optimizer_state['index'] = index
+    optimizer_state['index'] += 1
+    horizon_end_step = optimizer_state['optimizers'][
+        optimizer_state['index']][0]
 
-  hyperparameters = HPARAMS[index]
+  # Check for label_smoothing and grad_clip
+  hyperparameters = optimizer_state['hyperparameters'][optimizer_state['index']]
 
-  sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][index]
-
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters['label_smoothing']
   else:
@@ -368,6 +379,9 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters['grad_clip']
   else:
     grad_clip = None
+
+  # Pmapped update step
+  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   outputs = pmapped_train_step(workload,
                                opt_update_fn,
                                model_state,
@@ -379,8 +393,8 @@ def update_params(workload: spec.Workload,
                                label_smoothing)
   new_sub_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
-  optimizer_state['optimizers'][index] = (new_sub_optimizer_state,
-                                          opt_update_fn)
+  optimizer_state['optimizers'][optimizer_state['index']] = (
+      horizon_end_step, new_sub_optimizer_state, opt_update_fn)
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
@@ -389,6 +403,7 @@ def update_params(workload: spec.Workload,
             'loss': loss[0],
             'grad_norm': grad_norm[0],
         }, global_step)
+
   return optimizer_state, new_params, new_model_state
 
 
