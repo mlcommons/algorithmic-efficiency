@@ -30,20 +30,20 @@ from algorithmic_efficiency import spec
 
 _GRAD_CLIP_EPS = 1e-6
 
-TRAINING_HORIZON_FRACTION = 0.75
 
 # Make sure the traning horizons for all points add up to 3
 # since they are w.r.t. the external tuning stephint
-HPARAMS = [{
-    "dropout_rate": 0.1,
-    "learning_rate": 0.0014271957958295392,
-    "one_minus_beta1": 0.03380478752,
-    "beta2": 0.9957304053273589,
-    "weight_decay": 0.09153141484048229,
-    "warmup_factor": 0.01,
-    "label_smoothing": 0.1,
-    "training_horizon": 1,
-},
+HPARAMS = [
+#   {
+#     "dropout_rate": 0.1,
+#     "learning_rate": 0.0014271957958295392,
+#     "one_minus_beta1": 0.03380478752,
+#     "beta2": 0.9957304053273589,
+#     "weight_decay": 0.09153141484048229,
+#     "warmup_factor": 0.01,
+#     "label_smoothing": 0.1,
+#     "training_horizon": 1,
+# },
            {
                "dropout_rate": 0.0,
                "learning_rate": 0.001768509931943289,
@@ -54,15 +54,15 @@ HPARAMS = [{
                "label_smoothing": 0.2,
                "training_horizon": 1,
            },
-           {
-               "dropout_rate": 0.1,
-               "learning_rate": 0.0023792566965593815,
-               "one_minus_beta1": 0.01990335215,
-               "beta2": 0.9632738717172477,
-               "weight_decay": 0.3417568278549717,
-               "warmup_factor": 0.01,
-               "training_horizon": 0.75
-           }
+          #  {
+          #      "dropout_rate": 0.1,
+          #      "learning_rate": 0.0023792566965593815,
+          #      "one_minus_beta1": 0.01990335215,
+          #      "beta2": 0.9632738717172477,
+          #      "weight_decay": 0.3417568278549717,
+          #      "warmup_factor": 0.01,
+          #      "training_horizon": 0.75
+          #  }
            ]
 
 
@@ -253,7 +253,7 @@ def init_optimizer_state(workload: spec.Workload,
   for hyperparameters in optimizer_state['hyperparameters']:
     horizon_steps = math.ceil(hyperparameters['training_horizon'] *
                               workload.step_hint)
-    end_step = end_step + horizon_steps + 1
+    end_step = end_step + horizon_steps
     lr_schedule_fn = jax_cosine_warmup(horizon_steps, hyperparameters)
     opt_init_fn, opt_update_fn = nadamw(
         learning_rate=lr_schedule_fn,
@@ -261,6 +261,7 @@ def init_optimizer_state(workload: spec.Workload,
         b2=hyperparameters['beta2'],
         eps=1e-8,
         weight_decay=hyperparameters['weight_decay'])
+    # Todo remove sub_optimizer_state 
     sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append(
         (end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
@@ -358,7 +359,7 @@ def update_params(workload: spec.Workload,
   # If we have reached the end of the current opt point horizon progress the index
   if global_step == horizon_end_step:
     # Reset model weights
-    logging.info('Moving to next optimizer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+    logging.info('Moving to next opt point.')
     checkpoint_state = {
         'model_params': jax_utils.unreplicate(current_param_container)
     }
@@ -410,6 +411,8 @@ def update_params(workload: spec.Workload,
         },
         global_step)
 
+  # The maybe_restore_from_checkpoint call in submission runner expects a tuple for
+  # optimizer state.
   return (optimizer_state, None), new_params, new_model_state
 
 
