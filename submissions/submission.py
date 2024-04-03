@@ -44,25 +44,25 @@ HPARAMS = [{
     "label_smoothing": 0.1,
     "training_horizon": 1,
 },
-          #  {
-          #      "dropout_rate": 0.0,
-          #      "learning_rate": 0.001768509931943289,
-          #      "one_minus_beta1": 0.05850208614,
-          #      "beta2": 0.9768053375036079,
-          #      "weight_decay": 0.0279513959224539,
-          #      "warmup_factor": 0.02,
-          #      "label_smoothing": 0.2,
-          #      "training_horizon": 1,
-          #  },
-          #  {
-          #      "dropout_rate": 0.1,
-          #      "learning_rate": 0.0023792566965593815,
-          #      "one_minus_beta1": 0.01990335215,
-          #      "beta2": 0.9632738717172477,
-          #      "weight_decay": 0.3417568278549717,
-          #      "warmup_factor": 0.01,
-          #      "training_horizon": 0.75
-          #  }
+           {
+               "dropout_rate": 0.0,
+               "learning_rate": 0.001768509931943289,
+               "one_minus_beta1": 0.05850208614,
+               "beta2": 0.9768053375036079,
+               "weight_decay": 0.0279513959224539,
+               "warmup_factor": 0.02,
+               "label_smoothing": 0.2,
+               "training_horizon": 1,
+           },
+           {
+               "dropout_rate": 0.1,
+               "learning_rate": 0.0023792566965593815,
+               "one_minus_beta1": 0.01990335215,
+               "beta2": 0.9632738717172477,
+               "weight_decay": 0.3417568278549717,
+               "warmup_factor": 0.01,
+               "training_horizon": 0.75
+           }
            ]
 
 
@@ -266,6 +266,7 @@ def init_optimizer_state(workload: spec.Workload,
         (end_step, sub_optimizer_state, opt_update_fn))
     optimizer_state['lr_fns'].append(lr_schedule_fn)
     optimizer_state['index'] = 0
+    jax.clear_caches()
   
   del(params_zeros_like)
 
