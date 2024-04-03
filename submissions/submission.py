@@ -70,7 +70,7 @@ HPARAMS = [{
                "weight_decay": 0.009433108858143253,
                "warmup_factor": 0.02,
                "label_smoothing": 0.1,
-               "training_horizon": 0.5
+               "training_horizon": 0.7
            }]
 
 
