@@ -36,40 +36,31 @@ TRAINING_HORIZON_FRACTION = 0.75
 # since they are w.r.t. the external tuning stephint
 HPARAMS = [{
     "dropout_rate": 0.1,
-    "learning_rate": 0.0029720011959968673,
-    "one_minus_beta1": 0.07792603047,
-    "beta2": 0.9962921729363772,
-    "weight_decay": 0.0829000533172967,
+    "learning_rate": 0.0014271957958295392,
+    "one_minus_beta1": 0.03380478752,
+    "beta2": 0.9957304053273589,
+    "weight_decay": 0.09153141484048229,
     "warmup_factor": 0.01,
+    "label_smoothing": 0.1,
     "training_horizon": 1,
 },
            {
                "dropout_rate": 0.0,
-               "learning_rate": 0.008727423193877287,
-               "one_minus_beta1": 0.13701893497,
-               "beta2": 0.9674821014897919,
-               "weight_decay": 0.0003260148001972868,
-               "warmup_factor": 0.1,
-               "training_horizon": 0.75
+               "learning_rate": 0.001768509931943289,
+               "one_minus_beta1": 0.05850208614,
+               "beta2": 0.9768053375036079,
+               "weight_decay": 0.0279513959224539,
+               "warmup_factor": 0.02,
+               "label_smoothing": 0.2,
+               "training_horizon": 1,
            },
            {
                "dropout_rate": 0.1,
-               "learning_rate": 0.0017132238903935105,
-               "one_minus_beta1": 0.03116747276,
-               "beta2": 0.9982698059359032,
-               "weight_decay": 0.04384241571065291,
-               "warmup_factor": 0.02,
-               "label_smoothing": 0.1,
-               "training_horizon": 0.75
-           },
-           {
-               "dropout_rate": 0.1,
-               "learning_rate": 0.005756132858742002,
-               "one_minus_beta1": 0.00927053554,
-               "beta2": 0.9939282778121079,
-               "weight_decay": 0.009433108858143253,
-               "warmup_factor": 0.02,
-               "label_smoothing": 0.1,
+               "learning_rate": 0.0023792566965593815,
+               "one_minus_beta1": 0.01990335215,
+               "beta2": 0.9632738717172477,
+               "weight_decay": 0.3417568278549717,
+               "warmup_factor": 0.01,
                "training_horizon": 0.75
            }]
 
