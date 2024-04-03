@@ -422,7 +422,7 @@ def update_params(workload: spec.Workload,
         {
             'loss': loss[0],
             'grad_norm': grad_norm[0],
-            'lr': lr_fn(optimizer_state['current_opt_state'][-1].count)[0]
+            'lr': lr_fn(optimizer_state['current_opt_state'][-1].count)
         },
         global_step)
 
