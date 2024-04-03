@@ -36,39 +36,41 @@ TRAINING_HORIZON_FRACTION = 0.75
 # since they are w.r.t. the external tuning stephint
 HPARAMS = [{
     "dropout_rate": 0.1,
-    "learning_rate": 0.0017486387539278373,
-    "one_minus_beta1": 0.06733926164,
-    "beta2": 0.9955159689799007,
-    "weight_decay": 0.08121616522670176,
-    "warmup_factor": 0.02,
+    "learning_rate": 0.0029720011959968673,
+    "one_minus_beta1": 0.07792603047,
+    "beta2": 0.9962921729363772,
+    "weight_decay": 0.0829000533172967,
+    "warmup_factor": 0.01,
     "training_horizon": 1,
 },
            {
-               "dropout_rate": 0.1,
-               "learning_rate": 0.0017486387539278373,
-               "one_minus_beta1": 0.06733926164,
-               "beta2": 0.9955159689799007,
-               "weight_decay": 0.08121616522670176,
-               "warmup_factor": 0.02,
+               "dropout_rate": 0.0,
+               "learning_rate": 0.008727423193877287,
+               "one_minus_beta1": 0.13701893497,
+               "beta2": 0.9674821014897919,
+               "weight_decay": 0.0003260148001972868,
+               "warmup_factor": 0.1,
                "training_horizon": 0.75
            },
            {
                "dropout_rate": 0.1,
-               "learning_rate": 0.0017486387539278373,
-               "one_minus_beta1": 0.06733926164,
-               "beta2": 0.9955159689799007,
-               "weight_decay": 0.08121616522670176,
+               "learning_rate": 0.0017132238903935105,
+               "one_minus_beta1": 0.03116747276,
+               "beta2": 0.9982698059359032,
+               "weight_decay": 0.04384241571065291,
                "warmup_factor": 0.02,
+               "label_smoothing": 0.1,
                "training_horizon": 0.75
            },
            {
                "dropout_rate": 0.1,
-               "learning_rate": 0.0017486387539278373,
-               "one_minus_beta1": 0.06733926164,
-               "beta2": 0.9955159689799007,
-               "weight_decay": 0.08121616522670176,
-               "warmup_factor": 0.5,
-               "training_horizon": 0.75
+               "learning_rate": 0.005756132858742002,
+               "one_minus_beta1": 0.00927053554,
+               "beta2": 0.9939282778121079,
+               "weight_decay": 0.009433108858143253,
+               "warmup_factor": 0.02,
+               "label_smoothing": 0.1,
+               "training_horizon": 0.5
            }]
 
 
@@ -268,8 +270,8 @@ def init_optimizer_state(workload: spec.Workload,
     params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                      workload.param_shapes)
     sub_optimizer_state = opt_init_fn(params_zeros_like)
-    optimizer_state['optimizers'].append((
-        end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
+    optimizer_state['optimizers'].append(
+        (end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
     optimizer_state['lr_fns'].append(lr_schedule_fn)
     optimizer_state['index'] = 0
 
@@ -287,6 +289,7 @@ def init_optimizer_state(workload: spec.Workload,
     axis_name='batch',
     in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
     static_broadcasted_argnums=(0, 1),
+    # todo add donate argnum 3
     donate_argnums=(2, 4))
 def pmapped_train_step(workload,
                        opt_update_fn,
@@ -412,9 +415,10 @@ def update_params(workload: spec.Workload,
             'loss': loss[0],
             'grad_norm': grad_norm[0],
             'lr': lr_fn(sub_optimizer_state[-1].count)[0]
-        }, global_step)
+        },
+        global_step)
 
-  return (optimizer_state, None) , new_params, new_model_state
+  return (optimizer_state, None), new_params, new_model_state
 
 
 def get_batch_size(workload_name):
