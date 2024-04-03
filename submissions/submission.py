@@ -354,6 +354,7 @@ def update_params(workload: spec.Workload,
   del hyperparameters
 
   # End step of the current point
+  optimizer_state, _ = optimizer_state
   horizon_end_step, sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][optimizer_state['index']]
 
   # If we have reached the end of the current opt point horizon progress the index
