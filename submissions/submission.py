@@ -15,6 +15,7 @@ from typing import (Any,
                     Union)
 # isort: on
 
+from absl import logging
 import chex
 from flax import jax_utils
 import jax
@@ -360,6 +361,7 @@ def update_params(workload: spec.Workload,
   # If we have reached the end of the current opt point horizon progress the index
   if global_step == horizon_end_step:
     # Reset model weights
+    logging.info['Moving to next optimizer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!']
     checkpoint_state = {
         'model_params': jax_utils.unreplicate(current_param_container)
     }
