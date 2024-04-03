@@ -361,15 +361,18 @@ def update_params(workload: spec.Workload,
   # If we have reached the end of the current opt point horizon progress the index
   if global_step == horizon_end_step:
     # Reset model weights
-    logging.info['Moving to next optimizer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!']
+    logging.info('Moving to next optimizer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     checkpoint_state = {
         'model_params': jax_utils.unreplicate(current_param_container)
     }
     ckpt = flax_checkpoints.restore_checkpoint('/tmp/', target=checkpoint_state)
     current_param_container = ckpt['model_params']
     optimizer_state['index'] += 1
-    horizon_end_step = optimizer_state['optimizers'][
-        optimizer_state['index']][0]
+    try:
+      horizon_end_step, sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][
+          optimizer_state['index']]
+    except IndexError:
+      raise spec.TrainingCompleteError
 
   # Check for label_smoothing and grad_clip
   hyperparameters = optimizer_state['hyperparameters'][optimizer_state['index']]
