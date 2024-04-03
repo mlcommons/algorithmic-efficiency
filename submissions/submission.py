@@ -43,8 +43,8 @@ HPARAMS = [
     "warmup_factor": 0.01,
     "label_smoothing": 0.1,
     # Debug criteo
-    "training_horizon": 0.0006,
-    # "training_horizon": 1,
+    # "training_horizon": 0.0006,
+    "training_horizon": 1,
 },
            {
                "dropout_rate": 0.0,
@@ -56,8 +56,8 @@ HPARAMS = [
                "label_smoothing": 0.2,
                "training_horizon": 1,
                # Debug criteo
-               "training_horizon": 0.0006,
-               # "training_horizon": 1,
+              #  "training_horizon": 0.0006,
+               "training_horizon": 1,
            },
            {
                "dropout_rate": 0.1,
@@ -67,8 +67,8 @@ HPARAMS = [
                "weight_decay": 0.3417568278549717,
                "warmup_factor": 0.01,
                # Debug criteo
-               "training_horizon": 0.0006,
-              #  "training_horizon": 0.75
+              #  "training_horizon": 0.0006,
+               "training_horizon": 0.75
            }
            ]
 
