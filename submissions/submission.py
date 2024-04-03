@@ -266,7 +266,7 @@ def init_optimizer_state(workload: spec.Workload,
     params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                      workload.param_shapes)
     sub_optimizer_state = opt_init_fn(params_zeros_like)
-    optimizer_state['optimizers'].append(()
+    optimizer_state['optimizers'].append((
         end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
     optimizer_state['index'] = 0
 
