@@ -253,7 +253,7 @@ def init_optimizer_state(workload: spec.Workload,
   # Create optimizer + LR schedule.
   end_step = 0
   for hyperparameters in optimizer_state['hyperparameters']:
-    horizon_steps = math.ceil(hyperparameters.training_horizon *
+    horizon_steps = math.ceil(hyperparameters['training_horizon'] *
                               workload.step_hint)
     end_step = end_step + horizon_steps + 1
     lr_schedule_fn = jax_cosine_warmup(horizon_steps, hyperparameters)
