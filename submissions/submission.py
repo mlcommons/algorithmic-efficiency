@@ -276,7 +276,7 @@ def init_optimizer_state(workload: spec.Workload,
   flax_checkpoints.save_checkpoint(
       '/tmp', target=checkpoint_state, step=0, overwrite=True, keep=1)
 
-  return optimizer_state, optimizer_state['optimizers'][optimizer_state['index']][2]
+  return optimizer_state, None
 
 
 @functools.partial(
@@ -405,7 +405,7 @@ def update_params(workload: spec.Workload,
             'grad_norm': grad_norm[0],
         }, global_step)
 
-  return optimizer_state, new_params, new_model_state
+  return (optimizer_state, None) , new_params, new_model_state
 
 
 def get_batch_size(workload_name):
