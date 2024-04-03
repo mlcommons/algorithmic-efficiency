@@ -236,6 +236,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   optimizer_state = {'optimizers': []}
   optimizer_state['hyperparameters'] = HPARAMS
+  optimizer_state['lr_fns'] = []
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
     # Create learning rate schedule.
@@ -269,6 +270,7 @@ def init_optimizer_state(workload: spec.Workload,
     sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append((
         end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
+    optimizer_state['lr_fns'].append(lr_schedule_fn)
     optimizer_state['index'] = 0
 
   # Save initial model weights
@@ -404,10 +406,12 @@ def update_params(workload: spec.Workload,
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
+    lr_fn = optimizer_state['lr_fns'][optimizer_state['index']]
     workload.metrics_logger.append_scalar_metrics(
         {
             'loss': loss[0],
             'grad_norm': grad_norm[0],
+            'lr': lr_fn(sub_optimizer_state[-1].count)[0]
         }, global_step)
 
   return (optimizer_state, None) , new_params, new_model_state
