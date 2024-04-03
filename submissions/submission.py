@@ -287,7 +287,7 @@ def init_optimizer_state(workload: spec.Workload,
     axis_name='batch',
     in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
     static_broadcasted_argnums=(0, 1),
-    donate_argnums=(2, 3, 4))
+    donate_argnums=(2, 4))
 def pmapped_train_step(workload,
                        opt_update_fn,
                        model_state,
