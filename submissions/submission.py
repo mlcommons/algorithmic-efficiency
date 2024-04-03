@@ -387,7 +387,6 @@ def update_params(workload: spec.Workload,
     # Initialize new opt_state
     params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                   workload.param_shapes)
-    _, opt_init_fn, _, = optimizer_state['optimizers'][0]
     optimizer_state['current_opt_state'] = opt_init_fn(params_zeros_like)
     current_opt_state = optimizer_state['current_opt_state']
 
