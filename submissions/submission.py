@@ -391,7 +391,7 @@ def update_params(workload: spec.Workload,
     current_opt_state = optimizer_state['current_opt_state']
 
   # Check for label_smoothing and grad_clip
-  hyperparameters = optimizer_state['hyperparameters'][optimizer_state['index']]
+  hyperparameters = optimizer_state['hyperparameter_points'][optimizer_state['index']]
 
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters['label_smoothing']
