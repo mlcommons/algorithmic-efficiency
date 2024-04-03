@@ -355,7 +355,7 @@ def update_params(workload: spec.Workload,
         latest_ckpt, pytree_keys=[
             'model_params',
         ])
-    current_param_container = checkpoint_state['model_params']
+    current_param_container = jax_utils.replicate(checkpoint_state['model_params'])
     # Todo tie this back to model state
     optimizer_state['index'] = index
 
