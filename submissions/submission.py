@@ -34,26 +34,31 @@ _GRAD_CLIP_EPS = 1e-6
 # Make sure the traning horizons for all points add up to 3
 # since they are w.r.t. the external tuning stephint
 HPARAMS = [
-#   {
-#     "dropout_rate": 0.1,
-#     "learning_rate": 0.0014271957958295392,
-#     "one_minus_beta1": 0.03380478752,
-#     "beta2": 0.9957304053273589,
-#     "weight_decay": 0.09153141484048229,
-#     "warmup_factor": 0.01,
-#     "label_smoothing": 0.1,
-#     "training_horizon": 1,
-# },
-          #  {
-          #      "dropout_rate": 0.0,
-          #      "learning_rate": 0.001768509931943289,
-          #      "one_minus_beta1": 0.05850208614,
-          #      "beta2": 0.9768053375036079,
-          #      "weight_decay": 0.0279513959224539,
-          #      "warmup_factor": 0.02,
-          #      "label_smoothing": 0.2,
-          #      "training_horizon": 1,
-          #  },
+  {
+    "dropout_rate": 0.1,
+    "learning_rate": 0.0014271957958295392,
+    "one_minus_beta1": 0.03380478752,
+    "beta2": 0.9957304053273589,
+    "weight_decay": 0.09153141484048229,
+    "warmup_factor": 0.01,
+    "label_smoothing": 0.1,
+    # Debug criteo
+    "training_horizon": 0.0006,
+    # "training_horizon": 1,
+},
+           {
+               "dropout_rate": 0.0,
+               "learning_rate": 0.001768509931943289,
+               "one_minus_beta1": 0.05850208614,
+               "beta2": 0.9768053375036079,
+               "weight_decay": 0.0279513959224539,
+               "warmup_factor": 0.02,
+               "label_smoothing": 0.2,
+               "training_horizon": 1,
+               # Debug criteo
+               "training_horizon": 0.0006,
+               # "training_horizon": 1,
+           },
            {
                "dropout_rate": 0.1,
                "learning_rate": 0.0023792566965593815,
@@ -61,7 +66,9 @@ HPARAMS = [
                "beta2": 0.9632738717172477,
                "weight_decay": 0.3417568278549717,
                "warmup_factor": 0.01,
-               "training_horizon": 0.75
+               # Debug criteo
+               "training_horizon": 0.0006,
+              #  "training_horizon": 0.75
            }
            ]
 
@@ -229,7 +236,7 @@ def init_optimizer_state(workload: spec.Workload,
   del hyperparameters
 
   optimizer_state = {'optimizers': []}
-  optimizer_state['hyperparameters'] = HPARAMS
+  optimizer_state['hyperparamete_points'] = HPARAMS
   optimizer_state['lr_fns'] = []
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
@@ -248,9 +255,7 @@ def init_optimizer_state(workload: spec.Workload,
 
   # Create optimizer + LR schedule.
   end_step = 0
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
-                                     workload.param_shapes)
-  for hyperparameters in optimizer_state['hyperparameters']:
+  for hyperparameters in optimizer_state['hyperparameter_points']:
     horizon_steps = math.ceil(hyperparameters['training_horizon'] *
                               workload.step_hint)
     end_step = end_step + horizon_steps
@@ -262,11 +267,17 @@ def init_optimizer_state(workload: spec.Workload,
         eps=1e-8,
         weight_decay=hyperparameters['weight_decay'])
     # Todo remove sub_optimizer_state 
-    sub_optimizer_state = opt_init_fn(params_zeros_like)
+    # sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append(
-        (end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
+        (end_step, opt_init_fn, opt_update_fn))
     optimizer_state['lr_fns'].append(lr_schedule_fn)
     optimizer_state['index'] = 0
+
+  # Initialize first optstate
+  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+                                     workload.param_shapes)
+  _, opt_init_fn, _, = optimizer_state['optimizers'][0]
+  optimizer_state['current_opt_state'] = opt_init_fn(params_zeros_like)
 
   # Save initial model weights
   model_params = jax.device_get(model_params)
@@ -353,8 +364,9 @@ def update_params(workload: spec.Workload,
   del hyperparameters
 
   # End step of the current point
-  optimizer_state, _ = optimizer_state
-  horizon_end_step, sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][optimizer_state['index']]
+  optimizer_state, _ = optimizer_state # maybe_restore_from_checkpoint call forces optimizer state to be tuple
+  horizon_end_step, _, opt_update_fn = optimizer_state['optimizers'][optimizer_state['index']]
+  current_opt_state = optimizer_state['current_opt_state']
 
   # If we have reached the end of the current opt point horizon progress the index
   if global_step == horizon_end_step:
@@ -367,10 +379,17 @@ def update_params(workload: spec.Workload,
     current_param_container = ckpt['model_params']
     optimizer_state['index'] += 1
     try:
-      horizon_end_step, sub_optimizer_state, opt_update_fn = optimizer_state['optimizers'][
+      horizon_end_step, opt_init_fn, opt_update_fn = optimizer_state['optimizers'][
           optimizer_state['index']]
     except IndexError:
       raise spec.TrainingCompleteError
+    
+    # Initialize new opt_state
+    params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+                                  workload.param_shapes)
+    _, opt_init_fn, _, = optimizer_state['optimizers'][0]
+    optimizer_state['current_opt_state'] = opt_init_fn(params_zeros_like)
+    current_opt_state = optimizer_state['current_opt_state']
 
   # Check for label_smoothing and grad_clip
   hyperparameters = optimizer_state['hyperparameters'][optimizer_state['index']]
@@ -389,16 +408,15 @@ def update_params(workload: spec.Workload,
   outputs = pmapped_train_step(workload,
                                opt_update_fn,
                                model_state,
-                               sub_optimizer_state,
+                               current_opt_state,
                                current_param_container,
                                batch,
                                per_device_rngs,
                                grad_clip,
                                label_smoothing)
-  new_sub_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
+  new_current_opt_state, new_params, new_model_state, loss, grad_norm = outputs
 
-  optimizer_state['optimizers'][optimizer_state['index']] = (
-      horizon_end_step, new_sub_optimizer_state, opt_update_fn)
+  optimizer_state['current_opt_state'] = new_current_opt_state
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
@@ -411,7 +429,7 @@ def update_params(workload: spec.Workload,
         },
         global_step)
 
-  # The maybe_restore_from_checkpoint call in submission runner expects a tuple for
+  # The maybe_restore_from_checkpoint call in submission_runner expects a tuple for
   # optimizer state.
   return (optimizer_state, None), new_params, new_model_state
 
