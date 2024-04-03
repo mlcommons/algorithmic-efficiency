@@ -276,7 +276,7 @@ def init_optimizer_state(workload: spec.Workload,
   flax_checkpoints.save_checkpoint(
       '/tmp', target=checkpoint_state, step=0, overwrite=True, keep=1)
 
-  return optimizer_state
+  return optimizer_state, optimizer_state['optimizers'][optimizer_state['index']][2]
 
 
 @functools.partial(
