@@ -366,7 +366,7 @@ def update_params(workload: spec.Workload,
   # End step of the current point
   optimizer_state, _ = optimizer_state # maybe_restore_from_checkpoint call forces optimizer state to be tuple
   horizon_end_step, _, opt_update_fn = optimizer_state['optimizers'][optimizer_state['index']]
-  current_opt_state = optimizer_state['current_opt_state']
+  current_opt_state = jax_utils.replicate(optimizer_state['current_opt_state'])
 
   # If we have reached the end of the current opt point horizon progress the index
   if global_step == horizon_end_step:
@@ -388,7 +388,7 @@ def update_params(workload: spec.Workload,
     params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
                                   workload.param_shapes)
     optimizer_state['current_opt_state'] = opt_init_fn(params_zeros_like)
-    current_opt_state = optimizer_state['current_opt_state']
+    current_opt_state = jax_utils.replicate(optimizer_state['current_opt_state'])
 
   # Check for label_smoothing and grad_clip
   hyperparameters = optimizer_state['hyperparameter_points'][optimizer_state['index']]
@@ -415,7 +415,7 @@ def update_params(workload: spec.Workload,
                                label_smoothing)
   new_current_opt_state, new_params, new_model_state, loss, grad_norm = outputs
 
-  optimizer_state['current_opt_state'] = new_current_opt_state
+  optimizer_state['current_opt_state'] = jax_utils.unreplicate(new_current_opt_state)
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
