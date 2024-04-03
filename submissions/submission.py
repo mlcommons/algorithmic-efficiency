@@ -236,7 +236,7 @@ def init_optimizer_state(workload: spec.Workload,
   del hyperparameters
 
   optimizer_state = {'optimizers': []}
-  optimizer_state['hyperparamete_points'] = HPARAMS
+  optimizer_state['hyperparameter_points'] = HPARAMS
   optimizer_state['lr_fns'] = []
 
   def jax_cosine_warmup(step_hint: int, hyperparameters):
