@@ -266,8 +266,6 @@ def init_optimizer_state(workload: spec.Workload,
         b2=hyperparameters['beta2'],
         eps=1e-8,
         weight_decay=hyperparameters['weight_decay'])
-    # Todo remove sub_optimizer_state 
-    # sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append(
         (end_step, opt_init_fn, opt_update_fn))
     optimizer_state['lr_fns'].append(lr_schedule_fn)
@@ -419,12 +417,12 @@ def update_params(workload: spec.Workload,
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
-    # lr_fn = optimizer_state['lr_fns'][optimizer_state['index']]
+    lr_fn = optimizer_state['lr_fns'][optimizer_state['index']]
     workload.metrics_logger.append_scalar_metrics(
         {
             'loss': loss[0],
             'grad_norm': grad_norm[0],
-            # 'lr': lr_fn(sub_optimizer_state[-1].count)[0]
+            'lr': lr_fn(optimizer_state['current_opt_state'][-1].count)[0]
         },
         global_step)
 
