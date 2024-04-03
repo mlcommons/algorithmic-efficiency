@@ -262,9 +262,11 @@ def init_optimizer_state(workload: spec.Workload,
         weight_decay=hyperparameters['weight_decay'])
     sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append(
-        (end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
+        (end_step, sub_optimizer_state, opt_update_fn))
     optimizer_state['lr_fns'].append(lr_schedule_fn)
     optimizer_state['index'] = 0
+  
+  del(params_zeros_like)
 
   # Save initial model weights
   model_params = jax.device_get(model_params)
@@ -369,6 +371,8 @@ def update_params(workload: spec.Workload,
           optimizer_state['index']]
     except IndexError:
       raise spec.TrainingCompleteError
+    
+  sub_optimizer_state = jax_utils.replicate(sub_optimizer_state)
 
   # Check for label_smoothing and grad_clip
   hyperparameters = optimizer_state['hyperparameters'][optimizer_state['index']]
