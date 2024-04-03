@@ -247,6 +247,8 @@ def init_optimizer_state(workload: spec.Workload,
 
   # Create optimizer + LR schedule.
   end_step = 0
+  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+                                     workload.param_shapes)
   for hyperparameters in optimizer_state['hyperparameters']:
     horizon_steps = math.ceil(hyperparameters['training_horizon'] *
                               workload.step_hint)
@@ -258,8 +260,6 @@ def init_optimizer_state(workload: spec.Workload,
         b2=hyperparameters['beta2'],
         eps=1e-8,
         weight_decay=hyperparameters['weight_decay'])
-    params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
-                                     workload.param_shapes)
     sub_optimizer_state = opt_init_fn(params_zeros_like)
     optimizer_state['optimizers'].append(
         (end_step, jax_utils.replicate(sub_optimizer_state), opt_update_fn))
