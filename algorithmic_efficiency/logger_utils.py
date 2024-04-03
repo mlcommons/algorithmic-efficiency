@@ -302,7 +302,8 @@ class MetricLogger(object):
         wandb.init(
             dir=events_dir, tags=[flags.FLAGS.workload, flags.FLAGS.framework])
         wandb.config.update(configs)
-        wandb.config.update(hyperparameters._asdict())
+        if hyperparameters:
+          wandb.config.update(hyperparameters._asdict())
 
   def append_scalar_metrics(self,
                             metrics: Dict,
