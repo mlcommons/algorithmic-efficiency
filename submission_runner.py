@@ -316,10 +316,12 @@ def train_once(
     flag_file_name = os.path.join(log_dir, f'flags_{preemption_count}.json')
     logging.info(f'Saving flags to {flag_file_name}.')
     logger_utils.write_json(flag_file_name, flags.FLAGS.flag_values_dict())
-    metrics_logger = logger_utils.set_up_loggers(log_dir,
-                                                 flags.FLAGS,
-                                                 hyperparameters)
-    workload.attach_metrics_logger(metrics_logger)
+    metrics_logger = None
+    if RANK == 0:
+      metrics_logger = logger_utils.set_up_loggers(log_dir,
+                                                     flags.FLAGS,
+                                                     hyperparameters)
+      workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = get_time()
   train_state['last_step_end_time'] = global_start_time
@@ -467,14 +469,14 @@ def train_once(
 
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
-  if log_dir is not None:
-    metrics_logger.append_scalar_metrics(
-        {'score': train_state['accumulated_submission_time']},
-        global_step=global_step,
-        preemption_count=preemption_count)
-    metrics_logger.finish()
-    if save_checkpoints:
-      checkpoint_utils.save_checkpoint(
+  if log_dir is not None and RANK == 0:
+      metrics_logger.append_scalar_metrics(
+          {'score': train_state['accumulated_submission_time']},
+          global_step=global_step,
+          preemption_count=preemption_count)
+      metrics_logger.finish()
+      if save_checkpoints:
+        checkpoint_utils.save_checkpoint(
           framework=FLAGS.framework,
           optimizer_state=optimizer_state,
           model_params=model_params,
