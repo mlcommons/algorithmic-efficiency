@@ -119,7 +119,7 @@ def maybe_restore_checkpoint(framework: str,
 
   else:
     checkpoint_state = latest_ckpt
-    if isinstance(model_params, torch.nn.DataParallel):
+    if isinstance(model_params, (torch.nn.DataParallel, torch.nn.parallel.DistributedDataParallel)):
       model_params = model_params.module
     model_params.load_state_dict(checkpoint_state['model_params'])
     checkpoint_state['model_params'] = model_params
@@ -196,7 +196,7 @@ def save_checkpoint(framework: str,
     opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
     model_state = jax.device_get(jax_utils.unreplicate(model_state))
   else:
-    if isinstance(model_params, torch.nn.DataParallel):
+    if isinstance(model_params, (torch.nn.DataParallel, torch.nn.parallel.DistributedDataParallel)):
       model_params = model_params.module
     model_params = model_params.state_dict()
     optimizer_state_dict = {}
