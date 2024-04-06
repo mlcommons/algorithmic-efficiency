@@ -73,14 +73,9 @@ def get_log_dir(
             'to resume training from this dir? [y/N]:'.format(experiment_path))
       if USE_PYTORCH_DDP:
         dist.barrier()
-      try:
-        if resume.lower() != 'y':
-          sys.exit()
-      except RuntimeError:
+      if resume.lower() != 'y':
         sys.exit()
 
-  if USE_PYTORCH_DDP:
-    dist.barrier()
   logging.info(f'Creating experiment directory at {experiment_path}.')
   makedir(experiment_path)
   return experiment_path
