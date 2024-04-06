@@ -54,21 +54,29 @@ def get_log_dir(
                                    experiment_name,
                                    workload_dir_name)
 
-  if os.path.exists(experiment_path) and RANK == 0:
+  if os.path.exists(experiment_path):
     if overwrite:
       logging.info(
           f'Removing existing experiment directory {experiment_path} because '
           '--overwrite was set.')
-      shutil.rmtree(experiment_path)
+      if RANK == 0:
+        shutil.rmtree(experiment_path)
     elif resume_last_run:
       logging.info(
           f'Resuming from experiment directory {experiment_path} because '
           '--resume_last_run was set.')
     else:
-      resume = input(
-          'Found existing experiment dir with the same name: {}. Do you wish '
-          'to resume training from this dir? [y/N]:'.format(experiment_path))
-      if resume.lower() != 'y':
+      resume = 'n'
+      if RANK == 0:
+        resume = input(
+            'Found existing experiment dir with the same name: {}. Do you wish '
+            'to resume training from this dir? [y/N]:'.format(experiment_path))
+      if USE_PYTORCH_DDP:
+        dist.barrier()
+      try:
+        if resume.lower() != 'y':
+          sys.exit()
+      except RuntimeError:
         sys.exit()
 
   if USE_PYTORCH_DDP:
