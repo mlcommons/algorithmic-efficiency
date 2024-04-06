@@ -74,6 +74,8 @@ def get_log_dir(
         if resume.lower() != 'y':
           sys.exit()
 
+  if USE_PYTORCH_DDP:
+    dist.barrier()
   logging.info(f'Creating experiment directory at {experiment_path}.')
   makedir(experiment_path)
   return experiment_path
