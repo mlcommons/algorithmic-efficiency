@@ -66,13 +66,15 @@ def get_log_dir(
           f'Resuming from experiment directory {experiment_path} because '
           '--resume_last_run was set.')
     else:
-      resume = 'y'
-      if RANK == 0:
-        resume = input(
-            'Found existing experiment dir with the same name: {}. Do you wish '
-            'to resume training from this dir? [y/N]:'.format(experiment_path))
-        if resume.lower() != 'y':
-          sys.exit()
+      try:
+        if RANK == 0:
+          resume = input(
+              'Found existing experiment dir with the same name: {}. Do you wish '
+              'to resume training from this dir? [y/N]:'.format(experiment_path))
+          if resume.lower() != 'y':
+            sys.exit()
+      except RuntimeError:
+        sys.exit()
 
   if USE_PYTORCH_DDP:
     dist.barrier()
