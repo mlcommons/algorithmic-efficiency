@@ -71,10 +71,8 @@ def get_log_dir(
         resume = input(
             'Found existing experiment dir with the same name: {}. Do you wish '
             'to resume training from this dir? [y/N]:'.format(experiment_path))
-      if USE_PYTORCH_DDP:
-        dist.barrier()
-      if resume.lower() != 'y':
-        sys.exit()
+        if resume.lower() != 'y':
+          sys.exit()
 
   logging.info(f'Creating experiment directory at {experiment_path}.')
   makedir(experiment_path)
