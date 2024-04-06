@@ -679,7 +679,6 @@ def main(_):
                                               FLAGS.resume_last_run,
                                               FLAGS.overwrite)
 
-  print(f"{RANK}; {logging_dir_path}")
   score = score_submission_on_workload(
       workload=workload,
       workload_name=FLAGS.workload,
