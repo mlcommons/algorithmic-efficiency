@@ -66,7 +66,7 @@ def get_log_dir(
           f'Resuming from experiment directory {experiment_path} because '
           '--resume_last_run was set.')
     else:
-      resume = 'n'
+      resume = 'y'
       if RANK == 0:
         resume = input(
             'Found existing experiment dir with the same name: {}. Do you wish '
