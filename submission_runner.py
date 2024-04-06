@@ -319,8 +319,8 @@ def train_once(
     metrics_logger = None
     if RANK == 0:
       metrics_logger = logger_utils.set_up_loggers(log_dir,
-                                                     flags.FLAGS,
-                                                     hyperparameters)
+                                                   flags.FLAGS,
+                                                   hyperparameters)
       workload.attach_metrics_logger(metrics_logger)
 
   global_start_time = get_time()
@@ -470,13 +470,13 @@ def train_once(
   metrics = {'eval_results': eval_results, 'global_step': global_step}
 
   if log_dir is not None and RANK == 0:
-      metrics_logger.append_scalar_metrics(
-          {'score': train_state['accumulated_submission_time']},
-          global_step=global_step,
-          preemption_count=preemption_count)
-      metrics_logger.finish()
-      if save_checkpoints:
-        checkpoint_utils.save_checkpoint(
+    metrics_logger.append_scalar_metrics(
+        {'score': train_state['accumulated_submission_time']},
+        global_step=global_step,
+        preemption_count=preemption_count)
+    metrics_logger.finish()
+    if save_checkpoints:
+      checkpoint_utils.save_checkpoint(
           framework=FLAGS.framework,
           optimizer_state=optimizer_state,
           model_params=model_params,
