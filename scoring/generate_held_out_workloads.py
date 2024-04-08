@@ -7,10 +7,11 @@ from absl import flags
 from absl import logging
 import numpy as np
 
-flags.DEFINE_integer('held_out_workloads_seed',
-                     None,
-                     'Random seed for scoring.'
-                     'AlgoPerf v0.5 seed: 3438810845')
+flags.DEFINE_integer(
+    'held_out_workloads_seed',
+    None,
+    'Random seed for scoring.'
+    'AlgoPerf v0.5 seed: 3438810845')
 flags.DEFINE_string('output_filename',
                     'held_out_workloads.json',
                     'Path to file to record sampled held_out workloads.')
