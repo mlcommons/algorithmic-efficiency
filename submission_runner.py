@@ -383,6 +383,8 @@ def train_once(
 
         try:
           eval_start_time = get_time()
+          if hasattr(optimizer_state['optimizer'], 'eval'):
+            optimizer_state['optimizer'].eval()
           latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                    model_params,
                                                    model_state,
