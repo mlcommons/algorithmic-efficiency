@@ -400,6 +400,8 @@ Submissions will be scored based on their performance on the [fixed workload](#f
 
 Furthermore, a less computationally expensive subset of the fixed workloads is collected with the [qualification set](#qualification-set). Submitters without enough compute resources to self-report on the full set of fixed and held-out workloads can instead self-report on this smaller qualification set. Well-performing submissions can thereby qualify for computational resources provided by sponsors of the benchmark to be scored on the full benchmark set.
 
+NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
+
 #### Fixed workloads
 
 The fixed workloads are fully specified with the call for submissions. They contain a diverse set of tasks such as image classification, machine translation, speech recognition, or other typical machine learning tasks. For a single task there might be multiple models and therefore multiple fixed workloads. The entire set of fixed workloads should have a combined runtime of roughly 100 hours on the [benchmarking hardware](#benchmarking-hardware).
@@ -429,6 +431,8 @@ Our scoring procedure uses the held-out workloads only to penalize submissions t
 
 #### Qualification set
 
+NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
+
 The qualification set is designed for submitters that may not have the compute resources to self-report on the full set of [fixed](#fixed-workloads) and [held-out workloads](#randomized-workloads). They may instead self-report numbers on this smaller qualification set. The best-performing submissions may then qualify for compute sponsorship offering a free evaluation on the full benchmark set and therefore the possibility to win [awards and prizes](/COMPETITION_RULES.md#prizes).
 
 The qualification set consists of the same [fixed workloads](#fixed-workloads) as mentioned above, except for both workloads on *ImageNet*, both workloads on *LibriSpeech*, and the *fastMRI* workload. The remaining three workloads (*WMT*, *Criteo 1TB*, and *OGBG*) form the qualification set. There are no [randomized workloads](#randomized-workloads) in the qualification set. The qualification set of workloads aims to have a combined runtime of roughly 24 hours on the [benchmarking hardware](#benchmarking-hardware).
@@ -448,6 +452,8 @@ All scored runs have to be performed on the benchmarking hardware to allow for a
 - 8xV100 16GB GPUs
 - 240 GB in RAM
 - 2 TB in storage (for datasets).
+
+NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
 
 For self-reported results, it is acceptable to perform the tuning trials on hardware different from the benchmarking hardware, as long as the same hardware is used for all tuning trials. Once the best trial, i.e. the one that reached the *validation* target the fastest, was determined, this run has to be repeated on the competition hardware. For example, submitters can tune using their locally available hardware but have to use the benchmarking hardware, e.g. via cloud providers, for the $5$ scored runs. This allows for a fair comparison to the reported results of other submitters while allowing some flexibility in the hardware.
 
@@ -571,9 +577,13 @@ on the benchmarking hardware. We also recommend to do a dry run using a cloud in
 
 #### Are we allowed to use our own hardware to self-report the results?
 
+NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
+
 You only have to use the benchmarking hardware for runs that are directly involved in the scoring procedure. This includes all runs for the self-tuning ruleset, but only the runs of the best hyperparameter configuration in each study for the external tuning ruleset. For example, you could use your own (different) hardware to tune your submission and identify the best hyperparameter configuration (in each study) and then only run this configuration (i.e. 5 runs, one for each study) on the benchmarking hardware.
 
 #### What can I do if running the benchmark is too expensive for me?
+
+NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
 
 Submitters unable to self-fund scoring costs can instead self-report only on the [qualification set of workloads](/COMPETITION_RULES.md#qualification-set) that excludes some of the most expensive workloads. Based on this performance on the qualification set, the working group will provide - as funding allows - compute to evaluate and score the most promising submissions. Additionally, we encourage researchers to reach out to the [working group](mailto:algorithms@mlcommons.org) to find potential collaborators with the resources to run larger, more comprehensive experiments for both developing and scoring submissions.
 

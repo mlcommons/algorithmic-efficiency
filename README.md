@@ -27,9 +27,9 @@
 ---
 
 > [!IMPORTANT]
-> Upcoming Deadline:
-> Submission deadline: **April 04th, 2024** (*moved by a week*). \
-> For submission instructions please see [Packaging your Submission Code](/GETTING_STARTED.md#package-your-submission-code) section in the Getting Started document.\
+> Submitters are no longer required to self-report results. 
+> We are currently in the process of evaluating and scoring received submissions.
+> We are aiming to release results by July 15th 2024.
 > For other key dates please see [Call for Submissions](CALL_FOR_SUBMISSIONS.md).
 
 ## Table of Contents <!-- omit from toc -->
