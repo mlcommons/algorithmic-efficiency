@@ -25,7 +25,7 @@ jobs:
         docker pull $DOCKER_IMAGE
         export TRIAL_INDEX=${{ matrix.trial }}
         echo $TRIAL_INDEX
-        python run_workloads.py --framework $FRAMEWORK \
+        python /home/kasimbeg/algorithmic-efficiency/scoring/run_workloads.py --framework $FRAMEWORK \
         --local False \
         --experiment_name $EXPERIMENT_NAME \
         --docker_image_url us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev \
