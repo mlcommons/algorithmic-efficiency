@@ -1,4 +1,4 @@
-name: Containerized Regression Tests
+name: Run submission
 
 on: 
   pull_request:
