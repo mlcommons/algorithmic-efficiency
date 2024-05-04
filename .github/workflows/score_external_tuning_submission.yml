@@ -7,7 +7,7 @@ on:
 env:
   SUBMISSION_PATH: /algorithmic-efficiency/submissions/submissions_algorithms_v0_5/AlgoPerf_Team_11/external_tuning/nadamp/submission.py
   TUNING_SEARCH_SPACE_FLAG: /algorithmic-efficiency/submissions/submissions_algorithms_v0_5/AlgoPerf_Team_11/external_tuning/nadamp/tuning_search_space.json
-  EXPERIMENT_NAME: Team_11/external_tuning/nadamp
+  EXPERIMENT_NAME: algoperf_scoring_05/Team_11/external_tuning/nadamp
   FRAMEWORK: jax
   DOCKER_IMAGE: us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main_scoring
   HELDOUT_WORKLOADS_PATH: /algorithmic-efficiency/scoring/held_out_workloads.json
