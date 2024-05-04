@@ -67,4 +67,7 @@ RUN cd /algorithmic-efficiency && git pull
 COPY scripts/startup.sh /algorithmic-efficiency/docker/scripts/startup.sh
 RUN chmod a+x /algorithmic-efficiency/docker/scripts/startup.sh
 
+# Move submissions into algorithmic-efficiency-repo
+COPY /home/kasimbeg/algorithmic-efficiency/submissions/submissions_algorithms_v0_5 /algorithmic-efficiency/submissions/
+
 ENTRYPOINT ["bash", "/algorithmic-efficiency/docker/scripts/startup.sh"]
