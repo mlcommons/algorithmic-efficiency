@@ -40,5 +40,4 @@ jobs:
         --hparam_start_index ${{ matrix.trial }} \
         --hparam_end_index $(( ${{ matrix.trial }} + 1 )) \
         --workload_metadata_path $WORKLOAD_METADATA \
-        --seed 0 \
-        --dry_run True
+        --seed 0 
