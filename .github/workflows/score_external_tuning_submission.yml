@@ -10,8 +10,8 @@ env:
   EXPERIMENT_NAME: algoperf_scoring_v05/external_tuning/Team_11/nadamp
   FRAMEWORK: jax
   DOCKER_IMAGE: us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main_scoring
-  HELDOUT_WORKLOADS_PATH: /algorithmic-efficiency/scoring/held_out_workloads.json
-  WORKLOAD_METADATA_PATH: /algorithmic-efficiency/scoring/workload_metadata_external_tuning.json
+  HELDOUT_WORKLOADS_PATH: /home/kasimbeg/algorithmic-efficiency/scoring/held_out_workloads.json
+  WORKLOAD_METADATA_PATH: /home/kasimbeg/algorithmic-efficiency/scoring/workload_metadata_external_tuning.json
 jobs:
   run_workloads:
     strategy:
