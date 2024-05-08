@@ -41,5 +41,5 @@ jobs:
         --hparam_start_index ${{ matrix.trial }} \
         --hparam_end_index $(( ${{ matrix.trial }} + 1 )) \
         --workload_metadata_path $WORKLOAD_METADATA_PATH \
-        --submission_id $SUBMISSION_ID
+        --submission_id $SUBMISSION_ID \
         --seed 0 
