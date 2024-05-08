@@ -6,8 +6,8 @@ on:
       - 'scoring' 
 env:
   SUBMISSION_PATH: /algorithmic-efficiency/submissions/submissions_algorithms_v0_5/AlgoPerf_Team_11/external_tuning/nadamp/submission.py
-  TUNING_SEARCH_SPACE_FLAG: /algorithmic-efficiency/submissions/submissions_algorithms_v0_5/AlgoPerf_Team_11/external_tuning/nadamp/tuning_search_space.json
-  EXPERIMENT_NAME: ch/Team_11/external_tuning/nadamp
+  TUNING_SEARCH_SPACE: /algorithmic-efficiency/submissions/submissions_algorithms_v0_5/AlgoPerf_Team_11/external_tuning/nadamp/tuning_search_space.json
+  EXPERIMENT_NAME: algoperf_scoring_v05/external_tuning/Team_11/nadamp
   FRAMEWORK: jax
   DOCKER_IMAGE: us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main_scoring
   HELDOUT_WORKLOADS_PATH: /algorithmic-efficiency/scoring/held_out_workloads.json
@@ -39,5 +39,5 @@ jobs:
         --study_end_index ${{ matrix.study }} \
         --hparam_start_index ${{ matrix.trial }} \
         --hparam_end_index $(( ${{ matrix.trial }} + 1 )) \
-        --workload_metadata_path $WORKLOAD_METADATA \
+        --workload_metadata_path $WORKLOAD_METADATA_PATH \
         --seed 0 
