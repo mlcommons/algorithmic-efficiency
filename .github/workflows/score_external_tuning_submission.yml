@@ -29,7 +29,6 @@ jobs:
         echo $TRIAL_INDEX
         python /home/kasimbeg/algorithmic-efficiency/scoring/run_workloads.py \
         --framework $FRAMEWORK \
-        --local False \
         --experiment_name $EXPERIMENT_NAME \
         --docker_image_url $DOCKER_IMAGE \
         --run_percentage 100 \
