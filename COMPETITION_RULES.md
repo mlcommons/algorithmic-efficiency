@@ -43,7 +43,6 @@ The Competition begins at 12:01am (ET) on November 28, 2023 and ends at 11:59pm 
 
 - **Intention to Submit.** You must register your Intention to Submit no later than 11:59pm ET on February 28, 2024.
 - **Submission Period.** You must complete your Submission and enter it after the Intention to Submit deadline, but no later than 11:59pm ET on April 04, 2024.
-- **Deadline for self-reporting results.** 11:59pm ET on May 28, 2024.
 
 ## Agreement to Official Rules
 
@@ -64,8 +63,6 @@ There are four (4) steps to a successful submission ("Submission").
    - A signed trademark license agreement, either the member or the non-member version, as appropriate. These license agreements are available upon request to [support@mlcommons.org](mailto:support@mlcommons.org).
 
    The form is sent to the working group chairs, who will process your Submission. Failure to complete the proper Submission Forms will results in disqualification of your Submission. At the close of the Submission Period, your GitHub repository must be public.
-
-4. **Report Results.** Prior to the Deadline for self-reporting results, run your Submission on either the qualification set or the full benchmark set and report the results. You must report your scores by uploading all unmodified logs that the benchmarking codebase automatically generates in a separate `/results` directory within the `/submission` folder of your Submission's GitHub repository.
 
 ## Submission Conditions
 

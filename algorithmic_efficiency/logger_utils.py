@@ -16,6 +16,7 @@ from clu import metric_writers
 import GPUtil
 import pandas as pd
 import psutil
+import torch.distributed as dist
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
@@ -43,9 +44,6 @@ def get_log_dir(
     resume_last_run: bool,
     overwrite: bool,
 ) -> Optional[str]:
-  if RANK != 0:
-    return
-
   # Construct path to experiment workload directory.
   experiment_dir = os.path.expanduser(experiment_dir)
   workload_dir_name = f'{workload}_{framework}'
@@ -61,18 +59,25 @@ def get_log_dir(
       logging.info(
           f'Removing existing experiment directory {experiment_path} because '
           '--overwrite was set.')
-      shutil.rmtree(experiment_path)
+      if RANK == 0:
+        shutil.rmtree(experiment_path)
     elif resume_last_run:
       logging.info(
           f'Resuming from experiment directory {experiment_path} because '
           '--resume_last_run was set.')
     else:
-      resume = input(
-          'Found existing experiment dir with the same name: {}. Do you wish '
-          'to resume training from this dir? [y/N]:'.format(experiment_path))
-      if resume.lower() != 'y':
-        sys.exit()
+      if RANK == 0:
+        resume = input(
+            'Found existing experiment dir with the same name: {}. Do you wish '
+            'to resume training from this dir? [y/N]:'.format(experiment_path))
+        if resume.lower() != 'y':
+          sys.exit()
 
+  if USE_PYTORCH_DDP:
+    try:
+      dist.barrier()
+    except RuntimeError:
+      sys.exit()
   logging.info(f'Creating experiment directory at {experiment_path}.')
   makedir(experiment_path)
   return experiment_path
