@@ -20,7 +20,7 @@ jobs:
         study: [0, 1, 2, 3, 4]
         trial: [0, 1, 2, 3, 4]
     runs-on: self-hosted
-    timeout-minutes: 10080
+    timeout-minutes: 10081
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
