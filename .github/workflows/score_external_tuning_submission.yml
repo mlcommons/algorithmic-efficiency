@@ -27,7 +27,8 @@ jobs:
         docker pull $DOCKER_IMAGE
         export TRIAL_INDEX=${{ matrix.trial }}
         echo $TRIAL_INDEX
-        python3.8 /home/kasimbeg/algorithmic-efficiency/scoring/run_workloads.py \
+        source /home/kasimbeg/env/bin
+        python /home/kasimbeg/algorithmic-efficiency/scoring/run_workloads.py \
         --framework $FRAMEWORK \
         --experiment_name $EXPERIMENT_NAME \
         --docker_image_url $DOCKER_IMAGE \
