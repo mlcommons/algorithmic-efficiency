@@ -20,6 +20,7 @@ jobs:
         study: [0, 1, 2, 3, 4]
         trial: [0, 1, 2, 3, 4]
     runs-on: self-hosted
+    timeout-minutes: 10080
     steps:
     - uses: actions/checkout@v2
     - name: Run containerized workload
@@ -27,7 +28,7 @@ jobs:
         docker pull $DOCKER_IMAGE
         export TRIAL_INDEX=${{ matrix.trial }}
         echo $TRIAL_INDEX
-        source /home/kasimbeg/env/bin
+        source /home/kasimbeg/env/bin/activate
         python /home/kasimbeg/algorithmic-efficiency/scoring/run_workloads.py \
         --framework $FRAMEWORK \
         --experiment_name $EXPERIMENT_NAME \
