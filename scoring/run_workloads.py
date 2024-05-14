@@ -128,7 +128,10 @@ def main(_):
   if FLAGS.hparam_end_index:
     hparam_end_index_flag = f'--hparam_end_index {FLAGS.hparam_end_index} '
   study_start_index = FLAGS.study_start_index if FLAGS.study_start_index else 0
-  study_end_index = FLAGS.study_end_index if FLAGS.study_end_index else num_studies - 1
+  if FLAGS.study_end_index is not None:
+    study_end_index = FLAGS.study_end_index
+  else:
+    study_end_index = num_studies - 1
   submission_id = FLAGS.submission_id
   rng_seed = FLAGS.seed
 
@@ -176,7 +179,7 @@ def main(_):
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
-      command = ('docker run -t -d -v $HOME/data/:/data/ '
+      command = ('docker run -t -d -v /home/kasimbeg/data/:/data/ '
                  '-v $HOME/experiment_runs/:/experiment_runs '
                  '-v $HOME/experiment_runs/logs:/logs '
                  f'{mount_repo_flag}'
