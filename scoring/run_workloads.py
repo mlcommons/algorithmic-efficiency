@@ -179,7 +179,7 @@ def main(_):
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
-      command = ('docker run -t -d -v /home/kasimbeg/data/:/data/ '
+      command = ('docker run -t -d -v $HOME/data/:/data/ '
                  '-v $HOME/experiment_runs/:/experiment_runs '
                  '-v $HOME/experiment_runs/logs:/logs '
                  f'{mount_repo_flag}'
