@@ -7,9 +7,11 @@ from absl import flags
 from absl import logging
 import numpy as np
 
-flags.DEFINE_integer('held_out_workloads_seed',
-                     None,
-                     'Random seed for scoring.')
+flags.DEFINE_integer(
+    'held_out_workloads_seed',
+    None,
+    'Random seed for scoring.'
+    'AlgoPerf v0.5 seed: 3438810845')
 flags.DEFINE_string('output_filename',
                     'held_out_workloads.json',
                     'Path to file to record sampled held_out workloads.')
@@ -19,7 +21,10 @@ HELD_OUT_WORKLOADS = {
     'librispeech': [
         'librispeech_conformer_attention_temperature',
         'librispeech_conformer_layernorm',
-        'librispeech_conformer_gelu'
+        # 'librispeech_conformer_gelu', # Removed due to bug in target setting procedure
+        'librispeech_deepspeech_no_resnet',
+        'librispeech_deepspeech_norm_and_spec_aug',
+        'librispeech_deepspeech_tanh'
     ],
     'imagenet': [
         'imagenet_resnet_silu',
