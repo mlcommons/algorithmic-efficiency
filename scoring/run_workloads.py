@@ -114,7 +114,7 @@ def kill_containers():
     container.kill()
 
 def gpu_is_active():
-    output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader'])
+    output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'])
     return any(int(x) > 0 for x in output.decode().splitlines())
   
 
