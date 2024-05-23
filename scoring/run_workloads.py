@@ -17,6 +17,8 @@ import time
 from absl import app
 from absl import flags
 from absl import logging
+import datetime
+import subprocess
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.workloads.workloads import get_base_workload_name
@@ -105,12 +107,30 @@ def container_running():
   else:
     return True
 
+def kill_containers():
+  docker_client = docker.from_env()
+  containers = docker_client.containers.list()
+  for container in containers:
+    container.kill()
+
+def gpu_is_active():
+    output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader'])
+    return any(int(x) > 0 for x in output.decode().splitlines())
+  
 
 def wait_until_container_not_running(sleep_interval=5 * 60):
+  # check gpu util 
+  # if the gpu has not been utilized for 30 minutes kill the 
+  gpu_last_active = datetime.datetime.now().timestamp()
+
   while container_running():
+    # check if gpus have been inactive > 45 min and if so terminate container
+    if gpu_is_active():
+      gpu_last_active = datetime.datetime.now().timestamp()
+    if (datetime.datetime.now().timestamp() - gpu_last_active) > 45 * 60:
+      kill_containers("Killing container: GPUs have been inactive > 45 minutes...")
     time.sleep(sleep_interval)
   return
-
 
 def main(_):
   framework = FLAGS.framework
