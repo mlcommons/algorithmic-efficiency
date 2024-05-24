@@ -160,7 +160,7 @@ def main(_):
 
   additional_requirements_path_flag = ''
   if FLAGS.additional_requirements_path:
-    additional_requirements_path_flag = f'--additional_requirements_path {FLAGS.additional_requirements_path}'
+    additional_requirements_path_flag = f'--additional_requirements_path {FLAGS.additional_requirements_path} '
 
   submission_id = FLAGS.submission_id
 
