@@ -89,6 +89,11 @@ flags.DEFINE_string(
     None,
     'If not None, only run this workload, else run all workloads in workload_metadata_path.'
 )
+flags.DEFINE_string(
+  'additional_requirements_path',
+  None,
+  'Path to requirements.txt if any.'
+)
 
 FLAGS = flags.FLAGS
 
@@ -152,7 +157,13 @@ def main(_):
     study_end_index = FLAGS.study_end_index
   else:
     study_end_index = num_studies - 1
+
+  additional_requirements_path_flag = ''
+  if FLAGS.additional_requirements_path:
+    additional_requirements_path_flag = f'--additional_requirements_path {FLAGS.additional_requirements_path}'
+
   submission_id = FLAGS.submission_id
+
   rng_seed = FLAGS.seed
 
   if not rng_seed:
@@ -213,6 +224,7 @@ def main(_):
                  f'-m {max_steps} '
                  f'--num_tuning_trials {num_tuning_trials} '
                  f'--rng_seed {run_seed} '
+                 f'{additional_requirements_path_flag}'
                  '-c false '
                  '-o true '
                  '-i true ')
