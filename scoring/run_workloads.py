@@ -94,6 +94,12 @@ flags.DEFINE_string(
   None,
   'Path to requirements.txt if any.'
 )
+FLAGS.DEFINE_integer(
+  'max_steps',
+  None,
+  'Maximum number of steps to run. If run_fraction results in greater number of steps '
+  'than the max_steps, the run will be cut to max_steps.'
+)
 
 FLAGS = flags.FLAGS
 
@@ -205,8 +211,11 @@ def main(_):
           "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")  # clear caches
       print('=' * 100)
       dataset = workload_metadata[base_workload_name]['dataset']
-      max_steps = int(workload_metadata[base_workload_name]['max_steps'] *
-                      run_fraction)
+      if FLAGS.max_steps is None:
+        max_steps = int(workload_metadata[base_workload_name]['max_steps'] *
+                        run_fraction)
+      else:
+        max_steps = FLAGS.max_steps
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v /home/kasimbeg/algorithmic-efficiency:/algorithmic-efficiency '
