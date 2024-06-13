@@ -64,6 +64,13 @@ flags.DEFINE_string(
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
 
+flags.DEFINE_integer(
+  'max_steps'
+  None,
+  'Maximum number of steps to run. If the run_percentage results into a larger'
+  'number of steps, the maximum number of steps will be run.'
+)
+
 FLAGS = flags.FLAGS
 
 
@@ -143,7 +150,10 @@ def main(_):
 
       # Get workload dataset, max step, algorithm path and tuning search space
       dataset = workload_config[workload]['dataset']
-      max_steps = int(workload_config[workload]['max_steps'] * run_fraction)
+      if FLAGS.max_steps is None:
+        max_steps = int(workload_config[workload]['max_steps'] * run_fraction)
+      else:
+        max_steps = FLAGS.max_steps
       submission_path = workload_config[workload]['submission_path']
       tuning_search_space = workload_config[workload]['tuning_search_space']
 
