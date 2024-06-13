@@ -94,7 +94,7 @@ flags.DEFINE_string(
   None,
   'Path to requirements.txt if any.'
 )
-FLAGS.DEFINE_integer(
+flags.DEFINE_integer(
   'max_steps',
   None,
   'Maximum number of steps to run. If run_fraction results in greater number of steps '
