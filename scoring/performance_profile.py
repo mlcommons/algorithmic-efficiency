@@ -26,6 +26,7 @@ The two primary inputs to `compute_performance_profiles` are
   the dictionary of submissions.
 """
 import itertools
+import logging
 import operator
 import os
 import re
@@ -36,9 +37,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from tabulate import tabulate
-import re
-
-import logging
 
 from algorithmic_efficiency.workloads.workloads import get_base_workload_name
 import algorithmic_efficiency.workloads.workloads as workloads_registry

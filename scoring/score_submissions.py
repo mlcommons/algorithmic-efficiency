@@ -12,20 +12,19 @@ python3 score_submissions.py \
   --compute_performance_profiles
 """
 
+import json
 import operator
 import os
+import pickle
 
 from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
 import pandas as pd
+import performance_profile
 import scoring_utils
 from tabulate import tabulate
-import json
-import pickle
-
-import performance_profile
 
 flags.DEFINE_string(
     'submission_directory',
