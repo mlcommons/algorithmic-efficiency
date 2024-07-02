@@ -236,8 +236,6 @@ def get_workloads_time_to_target(submission,
 
   df = pd.DataFrame.from_records(workloads)
   df = df.pivot(index='submission', columns='workload', values=time_col)
-  logging.info("HELLOOOOOOOOO")
-  print_dataframe(df)
   return df
 
 
@@ -306,15 +304,9 @@ def compute_performance_profiles(submissions,
                                      strict))
   df = pd.concat(dfs)
 
-  logging.info("TIME TO TARGET")
-  print_dataframe(df)
-
   # Set score to inf if not within 4x of fastest submission
   best_scores = df.min(axis=0)
   df[df.apply(lambda x: x > 4 * best_scores, axis=1)] = np.inf
-
-  logging.info("4X of budget")
-  print_dataframe(df)
 
   # For each held-out workload if variant target was not hit set submission to inf
   framework = None
@@ -324,9 +316,6 @@ def compute_performance_profiles(submissions,
       base_workload = get_base_workload_name(workload)
       df[base_workload] = df.apply(
           variant_criteria_filter(base_workload, workload), axis=1)
-
-  logging.info("HELDOUT_WORKLOAD FILTER")
-  print_dataframe(df)
 
   df = df[BASE_WORKLOADS]
 
@@ -356,16 +345,10 @@ def compute_performance_profiles(submissions,
                            1000):
       logging.info(df)
 
-  logging.info('DIVIDE BY FASTEST')
-  print_dataframe(df)
-
   # If no max_tau is supplied, choose the value of tau that would plot all non
   # inf or nan data.
   if max_tau is None:
     max_tau = df.replace(float('inf'), -1).replace(np.nan, -1).values.max()
-
-  logging.info('AFTER MAYBE SETTING MAX TAU')
-  print_dataframe(df)
 
   if scale == 'linear':
     points = np.linspace(min_tau, max_tau, num=num_points)
