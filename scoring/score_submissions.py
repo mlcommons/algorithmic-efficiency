@@ -124,21 +124,21 @@ def main(_):
   results = {}
   os.makedirs(FLAGS.output_dir, exist_ok=True)
 
-#   for team in os.listdir(FLAGS.submission_directory):
-#     for submission in os.listdir(os.path.join(FLAGS.submission_directory, team)):
-#         print(submission)
-#         experiment_path = os.path.join(FLAGS.submission_directory, team, submission)
-#         df = scoring_utils.get_experiment_df(experiment_path)
-#         results[submission] = df
-#         summary_df = get_submission_summary(df)
-#         with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
-#                 'w') as fout:
-#             summary_df.to_csv(fout)
-  
-#   # Save results
-#   with open(os.path.join(FLAGS.output_dir, 'results.pkl'), 'wb') as f:
-#     pickle.dump(results, f)
- 
+  #   for team in os.listdir(FLAGS.submission_directory):
+  #     for submission in os.listdir(os.path.join(FLAGS.submission_directory, team)):
+  #         print(submission)
+  #         experiment_path = os.path.join(FLAGS.submission_directory, team, submission)
+  #         df = scoring_utils.get_experiment_df(experiment_path)
+  #         results[submission] = df
+  #         summary_df = get_submission_summary(df)
+  #         with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+  #                 'w') as fout:
+  #             summary_df.to_csv(fout)
+
+  #   # Save results
+  #   with open(os.path.join(FLAGS.output_dir, 'results.pkl'), 'wb') as f:
+  #     pickle.dump(results, f)
+
   # Read results
   with open(os.path.join(FLAGS.output_dir, 'results.pkl'), 'rb') as f:
     results = pickle.load(f)
