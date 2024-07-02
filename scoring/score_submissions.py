@@ -22,8 +22,10 @@ import numpy as np
 import pandas as pd
 import scoring_utils
 from tabulate import tabulate
+import json
+import pickle
 
-from scoring import performance_profile
+import performance_profile
 
 flags.DEFINE_string(
     'submission_directory',
@@ -101,8 +103,13 @@ def get_summary_df(workload, workload_df, include_test_split=False):
   return summary_df
 
 
-def print_submission_summary(df, include_test_split=True):
+def get_submission_summary(df, include_test_split=True):
+  """Summarizes the submission results into metric and time tables
+  organized by workload.
+  """
+
   dfs = []
+  print(df)
   for workload, group in df.groupby('workload'):
     summary_df = get_summary_df(
         workload, group, include_test_split=include_test_split)
@@ -115,15 +122,26 @@ def print_submission_summary(df, include_test_split=True):
 
 def main(_):
   results = {}
+  os.makedirs(FLAGS.output_dir, exist_ok=True)
 
-  for submission in os.listdir(FLAGS.submission_directory):
-    experiment_path = os.path.join(FLAGS.submission_directory, submission)
-    df = scoring_utils.get_experiment_df(experiment_path)
-    results[submission] = df
-    summary_df = print_submission_summary(df)
-    with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
-              'w') as fout:
-      summary_df.to_csv(fout)
+#   for team in os.listdir(FLAGS.submission_directory):
+#     for submission in os.listdir(os.path.join(FLAGS.submission_directory, team)):
+#         print(submission)
+#         experiment_path = os.path.join(FLAGS.submission_directory, team, submission)
+#         df = scoring_utils.get_experiment_df(experiment_path)
+#         results[submission] = df
+#         summary_df = get_submission_summary(df)
+#         with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+#                 'w') as fout:
+#             summary_df.to_csv(fout)
+  
+#   # Save results
+#   with open(os.path.join(FLAGS.output_dir, 'results.pkl'), 'wb') as f:
+#     pickle.dump(results, f)
+ 
+  # Read results
+  with open(os.path.join(FLAGS.output_dir, 'results.pkl'), 'rb') as f:
+    results = pickle.load(f)
 
   if not FLAGS.strict:
     logging.warning(
