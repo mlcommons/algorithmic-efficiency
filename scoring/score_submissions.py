@@ -12,18 +12,19 @@ python3 score_submissions.py \
   --compute_performance_profiles
 """
 
+import json
 import operator
 import os
+import pickle
 
 from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
 import pandas as pd
+import performance_profile
 import scoring_utils
 from tabulate import tabulate
-
-from scoring import performance_profile
 
 flags.DEFINE_string(
     'submission_directory',
@@ -45,6 +46,16 @@ flags.DEFINE_boolean(
     'self_tuning_ruleset',
     False,
     'Whether to score on self-tuning ruleset or externally tuned ruleset')
+flags.DEFINE_string(
+    'save_results_to_filename',
+    None,
+    'Filename to save the processed results that are fed into the performance profile functions.'
+)
+flags.DEFINE_boolean(
+    'load_results_from_filename',
+    None,
+    'Filename to load processed results from that are fed into performance profile functions'
+)
 FLAGS = flags.FLAGS
 
 
@@ -101,8 +112,13 @@ def get_summary_df(workload, workload_df, include_test_split=False):
   return summary_df
 
 
-def print_submission_summary(df, include_test_split=True):
+def get_submission_summary(df, include_test_split=True):
+  """Summarizes the submission results into metric and time tables
+  organized by workload.
+  """
+
   dfs = []
+  print(df)
   for workload, group in df.groupby('workload'):
     summary_df = get_summary_df(
         workload, group, include_test_split=include_test_split)
@@ -115,15 +131,36 @@ def print_submission_summary(df, include_test_split=True):
 
 def main(_):
   results = {}
+  os.makedirs(FLAGS.output_dir, exist_ok=True)
 
-  for submission in os.listdir(FLAGS.submission_directory):
-    experiment_path = os.path.join(FLAGS.submission_directory, submission)
-    df = scoring_utils.get_experiment_df(experiment_path)
-    results[submission] = df
-    summary_df = print_submission_summary(df)
-    with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
-              'w') as fout:
-      summary_df.to_csv(fout)
+  # Optionally read results to filename
+  if FLAGS.load_results_from_filename:
+    with open(
+        os.path.join(FLAGS.output_dir, FLAGS.load_results_from_filename),
+        'rb') as f:
+      results = pickle.load(f)
+  else:
+    for team in os.listdir(FLAGS.submission_directory):
+      for submission in os.listdir(
+          os.path.join(FLAGS.submission_directory, team)):
+        print(submission)
+        experiment_path = os.path.join(FLAGS.submission_directory,
+                                       team,
+                                       submission)
+        df = scoring_utils.get_experiment_df(experiment_path)
+        results[submission] = df
+        summary_df = get_submission_summary(df)
+        with open(
+            os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+            'w') as fout:
+          summary_df.to_csv(fout)
+
+    # Optionally save results to filename
+    if FLAGS.save_results_to_filename:
+      with open(
+          os.path.join(FLAGS.output_dir, FLAGS.save_results_to_filename),
+          'wb') as f:
+        pickle.dump(results, f)
 
   if not FLAGS.strict:
     logging.warning(
