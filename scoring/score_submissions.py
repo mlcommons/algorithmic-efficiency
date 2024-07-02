@@ -46,6 +46,16 @@ flags.DEFINE_boolean(
     'self_tuning_ruleset',
     False,
     'Whether to score on self-tuning ruleset or externally tuned ruleset')
+flags.DEFINE_string(
+    'save_results_to_filename',
+    None,
+    'Filename to save the processed results that are fed into the performance profile functions'
+)
+flags.DEFINE_boolean(
+    'load_results_from_filename',
+    None,
+    'Filename to load processed results from that are fed into performance profile functions'
+)
 FLAGS = flags.FLAGS
 
 
