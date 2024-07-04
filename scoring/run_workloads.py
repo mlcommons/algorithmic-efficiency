@@ -85,8 +85,9 @@ flags.DEFINE_string(
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
 flags.DEFINE_string(
-    'workload',
+    'workloads',
     None,
+    'String representing a comma separated list of workload names.'
     'If not None, only run this workload, else run all workloads in workload_metadata_path.'
 )
 flags.DEFINE_string(
@@ -181,17 +182,20 @@ def main(_):
   with open(FLAGS.workload_metadata_path) as f:
     workload_metadata = json.load(f)
 
+  # Get list of all possible workloads
   workloads = [w for w in workload_metadata.keys()]
-
-  # Read held-out workloads
+  # Read heldout workloads
   if FLAGS.held_out_workloads_config_path:
     held_out_workloads = read_held_out_workloads(
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
 
-  # Filter for single workload
-  if FLAGS.workload and (FLAGS.workload in workloads):
-    workloads = [FLAGS.workload]
+  # Filter workloads if explicit workloads specified 
+  if FLAGS.workloads is not None:
+    workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
+    if len(workloads_filtered) != len(FLAGS.workloads.split(',')):
+      unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads_filtered)
+      raise ValueError(f'Invalid workload name {unmatched_workloads}')
 
   rng_subkeys = prng.split(rng_key, num_studies)
 
