@@ -184,8 +184,10 @@ def main(_):
 
   # Get list of all possible workloads
   workloads = [w for w in workload_metadata.keys()]
+
   # Read heldout workloads
   if FLAGS.held_out_workloads_config_path:
+    print('appending heldout workloads')
     held_out_workloads = read_held_out_workloads(
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
