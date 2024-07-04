@@ -194,7 +194,7 @@ def main(_):
   if FLAGS.workloads is not None:
     workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
     if len(workloads_filtered) != len(FLAGS.workloads.split(',')):
-      unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads_filtered)
+      unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads)
       raise ValueError(f'Invalid workload name {unmatched_workloads}')
 
   rng_subkeys = prng.split(rng_key, num_studies)
