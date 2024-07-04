@@ -187,19 +187,13 @@ def main(_):
 
   # Read heldout workloads
   if FLAGS.held_out_workloads_config_path:
-    print('appending heldout workloads')
     held_out_workloads = read_held_out_workloads(
         FLAGS.held_out_workloads_config_path)
-    print(FLAGS.held_out_workloads_config_path)
-    print(held_out_workloads)
     workloads = workloads + held_out_workloads
 
   # Filter workloads if explicit workloads specified 
   if FLAGS.workloads is not None:
-    print(workloads)
     workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
-    print(workloads)
-    print(FLAGS.workloads.split(','))
     if len(workloads) != len(FLAGS.workloads.split(',')):
       unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads)
       raise ValueError(f'Invalid workload name {unmatched_workloads}')
