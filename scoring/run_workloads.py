@@ -190,6 +190,8 @@ def main(_):
     print('appending heldout workloads')
     held_out_workloads = read_held_out_workloads(
         FLAGS.held_out_workloads_config_path)
+    print(FLAGS.held_out_workloads_config_path)
+    print(held_out_workloads)
     workloads = workloads + held_out_workloads
 
   # Filter workloads if explicit workloads specified 
