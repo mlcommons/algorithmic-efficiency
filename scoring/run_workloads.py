@@ -192,6 +192,7 @@ def main(_):
 
   # Filter workloads if explicit workloads specified 
   if FLAGS.workloads is not None:
+    print(workloads)
     workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
     print(workloads)
     print(FLAGS.workloads.split(','))
