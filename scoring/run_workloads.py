@@ -193,7 +193,7 @@ def main(_):
   # Filter workloads if explicit workloads specified 
   if FLAGS.workloads is not None:
     workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
-    if len(workloads_filtered) != len(FLAGS.workloads.split(',')):
+    if len(workloads) != len(FLAGS.workloads.split(',')):
       unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads)
       raise ValueError(f'Invalid workload name {unmatched_workloads}')
 
