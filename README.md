@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > Submitters are no longer required to self-report results. 
 > We are currently in the process of evaluating and scoring received submissions.
-> We are aiming to release results by July 15th 2024.
+> Results coming soon!
 > For other key dates please see [Call for Submissions](CALL_FOR_SUBMISSIONS.md).
 
 ## Table of Contents <!-- omit from toc -->
