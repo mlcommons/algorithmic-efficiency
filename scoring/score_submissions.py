@@ -30,9 +30,11 @@ flags.DEFINE_string(
     'submission_directory',
     None,
     'Path to submission directory containing experiment directories.')
-flags.DEFINE_string('output_dir',
-                    'scoring_results',
-                    'Path to save performance profile artifacts, submission_summaries and results files.')
+flags.DEFINE_string(
+    'output_dir',
+    'scoring_results',
+    'Path to save performance profile artifacts, submission_summaries and results files.'
+)
 flags.DEFINE_boolean('compute_performance_profiles',
                      False,
                      'Whether or not to compute the performance profiles.')
@@ -133,6 +135,7 @@ def get_submission_summary(df, include_test_split=True):
   logging.info('\n' + tabulate(df, headers='keys', tablefmt='psql'))
   return df
 
+
 def compute_leaderboard_score(df, normalize=False):
   """Compute leaderboard score by taking integral of performance profile.
 
@@ -214,6 +217,7 @@ def main(_):
     scores.to_csv(os.path.join(FLAGS.output_dir, 'scores.csv'))
     scores_str = tabulate(scores, headers='keys', tablefmt='psql')
     logging.info(f'Scores: \n {scores_str}')
+
 
 if __name__ == '__main__':
   # flags.mark_flag_as_required('submission_directory')
