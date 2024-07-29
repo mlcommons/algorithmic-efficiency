@@ -227,9 +227,6 @@ def get_workloads_time_to_target(submission,
       else:
         time_val = float('inf')
       time_vals_per_study.append(time_val)
-    num_s = len(time_vals_per_study)
-    print(f'TIME VALS PER STUDY: {num_s}')
-    print(time_vals_per_study)
 
     workloads.append({
         'submission': submission_name,
