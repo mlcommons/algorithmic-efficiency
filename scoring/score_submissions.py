@@ -30,9 +30,11 @@ flags.DEFINE_string(
     'submission_directory',
     None,
     'Path to submission directory containing experiment directories.')
-flags.DEFINE_string('output_dir',
-                    'scoring_results',
-                    'Path to save performance profile table and plot.')
+flags.DEFINE_string(
+    'output_dir',
+    'scoring_results',
+    'Path to save performance profile artifacts, submission_summaries and results files.'
+)
 flags.DEFINE_boolean('compute_performance_profiles',
                      False,
                      'Whether or not to compute the performance profiles.')
@@ -51,10 +53,15 @@ flags.DEFINE_string(
     None,
     'Filename to save the processed results that are fed into the performance profile functions.'
 )
-flags.DEFINE_boolean(
+flags.DEFINE_string(
     'load_results_from_filename',
     None,
     'Filename to load processed results from that are fed into performance profile functions'
+)
+flags.DEFINE_string(
+    'exclude_submissions',
+    '',
+    'Optional comma seperated list of names of submissions to exclude from scoring.'
 )
 FLAGS = flags.FLAGS
 
@@ -129,6 +136,22 @@ def get_submission_summary(df, include_test_split=True):
   return df
 
 
+def compute_leaderboard_score(df, normalize=False):
+  """Compute leaderboard score by taking integral of performance profile.
+
+  Args:
+    df: pd.DataFrame returned from `compute_performance_profiles`.
+    normalize: divide by the range of the performance profile's tau.
+
+  Returns:
+    pd.DataFrame with one column of scores indexed by submission.
+  """
+  scores = np.trapz(df, x=df.columns)
+  if normalize:
+    scores /= df.columns.max() - df.columns.min()
+  return pd.DataFrame(scores, columns=['score'], index=df.index)
+
+
 def main(_):
   results = {}
   os.makedirs(FLAGS.output_dir, exist_ok=True)
@@ -144,6 +167,8 @@ def main(_):
       for submission in os.listdir(
           os.path.join(FLAGS.submission_directory, team)):
         print(submission)
+        if submission in FLAGS.exclude_submissions.split(','):
+          continue
         experiment_path = os.path.join(FLAGS.submission_directory,
                                        team,
                                        submission)
@@ -185,9 +210,13 @@ def main(_):
       os.mkdir(FLAGS.output_dir)
     performance_profile.plot_performance_profiles(
         performance_profile_df, 'score', save_dir=FLAGS.output_dir)
-    perf_df = tabulate(
+    performance_profile_str = tabulate(
         performance_profile_df.T, headers='keys', tablefmt='psql')
-    logging.info(f'Performance profile:\n {perf_df}')
+    logging.info(f'Performance profile:\n {performance_profile_str}')
+    scores = compute_leaderboard_score(performance_profile_df)
+    scores.to_csv(os.path.join(FLAGS.output_dir, 'scores.csv'))
+    scores_str = tabulate(scores, headers='keys', tablefmt='psql')
+    logging.info(f'Scores: \n {scores_str}')
 
 
 if __name__ == '__main__':
