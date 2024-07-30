@@ -16,11 +16,13 @@ import operator
 import os
 import pickle
 
+from absl import app
+from absl import flags
+from absl import logging
 import numpy as np
 import pandas as pd
 import performance_profile
 import scoring_utils
-from absl import app, flags, logging
 from tabulate import tabulate
 
 flags.DEFINE_string(
