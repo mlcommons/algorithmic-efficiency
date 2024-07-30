@@ -4,8 +4,8 @@ import json
 import os
 import re
 
-from absl import logging
 import pandas as pd
+from absl import logging
 
 import algorithmic_efficiency.workloads.workloads as workloads_registry
 

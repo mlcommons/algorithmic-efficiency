@@ -12,18 +12,15 @@ python3 score_submissions.py \
   --compute_performance_profiles
 """
 
-import json
 import operator
 import os
 import pickle
 
-from absl import app
-from absl import flags
-from absl import logging
 import numpy as np
 import pandas as pd
 import performance_profile
 import scoring_utils
+from absl import app, flags, logging
 from tabulate import tabulate
 
 flags.DEFINE_string(
@@ -136,7 +133,7 @@ def get_submission_summary(df, include_test_split=True):
   return df
 
 
-def compute_leaderboard_score(df, normalize=False):
+def compute_leaderboard_score(df, normalize=True):
   """Compute leaderboard score by taking integral of performance profile.
 
   Args:
