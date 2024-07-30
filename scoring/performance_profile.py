@@ -26,7 +26,6 @@ The two primary inputs to `compute_performance_profiles` are
   the dictionary of submissions.
 """
 import itertools
-import logging
 import operator
 import os
 import re
@@ -184,10 +183,10 @@ def get_workloads_time_to_target(submission,
     if strict:
       raise ValueError(
           f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
-          f'but found {num_workloads} workloads.')
+          f'but found {num_workloads} workloads for {submission_name}.')
     logging.warning(
         f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
-        f'but found {num_workloads} workloads.')
+        f'but found {num_workloads} workloads for {submission_name}.')
 
   # For each workload get submission time get the submission times to target.
   for workload, group in submission.groupby('workload'):
@@ -198,11 +197,13 @@ def get_workloads_time_to_target(submission,
     num_studies = len(group.groupby('study'))
     if num_studies != NUM_STUDIES:
       if strict:
-        raise ValueError(f'Expecting {NUM_STUDIES} trials for workload '
-                         f'{workload} but found {num_studies} trials.')
+        raise ValueError(f'Expecting {NUM_STUDIES} studies for workload '
+                         f'{workload} but found {num_studies} studies '
+                         f'for {submission_name}.')
       else:
-        logging.warning(f'Expecting {NUM_STUDIES} trials for workload '
-                        f'{workload} but found {num_studies} trials.')
+        logging.warning(f'Expecting {NUM_STUDIES} studies for workload '
+                        f'{workload} but found {num_studies} studies '
+                        f'for {submission_name}.')
 
     # For each study check trials
     for study, group in group.groupby('study'):
@@ -213,11 +214,13 @@ def get_workloads_time_to_target(submission,
         if strict:
           raise ValueError(
               f'In Study {study}: Expecting {NUM_TRIALS} trials for workload '
-              f'{workload} but found {num_trials} trials.')
+              f'{workload} but found {num_trials} trials '
+              f'for {submission_name}.')
         else:
           logging.warning(
               f'In Study {study}: Expecting {NUM_TRIALS} trials for workload '
-              f'{workload} but found {num_trials} trials.')
+              f'{workload} but found {num_trials} trials '
+              f'for {submission_name}.')
 
       # Get trial and time index that reaches target
       trial_idx, time_idx = get_best_trial_index(
@@ -309,7 +312,6 @@ def compute_performance_profiles(submissions,
   df[df.apply(lambda x: x > 4 * best_scores, axis=1)] = np.inf
 
   # For each held-out workload if variant target was not hit set submission to inf
-  framework = None
   for workload in df.keys():
     if workload not in BASE_WORKLOADS:
       # If variants do not have finite score set base_workload score to inf

@@ -12,7 +12,6 @@ python3 score_submissions.py \
   --compute_performance_profiles
 """
 
-import json
 import operator
 import os
 import pickle
@@ -136,7 +135,7 @@ def get_submission_summary(df, include_test_split=True):
   return df
 
 
-def compute_leaderboard_score(df, normalize=False):
+def compute_leaderboard_score(df, normalize=True):
   """Compute leaderboard score by taking integral of performance profile.
 
   Args:
