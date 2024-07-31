@@ -307,6 +307,14 @@ def compute_performance_profiles(submissions,
                                      strict))
   df = pd.concat(dfs)
 
+  # For each held-out workload set to inf if the base workload is inf
+  for workload in df.keys():
+    if workload not in BASE_WORKLOADS:
+      # If base do not have finite score set variant score to inf
+      base_workload = get_base_workload_name(workload)
+      df[workload] = df.apply(
+          variant_criteria_filter(workload, base_workload), axis=1)
+
   # Set score to inf if not within 4x of fastest submission
   best_scores = df.min(axis=0)
   df[df.apply(lambda x: x > 4 * best_scores, axis=1)] = np.inf
