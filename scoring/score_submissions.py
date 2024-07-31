@@ -198,7 +198,7 @@ def main(_):
         results,
         time_col='score',
         min_tau=1.0,
-        max_tau=None,
+        max_tau=4.0,
         reference_submission_tag=None,
         num_points=100,
         scale='linear',
