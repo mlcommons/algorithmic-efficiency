@@ -234,7 +234,7 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
     dataset = dataset.filter(length_filter(max_length))
 
   if shuffle:
-    dataset = dataset.shuffle(shuffle_buffer_size, seed=data_rng[0])
+    dataset = dataset.shuffle(shuffle_buffer_size, seed=data_rng)
 
   if train:
     dataset = dataset.repeat()
