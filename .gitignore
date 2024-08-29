@@ -20,6 +20,7 @@ algorithmic_efficiency/workloads/librispeech_conformer/work_dir
 *.vocab
 wandb/
 *.txt
+scoring/plots/
 
 !scoring/test_data/experiment_dir/study_0/mnist_jax/trial_0/eval_measurements.csv
 !scoring/test_data/experiment_dir/study_0/mnist_jax/trial_1/eval_measurements.csv
