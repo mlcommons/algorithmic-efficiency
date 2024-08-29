@@ -26,6 +26,7 @@ The two primary inputs to `compute_performance_profiles` are
   the dictionary of submissions.
 """
 import itertools
+import json
 import operator
 import os
 import re
@@ -45,6 +46,10 @@ WORKLOADS = workloads_registry.WORKLOADS
 BASE_WORKLOADS = workloads_registry.BASE_WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
 BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+# Open json file to read heldout workloads
+# TODO: This probably shouldn't be hardcoded but passed as an argument.
+with open("held_out_workloads_algoperf_v05.json", "r") as f:
+  HELDOUT_WORKLOADS = json.load(f)
 # These global variables have to be set according to the current set of
 # workloads and rules for the scoring to be correct.
 # We do not use the workload registry since it contains test and development
@@ -248,6 +253,9 @@ def variant_criteria_filter(base_workload, variant_workload):
     try:
       if x[variant_workload] == np.inf:
         return np.inf
+      # Also check for nan values (e.g. OOMs)
+      elif np.isnan(x[variant_workload]):
+        return np.inf
       else:
         return x[base_workload]
     except KeyError as e:
@@ -306,19 +314,32 @@ def compute_performance_profiles(submissions,
                                      self_tuning_ruleset,
                                      strict))
   df = pd.concat(dfs)
+  # Restrict to base and sampled held-out workloads
+  # (ignore the additional workload variants of the baseline
+  # as they cause issues when checking for nans in workload variants).
+  df = df[BASE_WORKLOADS + HELDOUT_WORKLOADS]
+  # Sort workloads alphabetically (for better display)
+  df = df.reindex(sorted(df.columns), axis=1)
+
+  # For each held-out workload set to inf if the base workload is inf or nan
+  for workload in df.keys():
+    if workload not in BASE_WORKLOADS:
+      # If base do not have finite score set variant score to inf
+      base_workload = get_base_workload_name(workload)
+      df[workload] = df.apply(
+          variant_criteria_filter(workload, base_workload), axis=1)
 
   # Set score to inf if not within 4x of fastest submission
   best_scores = df.min(axis=0)
   df[df.apply(lambda x: x > 4 * best_scores, axis=1)] = np.inf
 
-  # For each held-out workload if variant target was not hit set submission to inf
+  # For each base workload if variant target was not hit set submission to inf
   for workload in df.keys():
     if workload not in BASE_WORKLOADS:
       # If variants do not have finite score set base_workload score to inf
       base_workload = get_base_workload_name(workload)
       df[base_workload] = df.apply(
           variant_criteria_filter(base_workload, workload), axis=1)
-
   df = df[BASE_WORKLOADS]
 
   if verbosity > 0:
