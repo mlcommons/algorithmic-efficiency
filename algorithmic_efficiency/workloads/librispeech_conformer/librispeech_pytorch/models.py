@@ -40,7 +40,7 @@ class ConformerConfig:
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
   input_dropout_rate: float = 0.1
-  batch_norm_momentum: float = 0.999
+  batch_norm_momentum: float = 1 - 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
   attention_temperature: float = 1.0
@@ -369,10 +369,11 @@ class BatchNorm(nn.Module):
       mean = (masked_inp).sum(dim=(0, 1)) / count
       var = (torch.square(masked_inp - mean) * mask).sum(dim=(0, 1)) / count
 
-      self.running_mean = self.momentum * self.running_mean + (
-          1 - self.momentum) * mean.detach()
-      self.running_var = self.momentum * self.running_var + (
-          1 - self.momentum) * var.detach()
+      self.running_mean = (1 - self.momentum) * self.running_mean + (
+          self.momentum) * mean.detach()
+      self.running_var = (1 - self.momentum) * self.running_var + (
+          self.momentum) * var.detach()
+      
     else:
       mean = self.running_mean
       var = self.running_var
