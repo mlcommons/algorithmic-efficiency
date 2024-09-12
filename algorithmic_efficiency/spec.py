@@ -406,7 +406,19 @@ UpdateParamsFn = Callable[[
     RandomState
 ],
                           UpdateReturn]
-
+PrepareForEvalFn = Callable[[
+    Workload,
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparameters,
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                          UpdateReturn]
 
 # Each call to this function is considered a "step".
 # Can raise a TrainingCompleteError if it believes it has achieved the goal and

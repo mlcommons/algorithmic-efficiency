@@ -42,6 +42,26 @@ def update_params(workload: spec.Workload,
   pass
 
 
+def prepare_for_eval(workload: spec.Workload,
+                     current_param_container: spec.ParameterContainer,
+                     current_params_types: spec.ParameterTypeTree,
+                     model_state: spec.ModelAuxiliaryState,
+                     hyperparameters: spec.Hyperparameters,
+                    #  batch: Dict[str, spec.Tensor],
+                     loss_type: spec.LossType,
+                     optimizer_state: spec.OptimizerState,
+                     eval_results: List[Tuple[int, float]],
+                     global_step: int,
+                     rng: spec.RandomState) -> spec.UpdateReturn:
+  """
+    Returns:
+     new_optimizer_state
+     new_params
+     new_model_state
+    """
+  pass
+
+
 def get_batch_size(workload_name):
   """
     Gets batch size for workload. 
