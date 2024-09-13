@@ -52,6 +52,59 @@ You can use the `scripts/cloud-startup.sh` as a startup script for the VM. This 
 To access the Google Cloud Container Registry, you will have to authenticate to the repository whenever you use Docker.
 Use the gcloud credential helper as documented [here](https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling#cred-helper).
 
+
+### Configuring Cloud Ops Logging Agent
+
+To set up the Google Cloud Ops Agent to monitor log files in your VM, follow these steps:
+1. **Determine the Linux Distribution**
+To determine the exact version and type of Linux distribution you're running on your VM, use the following command:
+```bash
+   cat /etc/os-release
+```
+2. **Update Package Lists:**
+```bash
+sudo apt-get update
+```
+
+3. **Install Google Cloud Ops Agent:**
+```bash
+sudo bash -c "$(curl -sSfL https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh)"
+sudo apt-get update
+sudo apt-get install google-cloud-ops-agent
+```
+
+4. **Install Google Cloud Ops Agent:**
+```bash
+sudo systemctl start google-cloud-ops-agent
+sudo systemctl enable google-cloud-ops-agent
+```
+
+5. **Edit the Ops Agent Configuration File:**
+Open the configuration file located at `/etc/google-cloud-ops-agent/config.yaml` using a text editor such as `nano` or `vim`
+```bash
+sudo nano /etc/google-cloud-ops-agent/config.yaml
+```
+
+Add the logging agent configuration, replacing USERNAME with your actual username:
+
+```bash
+logging:
+  receivers:
+    my_application:
+      type: files
+      include_paths:
+        - /home/USERNAME/experiment_runs/logs/*.log
+  service:
+    pipelines:
+      default_pipeline:
+        receivers: [my_application]
+```
+5. **Save file and restart the Ops Agent:**
+```bash
+sudo systemctl restart google-cloud-ops-agent
+```
+
+
 ## Installation
 
 If you have not installed the package and dependencies yet see [Installation](/README.md#installation).
