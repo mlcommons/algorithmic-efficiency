@@ -487,7 +487,11 @@ def train_once(
           preemption_count=preemption_count,
           checkpoint_dir=log_dir,
           save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
-
+  assert(abs(metrics['eval_results'][-1][1]['total_duration'] - 
+  (train_state['accumulated_submission_time'] + 
+  train_state['accumulated_logging_time'] + 
+  train_state['accumulated_eval_time']) <= 10))
+  assert(int(train_state['accumulated_submission_time'] // workload.eval_period_time_sec) <= len(metrics['eval_results']) + 2)
   return train_state['accumulated_submission_time'], metrics
 
 
