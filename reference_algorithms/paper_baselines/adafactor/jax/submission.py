@@ -157,6 +157,27 @@ def update_params(workload: spec.Workload,
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
+def prepare_for_eval(workload: spec.Workload,
+                     current_param_container: spec.ParameterContainer,
+                     current_params_types: spec.ParameterTypeTree,
+                     model_state: spec.ModelAuxiliaryState,
+                     hyperparameters: spec.Hyperparameters,
+                     loss_type: spec.LossType,
+                     optimizer_state: spec.OptimizerState,
+                     eval_results: List[Tuple[int, float]],
+                     global_step: int,
+                     rng: spec.RandomState) -> spec.UpdateReturn:
+  """Return (updated_optimizer_state, updated_params)."""
+  del workload
+  del hyperparameters
+  del current_params_types
+  del loss_type
+  del eval_results
+  del global_step
+  del rng
+  return (optimizer_state, current_param_container, model_state)
+
+
 def get_batch_size(workload_name):
   # Return the global batch size.
   if workload_name == 'criteo1tb':
