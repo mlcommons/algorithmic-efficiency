@@ -418,7 +418,8 @@ PrepareForEvalFn = Callable[[
     int,
     RandomState
 ],
-                          UpdateReturn]
+                            UpdateReturn]
+
 
 # Each call to this function is considered a "step".
 # Can raise a TrainingCompleteError if it believes it has achieved the goal and
