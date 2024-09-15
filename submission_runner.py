@@ -336,7 +336,8 @@ def train_once(
       not train_state['training_complete']:
 
     step_rng = prng.fold_in(rng, global_step)
-    data_select_rng, update_rng, prep_eval_rng, eval_rng = prng.split(step_rng, 4)
+    data_select_rng, update_rng, prep_eval_rng, eval_rng = \
+      prng.split(step_rng, 4)
 
     with profiler.profile('Data selection'):
       batch = data_selection(workload,
@@ -414,12 +415,12 @@ def train_once(
           try:
             eval_start_time = get_time()
             latest_eval_result = workload.eval_model(global_eval_batch_size,
-                                                    model_params,
-                                                    model_state,
-                                                    eval_rng,
-                                                    data_dir,
-                                                    imagenet_v2_data_dir,
-                                                    global_step)
+                                                     model_params,
+                                                     model_state,
+                                                     eval_rng,
+                                                     data_dir,
+                                                     imagenet_v2_data_dir,
+                                                     global_step)
             # Check if targets reached.
             # Note that this is one of the stopping conditions for the length of
             # a training run. To score the run we only consider the time
@@ -454,7 +455,7 @@ def train_once(
                 'accumulated_logging_time']
             time_since_start = latest_eval_result['total_duration']
             logging.info(f'Time since start: {time_since_start:.2f}s, '
-                        f'\tStep: {global_step}, \t{latest_eval_result}')
+                         f'\tStep: {global_step}, \t{latest_eval_result}')
             eval_results.append((global_step, latest_eval_result))
 
             logging_start_time = get_time()
@@ -489,8 +490,9 @@ def train_once(
           except RuntimeError as e:
             logging.exception(f'Eval step {global_step} error.\n')
             if 'out of memory' in str(e):
-              logging.warning('Error: GPU out of memory during eval during step '
-                              f'{global_step}, error : {str(e)}.')
+              logging.warning(
+                  'Error: GPU out of memory during eval during step '
+                  f'{global_step}, error : {str(e)}.')
               _reset_cuda_mem()
 
     train_state['last_step_end_time'] = get_time()
@@ -618,7 +620,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      global_eval_batch_size,
                                      data_dir, imagenet_v2_data_dir,
                                      init_optimizer_state,
-                                     update_params, data_selection, prepare_for_eval,
+                                     update_params, data_selection, 
+                                     prepare_for_eval,
                                      hyperparameters,
                                      rng_seed,
                                      rng,
