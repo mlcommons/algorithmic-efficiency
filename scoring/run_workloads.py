@@ -1,4 +1,4 @@
-"""
+]"""
 Example Usage:
 python run_workloads.py --framework jax \
 --experiment_name my_first_experiment \
@@ -17,6 +17,8 @@ import time
 from absl import app
 from absl import flags
 from absl import logging
+import datetime
+import subprocess
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.workloads.workloads import get_base_workload_name
@@ -28,7 +30,8 @@ flags.DEFINE_string(
     'URL to docker image')
 flags.DEFINE_integer('run_percentage',
                      100,
-                     'Percentage of max num steps to run for. Must set enable_step_percentage to true for this to take effect.')
+                     'Percentage of max num steps to run for.'
+                     'Must set the flag enable_step_budget to True for this to take effect.')
 flags.DEFINE_string('experiment_name',
                     'my_experiment',
                     'Name of top sub directory in experiment dir.')
@@ -83,14 +86,26 @@ flags.DEFINE_string(
     'If your algorithm has a smaller per step time than our baselines '
     'you may want to increase the number of steps per workload.')
 flags.DEFINE_string(
-    'workload',
+    'workloads',
     None,
+    'String representing a comma separated list of workload names.'
     'If not None, only run this workload, else run all workloads in workload_metadata_path.'
 )
+flags.DEFINE_string(
+  'additional_requirements_path',
+  None,
+  'Path to requirements.txt if any.'
+)
+flags.DEFINE_integer(
+  'max_steps',
+  None,
+  'Maximum number of steps to run. Must set flag enable_step_budget.'
+  'This flag takes precedence over the run_percentage flag.'
+)
 flags.DEFINE_bool(
-    'enable_step_percentage',
-    False,
-    'By default ignore step_fraction such that scoring is bounded by time budget.'
+  'enable_step_budget',
+  False,
+  'Flag that has to be explicitly set to override time budgets to step budget percentage.'
 )
 
 FLAGS = flags.FLAGS
@@ -110,12 +125,30 @@ def container_running():
   else:
     return True
 
+def kill_containers():
+  docker_client = docker.from_env()
+  containers = docker_client.containers.list()
+  for container in containers:
+    container.kill()
+
+def gpu_is_active():
+    output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'])
+    return any(int(x) > 0 for x in output.decode().splitlines())
+  
 
 def wait_until_container_not_running(sleep_interval=5 * 60):
+  # check gpu util 
+  # if the gpu has not been utilized for 30 minutes kill the 
+  gpu_last_active = datetime.datetime.now().timestamp()
+
   while container_running():
+    # check if gpus have been inactive > 45 min and if so terminate container
+    if gpu_is_active():
+      gpu_last_active = datetime.datetime.now().timestamp()
+    if (datetime.datetime.now().timestamp() - gpu_last_active) > 45 * 60:
+      kill_containers("Killing container: GPUs have been inactive > 45 minutes...")
     time.sleep(sleep_interval)
   return
-
 
 def main(_):
   framework = FLAGS.framework
@@ -136,7 +169,13 @@ def main(_):
     study_end_index = FLAGS.study_end_index
   else:
     study_end_index = num_studies - 1
+
+  additional_requirements_path_flag = ''
+  if FLAGS.additional_requirements_path:
+    additional_requirements_path_flag = f'--additional_requirements_path {FLAGS.additional_requirements_path} '
+
   submission_id = FLAGS.submission_id
+
   rng_seed = FLAGS.seed
 
   if not rng_seed:
@@ -148,17 +187,21 @@ def main(_):
   with open(FLAGS.workload_metadata_path) as f:
     workload_metadata = json.load(f)
 
+  # Get list of all possible workloads
   workloads = [w for w in workload_metadata.keys()]
 
-  # Read held-out workloads
+  # Read heldout workloads
   if FLAGS.held_out_workloads_config_path:
     held_out_workloads = read_held_out_workloads(
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
 
-  # Filter for single workload
-  if FLAGS.workload and (FLAGS.workload in workloads):
-    workloads = [FLAGS.workload]
+  # Filter workloads if explicit workloads specified 
+  if FLAGS.workloads is not None:
+    workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
+    if len(workloads) != len(FLAGS.workloads.split(',')):
+      unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads)
+      raise ValueError(f'Invalid workload name {unmatched_workloads}')
 
   rng_subkeys = prng.split(rng_key, num_studies)
 
@@ -178,20 +221,22 @@ def main(_):
           "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")  # clear caches
       print('=' * 100)
       dataset = workload_metadata[base_workload_name]['dataset']
-
       max_steps_flag = ''
-      if FLAGS.enable_step_percentage:
-          run_fraction = FLAGS.run_percentage / 100.
+      if FLAGS.enable_step_budget:
+        run_fraction = FLAGS.run_percentage / 100.
+        if FLAGS.max_steps is None:
           max_steps = int(workload_metadata[base_workload_name]['max_steps'] *
-                run_fraction)
-          max_steps_flag = f'-m {max_steps}'
-
+                          run_fraction)
+        else:
+          max_steps = FLAGS.max_steps
+        max_steps_flag = f'-m {max_steps}'
+        
       mount_repo_flag = ''
       if FLAGS.local:
-        mount_repo_flag = '-v $HOME/algorithmic-efficiency:/algorithmic-efficiency '
-      command = ('docker run -t -d -v $HOME/data/:/data/ '
-                 '-v $HOME/experiment_runs/:/experiment_runs '
-                 '-v $HOME/experiment_runs/logs:/logs '
+        mount_repo_flag = '-v /home/kasimbeg/algorithmic-efficiency:/algorithmic-efficiency '
+      command = ('docker run -t -d -v /home/kasimbeg/data/:/data/ '
+                 '-v /home/kasimbeg/experiment_runs/:/experiment_runs '
+                 '-v /home/kasimbeg/experiment_runs/logs:/logs '
                  f'{mount_repo_flag}'
                  '--gpus all --ipc=host '
                  f'{docker_image_url} '
@@ -203,6 +248,7 @@ def main(_):
                  f'{max_steps_flag} '
                  f'--num_tuning_trials {num_tuning_trials} '
                  f'--rng_seed {run_seed} '
+                 f'{additional_requirements_path_flag}'
                  '-c false '
                  '-o true '
                  '-i true ')
