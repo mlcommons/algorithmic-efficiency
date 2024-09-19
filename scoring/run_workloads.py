@@ -1,4 +1,4 @@
-]"""
+"""
 Example Usage:
 python run_workloads.py --framework jax \
 --experiment_name my_first_experiment \
