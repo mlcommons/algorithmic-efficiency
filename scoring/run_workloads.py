@@ -87,7 +87,7 @@ flags.DEFINE_string(
     None,
     'If not None, only run this workload, else run all workloads in workload_metadata_path.'
 )
-flags.DEFINE_string(
+flags.DEFINE_bool(
     'enable_step_percentage',
     False,
     'By default ignore step_fraction such that scoring is bounded by time budget.'
