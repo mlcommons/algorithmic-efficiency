@@ -27,10 +27,7 @@
 ---
 
 > [!IMPORTANT]
-> Submitters are no longer required to self-report results. 
-> We are currently in the process of evaluating and scoring received submissions.
-> We are aiming to release results by July 15th 2024.
-> For other key dates please see [Call for Submissions](CALL_FOR_SUBMISSIONS.md).
+> The results of the inaugural AlgoPerf: Training Algorithms benchmark competition have been announced. See the [MLCommons blog post](https://mlcommons.org/2024/08/mlc-algoperf-benchmark-competition/) for an overview and the [results page](https://mlcommons.org/benchmarks/algorithms/) for more details on the results. We are currently preparing an in-depth analysis of the results in the form of a paper and plan the next iteration of the benchmark competition.
 
 ## Table of Contents <!-- omit from toc -->
 
