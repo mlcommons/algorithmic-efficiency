@@ -1,7 +1,7 @@
 """Submission file for a SGD with Nesterov momentum optimizer in Jax."""
 
 import functools
-from typing import Callable, Dict, Iterator, List, Tuple, Any
+from typing import Any, Callable, Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 import jax
