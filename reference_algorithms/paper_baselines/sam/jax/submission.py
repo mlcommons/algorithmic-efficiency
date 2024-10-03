@@ -1,7 +1,7 @@
 """Submission file for a SAM optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import Dict, Iterator, List, Optional, Tuple, Any
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from flax import jax_utils
 import jax

@@ -1,6 +1,6 @@
 """Batch size and update submission functions in PyTorch."""
 
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List, Tuple
 
 from absl import logging
 import torch
