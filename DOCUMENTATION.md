@@ -199,6 +199,7 @@ def update_params(
     batch: Dict[str, Tensor],
     loss_type: LossType,
     optimizer_state: OptimizerState,
+    train_state: Dict[str, Any],
     eval_results: List[Tuple[int, float]],
     global_step: int,
     rng: RandomState
@@ -212,6 +213,7 @@ def update_params(
 - The `loss_fn` produces a loss per example and a summed loss (both only for one device), which both can be used.
 - Allowed to update state for the optimizer.
 - Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state).
+- The submission can access the elapsed training time and get further information about the evaluation through `train_state`.
 - The submission can access the target evaluation metric via the `workload` variable.
 - **A call to this function will be considered a step**
   - The time between a call to this function and the next call to this function will be considered the per-step time.
