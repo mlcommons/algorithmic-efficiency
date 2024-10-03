@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for CIFAR10."""
 
 import functools
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple, Any
 
 from flax import jax_utils
 import jax
@@ -118,6 +118,7 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
+                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
@@ -125,6 +126,7 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del loss_type
   del global_step
+  del train_state
   del eval_results
   optimizer_state, opt_update_fn = optimizer_state
   per_device_rngs = jax.random.split(rng, jax.local_device_count())

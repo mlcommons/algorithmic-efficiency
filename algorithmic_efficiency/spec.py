@@ -401,6 +401,7 @@ UpdateParamsFn = Callable[[
     Dict[str, Tensor],
     LossType,
     OptimizerState,
+    Dict[str, Any],
     List[Tuple[int, float]],
     int,
     RandomState
@@ -422,6 +423,7 @@ def update_params(workload: Workload,
                   batch: Dict[str, Tensor],
                   loss_type: LossType,
                   optimizer_state: OptimizerState,
+                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: RandomState) -> UpdateReturn:

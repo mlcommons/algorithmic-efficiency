@@ -357,6 +357,7 @@ def train_once(
             batch=batch,
             loss_type=workload.loss_type,
             optimizer_state=optimizer_state,
+            train_state=train_state.copy(),
             eval_results=eval_results,
             global_step=global_step,
             rng=update_rng)

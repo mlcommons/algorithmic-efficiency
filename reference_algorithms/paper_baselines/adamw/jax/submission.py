@@ -1,7 +1,7 @@
 """Submission file for an AdamW optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple, Any
 
 from flax import jax_utils
 import jax
@@ -118,12 +118,14 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
+                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
+  del train_state
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state

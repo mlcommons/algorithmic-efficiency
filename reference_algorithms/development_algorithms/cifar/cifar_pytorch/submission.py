@@ -1,6 +1,6 @@
 """Training algorithm track submission functions for CIFAR10."""
 
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple, Any
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -61,6 +61,7 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
+                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
                   rng: spec.RandomState) -> spec.UpdateReturn:
@@ -68,6 +69,7 @@ def update_params(workload: spec.Workload,
   del current_params_types
   del hyperparameters
   del loss_type
+  del train_state
   del eval_results
 
   current_model = current_param_container

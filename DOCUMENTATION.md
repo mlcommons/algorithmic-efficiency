@@ -199,6 +199,7 @@ def update_params(
     batch: Dict[str, Tensor],
     loss_type: LossType,
     optimizer_state: OptimizerState,
+    train_state: Dict[str, Any],
     eval_results: List[Tuple[int, float]],
     global_step: int,
     rng: RandomState
