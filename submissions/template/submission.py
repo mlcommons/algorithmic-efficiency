@@ -4,7 +4,7 @@ See https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.
 and https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md#disallowed-submissions
 for guidelines.
 """
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 from algorithmic_efficiency import spec
 

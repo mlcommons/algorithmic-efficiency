@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for CIFAR10."""
 
 import functools
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 from flax import jax_utils
 import jax

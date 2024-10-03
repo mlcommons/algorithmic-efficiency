@@ -1,6 +1,6 @@
 """Submission file for an AdamW optimizer with warmup+cosine LR in PyTorch."""
 
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 from absl import logging
 import torch

@@ -1,6 +1,6 @@
 """Training algorithm track submission functions for MNIST."""
 
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 import torch
 

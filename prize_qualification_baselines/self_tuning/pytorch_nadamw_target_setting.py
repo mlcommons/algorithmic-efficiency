@@ -1,7 +1,7 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in PyTorch."""
 
 import math
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 from absl import logging
 import torch

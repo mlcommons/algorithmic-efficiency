@@ -1,6 +1,6 @@
 """Training algorithm track submission functions for CIFAR10."""
 
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR

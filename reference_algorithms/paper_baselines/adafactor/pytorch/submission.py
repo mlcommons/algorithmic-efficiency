@@ -1,7 +1,7 @@
 """Submission file for Adafactor in PyTorch."""
 
 from functools import partial
-from typing import Dict, Iterator, List, Tuple, Any
+from typing import Any, Dict, Iterator, List, Tuple
 
 from absl import logging
 import torch
