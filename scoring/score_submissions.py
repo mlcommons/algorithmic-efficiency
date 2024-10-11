@@ -95,7 +95,8 @@ def get_summary_df(workload, workload_df, include_test_split=False):
       if x['val target reached'] else np.nan,
       axis=1)
   summary_df['time to target on val (s)'] = workload_df.apply(
-      lambda x: x['accumulated_submission_time'][int(x['index to target on val'])]
+      lambda x: x['accumulated_submission_time'][int(x[
+          'index to target on val'])]
       if x['val target reached'] else np.inf,
       axis=1)
 
