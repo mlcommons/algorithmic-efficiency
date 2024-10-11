@@ -98,10 +98,6 @@ def get_summary_df(workload, workload_df, include_test_split=False):
       lambda x: x['accumulated_submission_time'][int(x['index to target on val'])]
       if x['val target reached'] else np.inf,
       axis=1)
-  summary_df['step to target on val'] = workload_df.apply(
-      lambda x: x['global_step'][int(x['index to target on val'])]
-      if x['val target reached'] else np.inf,
-      axis=1)
 
   # test metrics
   if include_test_split:
