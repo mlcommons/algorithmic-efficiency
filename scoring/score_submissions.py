@@ -14,24 +14,26 @@ python3 score_submissions.py \
 
 import operator
 import os
+import pickle
 
 from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
 import pandas as pd
+import performance_profile
 import scoring_utils
 from tabulate import tabulate
-
-from scoring import performance_profile
 
 flags.DEFINE_string(
     'submission_directory',
     None,
     'Path to submission directory containing experiment directories.')
-flags.DEFINE_string('output_dir',
-                    'scoring_results',
-                    'Path to save performance profile table and plot.')
+flags.DEFINE_string(
+    'output_dir',
+    'scoring_results',
+    'Path to save performance profile artifacts, submission_summaries and results files.'
+)
 flags.DEFINE_boolean('compute_performance_profiles',
                      False,
                      'Whether or not to compute the performance profiles.')
@@ -45,6 +47,21 @@ flags.DEFINE_boolean(
     'self_tuning_ruleset',
     False,
     'Whether to score on self-tuning ruleset or externally tuned ruleset')
+flags.DEFINE_string(
+    'save_results_to_filename',
+    None,
+    'Filename to save the processed results that are fed into the performance profile functions.'
+)
+flags.DEFINE_string(
+    'load_results_from_filename',
+    None,
+    'Filename to load processed results from that are fed into performance profile functions'
+)
+flags.DEFINE_string(
+    'exclude_submissions',
+    '',
+    'Optional comma seperated list of names of submissions to exclude from scoring.'
+)
 FLAGS = flags.FLAGS
 
 
@@ -71,9 +88,15 @@ def get_summary_df(workload, workload_df, include_test_split=False):
   summary_df['time to best eval on val (s)'] = workload_df.apply(
       lambda x: x['accumulated_submission_time'][x['index best eval on val']],
       axis=1)
-  summary_df['time to target on val (s)'] = summary_df.apply(
-      lambda x: x['time to best eval on val (s)']
-      if x['val target reached'] else np.inf,
+  workload_df['val target reached'] = workload_df[validation_metric].apply(
+      lambda x: target_op(x, validation_target)).apply(np.any)
+  workload_df['index to target on val'] = workload_df.apply(
+      lambda x: np.argmax(target_op(x[validation_metric], validation_target))
+      if x['val target reached'] else np.nan,
+      axis=1)
+  summary_df['time to target on val (s)'] = workload_df.apply(
+      lambda x: x['accumulated_submission_time'][int(x[
+          'index to target on val'])] if x['val target reached'] else np.inf,
       axis=1)
 
   # test metrics
@@ -101,8 +124,13 @@ def get_summary_df(workload, workload_df, include_test_split=False):
   return summary_df
 
 
-def print_submission_summary(df, include_test_split=True):
+def get_submission_summary(df, include_test_split=True):
+  """Summarizes the submission results into metric and time tables
+  organized by workload.
+  """
+
   dfs = []
+  print(df)
   for workload, group in df.groupby('workload'):
     summary_df = get_summary_df(
         workload, group, include_test_split=include_test_split)
@@ -113,17 +141,56 @@ def print_submission_summary(df, include_test_split=True):
   return df
 
 
+def compute_leaderboard_score(df, normalize=True):
+  """Compute leaderboard score by taking integral of performance profile.
+
+  Args:
+    df: pd.DataFrame returned from `compute_performance_profiles`.
+    normalize: divide by the range of the performance profile's tau.
+
+  Returns:
+    pd.DataFrame with one column of scores indexed by submission.
+  """
+  scores = np.trapz(df, x=df.columns)
+  if normalize:
+    scores /= df.columns.max() - df.columns.min()
+  return pd.DataFrame(scores, columns=['score'], index=df.index)
+
+
 def main(_):
   results = {}
+  os.makedirs(FLAGS.output_dir, exist_ok=True)
 
-  for submission in os.listdir(FLAGS.submission_directory):
-    experiment_path = os.path.join(FLAGS.submission_directory, submission)
-    df = scoring_utils.get_experiment_df(experiment_path)
-    results[submission] = df
-    summary_df = print_submission_summary(df)
-    with open(os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
-              'w') as fout:
-      summary_df.to_csv(fout)
+  # Optionally read results to filename
+  if FLAGS.load_results_from_filename:
+    with open(
+        os.path.join(FLAGS.output_dir, FLAGS.load_results_from_filename),
+        'rb') as f:
+      results = pickle.load(f)
+  else:
+    for team in os.listdir(FLAGS.submission_directory):
+      for submission in os.listdir(
+          os.path.join(FLAGS.submission_directory, team)):
+        print(submission)
+        if submission in FLAGS.exclude_submissions.split(','):
+          continue
+        experiment_path = os.path.join(FLAGS.submission_directory,
+                                       team,
+                                       submission)
+        df = scoring_utils.get_experiment_df(experiment_path)
+        results[submission] = df
+        summary_df = get_submission_summary(df)
+        with open(
+            os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+            'w') as fout:
+          summary_df.to_csv(fout)
+
+    # Optionally save results to filename
+    if FLAGS.save_results_to_filename:
+      with open(
+          os.path.join(FLAGS.output_dir, FLAGS.save_results_to_filename),
+          'wb') as f:
+        pickle.dump(results, f)
 
   if not FLAGS.strict:
     logging.warning(
@@ -137,7 +204,7 @@ def main(_):
         results,
         time_col='score',
         min_tau=1.0,
-        max_tau=None,
+        max_tau=4.0,
         reference_submission_tag=None,
         num_points=100,
         scale='linear',
@@ -148,9 +215,13 @@ def main(_):
       os.mkdir(FLAGS.output_dir)
     performance_profile.plot_performance_profiles(
         performance_profile_df, 'score', save_dir=FLAGS.output_dir)
-    perf_df = tabulate(
+    performance_profile_str = tabulate(
         performance_profile_df.T, headers='keys', tablefmt='psql')
-    logging.info(f'Performance profile:\n {perf_df}')
+    logging.info(f'Performance profile:\n {performance_profile_str}')
+    scores = compute_leaderboard_score(performance_profile_df)
+    scores.to_csv(os.path.join(FLAGS.output_dir, 'scores.csv'))
+    scores_str = tabulate(scores, headers='keys', tablefmt='psql')
+    logging.info(f'Scores: \n {scores_str}')
 
 
 if __name__ == '__main__':
