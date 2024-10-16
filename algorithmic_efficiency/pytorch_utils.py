@@ -57,7 +57,6 @@ def sync_ddp_time(time: float, device: torch.device) -> float:
   dist.all_reduce(time_tensor, op=dist.ReduceOp.MAX)
   return time_tensor.item()
 
-
 def update_batch_norm_fn(module: spec.ParameterContainer,
                          update_batch_norm: bool) -> None:
   bn_layers = (
@@ -67,10 +66,13 @@ def update_batch_norm_fn(module: spec.ParameterContainer,
   )
   if isinstance(module, bn_layers):
     if not update_batch_norm:
-      module.eval()
-      module.momentum_backup = module.momentum
+      if not hasattr(module, 'momentum_backup'):
+        module.momentum_backup = module.momentum
+
       # module.momentum can be float or torch.Tensor.
-      module.momentum = 0. * module.momentum_backup
+      if torch.is_tensor(module.momentum_backup):
+        module.momentum = torch.zeros_like(module.momentum_backup)
+      else:
+        module.momentum = 0.0
     elif hasattr(module, 'momentum_backup'):
       module.momentum = module.momentum_backup
-    module.track_running_stats = update_batch_norm
