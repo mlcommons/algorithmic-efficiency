@@ -9,16 +9,16 @@ python run_workloads.py --framework jax \
 --tuning_search_space <path_to_tuning_search_space_json> 
 """
 
+import datetime
 import json
 import os
 import struct
+import subprocess
 import time
 
 from absl import app
 from absl import flags
 from absl import logging
-import datetime
-import subprocess
 
 from algorithmic_efficiency import random_utils as prng
 from algorithmic_efficiency.workloads.workloads import get_base_workload_name
@@ -28,10 +28,11 @@ flags.DEFINE_string(
     'docker_image_url',
     'us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev',
     'URL to docker image')
-flags.DEFINE_integer('run_percentage',
-                     100,
-                     'Percentage of max num steps to run for.'
-                     'Must set the flag enable_step_budget to True for this to take effect.')
+flags.DEFINE_integer(
+    'run_percentage',
+    100,
+    'Percentage of max num steps to run for.'
+    'Must set the flag enable_step_budget to True for this to take effect.')
 flags.DEFINE_string('experiment_name',
                     'my_experiment',
                     'Name of top sub directory in experiment dir.')
@@ -91,21 +92,18 @@ flags.DEFINE_string(
     'String representing a comma separated list of workload names.'
     'If not None, only run this workload, else run all workloads in workload_metadata_path.'
 )
-flags.DEFINE_string(
-  'additional_requirements_path',
-  None,
-  'Path to requirements.txt if any.'
-)
+flags.DEFINE_string('additional_requirements_path',
+                    None,
+                    'Path to requirements.txt if any.')
 flags.DEFINE_integer(
-  'max_steps',
-  None,
-  'Maximum number of steps to run. Must set flag enable_step_budget.'
-  'This flag takes precedence over the run_percentage flag.'
-)
+    'max_steps',
+    None,
+    'Maximum number of steps to run. Must set flag enable_step_budget.'
+    'This flag takes precedence over the run_percentage flag.')
 flags.DEFINE_bool(
-  'enable_step_budget',
-  False,
-  'Flag that has to be explicitly set to override time budgets to step budget percentage.'
+    'enable_step_budget',
+    False,
+    'Flag that has to be explicitly set to override time budgets to step budget percentage.'
 )
 
 FLAGS = flags.FLAGS
@@ -125,20 +123,26 @@ def container_running():
   else:
     return True
 
+
 def kill_containers():
   docker_client = docker.from_env()
   containers = docker_client.containers.list()
   for container in containers:
     container.kill()
 
+
 def gpu_is_active():
-    output = subprocess.check_output(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'])
-    return any(int(x) > 0 for x in output.decode().splitlines())
-  
+  output = subprocess.check_output([
+      'nvidia-smi',
+      '--query-gpu=utilization.gpu',
+      '--format=csv,noheader,nounits'
+  ])
+  return any(int(x) > 0 for x in output.decode().splitlines())
+
 
 def wait_until_container_not_running(sleep_interval=5 * 60):
-  # check gpu util 
-  # if the gpu has not been utilized for 30 minutes kill the 
+  # check gpu util
+  # if the gpu has not been utilized for 30 minutes kill the
   gpu_last_active = datetime.datetime.now().timestamp()
 
   while container_running():
@@ -146,9 +150,11 @@ def wait_until_container_not_running(sleep_interval=5 * 60):
     if gpu_is_active():
       gpu_last_active = datetime.datetime.now().timestamp()
     if (datetime.datetime.now().timestamp() - gpu_last_active) > 45 * 60:
-      kill_containers("Killing container: GPUs have been inactive > 45 minutes...")
+      kill_containers(
+          "Killing container: GPUs have been inactive > 45 minutes...")
     time.sleep(sleep_interval)
   return
+
 
 def main(_):
   framework = FLAGS.framework
@@ -196,9 +202,10 @@ def main(_):
         FLAGS.held_out_workloads_config_path)
     workloads = workloads + held_out_workloads
 
-  # Filter workloads if explicit workloads specified 
+  # Filter workloads if explicit workloads specified
   if FLAGS.workloads is not None:
-    workloads = list(filter(lambda x: x in FLAGS.workloads.split(','), workloads))
+    workloads = list(
+        filter(lambda x: x in FLAGS.workloads.split(','), workloads))
     if len(workloads) != len(FLAGS.workloads.split(',')):
       unmatched_workloads = set(FLAGS.workloads.split(',')) - set(workloads)
       raise ValueError(f'Invalid workload name {unmatched_workloads}')
@@ -230,7 +237,7 @@ def main(_):
         else:
           max_steps = FLAGS.max_steps
         max_steps_flag = f'-m {max_steps}'
-        
+
       mount_repo_flag = ''
       if FLAGS.local:
         mount_repo_flag = '-v /home/kasimbeg/algorithmic-efficiency:/algorithmic-efficiency '
