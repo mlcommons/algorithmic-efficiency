@@ -210,7 +210,8 @@ def main(_):
         scale='linear',
         verbosity=0,
         self_tuning_ruleset=FLAGS.self_tuning_ruleset,
-        strict=FLAGS.strict)
+        strict=FLAGS.strict,
+        output_dir=FLAGS.output_dir,)
     if not os.path.exists(FLAGS.output_dir):
       os.mkdir(FLAGS.output_dir)
     performance_profile.plot_performance_profiles(
