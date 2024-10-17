@@ -309,7 +309,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           update_batch_norm=False)
       weights = batch.get('weights')
       batch_metrics = self._compute_metrics(logits, batch['targets'], weights)
-      total_metrics = {k: v + batch_metrics[k] for k, v in total_metrics.items()}
+      total_metrics = {
+        k: v + batch_metrics[k] for k, v in total_metrics.items()
+      }
     if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)
