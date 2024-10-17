@@ -215,7 +215,7 @@ class BaseMnistWorkload(spec.Workload):
                                        model_state,
                                        per_device_model_rngs)
       total_metrics = {
-        k: v + batch_metrics[k] for k, v in total_metrics.items()
+          k: v + batch_metrics[k] for k, v in total_metrics.items()
       }
 
     return self._normalize_eval_metrics(num_examples, total_metrics)
