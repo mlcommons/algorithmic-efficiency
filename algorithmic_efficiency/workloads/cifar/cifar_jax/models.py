@@ -31,10 +31,10 @@ class ResNet(nn.Module):
                update_batch_norm: bool = True,
                use_running_average_bn: bool = None) -> spec.Tensor:
     conv = functools.partial(nn.Conv, use_bias=False, dtype=self.dtype)
-    
-    # Preserve default behavior for backwards compatibility 
+
+    # Preserve default behavior for backwards compatibility
     if use_running_average_bn is None:
-        use_running_average_bn = not update_batch_norm
+      use_running_average_bn = not update_batch_norm
     norm = functools.partial(
         nn.BatchNorm,
         use_running_average=use_running_average_bn,

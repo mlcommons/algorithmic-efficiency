@@ -373,7 +373,7 @@ class BatchNorm(nn.Module):
           self.momentum) * mean.detach()
       self.running_var = (1 - self.momentum) * self.running_var + (
           self.momentum) * var.detach()
-      
+
     else:
       mean = self.running_mean
       var = self.running_var

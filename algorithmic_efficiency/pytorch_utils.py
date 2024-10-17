@@ -57,6 +57,7 @@ def sync_ddp_time(time: float, device: torch.device) -> float:
   dist.all_reduce(time_tensor, op=dist.ReduceOp.MAX)
   return time_tensor.item()
 
+
 def update_batch_norm_fn(module: spec.ParameterContainer,
                          update_batch_norm: bool) -> None:
   bn_layers = (
