@@ -113,6 +113,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
+    print(type(use_running_average_bn))
     if update_batch_norm or is_train_mode:
       (logits, logit_paddings), new_model_state = self._model.apply(
           variables,
