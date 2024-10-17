@@ -616,10 +616,10 @@ class ConformerBlock(nn.Module):
         inputs, input_paddings, train)
 
     inputs = inputs + \
-      ConvolutionBlock(config)(inputs, 
-                               input_paddings, 
-                               train, 
-                               update_batch_norm, 
+      ConvolutionBlock(config)(inputs,
+                               input_paddings,
+                               train,
+                               update_batch_norm,
                                use_running_average
                                )
 
