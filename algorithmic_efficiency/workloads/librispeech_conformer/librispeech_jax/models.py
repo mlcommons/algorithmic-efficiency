@@ -454,7 +454,11 @@ class BatchNorm(nn.Module):
     self.beta = self.param('bias', nn.initializers.zeros, dim, dtype)
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, update_batch_norm, use_running_average_bn):
+  def __call__(self,
+               inputs,
+               input_paddings,
+               update_batch_norm,
+               use_running_average_bn):
     rank = inputs.ndim
     reduce_over_dims = list(range(0, rank - 1))
 
@@ -462,7 +466,7 @@ class BatchNorm(nn.Module):
     momentum = self.config.batch_norm_momentum
     epsilon = self.config.batch_norm_epsilon
 
-    if use_running_average_bn: 
+    if use_running_average_bn:
       mean = self.ra_mean.value
       var = self.ra_var.value
 
@@ -482,13 +486,13 @@ class BatchNorm(nn.Module):
           keepdims=True)
 
       var = sum_vv / count_v
-      
+
       if update_batch_norm:
         self.ra_mean.value = momentum * \
             self.ra_mean.value + (1 - momentum) * mean
         self.ra_var.value = momentum * \
             self.ra_var.value + (1 - momentum) * var
-    
+
     inv = (1 + self.gamma) / jnp.sqrt(var + epsilon)
     bn_output = (inputs - mean) * inv + self.beta
     bn_output *= 1.0 - padding
@@ -519,7 +523,12 @@ class ConvolutionBlock(nn.Module):
   config: ConformerConfig
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, train, update_batch_norm, use_running_average_bn):
+  def __call__(self,
+               inputs,
+               input_paddings,
+               train,
+               update_batch_norm,
+               use_running_average_bn):
     config = self.config
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
@@ -548,7 +557,10 @@ class ConvolutionBlock(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(
             inputs)
 
-    inputs = BatchNorm(config)(inputs, input_paddings, update_batch_norm, use_running_average_bn)
+    inputs = BatchNorm(config)(inputs,
+                               input_paddings,
+                               update_batch_norm,
+                               use_running_average_bn)
     if config.activation_function_name == 'swish':
       activation_fn = nn.swish
     elif config.activation_function_name == 'gelu':
@@ -588,7 +600,12 @@ class ConformerBlock(nn.Module):
   config: ConformerConfig
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, train, update_batch_norm, use_running_average):
+  def __call__(self,
+               inputs,
+               input_paddings,
+               train,
+               update_batch_norm,
+               use_running_average):
     config = self.config
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
 
@@ -631,12 +648,12 @@ class Conformer(nn.Module):
         .use_dynamic_time_mask_max_frames)
 
   @nn.compact
-  def __call__(self, 
-  inputs, 
-  input_paddings, 
-  train, 
-  update_batch_norm: Optional[bool] = None, 
-  use_running_average_bn: Optional[bool] = None):
+  def __call__(self,
+               inputs,
+               input_paddings,
+               train,
+               update_batch_norm: Optional[bool] = None,
+               use_running_average_bn: Optional[bool] = None):
     config = self.config
 
     outputs = inputs
@@ -673,7 +690,11 @@ class Conformer(nn.Module):
 
     # Run the conformer encoder layers.
     for _ in range(config.num_encoder_layers):
-      outputs = ConformerBlock(config)(outputs, output_paddings, train, update_batch_norm, use_running_average_bn)
+      outputs = ConformerBlock(config)(outputs,
+                                       output_paddings,
+                                       train,
+                                       update_batch_norm,
+                                       use_running_average_bn)
 
     outputs = LayerNorm(config.encoder_dim)(outputs)
     # Run the decoder which in this case is a trivial projection layer.
