@@ -616,7 +616,12 @@ class ConformerBlock(nn.Module):
         inputs, input_paddings, train)
 
     inputs = inputs + \
-      ConvolutionBlock(config)(inputs, input_paddings, train, update_batch_norm, use_running_average)
+      ConvolutionBlock(config)(inputs, 
+                               input_paddings, 
+                               train, 
+                               update_batch_norm, 
+                               use_running_average
+                               )
 
     inputs = inputs + 0.5 * FeedForwardModule(config=self.config)(
         inputs, padding_mask, train)
