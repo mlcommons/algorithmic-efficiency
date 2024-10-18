@@ -408,6 +408,7 @@ def _test_submission(workload_name,
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       return_class=True)
+  print(f'Workload class for {workload_name} is {workload_class}')
 
   submission_module_path = workloads.convert_filepath_to_module(submission_path)
   submission_module = importlib.import_module(submission_module_path)
