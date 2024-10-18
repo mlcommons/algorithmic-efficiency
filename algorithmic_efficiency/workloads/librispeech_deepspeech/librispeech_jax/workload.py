@@ -1,5 +1,5 @@
 import functools
-from typing import Optional, Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 import jax
