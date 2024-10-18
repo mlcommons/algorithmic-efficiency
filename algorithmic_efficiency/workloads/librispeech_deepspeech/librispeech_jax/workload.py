@@ -56,7 +56,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     params = jax_utils.replicate(params)
     return params, model_state
   
-   def model_fn(
+  def model_fn(
       self,
       params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
