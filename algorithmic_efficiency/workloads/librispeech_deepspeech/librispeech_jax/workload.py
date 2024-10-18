@@ -55,6 +55,37 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     model_state = jax_utils.replicate(model_state)
     params = jax_utils.replicate(params)
     return params, model_state
+  
+   def model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool,
+      use_running_average_bn: Optional[bool] = None
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    variables = {'params': params, **model_state}
+    inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
+    is_train_mode = mode == spec.ForwardPassMode.TRAIN
+    if update_batch_norm or is_train_mode:
+      (logits, logit_paddings), new_model_state = self._model.apply(
+          variables,
+          inputs,
+          input_paddings,
+          train=True,
+          rngs={'dropout' : rng},
+          mutable=['batch_stats'])
+      return (logits, logit_paddings), new_model_state
+    else:
+      logits, logit_paddings = self._model.apply(
+          variables,
+          inputs,
+          input_paddings,
+          train=False,
+          mutable=False)
+      return (logits, logit_paddings), model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'
