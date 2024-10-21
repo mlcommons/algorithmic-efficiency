@@ -200,7 +200,7 @@ def train_once(
     init_optimizer_state: spec.InitOptimizerFn,
     update_params: spec.UpdateParamsFn,
     data_selection: spec.DataSelectionFn,
-    prepare_for_eval: spec.PrepareForEvalFn,
+    prepare_for_eval: Optional[spec.PrepareForEvalFn],
     hyperparameters: Optional[spec.Hyperparameters],
     rng_seed: int,
     rng: spec.RandomState,
