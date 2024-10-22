@@ -132,6 +132,10 @@ while [ "$1" != "" ]; do
 	        shift
             TEST=$1
 	        ;;
+        --additional_requirements_path)
+            shift
+            ADDITIONAL_REQUIREMENTS_PATH=$1
+            ;;
         *) 
             usage 
             exit 1
@@ -139,6 +143,16 @@ while [ "$1" != "" ]; do
     esac
     shift 
 done
+
+
+# Optionally install addtional dependencies
+if [[ -n ${ADDITIONAL_REQUIREMENTS_PATH+x} ]]; then
+    echo "Installing addtional requirements..."
+    COMMAND="cd algorithmic-efficiency && pip install -r ${ADDITIONAL_REQUIREMENTS_PATH}"
+    echo $COMMAND
+    eval $COMMAND
+fi
+
 
 if [[ ${TEST} == "true" ]]; then
   cd algorithmic-efficiency
