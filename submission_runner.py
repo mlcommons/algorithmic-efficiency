@@ -17,11 +17,13 @@ python3 submission_runner.py \
 import datetime
 import gc
 import importlib
+from inspect import signature
 import itertools
 import json
 import os
 import struct
 import time
+from types import MappingProxyType
 from typing import Any, Dict, Optional, Tuple
 
 from absl import app
@@ -273,6 +275,10 @@ def train_once(
                                            hyperparameters,
                                            opt_init_rng)
   logging.info('Initializing metrics bundle.')
+
+  # Check if 'train_state' is in the function signature
+  needs_train_state = 'train_state' in signature(update_params).parameters
+
   # Bookkeeping.
   train_state = {
       'validation_goal_reached': False,
@@ -357,10 +363,11 @@ def train_once(
             batch=batch,
             loss_type=workload.loss_type,
             optimizer_state=optimizer_state,
-            train_state=train_state.copy(),
             eval_results=eval_results,
             global_step=global_step,
-            rng=update_rng)
+            rng=update_rng,
+            **({'train_state': MappingProxyType(train_state)}
+               if needs_train_state else {}))
     except spec.TrainingCompleteError:
       train_state['training_complete'] = True
     global_step += 1
