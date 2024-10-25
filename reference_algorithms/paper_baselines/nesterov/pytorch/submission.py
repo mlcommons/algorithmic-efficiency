@@ -1,6 +1,6 @@
 """Submission file for a SGD with Nesterov momentum optimizer in PyTorch."""
 
-from typing import Any, Callable, Dict, Iterator, List, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 from absl import logging
 import optax

@@ -1,6 +1,6 @@
 """Update submission function in Jax."""
 import functools
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import jax
 from jax import lax
