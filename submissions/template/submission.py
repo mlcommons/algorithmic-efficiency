@@ -4,7 +4,7 @@ See https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.
 and https://github.com/mlcommons/algorithmic-efficiency/blob/main/DOCUMENTATION.md#disallowed-submissions
 for guidelines.
 """
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from algorithmic_efficiency import spec
 
@@ -30,10 +30,11 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
-                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+                  rng: spec.RandomState,
+                  train_state: Optional[Dict[str, Any]] = None
+                  ) -> spec.UpdateReturn:
   """
     Returns:
      (new_optimizer_state, update_fn)

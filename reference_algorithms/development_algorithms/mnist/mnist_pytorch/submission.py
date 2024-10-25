@@ -1,6 +1,6 @@
 """Training algorithm track submission functions for MNIST."""
 
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
 
@@ -40,10 +40,11 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
-                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+                  rng: spec.RandomState,
+                  train_state: Optional[Dict[str, Any]] = None
+                  ) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del hyperparameters
   del loss_type

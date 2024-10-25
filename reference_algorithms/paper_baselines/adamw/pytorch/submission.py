@@ -1,6 +1,6 @@
 """Submission file for an AdamW optimizer with warmup+cosine LR in PyTorch."""
 
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from absl import logging
 import torch
@@ -59,10 +59,11 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
-                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+                  rng: spec.RandomState,
+                  train_state: Optional[Dict[str, Any]] = None
+                  ) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type

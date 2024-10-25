@@ -1,7 +1,7 @@
 """Submission file for a Shampoo optimizer with warmup+cosine LR in Jax."""
 
 import functools
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -121,10 +121,11 @@ def update_params(workload: spec.Workload,
                   batch: Dict[str, spec.Tensor],
                   loss_type: spec.LossType,
                   optimizer_state: spec.OptimizerState,
-                  train_state: Dict[str, Any],
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+                  rng: spec.RandomState,
+                  train_state: Optional[Dict[str, Any]] = None
+                  ) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
