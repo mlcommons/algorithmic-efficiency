@@ -471,6 +471,7 @@ def _test_submission(workload_name,
         batch=batch,
         loss_type=workload.loss_type,
         optimizer_state=optimizer_state,
+        train_state={},
         eval_results=[],
         global_step=global_step,
         rng=update_rng)
