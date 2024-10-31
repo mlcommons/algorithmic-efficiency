@@ -400,22 +400,6 @@ Submissions will be scored based on their performance on the [fixed workload](#f
 
 Furthermore, a less computationally expensive subset of the fixed workloads is collected with the [qualification set](#qualification-set). Submitters without enough compute resources to self-report on the full set of fixed and held-out workloads can instead self-report on this smaller qualification set. Well-performing submissions can thereby qualify for computational resources provided by sponsors of the benchmark to be scored on the full benchmark set.
 
-#### Default Dropout Values for Different Workloads:
-
-| Workload               | Dropout Values                                                                                       |
-|------------------------|------------------------------------------------------------------------------------------------------|
-| cifar                  | dropout not used                                                                                     |
-| criteo 1tb             | dropout_rate: 0.0                                                                                    |
-| fastmri                | dropout_rate: 0.0                                                                                    |
-| imagenet_resnet        | dropout not used                                                                                     |
-| imagenet_vit           | dropout_rate: 0.0                                                                                    |
-| librispeech_conformer  | attention_dropout_rate: 0.0 <br> attention_residual_dropout_rate: 0.1 <br> conv_residual_dropout_rate: 0.0 <br> feed_forward_dropout_rate: 0.0 <br> feed_forward_residual_dropout_rate: 0.1 <br> input_dropout_rate: 0.1 |
-| librispeech_deepspeech | input_dropout_rate: 0.1 <br> feed_forward_dropout_rate: 0.1 <br> (Only for JAX - dropout_rate in CudnnLSTM class: 0.0) |
-| mnist                  | dropout not used                                                                                     |
-| ogbg                   | dropout_rate: 0.1                                                                                    |
-| wmt                    | dropout_rate: 0.1 <br> attention_dropout_rate: 0.1                                                   |
-
-
 NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
 
 #### Fixed workloads
@@ -432,6 +416,23 @@ The currently eight fixed workloads are:
 | **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.085884<br>0.119936     | 0.052981<br>0.074143 |       61,068<br>55,506                 |
 | **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       18,477                 |
 | **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       48,151                 |
+
+#### Default Dropout Values for Different Workloads:
+
+| Workload               | Dropout Values                                                                                       |
+|------------------------|------------------------------------------------------------------------------------------------------|
+| cifar                  | dropout not used                                                                                     |
+| criteo 1tb             | dropout_rate: 0.0                                                                                    |
+| fastmri                | dropout_rate: 0.0                                                                                    |
+| imagenet_resnet        | dropout not used                                                                                     |
+| imagenet_vit           | dropout_rate: 0.0                                                                                    |
+| librispeech_conformer  | attention_dropout_rate: 0.0 <br> attention_residual_dropout_rate: 0.1 <br> conv_residual_dropout_rate: 0.0 <br> feed_forward_dropout_rate: 0.0 <br> feed_forward_residual_dropout_rate: 0.1 <br> input_dropout_rate: 0.1 |
+| librispeech_deepspeech | input_dropout_rate: 0.1 <br> feed_forward_dropout_rate: 0.1 <br> (Only for JAX - dropout_rate in CudnnLSTM class: 0.0) |
+| mnist                  | dropout not used                                                                                     |
+| ogbg                   | dropout_rate: 0.1                                                                                    |
+| wmt                    | dropout_rate: 0.1 <br> attention_dropout_rate: 0.1                                                   |
+
+
 
 #### Randomized workloads
 
