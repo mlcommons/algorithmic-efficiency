@@ -1,6 +1,6 @@
 """Batch size and update submission functions in PyTorch."""
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from absl import logging
 import torch
@@ -12,20 +12,23 @@ from algorithmic_efficiency.pytorch_utils import pytorch_setup
 USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
-def update_params(workload: spec.Workload,
-                  current_param_container: spec.ParameterContainer,
-                  current_params_types: spec.ParameterTypeTree,
-                  model_state: spec.ModelAuxiliaryState,
-                  hyperparameters: spec.Hyperparameters,
-                  batch: Dict[str, spec.Tensor],
-                  loss_type: spec.LossType,
-                  optimizer_state: spec.OptimizerState,
-                  eval_results: List[Tuple[int, float]],
-                  global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(
+    workload: spec.Workload,
+    current_param_container: spec.ParameterContainer,
+    current_params_types: spec.ParameterTypeTree,
+    model_state: spec.ModelAuxiliaryState,
+    hyperparameters: spec.Hyperparameters,
+    batch: Dict[str, spec.Tensor],
+    loss_type: spec.LossType,
+    optimizer_state: spec.OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: spec.RandomState,
+    train_state: Optional[Dict[str, Any]] = None) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
+  del train_state
   del eval_results
 
   current_model = current_param_container

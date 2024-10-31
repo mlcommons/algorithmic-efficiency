@@ -403,7 +403,8 @@ UpdateParamsFn = Callable[[
     OptimizerState,
     List[Tuple[int, float]],
     int,
-    RandomState
+    RandomState,
+    Optional[Dict[str, Any]]
 ],
                           UpdateReturn]
 
@@ -424,7 +425,8 @@ def update_params(workload: Workload,
                   optimizer_state: OptimizerState,
                   eval_results: List[Tuple[int, float]],
                   global_step: int,
-                  rng: RandomState) -> UpdateReturn:
+                  rng: RandomState,
+                  train_state: Optional[Dict[str, Any]] = None) -> UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
 
