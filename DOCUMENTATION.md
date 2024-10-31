@@ -417,7 +417,7 @@ The currently eight fixed workloads are:
 | **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       18,477                 |
 | **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       48,151                 |
 
-#### Default Dropout Values for Different Workloads:
+Default Dropout Values for Different Workloads:
 
 | Workload               | Dropout Values                                                                                       |
 |------------------------|------------------------------------------------------------------------------------------------------|
