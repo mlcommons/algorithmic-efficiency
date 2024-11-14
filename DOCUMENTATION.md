@@ -421,18 +421,14 @@ Default Dropout Values for Different Workloads:
 
 | Workload               | Dropout Values                                                                                       |
 |------------------------|------------------------------------------------------------------------------------------------------|
-| cifar                  | dropout not used                                                                                     |
 | criteo 1tb             | dropout_rate: 0.0                                                                                    |
 | fastmri                | dropout_rate: 0.0                                                                                    |
 | imagenet_resnet        | dropout not used                                                                                     |
 | imagenet_vit           | dropout_rate: 0.0                                                                                    |
 | librispeech_conformer  | attention_dropout_rate: 0.0 <br> attention_residual_dropout_rate: 0.1 <br> conv_residual_dropout_rate: 0.0 <br> feed_forward_dropout_rate: 0.0 <br> feed_forward_residual_dropout_rate: 0.1 <br> input_dropout_rate: 0.1 |
 | librispeech_deepspeech | input_dropout_rate: 0.1 <br> feed_forward_dropout_rate: 0.1 <br> (Only for JAX - dropout_rate in CudnnLSTM class: 0.0) |
-| mnist                  | dropout not used                                                                                     |
 | ogbg                   | dropout_rate: 0.1                                                                                    |
 | wmt                    | dropout_rate: 0.1 <br> attention_dropout_rate: 0.1                                                   |
-
-
 
 #### Randomized workloads
 
