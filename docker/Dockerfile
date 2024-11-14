@@ -87,8 +87,6 @@ RUN if [ "$framework" = "jax" ] ; then \
 
 RUN cd /algorithmic-efficiency && pip install -e '.[full]'
 
-RUN cd /algorithmic-efficiency && pip install -e '.[wandb]'
-
 RUN cd /algorithmic-efficiency && git fetch origin 
 RUN cd /algorithmic-efficiency && git pull
 
