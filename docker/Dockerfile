@@ -28,9 +28,9 @@ RUN apt-get update && apt-get install -y \
 
 # Download and install Python 3.11
 RUN cd /tmp \
-    && wget https://www.python.org/ftp/python/3.11.0/Python-3.11.0.tgz \
-    && tar -xvzf Python-3.11.0.tgz \
-    && cd Python-3.11.0 \
+    && wget https://www.python.org/ftp/python/3.11.10/Python-3.11.10.tgz \
+    && tar -xvzf Python-3.11.10.tgz \
+    && cd Python-3.11.10 \
     && ./configure --enable-optimizations \
     && make -j$(nproc) \
     && make altinstall
@@ -55,11 +55,13 @@ RUN echo "Setting up directories for data and experiment_runs"
 RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
 
+RUN pip install --upgrade pip
+
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
-ARG branch="main"
+ARG branch="python311"
 ARG framework="both"
-ARG git_url=https://github.com/mlcommons/algorithmic-efficiency.git
+ARG git_url=https://github.com/init-22/algorithmic-efficiency.git
 RUN git clone $git_url && cd /algorithmic-efficiency 
 RUN cd /algorithmic-efficiency && git checkout $branch
 
