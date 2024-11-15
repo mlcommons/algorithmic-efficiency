@@ -59,9 +59,9 @@ RUN pip install --upgrade pip
 
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
-ARG branch="python311"
+ARG branch="main"
 ARG framework="both"
-ARG git_url=https://github.com/init-22/algorithmic-efficiency.git
+ARG git_url=https://github.com/mlcommons/algorithmic-efficiency.git
 RUN git clone $git_url && cd /algorithmic-efficiency 
 RUN cd /algorithmic-efficiency && git checkout $branch
 
