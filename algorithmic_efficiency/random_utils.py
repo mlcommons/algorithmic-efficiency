@@ -18,7 +18,7 @@ FLAGS = flags.FLAGS
 
 # Annoyingly, RandomState(seed) requires seed to be in [0, 2 ** 32 - 1] (an
 # unsigned int), while RandomState.randint only accepts and returns signed ints.
-MAX_UINT32 = 2**31
+MAX_UINT32 = 2**32-1
 MIN_UINT32 = 0
 
 SeedType = Union[int, list, np.ndarray]
@@ -26,11 +26,11 @@ SeedType = Union[int, list, np.ndarray]
 
 def _signed_to_unsigned(seed: SeedType) -> SeedType:
   if isinstance(seed, int):
-    return seed % 2**32
+    return seed % MAX_UINT32
   if isinstance(seed, list):
-    return [s % 2**32 for s in seed]
+    return [s % MAX_UINT32 for s in seed]
   if isinstance(seed, np.ndarray):
-    return np.array([s % 2**32 for s in seed.tolist()])
+    return np.array([s % MAX_UINT32 for s in seed.tolist()])
 
 
 def _fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
@@ -75,5 +75,5 @@ def split(seed: SeedType, num: int = 2) -> SeedType:
 def PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
   if FLAGS.framework == 'jax':
     _check_jax_install()
-    return jax_rng.PRNGKey(seed)
+    return jax_rng.key(seed)
   return _PRNGKey(seed)

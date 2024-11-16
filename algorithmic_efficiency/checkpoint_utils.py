@@ -231,7 +231,7 @@ def save_checkpoint(framework: str,
         target=checkpoint_state,
         step=global_step,
         overwrite=True,
-        keep=np.Inf if save_intermediate_checkpoints else 1)
+        keep=np.inf if save_intermediate_checkpoints else 1)
   else:
     if not save_intermediate_checkpoints:
       checkpoint_files = gfile.glob(
