@@ -193,10 +193,7 @@ def save_checkpoint(framework: str,
     train_state, eval_results, global_step, preemption_count).
   """
   if framework == 'jax':
-    model_params = jax.device_get(jax_utils.unreplicate(model_params))
     opt_state, _ = optimizer_state
-    opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
-    model_state = jax.device_get(jax_utils.unreplicate(model_state))
   else:
     if isinstance(
         model_params,

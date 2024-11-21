@@ -10,7 +10,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import param_utils, sharding_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
 
@@ -46,7 +46,7 @@ class MnistWorkload(BaseMnistWorkload):
                                       train=True)['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(initial_params), None
+    return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_1'
@@ -101,10 +101,13 @@ class MnistWorkload(BaseMnistWorkload):
     }
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
-      static_broadcasted_argnums=(0,))
+      jax.jit,
+      in_shardings=(sharding_utils.get_replicated_sharding(),  # params
+                    sharding_utils.get_naive_sharding_spec(),  # batch
+                    sharding_utils.get_replicated_sharding(),  # model_state
+                    sharding_utils.get_naive_sharding_spec(),  # rng
+                    ),
+      static_argnums=(0,))
   def _eval_model(
       self,
       params: spec.ParameterContainer,
@@ -125,11 +128,11 @@ class MnistWorkload(BaseMnistWorkload):
         (jnp.argmax(logits, axis=-1) == batch['targets']) * weights)
     summed_loss = self.loss_fn(batch['targets'], logits, weights)['summed']
     metrics = {'accuracy': accuracy, 'loss': summed_loss}
-    metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _normalize_eval_metrics(
       self, num_examples: int, total_metrics: Dict[str,
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
-    return jax.tree_map(lambda x: float(x[0] / num_examples), total_metrics)
+    total_metrics = {'accuracy': total_metrics['accuracy'].item() / num_examples, 'loss': total_metrics['loss'].item() / num_examples}
+    return total_metrics
