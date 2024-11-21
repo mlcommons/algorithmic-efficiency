@@ -6,10 +6,11 @@ from typing import Dict, Iterator, List, Tuple
 from flax import jax_utils
 import jax
 from jax import lax
+from jax.sharding import NamedSharding, PartitionSpec as P
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algorithmic_efficiency import spec, sharding_utils
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -50,24 +51,18 @@ def init_optimizer_state(workload: spec.Workload,
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn
 
 
-@functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
-    static_broadcasted_argnums=(0, 1),
-    donate_argnums=(2, 3, 4))
-def pmapped_train_step(workload,
-                       opt_update_fn,
-                       model_state,
-                       optimizer_state,
-                       current_param_container,
-                       batch,
-                       rng,
-                       grad_clip,
-                       label_smoothing):
+def train_step(workload,
+               opt_update_fn,
+               model_state,
+               optimizer_state,
+               current_param_container,
+               batch,
+               rng,
+               grad_clip,
+               label_smoothing):
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -90,9 +85,8 @@ def pmapped_train_step(workload,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
       current_param_container)
-  # Get correct global mean loss and grad.
-  (summed_loss, n_valid_examples, grad) = lax.psum(
-      (summed_loss, n_valid_examples, grad), axis_name='batch')
+
+  # Compute local loss and gradients
   loss = summed_loss / n_valid_examples
   grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
 
@@ -105,7 +99,7 @@ def pmapped_train_step(workload,
     grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-                                               current_param_container)
+                                             current_param_container)
   updated_params = optax.apply_updates(current_param_container, updates)
   return new_optimizer_state, updated_params, new_model_state, loss, grad_norm
 
@@ -136,23 +130,58 @@ def update_params(workload: spec.Workload,
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  outputs = pmapped_train_step(workload,
-                               opt_update_fn,
-                               model_state,
-                               optimizer_state,
-                               current_param_container,
-                               batch,
-                               per_device_rngs,
-                               grad_clip,
-                               label_smoothing)
+
+  # Set up mesh and sharding
+  mesh = sharding_utils.get_mesh()
+  replicated = NamedSharding(mesh, P())  # No partitioning
+  sharded = NamedSharding(mesh, P('batch'))  # Partition along batch dimension
+
+  # Define input and output shardings
+  arg_shardings = (
+      # workload is static
+      # opt_update_fn is static
+      replicated,  # model_state
+      replicated,  # optimizer_state
+      replicated,  # current_param_container
+      sharded,     # batch
+      sharded,     # rng
+      replicated,  # grad_clip
+      replicated   # label_smoothing
+  )
+  out_shardings = (
+      replicated,  # new_optimizer_state
+      replicated,  # updated_params
+      replicated,  # new_model_state
+      replicated,  # loss
+      replicated   # grad_norm
+  )
+
+  # Jit with shardings
+  jitted_train_step = jax.jit(
+      train_step,
+      static_argnums=(0, 1),
+      donate_argnums=(2, 3, 4),
+      in_shardings=arg_shardings,
+      out_shardings=out_shardings
+  )
+
+  outputs = jitted_train_step(workload,
+                           opt_update_fn,
+                           model_state,
+                           optimizer_state,
+                           current_param_container,
+                           batch,
+                           per_device_rngs,
+                           grad_clip,
+                           label_smoothing)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
         {
-            'loss': loss[0],
-            'grad_norm': grad_norm[0],
+            'loss': loss.item(),
+            'grad_norm': grad_norm.item(),
         }, global_step)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
