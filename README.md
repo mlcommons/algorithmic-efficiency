@@ -89,7 +89,7 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/paper_baselines/adamw/jax/submission.py \
+    --submission_path=reference_algorithms/paper_baselines/adamw/pytorch/submission.py \
     --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
 ```
 
