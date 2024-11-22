@@ -321,7 +321,7 @@ def compute_performance_profiles(submissions,
   df = df[BASE_WORKLOADS + HELDOUT_WORKLOADS]
   # Sort workloads alphabetically (for better display)
   df = df.reindex(sorted(df.columns), axis=1)
-  
+
   # Save time to target dataframe
   df.to_csv(os.path.join(output_dir, 'time_to_targets.csv'))
   # For each held-out workload set to inf if the base workload is inf or nan
