@@ -107,7 +107,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      use_running_average_bn: Optional[bool] = None
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
@@ -118,7 +120,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           input_paddings,
           train=True,
           rngs={'dropout' : rng},
-          mutable=['batch_stats'])
+          mutable=['batch_stats'],
+          use_running_average_bn=use_running_average_bn)
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(
@@ -126,7 +129,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           inputs,
           input_paddings,
           train=False,
-          mutable=False)
+          mutable=False,
+          use_running_average_bn=use_running_average_bn)
       return (logits, logit_paddings), model_state
 
   def _build_input_queue(
