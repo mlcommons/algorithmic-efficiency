@@ -6,12 +6,13 @@ from absl import logging
 import optax
 import torch
 import torch.distributed.nn as dist_nn
+import torch.distributed as dist
 from torch.optim.lr_scheduler import LambdaLR
 
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 
-USE_PYTORCH_DDP = pytorch_setup()[0]
+USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 def init_optimizer_state(workload: spec.Workload,
@@ -113,12 +114,8 @@ def update_params(
       label_smoothing=label_smoothing)
   summed_loss = loss_dict['summed']
   n_valid_examples = loss_dict['n_valid_examples']
-  if USE_PYTORCH_DDP:
-    # Use dist_nn.all_reduce to ensure correct loss and gradient scaling.
-    summed_loss = dist_nn.all_reduce(summed_loss)
-    n_valid_examples = dist_nn.all_reduce(n_valid_examples)
-  loss = summed_loss / n_valid_examples
-
+  dist.all_reduce(n_valid_examples)
+  loss = N_GPUS * summed_loss / n_valid_examples
   loss.backward()
 
   if grad_clip is not None:
@@ -126,6 +123,9 @@ def update_params(
         current_model.parameters(), max_norm=grad_clip)
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
+
+  dist.all_reduce(loss)
+  loss /= N_GPUS
 
   # Log training metrics - loss, grad_norm, batch_size.
   if global_step <= 100 or global_step % 500 == 0:
@@ -171,6 +171,8 @@ def get_batch_size(workload_name):
     return 128
   elif workload_name == 'mnist':
     return 16
+  elif workload_name == 'cifar':
+    return 128
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

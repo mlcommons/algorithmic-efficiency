@@ -4,11 +4,18 @@ import contextlib
 import functools
 import random
 from typing import Any, Dict, Optional, Tuple
+from absl import logging
 
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import (
+        size_based_auto_wrap_policy,
+        enable_wrap,
+        wrap,
+        )
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
@@ -135,7 +142,16 @@ class CifarWorkload(BaseCifarWorkload):
     self._model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        self._model = DDP(self._model, device_ids=[RANK], output_device=RANK)
+        cifar_auto_wrap_policy = functools.partial(
+                size_based_auto_wrap_policy, min_num_params=2 ** 10
+                )
+        self._model = FSDP(
+                self._model,
+                use_orig_params=True,
+                auto_wrap_policy=cifar_auto_wrap_policy,
+                device_id=RANK
+                )
+        logging.info(f"Model shape: {self._model}")
       else:
         self._model = torch.nn.DataParallel(self._model)
     return self._model, None
@@ -155,6 +171,7 @@ class CifarWorkload(BaseCifarWorkload):
     del rng
     model = params
     if mode == spec.ForwardPassMode.EVAL:
+      model.zero_grad()
       if update_batch_norm:
         raise ValueError(
             'Batch norm statistics cannot be updated during evaluation.')
