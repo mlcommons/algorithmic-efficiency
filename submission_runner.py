@@ -12,6 +12,7 @@ python3 submission_runner.py \
     --num_tuning_trials=3 \
     --experiment_dir=/home/znado/experiment_dir \
     --experiment_name=baseline
+    --skip_eval = True/False
 """
 
 import datetime
@@ -90,6 +91,10 @@ flags.DEFINE_string('imagenet_v2_data_dir',
 flags.DEFINE_string('librispeech_tokenizer_vocab_path',
                     '',
                     'Location to librispeech tokenizer.')
+flags.DEFINE_boolean(
+    'skip_eval',
+    True,
+    help='True to skip eval on the datasets and false otherwise')
 
 flags.DEFINE_enum(
     'framework',
@@ -333,7 +338,10 @@ def train_once(
   train_state['last_step_end_time'] = global_start_time
 
   logging.info('Starting training loop.')
-  goals_reached = (
+  if FLAGS.skip_eval == True:
+    goals_reached = (train_state['validation_goal_reached'])
+  else:
+    goals_reached = (
       train_state['validation_goal_reached'] and
       train_state['test_goal_reached'])
   while train_state['is_time_remaining'] and \
@@ -410,9 +418,12 @@ def train_once(
           train_state['test_goal_reached'] = (
               workload.has_reached_test_target(latest_eval_result) or
               train_state['test_goal_reached'])
-          goals_reached = (
-              train_state['validation_goal_reached'] and
-              train_state['test_goal_reached'])
+          if FLAGS.skip_eval == True:
+              goals_reached = (train_state['validation_goal_reached'])
+          else:
+              goals_reached = (
+                train_state['validation_goal_reached'] and
+                train_state['test_goal_reached'])
           # Save last eval time.
           eval_end_time = get_time()
           train_state['last_eval_time'] = eval_end_time
@@ -495,7 +506,11 @@ def train_once(
           preemption_count=preemption_count,
           checkpoint_dir=log_dir,
           save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
-
+  assert(abs(metrics['eval_results'][-1][1]['total_duration'] - 
+  (train_state['accumulated_submission_time'] + 
+  train_state['accumulated_logging_time'] + 
+  train_state['accumulated_eval_time']) <= 10))
+  assert(int(train_state['accumulated_submission_time'] // workload.eval_period_time_sec) <= len(metrics['eval_results']) + 2)
   return train_state['accumulated_submission_time'], metrics
 
 
