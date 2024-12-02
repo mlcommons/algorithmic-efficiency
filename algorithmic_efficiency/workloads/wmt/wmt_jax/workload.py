@@ -12,6 +12,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import sacrebleu
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import spec
@@ -203,7 +204,7 @@ class WmtWorkload(BaseWmtWorkload):
         predictions.append(self._decode_tokens(predicted[idx]))
 
     # Calculate BLEU score for translated eval corpus against reference.
-    bleu_score = bleu.corpus_bleu(predictions, [references]).score
+    bleu_score = sacrebleu.corpus_bleu(predictions, [references]).score
     return bleu_score
 
   def init_model_fn(

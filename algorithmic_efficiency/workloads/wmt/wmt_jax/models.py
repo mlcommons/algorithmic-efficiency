@@ -224,7 +224,7 @@ class Encoder1DBlock(nn.Module):
         dropout_rate=attention_dropout_rate,
         deterministic=cfg.deterministic)(cfg.attention_temp * x,
                                          x,
-                                         encoder_mask)
+                                         mask=encoder_mask)
 
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
@@ -288,7 +288,7 @@ class EncoderDecoder1DBlock(nn.Module):
         broadcast_dropout=False,
         dropout_rate=attention_dropout_rate,
         deterministic=cfg.deterministic,
-        decode=cfg.decode)(cfg.attention_temp * x, x, decoder_mask)
+        decode=cfg.decode)(cfg.attention_temp * x, x, mask=decoder_mask)
     if cfg.dropout_rate is None:
       dropout_rate = 0.1
     else:
@@ -311,7 +311,7 @@ class EncoderDecoder1DBlock(nn.Module):
         dropout_rate=attention_dropout_rate,
         deterministic=cfg.deterministic)(cfg.attention_temp * y,
                                          encoded,
-                                         encoder_decoder_mask)
+                                         mask=encoder_decoder_mask)
 
     y = nn.Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
