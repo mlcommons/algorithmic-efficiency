@@ -3,7 +3,7 @@ name: Containerized Training Differences Tests Jax vs PyTorch
 on: 
   pull_request:
     branches:
-      - 'python311' 
+      - 'main' 
 
 jobs:
   build_and_push_docker_image:
