@@ -72,8 +72,8 @@ class Profiler:
                float(np.std(d)),
                len(d),
                float(np.sum(d)),
-               100.0 * float(np.sum(d)) / total_duration)
-              for a, d in self.recorded_durations.items()]
+               100.0 * float(np.sum(d)) / total_duration) for a,
+              d in self.recorded_durations.items()]
     report.sort(key=lambda x: x[5], reverse=True)
     total_calls = sum(x[3] for x in report)
     return report, total_calls, total_duration

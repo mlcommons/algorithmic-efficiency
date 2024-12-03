@@ -76,9 +76,9 @@ def sd_transform(sd):
       out = {
           tuple(
               k.replace('SelfAttention', 'MultiHeadDotProductAttention')
-              for k in key):
-              value
-          for key, value in out.items()
+              for k in key): value
+          for key,
+          value in out.items()
       }
     elif 'Dense' in k_str:
       new_key = (*k[:2], 'MlpBlock_0', *k[2:])

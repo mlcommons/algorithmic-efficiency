@@ -46,7 +46,8 @@ def _build_mnist_dataset(
   ds = ds.map(
       lambda x: {
           'inputs': _normalize(x['image'], train_mean, train_stddev),
-          'targets': x['label'],})
+          'targets': x['label'],
+      })
   is_train = split == 'train'
 
   if cache:
@@ -213,6 +214,8 @@ class BaseMnistWorkload(spec.Workload):
                                        batch,
                                        model_state,
                                        per_device_model_rngs)
-      total_metrics = {k: v + batch_metrics[k] for k, v in total_metrics.items()}
+      total_metrics = {
+          k: v + batch_metrics[k] for k, v in total_metrics.items()
+      }
 
     return self._normalize_eval_metrics(num_examples, total_metrics)

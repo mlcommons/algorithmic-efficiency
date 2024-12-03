@@ -153,8 +153,8 @@ class Conv2dSubsampling(nn.Module):
     self.kernel = self.param('kernel',
                              nn.initializers.xavier_uniform(),
                              self.filter_shape)
-    self.bias = self.param('bias', lambda rng, s: jnp.zeros(s, jnp.float32),
-                           self.output_channels)
+    self.bias = self.param(
+        'bias', lambda rng, s: jnp.zeros(s, jnp.float32), self.output_channels)
 
   @nn.compact
   def __call__(self, inputs, paddings):
@@ -442,10 +442,12 @@ class BatchNorm(nn.Module):
     dtype = self.config.dtype
 
     self.ra_mean = self.variable('batch_stats',
-                                 'mean', lambda s: jnp.zeros(s, dtype),
+                                 'mean',
+                                 lambda s: jnp.zeros(s, dtype),
                                  dim)
     self.ra_var = self.variable('batch_stats',
-                                'var', lambda s: jnp.ones(s, dtype),
+                                'var',
+                                lambda s: jnp.ones(s, dtype),
                                 dim)
 
     self.gamma = self.param('scale', nn.initializers.zeros, dim, dtype)
