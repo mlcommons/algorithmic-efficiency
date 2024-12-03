@@ -260,8 +260,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     idxs = torch.arange(
         fin_result.numel(), device=result.device).view(*fin_result.shape)
     mask = torch.arange(
-        fin_result.shape[1], device=result.device).view(
-            1, -1) < result.count_nonzero(dim=1).view(-1, 1)
+        fin_result.shape[1],
+        device=result.device).view(1, -1) < result.count_nonzero(dim=1).view(
+            -1, 1)
     fin_result.view(-1)[idxs[mask != 0]] = result[result != blank_id]
     padding = fin_result == 0
     return fin_result, padding
@@ -329,9 +330,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           'word_errors': word_errors,
           'num_words': num_words,
       }
-      total_metrics = {
-          k: v + batch_metrics[k] for k, v in total_metrics.items()
-      }
+      total_metrics = {k: v + batch_metrics[k] for k, v in total_metrics.items()}
     if USE_PYTORCH_DDP:
       for metric in total_metrics.values():
         dist.all_reduce(metric)

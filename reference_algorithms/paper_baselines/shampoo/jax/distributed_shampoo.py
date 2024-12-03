@@ -595,8 +595,8 @@ def matrix_inverse_pth_root(
 
   if padding_start is not None:
     # Zero out padding in identity as well for convergence checks.
-    ix = (jnp.arange(matrix_size, dtype=jnp.int32) < padding_start).astype(
-        matrix.dtype)
+    ix = (jnp.arange(matrix_size, dtype=jnp.int32)
+          < padding_start).astype(matrix.dtype)
     matrix *= ix[jnp.newaxis, :]
     matrix *= ix[:, jnp.newaxis]
     identity *= ix
@@ -815,8 +815,8 @@ def matrix_inverse_pth_root_eigh(
   alpha = jnp.asarray(-1.0 / p, _MAT_INV_PTH_ROOT_DTYPE)
   identity = jnp.eye(matrix_size, dtype=_MAT_INV_PTH_ROOT_DTYPE)
   if padding_start is not None:
-    ix = (jnp.arange(matrix_size, dtype=jnp.int32) < padding_start).astype(
-        matrix.dtype)
+    ix = (jnp.arange(matrix_size, dtype=jnp.int32)
+          < padding_start).astype(matrix.dtype)
     matrix *= ix[jnp.newaxis, :]
     matrix *= ix[:, jnp.newaxis]
     identity *= ix
@@ -1809,17 +1809,13 @@ def distributed_shampoo(
       ))
 
     new_stats_flat = jax.tree_map(
-        lambda g,
-        s,
-        p: _compute_stats(g, s, p, state.count),
+        lambda g, s, p: _compute_stats(g, s, p, state.count),
         grads_flat,
         stats_flat,
         params_flat)
 
     outputs = jax.tree_map(
-        lambda g,
-        s,
-        p: _transform_grad(g, s, p, state.count),
+        lambda g, s, p: _transform_grad(g, s, p, state.count),
         grads_flat,
         new_stats_flat,
         params_flat)
@@ -1923,8 +1919,8 @@ def distributed_shampoo(
     errors = metrics.inverse_pth_root_errors
     errors = errors.reshape((-1, 1, 1))
     predicate = jnp.logical_or(
-        jnp.isnan(errors),
-        errors >= inverse_failure_threshold).astype(new_preconditioners.dtype)
+        jnp.isnan(errors), errors
+        >= inverse_failure_threshold).astype(new_preconditioners.dtype)
     # TODO(rohananil): Check for numerical instabilities.
     new_conditional_preconditioners = (
         predicate * global_stats.preconditioners +
@@ -2442,9 +2438,7 @@ def distributed_shampoo(
       stats_grads = treedef.flatten_up_to(grads_custom)
 
     new_stats_flat = jax.tree_map(
-        lambda g,
-        s,
-        p: _compute_stats(g, s, p, state.count),
+        lambda g, s, p: _compute_stats(g, s, p, state.count),
         stats_grads,
         stats_flat,
         params_flat)
@@ -2453,9 +2447,7 @@ def distributed_shampoo(
                                               params_flat,
                                               state.count)
     outputs = jax.tree_map(
-        lambda g,
-        s,
-        p: _transform_grad(g, s, p, state.count),
+        lambda g, s, p: _transform_grad(g, s, p, state.count),
         grads_flat,
         new_stats_flat,
         params_flat)

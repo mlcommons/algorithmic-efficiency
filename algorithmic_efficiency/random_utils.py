@@ -18,7 +18,7 @@ FLAGS = flags.FLAGS
 
 # Annoyingly, RandomState(seed) requires seed to be in [0, 2 ** 32 - 1] (an
 # unsigned int), while RandomState.randint only accepts and returns signed ints.
-MAX_UINT32 = 2**32-1
+MAX_UINT32 = 2**32 - 1
 MIN_UINT32 = 0
 
 SeedType = Union[int, list, np.ndarray]

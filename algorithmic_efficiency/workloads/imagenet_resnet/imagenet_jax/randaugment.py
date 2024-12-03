@@ -313,8 +313,7 @@ def equalize(image):
     # If step is zero, return the original image.  Otherwise, build
     # lut from the full histogram and step and then index from it.
     result = tf.cond(
-        tf.equal(step, 0),
-        lambda: im,
+        tf.equal(step, 0), lambda: im,
         lambda: tf.gather(build_lut(histo, step), im))
 
     return tf.cast(result, tf.uint8)
@@ -549,7 +548,6 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
                                            translate_const=100)
         image = tf.cond(
             tf.equal(i, op_to_select),
-            lambda selected_func=func,
-            selected_args=args: selected_func(image, *selected_args),
-            lambda: image)
+            lambda selected_func=func, selected_args=args: selected_func(
+                image, *selected_args), lambda: image)
   return image
