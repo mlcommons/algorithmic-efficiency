@@ -245,7 +245,7 @@ def loguniform(name: str, range_endpoints: Tuple[int, int]) -> _GeneratorFn:
 
 def uniform(
     name: str, search_points: Union[_DiscretePoints,
-                                     Tuple[int, int]]) -> _GeneratorFn:
+                                    Tuple[int, int]]) -> _GeneratorFn:
   if isinstance(search_points, _DiscretePoints):
     return functools.partial(_generate_discrete_point,
                              name,
