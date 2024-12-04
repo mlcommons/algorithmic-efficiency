@@ -419,6 +419,19 @@ The currently eight fixed workloads are:
 | **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       18,477                 |
 | **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       48,151                 |
 
+Default Dropout Values for Different Workloads:
+
+| Workload               | Dropout Values                                                                                       |
+|------------------------|------------------------------------------------------------------------------------------------------|
+| criteo 1tb             | dropout_rate: 0.0                                                                                    |
+| fastmri                | dropout_rate: 0.0                                                                                    |
+| imagenet_resnet        | dropout not used                                                                                     |
+| imagenet_vit           | dropout_rate: 0.0                                                                                    |
+| librispeech_conformer  | attention_dropout_rate: 0.0 <br> attention_residual_dropout_rate: 0.1 <br> conv_residual_dropout_rate: 0.0 <br> feed_forward_dropout_rate: 0.0 <br> feed_forward_residual_dropout_rate: 0.1 <br> input_dropout_rate: 0.1 |
+| librispeech_deepspeech | input_dropout_rate: 0.1 <br> feed_forward_dropout_rate: 0.1 <br> (Only for JAX - dropout_rate in CudnnLSTM class: 0.0) |
+| ogbg                   | dropout_rate: 0.1                                                                                    |
+| wmt                    | dropout_rate: 0.1 <br> attention_dropout_rate: 0.1                                                   |
+
 #### Randomized workloads
 
 In addition to the [fixed and known workloads](#fixed-workloads), there will also be randomized workloads in our benchmark. These randomized workloads will introduce minor modifications to a fixed workload (e.g. small model changes). The exact instances of these randomized workloads will only be created after the submission deadline and are thus unknown to both the submitters as well as the benchmark organizers. The instructions for creating them, i.e. providing a set or distribution of workloads to sample from, will be defined by this working group and made public with the call for submissions, to allow the members of this working group to submit as well as ensure that they do not possess any additional information compared to other submitters. We will refer to the unspecific workloads as *randomized workloads*, e.g. the set or distribution. The specific instance of such a randomized workload we call a *held-out workload*. That is, a held-out workload is a specific sample of a randomized workload that is used for one iteration of the benchmark. While we may reuse randomized workloads between iterations of the benchmark, new held-out workloads will be sampled for each new benchmark iteration.
