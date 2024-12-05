@@ -2,6 +2,7 @@
 
 from collections import OrderedDict
 import contextlib
+import functools
 from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
@@ -9,6 +10,12 @@ from torch import nn
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import (
+        size_based_auto_wrap_policy,
+        enable_wrap,
+        wrap,
+        )
 
 from algorithmic_efficiency import init_utils
 from algorithmic_efficiency import param_utils
@@ -140,7 +147,15 @@ class MnistWorkload(BaseMnistWorkload):
     self._model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        self._model = DDP(self._model, device_ids=[RANK], output_device=RANK)
+        auto_wrap_policy = functools.partial(
+                size_based_auto_wrap_policy, min_num_params=2 ** 10
+                )
+        self._model = FSDP(
+                self._model,
+                use_orig_params=True,
+                auto_wrap_policy=auto_wrap_policy,
+                device_id=RANK
+                )
       else:
         self._model = torch.nn.DataParallel(self._model)
     return self._model, None
@@ -161,6 +176,7 @@ class MnistWorkload(BaseMnistWorkload):
     del update_batch_norm
     model = params
     if mode == spec.ForwardPassMode.EVAL:
+      model.zero_grad()
       model.eval()
     contexts = {
         spec.ForwardPassMode.EVAL: torch.no_grad,
