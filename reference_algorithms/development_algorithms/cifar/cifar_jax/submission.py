@@ -108,8 +108,6 @@ def pmapped_train_step(workload,
   return new_optimizer_state, updated_params, new_model_state
 
 
-# Not allowed to update the model parameters, hyperparameters, global step, or
-# optimzier state.
 def update_params(
     workload: spec.Workload,
     current_param_container: spec.ParameterContainer,
@@ -137,6 +135,29 @@ def update_params(
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
+def prepare_for_eval(workload: spec.Workload,
+                     current_param_container: spec.ParameterContainer,
+                     current_params_types: spec.ParameterTypeTree,
+                     model_state: spec.ModelAuxiliaryState,
+                     hyperparameters: spec.Hyperparameters,
+                     loss_type: spec.LossType,
+                     optimizer_state: spec.OptimizerState,
+                     eval_results: List[Tuple[int, float]],
+                     global_step: int,
+                     rng: spec.RandomState) -> spec.UpdateReturn:
+  """Return (updated_optimizer_state, updated_params)."""
+  del workload
+  del hyperparameters
+  del current_params_types
+  del loss_type
+  del eval_results
+  del global_step
+  del rng
+  return (optimizer_state, current_param_container, model_state)
+
+
+# Not allowed to update the model parameters, hyperparameters, global step, or
+# optimzier state.
 def data_selection(workload: spec.Workload,
                    input_queue: Iterator[Dict[str, spec.Tensor]],
                    optimizer_state: spec.OptimizerState,

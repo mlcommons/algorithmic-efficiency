@@ -431,6 +431,36 @@ def update_params(workload: Workload,
   pass
 
 
+PrepareForEvalFn = Callable[[
+    Workload,
+    ParameterContainer,
+    ParameterTypeTree,
+    ModelAuxiliaryState,
+    Hyperparameters,
+    LossType,
+    OptimizerState,
+    List[Tuple[int, float]],
+    int,
+    RandomState
+],
+                            UpdateReturn]
+
+
+# Prepare model and optimizer for evaluation.
+def prepare_for_eval(workload: Workload,
+                     current_param_container: ParameterContainer,
+                     current_params_types: ParameterTypeTree,
+                     model_state: ModelAuxiliaryState,
+                     hyperparameters: Hyperparameters,
+                     loss_type: LossType,
+                     optimizer_state: OptimizerState,
+                     eval_results: List[Tuple[int, float]],
+                     global_step: int,
+                     rng: RandomState) -> UpdateReturn:
+  """Return (updated_optimizer_state, updated_params, updated_model_state)."""
+  pass
+
+
 DataSelectionFn = Callable[[
     Workload,
     Iterator[Dict[str, Any]],
