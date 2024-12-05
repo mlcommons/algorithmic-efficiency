@@ -1,10 +1,17 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
+import functools
 from typing import Dict, Optional, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import (
+        size_based_auto_wrap_policy,
+        enable_wrap,
+        wrap,
+        )
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
@@ -43,7 +50,15 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        auto_wrap_policy = functools.partial(
+                size_based_auto_wrap_policy, min_num_params=2 ** 10
+                )
+        model = FSDP(
+                model,
+                use_orig_params=True,
+                auto_wrap_policy=auto_wrap_policy,
+                device_id=RANK
+                )
       else:
         model = torch.nn.DataParallel(model)
     return model, None
@@ -66,6 +81,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     model = params
 
     if mode == spec.ForwardPassMode.EVAL:
+      # need to zero grad for FSDP or else error is thrown
+      # during evaluation
+      model.zero_grad()
       model.eval()
 
     if mode == spec.ForwardPassMode.TRAIN:
