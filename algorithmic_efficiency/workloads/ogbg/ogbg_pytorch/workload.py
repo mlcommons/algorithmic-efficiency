@@ -7,6 +7,12 @@ from jraph import GraphsTuple
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import (
+        size_based_auto_wrap_policy,
+        enable_wrap,
+        wrap,
+        )
 
 from algorithmic_efficiency import param_utils
 from algorithmic_efficiency import pytorch_utils
@@ -156,7 +162,16 @@ class OgbgWorkload(BaseOgbgWorkload):
     model.to(DEVICE)
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        auto_wrap_policy = functools.partial(
+                size_based_auto_wrap_policy, min_num_params=2 ** 10
+                )
+        model = FSDP(
+                self._model,
+                use_orig_params=True,
+                auto_wrap_policy=auto_wrap_policy,
+                device_id=RANK
+                )
+
       else:
         model = torch.nn.DataParallel(model)
     return model, None
@@ -183,6 +198,8 @@ class OgbgWorkload(BaseOgbgWorkload):
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
     elif mode == spec.ForwardPassMode.EVAL:
+      # need to zero grad for FSDP eval - it is unclear why
+      model.zero_grad()
       model.eval()
 
     contexts = {
