@@ -167,12 +167,11 @@ class OgbgWorkload(BaseOgbgWorkload):
                 size_based_auto_wrap_policy, min_num_params=2 ** 10
                 )
         model = FSDP(
-                self._model,
+                model,
                 use_orig_params=True,
                 auto_wrap_policy=auto_wrap_policy,
                 device_id=RANK
                 )
-
       else:
         model = torch.nn.DataParallel(model)
     return model, None
