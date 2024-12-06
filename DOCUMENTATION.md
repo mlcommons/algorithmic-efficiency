@@ -80,7 +80,7 @@ In principle, submissions are allowed to use the available hardware systems in a
 Submissions provide a [per-workload batch size](#batch-size-getter) to use. Specification of the batch size for each workload is necessary to avoid running out of memory for different workloads. Therefore, submitters can determine this batch size in advance and specify it as part of the submission. Submitters may also provide per-workload batch sizes for all [randomized workloads](#randomized-workloads). If no such batch size is provided for a randomized workload, by default, submissions will then use the batch size of the most similar [fixed workload](#fixed-workloads) (for example, if there is an ImageNet fixed workload and also a randomized workload with a similarly sized model on similarly sized images, the ImageNet batch size will be used for held-out workloads generated from this randomized workload).
 Note that submitters are *not* allowed to modify the *evaluation batch size*, which is set by the benchmarking codebase. However, you can file an issue if you believe that the evaluation batch size of a particular workload is set inappropriately. The working group will review this request and consider adjusting the evaluation batch size in the benchmarking codebase, thus affecting all submitters equally.
 
-The **submission functions** are the *batch size getter*, *optimizer state initializer*, *variable update*, and *data selection functions*. The *fixed functions* are the *data augmentation/preprocessing*, *model initialization*, *forward pass*, and *loss function*. The trained model will be evaluated in a separate step that does not call any of the submitted code.
+The **submission functions** are the *batch size getter*, *optimizer state initializer*, *variable update*, *prepare for evaluation function*, and *data selection functions*. The *fixed functions* are the *data augmentation/preprocessing*, *model initialization*, *forward pass*, and *loss function*. The trained model will be evaluated in a separate step that does not call any of the submitted code.
 
 ##### Fixed functions
 
@@ -199,6 +199,7 @@ def update_params(
     batch: Dict[str, Tensor],
     loss_type: LossType,
     optimizer_state: OptimizerState,
+    train_state: Dict[str, Any],
     eval_results: List[Tuple[int, float]],
     global_step: int,
     rng: RandomState
@@ -212,14 +213,41 @@ def update_params(
 - The `loss_fn` produces a loss per example and a summed loss (both only for one device), which both can be used.
 - Allowed to update state for the optimizer.
 - Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state).
+- The submission can access the elapsed training time and get further information about the evaluation through `train_state`.
 - The submission can access the target evaluation metric via the `workload` variable.
 - **A call to this function will be considered a step**
   - The time between a call to this function and the next call to this function will be considered the per-step time.
 - Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
 - The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
 - Cannot replace the model parameters with pre-trained ones.
-- This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
 - Batch norm should work here because the `model_fn` will return updated batch norm moving averages when it is told to with `update_batch_norm`.
+
+
+###### Prepare for evaluation function
+
+```python
+def prepare_for_eval(
+    workload: Workload,
+    current_param_container: ParameterContainer,
+    current_params_types: ParameterTypeTree,
+    model_state: ModelAuxiliaryState,
+    hyperparameters: Hyperparameters,
+    loss_type: LossType,
+    optimizer_state: OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: RandomState
+) -> (updated_optimizer_state, updated_variables, updated_model_state)
+```
+
+- Arguments are the same of `update_param`, with the only exception of `batch`.
+- This function is called when a submission is deemed eligible for an evaluation (see [Evluation during training](#evaluation-during-training) section).
+  - The call to `prepare_for_eval` is timed and its runtime accumulates to the overall submission time.
+  - The returned model parameters are evaluated on the validation and test sets, provided that the accumulated submission time does not exceed the maximum runtime after this function call.
+- This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
+- Allowed to update model state and model parameters.
+- Allowed to update state for the optimizer.
+- Cannot replace the model parameters with pre-trained ones.
 
 ###### Data selection
 
@@ -250,7 +278,8 @@ def data_selection(
 
 In general, with noisy, non-deterministic training, evaluation frequency can affect training time measurements as more "bites of the apple" potentially allows the training code to exploit instability. We also want to discourage submissions from complicated and unrealistic logic that attempts to guess when training is close to complete and increases the evaluation rate, while not producing a well-sampled training curve at the start of training. Simply allowing submissions complete freedom over evaluation frequency encourages competitors to work to minimize the number of evaluations, which distracts from the primary goal of finding better training algorithms.
 
-Submissions are eligible for an untimed eval every `eval_period` seconds, run as soon as the current call of `update_params` completes. Any additional evaluations performed by the submission code count against the runtime for scoring. The harness that runs the submission code will attempt to eval every `eval_period` seconds by checking between each submission step (call of `update_params`) whether it has been at least `eval_period` seconds since that last eval and, if so, pausing the clock and running an eval. This means that if calls to `update_params` typically take a lot more than `eval_period` seconds, such submissions will not receive as many untimed evals as a submission that had an `update_params` function that took less time. However, for appropriate settings of `eval_period`, we expect this to be quite rare. Submissions are always free to restructure their `update_params` code to split work into two subsequent steps to regain the potential benefits of these untimed model evaluations. For each workload, the `eval_period` will be set such that the total evaluation time is roughly between 10% and 20% of the total training time for the target-setting runs.
+Submissions are eligible for an untimed eval every `eval_period` seconds. Before proceeding to evaluation, the submission can prepare the model through a call to `prepare_for_eval`, effectively modifying the model parameters and state as well as the the optimizer state. Any additional evaluations performed by the submission code count against the runtime for scoring. 
+The harness that runs the submission code will attempt to eval every `eval_period` seconds by checking between each submission step (call of `update_params`) whether it has been at least `eval_period` seconds since that last eval, if so, the submission is given the possibility to prepare for evaluation (through a timed call to `prepare_for_eval`). If the accumulated runtime does not exceed the maximum allowed runtime after the preparation step, the clock is paused, and the submission is evaluated. This means that if calls to `update_params` typically take a lot more than `eval_period` seconds, such submissions will not receive as many untimed evals as a submission that had an `update_params` function that took less time. However, for appropriate settings of `eval_period`, we expect this to be quite rare. Submissions are always free to restructure their `update_params` code to split work into two subsequent steps to regain the potential benefits of these untimed model evaluations. For each workload, the `eval_period` will be set such that the total evaluation time is roughly between 10% and 20% of the total training time for the target-setting runs.
 
 #### Valid submissions
 
@@ -416,6 +445,19 @@ The currently eight fixed workloads are:
 | **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.085884<br>0.119936     | 0.052981<br>0.074143 |       61,068<br>55,506                 |
 | **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                 | 0.268729             |       18,477                 |
 | **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              |       48,151                 |
+
+Default Dropout Values for Different Workloads:
+
+| Workload               | Dropout Values                                                                                       |
+|------------------------|------------------------------------------------------------------------------------------------------|
+| criteo 1tb             | dropout_rate: 0.0                                                                                    |
+| fastmri                | dropout_rate: 0.0                                                                                    |
+| imagenet_resnet        | dropout not used                                                                                     |
+| imagenet_vit           | dropout_rate: 0.0                                                                                    |
+| librispeech_conformer  | attention_dropout_rate: 0.0 <br> attention_residual_dropout_rate: 0.1 <br> conv_residual_dropout_rate: 0.0 <br> feed_forward_dropout_rate: 0.0 <br> feed_forward_residual_dropout_rate: 0.1 <br> input_dropout_rate: 0.1 |
+| librispeech_deepspeech | input_dropout_rate: 0.1 <br> feed_forward_dropout_rate: 0.1 <br> (Only for JAX - dropout_rate in CudnnLSTM class: 0.0) |
+| ogbg                   | dropout_rate: 0.1                                                                                    |
+| wmt                    | dropout_rate: 0.1 <br> attention_dropout_rate: 0.1                                                   |
 
 #### Randomized workloads
 

@@ -149,7 +149,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      use_running_average_bn: Optional[bool] = None
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del mode
     del rng
     variables = {'params': params, **model_state}
@@ -158,14 +160,16 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           variables,
           augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
-          mutable=['batch_stats'])
+          mutable=['batch_stats'],
+          use_running_average_bn=use_running_average_bn)
       return logits, new_model_state
     else:
       logits = self._model.apply(
           variables,
           augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
-          mutable=False)
+          mutable=False,
+          use_running_average_bn=use_running_average_bn)
       return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in

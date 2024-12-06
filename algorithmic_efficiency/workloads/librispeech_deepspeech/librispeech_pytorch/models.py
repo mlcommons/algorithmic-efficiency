@@ -36,7 +36,7 @@ class DeepspeechConfig:
   time_mask_max_ratio: float = 0.05
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
-  batch_norm_momentum: float = 0.999
+  batch_norm_momentum: float = 1 - 0.999
   batch_norm_epsilon: float = 0.001
   # If None, defaults to 0.1.
   input_dropout_rate: Optional[float] = 0.1
@@ -264,10 +264,10 @@ class BatchNorm(nn.Module):
         sum_ = dist_nn.all_reduce(sum_)
       var = sum_ / count
 
-      self.running_mean = self.momentum * self.running_mean + (
-          1 - self.momentum) * mean.detach()
-      self.running_var = self.momentum * self.running_var + (
-          1 - self.momentum) * var.detach()
+      self.running_mean = (1 - self.momentum) * self.running_mean + (
+          self.momentum) * mean.detach()
+      self.running_var = (1 - self.momentum) * self.running_var + (
+          self.momentum) * var.detach()
     else:
       mean = self.running_mean
       var = self.running_var

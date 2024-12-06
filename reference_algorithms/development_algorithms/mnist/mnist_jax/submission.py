@@ -1,7 +1,7 @@
 """Training algorithm track submission functions for MNIST."""
 
 import functools
-from typing import Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from flax import jax_utils
 import jax
@@ -75,20 +75,23 @@ def pmapped_update_params(workload: spec.Workload,
   return new_optimizer_state, updated_params, new_model_state
 
 
-def update_params(workload: spec.Workload,
-                  current_param_container: spec.ParameterContainer,
-                  current_params_types: spec.ParameterTypeTree,
-                  model_state: spec.ModelAuxiliaryState,
-                  hyperparameters: spec.Hyperparameters,
-                  batch: Dict[str, spec.Tensor],
-                  loss_type: spec.LossType,
-                  optimizer_state: spec.OptimizerState,
-                  eval_results: List[Tuple[int, float]],
-                  global_step: int,
-                  rng: spec.RandomState) -> spec.UpdateReturn:
+def update_params(
+    workload: spec.Workload,
+    current_param_container: spec.ParameterContainer,
+    current_params_types: spec.ParameterTypeTree,
+    model_state: spec.ModelAuxiliaryState,
+    hyperparameters: spec.Hyperparameters,
+    batch: Dict[str, spec.Tensor],
+    loss_type: spec.LossType,
+    optimizer_state: spec.OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: spec.RandomState,
+    train_state: Optional[Dict[str, Any]] = None) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
+  del train_state
   del eval_results
   del global_step
 
@@ -104,6 +107,27 @@ def update_params(workload: spec.Workload,
       optimizer_state,
       per_device_rngs)
   return (new_optimizer_state, opt_update_fn), updated_params, new_model_state
+
+
+def prepare_for_eval(workload: spec.Workload,
+                     current_param_container: spec.ParameterContainer,
+                     current_params_types: spec.ParameterTypeTree,
+                     model_state: spec.ModelAuxiliaryState,
+                     hyperparameters: spec.Hyperparameters,
+                     loss_type: spec.LossType,
+                     optimizer_state: spec.OptimizerState,
+                     eval_results: List[Tuple[int, float]],
+                     global_step: int,
+                     rng: spec.RandomState) -> spec.UpdateReturn:
+  """Return (updated_optimizer_state, updated_params)."""
+  del workload
+  del hyperparameters
+  del current_params_types
+  del loss_type
+  del eval_results
+  del global_step
+  del rng
+  return (optimizer_state, current_param_container, model_state)
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
