@@ -3,6 +3,7 @@ import math
 from typing import Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
+from flax.core import pop
 import flax.linen as nn
 import jax
 from jax import lax
@@ -89,7 +90,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state, params = variables.pop('params')
+    model_state, params = pop(variables, "params")
 
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -378,8 +379,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     # In this case each device has its own version of the batch statistics and
     # we average them.
     avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-    new_model_state = model_state.copy(
-        {'batch_stats': avg_fn(model_state['batch_stats'])})
+    new_model_state = model_state.copy()
+    new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
     return new_model_state
 
 
