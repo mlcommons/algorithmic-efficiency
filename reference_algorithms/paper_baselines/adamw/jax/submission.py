@@ -165,18 +165,17 @@ def update_params(
       static_argnums=(0, 1),
       donate_argnums=(2, 3, 4),
       in_shardings=arg_shardings,
-      out_shardings=out_shardings
-  )
+      out_shardings=out_shardings)
 
   outputs = jitted_train_step(workload,
-                           opt_update_fn,
-                           model_state,
-                           optimizer_state,
-                           current_param_container,
-                           batch,
-                           per_device_rngs,
-                           grad_clip,
-                           label_smoothing)
+                              opt_update_fn,
+                              model_state,
+                              optimizer_state,
+                              current_param_container,
+                              batch,
+                              per_device_rngs,
+                              grad_clip,
+                              label_smoothing)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.
