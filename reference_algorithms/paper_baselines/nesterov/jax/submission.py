@@ -95,14 +95,14 @@ def sgd(learning_rate, weight_decay, momentum=None, nesterov=False):
 #     static_broadcasted_argnums=(0, 1),
 #     donate_argnums=(2, 3, 4))
 def train_step(workload,
-                       opt_update_fn,
-                       model_state,
-                       optimizer_state,
-                       current_param_container,
-                       batch,
-                       rng,
-                       grad_clip,
-                       label_smoothing):
+               opt_update_fn,
+               model_state,
+               optimizer_state,
+               current_param_container,
+               batch,
+               rng,
+               grad_clip,
+               label_smoothing):
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -178,20 +178,20 @@ def update_params(workload: spec.Workload,
   arg_shardings = (
       # workload is static
       # opt_update_fn is static
-      replicated,     # model_state
-      replicated,     # optimizer_state
-      replicated,     # current_param_container
-      sharded,     # batch
-      sharded,     # per_device_rngs
+      replicated,  # model_state
+      replicated,  # optimizer_state
+      replicated,  # current_param_container
+      sharded,  # batch
+      sharded,  # per_device_rngs
       replicated,  # grad_clip
-      replicated   # label_smoothing
+      replicated  # label_smoothing
   )
   out_shardings = (
-      replicated,               # new_optimizer_state
-      replicated,               # updated_params
-      replicated,               # new_model_state
-      replicated,               # loss
-      replicated                # grad_norm
+      replicated,  # new_optimizer_state
+      replicated,  # updated_params
+      replicated,  # new_model_state
+      replicated,  # loss
+      replicated  # grad_norm
   )
   # Jit with shardings
   jitted_train_step = jax.jit(
@@ -199,17 +199,16 @@ def update_params(workload: spec.Workload,
       static_argnums=(0, 1),
       donate_argnums=(2, 3, 4),
       in_shardings=arg_shardings,
-      out_shardings=out_shardings
-  )
+      out_shardings=out_shardings)
   outputs = jitted_train_step(workload,
-                               opt_update_fn,
-                               model_state,
-                               optimizer_state,
-                               current_param_container,
-                               batch,
-                               per_device_rngs,
-                               grad_clip,
-                               label_smoothing)
+                              opt_update_fn,
+                              model_state,
+                              optimizer_state,
+                              current_param_container,
+                              batch,
+                              per_device_rngs,
+                              grad_clip,
+                              label_smoothing)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.
@@ -246,6 +245,8 @@ def get_batch_size(workload_name):
     return 128
   elif workload_name == 'mnist':
     return 16
+  elif workload_name == 'cifar':
+    return 128
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

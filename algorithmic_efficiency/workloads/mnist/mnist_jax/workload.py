@@ -102,11 +102,12 @@ class MnistWorkload(BaseMnistWorkload):
 
   @functools.partial(
       jax.jit,
-      in_shardings=(sharding_utils.get_replicated_sharding(),  # params
-                    sharding_utils.get_naive_sharding_spec(),  # batch
-                    sharding_utils.get_replicated_sharding(),  # model_state
-                    sharding_utils.get_naive_sharding_spec(),  # rng
-                    ),
+      in_shardings=(
+          sharding_utils.get_replicated_sharding(),  # params
+          sharding_utils.get_naive_sharding_spec(),  # batch
+          sharding_utils.get_replicated_sharding(),  # model_state
+          sharding_utils.get_naive_sharding_spec(),  # rng
+      ),
       static_argnums=(0,))
   def _eval_model(
       self,
@@ -134,5 +135,8 @@ class MnistWorkload(BaseMnistWorkload):
       self, num_examples: int, total_metrics: Dict[str,
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
-    total_metrics = {'accuracy': total_metrics['accuracy'].item() / num_examples, 'loss': total_metrics['loss'].item() / num_examples}
+    total_metrics = {
+        'accuracy': total_metrics['accuracy'].item() / num_examples,
+        'loss': total_metrics['loss'].item() / num_examples
+    }
     return total_metrics
