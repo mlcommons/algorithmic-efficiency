@@ -9,7 +9,7 @@ import math
 
 import tensorflow as tf
 
-from .custom_tf_addons import rotate
+from .custom_tf_addons import rotate_img
 from .custom_tf_addons import transform
 from .custom_tf_addons import translate
 
@@ -179,7 +179,7 @@ def rotate(image, degrees, replace):
   # In practice, we should randomize the rotation degrees by flipping
   # it negatively half the time, but that's done on 'degrees' outside
   # of the function.
-  image = rotate(wrap(image), radians)
+  image = rotate_img(wrap(image), radians)
   return unwrap(image, replace)
 
 
