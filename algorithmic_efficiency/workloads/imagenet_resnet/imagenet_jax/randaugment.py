@@ -9,7 +9,9 @@ import math
 
 import tensorflow as tf
 
-#from tensorflow_addons import image as contrib_image
+from .custom_tf_addons import rotate
+from .custom_tf_addons import transform
+from .custom_tf_addons import translate
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
@@ -177,19 +179,19 @@ def rotate(image, degrees, replace):
   # In practice, we should randomize the rotation degrees by flipping
   # it negatively half the time, but that's done on 'degrees' outside
   # of the function.
-  image = contrib_image.rotate(wrap(image), radians)
+  image = rotate(wrap(image), radians)
   return unwrap(image, replace)
 
 
 def translate_x(image, pixels, replace):
   """Equivalent of PIL Translate in X dimension."""
-  image = contrib_image.translate(wrap(image), [-pixels, 0])
+  image = translate(wrap(image), [-pixels, 0])
   return unwrap(image, replace)
 
 
 def translate_y(image, pixels, replace):
   """Equivalent of PIL Translate in Y dimension."""
-  image = contrib_image.translate(wrap(image), [0, -pixels])
+  image = translate(wrap(image), [0, -pixels])
   return unwrap(image, replace)
 
 
@@ -199,8 +201,7 @@ def shear_x(image, level, replace):
   # with a matrix form of:
   # [1  level
   #  0  1].
-  image = contrib_image.transform(
-      wrap(image), [1., level, 0., 0., 1., 0., 0., 0.])
+  image = transform(wrap(image), [1., level, 0., 0., 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
@@ -210,8 +211,7 @@ def shear_y(image, level, replace):
   # with a matrix form of:
   # [1  0
   #  level  1].
-  image = contrib_image.transform(
-      wrap(image), [1., 0., 0., level, 1., 0., 0., 0.])
+  image = transform(wrap(image), [1., 0., 0., level, 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
