@@ -241,12 +241,15 @@ def angles_to_projective_transforms(
   with tf.name_scope(name or "angles_to_projective_transforms"):
     angle_or_angles = tf.convert_to_tensor(
         angles, name="angles", dtype=tf.dtypes.float32)
+
+    if len(angle_or_angles.get_shape()) not in (0, 1):
+      raise ValueError("angles should have rank 0 or 1.")
+
     if len(angle_or_angles.get_shape()) == 0:
       angles = angle_or_angles[None]
-    elif len(angle_or_angles.get_shape()) == 1:
-      angles = angle_or_angles
     else:
-      raise ValueError("angles should have rank 0 or 1.")
+      angles = angle_or_angles
+
     cos_angles = tf.math.cos(angles)
     sin_angles = tf.math.sin(angles)
     x_offset = ((image_width - 1) -
@@ -352,12 +355,15 @@ def translations_to_projective_transforms(translations: TensorLike,
     if translation_or_translations.get_shape().ndims is None:
       raise TypeError(
           "translation_or_translations rank must be statically known")
-    elif len(translation_or_translations.get_shape()) == 1:
-      translations = translation_or_translations[None]
-    elif len(translation_or_translations.get_shape()) == 2:
-      translations = translation_or_translations
-    else:
+
+    if len(translation_or_translations.get_shape()) not in (1, 2):
       raise TypeError("Translations should have rank 1 or 2.")
+
+    if len(translation_or_translations.get_shape()) == 1:
+      translations = translation_or_translations[None]
+    else:
+      translations = translation_or_translations
+
     num_translations = tf.shape(translations)[0]
     # The translation matrix looks like:
     #     [[1 0 -dx]
