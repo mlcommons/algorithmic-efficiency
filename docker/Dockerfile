@@ -11,7 +11,34 @@ FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu20.04
 RUN echo "Setting up machine"
 RUN apt-get update
 RUN apt-get install -y curl tar
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 pip wget ffmpeg
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git ffmpeg
+
+# Install prerequisites
+RUN apt-get update && apt-get install -y \
+    wget \
+    build-essential \
+    zlib1g-dev \
+    libncurses5-dev \
+    libssl-dev \
+    libreadline-dev \
+    libffi-dev \
+    curl \
+    libbz2-dev \
+    liblzma-dev
+
+# Download and install Python 3.11
+RUN cd /tmp \
+    && wget https://www.python.org/ftp/python/3.11.10/Python-3.11.10.tgz \
+    && tar -xvzf Python-3.11.10.tgz \
+    && cd Python-3.11.10 \
+    && ./configure --enable-optimizations \
+    && make -j$(nproc) \
+    && make altinstall
+
+# Create symlinks for python and pip (use 'pip' instead of 'pip3')
+RUN ln -s /usr/local/bin/python3.11 /usr/bin/python \
+    && ln -s /usr/local/bin/pip3.11 /usr/bin/pip
+
 RUN apt-get install libtcmalloc-minimal4
 RUN apt-get install unzip
 RUN apt-get install pigz
@@ -27,6 +54,8 @@ RUN yes | ./google-cloud-sdk/install.sh
 RUN echo "Setting up directories for data and experiment_runs"
 RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
+
+RUN pip install --upgrade pip
 
 # Install Algorithmic efficiency repo
 RUN echo "Setting up algorithmic_efficiency repo"
@@ -57,8 +86,6 @@ RUN if [ "$framework" = "jax" ] ; then \
     fi
 
 RUN cd /algorithmic-efficiency && pip install -e '.[full]'
-
-RUN cd /algorithmic-efficiency && pip install -e '.[wandb]'
 
 RUN cd /algorithmic-efficiency && git fetch origin 
 RUN cd /algorithmic-efficiency && git pull
