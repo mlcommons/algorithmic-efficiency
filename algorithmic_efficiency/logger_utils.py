@@ -211,7 +211,7 @@ def _get_system_software_info() -> Dict:
   system_software_info['os_platform'] = \
       platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
   system_software_info['python_version'] = platform.python_version(
-  )  # Ex. '3.8.10'
+  )  # Ex. '3.11.10'
   system_software_info['python_compiler'] = platform.python_compiler(
   )  # Ex. 'GCC 9.3.0'
   # Note: do not store hostname as that may be sensitive

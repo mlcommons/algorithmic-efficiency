@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
+from flax.core import pop
 import jax
 import jax.numpy as jnp
 
@@ -28,7 +29,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     variables = jax.jit(
         model.init)({'params': params_rng, 'dropout': dropout_rng},
                     jnp.ones(input_shape))
-    model_state, params = variables.pop('params')
+    model_state, params = pop(variables, "params")
     return params, model_state
 
   def init_model_fn(
