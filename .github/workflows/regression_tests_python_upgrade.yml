@@ -1,4 +1,4 @@
-name: Containerized Regression Tests
+name: Containerized Regression Tests Python Upgrades
 
 on: 
   pull_request:
