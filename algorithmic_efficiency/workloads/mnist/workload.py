@@ -23,7 +23,7 @@ def _normalize(image: spec.Tensor, mean: float, stddev: float) -> spec.Tensor:
 
 
 def _build_mnist_dataset(
-    data_rng: jax.random.PRNGKey,
+    data_rng: jax.random.key,
     num_train_examples: int,
     num_validation_examples: int,
     train_mean: float,

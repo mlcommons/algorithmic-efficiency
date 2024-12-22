@@ -105,7 +105,7 @@ class WmtWorkload(BaseWmtWorkload):
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
     initial_variables = models.Transformer(config).init(
-        jax.random.PRNGKey(0),
+        jax.random.key(0),
         jnp.ones(inputs.shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))
     return initial_variables['cache']

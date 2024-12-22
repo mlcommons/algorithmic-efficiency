@@ -238,7 +238,7 @@ class WmtWorkload(BaseWmtWorkload):
     return logits_batch, None
 
   def _build_input_queue(self,
-                         data_rng: jax.random.PRNGKey,
+                         data_rng: jax.random.key,
                          split: str,
                          data_dir: str,
                          global_batch_size: int,

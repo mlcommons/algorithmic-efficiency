@@ -116,7 +116,7 @@ def get_workload(workload):
     pytorch_workload = PyTorchWmtWorkload()
   else:
     raise ValueError(f'Workload {workload} is not available.')
-  _ = jax_workload.init_model_fn(jax.random.PRNGKey(0))
+  _ = jax_workload.init_model_fn(jax.random.key(0))
   _ = pytorch_workload.init_model_fn([0])
   return jax_workload, pytorch_workload
 

@@ -20,7 +20,7 @@ class ModelsTest(absltest.TestCase):
 
   def test_forward_pass(self):
     batch_size = 11
-    rng = jax.random.PRNGKey(0)
+    rng = jax.random.key(0)
     rng, model_init_rng, *data_rngs = jax.random.split(rng, 4)
     workload = ImagenetResNetWorkload()
     model_params, batch_stats = workload.init_model_fn(model_init_rng)

@@ -37,7 +37,7 @@ if __name__ == '__main__':
   jax_model_kwargs = dict(
       augmented_and_preprocessed_input_batch=jax_batch,
       mode=spec.ForwardPassMode.EVAL,
-      rng=jax.random.PRNGKey(0),
+      rng=jax.random.key(0),
       update_batch_norm=False)
 
   out_diff(

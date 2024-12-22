@@ -204,7 +204,7 @@ def load_fastmri_split(global_batch_size,
           process_rng, example_index)
     else:
       # NOTE(dsuo): we use fixed randomness for eval.
-      process_rng = tf.cast(jax.random.PRNGKey(_EVAL_SEED), tf.int64)
+      process_rng = tf.cast(jax.random.key(_EVAL_SEED), tf.int64)
     return _process_example(*example, process_rng)
 
   ds = ds.enumerate().map(process_example, num_parallel_calls=16)

@@ -79,7 +79,7 @@ ParameterContainer = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]],
                            nn.Module]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
-RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
+RandomState = Any  # Union[jax.random.key, int, bytes, ...]
 
 OptimizerState = Union[Dict[str, Any], Tuple[Any, Any]]
 Hyperparameters = Any
