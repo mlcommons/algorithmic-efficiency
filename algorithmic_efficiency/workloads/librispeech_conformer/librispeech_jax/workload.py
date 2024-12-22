@@ -227,11 +227,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                labels: spec.Tensor,
                label_paddings: spec.Tensor,
                blank_id: int = 0) -> spec.Tensor:
-    return optax.ctc_loss(logits,
-                          logit_paddings,
-                          labels,
-                          label_paddings,
-                          blank_id)
+    return optax.ctc_loss(
+        logits=logits,
+        logit_paddings=logit_paddings,
+        labels=labels,
+        label_paddings=label_paddings,
+        blank_id=blank_id)
 
   # Adapted from lingvo's greedy decoding logic here:
   # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138.
