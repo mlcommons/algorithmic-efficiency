@@ -1,5 +1,6 @@
 """
-Removing the dependency on sacrebleu, we reimplement the BLEU score computation in this file.
+Removing the dependency on sacrebleu, we reimplement the BLEU score computation
+in this file.
 Reference:
 https://github.com/mjpost/sacrebleu/blob/v1.3.1/sacrebleu.py.
 """
@@ -42,7 +43,8 @@ def my_log(num):
 
 def tokenize_13a(line):
   """
-    Tokenizes an input line using a relatively minimal tokenization that is however equivalent to mteval-v13a, used by WMT.
+    Tokenizes an input line using a relatively minimal tokenization that is 
+    however equivalent to mteval-v13a, used by WMT.
 
     :param line: a segment to tokenize
     :return: the tokenized line
@@ -80,6 +82,7 @@ class UnicodeRegex:
 
     without depending on https://pypi.python.org/pypi/regex/."""
 
+  @staticmethod
   def _property_chars(prefix):
     return ''.join(
         chr(x)
@@ -95,20 +98,23 @@ class UnicodeRegex:
 def tokenize_v14_international(string):
   r"""Tokenize a string following the official BLEU implementation.
 
-    See https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/mteval-v14.pl#L954-L983
+    See 
+    https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/mteval-v14.pl#L954-L983
     In our case, the input string is expected to be just one line
     and no HTML entities de-escaping is needed.
     So we just tokenize on punctuation and symbols,
     except when a punctuation is preceded and followed by a digit
     (e.g. a comma/dot as a thousand/decimal separator).
 
-    Note that a number (e.g., a year) followed by a dot at the end of sentence is NOT tokenized,
+    Note that a number (e.g., a year) followed by a dot at the end of sentence 
+    is NOT tokenized,
     i.e. the dot stays with the number because `s/(\p{P})(\P{N})/ $1 $2/g`
     does not match this case (unless we add a space after each sentence).
     However, this error is already in the original mteval-v14.pl
     and we want to be consistent with it.
     The error is not present in the non-international version,
-    which uses `$norm_text = " $norm_text "` (or `norm = " {} ".format(norm)` in Python).
+    which uses,
+    `$norm_text = " $norm_text "` (or `norm = " {} ".format(norm)` in Python).
 
     :param string: the input string
     :return: a list of tokens
@@ -123,26 +129,28 @@ def tokenize_zh(sentence):
   """MIT License
     Copyright (c) 2017 - Shujian Huang <huangsj@nju.edu.cn>
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+    Permission is hereby granted, free of charge, to any person obtaining 
+    a copy of this software and associated documentation files 
+    (the "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish, 
+    distribute, sublicense, and/or sell copies of the Software, and to 
+    permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:
 
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
+    The above copyright notice and this permission notice shall be included 
+    in all copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE 
+    USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    The tokenization of Chinese text in this script contains two steps: separate each Chinese
-    characters (by utf-8 encoding); tokenize the non Chinese part (following the mteval script).
+    The tokenization of Chinese text in this script contains two steps: 
+    separate each Chinese characters (by utf-8 encoding); 
+    tokenize the non Chinese part (following the mteval script).
     Author: Shujian Huang huangsj@nju.edu.cn
 
     :param sentence: input sentence
@@ -151,54 +159,53 @@ def tokenize_zh(sentence):
 
   def is_chinese_char(uchar):
     """
-        :param uchar: input char in unicode
-        :return: whether the input char is a Chinese character.
-        """
-    if uchar >= u'\u3400' and uchar <= u'\u4db5':  # CJK Unified Ideographs Extension A, release 3.0
+      :param uchar: input char in unicode
+      :return: whether the input char is a Chinese character.
+      """
+    if "\u3400" <= uchar <= "\u4db5":
       return True
-    elif uchar >= u'\u4e00' and uchar <= u'\u9fa5':  # CJK Unified Ideographs, release 1.1
+    elif "\u4e00" <= uchar <= "\u9fa5":
       return True
-    elif uchar >= u'\u9fa6' and uchar <= u'\u9fbb':  # CJK Unified Ideographs, release 4.1
+    elif "\u9fa6" <= uchar <= "\u9fbb":
       return True
-    elif uchar >= u'\uf900' and uchar <= u'\ufa2d':  # CJK Compatibility Ideographs, release 1.1
+    elif "\uf900" <= uchar <= "\ufa2d":
       return True
-    elif uchar >= u'\ufa30' and uchar <= u'\ufa6a':  # CJK Compatibility Ideographs, release 3.2
+    elif "\ufa30" <= uchar <= "\ufa6a":
       return True
-    elif uchar >= u'\ufa70' and uchar <= u'\ufad9':  # CJK Compatibility Ideographs, release 4.1
+    elif "\ufa70" <= uchar <= "\ufad9":
       return True
-    elif uchar >= u'\u20000' and uchar <= u'\u2a6d6':  # CJK Unified Ideographs Extension B, release 3.1
+    elif "\u20000" <= uchar <= "\u2a6d6":
       return True
-    elif uchar >= u'\u2f800' and uchar <= u'\u2fa1d':  # CJK Compatibility Supplement, release 3.1
+    elif "\u2f800" <= uchar <= "\u2fa1d":
       return True
-    elif uchar >= u'\uff00' and uchar <= u'\uffef':  # Full width ASCII, full width of English punctuation, half width Katakana, half wide half width kana, Korean alphabet
+    elif "\uff00" <= uchar <= "\uffef":
       return True
-    elif uchar >= u'\u2e80' and uchar <= u'\u2eff':  # CJK Radicals Supplement
+    elif "\u2e80" <= uchar <= "\u2eff":
       return True
-    elif uchar >= u'\u3000' and uchar <= u'\u303f':  # CJK punctuation mark
+    elif "\u3000" <= uchar <= "\u303f":
       return True
-    elif uchar >= u'\u31c0' and uchar <= u'\u31ef':  # CJK stroke
+    elif "\u31c0" <= uchar <= "\u31ef":
       return True
-    elif uchar >= u'\u2f00' and uchar <= u'\u2fdf':  # Kangxi Radicals
+    elif "\u2f00" <= uchar <= "\u2fdf":
       return True
-    elif uchar >= u'\u2ff0' and uchar <= u'\u2fff':  # Chinese character structure
+    elif "\u2ff0" <= uchar <= "\u2fff":
       return True
-    elif uchar >= u'\u3100' and uchar <= u'\u312f':  # Phonetic symbols
+    elif "\u3100" <= uchar <= "\u312f":
       return True
-    elif uchar >= u'\u31a0' and uchar <= u'\u31bf':  # Phonetic symbols (Taiwanese and Hakka expansion)
+    elif "\u31a0" <= uchar <= "\u31bf":
       return True
-    elif uchar >= u'\ufe10' and uchar <= u'\ufe1f':
+    elif "\ufe10" <= uchar <= "\ufe1f":
       return True
-    elif uchar >= u'\ufe30' and uchar <= u'\ufe4f':
+    elif "\ufe30" <= uchar <= "\ufe4f":
       return True
-    elif uchar >= u'\u2600' and uchar <= u'\u26ff':
+    elif "\u2600" <= uchar <= "\u26ff":
       return True
-    elif uchar >= u'\u2700' and uchar <= u'\u27bf':
+    elif "\u2700" <= uchar <= "\u27bf":
       return True
-    elif uchar >= u'\u3200' and uchar <= u'\u32ff':
+    elif "\u3200" <= uchar <= "\u32ff":
       return True
-    elif uchar >= u'\u3300' and uchar <= u'\u33ff':
+    elif "\u3300" <= uchar <= "\u33ff":
       return True
-
     return False
 
   sentence = sentence.strip()
@@ -280,13 +287,13 @@ def ref_stats(output, refs):
         closest_len = reflen
 
     ngrams_ref = extract_ngrams(ref)
-    for ngram in ngrams_ref.keys():
+    for ngram in ngrams_ref:
       ngrams[ngram] = max(ngrams[ngram], ngrams_ref[ngram])
 
   return ngrams, closest_diff, closest_len
 
 
-BLEU = namedtuple('BLEU',
+BLEU = namedtuple('BLE',
                   'score, counts, totals, precisions, bp, sys_len, ref_len')
 
 
@@ -299,8 +306,9 @@ def compute_bleu(correct: List[int],
                  use_effective_order=False) -> BLEU:
   """Computes BLEU score from its sufficient statistics. Adds smoothing.
 
-    Smoothing methods (citing "A Systematic Comparison of Smoothing Techniques for Sentence-Level BLEU", 
-    Boxing Chen and Colin Cherry, WMT 2014: http://aclweb.org/anthology/W14-3346)
+    Smoothing methods (citing "A Systematic Comparison of Smoothing Techniques 
+    for Sentence-Level BLEU", Boxing Chen and Colin Cherry, 
+    WMT 2014: http://aclweb.org/anthology/W14-3346)
 
     - exp: NIST smoothing method (Method 3)
     - floor: Method 1
@@ -312,7 +320,7 @@ def compute_bleu(correct: List[int],
     :param sys_len: The cumulative system length
     :param ref_len: The cumulative reference length
     :param smooth: The smoothing method to use
-    :param smooth_value: The smoothing value added, if smooth method 'floor' is used
+    :param smooth_value: The smoothing value added, if smooth is 'floor'
     :param use_effective_order: Use effective order.
     :return: A BLEU object with the score (100-based) and other statistics.
     """
@@ -340,10 +348,12 @@ def compute_bleu(correct: List[int],
     else:
       precisions[n] = 100. * correct[n] / total[n]
 
-  # If the system guesses no i-grams, 1 <= i <= NGRAM_ORDER, the BLEU score is 0 (technically undefined).
-  # This is a problem for sentence-level BLEU or a corpus of short sentences, where systems will get no credit
-  # if sentence lengths fall under the NGRAM_ORDER threshold. This fix scales NGRAM_ORDER to the observed
-  # maximum order. It is only available through the API and off by default
+  # If the system guesses no i-grams, 1 <= i <= NGRAM_ORDER, the BLEU
+  # score is 0 (technically undefined). This is a problem for sentence-level
+  # BLEU or a corpus of short sentences, where systems will get no credit
+  # if sentence lengths fall under the NGRAM_ORDER threshold. This fix scales
+  # NGRAM_ORDER to the observed maximum order.
+  # It is only available through the API and off by default
 
   brevity_penalty = 1.0
   if sys_len < ref_len:
@@ -374,7 +384,7 @@ def corpus_bleu(sys_stream: Sequence[str],
       :param force: Ignore data that looks already tokenized.
       :param lowercase: Lowercase the data.
       :param tokenize: The tokenizer to use.
-      :return: A BLEU object containing everything you'd want.
+      :return: A BLEU object containing everything yo'd want.
   """
 
   # Add some robustness to the input arguments.
