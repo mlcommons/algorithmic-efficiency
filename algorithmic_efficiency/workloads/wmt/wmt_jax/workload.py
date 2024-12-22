@@ -94,7 +94,7 @@ class WmtWorkload(BaseWmtWorkload):
                 params: spec.ParameterContainer,
                 batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     replicated_eval_metrics = self.eval_step_pmapped(params, batch)
-    return jax.tree_map(lambda x: jnp.sum(x, axis=0), replicated_eval_metrics)
+    return jax.tree.map(lambda x: jnp.sum(x, axis=0), replicated_eval_metrics)
 
   @functools.partial(
       jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
@@ -291,7 +291,7 @@ class WmtWorkload(BaseWmtWorkload):
     """Normalize eval metrics."""
     del num_examples
     eval_denominator = total_metrics.pop('denominator')
-    return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)
+    return jax.tree.map(lambda x: float(x / eval_denominator), total_metrics)
 
 
 class WmtWorkloadPostLN(WmtWorkload):

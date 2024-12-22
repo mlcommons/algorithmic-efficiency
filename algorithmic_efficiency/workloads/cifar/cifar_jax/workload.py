@@ -207,4 +207,4 @@ class CifarWorkload(BaseCifarWorkload):
       self, num_examples: int, total_metrics: Dict[str,
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
-    return jax.tree_map(lambda x: float(x[0] / num_examples), total_metrics)
+    return jax.tree.map(lambda x: float(x[0] / num_examples), total_metrics)

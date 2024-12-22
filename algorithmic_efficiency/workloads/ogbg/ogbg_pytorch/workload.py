@@ -20,8 +20,8 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 def _pytorch_map(inputs: Any) -> Any:
   if USE_PYTORCH_DDP:
-    return jax.tree_map(lambda a: torch.as_tensor(a, device=DEVICE), inputs)
-  return jax.tree_map(
+    return jax.tree.map(lambda a: torch.as_tensor(a, device=DEVICE), inputs)
+  return jax.tree.map(
       lambda a: torch.as_tensor(a, device=DEVICE).view(-1, a.shape[-1])
       if len(a.shape) == 3 else torch.as_tensor(a, device=DEVICE).view(-1),
       inputs)
@@ -30,7 +30,7 @@ def _pytorch_map(inputs: Any) -> Any:
 def _shard(inputs: Any) -> Any:
   if not USE_PYTORCH_DDP:
     return inputs
-  return jax.tree_map(lambda tensor: tensor[RANK], inputs)
+  return jax.tree.map(lambda tensor: tensor[RANK], inputs)
 
 
 def _graph_map(function: Callable, graph: GraphsTuple) -> GraphsTuple:

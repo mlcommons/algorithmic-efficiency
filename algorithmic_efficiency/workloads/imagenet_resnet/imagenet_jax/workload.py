@@ -264,7 +264,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
+    eval_metrics = jax.tree.map(lambda x: float(x[0] / num_examples),
                                 eval_metrics)
     return eval_metrics
 
