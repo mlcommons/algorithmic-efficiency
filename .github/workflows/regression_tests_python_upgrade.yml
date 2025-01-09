@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - 'python_test_env_upgrade' 
-  push_request:
+  push:
     branches:
       - 'python_upgrades' 
 
