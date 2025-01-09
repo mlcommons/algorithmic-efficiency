@@ -46,7 +46,7 @@ def init_optimizer_state(workload: spec.Workload,
       learning_rate=lr_schedule_fn,
       beta1=1.0 - hyperparameters.one_minus_beta1,
       weight_decay=hyperparameters.weight_decay)
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
 
@@ -94,7 +94,7 @@ def pmapped_train_step(workload,
   (summed_loss, n_valid_examples, grad) = lax.psum(
       (summed_loss, n_valid_examples, grad), axis_name='batch')
   loss = summed_loss / n_valid_examples
-  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
+  grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
@@ -102,7 +102,7 @@ def pmapped_train_step(workload,
   if grad_clip is not None:
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
     grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
-    grad = jax.tree_map(lambda x: x * grad_scaling_factor, grad)
+    grad = jax.tree.map(lambda x: x * grad_scaling_factor, grad)
 
   updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
                                                current_param_container)

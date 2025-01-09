@@ -97,9 +97,9 @@ def _make_fake_image_batch(batch_shape, data_shape, num_classes):
 
 def _pytorch_map(inputs):
   if USE_PYTORCH_DDP:
-    return jax.tree_map(
+    return jax.tree.map(
         lambda a: torch.as_tensor(a[RANK], device=PYTORCH_DEVICE), inputs)
-  return jax.tree_map(
+  return jax.tree.map(
       lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE).view(-1, a.shape[-1])
       if len(a.shape) == 3 else torch.as_tensor(a, device=PYTORCH_DEVICE).view(
           -1),
