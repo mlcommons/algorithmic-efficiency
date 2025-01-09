@@ -31,8 +31,8 @@ do
     eval $DOCKER_BUILD_COMMAND
     echo $DOCKER_TAG_COMMAND
     eval $DOCKER_TAG_COMMAND
-    echo $DOCKER_PUSH_COMMAND
-    eval $DOCKER_PUSH_COMMAND
-    echo "To pull container run: "
-    echo $DOCKER_PULL_COMMAND
+    # echo $DOCKER_PUSH_COMMAND
+    # eval $DOCKER_PUSH_COMMAND
+    # echo "To pull container run: "
+    # echo $DOCKER_PULL_COMMAND
 done

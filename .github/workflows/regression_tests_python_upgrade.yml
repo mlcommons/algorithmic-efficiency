@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - 'python_test_env_upgrade' 
+  push_request:
+    branches:
+      - 'python_upgrades' 
 
 jobs:
   build_and_push_jax_docker_image:
