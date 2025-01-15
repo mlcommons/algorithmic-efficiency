@@ -22,6 +22,7 @@
   - [Style Testing](#style-testing)
   - [Unit and Integration Tests](#unit-and-integration-tests)
   - [Regression Tests](#regression-tests)
+  - [Versioning](#versioning)
 
 ## Contributing to MLCommons
 
@@ -276,3 +277,8 @@ To run a regression test:
 2. Turn on the self-hosted runner.
 3. Run the self-hosted runner application for the runner to accept jobs.
 4. Open a pull request into mian to trigger the workflow.
+
+### Versioning
+
+The package version is centrally defined in `algorithmic_efficiency/__init__.py`.
+When releasing a new version, update the version number in `algorithmic_efficiency/__init__.py` and create a new release in the GitHub UI.
