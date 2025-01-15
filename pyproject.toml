@@ -54,10 +54,12 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["algorithmic_efficiency"]
 py-modules = ["submission_runner"]
 include-package-data = true
 zip-safe = false
+
+[tool.setuptools.packages]
+find = {} # Scanning implicit namespaces is active by default
 
 [tool.setuptools.dynamic]
 version = { attr = "algorithmic_efficiency.__version__" }
