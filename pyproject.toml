@@ -50,7 +50,7 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=45"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -61,8 +61,8 @@ zip-safe = false
 [tool.setuptools.packages]
 find = {} # Scanning implicit namespaces is active by default
 
-[tool.setuptools.dynamic]
-version = { attr = "algorithmic_efficiency.__version__" }
+[tool.setuptools_scm]
+version_file = "algorithmic_efficiency/_version.py"
 
 ###############################################################################
 #                          (Optional) Dependencies                            #
