@@ -72,7 +72,7 @@ jobs:
       run: |
         docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_${{ github.head_ref || github.ref_name }}
         docker run  -v $HOME/data/:/data/ -v $HOME/experiment_runs/:/experiment_runs -v $HOME/experiment_runs/logs:/logs --gpus all --ipc=host us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_pytorch_${{ github.head_ref || github.ref_name }} -d criteo1tb -f pytorch -s reference_algorithms/paper_baselines/adamw/pytorch/submission.py -w criteo1tb_resnet -t reference_algorithms/paper_baselines/adamw/tuning_search_space.json -e tests/regression_tests/adamw -m 10 -c False -o True -r false
-  criteo_resnet_pytorch:
+  criteo_embed_init_pytorch:
     runs-on: self-hosted
     needs: build_and_push_pytorch_docker_image
     steps:
