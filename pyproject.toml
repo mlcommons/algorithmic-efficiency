@@ -129,6 +129,8 @@ wandb = ["wandb==0.16.5"]
 based_on_style = "yapf"
 each_dict_entry_on_separate_line = false
 split_all_top_level_comma_separated_values = true
+[tool.yapfignore]
+ignore_patterns = ["algorithmic_efficiency/_version.py"]
 
 # isort configuration
 [tool.isort]
@@ -137,7 +139,7 @@ profile = "google"
 # pylint configuration
 [tool.pylint.MASTER]
 persistent = false
-ignore = "get_references_web.py,get_references_web_single_group.py"
+ignore = "get_references_web.py,get_references_web_single_group.py,_version.py"
 
 [tool.pylint.REPORTS]
 reports = false
