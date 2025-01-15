@@ -205,7 +205,7 @@ docker run -t -d \
 -v $HOME/data/:/data/ \
 -v $HOME/experiment_runs/:/experiment_runs \
 -v $HOME/experiment_runs/logs:/logs \
--v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
+-v $HOME/algorithmic-efficiency:/algoperf \
 --gpus all \
 --ipc=host \
 <image_path> \
@@ -229,7 +229,7 @@ To run the below commands, use the versions installed via `pip install -e '.[dev
 To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
 
 ```bash
-yapf -i -r -vv -p algorithmic_efficiency datasets prize_qualification_baselines reference_algorithms tests *.py
+yapf -i -r -vv -p algoperf datasets prize_qualification_baselines reference_algorithms tests *.py
 ```
 
 To sort all import orderings, run the following:
@@ -247,7 +247,7 @@ isort . --check --diff
 To print out all offending pylint issues, run the following:
 
 ```bash
-pylint algorithmic_efficiency
+pylint algoperf
 pylint datasets
 pylint prize_qualification_baselines
 pylint reference_algorithms
@@ -288,4 +288,4 @@ You can check what version `setuptools_scm` is creating by running `python -m se
 
 To create a new version, create a new release (and tag) in the GitHub UI.
 The package version is automatically updated to the new version.
-Once the package is installed, the version can be accessed as the package attribute `algorithmic_efficiency.__version__`, i.e. via `python -c "import algorithmic_efficiency; print(algorithmic_efficiency.__version__)"`.
+Once the package is installed, the version can be accessed as the package attribute `algoperf.__version__`, i.e. via `python -c "import algoperf; print(algoperf.__version__)"`.

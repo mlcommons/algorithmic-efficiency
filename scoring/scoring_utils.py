@@ -7,7 +7,7 @@ import re
 from absl import logging
 import pandas as pd
 
-import algorithmic_efficiency.workloads.workloads as workloads_registry
+import algoperf.workloads.workloads as workloads_registry
 
 TRIAL_LINE_REGEX = '(.*) --- Tuning run (\d+)/(\d+) ---'
 METRICS_LINE_REGEX = '(.*) Metrics: ({.*})'
@@ -17,7 +17,7 @@ TIMESTAMP = r"-\d{4}(-\d{2}){5}"
 
 WORKLOADS = workloads_registry.WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
-BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+BASE_WORKLOADS_DIR = 'algoperf/workloads/'
 
 
 #### File IO helper functions ###

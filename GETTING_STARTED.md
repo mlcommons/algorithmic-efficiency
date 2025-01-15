@@ -58,7 +58,7 @@ To set up a virtual enviornment and install this repository
     cd algorithmic-efficiency
     ```
 
-3. Run the following pip3 install commands based on your chosen framework to install `algorithmic_efficiency` and its dependencies.
+3. Run the following pip3 install commands based on your chosen framework to install `algoperf` and its dependencies.
 
     For **JAX**:
 

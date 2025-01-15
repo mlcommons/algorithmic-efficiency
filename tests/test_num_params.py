@@ -5,42 +5,42 @@ import jraph
 import pytest
 import torch
 
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.models import \
+from algoperf.workloads.criteo1tb.criteo1tb_jax.models import \
     DlrmSmall as JaxDlrmSmall
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.models import \
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models import \
     DlrmSmall as PyTorchDlrmSmall
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
+from algoperf.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet18 as JaxResNet_c10
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.models import \
+from algoperf.workloads.imagenet_resnet.imagenet_jax.models import \
     ResNet50 as JaxResNet
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet18 as PyTorchResNet_c10
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_pytorch.models import \
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
     resnet50 as PyTorchResNet
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.models import \
+from algoperf.workloads.imagenet_vit.imagenet_jax.models import \
     ViT as JaxViT
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.models import \
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.models import \
     ViT as PyTorchViT
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.models import \
+from algoperf.workloads.librispeech_conformer.librispeech_jax.models import \
     Conformer as JaxConformer
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.models import \
+from algoperf.workloads.librispeech_conformer.librispeech_jax.models import \
     ConformerConfig as JaxConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
     ConformerConfig as PytorchConformerConfig
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.models import \
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
     ConformerEncoderDecoder as PytorchConformer
-from algorithmic_efficiency.workloads.mnist.mnist_jax.workload import \
+from algoperf.workloads.mnist.mnist_jax.workload import \
     _Model as JaxMLP
-from algorithmic_efficiency.workloads.mnist.mnist_pytorch.workload import \
+from algoperf.workloads.mnist.mnist_pytorch.workload import \
     _Model as PyTorchMLP
-from algorithmic_efficiency.workloads.ogbg.ogbg_jax.models import GNN as JaxGNN
-from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.models import \
+from algoperf.workloads.ogbg.ogbg_jax.models import GNN as JaxGNN
+from algoperf.workloads.ogbg.ogbg_pytorch.models import \
     GNN as PyTorchGNN
-from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
+from algoperf.workloads.wmt.wmt_jax.models import \
     Transformer as JaxTransformer
-from algorithmic_efficiency.workloads.wmt.wmt_jax.models import \
+from algoperf.workloads.wmt.wmt_jax.models import \
     TransformerConfig
-from algorithmic_efficiency.workloads.wmt.wmt_pytorch.models import \
+from algoperf.workloads.wmt.wmt_pytorch.models import \
     Transformer as PyTorchTransformer
 
 WORKLOADS = [

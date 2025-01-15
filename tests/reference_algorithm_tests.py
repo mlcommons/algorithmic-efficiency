@@ -40,14 +40,14 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 
-from algorithmic_efficiency import halton
-from algorithmic_efficiency import pytorch_utils
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.workloads import workloads
-from algorithmic_efficiency.workloads.ogbg import \
+from algoperf import halton
+from algoperf import pytorch_utils
+from algoperf import random_utils as prng
+from algoperf.profiler import PassThroughProfiler
+from algoperf.workloads import workloads
+from algoperf.workloads.ogbg import \
     input_pipeline as ogbg_input_pipeline
-from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
+from algoperf.workloads.ogbg.ogbg_pytorch.workload import \
     _graph_map
 import submission_runner
 from tests.modeldiffs import diff as diff_utils

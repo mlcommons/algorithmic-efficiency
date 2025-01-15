@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.lr_scheduler import LinearLR
 from torch.optim.lr_scheduler import SequentialLR
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 
 
 # Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py

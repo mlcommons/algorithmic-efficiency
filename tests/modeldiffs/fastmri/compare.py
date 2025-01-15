@@ -6,10 +6,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import jax
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.fastmri.fastmri_jax.workload import \
     FastMRIWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.workload import \
+from algoperf.workloads.fastmri.fastmri_pytorch.workload import \
     FastMRIWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 

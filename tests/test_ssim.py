@@ -9,14 +9,14 @@ import jax.numpy as jnp
 import numpy as np
 import torch
 
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax.ssim import \
+from algoperf.pytorch_utils import pytorch_setup
+from algoperf.workloads.fastmri.fastmri_jax.ssim import \
     _uniform_filter as _jax_uniform_filter
-from algorithmic_efficiency.workloads.fastmri.fastmri_jax.ssim import \
+from algoperf.workloads.fastmri.fastmri_jax.ssim import \
     ssim as jax_ssim
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.ssim import \
+from algoperf.workloads.fastmri.fastmri_pytorch.ssim import \
     _uniform_filter as _pytorch_uniform_filter
-from algorithmic_efficiency.workloads.fastmri.fastmri_pytorch.ssim import \
+from algoperf.workloads.fastmri.fastmri_pytorch.ssim import \
     ssim as pytorch_ssim
 
 # Make sure no GPU memory is preallocated to Jax.
