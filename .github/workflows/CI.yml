@@ -199,7 +199,7 @@ jobs:
         pip install .[pytorch_cpu]
     - name: Run pytest tests
       run: |
-        pytest -vx tests/version_test.py
+        pytest -vx tests/test_version.py
         pytest -vx tests/test_num_params.py
         pytest -vx tests/test_param_shapes.py
         pytest -vx tests/test_param_types.py
