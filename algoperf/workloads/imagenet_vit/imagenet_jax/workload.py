@@ -12,10 +12,8 @@ from algoperf import spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload
 from algoperf.workloads.imagenet_vit.imagenet_jax import models
-from algoperf.workloads.imagenet_vit.workload import \
-    BaseImagenetVitWorkload
-from algoperf.workloads.imagenet_vit.workload import \
-    decode_variant
+from algoperf.workloads.imagenet_vit.workload import BaseImagenetVitWorkload
+from algoperf.workloads.imagenet_vit.workload import decode_variant
 
 
 # Make sure we inherit from the ViT base workload first.

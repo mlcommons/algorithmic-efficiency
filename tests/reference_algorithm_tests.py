@@ -45,10 +45,8 @@ from algoperf import pytorch_utils
 from algoperf import random_utils as prng
 from algoperf.profiler import PassThroughProfiler
 from algoperf.workloads import workloads
-from algoperf.workloads.ogbg import \
-    input_pipeline as ogbg_input_pipeline
-from algoperf.workloads.ogbg.ogbg_pytorch.workload import \
-    _graph_map
+from algoperf.workloads.ogbg import input_pipeline as ogbg_input_pipeline
+from algoperf.workloads.ogbg.ogbg_pytorch.workload import _graph_map
 import submission_runner
 from tests.modeldiffs import diff as diff_utils
 

@@ -13,11 +13,9 @@ from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
 import algoperf.random_utils as prng
-from algoperf.workloads.fastmri.fastmri_pytorch.models import \
-    UNet
+from algoperf.workloads.fastmri.fastmri_pytorch.models import UNet
 from algoperf.workloads.fastmri.fastmri_pytorch.ssim import ssim
-from algoperf.workloads.fastmri.workload import \
-    BaseFastMRIWorkload
+from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 

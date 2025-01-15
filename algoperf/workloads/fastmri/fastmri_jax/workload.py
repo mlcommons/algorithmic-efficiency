@@ -13,8 +13,7 @@ from algoperf import spec
 import algoperf.random_utils as prng
 from algoperf.workloads.fastmri.fastmri_jax.models import UNet
 from algoperf.workloads.fastmri.fastmri_jax.ssim import ssim
-from algoperf.workloads.fastmri.workload import \
-    BaseFastMRIWorkload
+from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
 
 
 class FastMRIWorkload(BaseFastMRIWorkload):

@@ -22,10 +22,8 @@ from algoperf import pytorch_utils
 from algoperf import spec
 import algoperf.random_utils as prng
 from algoperf.workloads.imagenet_resnet import imagenet_v2
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch import \
-    randaugment
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
-    resnet50
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch import randaugment
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import resnet50
 from algoperf.workloads.imagenet_resnet.workload import \
     BaseImagenetResNetWorkload
 

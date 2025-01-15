@@ -7,8 +7,7 @@ import jax
 import torch
 
 from algoperf import spec
-from algoperf.workloads.wmt.wmt_jax.workload import \
-    WmtWorkload as JaxWorkload
+from algoperf.workloads.wmt.wmt_jax.workload import WmtWorkload as JaxWorkload
 from algoperf.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff

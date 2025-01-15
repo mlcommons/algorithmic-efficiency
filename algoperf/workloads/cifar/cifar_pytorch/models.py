@@ -16,8 +16,7 @@ from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
     BasicBlock
 from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
     Bottleneck
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
-    conv1x1
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import conv1x1
 
 
 class ResNet(nn.Module):

@@ -10,8 +10,7 @@ import tensorflow_datasets as tfds
 
 from algoperf import data_utils
 from algoperf import spec
-from algoperf.workloads.imagenet_resnet.imagenet_jax import \
-    input_pipeline
+from algoperf.workloads.imagenet_resnet.imagenet_jax import input_pipeline
 
 
 def get_imagenet_v2_iter(data_dir: str,

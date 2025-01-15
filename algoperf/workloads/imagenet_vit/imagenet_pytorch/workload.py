@@ -11,12 +11,9 @@ from algoperf import pytorch_utils
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet.imagenet_pytorch.workload import \
     ImagenetResNetWorkload
-from algoperf.workloads.imagenet_vit.imagenet_pytorch import \
-    models
-from algoperf.workloads.imagenet_vit.workload import \
-    BaseImagenetVitWorkload
-from algoperf.workloads.imagenet_vit.workload import \
-    decode_variant
+from algoperf.workloads.imagenet_vit.imagenet_pytorch import models
+from algoperf.workloads.imagenet_vit.workload import BaseImagenetVitWorkload
+from algoperf.workloads.imagenet_vit.workload import decode_variant
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 

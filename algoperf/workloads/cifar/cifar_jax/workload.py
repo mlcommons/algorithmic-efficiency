@@ -14,8 +14,7 @@ import tensorflow_datasets as tfds
 from algoperf import param_utils
 from algoperf import spec
 from algoperf.workloads.cifar.cifar_jax import models
-from algoperf.workloads.cifar.cifar_jax.input_pipeline import \
-    create_input_iter
+from algoperf.workloads.cifar.cifar_jax.input_pipeline import create_input_iter
 from algoperf.workloads.cifar.workload import BaseCifarWorkload
 
 

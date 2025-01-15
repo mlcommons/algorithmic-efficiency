@@ -19,8 +19,7 @@ from algoperf.workloads.librispeech_conformer import metrics
 from algoperf.workloads.librispeech_conformer import workload
 from algoperf.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch import \
-    models
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch import models
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 

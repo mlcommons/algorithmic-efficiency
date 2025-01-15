@@ -11,8 +11,7 @@ from flax import linen as nn
 import jax.numpy as jnp
 
 from algoperf import spec
-from algoperf.workloads.imagenet_resnet.imagenet_jax.models import \
-    ResNetBlock
+from algoperf.workloads.imagenet_resnet.imagenet_jax.models import ResNetBlock
 
 ModuleDef = nn.Module
 

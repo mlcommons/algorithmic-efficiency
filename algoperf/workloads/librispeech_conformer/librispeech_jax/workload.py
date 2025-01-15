@@ -18,8 +18,7 @@ from algoperf.workloads.librispeech_conformer import metrics
 from algoperf.workloads.librispeech_conformer import workload
 from algoperf.workloads.librispeech_conformer.input_pipeline import \
     LibriSpeechDataset
-from algoperf.workloads.librispeech_conformer.librispeech_jax import \
-    models
+from algoperf.workloads.librispeech_conformer.librispeech_jax import models
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):

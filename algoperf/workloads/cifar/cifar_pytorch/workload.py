@@ -16,8 +16,7 @@ from algoperf import data_utils
 from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
-from algoperf.workloads.cifar.cifar_pytorch.models import \
-    resnet18
+from algoperf.workloads.cifar.cifar_pytorch.models import resnet18
 from algoperf.workloads.cifar.workload import BaseCifarWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()

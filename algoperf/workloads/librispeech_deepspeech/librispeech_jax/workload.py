@@ -10,8 +10,7 @@ from algoperf import param_utils
 from algoperf import spec
 from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
     LibriSpeechConformerWorkload
-from algoperf.workloads.librispeech_deepspeech.librispeech_jax import \
-    models
+from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
 
 
 class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):

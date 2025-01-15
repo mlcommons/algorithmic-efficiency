@@ -14,8 +14,7 @@ import tensorflow_datasets as tfds
 
 from algoperf import data_utils
 from algoperf import spec
-from algoperf.workloads.imagenet_resnet.imagenet_jax import \
-    randaugment
+from algoperf.workloads.imagenet_resnet.imagenet_jax import randaugment
 
 TFDS_SPLIT_NAME = {
     'train': 'train', 'eval_train': 'train', 'validation': 'validation'

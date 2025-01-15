@@ -14,8 +14,7 @@ import torch.nn.functional as F
 
 from algoperf import init_utils
 from algoperf import spec
-from algoperf.workloads.wmt.wmt_pytorch.models import \
-    MultiheadAttention
+from algoperf.workloads.wmt.wmt_pytorch.models import MultiheadAttention
 
 
 def posemb_sincos_2d(patches: spec.Tensor, temperature=10_000.) -> spec.Tensor:
