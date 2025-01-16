@@ -482,13 +482,13 @@ def _parse_policy_info(name,
 
   # Check to see if prob is passed into function. This is used for operations
   # where we alter bboxes independently.
-  if 'prob' in inspect.getargspec(func)[0]:
+  if 'prob' in inspect.getfullargspec(func)[0]:
     args = tuple([prob] + list(args))
 
   # Add in replace arg if it is required for the function that is being called.
-  if 'replace' in inspect.getargspec(func)[0]:
+  if 'replace' in inspect.getfullargspec(func)[0]:
     # Make sure replace is the final argument
-    assert 'replace' == inspect.getargspec(func)[0][-1]
+    assert 'replace' == inspect.getfullargspec(func)[0][-1]
     args = tuple(list(args) + [replace_value])
 
   return (func, prob, args)
