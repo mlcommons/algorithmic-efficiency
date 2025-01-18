@@ -16,21 +16,21 @@ except (ImportError, ModuleNotFoundError):
 
 FLAGS = flags.FLAGS
 
-# Annoyingly, RandomState(seed) requires seed to be in [0, 2 ** 32 - 1] (an
+# Annoyingly, RandomState(seed) requires seed to be in [0, 2 ** 31 - 1] (an
 # unsigned int), while RandomState.randint only accepts and returns signed ints.
-MAX_INT32 = 2**31
-MIN_INT32 = -MAX_INT32
+MAX_INT32 = 2**31-1
+MIN_INT32 = 0
 
 SeedType = Union[int, list, np.ndarray]
 
 
 def _signed_to_unsigned(seed: SeedType) -> SeedType:
   if isinstance(seed, int):
-    return seed % 2**32
+    return seed % (2**31-1)
   if isinstance(seed, list):
-    return [s % 2**32 for s in seed]
+    return [s % (2**31-1) for s in seed]
   if isinstance(seed, np.ndarray):
-    return np.array([s % 2**32 for s in seed.tolist()])
+    return np.array([s % (2**31-1) for s in seed.tolist()])
 
 
 def _fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:
