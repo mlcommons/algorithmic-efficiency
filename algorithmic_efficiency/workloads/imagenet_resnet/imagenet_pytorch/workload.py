@@ -120,7 +120,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     if split == 'eval_train':
       indices = list(range(self.num_train_examples))
-      random.Random(data_rng[0]).shuffle(indices)
+      random.Random(int(data_rng[0])).shuffle(indices)
       dataset = torch.utils.data.Subset(dataset,
                                         indices[:self.num_eval_train_examples])
 
