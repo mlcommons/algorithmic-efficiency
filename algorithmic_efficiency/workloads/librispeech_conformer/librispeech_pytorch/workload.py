@@ -9,6 +9,12 @@ from typing import Dict, Iterator, Optional, Tuple
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.wrap import (
+        size_based_auto_wrap_policy,
+        enable_wrap,
+        wrap,
+        )
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
@@ -101,7 +107,15 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     if N_GPUS > 1:
       if USE_PYTORCH_DDP:
         self.requires_sync_before_eval = True
-        model = DDP(model, device_ids=[RANK], output_device=RANK)
+        auto_wrap_policy = functools.partial(
+                size_based_auto_wrap_policy, min_num_params=2 ** 10
+                )
+        model = FSDP(
+                model,
+                use_orig_params=True,
+                auto_wrap_policy=auto_wrap_policy,
+                device_id=RANK
+                )
       else:
         model = torch.nn.DataParallel(model)
     return model, None
@@ -122,6 +136,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     model = params
     if mode == spec.ForwardPassMode.EVAL:
+      model.zero_grad()
       model.eval()
     if mode == spec.ForwardPassMode.TRAIN:
       model.train()
