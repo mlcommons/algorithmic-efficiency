@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     curl \
     libbz2-dev \
-    liblzma-dev
+    liblzma-dev \
+    vim
 
 # Download and install Python 3.11
 RUN cd /tmp \
@@ -91,6 +92,7 @@ RUN cd /algorithmic-efficiency && pip install -e '.[full]'
 
 RUN cd /algorithmic-efficiency && git fetch origin 
 RUN cd /algorithmic-efficiency && git pull
+RUN pip install wandb
 
 # Todo: remove this, this is temporary for developing
 COPY scripts/startup.sh /algorithmic-efficiency/docker/scripts/startup.sh
