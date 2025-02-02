@@ -693,11 +693,20 @@ def main(_):
 
   # Prevent OOM on librispeech conformer.
   base_workload = workloads.get_base_workload_name(FLAGS.workload)
-  if base_workload == 'librispeech_conformer':
-    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
+
+  if base_workload == [
+      'librispeech_conformer',
+      'librispeech_deepspeech',
+      'imagenet_vit',
+      'criteo1tb'
+  ]:
+    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.80'
 
   if FLAGS.set_pytorch_max_split_size:
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+
+  if FLAGS.framework == 'pytorch' and base_workload == 'librispeech_conformer':
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
