@@ -694,7 +694,7 @@ def main(_):
   # Prevent OOM on librispeech conformer.
   base_workload = workloads.get_base_workload_name(FLAGS.workload)
 
-  if base_workload == [
+  if base_workload in [
       'librispeech_conformer',
       'librispeech_deepspeech',
       'imagenet_vit',
