@@ -123,7 +123,7 @@ class BaseCriteo1TbDlrmSmallWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
+    """Approx. steps the baseline can do in the allowed runtime budget."""
     return 10_666
 
   def _eval_model_on_split(self,

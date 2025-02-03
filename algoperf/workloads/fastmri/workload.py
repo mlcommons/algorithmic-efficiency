@@ -103,8 +103,8 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 36_189
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 18_094
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,

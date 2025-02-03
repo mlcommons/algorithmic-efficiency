@@ -96,8 +96,8 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 133_333
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 120_000
 
   @property
   def pre_ln(self) -> bool:

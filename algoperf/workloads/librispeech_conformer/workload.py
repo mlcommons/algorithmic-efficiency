@@ -87,5 +87,5 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 80_000
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 76_000
