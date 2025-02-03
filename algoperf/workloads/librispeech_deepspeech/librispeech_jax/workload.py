@@ -1,15 +1,15 @@
 import functools
 from typing import Dict, Optional, Tuple
 
-from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
+from flax import jax_utils
 
-from algoperf import param_utils
-from algoperf import spec
-from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
-    LibriSpeechConformerWorkload
+from algoperf import param_utils, spec
+from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import (
+  LibriSpeechConformerWorkload,
+)
 from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
 
 
@@ -104,7 +104,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 55_506  # ~15.4 hours
+    return 44_405  # ~12.3 hours
 
   @property
   def use_tanh(self) -> bool:

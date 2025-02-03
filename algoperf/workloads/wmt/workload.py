@@ -88,7 +88,7 @@ class BaseWmtWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 48_151  # ~13.5 hours
+    return 43_336  # ~12.0 hours
 
   @property
   def eval_period_time_sec(self) -> int:

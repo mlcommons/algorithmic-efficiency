@@ -3,17 +3,18 @@ from typing import Optional
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algoperf import param_utils
-from algoperf import spec
+from algoperf import param_utils, spec
 from algoperf.pytorch_utils import pytorch_setup
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
-    initialize
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import \
-    LibriSpeechConformerWorkload
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
-    DeepspeechConfig
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
-    DeepspeechEncoderDecoder
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import (
+  initialize,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import (
+  LibriSpeechConformerWorkload,
+)
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import (
+  DeepspeechConfig,
+  DeepspeechEncoderDecoder,
+)
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -81,7 +82,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 55_506  # ~15.4 hours
+    return 44_405  # ~12.3 hours
 
   @property
   def use_tanh(self) -> bool:
