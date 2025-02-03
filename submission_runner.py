@@ -21,6 +21,12 @@ from inspect import signature
 import itertools
 import json
 import os
+
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
+# disable only for deepspeech if it works fine for other workloads.
+os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
+
 import struct
 import time
 from types import MappingProxyType
@@ -30,11 +36,9 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
+import tensorflow as tf
 import torch
 import torch.distributed as dist
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
-import tensorflow as tf
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -51,9 +55,6 @@ from algorithmic_efficiency.pytorch_utils import pytorch_init
 from algorithmic_efficiency.pytorch_utils import pytorch_setup
 from algorithmic_efficiency.pytorch_utils import sync_ddp_time
 from algorithmic_efficiency.workloads import workloads
-
-# disable only for deepspeech if it works fine for other workloads.
-os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
@@ -702,11 +703,12 @@ def main(_):
   ]:
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.80'
 
+  if base_workload != 'librispeech_conformer':
+    # Remove the environment variable (only for workloads other than librispeech conformer).
+    del os.environ['PYTORCH_CUDA_ALLOC_CONF']
+
   if FLAGS.set_pytorch_max_split_size:
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
-
-  if FLAGS.framework == 'pytorch' and base_workload == 'librispeech_conformer':
-    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(
