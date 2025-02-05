@@ -6,16 +6,16 @@ from flax import jax_utils
 import flax.linen as nn
 import jax
 from jax import lax
-from jax.sharding import NamedSharding, PartitionSpec as P
-
-from algorithmic_efficiency import sharding_utils
 import jax.numpy as jnp
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 import numpy as np
 import optax
 import torch
 
 from algorithmic_efficiency import data_utils
 from algorithmic_efficiency import param_utils
+from algorithmic_efficiency import sharding_utils
 from algorithmic_efficiency import spec
 from algorithmic_efficiency.workloads.librispeech_conformer import metrics
 from algorithmic_efficiency.workloads.librispeech_conformer import workload
@@ -23,6 +23,7 @@ from algorithmic_efficiency.workloads.librispeech_conformer.input_pipeline impor
     LibriSpeechDataset
 from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax import \
     models
+
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
@@ -95,16 +96,18 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    
+
     # Add sharding
     mesh = sharding_utils.get_mesh()
     params = jax.tree_map(
-        lambda x: jax.device_put(x, sharding_utils.get_replicated_sharding(mesh)),
+        lambda x: jax.device_put(x, sharding_utils.get_replicated_sharding(mesh)
+                                ),
         params)
     model_state = jax.tree_map(
-        lambda x: jax.device_put(x, sharding_utils.get_replicated_sharding(mesh)),
+        lambda x: jax.device_put(x, sharding_utils.get_replicated_sharding(mesh)
+                                ),
         model_state)
-    
+
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -340,36 +343,41 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     targets, target_paddings = batch['targets']
     # Convert metrics bundle to dictionary
     metrics_dict = {
-        'loss_per_example': loss['per_example'],
-        'decoded': decoded,
-        'decoded_paddings': decoded_paddings,
-        'targets': targets,
-        'target_paddings': target_paddings,
-        'n_valid_examples': jnp.zeros((len(jax.devices()), 1)) + loss['n_valid_examples']
+        'loss_per_example':
+            loss['per_example'],
+        'decoded':
+            decoded,
+        'decoded_paddings':
+            decoded_paddings,
+        'targets':
+            targets,
+        'target_paddings':
+            target_paddings,
+        'n_valid_examples':
+            jnp.zeros((len(jax.devices()), 1)) + loss['n_valid_examples']
     }
     return metrics_dict
 
-  def eval_step(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState):
+  def eval_step(self,
+                params: spec.ParameterContainer,
+                batch: Dict[str, spec.Tensor],
+                model_state: spec.ModelAuxiliaryState,
+                rng: spec.RandomState):
     """Evaluates the model and returns a metrics bundle."""
     metrics_dict = self._eval_step(params, batch, model_state, rng)
-    
+
     # Convert dictionary back to metrics bundle
     metrics = self.metrics_bundle.single_from_model_output(
         loss_dict={
-          'summed': metrics_dict['loss_per_example'].sum(),
-          'per_example': metrics_dict['loss_per_example'],
-          'n_valid_examples': metrics_dict['n_valid_examples'].sum()
+            'summed': metrics_dict['loss_per_example'].sum(),
+            'per_example': metrics_dict['loss_per_example'],
+            'n_valid_examples': metrics_dict['n_valid_examples'].sum()
         },
         decoded=metrics_dict['decoded'],
         decoded_paddings=metrics_dict['decoded_paddings'],
         targets=metrics_dict['targets'],
         target_paddings=metrics_dict['target_paddings'])
-    
+
     return metrics
 
   def _eval_model_on_split(self,
@@ -395,10 +403,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     metrics_report = None
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
-      computed_metrics = self.eval_step(params,
-                                      eval_batch,
-                                      model_state,
-                                      rng)
+      computed_metrics = self.eval_step(params, eval_batch, model_state, rng)
 
       if metrics_report is None:
         metrics_report = computed_metrics
@@ -416,15 +421,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           sharding_utils.get_replicated_sharding(),  # model_state
       ),
       out_shardings=sharding_utils.get_replicated_sharding(),
-      static_argnums=(0,)
-  )
+      static_argnums=(0,))
   def sync_batch_stats(
       self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
     """Sync batch statistics across replicas."""
     # Replace pmean with direct mean across devices
-    new_batch_stats = jax.tree_map(
-        lambda x: jnp.mean(x, axis=0), 
-        model_state['batch_stats'])
+    new_batch_stats = jax.tree_map(lambda x: jnp.mean(x, axis=0),
+                                   model_state['batch_stats'])
     return model_state.copy({'batch_stats': new_batch_stats})
 
 

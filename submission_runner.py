@@ -28,6 +28,9 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
+
+jax.config.update('jax_default_prng_impl', 'threefry2x32')
+jax.config.update('jax_threefry_partitionable', True)
 import torch
 import torch.distributed as dist
 
