@@ -6,11 +6,13 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 from flax import jax_utils
 import jax
 from jax import lax
-from jax.sharding import NamedSharding, PartitionSpec as P
 import jax.numpy as jnp
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 import optax
 
-from algorithmic_efficiency import spec, sharding_utils
+from algorithmic_efficiency import sharding_utils
+from algorithmic_efficiency import spec
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -203,7 +205,7 @@ def update_params(
       donate_argnums=(2, 3, 4),
       in_shardings=arg_shardings,
       out_shardings=out_shardings)
-  outputs = jitted_train_step(workload,
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
                               opt_update_fn,
                               model_state,
                               optimizer_state,
@@ -212,7 +214,6 @@ def update_params(
                               rng,
                               grad_clip,
                               label_smoothing)
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:

@@ -81,8 +81,8 @@ class SpecAug(nn.Module):
           jnp.expand_dims(jnp.arange(multiplicity, dtype=jnp.int32), 0),
           [batch_size, 1])
       multiplicity_tensor = masks_per_frame * choose_range
-      multiplicity_weights = (multiplicity_weights <
-                              multiplicity_tensor).astype(jnp.int32)
+      multiplicity_weights = (multiplicity_weights
+                              < multiplicity_tensor).astype(jnp.int32)
       pre_mask = jnp.einsum('bmt,bm->bt', pre_mask, multiplicity_weights)
     else:
       pre_mask = jnp.einsum('bmt->bt', pre_mask)

@@ -6,8 +6,9 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 from flax import jax_utils
 import jax
 from jax import lax
-from jax.sharding import NamedSharding, PartitionSpec as P
 import jax.numpy as jnp
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 import optax
 
 from algoperf import spec, sharding_utils
@@ -124,7 +125,6 @@ def update_params(
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
   else:
@@ -146,17 +146,17 @@ def update_params(
       replicated,  # model_state
       replicated,  # optimizer_state
       replicated,  # current_param_container
-      sharded,     # batch
-      sharded,     # rng
+      sharded,  # batch
+      replicated,  # rng
       replicated,  # grad_clip
-      replicated   # label_smoothing
+      replicated  # label_smoothing
   )
   out_shardings = (
       replicated,  # new_optimizer_state
       replicated,  # updated_params
       replicated,  # new_model_state
       replicated,  # loss
-      replicated   # grad_norm
+      replicated  # grad_norm
   )
 
   # Jit with shardings
@@ -167,16 +167,15 @@ def update_params(
       in_shardings=arg_shardings,
       out_shardings=out_shardings)
 
-  outputs = jitted_train_step(workload,
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
                               opt_update_fn,
                               model_state,
                               optimizer_state,
                               current_param_container,
                               batch,
-                              per_device_rngs,
+                              rng,
                               grad_clip,
                               label_smoothing)
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:

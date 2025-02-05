@@ -1,7 +1,9 @@
 """Utilities for dealing with sharding in JAX."""
 
 import jax
-from jax.sharding import Mesh, NamedSharding, PartitionSpec
+from jax.sharding import Mesh
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec
 
 
 def get_mesh() -> jax.sharding.Mesh:
