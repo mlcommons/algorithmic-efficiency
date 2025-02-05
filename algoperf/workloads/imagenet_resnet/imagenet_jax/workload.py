@@ -19,6 +19,7 @@ import optax
 import tensorflow_datasets as tfds
 
 from algoperf import param_utils
+from algoperf import sharding_utils
 from algoperf import random_utils as prng
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet import imagenet_v2
@@ -71,16 +72,20 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         use_randaug=use_randaug)
     return ds
 
+  @functools.partial(
+      jax.jit,
+      in_shardings=(
+          sharding_utils.get_replicated_sharding(),  # model_state
+      ),
+      out_shardings=sharding_utils.get_replicated_sharding(),
+      static_argnums=(0,))
   def sync_batch_stats(
       self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
-    """Sync the batch statistics across replicas."""
-    # An axis_name is passed to pmap which can then be used by pmean.
-    # In this case each device has its own version of the batch statistics and
-    # we average them.
-    avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-    new_model_state = model_state.copy()  # Create a shallow copy
-    new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
-    return new_model_state
+    """Sync batch statistics across replicas."""
+    new_batch_stats = jax.tree_map(lambda x: jnp.mean(x, axis=0),
+                                   model_state['batch_stats'])
+    return model_state.copy({'batch_stats': new_batch_stats})
+
 
   def init_model_fn(
       self,
@@ -113,18 +118,30 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model_state, params = pop(variables, "params")
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_utils.replicate(model_state)
-    params = jax_utils.replicate(params)
+    mesh = sharding_utils.get_mesh()
+    params = jax.tree_map(
+        lambda x: jax.device_put(x, sharding_utils.get_replicated_sharding(mesh)
+                                ),
+        params)
+    model_state = jax.tree_map(
+        lambda x: jax.device_put(x, sharding_utils.get_replicated_sharding(mesh)
+                                ),
+        model_state)
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, 0),
-      static_broadcasted_argnums=(0,))
+      jax.jit,
+      in_shardings=(
+          sharding_utils.get_replicated_sharding(),  # params
+          sharding_utils.get_naive_sharding_spec(),  # batch
+          sharding_utils.get_replicated_sharding(),  # model_state
+          sharding_utils.get_replicated_sharding(),  # rng
+      ),
+      static_argnums=(0,),
+      out_shardings=sharding_utils.get_naive_sharding_spec())
   def _eval_model(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor],
@@ -218,7 +235,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         'loss': summed_loss,
         'accuracy': accuracy,
     }
-    metrics = lax.psum(metrics, axis_name='batch')
+    # metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _eval_model_on_split(self,
@@ -252,11 +269,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       eval_rng = prng.fold_in(eval_rng, bi)
       step_eval_rngs = prng.split(eval_rng, jax.local_device_count())
       batch = next(self._eval_iters[split])
-      # We already average these metrics across devices inside _compute_metrics.
       synced_metrics = self._eval_model(params,
                                         batch,
                                         model_state,
                                         step_eval_rngs)
+      # Sum up the synced metrics
+      synced_metrics = jax.tree_map(lambda x: jnp.sum(x, axis=0), synced_metrics)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
