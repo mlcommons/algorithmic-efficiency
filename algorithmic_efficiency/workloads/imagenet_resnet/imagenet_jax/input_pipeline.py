@@ -400,6 +400,6 @@ def create_input_iter(split: str,
       ds)
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
-  it = jax_utils.prefetch_to_device(it, 2)
+  # it = jax_utils.prefetch_to_device(it, 2)
 
   return iter(it)
