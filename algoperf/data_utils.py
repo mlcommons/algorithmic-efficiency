@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
-from algoperf import spec
+from algoperf import spec, sharding_utils
 
 
 def shard_and_maybe_pad_np(
@@ -60,7 +60,7 @@ def shard_and_maybe_pad_np(
     if remainder_size != 0 or pad_to_global_batch_size:
       x = pad(x, pad_size, padding_value=padding_value)
 
-    return x
+    return jax.device_put(x, sharding_utils.get_naive_sharding_spec()) # x
 
   return jax.tree.map(_prepare, batch)
 
