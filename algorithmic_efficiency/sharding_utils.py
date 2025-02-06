@@ -17,6 +17,11 @@ def get_replicated_sharding(mesh=None):
     mesh = get_mesh()
   return NamedSharding(mesh, PartitionSpec())
 
+def shard_replicated(x, mesh=None):
+  """Shards a tensor across all devices."""
+  if mesh is None:
+    mesh = get_mesh()
+  return jax.tree_map(lambda x: jax.device_put(x, get_replicated_sharding(mesh)), x)
 
 def get_naive_sharding_spec(mesh=None):
   """Returns a sharding spec that shards data along the first axis."""

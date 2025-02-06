@@ -1,5 +1,6 @@
 """ImageNet workload implemented in Jax."""
 
+import functools
 from typing import Dict, Optional, Tuple
 
 from flax import jax_utils
@@ -16,6 +17,7 @@ from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     BaseImagenetVitWorkload
 from algorithmic_efficiency.workloads.imagenet_vit.workload import \
     decode_variant
+from algorithmic_efficiency import sharding_utils
 
 
 # Make sure we inherit from the ViT base workload first.
@@ -47,13 +49,13 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     params, model_state = self.initialized(rng, self._model)
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_utils.replicate(model_state)
-    params = jax_utils.replicate(params)
+    params = sharding_utils.shard_replicated(params)
+    model_state = sharding_utils.shard_replicated(model_state)
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'head'
-
+  
   def model_fn(
       self,
       params: spec.ParameterContainer,

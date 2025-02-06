@@ -73,21 +73,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         use_randaug=use_randaug)
     return ds
 
-  @functools.partial(
-      jax.jit,
-      in_shardings=(
-          sharding_utils.get_replicated_sharding(),  # model_state
-      ),
-      out_shardings=sharding_utils.get_replicated_sharding(),
-      static_argnums=(0,))
-  def sync_batch_stats(
-      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
-    """Sync batch statistics across replicas."""
-    new_batch_stats = jax.tree_map(lambda x: jnp.mean(x, axis=0),
-                                   model_state['batch_stats'])
-    return model_state.copy({'batch_stats': new_batch_stats})
-
-
   def init_model_fn(
       self,
       rng: spec.RandomState,
@@ -232,7 +217,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         'loss': summed_loss,
         'accuracy': accuracy,
     }
-    # metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _eval_model_on_split(self,
@@ -261,12 +245,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     eval_metrics = {}
     for bi in range(num_batches):
       eval_rng = prng.fold_in(eval_rng, bi)
-      step_eval_rngs = prng.split(eval_rng, jax.local_device_count())
       batch = next(self._eval_iters[split])
       synced_metrics = self._eval_model(params,
                                         batch,
                                         model_state,
-                                        step_eval_rngs)
+                                        eval_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
