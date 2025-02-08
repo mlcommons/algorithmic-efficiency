@@ -21,7 +21,6 @@ from inspect import signature
 import itertools
 import json
 import os
-
 import struct
 import time
 from types import MappingProxyType
@@ -685,7 +684,7 @@ def main(_):
   base_workload = workloads.get_base_workload_name(FLAGS.workload)
   if base_workload == 'librispeech_conformer':
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-  
+
   if FLAGS.set_pytorch_max_split_size:
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
 

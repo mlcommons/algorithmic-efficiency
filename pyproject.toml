@@ -47,6 +47,7 @@ dependencies = [
   "clu==0.0.12",
   "matplotlib>=3.9.2",
   "tabulate==0.9.0",
+
 ]
 
 [build-system]
@@ -70,7 +71,7 @@ version_file = "algorithmic_efficiency/_version.py"
 [project.optional-dependencies]
 # All workloads
 full = [
-  "algorithmic_efficiency[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]",
+  "algorithmic_efficiency[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt,wandb]",
 ]
 # All workloads plus development dependencies
 full_dev = ["algorithmic_efficiency[full,dev]"]
@@ -82,6 +83,8 @@ dev = [
   "yapf==0.32.0",
   "pre-commit==4.0.1",
 ]
+
+wandb = ["wandb==0.16.5"]
 
 # Workloads
 criteo1tb = ["scikit-learn==1.5.2"]
@@ -119,7 +122,6 @@ pytorch_gpu = [
   "torch==2.5.1",
   "torchvision==0.20.1",
 ] # Note: omit the cuda suffix and installing from the appropriate wheel will result in using locally installed CUDA.
-wandb = ["wandb==0.16.5"]
 
 ###############################################################################
 #                           Linting Configurations                            #
