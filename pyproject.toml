@@ -116,7 +116,7 @@ jax_gpu = [
 ]
 pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]
 pytorch_gpu = [
-  "torch==2.5.0",
+  "torch==2.5.1",
   "torchvision==0.20.1",
 ] # Note: omit the cuda suffix and installing from the appropriate wheel will result in using locally installed CUDA.
 wandb = ["wandb==0.16.5"]
