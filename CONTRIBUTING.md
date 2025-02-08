@@ -22,6 +22,7 @@
   - [Style Testing](#style-testing)
   - [Unit and Integration Tests](#unit-and-integration-tests)
   - [Regression Tests](#regression-tests)
+  - [Versioning](#versioning)
 
 ## Contributing to MLCommons
 
@@ -276,3 +277,15 @@ To run a regression test:
 2. Turn on the self-hosted runner.
 3. Run the self-hosted runner application for the runner to accept jobs.
 4. Open a pull request into mian to trigger the workflow.
+
+### Versioning
+
+The package version is automatically determined by the `setuptools_scm` package based on the last git tag.
+It follows the structure `major.minor.patch` + `devN` where `N` is the number of commits since the last tag.
+It automatically increments the patch version (i.e. it guesses the next version) if there are commits after the last tag.
+Additionally, if there are uncommitted changes, the version will include a suffix separated by a `+` character and includes the last commit hash plus the date on dirt workdir (see [setuptools_scm's documentation](https://setuptools-scm.readthedocs.io/en/latest/extending/#setuptools_scmlocal_scheme) with the default version and local scheme).
+You can check what version `setuptools_scm` is creating by running `python -m setuptools_scm`.
+
+To create a new version, create a new release (and tag) in the GitHub UI.
+The package version is automatically updated to the new version.
+Once the package is installed, the version can be accessed as the package attribute `algorithmic_efficiency.__version__`, i.e. via `python -c "import algorithmic_efficiency; print(algorithmic_efficiency.__version__)"`.

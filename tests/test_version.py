@@ -10,4 +10,8 @@ def test_version_attribute():
   version = algorithmic_efficiency.__version__
   assert isinstance(version, str)
   version_elements = version.split(".")
-  assert all(el.isnumeric() for el in version_elements)
+  print(version_elements)
+  # Only check the first two elements, i.e. major, minor
+  # (patch is not checked as it is not required).
+  # The remaining elements contain commit hash and dirty status.
+  assert all(el.isnumeric() for el in version_elements[0:2])
