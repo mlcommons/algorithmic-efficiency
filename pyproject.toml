@@ -103,13 +103,13 @@ jax_core_deps = [
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.4.26",
-  "jaxlib==0.4.26",
+  "jax==0.4.28",
+  "jaxlib==0.4.28",
   "algorithmic_efficiency[jax_core_deps]",
 ]
 jax_gpu = [
-  "jax==0.4.26",
-  "jaxlib==0.4.26",
+  "jax==0.4.28",
+  "jaxlib==0.4.28",
   "jax-cuda12-plugin[with_cuda]==0.4.28",
   "jax-cuda12-pjrt==0.4.28",
   "algorithmic_efficiency[jax_core_deps]",
