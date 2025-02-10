@@ -95,7 +95,7 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 8859  # ~2.5 hours
+    return 4_430  # ~1.2 hours
 
   @property
   def eval_period_time_sec(self) -> int:
@@ -103,8 +103,8 @@ class BaseFastMRIWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 36_189
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 18_094
 
   def _build_input_queue(self,
                          data_rng: spec.RandomState,

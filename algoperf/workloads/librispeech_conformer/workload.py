@@ -79,7 +79,7 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 61_068  # ~17 hours
+    return 58_015  # ~16.1 hours
 
   @property
   def eval_period_time_sec(self) -> int:
@@ -87,5 +87,5 @@ class BaseLibrispeechWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 80_000
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 76_000

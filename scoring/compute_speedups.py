@@ -25,6 +25,7 @@ flags.DEFINE_boolean('save_results',
                      'Whether to save the results to disk.')
 FLAGS = flags.FLAGS
 
+# These are the old budgets, used in the first iteration of the competition.
 MAX_BUDGETS = {
     'criteo1tb': 7703,
     'fastmri': 8859,

@@ -102,7 +102,7 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 63_008  # ~17.5 hours
+    return 66_159  # ~18.4 hours
 
   @property
   def eval_period_time_sec(self) -> int:
@@ -144,5 +144,5 @@ class BaseImagenetResNetWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 186_666
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 195_999
