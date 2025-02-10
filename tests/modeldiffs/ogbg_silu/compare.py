@@ -8,10 +8,10 @@ import jraph
 import numpy as np
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.ogbg.ogbg_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.ogbg.ogbg_jax.workload import \
     OgbgSiluWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
+from algoperf.workloads.ogbg.ogbg_pytorch.workload import \
     OgbgSiluWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 

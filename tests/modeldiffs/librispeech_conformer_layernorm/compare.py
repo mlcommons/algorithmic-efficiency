@@ -6,10 +6,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import jax
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
     LibriSpeechConformerLayerNormWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.librispeech_conformer.librispeech_pytorch.workload import \
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import \
     LibriSpeechConformerLayerNormWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 

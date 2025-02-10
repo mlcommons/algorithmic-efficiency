@@ -20,8 +20,8 @@ from absl import app
 from absl import flags
 from absl import logging
 
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency.workloads.workloads import get_base_workload_name
+from algoperf import random_utils as prng
+from algoperf.workloads.workloads import get_base_workload_name
 import docker
 
 flags.DEFINE_string(

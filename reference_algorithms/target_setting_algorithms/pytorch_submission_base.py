@@ -6,8 +6,8 @@ from absl import logging
 import torch
 import torch.distributed.nn as dist_nn
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
+from algoperf import spec
+from algoperf.pytorch_utils import pytorch_setup
 
 USE_PYTORCH_DDP = pytorch_setup()[0]
 

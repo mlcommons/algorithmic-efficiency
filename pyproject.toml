@@ -3,7 +3,7 @@
 ###############################################################################
 
 [project]
-name = "algorithmic_efficiency"
+name = "algoperf"
 dynamic = ["version"]
 description = "Codebase for the AlgoPerf: Training Algorithms benchmark"
 authors = [
@@ -62,7 +62,7 @@ zip-safe = false
 find = {} # Scanning implicit namespaces is active by default
 
 [tool.setuptools_scm]
-version_file = "algorithmic_efficiency/_version.py"
+version_file = "algoperf/_version.py"
 
 ###############################################################################
 #                          (Optional) Dependencies                            #
@@ -70,10 +70,10 @@ version_file = "algorithmic_efficiency/_version.py"
 [project.optional-dependencies]
 # All workloads
 full = [
-  "algorithmic_efficiency[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]",
+  "algoperf[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]",
 ]
 # All workloads plus development dependencies
-full_dev = ["algorithmic_efficiency[full,dev]"]
+full_dev = ["algoperf[full,dev]"]
 # Dependencies for developing the package
 dev = [
   "isort==5.12.0",
@@ -106,12 +106,12 @@ jax_core_deps = [
 jax_cpu = [
   "jax==0.4.10",
   "jaxlib==0.4.10",
-  "algorithmic_efficiency[jax_core_deps]",
+  "algoperf[jax_core_deps]",
 ]
 jax_gpu = [
   "jax==0.4.10",
   "jaxlib==0.4.10+cuda12.cudnn88",
-  "algorithmic_efficiency[jax_core_deps]",
+  "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = ["torch==2.1.0", "torchvision==0.16.0"]
 pytorch_gpu = [
@@ -130,7 +130,7 @@ based_on_style = "yapf"
 each_dict_entry_on_separate_line = false
 split_all_top_level_comma_separated_values = true
 [tool.yapfignore]
-ignore_patterns = ["algorithmic_efficiency/_version.py"]
+ignore_patterns = ["algoperf/_version.py"]
 
 # isort configuration
 [tool.isort]

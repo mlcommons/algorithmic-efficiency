@@ -1,6 +1,6 @@
 import torch
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import
 from reference_algorithms.target_setting_algorithms.pytorch_submission_base import \

@@ -6,7 +6,7 @@ for guidelines.
 """
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 
 
 def init_optimizer_state(workload: spec.Workload,

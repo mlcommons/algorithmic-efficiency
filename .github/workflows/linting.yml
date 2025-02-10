@@ -17,7 +17,7 @@ jobs:
         pip install pylint==2.16.1
     - name: Run pylint
       run: |
-        pylint algorithmic_efficiency
+        pylint algoperf
         pylint reference_algorithms
         pylint prize_qualification_baselines
         pylint submission_runner.py

@@ -40,17 +40,17 @@ import tensorflow as tf
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
-from algorithmic_efficiency import checkpoint_utils
-from algorithmic_efficiency import halton
-from algorithmic_efficiency import logger_utils
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.profiler import Profiler
-from algorithmic_efficiency.pytorch_utils import pytorch_init
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.pytorch_utils import sync_ddp_time
-from algorithmic_efficiency.workloads import workloads
+from algoperf import checkpoint_utils
+from algoperf import halton
+from algoperf import logger_utils
+from algoperf import random_utils as prng
+from algoperf import spec
+from algoperf.profiler import PassThroughProfiler
+from algoperf.profiler import Profiler
+from algoperf.pytorch_utils import pytorch_init
+from algoperf.pytorch_utils import pytorch_setup
+from algoperf.pytorch_utils import sync_ddp_time
+from algoperf.workloads import workloads
 
 # disable only for deepspeech if it works fine for other workloads.
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
