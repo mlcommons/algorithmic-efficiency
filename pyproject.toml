@@ -71,7 +71,7 @@ version_file = "algorithmic_efficiency/_version.py"
 [project.optional-dependencies]
 # All workloads
 full = [
-  "algorithmic_efficiency[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt,wandb]",
+  "algorithmic_efficiency[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]",
 ]
 # All workloads plus development dependencies
 full_dev = ["algorithmic_efficiency[full,dev]"]
