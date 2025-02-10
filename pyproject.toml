@@ -84,7 +84,7 @@ dev = [
   "pre-commit==4.0.1",
 ]
 
-wandb = ["wandb==0.16.5"]
+wandb = ["wandb==0.19.6"]
 
 # Workloads
 criteo1tb = ["scikit-learn==1.5.2"]
