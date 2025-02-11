@@ -3,8 +3,7 @@
 from typing import Dict, Iterator, Optional
 
 from algoperf import spec
-from algoperf.workloads.imagenet_resnet.workload import \
-    BaseImagenetResNetWorkload
+from algoperf.workloads.imagenet_resnet.workload import BaseImagenetResNetWorkload
 
 
 def decode_variant(variant: str) -> Dict[str, int]:
@@ -81,7 +80,7 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 77_520  # ~22 hours
+    return 69_768  # ~19.4 hours
 
   @property
   def eval_period_time_sec(self) -> int:
@@ -110,5 +109,5 @@ class BaseImagenetVitWorkload(BaseImagenetResNetWorkload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 186_666
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 167_999

@@ -9,8 +9,7 @@ import jax
 
 from algoperf import random_utils as prng
 from algoperf import spec
-from algoperf.workloads.ogbg import input_pipeline
-from algoperf.workloads.ogbg import metrics
+from algoperf.workloads.ogbg import input_pipeline, metrics
 
 
 class BaseOgbgWorkload(spec.Workload):
@@ -88,7 +87,7 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 18_477  # ~5 hours
+    return 12_011  # ~3.3 hours
 
   @property
   def eval_period_time_sec(self) -> int:
@@ -140,8 +139,8 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def step_hint(self) -> int:
-    """Max num steps the baseline algo was given to reach the target."""
-    return 80_000
+    """Approx. steps the baseline can do in the allowed runtime budget."""
+    return 52_000
 
   @abc.abstractmethod
   def _normalize_eval_metrics(
