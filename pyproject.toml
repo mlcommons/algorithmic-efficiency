@@ -77,7 +77,7 @@ full = [
 full_dev = ["algoperf[full,dev]"]
 # Dependencies for developing the package
 dev = [
-  "isort==5.13.0",
+  "isort==5.12.0",
   "pylint==2.17.4",
   "pytest==8.3.3",
   "yapf==0.32.0",
