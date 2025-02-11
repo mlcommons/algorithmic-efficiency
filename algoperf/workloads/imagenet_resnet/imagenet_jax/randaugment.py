@@ -7,11 +7,11 @@ https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugm
 import inspect
 import math
 
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
     rotate_img
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
     transform
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
     translate
 import tensorflow as tf
 
