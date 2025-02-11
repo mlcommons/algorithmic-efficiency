@@ -21,7 +21,7 @@ def init_optimizer_state(workload: spec.Workload,
   del rng
 
   # Create optimizer.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
 
   opt_init_fn, opt_update_fn = optax.sgd(learning_rate=0.001)

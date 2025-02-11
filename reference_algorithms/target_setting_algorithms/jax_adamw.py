@@ -29,7 +29,7 @@ def init_optimizer_state(workload: spec.Workload,
                                                    hyperparameters)
 
   # Create optimizer.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   epsilon = (
       hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)

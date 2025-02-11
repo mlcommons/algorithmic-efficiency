@@ -11,6 +11,7 @@ from typing import Dict, Iterator, Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
+from flax.core import pop
 import jax
 from jax import lax
 import jax.numpy as jnp
@@ -77,8 +78,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     # In this case each device has its own version of the batch statistics and
     # we average them.
     avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-    new_model_state = model_state.copy(
-        {'batch_stats': avg_fn(model_state['batch_stats'])})
+    new_model_state = model_state.copy()  # Create a shallow copy
+    new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
     return new_model_state
 
   def init_model_fn(
@@ -109,7 +110,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     input_shape = (1, 224, 224, 3)
     variables = jax.jit(model.init)({'params': rng},
                                     jnp.ones(input_shape, model.dtype))
-    model_state, params = variables.pop('params')
+    model_state, params = pop(variables, "params")
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_utils.replicate(model_state)
@@ -261,7 +262,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    eval_metrics = jax.tree_map(lambda x: float(x[0] / num_examples),
+    eval_metrics = jax.tree.map(lambda x: float(x[0] / num_examples),
                                 eval_metrics)
     return eval_metrics
 

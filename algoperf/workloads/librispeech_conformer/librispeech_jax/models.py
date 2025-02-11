@@ -396,10 +396,9 @@ class MultiHeadedSelfAttention(nn.Module):
         mask_paddings > 0, mask_paddings > 0, dtype=jnp.float32)
 
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
-
     attention_fn = functools.partial(
         dot_product_attention, temperature=config.attention_temperature)
-    result = nn.SelfAttention(
+    result = nn.MultiHeadDotProductAttention(
         num_heads=config.num_attention_heads,
         qkv_features=config.encoder_dim,
         decode=False,
@@ -410,7 +409,8 @@ class MultiHeadedSelfAttention(nn.Module):
         broadcast_dropout=False,
         attention_fn=attention_fn,
         dropout_rate=config.attention_dropout_rate,
-        deterministic=not train)(inputs, attention_mask)
+        deterministic=not train)(
+            inputs_q=inputs, mask=attention_mask)
 
     if config.attention_residual_dropout_rate is None:
       attention_residual_dropout_rate = 0.1

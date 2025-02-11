@@ -66,7 +66,7 @@ def pytorch_param_types(
 
 def jax_param_shapes(
     params: spec.ParameterContainer) -> spec.ParameterShapeTree:
-  return jax.tree_map(lambda x: spec.ShapeTuple(x.shape), params)
+  return jax.tree.map(lambda x: spec.ShapeTuple(x.shape), params)
 
 
 def jax_param_types(param_shapes: spec.ParameterShapeTree,

@@ -81,7 +81,7 @@ class CifarWorkload(BaseCifarWorkload):
     }
     if split == 'eval_train':
       train_indices = indices_split['train']
-      random.Random(data_rng[0]).shuffle(train_indices)
+      random.Random(int(data_rng[0])).shuffle(train_indices)
       indices_split['eval_train'] = train_indices[:self.num_eval_train_examples]
     if split in indices_split:
       dataset = torch.utils.data.Subset(dataset, indices_split[split])

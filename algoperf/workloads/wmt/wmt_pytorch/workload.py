@@ -347,7 +347,7 @@ class WmtWorkload(BaseWmtWorkload):
         dist.all_reduce(metric)
     total_metrics = {k: v.item() for k, v in total_metrics.items()}
     eval_denominator = total_metrics.pop('denominator')
-    return jax.tree_map(lambda x: float(x / eval_denominator), total_metrics)
+    return jax.tree.map(lambda x: float(x / eval_denominator), total_metrics)
 
 
 class WmtWorkloadPostLN(WmtWorkload):
