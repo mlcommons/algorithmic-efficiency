@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Technical Documentation & FAQs
 
-**Version:** 0.0.21 *(Last updated February 20, 2024)*
+**Version:** 0.0.22 *(Last updated February 10, 2025)*
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a *Training Algorithm Track* and a *Model Track* in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks. The following is the technical documentation for the Training Algorithm Track.
@@ -9,7 +9,6 @@
 
 - [Introduction](#introduction)
 - [Technical Documentation of the Training Algorithm Track](#technical-documentation-of-the-training-algorithm-track)
-  - [Competition Rules](#competition-rules)
   - [Submissions](#submissions)
     - [Specification](#specification)
     - [Evaluation during training](#evaluation-during-training)
@@ -62,10 +61,6 @@ In general, submissions to the Training Algorithm Track will replace specific pi
 Submissions to the Training Algorithm Track can be entered under two separate rulesets, named [external tuning ruleset](#external-tuning-ruleset) and [self-tuning ruleset](#self-tuning-ruleset), with it being possible to submit to both rulesets. The main difference is that the external tuning ruleset allows moderate, automatic, parallel tuning of the optimizer's hyperparameters on each workload, using the submitted workload-agnostic search space. This allows the training algorithm to adapt to a particular task while ensuring that it is not too difficult to tune automatically. Under the self-tuning ruleset, there is no external tuning and submissions need to adapt to a particular task autonomously within a single optimization run. Unless otherwise specified, the rules in this section apply to both rulesets (see, for example, the [Tuning](#tuning) section for the most substantial difference between the rulesets).
 
 The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific [workload](#workloads) (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful. In order to further discourage submissions that overfit to the particular [fixed benchmark workloads](#fixed-workloads), submissions will also be evaluated on [held-out workloads](#randomized-workloads) specified after the submission deadline.
-
-### Competition Rules
-
-For a description of the competition rules and how to submit a training algorithm to the AlgoPerf: Training Algorithms Benchmark, see the [Competition Rules](/COMPETITION_RULES.md), which details the entire competition process.
 
 ### Submissions
 
@@ -494,9 +489,10 @@ All scored runs have to be performed on the benchmarking hardware to allow for a
 - 240 GB in RAM
 - 2 TB in storage (for datasets).
 
-NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
+> [!NOTE]
+> Submitters are no longer required to self-report results to enter the AlgoPerf competition. Instead, they can open a PR and the working group will score the most promising submissions, see our [How to Submit](/README.md#how-to-submit) section for more details.
 
-For self-reported results, it is acceptable to perform the tuning trials on hardware different from the benchmarking hardware, as long as the same hardware is used for all tuning trials. Once the best trial, i.e. the one that reached the *validation* target the fastest, was determined, this run has to be repeated on the competition hardware. For example, submitters can tune using their locally available hardware but have to use the benchmarking hardware, e.g. via cloud providers, for the $5$ scored runs. This allows for a fair comparison to the reported results of other submitters while allowing some flexibility in the hardware.
+When self-reported results, it is acceptable to perform the tuning trials on hardware different from the benchmarking hardware, as long as the same hardware is used for all tuning trials. Once the best trial, i.e. the one that reached the *validation* target the fastest, was determined, this run has to be repeated on the competition hardware. For example, submitters can tune using their locally available hardware but have to use the benchmarking hardware, e.g. via cloud providers, for the $5$ scored runs. This allows for a fair comparison to the reported results of other submitters while allowing some flexibility in the hardware.
 
 #### Defining target performance
 
@@ -529,7 +525,7 @@ In other words, we compute the fraction of workloads where a submission $\bar{s}
 
 An example of a performance profiles plot is shown below, where we plot $\rho_{\bar{s}}(\tau)$ for seven "submissions":
 
-![Example performance profile](.assets/performance_profiles.png)
+![Example performance profile](/.assets/performance_profiles.png)
 
 ##### Integrating performance profiles for the benchmark score
 
@@ -569,9 +565,7 @@ The working group will independently verify the scores of the highest-scoring su
 
 ### Version freeze
 
-The benchmark code base is subject to change after the call for submissions is published. For example, while interacting with the codebase, if submitters encounter bugs or API limitations, they have the option to issue a bug report. This might lead to modifications of the benchmark codebase even after the publication of the call for submissions.
-
-To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we will freeze the package versions of the codebase dependencies before the submission deadline. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will also try to minimize changes to the benchmark codebase as best as possible.
+To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we freeze the package versions of the codebase dependencies in between benchmark iterations. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will try to minimize changes to the benchmark codebase as best as possible.
 
 ## FAQs
 
