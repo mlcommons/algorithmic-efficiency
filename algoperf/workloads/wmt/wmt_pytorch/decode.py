@@ -98,7 +98,7 @@ def gather_beams(nested: Dict[str, Any],
       return x
     return x[batch_indices, beam_indices]
 
-  return jax.tree_map(gather_fn, nested)
+  return jax.tree.map(gather_fn, nested)
 
 
 def gather_topk_beams(nested: Dict[str, Any],
@@ -164,7 +164,7 @@ def beam_init(batch_size: int,
                                 dtype=torch.bool,
                                 device=DEVICE)
   # add beam dimension to attention cache pytree elements
-  beam_cache0 = jax.tree_map(lambda x: add_beam_dim(x, beam_size), cache)
+  beam_cache0 = jax.tree.map(lambda x: add_beam_dim(x, beam_size), cache)
   return BeamState(
       cur_index=cur_index0,
       live_logprobs=live_logprobs0,
@@ -251,7 +251,7 @@ def beam_search(
         state.live_seqs[:batch_size, :beam_size, cur_index:cur_index + 1])
     # Flatten beam dimension into batch to be compatible with model.
     # {[batch, beam, ...], ...} --> {[batch * beam, ...], ...}
-    flat_cache = jax.tree_map(flatten_beam_dim, state.cache)
+    flat_cache = jax.tree.map(flatten_beam_dim, state.cache)
 
     # Call fast-decoder model on current tokens to get next-position logits.
     # --> [batch * beam, vocab]
@@ -262,7 +262,7 @@ def beam_search(
     logits = unflatten_beam_dim(flat_logits, batch_size, beam_size)
     # Unflatten beam dimension in attention cache arrays
     # {[batch * beam, ...], ...} --> {[batch, beam, ...], ...}
-    new_cache = jax.tree_map(
+    new_cache = jax.tree.map(
         lambda x: unflatten_beam_dim(x, batch_size, beam_size), new_flat_cache)
 
     # Gather log probabilities from logits

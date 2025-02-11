@@ -342,7 +342,7 @@ def init_training_metrics(
   """Initialize TrainingMetrics, masked if disabled."""
   if not generate_training_metrics:
     return optax.MaskedNode()
-  return jax.tree_map(
+  return jax.tree.map(
       functools.partial(jnp.repeat, repeats=num_statistics),
       default_training_metrics())
 
@@ -356,14 +356,14 @@ def init_training_metrics_shapes(
       num_statistics,
       generate_training_metrics,
   )
-  return jax.tree_map(lambda arr: [list(arr.shape), arr.dtype], seed)
+  return jax.tree.map(lambda arr: [list(arr.shape), arr.dtype], seed)
 
 
 def init_training_metrics_pspec(generate_training_metrics,):
   """Initialize training metrics partition specification."""
   if not generate_training_metrics:
     return optax.MaskedNode()
-  return jax.tree_map(lambda _: jax.sharding.PartitionSpec(),
+  return jax.tree.map(lambda _: jax.sharding.PartitionSpec(),
                       default_training_metrics())
 
 
@@ -1253,7 +1253,7 @@ def _add_metrics_into_local_stats(local_stats, metrics, keep_old):
     index_start = int(local_stat.index_start)
     index_end = int(len(local_stat.sizes)) + index_start
     # pylint:disable=cell-var-from-loop Used immediately.
-    per_stat_metrics = jax.tree_map(lambda x: x[index_start:index_end], metrics)
+    per_stat_metrics = jax.tree.map(lambda x: x[index_start:index_end], metrics)
     # We don't want to update the metrics if we didn't do a new inverse p-th
     # root calculation to find a new preconditioner, so that TensorBoard curves
     # look consistent (otherwise they'd oscillate between NaN and measured
@@ -1808,7 +1808,7 @@ def distributed_shampoo(
           local_stat,
       ))
 
-    new_stats_flat = jax.tree_map(
+    new_stats_flat = jax.tree.map(
         lambda g,
         s,
         p: _compute_stats(g, s, p, state.count),
@@ -1816,7 +1816,7 @@ def distributed_shampoo(
         stats_flat,
         params_flat)
 
-    outputs = jax.tree_map(
+    outputs = jax.tree.map(
         lambda g,
         s,
         p: _transform_grad(g, s, p, state.count),
@@ -1981,7 +1981,7 @@ def distributed_shampoo(
           ))
 
     return ShampooState(
-        count=jnp.zeros([], jnp.int32), stats=jax.tree_map(_init, params))
+        count=jnp.zeros([], jnp.int32), stats=jax.tree.map(_init, params))
 
   def _skip_preconditioning(param):
     return len(param.shape) < skip_preconditioning_rank_lt or any(
@@ -2140,7 +2140,7 @@ def distributed_shampoo(
         preconditioners = jax.lax.all_gather(preconditioners, batch_axis_name)
         metrics = jax.lax.all_gather(metrics, batch_axis_name)
         preconditioners_flat = unbatch(preconditioners)
-        metrics_flat = jax.tree_map(unbatch, metrics)
+        metrics_flat = jax.tree.map(unbatch, metrics)
       else:
         preconditioners, metrics = _matrix_inverse_pth_root_vmap(
             all_statistics[0],
@@ -2149,9 +2149,9 @@ def distributed_shampoo(
             _maybe_ix(all_preconditioners, 0),
         )
         preconditioners_flat = unbatch(jnp.stack([preconditioners]))
-        metrics = jax.tree_map(
+        metrics = jax.tree.map(
             functools.partial(jnp.expand_dims, axis=0), metrics)
-        metrics_flat = jax.tree_map(unbatch, metrics)
+        metrics_flat = jax.tree.map(unbatch, metrics)
 
       return preconditioners_flat, metrics_flat
 
@@ -2166,7 +2166,7 @@ def distributed_shampoo(
           s[:, :precond_dim(s.shape[0])] for s in packed_statistics
       ]
       n = len(packed_statistics)
-      metrics_init = jax.tree_map(
+      metrics_init = jax.tree.map(
           lambda x: [x] * n,
           default_training_metrics().replace(
               inverse_pth_root_errors=inverse_failure_threshold))
@@ -2215,12 +2215,12 @@ def distributed_shampoo(
 
         if generate_training_metrics:
           # pylint:disable=cell-var-from-loop Used immediately.
-          metrics_for_state = jax.tree_map(
+          metrics_for_state = jax.tree.map(
               lambda x: jnp.stack(x[idx:idx + num_statistics]),
               metrics_flat,
               is_leaf=lambda x: isinstance(x, list))
           assert jax.tree_util.tree_all(
-              jax.tree_map(lambda x: len(state.statistics) == len(x),
+              jax.tree.map(lambda x: len(state.statistics) == len(x),
                            metrics_for_state))
           # If we skipped preconditioner computation, record old metrics.
           metrics_for_state = efficient_cond(perform_step,
@@ -2441,7 +2441,7 @@ def distributed_shampoo(
     if custom_preconditioner and grads_custom is not None:
       stats_grads = treedef.flatten_up_to(grads_custom)
 
-    new_stats_flat = jax.tree_map(
+    new_stats_flat = jax.tree.map(
         lambda g,
         s,
         p: _compute_stats(g, s, p, state.count),
@@ -2452,7 +2452,7 @@ def distributed_shampoo(
     new_stats_flat = _compute_preconditioners(new_stats_flat,
                                               params_flat,
                                               state.count)
-    outputs = jax.tree_map(
+    outputs = jax.tree.map(
         lambda g,
         s,
         p: _transform_grad(g, s, p, state.count),

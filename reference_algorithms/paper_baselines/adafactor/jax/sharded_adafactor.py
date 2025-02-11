@@ -316,11 +316,11 @@ class _ShardedAdafactorHelper:
     """Maps from a tree of (factored) values to separate trees of values."""
     return ShardedAdafactorState(
         count=count,
-        m=jax.tree_map(lambda o: o.m, result_tree),
-        m_scale=jax.tree_map(lambda o: o.m_scale, result_tree),
-        vr=jax.tree_map(lambda o: o.vr, result_tree),
-        vc=jax.tree_map(lambda o: o.vc, result_tree),
-        v=jax.tree_map(lambda o: o.v, result_tree))
+        m=jax.tree.map(lambda o: o.m, result_tree),
+        m_scale=jax.tree.map(lambda o: o.m_scale, result_tree),
+        vr=jax.tree.map(lambda o: o.vr, result_tree),
+        vc=jax.tree.map(lambda o: o.vc, result_tree),
+        v=jax.tree.map(lambda o: o.v, result_tree))
 
   def init(self, param):
     """Initializes the optimizer state for a given param."""
@@ -667,7 +667,7 @@ def sharded_adafactor(
     """Initializes the optimizer's state."""
     return sharded_adafactor_helper.to_state(
         jnp.zeros([], jnp.int32),
-        jax.tree_map(sharded_adafactor_helper.init, params))
+        jax.tree.map(sharded_adafactor_helper.init, params))
 
   def update_fn(updates, state, params=None):
     if params is None:
@@ -677,7 +677,7 @@ def sharded_adafactor(
 
     compute_var_and_slot_update_fn = functools.partial(
         sharded_adafactor_helper.compute_var_and_slot_update, state.count)
-    output = jax.tree_map(compute_var_and_slot_update_fn,
+    output = jax.tree.map(compute_var_and_slot_update_fn,
                           updates,
                           state.m,
                           state.m_scale,
@@ -685,7 +685,7 @@ def sharded_adafactor(
                           state.vc,
                           state.v,
                           params)
-    updates = jax.tree_map(lambda o: o.update, output)
+    updates = jax.tree.map(lambda o: o.update, output)
     count_plus_one = state.count + jnp.array(1, jnp.int32)
     updated_states = sharded_adafactor_helper.to_state(count_plus_one, output)
     return updates, updated_states

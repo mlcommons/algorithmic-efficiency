@@ -70,7 +70,7 @@ class Encoder1DBlock(nn.Module):
   def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
     if not self.use_post_layer_norm:
       y = nn.LayerNorm(name='LayerNorm_0')(x)
-      y = nn.SelfAttention(
+      y = nn.MultiHeadDotProductAttention(
           num_heads=self.num_heads,
           kernel_init=nn.initializers.xavier_uniform(),
           deterministic=train,
@@ -89,7 +89,7 @@ class Encoder1DBlock(nn.Module):
       x = x + y
     else:
       y = x
-      y = nn.SelfAttention(
+      y = nn.MultiHeadDotProductAttention(
           num_heads=self.num_heads,
           kernel_init=nn.initializers.xavier_uniform(),
           deterministic=train,

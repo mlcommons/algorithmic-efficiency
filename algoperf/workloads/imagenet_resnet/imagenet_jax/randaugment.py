@@ -8,7 +8,13 @@ import inspect
 import math
 
 import tensorflow as tf
-from tensorflow_addons import image as contrib_image
+
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
+    rotate_img
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
+    transform
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
+    translate
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
@@ -176,19 +182,19 @@ def rotate(image, degrees, replace):
   # In practice, we should randomize the rotation degrees by flipping
   # it negatively half the time, but that's done on 'degrees' outside
   # of the function.
-  image = contrib_image.rotate(wrap(image), radians)
+  image = rotate_img(wrap(image), radians)
   return unwrap(image, replace)
 
 
 def translate_x(image, pixels, replace):
   """Equivalent of PIL Translate in X dimension."""
-  image = contrib_image.translate(wrap(image), [-pixels, 0])
+  image = translate(wrap(image), [-pixels, 0])
   return unwrap(image, replace)
 
 
 def translate_y(image, pixels, replace):
   """Equivalent of PIL Translate in Y dimension."""
-  image = contrib_image.translate(wrap(image), [0, -pixels])
+  image = translate(wrap(image), [0, -pixels])
   return unwrap(image, replace)
 
 
@@ -198,8 +204,7 @@ def shear_x(image, level, replace):
   # with a matrix form of:
   # [1  level
   #  0  1].
-  image = contrib_image.transform(
-      wrap(image), [1., level, 0., 0., 1., 0., 0., 0.])
+  image = transform(wrap(image), [1., level, 0., 0., 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
@@ -209,8 +214,7 @@ def shear_y(image, level, replace):
   # with a matrix form of:
   # [1  0
   #  level  1].
-  image = contrib_image.transform(
-      wrap(image), [1., 0., 0., level, 1., 0., 0., 0.])
+  image = transform(wrap(image), [1., 0., 0., level, 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
@@ -478,13 +482,13 @@ def _parse_policy_info(name,
 
   # Check to see if prob is passed into function. This is used for operations
   # where we alter bboxes independently.
-  if 'prob' in inspect.getargspec(func)[0]:
+  if 'prob' in inspect.getfullargspec(func)[0]:
     args = tuple([prob] + list(args))
 
   # Add in replace arg if it is required for the function that is being called.
-  if 'replace' in inspect.getargspec(func)[0]:
+  if 'replace' in inspect.getfullargspec(func)[0]:
     # Make sure replace is the final argument
-    assert 'replace' == inspect.getargspec(func)[0][-1]
+    assert 'replace' == inspect.getfullargspec(func)[0][-1]
     args = tuple(list(args) + [replace_value])
 
   return (func, prob, args)
