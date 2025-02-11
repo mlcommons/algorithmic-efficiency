@@ -9,7 +9,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 
 
 def get_batch_size(workload_name):
@@ -26,7 +26,7 @@ def init_optimizer_state(workload: spec.Workload,
   del model_params
   del model_state
   del rng
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   opt_init_fn, opt_update_fn = optax.chain(
       optax.scale_by_adam(

@@ -7,7 +7,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.lr_scheduler import LinearLR
 from torch.optim.lr_scheduler import SequentialLR
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 
 
 def get_batch_size(workload_name):

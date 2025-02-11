@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
 from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import
@@ -29,7 +29,7 @@ def init_optimizer_state(workload: spec.Workload,
                                                    hyperparameters)
 
   # Create optimizer.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   epsilon = (
       hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)

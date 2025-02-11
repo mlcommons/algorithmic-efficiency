@@ -6,10 +6,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import jax
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.wmt.wmt_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.wmt.wmt_jax.workload import \
     WmtWorkloadAttentionTemp as JaxWorkload
-from algorithmic_efficiency.workloads.wmt.wmt_pytorch.workload import \
+from algoperf.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkloadAttentionTemp as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 

@@ -9,7 +9,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -24,7 +24,7 @@ def dual_vector(y: jnp.ndarray) -> jnp.ndarray:
   """
   gradient_norm = jnp.sqrt(
       sum(jnp.sum(jnp.square(e)) for e in jax.tree_util.tree_leaves(y)))
-  normalized_gradient = jax.tree_map(lambda x: x / gradient_norm, y)
+  normalized_gradient = jax.tree.map(lambda x: x / gradient_norm, y)
   return normalized_gradient
 
 
@@ -73,12 +73,12 @@ def sharpness_aware_minimization(
     # Get correct global mean grad.
     (n_valid_examples, updates) = lax.psum((n_valid_examples, updates),
                                            axis_name=batch_axis_name)
-    updates = jax.tree_map(lambda x: x / n_valid_examples, updates)
+    updates = jax.tree.map(lambda x: x / n_valid_examples, updates)
 
     if grad_clip:
       updates_norm = jnp.sqrt(
           sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(updates)))
-      scaled_updates = jax.tree_map(
+      scaled_updates = jax.tree.map(
           lambda x: x / (updates_norm + _GRAD_CLIP_EPS) * grad_clip, updates)
       updates = jax.lax.cond(updates_norm > grad_clip,
                              lambda _: scaled_updates,
@@ -136,7 +136,7 @@ def init_optimizer_state(workload: spec.Workload,
       base_opt_update_fn=opt_update_fn)
 
   # Initialize optimizer state.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
 
@@ -186,7 +186,7 @@ def pmapped_train_step(workload,
   (summed_loss, n_valid_examples, grad) = lax.psum(
       (summed_loss, n_valid_examples, grad), axis_name='batch')
   loss = summed_loss / n_valid_examples
-  grad = jax.tree_map(lambda x: x / n_valid_examples, grad)
+  grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
   grad_norm = jnp.sqrt(
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))

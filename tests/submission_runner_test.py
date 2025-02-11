@@ -13,7 +13,7 @@ from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from algorithmic_efficiency.profiler import PassThroughProfiler
+from algoperf.profiler import PassThroughProfiler
 import submission_runner
 
 FLAGS = flags.FLAGS

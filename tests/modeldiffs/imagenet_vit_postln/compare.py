@@ -9,10 +9,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import jax
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.imagenet_vit.imagenet_jax.workload import \
     ImagenetVitPostLNWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.workload import \
     ImagenetViTPostLNWorkload as PyTorchWorkload
 
 sd_transform = None

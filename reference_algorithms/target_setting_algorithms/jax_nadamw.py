@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
 from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import
@@ -96,8 +96,8 @@ def scale_by_nadam(b1: float = 0.9,
   raise_power = jnp.sqrt if power == 0.5 else lambda x: jnp.power(x, power)
 
   def init_fn(params):
-    mu = jax.tree_map(jnp.zeros_like, params)  # First moment
-    nu = jax.tree_map(jnp.zeros_like, params)  # Second moment
+    mu = jax.tree.map(jnp.zeros_like, params)  # First moment
+    nu = jax.tree.map(jnp.zeros_like, params)  # Second moment
     return ScaleByAdamState(count=jnp.zeros([], jnp.int32), mu=mu, nu=nu)
 
   def update_fn(updates, state, params=None):
@@ -108,7 +108,7 @@ def scale_by_nadam(b1: float = 0.9,
     mu_hat = _update_moment(updates, mu, b1, 1)
     mu_hat = mu_hat if not debias else _bias_correction(mu_hat, b1, count)
     nu_hat = nu if not debias else _bias_correction(nu, b2, count)
-    updates = jax.tree_map(
+    updates = jax.tree.map(
         lambda m, v: m / (raise_power(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count, mu=mu, nu=nu)
 
@@ -124,14 +124,14 @@ class ScaleByAdamState(NamedTuple):
 
 def _update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order-th` moment."""
-  return jax.tree_map(
+  return jax.tree.map(
       lambda g, t: (1 - decay) * (g**order) + decay * t, updates, moments)
 
 
 def _bias_correction(moment, decay, count):
   """Perform bias correction. This becomes a no-op as count goes to infinity."""
   beta = 1 - decay**count
-  return jax.tree_map(lambda t: t / beta.astype(t.dtype), moment)
+  return jax.tree.map(lambda t: t / beta.astype(t.dtype), moment)
 
 
 def scale_by_learning_rate(learning_rate, flip_sign=True):
@@ -156,7 +156,7 @@ def init_optimizer_state(workload: spec.Workload,
                                                    hyperparameters)
 
   # Create optimizer.
-  params_zeros_like = jax.tree_map(lambda s: jnp.zeros(s.shape_tuple),
+  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
                                    workload.param_shapes)
   epsilon = (
       hyperparameters.epsilon if hasattr(hyperparameters, 'epsilon') else 1e-8)

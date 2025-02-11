@@ -30,29 +30,29 @@ from absl import app
 from absl import flags
 from absl import logging
 import jax
+import tensorflow as tf
 import torch
 import torch.distributed as dist
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
-import tensorflow as tf
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
-from algorithmic_efficiency import checkpoint_utils
-from algorithmic_efficiency import halton
-from algorithmic_efficiency import logger_utils
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.profiler import Profiler
-from algorithmic_efficiency.pytorch_utils import pytorch_init
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.pytorch_utils import sync_ddp_time
-from algorithmic_efficiency.workloads import workloads
+from algoperf import checkpoint_utils
+from algoperf import halton
+from algoperf import logger_utils
+from algoperf import random_utils as prng
+from algoperf import spec
+from algoperf.profiler import PassThroughProfiler
+from algoperf.profiler import Profiler
+from algoperf.pytorch_utils import pytorch_init
+from algoperf.pytorch_utils import pytorch_setup
+from algoperf.pytorch_utils import sync_ddp_time
+from algoperf.workloads import workloads
 
-# disable only for deepspeech if it works fine for other workloads.
+# Environment variables
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
+# disable only for deepspeech if it works fine for other workloads
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
@@ -242,8 +242,9 @@ def train_once(
           'ogbg',
           'criteo1tb',
           'imagenet_vit',
+          'librispeech_deepspeech'
       ]
-      eager_backend_workloads = ['librispeech_deepspeech']
+      eager_backend_workloads = []
       aot_eager_backend_workloads = []
       loss_compilation_workloads = [
           'fastmri', 'librispeech_deepspeech', 'ogbg', 'wmt'
@@ -342,6 +343,7 @@ def train_once(
       not train_state['training_complete']:
 
     step_rng = prng.fold_in(rng, global_step)
+
     data_select_rng, update_rng, prep_eval_rng, eval_rng = \
       prng.split(step_rng, 4)
 
@@ -409,10 +411,10 @@ def train_once(
             prepare_for_eval_end_time - prepare_for_eval_start_time)
 
       # Check if time is remaining,
-      # use 3x the runtime budget for the self-tuning ruleset.
+      # use 1.5x the runtime budget for the self-tuning ruleset.
       max_allowed_runtime_sec = (
           workload.max_allowed_runtime_sec if FLAGS.tuning_ruleset == 'external'
-          else 3 * workload.max_allowed_runtime_sec)
+          else 1.5 * workload.max_allowed_runtime_sec)
       train_state['is_time_remaining'] = (
           train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
 
@@ -678,6 +680,14 @@ def main(_):
   else:
     profiler = PassThroughProfiler()
 
+  # Set PyTorch environment variables before initializing w DDP
+  base_workload = workloads.get_base_workload_name(FLAGS.workload)
+  if base_workload == 'librispeech_conformer':
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
+  if FLAGS.set_pytorch_max_split_size:
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+
   if FLAGS.framework == 'pytorch':
     pytorch_init(USE_PYTORCH_DDP, RANK, profiler)
 
@@ -689,13 +699,13 @@ def main(_):
 
   workload_metadata = WORKLOADS[FLAGS.workload]
 
-  # Prevent OOM on librispeech conformer.
-  base_workload = workloads.get_base_workload_name(FLAGS.workload)
-  if base_workload == 'librispeech_conformer':
-    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.85'
-
-  if FLAGS.set_pytorch_max_split_size:
-    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:256'
+  if base_workload in [
+      'librispeech_conformer',
+      'librispeech_deepspeech',
+      'imagenet_vit',
+      'criteo1tb'
+  ]:
+    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.80'
 
   # Extend path according to framework.
   workload_metadata['workload_path'] = os.path.join(

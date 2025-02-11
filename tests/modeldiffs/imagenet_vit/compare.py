@@ -6,10 +6,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import jax
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.imagenet_vit.imagenet_jax.workload import \
     ImagenetVitWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.imagenet_vit.imagenet_pytorch.workload import \
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.workload import \
     ImagenetVitWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 

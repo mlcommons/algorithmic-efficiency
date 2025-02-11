@@ -71,8 +71,8 @@ python3 datasets/dataset_setup.py \
 import tensorflow_datasets as tfds
 from torchvision.datasets import CIFAR10
 
-from algorithmic_efficiency.workloads.wmt import tokenizer
-from algorithmic_efficiency.workloads.wmt.input_pipeline import \
+from algoperf.workloads.wmt import tokenizer
+from algoperf.workloads.wmt.input_pipeline import \
     normalize_feature_names
 from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer

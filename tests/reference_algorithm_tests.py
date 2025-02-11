@@ -40,15 +40,13 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 
-from algorithmic_efficiency import halton
-from algorithmic_efficiency import pytorch_utils
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.workloads import workloads
-from algorithmic_efficiency.workloads.ogbg import \
-    input_pipeline as ogbg_input_pipeline
-from algorithmic_efficiency.workloads.ogbg.ogbg_pytorch.workload import \
-    _graph_map
+from algoperf import halton
+from algoperf import pytorch_utils
+from algoperf import random_utils as prng
+from algoperf.profiler import PassThroughProfiler
+from algoperf.workloads import workloads
+from algoperf.workloads.ogbg import input_pipeline as ogbg_input_pipeline
+from algoperf.workloads.ogbg.ogbg_pytorch.workload import _graph_map
 import submission_runner
 from tests.modeldiffs import diff as diff_utils
 
@@ -97,9 +95,9 @@ def _make_fake_image_batch(batch_shape, data_shape, num_classes):
 
 def _pytorch_map(inputs):
   if USE_PYTORCH_DDP:
-    return jax.tree_map(
+    return jax.tree.map(
         lambda a: torch.as_tensor(a[RANK], device=PYTORCH_DEVICE), inputs)
-  return jax.tree_map(
+  return jax.tree.map(
       lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE).view(-1, a.shape[-1])
       if len(a.shape) == 3 else torch.as_tensor(a, device=PYTORCH_DEVICE).view(
           -1),

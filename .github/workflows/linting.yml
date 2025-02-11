@@ -7,17 +7,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.9
+    - name: Set up Python 3.11.10
       uses: actions/setup-python@v2
       with:
-        python-version: 3.9
+        python-version: 3.11.10
     - name: Install pylint
       run: |
         python -m pip install --upgrade pip
         pip install pylint==2.16.1
     - name: Run pylint
       run: |
-        pylint algorithmic_efficiency
+        pylint algoperf
         pylint reference_algorithms
         pylint prize_qualification_baselines
         pylint submission_runner.py
@@ -27,14 +27,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.9
+    - name: Set up Python 3.11.10
       uses: actions/setup-python@v2
       with:
-        python-version: 3.9
+        python-version: 3.11.10
     - name: Install isort
       run: |
         python -m pip install --upgrade pip
-        pip install isort
+        pip install isort==5.12.0
     - name: Run isort
       run: |
         isort . --check --diff
@@ -43,14 +43,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.9
+    - name: Set up Python 3.11.10
       uses: actions/setup-python@v2
       with:
-        python-version: 3.9
+        python-version: 3.11.10
     - name: Install yapf
       run: |
         python -m pip install --upgrade pip
-        pip install yapf==0.32
+        pip install yapf==0.32 toml
     - name: Run yapf
       run: |
         yapf . --diff --recursive
