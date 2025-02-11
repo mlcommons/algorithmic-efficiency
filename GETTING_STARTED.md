@@ -18,6 +18,8 @@
     - [Docker Tips](#docker-tips)
 - [Score your Submission](#score-your-submission)
   - [Running workloads](#running-workloads)
+- [Package your Submission code](#package-your-submission-code)
+- [Package Logs for Self-Reporting Submissions](#package-logs-for-self-reporting-submissions)
 
 ## Set Up and Installation
 
@@ -56,7 +58,7 @@ To set up a virtual enviornment and install this repository
     cd algorithmic-efficiency
     ```
 
-3. Run the following pip3 install commands based on your chosen framework to install `algorithmic_efficiency` and its dependencies.
+3. Run the following pip3 install commands based on your chosen framework to install `algoperf` and its dependencies.
 
     For **JAX**:
 
@@ -79,7 +81,6 @@ To set up a virtual enviornment and install this repository
     pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
     pip3 install -e '.[full]'
     ```
-
 
 <details>
 <summary>
@@ -414,22 +415,24 @@ submission_folder/
 ```
 
 Specifically we require that:
+
 1. There exist subdirectories in the the submission folder named after the ruleset: `external_tuning` or `self_tuning`.
-2. The ruleset subdirectories contain directories named according to 
-some identifier of the algorithm. 
-3. Each algorithm subdirectory contains a `submission.py` module. Additional helper modules are allowed if prefer to you organize your code into multiple files. If there are additional python packages that have to be installed for the algorithm also include a `requirements.txt` with package names and versions in the algorithm subdirectory. 
+2. The ruleset subdirectories contain directories named according to
+some identifier of the algorithm.
+3. Each algorithm subdirectory contains a `submission.py` module. Additional helper modules are allowed if prefer to you organize your code into multiple files. If there are additional python packages that have to be installed for the algorithm also include a `requirements.txt` with package names and versions in the algorithm subdirectory.
 4. For `external_tuning` algorithms the algorithm subdirectory
 should contain a `tuning_search_space.json`.
 
 To check that your submission folder meets the above requirements you can run the `submissions/repo_checker.py` script.
 
 ## Package Logs for Self-Reporting Submissions
+
 To prepare your submission for self reporting run:
 
-```
+```bash
 python3 package_logs.py --experiment_dir <experiment_dir> --destination_dir <destination_dir>
 ```
 
-The destination directiory will contain the logs packed in studies and trials required for self-reporting. 
+The destination directiory will contain the logs packed in studies and trials required for self-reporting.
 
 **Good Luck!**

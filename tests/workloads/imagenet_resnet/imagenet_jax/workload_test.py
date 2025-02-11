@@ -4,8 +4,8 @@ from absl.testing import absltest
 import jax
 import jax.numpy as jnp
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.imagenet_resnet.imagenet_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload
 
 

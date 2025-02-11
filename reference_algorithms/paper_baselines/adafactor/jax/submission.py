@@ -9,7 +9,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 from reference_algorithms.paper_baselines.adafactor.jax.sharded_adafactor import \
     sharded_adafactor
 

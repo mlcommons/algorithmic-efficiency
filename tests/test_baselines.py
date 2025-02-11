@@ -12,8 +12,8 @@ from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.workloads import workloads
+from algoperf.profiler import PassThroughProfiler
+from algoperf.workloads import workloads
 import submission_runner
 
 FLAGS = flags.FLAGS

@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
 from reference_algorithms.target_setting_algorithms.data_selection import \
     data_selection  # pylint: disable=unused-import

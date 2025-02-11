@@ -9,7 +9,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 from reference_algorithms.paper_baselines.shampoo.jax.distributed_shampoo import \
     distributed_shampoo
 

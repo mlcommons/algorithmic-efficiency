@@ -1,6 +1,6 @@
 from typing import Dict, Iterator, Tuple
 
-from algorithmic_efficiency import spec
+from algoperf import spec
 
 
 def data_selection(

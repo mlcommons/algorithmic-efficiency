@@ -38,17 +38,17 @@ import torch.distributed as dist
 # it unavailable to JAX.
 tf.config.set_visible_devices([], 'GPU')
 
-from algorithmic_efficiency import checkpoint_utils
-from algorithmic_efficiency import halton
-from algorithmic_efficiency import logger_utils
-from algorithmic_efficiency import random_utils as prng
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.profiler import PassThroughProfiler
-from algorithmic_efficiency.profiler import Profiler
-from algorithmic_efficiency.pytorch_utils import pytorch_init
-from algorithmic_efficiency.pytorch_utils import pytorch_setup
-from algorithmic_efficiency.pytorch_utils import sync_ddp_time
-from algorithmic_efficiency.workloads import workloads
+from algoperf import checkpoint_utils
+from algoperf import halton
+from algoperf import logger_utils
+from algoperf import random_utils as prng
+from algoperf import spec
+from algoperf.profiler import PassThroughProfiler
+from algoperf.profiler import Profiler
+from algoperf.pytorch_utils import pytorch_init
+from algoperf.pytorch_utils import pytorch_setup
+from algoperf.pytorch_utils import sync_ddp_time
+from algoperf.workloads import workloads
 
 # Environment variables
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
@@ -411,10 +411,10 @@ def train_once(
             prepare_for_eval_end_time - prepare_for_eval_start_time)
 
       # Check if time is remaining,
-      # use 3x the runtime budget for the self-tuning ruleset.
+      # use 1.5x the runtime budget for the self-tuning ruleset.
       max_allowed_runtime_sec = (
           workload.max_allowed_runtime_sec if FLAGS.tuning_ruleset == 'external'
-          else 3 * workload.max_allowed_runtime_sec)
+          else 1.5 * workload.max_allowed_runtime_sec)
       train_state['is_time_remaining'] = (
           train_state['accumulated_submission_time'] < max_allowed_runtime_sec)
 

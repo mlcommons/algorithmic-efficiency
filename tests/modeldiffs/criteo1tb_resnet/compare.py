@@ -8,10 +8,10 @@ import jax.numpy as jnp
 import numpy as np
 import torch
 
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_jax.workload import \
+from algoperf import spec
+from algoperf.workloads.criteo1tb.criteo1tb_jax.workload import \
     Criteo1TbDlrmSmallResNetWorkload as JaxWorkload
-from algorithmic_efficiency.workloads.criteo1tb.criteo1tb_pytorch.workload import \
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.workload import \
     Criteo1TbDlrmSmallResNetWorkload as PyTorchWorkload
 from tests.modeldiffs.diff import out_diff
 

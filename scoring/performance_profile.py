@@ -38,14 +38,14 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 
-from algorithmic_efficiency.workloads.workloads import get_base_workload_name
-import algorithmic_efficiency.workloads.workloads as workloads_registry
+from algoperf.workloads.workloads import get_base_workload_name
+import algoperf.workloads.workloads as workloads_registry
 from scoring import scoring_utils
 
 WORKLOADS = workloads_registry.WORKLOADS
 BASE_WORKLOADS = workloads_registry.BASE_WORKLOADS
 WORKLOAD_NAME_PATTERN = '(.*)(_jax|_pytorch)'
-BASE_WORKLOADS_DIR = 'algorithmic_efficiency/workloads/'
+BASE_WORKLOADS_DIR = 'algoperf/workloads/'
 # Open json file to read heldout workloads
 # TODO: This probably shouldn't be hardcoded but passed as an argument.
 with open("held_out_workloads_algoperf_v05.json", "r") as f:

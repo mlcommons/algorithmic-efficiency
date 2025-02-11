@@ -1,13 +1,13 @@
 """Check whether the __version__ attribute is set correctly."""
 
-import algorithmic_efficiency
+import algoperf
 
 
 def test_version_attribute():
   """Check whether __version__ exists and is a valid string."""
 
-  assert hasattr(algorithmic_efficiency, "__version__")
-  version = algorithmic_efficiency.__version__
+  assert hasattr(algoperf, "__version__")
+  version = algoperf.__version__
   assert isinstance(version, str)
   version_elements = version.split(".")
   print(version_elements)
