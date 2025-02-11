@@ -30,7 +30,7 @@
 ---
 
 > [!IMPORTANT]
-> For the next iteration of the AlgoPerf: Training Algorithms benchmark competition, we are switching to a rolling leaderboard, making a few changes to the competition rules, and also run all selected submissions on our hardware. **To submit your algorithm to the next iteration of the benchmark, please see our [How to Submit](#how-to-submit) section and the [submission repository](https://github.com/mlcommons/submissions_algorithms) which hosts the up to date AlgoPerf leaderboard.**
+> For future iterations of the AlgoPerf: Training Algorithms benchmark competition, we are switching to a rolling leaderboard, making a few changes to the competition rules, and also run all selected submissions on our hardware. **To submit your algorithm to the next iteration of the benchmark, please see our [How to Submit](#how-to-submit) section and the [submission repository](https://github.com/mlcommons/submissions_algorithms) which hosts the up to date AlgoPerf leaderboard.**
 
 ## Table of Contents <!-- omit from toc -->
 
