@@ -1,4 +1,5 @@
 from flax import jax_utils
+from flax.core import FrozenDict
 import jax
 import numpy as np
 import torch
@@ -16,6 +17,8 @@ def torch2jax(jax_workload,
   jax_params, model_state = jax_workload.init_model_fn(jax.random.PRNGKey(0),
                                                        **init_kwargs)
   pytorch_model, _ = pytorch_workload.init_model_fn([0], **init_kwargs)
+  if isinstance(jax_params, dict):
+    jax_params = FrozenDict(jax_params)
   jax_params = jax_utils.unreplicate(jax_params).unfreeze()
   if model_state is not None:
     model_state = jax_utils.unreplicate(model_state)
