@@ -31,12 +31,12 @@
     - [How do I run this on my SLURM cluster?](#how-do-i-run-this-on-my-slurm-cluster)
     - [How can I run this on my AWS/GCP/Azure cloud project?](#how-can-i-run-this-on-my-awsgcpazure-cloud-project)
   - [Submitting](#submitting)
+    - [How do I submit my algorithm to the benchmark?](#how-do-i-submit-my-algorithm-to-the-benchmark)
     - [Can I submit multiple times to the benchmark competition?](#can-i-submit-multiple-times-to-the-benchmark-competition)
     - [Can my submission be structured using multiple files?](#can-my-submission-be-structured-using-multiple-files)
     - [Can I install custom dependencies?](#can-i-install-custom-dependencies)
     - [How can I know if my code can be run on benchmarking hardware?](#how-can-i-know-if-my-code-can-be-run-on-benchmarking-hardware)
-    - [Are we allowed to use our own hardware to self-report the results?](#are-we-allowed-to-use-our-own-hardware-to-self-report-the-results)
-    - [What can I do if running the benchmark is too expensive for me?](#what-can-i-do-if-running-the-benchmark-is-too-expensive-for-me)
+    - [This benchmark seems computationally expensive. Do I have to run it myself?](#this-benchmark-seems-computationally-expensive-do-i-have-to-run-it-myself)
     - [Can I submit previously published training algorithms as submissions?](#can-i-submit-previously-published-training-algorithms-as-submissions)
 - [Disclaimers](#disclaimers)
   - [Shared Data Pipelines between JAX and PyTorch](#shared-data-pipelines-between-jax-and-pytorch)
@@ -383,14 +383,6 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 </details>
 
-##### Submissions vs. Baselines
-
-Submitters may also submit algorithms marked as *baselines*. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters. Baseline algorithms will still appear on the leaderboard but will be clearly marked as such. We highly encourage the submission of baselines for educational purposes.
-
-Baseline algorithms might, for example, include existing algorithms with different search spaces or learning rate schedules.
-Another example involves porting submissions to different frameworks. For instance, a participant may wish to assess their algorithm in both JAX and PyTorch to demonstrate the impact of the framework. However, in such cases, one of these submissions must be designated as eligible for prize consideration, while the other is marked as a baseline. This prevents circumventing of tuning rules and the spirit of the benchmark by creating additional "lottery tickets".
-Baselines might not be prioritized when using the compute resources by the sponsors of the benchmark.
-
 ##### Software dependencies
 
 We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section.
@@ -590,11 +582,13 @@ new Compute Instance with the "Deep Learning on Linux" Image in Boot disk option
 
 ### Submitting
 
+#### How do I submit my algorithm to the benchmark?
+
+Please see our [How to Submit](/README.md#how-to-submit) section. You can submit your algorithm to the benchmark by opening a PR on the [submission repository](https://github.com/mlcommons/submissions_algorithms).
+
 #### Can I submit multiple times to the benchmark competition?
 
-Our benchmark allows multiple submissions by the same team of submitters as long as they are substantially different. We disallow submitters from circumventing the purpose of the benchmark by, for example, submitting dozens of copies of the same submission with slightly different hyperparameters. Such a bulk submission would result in an unfair advantage on the randomized workloads and is not in the spirit of the benchmark.
-
-Submitters may submit algorithms marked as *baselines*. These might include existing algorithms with different search spaces or learning rate schedules. These baseline algorithms are not eligible for winning the competition or prize money but they are also not required to be "substantially different" from other submissions by the same submitters. See the [Submissions vs. Baselines](#submissions-vs-baselines) Section.
+Our benchmark allows multiple submissions by the same team of submitters as long as they are substantially different. We discourage submitters from creating bulk submissions as this is not in the spirit of the benchmark.
 
 #### Can my submission be structured using multiple files?
 
@@ -610,17 +604,9 @@ To include your custom dependencies in your submission, please include them in a
 The benchmarking hardware specifications are documented in the [Benchmarking Hardware Section](#benchmarking-hardware). We recommend monitoring your submission's memory usage so that it does not exceed the available memory
 on the benchmarking hardware. We also recommend to do a dry run using a cloud instance.
 
-#### Are we allowed to use our own hardware to self-report the results?
+#### This benchmark seems computationally expensive. Do I have to run it myself?
 
-NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
-
-You only have to use the benchmarking hardware for runs that are directly involved in the scoring procedure. This includes all runs for the self-tuning ruleset, but only the runs of the best hyperparameter configuration in each study for the external tuning ruleset. For example, you could use your own (different) hardware to tune your submission and identify the best hyperparameter configuration (in each study) and then only run this configuration (i.e. 5 runs, one for each study) on the benchmarking hardware.
-
-#### What can I do if running the benchmark is too expensive for me?
-
-NOTE: Submitters are no longer required to self-report results for AlgoPerf competition v0.5.
-
-Submitters unable to self-fund scoring costs can instead self-report only on the [qualification set of workloads](/COMPETITION_RULES.md#qualification-set) that excludes some of the most expensive workloads. Based on this performance on the qualification set, the working group will provide - as funding allows - compute to evaluate and score the most promising submissions. Additionally, we encourage researchers to reach out to the [working group](mailto:algorithms@mlcommons.org) to find potential collaborators with the resources to run larger, more comprehensive experiments for both developing and scoring submissions.
+Submitters are no longer required to self-report results to get on the AlgoPerf leaderboard. Instead, they can open a PR and the working group will score the most promising submissions, see our [How to Submit](/README.md#how-to-submit) section for more details. You can use self-reported results to provide evidence of performance on the benchmark. Even if you fully self-report, we will still verify the scores by rerunning the submission on our setup.
 
 #### Can I submit previously published training algorithms as submissions?
 
