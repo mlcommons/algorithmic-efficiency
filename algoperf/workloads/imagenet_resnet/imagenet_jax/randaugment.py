@@ -7,13 +7,14 @@ https://github.com/google/init2winit/blob/master/init2winit/dataset_lib/autoaugm
 import inspect
 import math
 
+import tensorflow as tf
+
 from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
     rotate_img
 from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
     transform
 from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
     translate
-import tensorflow as tf
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
