@@ -3,18 +3,17 @@ from typing import Optional
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algoperf import param_utils, spec
+from algoperf import param_utils
+from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import (
-  initialize,
-)
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import (
-  LibriSpeechConformerWorkload,
-)
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import (
-  DeepspeechConfig,
-  DeepspeechEncoderDecoder,
-)
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
+    initialize
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import \
+    LibriSpeechConformerWorkload
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
+    DeepspeechConfig
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
+    DeepspeechEncoderDecoder
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 

@@ -3,7 +3,8 @@
 from typing import Dict, Iterator, Optional
 
 from algoperf import spec
-from algoperf.workloads.imagenet_resnet.workload import BaseImagenetResNetWorkload
+from algoperf.workloads.imagenet_resnet.workload import \
+    BaseImagenetResNetWorkload
 
 
 def decode_variant(variant: str) -> Dict[str, int]:
