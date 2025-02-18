@@ -22,6 +22,12 @@
 
 ---
 
+Unlike benchmarks that focus on model architecture or hardware, this benchmark isolates the training algorithm itself, measuring how quickly it can achieve target performance levels on a fixed set of representative deep learning tasks. These tasks span various domains, including image classification, speech recognition, machine translation, and more, all running on standardized hardware (8x NVIDIA V100 GPUs). The benchmark includes both "fixed" workloads, which are fully specified, and "randomized" workloads, which are variations of the fixed workloads. The randomized workloads are designed to discourage overfitting to the specific details of the fixed set, and promote algorithms that are robust to novel-but-related tasks.
+
+Submissions are evaluated based on their "time-to-result", i.e., the wall-clock time it takes to reach predefined validation and test set performance targets on each workload. Submissions are scored under two different tuning rule sets. The [external tuning rule set](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docs/DOCUMENTATION.md#external-tuning-ruleset) allows a limited amount of hyperparameter tuning (20 quasirandom trials) for each workload. The [self-tuning rule set](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docs/DOCUMENTATION.md#self-tuning-ruleset) allows no external tuning. For each rule set, a single, overall benchmark score is computed by integrating a "performance profile" across all fixed workloads, which measures how close a submission's training time is to the best submission's time on each workload. Held-out instances of the randomized workloads are used as a criterion to penalize submissions that perform poorly on variations of the fixed workloads. The higher the benchmark score, the better the submission's overall performance.
+
+---
+
 > This is the repository for the *AlgoPerf: Training Algorithms benchmark* measuring neural network training speedups due to algorithmic improvements.
 > It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/).
 > This repository holds the benchmark code, the benchmark's [**technical documentation**](/docs/DOCUMENTATION.md) and [**getting started guides**](/docs/GETTING_STARTED.md). For a detailed description of the benchmark design, see our [**introductory paper**](https://arxiv.org/abs/2306.07179), for the results of the inaugural competition see our [**results paper**](https://openreview.net/forum?id=CtM5xjRSfm).
