@@ -35,11 +35,10 @@ def get_naive_sharding(x, mesh=None):
   if mesh is None:
     mesh = get_mesh()
   grid_size = mesh.shape["batch"]
-  if x.shape[0] % grid_size == 0:
+  if len(x.shape) > 0 and x.shape[0] % grid_size == 0:
     return NamedSharding(mesh, PartitionSpec("batch"))
   else:
     return NamedSharding(mesh, PartitionSpec())
-
 
 def shard_params(params, mesh=None):
   """Shards a parameter tree across all devices with naive sharding (see get_naive_sharding)."""
@@ -48,6 +47,15 @@ def shard_params(params, mesh=None):
   return jax.tree_util.tree_map(
       lambda x: jax.device_put(x, get_naive_sharding(x)), params)
 
+def shard_naive(x, mesh=None):
+  return shard_params(x, mesh)
+
+
+
+def get_naive_sharding_tree(input_tree, mesh=None):
+  if mesh is None:
+    mesh = get_mesh()
+  return jax.tree_util.tree_map(lambda x: get_naive_sharding(x, mesh), input_tree)
 
 def get_sharding_tree(params, mesh=None):
   """Returns a sharding tree for a parameter tree."""
