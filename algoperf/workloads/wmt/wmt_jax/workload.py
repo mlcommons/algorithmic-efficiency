@@ -110,12 +110,12 @@ class WmtWorkload(BaseWmtWorkload):
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
+    dummy_inputs = sharding_utils.shard_naive(jnp.ones(inputs.shape, jnp.float32))
+    dummy_targets = sharding_utils.shard_naive(jnp.ones(target_shape, jnp.float32))
     initial_variables = models.Transformer(config).init(
         jax.random.PRNGKey(0),
-        jnp.ones(inputs.shape, jnp.float32),
-        jnp.ones(target_shape, jnp.float32))
-    print(initial_variables['cache'])
-    print(jax.tree.map(lambda x: x.shape, initial_variables['cache']))
+        dummy_inputs,
+        dummy_targets)
     return initial_variables['cache']
 
   def predict_step(self,
@@ -185,11 +185,12 @@ class WmtWorkload(BaseWmtWorkload):
     """Translates the `predict_ds` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
     references, predictions = [], []
-    jitted_predit_step = None
+    jitted_predict_step = None
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       cache = self.initialize_cache(pred_batch['inputs'])
-      if jitted_predit_step is None:
+      cache = sharding_utils.shard_naive(cache)
+      if jitted_predict_step is None:
         jitted_predict_step = jax.jit(
             self.predict_step,
             in_shardings=(
