@@ -96,15 +96,6 @@ class WmtWorkload(BaseWmtWorkload):
         'accuracy': acc_sum,
         'denominator': weight_sum,
     }
-<<<<<<< variant A
-
-  def eval_step(self,
-                params: spec.ParameterContainer,
-                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
-    replicated_eval_metrics = self.eval_step_pmapped(params, batch)
-    return jax.tree.map(lambda x: jnp.sum(x, axis=0), replicated_eval_metrics)
->>>>>>> variant B
-======= end
 
   @functools.partial(
       jax.jit,
@@ -124,7 +115,7 @@ class WmtWorkload(BaseWmtWorkload):
         jnp.ones(inputs.shape, jnp.float32),
         jnp.ones(target_shape, jnp.float32))
     print(initial_variables['cache'])
-    print(jax.tree_map(lambda x: x.shape, initial_variables['cache']))
+    print(jax.tree.map(lambda x: x.shape, initial_variables['cache']))
     return initial_variables['cache']
 
   def predict_step(self,

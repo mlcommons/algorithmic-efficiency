@@ -10,10 +10,10 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algorithmic_efficiency import param_utils
-from algorithmic_efficiency import sharding_utils
-from algorithmic_efficiency import spec
-from algorithmic_efficiency.workloads.mnist.workload import BaseMnistWorkload
+from algoperf import param_utils
+from algoperf import sharding_utils
+from algoperf import spec
+from algoperf.workloads.mnist.workload import BaseMnistWorkload
 
 
 class _Model(nn.Module):
