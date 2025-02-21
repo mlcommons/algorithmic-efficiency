@@ -1,15 +1,14 @@
 """ImageNet workload implemented in Jax."""
 
-import functools
 from typing import Dict, Optional, Tuple
 
-from flax import jax_utils
 from flax import linen as nn
 from flax.core import pop
 import jax
 import jax.numpy as jnp
 
-from algoperf import param_utils, sharding_utils
+from algoperf import param_utils
+from algoperf import sharding_utils
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetWorkload

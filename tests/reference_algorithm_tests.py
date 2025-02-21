@@ -423,7 +423,9 @@ def _test_submission(workload_name,
     if FLAGS.global_batch_size < 0:
       raise ValueError('Must set --global_batch_size.')
     elif global_batch_size < n_gpus and FLAGS.framework == 'jax':
-      raise ValueError('Global batch size cannot be smaller than the number of GPUs when using JAX sharding.')
+      raise ValueError(
+          'Global batch size cannot be smaller than the number of GPUs when using JAX sharding.'
+      )
   workload = _make_one_batch_workload(workload_class,
                                       workload_name,
                                       framework,

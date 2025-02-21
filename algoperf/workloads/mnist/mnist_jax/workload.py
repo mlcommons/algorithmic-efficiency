@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional, Tuple
 from flax import jax_utils
 from flax import linen as nn
 import jax
-from jax import lax
 import jax.numpy as jnp
 import optax
 

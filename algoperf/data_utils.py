@@ -11,7 +11,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
-from algoperf import spec, sharding_utils
+from algoperf import sharding_utils
+from algoperf import spec
 
 
 def shard_and_maybe_pad_np(
@@ -51,6 +52,7 @@ def shard_and_maybe_pad_np(
     # The weights will also be padded.
     batch['weights'] = np.ones(mask_shape) if weights is None else weights
   naive_sharding_spec = sharding_utils.get_naive_sharding_spec()
+
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
     if not isinstance(x, np.ndarray):

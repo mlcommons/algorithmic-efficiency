@@ -2,20 +2,17 @@ import functools
 import math
 from typing import Dict, Iterator, Optional, Tuple
 
-from flax import jax_utils
 from flax.core import pop
 import flax.linen as nn
 import jax
-from jax import lax
 import jax.numpy as jnp
-from jax.sharding import NamedSharding, PartitionSpec as P
 import numpy as np
 import optax
 import torch
 
 from algoperf import data_utils
-from algoperf import sharding_utils
 from algoperf import param_utils
+from algoperf import sharding_utils
 from algoperf import spec
 from algoperf.workloads.librispeech_conformer import metrics
 from algoperf.workloads.librispeech_conformer import workload
@@ -371,7 +368,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     metrics_dict = self._eval_step(params, batch, model_state, rng)
 
     # Convert dictionary back to metrics bundle
-    metrics = self.metrics_bundle.single_from_model_output(
+    metrics_bundle = self.metrics_bundle.single_from_model_output(
         loss_dict={
             'summed': metrics_dict['loss_per_example'].sum(),
             'per_example': metrics_dict['loss_per_example'],
@@ -382,7 +379,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         targets=metrics_dict['targets'],
         target_paddings=metrics_dict['target_paddings'])
 
-    return metrics
+    return metrics_bundle
 
   def _eval_model_on_split(self,
                            split: str,
