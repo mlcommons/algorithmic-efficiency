@@ -26,7 +26,7 @@ import docker
 
 flags.DEFINE_string(
     'docker_image_url',
-    'us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_dev',
+    'europe-west4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo/algoperf_jax_dev',
     'URL to docker image')
 flags.DEFINE_integer(
     'run_percentage',
