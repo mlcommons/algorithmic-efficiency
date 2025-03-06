@@ -11,7 +11,8 @@ import jax.numpy as jnp
 import optax
 import tensorflow_datasets as tfds
 
-from algoperf import param_utils, sharding_utils
+from algoperf import param_utils
+from algoperf import sharding_utils
 from algoperf import spec
 from algoperf.workloads.cifar.cifar_jax import models
 from algoperf.workloads.cifar.cifar_jax.input_pipeline import create_input_iter
@@ -76,15 +77,9 @@ class CifarWorkload(BaseCifarWorkload):
     # An axis_name is passed to pmap which can then be used by pmean.
     # In this case each device has its own version of the batch statistics
     # and we average them.
-<<<<<<< variant A
     avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
     new_model_state = model_state.copy()
     new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
->>>>>>> variant B
-    avg_fn = jax.pmap(lambda x: lax.pmean(x, "x"), "x")
-    new_model_state = model_state.copy(
-        {"batch_stats": avg_fn(model_state["batch_stats"])})
-======= end
     return new_model_state
 
   def init_model_fn(
@@ -102,15 +97,9 @@ class CifarWorkload(BaseCifarWorkload):
     input_shape = (1, 32, 32, 3)
     variables = jax.jit(model.init)({"params": rng},
                                     jnp.ones(input_shape, model.dtype))
-<<<<<<< variant A
     model_state, params = pop(variables, 'params')
->>>>>>> variant B
-    model_state, params = variables.pop("params")
-======= end
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    # model_state = jax_utils.replicate(model_state)
-    # params = jax_utils.replicate(params)
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -124,10 +113,7 @@ class CifarWorkload(BaseCifarWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-<<<<<<< variant A
       use_running_average_bn: Optional[bool] = None
->>>>>>> variant B
-======= end
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del mode
     del rng
@@ -137,13 +123,8 @@ class CifarWorkload(BaseCifarWorkload):
           variables,
           augmented_and_preprocessed_input_batch["inputs"],
           update_batch_norm=update_batch_norm,
-<<<<<<< variant A
           mutable=['batch_stats'],
           use_running_average_bn=use_running_average_bn)
->>>>>>> variant B
-          mutable=["batch_stats"],
-      )
-======= end
       return logits, new_model_state
     else:
       logits = self._model.apply(
@@ -151,11 +132,7 @@ class CifarWorkload(BaseCifarWorkload):
           augmented_and_preprocessed_input_batch["inputs"],
           update_batch_norm=update_batch_norm,
           mutable=False,
-<<<<<<< variant A
           use_running_average_bn=use_running_average_bn)
->>>>>>> variant B
-      )
-======= end
       return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -251,8 +228,4 @@ class CifarWorkload(BaseCifarWorkload):
       self, num_examples: int, total_metrics: Dict[str,
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
-<<<<<<< variant A
-    return jax.tree.map(lambda x: float(x[0] / num_examples), total_metrics)
->>>>>>> variant B
     return jax.tree_map(lambda x: x / num_examples, total_metrics)
-======= end

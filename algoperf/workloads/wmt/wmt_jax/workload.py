@@ -13,9 +13,9 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
-from algoperf import param_utils, sharding_utils
-from algoperf import spec
+from algoperf import param_utils
 from algoperf import sharding_utils
+from algoperf import spec
 from algoperf.workloads.wmt import bleu
 from algoperf.workloads.wmt.wmt_jax import decode
 from algoperf.workloads.wmt.wmt_jax import models
@@ -72,10 +72,10 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-        sharding_utils.get_replicated_sharding(), # params
-        sharding_utils.get_naive_sharding_spec(), # batch
+          sharding_utils.get_replicated_sharding(),  # params
+          sharding_utils.get_naive_sharding_spec(),  # batch
       ),
-      static_argnums=(0,), # self
+      static_argnums=(0,),  # self
   )
   def eval_step(self,
                 params: spec.ParameterContainer,
@@ -100,22 +100,24 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-        sharding_utils.get_naive_sharding_spec(), # inputs
+          sharding_utils.get_naive_sharding_spec(),  # inputs
       ),
-      static_argnums=(0,2,)
-  )
+      static_argnums=(
+          0,
+          2,
+      ))
   def initialize_cache(self,
                        inputs: spec.Tensor,
                        max_decode_len: int = 256) -> Dict[str, spec.Tensor]:
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
-    dummy_inputs = sharding_utils.shard_naive(jnp.ones(inputs.shape, jnp.float32))
-    dummy_targets = sharding_utils.shard_naive(jnp.ones(target_shape, jnp.float32))
+    dummy_inputs = sharding_utils.shard_naive(
+        jnp.ones(inputs.shape, jnp.float32))
+    dummy_targets = sharding_utils.shard_naive(
+        jnp.ones(target_shape, jnp.float32))
     initial_variables = models.Transformer(config).init(
-        jax.random.PRNGKey(0),
-        dummy_inputs,
-        dummy_targets)
+        jax.random.PRNGKey(0), dummy_inputs, dummy_targets)
     return initial_variables['cache']
 
   def predict_step(self,
@@ -194,19 +196,20 @@ class WmtWorkload(BaseWmtWorkload):
         jitted_predict_step = jax.jit(
             self.predict_step,
             in_shardings=(
-                sharding_utils.get_naive_sharding_spec(), # inputs
-                sharding_utils.get_replicated_sharding(), # params
-                sharding_utils.get_naive_sharding_tree(cache), # cache
+                sharding_utils.get_naive_sharding_spec(),  # inputs
+                sharding_utils.get_replicated_sharding(),  # params
+                sharding_utils.get_naive_sharding_tree(cache),  # cache
             ),
-            static_argnums=(3, # eos_id
-                            4, # max_decode_len,
-                            5, # beam_size
-                            ))
+            static_argnums=(
+                3,  # eos_id
+                4,  # max_decode_len,
+                5,  # beam_size
+            ))
       predicted = jitted_predict_step(pred_batch['inputs'],
-                                    params,
-                                    cache,
-                                    decode.EOS_ID,
-                                    max_predict_length)
+                                      params,
+                                      cache,
+                                      decode.EOS_ID,
+                                      max_predict_length)
       # predicted = _to_host(predicted)
       # targets = _to_host(pred_batch['targets'])
       targets = pred_batch['targets']
@@ -262,7 +265,8 @@ class WmtWorkload(BaseWmtWorkload):
 
     initial_variables = jax.jit(
         self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
-                              sharded_inputs, sharded_targets)
+                               sharded_inputs,
+                               sharded_targets)
 
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)

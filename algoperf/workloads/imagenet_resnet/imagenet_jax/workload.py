@@ -19,8 +19,8 @@ import optax
 import tensorflow_datasets as tfds
 
 from algoperf import param_utils
-from algoperf import sharding_utils
 from algoperf import random_utils as prng
+from algoperf import sharding_utils
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet import imagenet_v2
 from algoperf.workloads.imagenet_resnet.imagenet_jax import input_pipeline
@@ -249,17 +249,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     for bi in range(num_batches):
       eval_rng = prng.fold_in(eval_rng, bi)
       batch = next(self._eval_iters[split])
-      synced_metrics = self._eval_model(params,
-                                        batch,
-                                        model_state,
-                                        eval_rng)
+      synced_metrics = self._eval_model(params, batch, model_state, eval_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    eval_metrics = jax.tree.map(lambda x: x / num_examples,
-                                eval_metrics)
+    eval_metrics = jax.tree.map(lambda x: x / num_examples, eval_metrics)
     return eval_metrics
 
 

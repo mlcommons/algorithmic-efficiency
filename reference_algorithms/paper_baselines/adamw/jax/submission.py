@@ -11,7 +11,8 @@ from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec as P
 import optax
 
-from algoperf import spec, sharding_utils
+from algoperf import sharding_utils
+from algoperf import spec
 
 _GRAD_CLIP_EPS = 1e-6
 

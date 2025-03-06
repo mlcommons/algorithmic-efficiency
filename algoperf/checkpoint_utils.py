@@ -11,7 +11,6 @@ from absl import logging
 from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
 from flax.training.checkpoints import latest_checkpoint
-import jax
 import numpy as np
 from tensorflow.io import gfile  # pytype: disable=import-error
 import torch

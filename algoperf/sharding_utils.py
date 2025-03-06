@@ -1,13 +1,13 @@
 """Utilities for dealing with sharding in JAX."""
 
 import jax
-from jax.sharding import Mesh
 from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec
 
 
 def get_mesh() -> jax.sharding.Mesh:
-  """Creates a mesh from all available GPUs. Here, we simply create a one-dimensional mesh."""
+  """Creates a mesh from all available GPUs.
+  Here, we simply create a one-dimensional mesh."""
   return jax.sharding.Mesh(jax.devices(), ("batch",))
 
 
@@ -17,11 +17,14 @@ def get_replicated_sharding(mesh=None):
     mesh = get_mesh()
   return NamedSharding(mesh, PartitionSpec())
 
+
 def shard_replicated(x, mesh=None):
   """Shards a tensor across all devices."""
   if mesh is None:
     mesh = get_mesh()
-  return jax.tree_map(lambda x: jax.device_put(x, get_replicated_sharding(mesh)), x)
+  return jax.tree.map(
+      lambda x: jax.device_put(x, get_replicated_sharding(mesh)), x)
+
 
 def get_naive_sharding_spec(mesh=None):
   """Returns a sharding spec that shards data along the first axis."""
@@ -40,26 +43,29 @@ def get_naive_sharding(x, mesh=None):
   else:
     return NamedSharding(mesh, PartitionSpec())
 
+
 def shard_params(params, mesh=None):
-  """Shards a parameter tree across all devices with naive sharding (see get_naive_sharding)."""
+  """Shards a parameter tree across all devices
+  with naive sharding (see get_naive_sharding)."""
   if mesh is None:
     mesh = get_mesh()
-  return jax.tree_util.tree_map(
-      lambda x: jax.device_put(x, get_naive_sharding(x)), params)
+  return jax.tree.map(lambda x: jax.device_put(x, get_naive_sharding(x)),
+                      params)
+
 
 def shard_naive(x, mesh=None):
   return shard_params(x, mesh)
 
 
-
 def get_naive_sharding_tree(input_tree, mesh=None):
   if mesh is None:
     mesh = get_mesh()
-  return jax.tree_util.tree_map(lambda x: get_naive_sharding(x, mesh), input_tree)
+  return jax.tree.map(lambda x: get_naive_sharding(x, mesh), input_tree)
+
 
 def get_sharding_tree(params, mesh=None):
   """Returns a sharding tree for a parameter tree."""
-  return jax.tree_util.tree_map(lambda x: get_naive_sharding(x, mesh), params)
+  return jax.tree.map(lambda x: get_naive_sharding(x, mesh), params)
 
 
 def get_empty_sharding(mesh=None):
