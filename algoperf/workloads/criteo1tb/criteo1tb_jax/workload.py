@@ -11,6 +11,7 @@ import numpy as np
 from algoperf import param_utils
 from algoperf import spec
 from algoperf.workloads.criteo1tb.criteo1tb_jax import models
+from algoperf import sharding_utils
 from algoperf.workloads.criteo1tb.workload import \
     BaseCriteo1TbDlrmSmallWorkload
 
@@ -105,7 +106,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(initial_params), None
+    return sharding_utils.shard_replicated(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_7'
@@ -129,11 +130,14 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return logits_batch, None
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0),
-      static_broadcasted_argnums=(0,))
-  def _eval_batch_pmapped(self,
+    jax.jit,
+    in_shardings=(sharding_utils.get_replicated_sharding(),
+                  sharding_utils.get_naive_sharding_spec(),
+                  ),
+    static_argnums=(0,),
+    out_shardings=sharding_utils.get_replicated_sharding()
+  )
+  def _eval_batch_jitted(self,
                           params: spec.ParameterContainer,
                           batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     logits, _ = self.model_fn(
@@ -157,7 +161,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
     return np.array(
-        self._eval_batch_pmapped(params, batch).sum(), dtype=np.float64)
+        self._eval_batch_jitted(params, batch), dtype=np.float64)
 
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
