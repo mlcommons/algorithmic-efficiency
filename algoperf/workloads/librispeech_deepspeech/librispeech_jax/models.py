@@ -308,16 +308,12 @@ class BatchNorm(nn.Module):
       count_v = jnp.sum(
           jnp.ones_like(inputs) * mask, axis=reduce_over_dims, keepdims=True)
 
-      sum_v = jax.lax.psum(sum_v, axis_name='batch')
-      count_v = jax.lax.psum(count_v, axis_name='batch')
-
       count_v = jnp.maximum(count_v, 1.0)
       mean = sum_v / count_v
       variance = (inputs - mean) * (inputs - mean) * mask
 
       sum_vv = jnp.sum(variance, axis=reduce_over_dims, keepdims=True)
 
-      sum_vv = jax.lax.psum(sum_vv, axis_name='batch')
       var = sum_vv / count_v
 
       self.ra_mean.value = momentum * self.ra_mean.value + (1 - momentum) * mean

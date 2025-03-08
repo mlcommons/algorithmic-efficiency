@@ -333,7 +333,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
     loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
-
     targets, target_paddings = batch['targets']
     # Convert metrics bundle to dictionary
     metrics_dict = {
@@ -385,9 +384,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
-    if model_state is not None and len(model_state) > 0:
-      # Sync batch statistics across replicas before evaluating.
-      model_state = self.sync_batch_stats(model_state)
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
@@ -408,21 +404,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     computed_metrics = metrics_report.compute()
 
     return computed_metrics
-
-  @functools.partial(
-      jax.jit,
-      in_shardings=(
-          sharding_utils.get_replicated_sharding(),  # model_state
-      ),
-      out_shardings=sharding_utils.get_replicated_sharding(),
-      static_argnums=(0,))
-  def sync_batch_stats(
-      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
-    """Sync batch statistics across replicas."""
-    # Replace pmean with direct mean across devices
-    new_batch_stats = jax.tree_map(lambda x: jnp.mean(x, axis=0),
-                                   model_state['batch_stats'])
-    return model_state.copy({'batch_stats': new_batch_stats})
 
 
 class LibriSpeechConformerAttentionTemperatureWorkload(
@@ -465,7 +446,7 @@ class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
   @property
   def validation_target_value(self) -> float:
     return 0.094114
-
+ 
   @property
   def test_target_value(self) -> float:
     return 0.056629

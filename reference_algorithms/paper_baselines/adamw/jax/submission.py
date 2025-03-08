@@ -55,16 +55,15 @@ def init_optimizer_state(workload: spec.Workload,
 
   return optimizer_state, opt_update_fn
 
-
 def train_step(workload,
-               opt_update_fn,
-               model_state,
-               optimizer_state,
-               current_param_container,
-               batch,
-               rng,
-               grad_clip,
-               label_smoothing):
+                      opt_update_fn,
+                      model_state,
+                      optimizer_state,
+                      current_param_container,
+                      batch,
+                      rng,
+                      grad_clip,
+                      label_smoothing):
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -159,15 +158,13 @@ def update_params(
       replicated,  # loss
       replicated  # grad_norm
   )
-
-  # Jit with shardings
   jitted_train_step = jax.jit(
       train_step,
       static_argnums=(0, 1),
       donate_argnums=(2, 3, 4),
       in_shardings=arg_shardings,
-      out_shardings=out_shardings)
-
+      out_shardings=out_shardings
+      )
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
                               opt_update_fn,
                               model_state,
