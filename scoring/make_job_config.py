@@ -4,17 +4,22 @@ from absl import app
 import jax
 import os
 
+SUBMISSION_PATH = 'submissions_algorithms/external_tuning/shampoo_submission/submission.py'
+TUNING_SEARCH_SPACE = 'submissions_algorithms/external_tuning/shampoo_submission/tuning_search_space.json'
+EXPERIMENT_DIR = 'submissions_algorithms/rolling_leaderboard/external_tuning/shampoo'
+FRAMEWORK = 'pytorch'
+
 flags.DEFINE_string('submission_path', 
-                    'prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py',
+                    SUBMISSION_PATH,
                     'Path to submission module.')
 flags.DEFINE_string('tuning_search_space',
-                    'prize_qualification_baselines/external_tuning/tuning_search_space.json',
+                    TUNING_SEARCH_SPACE,
                     'Path to tuning search space for submission module.')
 flags.DEFINE_string('experiment_dir',
-                    'submissions/rolling_leaderboard/external_tuning/baseline',
+                    EXPERIMENT_DIR,
                     'Path to experiment dir where logs will be saved.')
 flags.DEFINE_enum('framework',
-                  'jax',
+                  FRAMEWORK,
                   enum_values=['jax', 'pytorch'],
                   help='Can be either pytorch or jax.')  
 flags.DEFINE_integer('seed',
@@ -106,6 +111,3 @@ def main(_):
 
 if __name__ == '__main__':
   app.run(main)
-
-
-
