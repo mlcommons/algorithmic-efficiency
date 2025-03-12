@@ -669,7 +669,8 @@ def score_submission_on_workload(workload: spec.Workload,
       if isinstance(v, (dict, list, set)):
         raise ValueError(f"Hyperparameter '{k}' must have a single value.")
     hyperparameters = collections.namedtuple(
-      'Hyperparameters', fixed_hyperparameters.keys())(**fixed_hyperparameters)
+        'Hyperparameters',
+        fixed_hyperparameters.keys())(**fixed_hyperparameters)
 
     if not rng_seed:
       rng_seed = struct.unpack('q', os.urandom(8))[0]
