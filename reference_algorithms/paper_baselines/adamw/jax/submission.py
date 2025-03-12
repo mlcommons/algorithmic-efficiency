@@ -223,7 +223,7 @@ def get_batch_size(workload_name):
   elif workload_name == 'librispeech_conformer':
     return 256
   elif workload_name == 'librispeech_deepspeech':
-    return 256
+    return 32
   elif workload_name == 'ogbg':
     return 512
   elif workload_name == 'wmt':

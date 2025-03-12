@@ -9,6 +9,9 @@ paper : https://arxiv.org/abs/1512.02595
 """
 
 from typing import Any, Dict, List, Optional, Tuple, Union, Type, Mapping, Sequence
+from absl import logging
+
+import numpy as np
 
 import functools
 import flax
@@ -385,6 +388,23 @@ class CudnnLSTM(nn.Module):
       seq_lengths = jnp.full((batch_size,), inputs.shape[1], dtype=jnp.int32)
 
     if use_cuda:
+      inputs_shape = np.shape(inputs)
+      h_0_shape = np.shape(h_0)
+      c_0_shape = np.shape(c_0)
+      weights_shape = np.shape(weights)
+      seq_lengths_np = np.shape(seq_lengths)
+      
+      n = jax.devices()
+      logging.info(f"jax num devices {n}")
+      logging.info(f'inputs shape {inputs_shape}')
+      logging.info(f'h_0 shape {h_0_shape}')
+      logging.info(f'c_0 shape {c_0_shape}')
+      logging.info(f'seq_lengths shape {seq_lengths_np}')
+      logging.info(f'weights_shape {weights_shape}')
+      logging.info(f'input_size {input_size}')
+      logging.info(f'hidden_size {self.features}')
+      logging.info(f'num_layers {self.num_layers}')
+
       y, h, c = rnn.lstm(
           x=inputs, h_0=h_0, c_0=c_0, weights=weights,
           seq_lengths=seq_lengths, input_size=input_size,
@@ -761,16 +781,16 @@ class BatchRNN(nn.Module):
     )
     lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
 
-    output, _ = LSTM(
-        hidden_size=hidden_size,
-        bidirectional=config.bidirectional,
-        num_layers=1,
-    )(inputs, lengths)
-
-    # output = CudnnLSTM(
-    #     features=config.encoder_dim // 2,
+    # output, _ = LSTM(
+    #     hidden_size=hidden_size,
     #     bidirectional=config.bidirectional,
-    #     num_layers=1)(inputs, input_paddings)
+    #     num_layers=1,
+    # )(inputs, lengths)
+
+    output = CudnnLSTM(
+        features=config.encoder_dim // 2,
+        bidirectional=config.bidirectional,
+        num_layers=1)(inputs, input_paddings)
     
 
     return output
