@@ -14,6 +14,7 @@ python3 submission_runner.py \
     --experiment_name=baseline
 """
 
+import collections
 import datetime
 import gc
 import importlib
@@ -61,6 +62,9 @@ BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
 # Workload_path will be appended by '_pytorch' or '_jax' automatically.
 WORKLOADS = workloads.WORKLOADS
 
+# Self-tuning submission can specify only these hyperparameters.
+SELF_TUNING_ALLOWED_HYPERPARAMETERS = {"dropout_rate", "aux_dropout_rate"}
+
 flags.DEFINE_string(
     'submission_path',
     None,
@@ -79,7 +83,8 @@ flags.DEFINE_enum(
 flags.DEFINE_string(
     'tuning_search_space',
     None,
-    'The path to the JSON file describing the external tuning search space.')
+    'The path to the JSON file describing the external tuning search space'
+    'or the self tuning fixed hyperparameters.')
 flags.DEFINE_integer('num_tuning_trials',
                      1,
                      'The number of external hyperparameter trials to run.')
@@ -652,9 +657,20 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('=' * 20)
     score = min(all_timings)
   else:
-    if tuning_search_space is not None:
-      raise ValueError(
-          'Cannot provide a tuning search space when using self tuning.')
+    # Self-tuning submissions may specify only allowed hyperparameters, 
+    # each with exactly one fixed value.
+    with open(tuning_search_space, 'r', encoding='UTF-8') as f:
+      fixed_hyperparameters = json.load(f)
+    if not isinstance(fixed_hyperparameters, dict):
+      raise ValueError("Self-tuning expects a dictionary of hyperparameters.")
+    for k, v in fixed_hyperparameters.items():
+      if k not in SELF_TUNING_ALLOWED_HYPERPARAMETERS:
+        raise ValueError(f"Hyperparameter '{k}' not allowed.")
+      if isinstance(v, (dict, list, set)):
+        raise ValueError(f"Hyperparameter '{k}' must have a single fixed value.")
+    hyperparameters = collections.namedtuple(
+      'Hyperparameters', fixed_hyperparameters.keys())(**fixed_hyperparameters)
+
     if not rng_seed:
       rng_seed = struct.unpack('q', os.urandom(8))[0]
     rng = prng.PRNGKey(rng_seed)
@@ -668,8 +684,8 @@ def score_submission_on_workload(workload: spec.Workload,
       score, _ = train_once(
           workload, workload_name, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
-          init_optimizer_state, update_params, data_selection,
-          None, rng_seed, rng, profiler, max_global_steps, log_dir,
+          init_optimizer_state, update_params, data_selection, 
+          hyperparameters, rng_seed, rng, profiler, max_global_steps, log_dir,
           save_checkpoints=save_checkpoints)
   return score
 
