@@ -1,5 +1,6 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in PyTorch."""
 
+import collections
 import math
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
@@ -24,6 +25,9 @@ HPARAMS = {
     "weight_decay": 0.08121616522670176,
     "warmup_factor": 0.02
 }
+HPARAMS = collections.namedtuple(
+    'Hyperparameters', 
+    HPARAMS.keys())(**HPARAMS)
 
 
 # Modified from github.com/pytorch/pytorch/blob/v1.12.1/torch/optim/adamw.py.
