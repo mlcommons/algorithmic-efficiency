@@ -657,7 +657,7 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info('=' * 20)
     score = min(all_timings)
   else:
-    # Self-tuning submissions may specify only allowed hyperparameters, 
+    # Self-tuning submissions may specify only allowed hyperparameters,
     # each with exactly one fixed value.
     with open(tuning_search_space, 'r', encoding='UTF-8') as f:
       fixed_hyperparameters = json.load(f)
@@ -667,7 +667,7 @@ def score_submission_on_workload(workload: spec.Workload,
       if k not in SELF_TUNING_ALLOWED_HYPERPARAMETERS:
         raise ValueError(f"Hyperparameter '{k}' not allowed.")
       if isinstance(v, (dict, list, set)):
-        raise ValueError(f"Hyperparameter '{k}' must have a single fixed value.")
+        raise ValueError(f"Hyperparameter '{k}' must have a single value.")
     hyperparameters = collections.namedtuple(
       'Hyperparameters', fixed_hyperparameters.keys())(**fixed_hyperparameters)
 
@@ -684,7 +684,7 @@ def score_submission_on_workload(workload: spec.Workload,
       score, _ = train_once(
           workload, workload_name, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
-          init_optimizer_state, update_params, data_selection, 
+          init_optimizer_state, update_params, data_selection,
           hyperparameters, rng_seed, rng, profiler, max_global_steps, log_dir,
           save_checkpoints=save_checkpoints)
   return score
