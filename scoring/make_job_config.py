@@ -4,9 +4,9 @@ from absl import app
 import jax
 import os
 
-SUBMISSION_PATH = 'submissions_algorithms/external_tuning/shampoo_submission/submission.py'
-TUNING_SEARCH_SPACE = 'submissions_algorithms/external_tuning/shampoo_submission/tuning_search_space.json'
-EXPERIMENT_DIR = 'submissions_algorithms/rolling_leaderboard/external_tuning/shampoo'
+SUBMISSION_PATH = '/submissions_algorithms/external_tuning/shampoo_submission/submission.py'
+TUNING_SEARCH_SPACE = '/submissions_algorithms/external_tuning/shampoo_submission/tuning_search_space.json'
+EXPERIMENT_DIR = 'submissions/rolling_leaderboard/external_tuning/shampoo'
 FRAMEWORK = 'pytorch'
 
 flags.DEFINE_string('submission_path', 
