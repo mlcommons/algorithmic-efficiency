@@ -5,6 +5,7 @@ import os
 from datasets import Dataset, load_from_disk
 from typing import Dict, List, Optional, Union
 
+import jax
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -17,7 +18,7 @@ RANK = pytorch_setup()[1]
 AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 
 
-def get_lm_dataset(data_rng,
+def get_lm_dataset(data_rng: jax.random.PRNGKey,
                    split: str,
                    data_dir: str,
                    is_training: bool,
@@ -37,11 +38,12 @@ def get_lm_dataset(data_rng,
   def tf_generator():
     """Generates data in a TensorFlow-friendly format."""
     for example in dataset:
+      input_ids = example["input_ids"].numpy().astype(np.int32)  # torch tensor TODO: remove numpy conversion
       yield {
-        "inputs": tf.convert_to_tensor(example["input_ids"][:-1], dtype=tf.int32),
-        "targets": tf.convert_to_tensor(example["input_ids"][1:], dtype=tf.int32),
+        "inputs": tf.convert_to_tensor(input_ids[:-1], dtype=tf.int32),
+        "targets": tf.convert_to_tensor(input_ids[1:], dtype=tf.int32),
       }
-  
+
   # Create a TensorFlow dataset from the generator function
   ds = tf.data.Dataset.from_generator(
         tf_generator,
@@ -58,7 +60,6 @@ def get_lm_dataset(data_rng,
     ds = ds.with_options(options)
 
   if shuffle:
-    print(f"Shuffling dataset with seed: {data_rng[0]}, type={type(data_rng[0])}")
     ds = ds.shuffle(buffer_size=1024, seed=data_rng[0])
 
   if is_training:

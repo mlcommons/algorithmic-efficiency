@@ -76,13 +76,21 @@ from algoperf.workloads.wmt.input_pipeline import \
     normalize_feature_names
 from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer
+from datasets import lm_preprocess
 
+import datasets as hf_datasets
+# from datasets import load_dataset, Dataset
+from transformers import AutoTokenizer
+
+import math
 import functools
+import itertools
 import os
 import shutil
 import subprocess
 import tarfile
 
+from typing import Dict, List, Any
 from absl import app
 from absl import flags
 from absl import logging
@@ -126,6 +134,9 @@ flags.DEFINE_boolean('imagenet',
 flags.DEFINE_boolean('librispeech',
                      False,
                      'If --all=false, whether or not to download LibriSpeech.')
+flags.DEFINE_boolean('finewebedu',
+                     False,
+                     'If --all=false, whether or not to download FineWebEdu.')
 flags.DEFINE_boolean('mnist',
                      False,
                      'If --all=false, whether or not to download MNIST.')
@@ -699,6 +710,86 @@ def download_wmt(data_dir):
           ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
 
 
+def download_finewebedu(data_dir, tmp_dir):
+  """Download FineWebEdu-10B."""
+
+  # data_dir = "/fast/najroldi/data"
+
+  tmp_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None else os.path.expanduser("~/.cache/huggingface/datasets")
+  data_dir = os.path.join(data_dir, 'finewebedu')
+
+  _maybe_mkdir(tmp_dir)
+  _maybe_mkdir(data_dir)
+
+  ds = hf_datasets.load_dataset(
+    'HuggingFaceFW/fineweb-edu', 
+    name='sample-10BT', 
+    split='train',
+    # cache_dir=tmp_dir
+  )
+
+  ds = ds.shuffle(seed=1996)  # shuffle so that multiproc has shards of similar size
+
+  seq_len = 2048
+  max_seq_length = seq_len+1
+  map_setup = dict(batched=True, batch_size=1024, num_proc=8)
+
+  # Tokenize
+  tokenizer = AutoTokenizer.from_pretrained('gpt2')
+  logging.info(f"Vocab size of tokenizer = {len(tokenizer)}")
+  def tokenize(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+    add_eos = lambda seq: (seq + tokenizer.eos_token) if seq else seq
+    add_eos_batched = lambda seqs: [add_eos(seq) for seq in seqs]
+    return tokenizer(
+      add_eos_batched(examples["text"]),
+      return_special_tokens_mask=False, 
+      return_attention_mask=False
+    )
+
+  tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
+  tokenized_dataset = ds.map(
+    tokenize, 
+    remove_columns=['text', 'id', 'dump', 'url', 'file_path', 'language', 
+                    'language_score', 'token_count', 'score', 'int_score'],  
+    **map_setup
+  )
+  tokenizer.model_max_length = seq_len
+
+  # Concat in chunks of max_seq_len
+  def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+    """Concatenate text and generate chunks of max_seq_length"""
+    concatenated_examples = {k: list(itertools.chain(*examples[k])) for k in examples.keys()}
+    total_length = len(concatenated_examples[list(examples.keys())[0]])
+    if total_length >= max_seq_length:
+        total_length = (total_length // max_seq_length) * max_seq_length
+    result = {
+      k: [t[i : i + max_seq_length] for i in range(0, total_length, max_seq_length)] 
+      for k, t in concatenated_examples.items()
+    }
+    return result
+
+  lm_dataset = tokenized_dataset.map(
+    concat_chunck,
+    **map_setup
+  )
+
+  n_tokens = len(lm_dataset) * max_seq_length 
+  logging.info(f"Number of tokens in dataset: {n_tokens:_}")
+
+  # Split dataset into training and validation sets
+  # TODO: avoid (single doc) contamination between train and val
+  VAL_TOKENS = 10_000_000
+  val_samples = VAL_TOKENS // max_seq_length + 1
+  val_dataset = lm_dataset.select(range(val_samples))
+  train_dataset = lm_dataset.select(range(val_samples, len(lm_dataset)))
+  logging.info(f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length :_}")
+  logging.info(f"Number of tokens in train_dataset: {len(train_dataset) * max_seq_length :_}")
+
+  # Save datasets
+  train_dataset.save_to_disk(os.path.join(data_dir, f"train"))
+  val_dataset.save_to_disk(os.path.join(data_dir, f"val"))
+
+
 def main(_):
   data_dir = FLAGS.data_dir
   tmp_dir = FLAGS.temp_dir
@@ -780,6 +871,11 @@ def main(_):
   if FLAGS.all or FLAGS.wmt:
     logging.info('Downloading WMT...')
     download_wmt(data_dir)
+
+  if FLAGS.all or FLAGS.finewebedu:
+    if not FLAGS.skip_download:
+      logging.info('Downloading FineWebEdu-10B...')
+      download_finewebedu(data_dir)
 
 
 # pylint: enable=logging-format-interpolation
