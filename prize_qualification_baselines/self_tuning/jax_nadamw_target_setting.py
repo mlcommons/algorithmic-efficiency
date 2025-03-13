@@ -35,9 +35,7 @@ HPARAMS = {
     "weight_decay": 0.08121616522670176,
     "warmup_factor": 0.02
 }
-HPARAMS = collections.namedtuple(
-    'Hyperparameters', 
-    HPARAMS.keys())(**HPARAMS)
+HPARAMS = collections.namedtuple('Hyperparameters', HPARAMS.keys())(**HPARAMS)
 
 
 # Forked from
