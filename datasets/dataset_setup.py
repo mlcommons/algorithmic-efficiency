@@ -76,10 +76,8 @@ from algoperf.workloads.wmt.input_pipeline import \
     normalize_feature_names
 from datasets import librispeech_preprocess
 from datasets import librispeech_tokenizer
-from datasets import lm_preprocess
 
 import datasets as hf_datasets
-# from datasets import load_dataset, Dataset
 from transformers import AutoTokenizer
 
 import math
@@ -721,6 +719,9 @@ def download_finewebedu(data_dir, tmp_dir):
   _maybe_mkdir(tmp_dir)
   _maybe_mkdir(data_dir)
 
+  # Use local disk instead of NFS for temp storage
+  os.environ["TMPDIR"] = tmp_dir
+
   ds = hf_datasets.load_dataset(
     'HuggingFaceFW/fineweb-edu', 
     name='sample-10BT', 
@@ -745,7 +746,6 @@ def download_finewebedu(data_dir, tmp_dir):
       return_special_tokens_mask=False, 
       return_attention_mask=False
     )
-
   tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
   tokenized_dataset = ds.map(
     tokenize, 
@@ -754,8 +754,21 @@ def download_finewebedu(data_dir, tmp_dir):
     **map_setup
   )
   tokenizer.model_max_length = seq_len
+  
+  tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
+  from datasets import load_from_disk
+  tokenized_dataset = load_from_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
 
   # Concat in chunks of max_seq_len
+  # TODO: this might take to much memory
+  # TODO: bug fix: Python's shutil.rmtree tried to delete a .nfs* file, but it was still in use (OSError: [Errno 16] Device or resource busy
+  # TODO: bug fix: I am losing tokens in the concat-chunk: num_tokens before split: 9_944_182_212
+  #   (1) loss happening because of batched=True: potentially losing the last tokens in the last batch of the 1024 batched examples
+  #       NOTE: the current approach leads to data loss at batch boundaries,
+  #             but concatenation *cannot* happen if batched=False, 
+  #             because concat_chunck relies on processing multiple examples at once.
+  #   (2) loss happening because of nproc>1: potentially losing the last tokens in each process
+  # TODO: this does not allow to later change the seq_len... not a problem in AlgoPerf, but bad in plainLM
   def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
     """Concatenate text and generate chunks of max_seq_length"""
     concatenated_examples = {k: list(itertools.chain(*examples[k])) for k in examples.keys()}
@@ -767,13 +780,11 @@ def download_finewebedu(data_dir, tmp_dir):
       for k, t in concatenated_examples.items()
     }
     return result
-
   lm_dataset = tokenized_dataset.map(
-    concat_chunck,
+    concat_chunck,\
     **map_setup
   )
-
-  n_tokens = len(lm_dataset) * max_seq_length 
+  n_tokens = len(lm_dataset) * max_seq_length  # 9_944_182_212
   logging.info(f"Number of tokens in dataset: {n_tokens:_}")
 
   # Split dataset into training and validation sets

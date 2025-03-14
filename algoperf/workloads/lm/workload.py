@@ -32,7 +32,7 @@ class BaseLmWorkload(spec.Workload):
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
     is_training = split == 'train'
-    ds, self._tokenizer = input_pipeline.get_lm_dataset(
+    ds = input_pipeline.get_lm_dataset(
         data_rng,
         split,
         data_dir,
@@ -41,26 +41,66 @@ class BaseLmWorkload(spec.Workload):
         global_batch_size=global_batch_size,
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset)
-    
+
     for batch in iter(ds):
       yield batch
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int = 0) -> Dict[str, float]:
-    """Run a full evaluation of the model."""
-
-  def loss_fn(
-      self,
-      label_batch: spec.Tensor,  # Dense or one-hot labels.
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
-    """Evaluate the loss function at (label_batch, logits_batch)."""
+  def _eval_model_on_split():
+    pass
+  
+  def eval_period_time_sec():
+    pass
+  
+  def has_reached_test_target():
+    pass
+  
+  def has_reached_validation_target():
+    pass
+  
+  def init_model_fn():
+    pass
+  
+  def is_output_params():
+    pass
+  
+  def loss_fn():
+    pass
+  
+  def loss_type():
+    pass
+  
+  def max_allowed_runtime_sec():
+    pass
+  
+  def model_fn():
+    pass
+  
+  def num_eval_train_examples():
+    pass
+  
+  def num_test_examples():
+    pass
+  
+  def num_train_examples():
+    pass
+  
+  def num_validation_examples():
+    pass
+  
+  def step_hint():
+    pass
+  
+  def test_target_value():
+    pass
+  
+  def train_mean():
+    pass
+  
+  def train_stddev():
+    pass
+  
+  def validation_target_value():
+    pass
+  
+  def target_metric_name():
     pass

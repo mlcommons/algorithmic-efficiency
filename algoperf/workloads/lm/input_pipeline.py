@@ -15,6 +15,10 @@ from algoperf.pytorch_utils import pytorch_setup
 
 RANK = pytorch_setup()[1]
 # Avoid multithreading in all processes but the first (rank 0).
+# This ensures that only the primary process (RANK == 0) uses TensorFlow's 
+# automatic optimization (AUTOTUNE), while other processes disable it (None).
+# tf.data.AUTOTUNE is a constant that lets TensorFlow automatically determine the optimal 
+# number of elements to prefetch or parallelize for dataset operations, improving performance.
 AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 
 
@@ -30,34 +34,36 @@ def get_lm_dataset(data_rng: jax.random.PRNGKey,
   """Load HF dataset and return a TF dataset."""
 
   dataset_path = os.path.join(data_dir, split)
-  dataset = load_from_disk(dataset_path)  # Loads HF arrow dataset
+  dataset = load_from_disk(dataset_path)
 
   is_training = split == "train"
   shuffle = split in ['train', 'eval_train']
 
+  dataset.set_format("tensorflow")  # tf.int64
+
   def tf_generator():
     """Generates data in a TensorFlow-friendly format."""
     for example in dataset:
-      input_ids = example["input_ids"].numpy().astype(np.int32)  # torch tensor TODO: remove numpy conversion
       yield {
-        "inputs": tf.convert_to_tensor(input_ids[:-1], dtype=tf.int32),
-        "targets": tf.convert_to_tensor(input_ids[1:], dtype=tf.int32),
+        "inputs": example["input_ids"][:-1],
+        "targets": example["input_ids"][1:],
       }
 
-  # Create a TensorFlow dataset from the generator function
+  # Create a TensorFlow dataset
   ds = tf.data.Dataset.from_generator(
-        tf_generator,
-        output_signature={
-            "inputs": tf.TensorSpec(shape=(None,), dtype=tf.int32),
-            "targets": tf.TensorSpec(shape=(None,), dtype=tf.int32),
-        }
-    )
+    tf_generator,
+    output_signature={
+      "inputs": tf.TensorSpec(shape=(None,), dtype=tf.int64),
+      "targets": tf.TensorSpec(shape=(None,), dtype=tf.int64),
+    }
+  )
 
   # Avoid creating too many threads when using PyTorch DDP.
-  if RANK != 0:
+  # Limits TensorFlow's threading for non-primary processes (RANK != 0)
+  if RANK != 0: 
     options = tf.data.Options()
-    options.threading.private_threadpool_size = 1
-    ds = ds.with_options(options)
+    options.threading.private_threadpool_size = 1  # restrict dataset operations to a single thread
+    ds = ds.with_options(options)  # apply threading restrictions
 
   if shuffle:
     ds = ds.shuffle(buffer_size=1024, seed=data_rng[0])
@@ -66,6 +72,9 @@ def get_lm_dataset(data_rng: jax.random.PRNGKey,
     ds = ds.repeat()
 
   # Batch the dataset, ensuring the last batch is dropped if not full during training
+  # i.e. it groups consecutive elements into fixed-size chunks. 
+  # Instead of processing individual elements, the dataset yields batches (tensors with multiple elements), 
+  # improving efficiency and parallelism in training
   ds = ds.batch(global_batch_size, drop_remainder=is_training)
   ds = ds.prefetch(AUTOTUNE)
 
