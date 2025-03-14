@@ -1,6 +1,5 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in Jax."""
 
-import collections
 import functools
 
 # isort: off
