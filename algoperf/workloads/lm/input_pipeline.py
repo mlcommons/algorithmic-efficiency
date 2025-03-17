@@ -25,7 +25,6 @@ AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 def get_lm_dataset(data_rng: jax.random.PRNGKey,
                    split: str,
                    data_dir: str,
-                   is_training: bool,
                    vocab_size: int,
                    global_batch_size: int,
                    num_batches: Optional[int] = None,
@@ -39,7 +38,7 @@ def get_lm_dataset(data_rng: jax.random.PRNGKey,
   is_training = split == "train"
   shuffle = split in ['train', 'eval_train']
 
-  dataset.set_format("tensorflow")  # tf.int64
+  dataset.set_format("tensorflow")  # tf.int64  # TODO: is this needed?
 
   def tf_generator():
     """Generates data in a TensorFlow-friendly format."""

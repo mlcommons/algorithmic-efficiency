@@ -234,7 +234,7 @@ def train_once(
       dropout_rate = hyperparameters.dropout_rate
     if hasattr(hyperparameters, 'aux_dropout_rate'):
       aux_dropout_rate = hyperparameters.aux_dropout_rate
-    model_params, model_state = workload.init_model_fn(
+    model_params, model_state = workload.init_model_fn( 
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = [

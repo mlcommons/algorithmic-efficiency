@@ -14,7 +14,4 @@ from algoperf.workloads.lm.workload import BaseLmWorkload
 
 
 class LmWorkload(BaseLmWorkload):
-
-  @property
-  def eval_batch_size(self) -> int:
-    return 131_072
+  pass

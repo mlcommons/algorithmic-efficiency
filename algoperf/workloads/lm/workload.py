@@ -31,12 +31,10 @@ class BaseLmWorkload(spec.Workload):
                          global_batch_size: int,
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
-    is_training = split == 'train'
     ds = input_pipeline.get_lm_dataset(
         data_rng,
         split,
         data_dir,
-        is_training=is_training,
         vocab_size=self._vocab_size,
         global_batch_size=global_batch_size,
         num_batches=num_batches,
@@ -103,4 +101,7 @@ class BaseLmWorkload(spec.Workload):
     pass
   
   def target_metric_name():
+    pass
+
+  def eval_batch_size():
     pass
