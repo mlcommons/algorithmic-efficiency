@@ -41,30 +41,33 @@ def test_dataloader_torch():
       data_dir=data_dir,
       global_batch_size=global_batch_size)
   
-  # batch = next(input_queue)
-  
   print(f"RANK {RANK} of {N_GPUS}")
   sync_ddp()
 
   # Start test.
   for _ in range(100):
-    
-    batch = next(input_queue)
-    assert type(batch) == dict
 
+    batch = next(input_queue)
+
+    assert type(batch) == dict
     assert 'inputs' in batch
     assert 'targets' in batch
 
-    assert type(batch['inputs']) == torch.Tensor
-    assert type(batch['targets']) == torch.Tensor
+    inputs, targets = batch['inputs'], batch['targets']
 
-    assert batch['inputs'].dtype == dtype
-    assert batch['targets'].dtype == dtype
+    assert type(inputs) == torch.Tensor
+    assert type(targets) == torch.Tensor
 
-    assert batch['inputs'].shape == (local_batch_size, seq_len)
-    assert batch['targets'].shape == (local_batch_size, seq_len)
-    
-    sync_ddp()
+    assert inputs.device == DEVICE
+    assert targets.device == DEVICE
+
+    assert inputs.dtype == dtype
+    assert targets.dtype == dtype
+
+    assert inputs.shape == (local_batch_size, seq_len)
+    assert targets.shape == (local_batch_size, seq_len)
+
+    assert torch.equal(inputs[:,1:], targets[:,:-1])
 
   print(f"=== ALL TEST PASSED ===")
 
