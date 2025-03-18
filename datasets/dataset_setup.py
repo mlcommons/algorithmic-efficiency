@@ -711,8 +711,6 @@ def download_wmt(data_dir):
 def download_finewebedu(data_dir, tmp_dir):
   """Download FineWebEdu-10B."""
 
-  # data_dir = "/fast/najroldi/data"
-
   tmp_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None else os.path.expanduser("~/.cache/huggingface/datasets")
   data_dir = os.path.join(data_dir, 'finewebedu')
 
@@ -726,7 +724,7 @@ def download_finewebedu(data_dir, tmp_dir):
     'HuggingFaceFW/fineweb-edu', 
     name='sample-10BT', 
     split='train',
-    # cache_dir=tmp_dir
+    cache_dir=tmp_dir
   )
 
   ds = ds.shuffle(seed=1996)  # shuffle so that multiproc has shards of similar size
@@ -756,19 +754,11 @@ def download_finewebedu(data_dir, tmp_dir):
   tokenizer.model_max_length = seq_len
   
   tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
-  from datasets import load_from_disk
-  tokenized_dataset = load_from_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
 
   # Concat in chunks of max_seq_len
-  # TODO: this might take to much memory
-  # TODO: bug fix: Python's shutil.rmtree tried to delete a .nfs* file, but it was still in use (OSError: [Errno 16] Device or resource busy
-  # TODO: bug fix: I am losing tokens in the concat-chunk: num_tokens before split: 9_944_182_212
-  #   (1) loss happening because of batched=True: potentially losing the last tokens in the last batch of the 1024 batched examples
-  #       NOTE: the current approach leads to data loss at batch boundaries,
-  #             but concatenation *cannot* happen if batched=False, 
-  #             because concat_chunck relies on processing multiple examples at once.
-  #   (2) loss happening because of nproc>1: potentially losing the last tokens in each process
-  # TODO: this does not allow to later change the seq_len... not a problem in AlgoPerf, but bad in plainLM
+  # TODO (nico): this might take to much memory
+  # TODO (nico): bug fix: Python's shutil.rmtree tried to delete .nfs file, but it was still in use (OSError: [Errno 16] Device or resource busy
+  # TODO (nico): make it sequential or increase batch_size in the map_setup
   def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
     """Concatenate text and generate chunks of max_seq_length"""
     concatenated_examples = {k: list(itertools.chain(*examples[k])) for k in examples.keys()}
@@ -780,15 +770,12 @@ def download_finewebedu(data_dir, tmp_dir):
       for k, t in concatenated_examples.items()
     }
     return result
-  lm_dataset = tokenized_dataset.map(
-    concat_chunck,\
-    **map_setup
-  )
-  n_tokens = len(lm_dataset) * max_seq_length  # 9_944_182_212
+  lm_dataset = tokenized_dataset.map(concat_chunck, **map_setup)
+  n_tokens = len(lm_dataset) * max_seq_length
   logging.info(f"Number of tokens in dataset: {n_tokens:_}")
 
   # Split dataset into training and validation sets
-  # TODO: avoid (single doc) contamination between train and val
+  # TODO (nico): avoid (single doc) contamination, by splitting before concatenation
   VAL_TOKENS = 10_000_000
   val_samples = VAL_TOKENS // max_seq_length + 1
   val_dataset = lm_dataset.select(range(val_samples))
