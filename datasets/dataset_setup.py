@@ -711,11 +711,11 @@ def download_wmt(data_dir):
 def download_finewebedu(data_dir, tmp_dir):
   """Download FineWebEdu-10B."""
 
-  tmp_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None else os.path.expanduser("~/.cache/huggingface/datasets")
   data_dir = os.path.join(data_dir, 'finewebedu')
-
-  _maybe_mkdir(tmp_dir)
+  tmp_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None \
+      else os.path.expanduser("~/.cache/huggingface/datasets")
   _maybe_mkdir(data_dir)
+  _maybe_mkdir(tmp_dir)
 
   # Use local disk instead of NFS for temp storage
   os.environ["TMPDIR"] = tmp_dir
