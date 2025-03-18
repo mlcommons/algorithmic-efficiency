@@ -392,8 +392,8 @@ def train_once(
         train_step_end_time - train_state['last_step_end_time'])
 
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time'])
-        >= workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time']) >=
+        workload.eval_period_time_sec or train_state['training_complete']):
 
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
