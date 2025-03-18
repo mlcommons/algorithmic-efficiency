@@ -65,7 +65,7 @@ def shard_and_maybe_pad_np(
     # Assumes that `global_batch_size % local_device_count == 0`.
     return x.reshape((local_device_count, -1, *x.shape[1:]))
 
-  return jax.tree_util.tree_map(_prepare, batch)
+  return jax.tree.map(_prepare, batch)
 
 
 def pad(tensor: np.ndarray,
