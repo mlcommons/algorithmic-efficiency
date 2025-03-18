@@ -708,26 +708,28 @@ def download_wmt(data_dir):
           ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
 
 
-def download_finewebedu(data_dir, tmp_dir):
+def download_finewebedu(data_dir, tmp_dir=None):
   """Download FineWebEdu-10B."""
 
   data_dir = os.path.join(data_dir, 'finewebedu')
-  tmp_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None \
-      else os.path.expanduser("~/.cache/huggingface/datasets")
+  tmp_dir = tmp_dir if tmp_dir is not None else '/tmp'
+  cache_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None else os.path.expanduser('~/.cache/huggingface/datasets')
+
   _maybe_mkdir(data_dir)
   _maybe_mkdir(tmp_dir)
+  _maybe_mkdir(cache_dir)
 
-  # Use local disk instead of NFS for temp storage
   os.environ["TMPDIR"] = tmp_dir
 
   ds = hf_datasets.load_dataset(
     'HuggingFaceFW/fineweb-edu', 
     name='sample-10BT', 
     split='train',
-    cache_dir=tmp_dir
+    cache_dir=cache_dir
   )
 
-  ds = ds.shuffle(seed=1996)  # shuffle so that multiproc has shards of similar size
+  # Shuffle so that multiproc has shards of similar size.
+  ds = ds.shuffle(seed=1996)
 
   seq_len = 2048
   max_seq_length = seq_len+1
@@ -754,11 +756,8 @@ def download_finewebedu(data_dir, tmp_dir):
   tokenizer.model_max_length = seq_len
   
   tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
-
+      
   # Concat in chunks of max_seq_len
-  # TODO (nico): this might take to much memory
-  # TODO (nico): bug fix: Python's shutil.rmtree tried to delete .nfs file, but it was still in use (OSError: [Errno 16] Device or resource busy
-  # TODO (nico): make it sequential or increase batch_size in the map_setup
   def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
     """Concatenate text and generate chunks of max_seq_length"""
     concatenated_examples = {k: list(itertools.chain(*examples[k])) for k in examples.keys()}
