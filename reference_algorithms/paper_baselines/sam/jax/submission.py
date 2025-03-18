@@ -67,9 +67,8 @@ def sharpness_aware_minimization(
     # the noised parameters in the same order as on the original gradients and
     # with the same 1e-6 epsilon that is used when clipping the gradients.
     updates = dual_vector(updates)
-    noised_params = jax.tree_util.tree_map(lambda p, u: p + rho * u,
-                                           params,
-                                           updates)
+    noised_params = jax.tree_util.tree_map(
+        lambda p, u: p + rho * u, params, updates)
     (_, (n_valid_examples, _)), updates = grad_fn(noised_params)
     # Get correct global mean grad.
     (n_valid_examples, updates) = lax.psum((n_valid_examples, updates),
@@ -81,7 +80,8 @@ def sharpness_aware_minimization(
           sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(updates)))
       scaled_updates = jax.tree.map(
           lambda x: x / (updates_norm + _GRAD_CLIP_EPS) * grad_clip, updates)
-      updates = jax.lax.cond(updates_norm > grad_clip, lambda _: scaled_updates,
+      updates = jax.lax.cond(updates_norm > grad_clip,
+                             lambda _: scaled_updates,
                              lambda _: updates,
                              None)
     updates, state = base_opt_update_fn(updates, state, params)
