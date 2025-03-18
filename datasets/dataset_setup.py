@@ -756,8 +756,21 @@ def download_finewebedu(data_dir, tmp_dir=None):
   tokenizer.model_max_length = seq_len
   
   tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
-      
-  # Concat in chunks of max_seq_len
+
+  # Find how many entries to take from dataset to have VAL_TOKENS in validation set.
+  VAL_TOKENS = 10_000_000
+  tokens_accumulated, num_examples_for_val = 0, 0
+  for example in tokenized_dataset:
+    tokens_accumulated += len(example['input_ids'])
+    num_examples_for_val += 1
+    if tokens_accumulated >= VAL_TOKENS:
+        break
+  # Split in train and valid.
+  val_dataset = tokenized_dataset.select(range(num_examples_for_val))
+  train_dataset = tokenized_dataset.select(range(num_examples_for_val, len(tokenized_dataset)))
+
+  # Concat in chunks of max_seq_len.
+  # NOTE: expected token loss by batched concat_chunk. Truncates leftover tokens that don't fill a full max_seq_length chunk.
   def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
     """Concatenate text and generate chunks of max_seq_length"""
     concatenated_examples = {k: list(itertools.chain(*examples[k])) for k in examples.keys()}
@@ -769,18 +782,11 @@ def download_finewebedu(data_dir, tmp_dir=None):
       for k, t in concatenated_examples.items()
     }
     return result
-  lm_dataset = tokenized_dataset.map(concat_chunck, **map_setup)
-  n_tokens = len(lm_dataset) * max_seq_length
-  logging.info(f"Number of tokens in dataset: {n_tokens:_}")
-
-  # Split dataset into training and validation sets
-  # TODO (nico): avoid (single doc) contamination, by splitting before concatenation
-  VAL_TOKENS = 10_000_000
-  val_samples = VAL_TOKENS // max_seq_length + 1
-  val_dataset = lm_dataset.select(range(val_samples))
-  train_dataset = lm_dataset.select(range(val_samples, len(lm_dataset)))
-  logging.info(f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length :_}")
-  logging.info(f"Number of tokens in train_dataset: {len(train_dataset) * max_seq_length :_}")
+  # Concat text in validation and train sets.
+  val_dataset = val_dataset.map(concat_chunck, **map_setup)
+  train_dataset = train_dataset.map(concat_chunck, **map_setup)
+  logging.info(f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length:_}")
+  logging.info(f"Number of tokens in train_dataset: {len(train_dataset) * max_seq_length:_}")
 
   # Save datasets
   train_dataset.save_to_disk(os.path.join(data_dir, f"train"))
