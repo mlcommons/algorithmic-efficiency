@@ -168,19 +168,22 @@ def main(_):
         'rb') as f:
       results = pickle.load(f)
   else:
-    for submission in os.listdir(FLAGS.submission_directory):
-      print(submission)
-      if submission in FLAGS.exclude_submissions.split(','):
-        continue
-      experiment_path = os.path.join(FLAGS.submission_directory,
-                                      submission)
-      df = scoring_utils.get_experiment_df(experiment_path)
-      results[submission] = df
-      summary_df = get_submission_summary(df)
-      with open(
-          os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
-          'w') as fout:
-        summary_df.to_csv(fout)
+    for team in os.listdir(FLAGS.submission_directory):
+      for submission in os.listdir(
+          os.path.join(FLAGS.submission_directory, team)):
+        print(submission)
+        if submission in FLAGS.exclude_submissions.split(','):
+          continue
+        experiment_path = os.path.join(FLAGS.submission_directory,
+                                       team,
+                                       submission)
+        df = scoring_utils.get_experiment_df(experiment_path)
+        results[submission] = df
+        summary_df = get_submission_summary(df)
+        with open(
+            os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+            'w') as fout:
+          summary_df.to_csv(fout)
 
     # Optionally save results to filename
     if FLAGS.save_results_to_filename:
