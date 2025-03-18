@@ -446,7 +446,7 @@ class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
   @property
   def validation_target_value(self) -> float:
     return 0.094114
- 
+
   @property
   def test_target_value(self) -> float:
     return 0.056629

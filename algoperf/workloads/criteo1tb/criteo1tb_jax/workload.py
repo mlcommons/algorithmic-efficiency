@@ -130,16 +130,16 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return logits_batch, None
 
   @functools.partial(
-    jax.jit,
-    in_shardings=(sharding_utils.get_replicated_sharding(),
-                  sharding_utils.get_naive_sharding_spec(),
-                  ),
-    static_argnums=(0,),
-    out_shardings=sharding_utils.get_replicated_sharding()
-  )
+      jax.jit,
+      in_shardings=(
+          sharding_utils.get_replicated_sharding(),
+          sharding_utils.get_naive_sharding_spec(),
+      ),
+      static_argnums=(0,),
+      out_shardings=sharding_utils.get_replicated_sharding())
   def _eval_batch_jitted(self,
-                          params: spec.ParameterContainer,
-                          batch: Dict[str, spec.Tensor]) -> spec.Tensor:
+                         params: spec.ParameterContainer,
+                         batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     logits, _ = self.model_fn(
         params,
         batch,
@@ -160,8 +160,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
                   batch: Dict[str, spec.Tensor]) -> spec.Tensor:
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
-    return np.array(
-        self._eval_batch_jitted(params, batch), dtype=np.float64)
+    return np.array(self._eval_batch_jitted(params, batch), dtype=np.float64)
 
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):

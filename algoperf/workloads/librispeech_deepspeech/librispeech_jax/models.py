@@ -144,8 +144,8 @@ class Conv2dSubsampling(nn.Module):
     self.kernel = self.param('kernel',
                              nn.initializers.xavier_uniform(),
                              self.filter_shape)
-    self.bias = self.param('bias', lambda rng, s: jnp.zeros(s, jnp.float32),
-                           self.output_channels)
+    self.bias = self.param(
+        'bias', lambda rng, s: jnp.zeros(s, jnp.float32), self.output_channels)
 
   @nn.compact
   def __call__(self, inputs, paddings, train):
@@ -278,10 +278,12 @@ class BatchNorm(nn.Module):
     dtype = self.dtype
 
     self.ra_mean = self.variable('batch_stats',
-                                 'mean', lambda s: jnp.zeros(s, dtype),
+                                 'mean',
+                                 lambda s: jnp.zeros(s, dtype),
                                  dim)
     self.ra_var = self.variable('batch_stats',
-                                'var', lambda s: jnp.ones(s, dtype),
+                                'var',
+                                lambda s: jnp.ones(s, dtype),
                                 dim)
 
     self.gamma = self.param('scale', nn.initializers.zeros, dim, dtype)
@@ -393,7 +395,7 @@ class CudnnLSTM(nn.Module):
       c_0_shape = np.shape(c_0)
       weights_shape = np.shape(weights)
       seq_lengths_np = np.shape(seq_lengths)
-      
+
       n = jax.devices()
       logging.info(f"jax num devices {n}")
       logging.info(f'inputs shape {inputs_shape}')
@@ -440,6 +442,7 @@ class CudnnLSTM(nn.Module):
         self.bidirectional,
     )
 
+
 ### Swap in regular LSTM layer for debuggin
 @jax.vmap
 def flip_sequences(inputs: Array, lengths: Array) -> Array:
@@ -474,6 +477,7 @@ def flip_sequences(inputs: Array, lengths: Array) -> Array:
   idxs = (jnp.arange(max_length - 1, -1, -1) + lengths) % max_length
   return inputs[idxs]
 
+
 class GenericRNNSequenceEncoder(nn.Module):
   """Encodes a single sequence using any RNN cell, for example `nn.LSTMCell`.
 
@@ -503,8 +507,11 @@ class GenericRNNSequenceEncoder(nn.Module):
       in_axes=(1, flax.core.axes_scan.broadcast, flax.core.axes_scan.broadcast),
       out_axes=1,
       split_rngs={'params': False})
-  def unroll_cell(self, cell_state: StateType, inputs: Array,
-                  recurrent_dropout_mask: Optional[Array], deterministic: bool):
+  def unroll_cell(self,
+                  cell_state: StateType,
+                  inputs: Array,
+                  recurrent_dropout_mask: Optional[Array],
+                  deterministic: bool):
     """Unrolls a recurrent cell over an input sequence.
 
     Args:
@@ -554,7 +561,8 @@ class GenericRNNSequenceEncoder(nn.Module):
       inputs = flip_sequences(inputs, lengths)
 
     recurrent_dropout_mask = None
-    _, (cell_states, outputs) = self.unroll_cell(initial_state, inputs,
+    _, (cell_states, outputs) = self.unroll_cell(initial_state,
+                                                 inputs,
                                                  recurrent_dropout_mask,
                                                  deterministic)
     final_state = jax.tree.map(
@@ -602,8 +610,7 @@ class GenericRNN(nn.Module):
       inputs: Array,
       lengths: Array,
       initial_states: Optional[Sequence[StateType]] = None,
-      deterministic: bool = False
-  ) -> Tuple[Array, Sequence[StateType]]:
+      deterministic: bool = False) -> Tuple[Array, Sequence[StateType]]:
     """Processes the input sequence using the recurrent cell.
 
     Args:
@@ -635,15 +642,12 @@ class GenericRNN(nn.Module):
       rng = jax.random.PRNGKey(0)
       initial_states = [
           self.cell_type(self.hidden_size).initialize_carry(
-              rng, (batch_size, 1)
-          )
-          for _ in range(num_cells)
+              rng, (batch_size, 1)) for _ in range(num_cells)
       ]
     if len(initial_states) != num_cells:
       raise ValueError(
           f'Please provide {self.num_cells} (`num_layers`, *2 if bidirectional)'
-          'initial states.'
-      )
+          'initial states.')
 
     # For each layer, apply the forward and optionally the backward RNN cell.
     cell_idx = 0
@@ -756,6 +760,7 @@ class LSTM(nn.Module):
             initial_states=initial_states,
             deterministic=deterministic)
 
+
 class BatchRNN(nn.Module):
   """Implements a single deepspeech encoder layer.
   """
@@ -775,10 +780,9 @@ class BatchRNN(nn.Module):
                                                     input_paddings,
                                                     train)
 
-    # For regular LSTM                                                
+    # For regular LSTM
     hidden_size = (
-      config.encoder_dim // 2 if config.bidirectional else config.encoder_dim
-    )
+        config.encoder_dim // 2 if config.bidirectional else config.encoder_dim)
     lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
 
     # output, _ = LSTM(
@@ -791,7 +795,6 @@ class BatchRNN(nn.Module):
         features=config.encoder_dim // 2,
         bidirectional=config.bidirectional,
         num_layers=1)(inputs, input_paddings)
-    
 
     return output
 

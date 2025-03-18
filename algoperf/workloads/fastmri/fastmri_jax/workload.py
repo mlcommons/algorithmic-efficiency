@@ -96,14 +96,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   @functools.partial(
       jax.jit,
-      in_shardings=(
-        sharding_utils.get_replicated_sharding(),
-        sharding_utils.get_naive_sharding_spec(),
-        sharding_utils.get_replicated_sharding()
-      ),
+      in_shardings=(sharding_utils.get_replicated_sharding(),
+                    sharding_utils.get_naive_sharding_spec(),
+                    sharding_utils.get_replicated_sharding()),
       static_argnums=(0,),
-      out_shardings=sharding_utils.get_replicated_sharding()
-  )
+      out_shardings=sharding_utils.get_replicated_sharding())
   def _eval_model(self,
                   params: spec.Tensor,
                   batch: Dict[str, spec.Tensor],
