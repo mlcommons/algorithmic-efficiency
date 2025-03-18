@@ -6,9 +6,10 @@ from absl import flags
 import jax
 
 SUBMISSION_PATH = 'submissions_algorithms/submissions/self_tuning/schedule_free_adamw_v2/submission.py'
+EXPERIMENT_DIR = 'submissions/rolling_leaderboard/self_tuning/schedule_free_adamw_v2'
 TUNING_SEARCH_SPACE = None
-EXPERIMENT_DIR = 'submissions/rolling_leaderboard/external_tuning/shampoo'
 FRAMEWORK = 'pytorch'
+TUNING_RULESET = 'self'
 
 flags.DEFINE_string('submission_path',
                     SUBMISSION_PATH,
@@ -27,7 +28,7 @@ flags.DEFINE_enum(
 flags.DEFINE_integer('seed', 0, 'RNG seed to to generate study seeds from.')
 flags.DEFINE_enum(
     'tuning_ruleset',
-    'external',
+    TUNING_RULESET,
     enum_values=['external', 'self'],
     help='Which tuning ruleset to score this submission on. Can be external or self.'
 )
@@ -62,12 +63,34 @@ def main(_):
     workload_key = jax.random.fold_in(key, hash(workload) % (2**32 - 1))
     for study_index in range(NUM_STUDIES):
       study_key = jax.random.fold_in(workload_key, study_index)
-      for hparam_index in range(NUM_TUNING_TRIALS):
-        run_key = jax.random.fold_in(study_key, hparam_index)
+      if FLAGS.tuning_ruleset == 'external':
+        for hparam_index in range(NUM_TUNING_TRIALS):
+          run_key = jax.random.fold_in(study_key, hparam_index)
+          seed = jax.random.randint(run_key, (1,), MIN_INT, MAX_INT)[0].item()
+          print(seed)
+          # Add job
+          job = {}
+          study_dir = os.path.join(FLAGS.experiment_dir, f"study_{study_index}")
+          job['framework'] = FLAGS.framework
+          job['workload'] = workload
+          job['dataset'] = WORKLOADS[workload]['dataset']
+          job['submission_path'] = FLAGS.submission_path
+          job['experiment_dir'] = study_dir
+          job['rng_seed'] = seed
+          job['tuning_ruleset'] = FLAGS.tuning_ruleset
+          job['num_tuning_trials'] = NUM_TUNING_TRIALS
+          job['hparam_start_index'] = hparam_index
+          job['hparam_end_index'] = hparam_index + 1
+          job['tuning_search_space'] = FLAGS.tuning_search_space
+          job['tuning_ruleset'] = FLAGS.tuning_ruleset
+          jobs.append(job)
+          print(job)
+
+      else:
+        run_key = study_key
         seed = jax.random.randint(run_key, (1,), MIN_INT, MAX_INT)[0].item()
         print(seed)
-
-        # Add workload
+        # Add job
         job = {}
         study_dir = os.path.join(FLAGS.experiment_dir, f"study_{study_index}")
         job['framework'] = FLAGS.framework
@@ -77,13 +100,7 @@ def main(_):
         job['experiment_dir'] = study_dir
         job['rng_seed'] = seed
         job['tuning_ruleset'] = FLAGS.tuning_ruleset
-        if FLAGS.tuning_ruleset == 'external':
-          job['num_tuning_trials'] = NUM_TUNING_TRIALS
-          job['hparam_start_index'] = hparam_index
-          job['hparam_end_index'] = hparam_index + 1
-          job['tuning_search_space'] = FLAGS.tuning_search_space
-        else:
-          job['num_tuning_trials'] = 1
+        job['num_tuning_trials'] = 1
 
         jobs.append(job)
         print(job)
