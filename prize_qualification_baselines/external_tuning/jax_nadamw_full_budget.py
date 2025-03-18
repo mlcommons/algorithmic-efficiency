@@ -123,9 +123,8 @@ def scale_by_nadam(b1: float = 0.9,
     mu_hat = _update_moment(updates, mu, b1, 1)
     mu_hat = mu_hat if not debias else _bias_correction(mu_hat, b1, count)
     nu_hat = nu if not debias else _bias_correction(nu, b2, count)
-    updates = jax.tree.map(lambda m, v: m / (raise_power(v + eps_root) + eps),
-                           mu_hat,
-                           nu_hat)
+    updates = jax.tree.map(
+        lambda m, v: m / (raise_power(v + eps_root) + eps), mu_hat, nu_hat)
     return updates, ScaleByAdamState(count=count, mu=mu, nu=nu)
 
   return optax.GradientTransformation(init_fn, update_fn)
@@ -140,9 +139,8 @@ class ScaleByAdamState(NamedTuple):
 
 def _update_moment(updates, moments, decay, order):
   """Compute the exponential moving average of the `order-th` moment."""
-  return jax.tree.map(lambda g, t: (1 - decay) * (g**order) + decay * t,
-                      updates,
-                      moments)
+  return jax.tree.map(
+      lambda g, t: (1 - decay) * (g**order) + decay * t, updates, moments)
 
 
 def _bias_correction(moment, decay, count):
