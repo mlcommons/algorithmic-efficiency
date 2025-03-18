@@ -5,8 +5,8 @@ from absl import app
 from absl import flags
 import jax
 
-SUBMISSION_PATH = '/submissions_algorithms/external_tuning/shampoo_submission/submission.py'
-TUNING_SEARCH_SPACE = '/submissions_algorithms/external_tuning/shampoo_submission/tuning_search_space.json'
+SUBMISSION_PATH = 'submissions_algorithms/submissions/self_tuning/schedule_free_adamw_v2/submission.py'
+TUNING_SEARCH_SPACE = None
 EXPERIMENT_DIR = 'submissions/rolling_leaderboard/external_tuning/shampoo'
 FRAMEWORK = 'pytorch'
 
@@ -74,12 +74,16 @@ def main(_):
         job['workload'] = workload
         job['dataset'] = WORKLOADS[workload]['dataset']
         job['submission_path'] = FLAGS.submission_path
-        job['tuning_search_space'] = FLAGS.tuning_search_space
         job['experiment_dir'] = study_dir
-        job['hparam_start_index'] = hparam_index
-        job['hparam_end_index'] = hparam_index + 1
         job['rng_seed'] = seed
-        job['num_tuning_trials'] = NUM_TUNING_TRIALS if FLAGS.tuning_ruleset == 'external' else 1
+        job['tuning_ruleset'] = FLAGS.tuning_ruleset
+        if FLAGS.tuning_ruleset == 'external':
+          job['num_tuning_trials'] = NUM_TUNING_TRIALS
+          job['hparam_start_index'] = hparam_index
+          job['hparam_end_index'] = hparam_index + 1
+          job['tuning_search_space'] = FLAGS.tuning_search_space
+        else:
+          job['num_tuning_trials'] = 1
 
         jobs.append(job)
         print(job)
