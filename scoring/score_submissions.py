@@ -160,6 +160,7 @@ def compute_leaderboard_score(df, normalize=True):
 def main(_):
   results = {}
   os.makedirs(FLAGS.output_dir, exist_ok=True)
+  logging.info(f"Scoring submissions in {FLAGS.submission_directory}")
 
   # Optionally read results to filename
   if FLAGS.load_results_from_filename:
@@ -172,8 +173,7 @@ def main(_):
       print(submission)
       if submission in FLAGS.exclude_submissions.split(','):
         continue
-      experiment_path = os.path.join(FLAGS.submission_directory,
-                                      submission)
+      experiment_path = os.path.join(FLAGS.submission_directory, submission)
       df = scoring_utils.get_experiment_df(experiment_path)
       results[submission] = df
       summary_df = get_submission_summary(df)
