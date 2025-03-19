@@ -2,6 +2,7 @@
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
 from typing import Optional, Tuple
 
+import jax
 from flax import linen as nn
 import jax.numpy as jnp
 import jraph
@@ -78,7 +79,8 @@ class GNN(nn.Module):
               self.hidden_dims, dropout=dropout, activation_fn=activation_fn),
           update_global_fn=_make_mlp(
               self.hidden_dims, dropout=dropout, activation_fn=activation_fn))
-
+      # jax.debug.print(str(graph))
+    
       graph = net(graph)
 
     # Map globals to represent the final result
