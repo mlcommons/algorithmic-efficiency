@@ -74,7 +74,7 @@ def train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
-        update_batch_norm=True)
+        update_batch_norm=True,)
     loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,

@@ -4,6 +4,8 @@ from typing import Dict, Optional, Tuple
 from flax import jax_utils
 import jax
 import jax.numpy as jnp
+from jax.experimental.shard_map import shard_map
+from jax.sharding import PartitionSpec as P
 import numpy as np
 
 from algoperf import param_utils
@@ -57,6 +59,21 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     return params, model_state
 
   def model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool,
+      use_running_average_bn: Optional[bool] = None
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+
+    model_fn_sharded = shard_map(model_fn_ref,
+                                 self.mesh,
+                                 )
+      
+  def model_fn_ref(
       self,
       params: spec.ParameterContainer,
       augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],

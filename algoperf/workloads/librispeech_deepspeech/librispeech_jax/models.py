@@ -397,15 +397,15 @@ class CudnnLSTM(nn.Module):
       seq_lengths_np = np.shape(seq_lengths)
 
       n = jax.devices()
-      logging.info(f"jax num devices {n}")
-      logging.info(f'inputs shape {inputs_shape}')
-      logging.info(f'h_0 shape {h_0_shape}')
-      logging.info(f'c_0 shape {c_0_shape}')
-      logging.info(f'seq_lengths shape {seq_lengths_np}')
-      logging.info(f'weights_shape {weights_shape}')
-      logging.info(f'input_size {input_size}')
-      logging.info(f'hidden_size {self.features}')
-      logging.info(f'num_layers {self.num_layers}')
+      # logging.info(f"jax num devices {n}")
+      # logging.info(f'inputs shape {inputs_shape}')
+      # logging.info(f'h_0 shape {h_0_shape}')
+      # logging.info(f'c_0 shape {c_0_shape}')
+      # logging.info(f'seq_lengths shape {seq_lengths_np}')
+      # logging.info(f'weights_shape {weights_shape}')
+      # logging.info(f'input_size {input_size}')
+      # logging.info(f'hidden_size {self.features}')
+      # logging.info(f'num_layers {self.num_layers}')
 
       y, h, c = rnn.lstm(
           x=inputs, h_0=h_0, c_0=c_0, weights=weights,
