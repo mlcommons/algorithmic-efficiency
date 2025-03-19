@@ -2,13 +2,14 @@
 import functools
 from typing import Any, Dict, Optional, Tuple
 
-from flax import jax_utils
 import jax
 import jax.numpy as jnp
+from jax.sharding import NamedSharding, PartitionSpec as P
 import jraph
 import optax
 
 from algoperf import param_utils
+from algoperf import sharding_utils
 from algoperf import spec
 from algoperf.workloads.ogbg import metrics
 from algoperf.workloads.ogbg.ogbg_jax import models
@@ -45,7 +46,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     params = params['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(params), None
+    return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_17'
@@ -107,10 +108,15 @@ class OgbgWorkload(BaseOgbgWorkload):
         loss=loss['per_example'], logits=logits, labels=labels, mask=masks)
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
-      static_broadcasted_argnums=(0,))
+    jax.jit,
+    in_shardings=(
+      sharding_utils.get_replicated_sharding(), # params
+      sharding_utils.get_naive_sharding_spec(), # batch
+      sharding_utils.get_replicated_sharding(), # model_state
+      sharding_utils.get_naive_sharding_spec(), # rng
+    ),
+    static_argnums=(0,)
+  )
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)
 
