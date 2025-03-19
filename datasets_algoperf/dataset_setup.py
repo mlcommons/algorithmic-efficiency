@@ -56,7 +56,7 @@ allowed open at once using `ulimit -n 8192`.
 
 Example command:
 
-python3 datasets/dataset_setup.py \
+python3 datasets_algoperf/dataset_setup.py \
   --data_dir=~/data \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
@@ -126,15 +126,15 @@ flags.DEFINE_boolean('cifar',
 flags.DEFINE_boolean('fastmri',
                      False,
                      'If --all=false, whether or not to download FastMRI.')
+flags.DEFINE_boolean('finewebedu',
+                     False,
+                     'If --all=false, whether or not to download FineWebEdu.')
 flags.DEFINE_boolean('imagenet',
                      False,
                      'If --all=false, whether or not to download Imagenet.')
 flags.DEFINE_boolean('librispeech',
                      False,
                      'If --all=false, whether or not to download LibriSpeech.')
-flags.DEFINE_boolean('finewebedu',
-                     False,
-                     'If --all=false, whether or not to download FineWebEdu.')
 flags.DEFINE_boolean('mnist',
                      False,
                      'If --all=false, whether or not to download MNIST.')
@@ -727,6 +727,8 @@ def download_finewebedu(data_dir, tmp_dir=None):
     split='train',
     cache_dir=cache_dir
   )
+  # TODO (nico): maybe save intermediate dataset to avoid re-downloading 
+  # and allow re-chunking with different seq_len?
 
   # Shuffle so that multiproc has shards of similar size.
   ds = ds.shuffle(seed=1996)
@@ -747,6 +749,7 @@ def download_finewebedu(data_dir, tmp_dir=None):
       return_attention_mask=False
     )
   tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
+  logging.info(f"Tokenizing...")
   tokenized_dataset = ds.map(
     tokenize, 
     remove_columns=['text', 'id', 'dump', 'url', 'file_path', 'language', 
@@ -783,6 +786,7 @@ def download_finewebedu(data_dir, tmp_dir=None):
     }
     return result
   # Concat text in validation and train sets.
+  logging.info(f"Concatenating and chunking...")
   val_dataset = val_dataset.map(concat_chunck, **map_setup)
   train_dataset = train_dataset.map(concat_chunck, **map_setup)
   logging.info(f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length:_}")
@@ -876,9 +880,8 @@ def main(_):
     download_wmt(data_dir)
 
   if FLAGS.all or FLAGS.finewebedu:
-    if not FLAGS.skip_download:
-      logging.info('Downloading FineWebEdu-10B...')
-      download_finewebedu(data_dir)
+    logging.info('Downloading FineWebEdu-10B...')
+    download_finewebedu(data_dir, tmp_dir)
 
 
 # pylint: enable=logging-format-interpolation
