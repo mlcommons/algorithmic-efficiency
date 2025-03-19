@@ -15,7 +15,7 @@ import pandas as pd
 from pydub import AudioSegment
 import tensorflow as tf
 
-from datasets_algoperf import librispeech_tokenizer
+from dataset import librispeech_tokenizer
 
 gfile = tf.io.gfile
 copy = tf.io.gfile.copy
