@@ -24,7 +24,7 @@ class BaseLmWorkload(spec.Workload):
   _seq_len: int = 2048
 
   def __init__(self) -> None:
-    super().__init__()
+    pass
 
   @property
   def target_metric_name(self) -> str:

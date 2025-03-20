@@ -80,7 +80,6 @@ from dataset import librispeech_tokenizer
 import datasets as hf_datasets
 from transformers import AutoTokenizer
 
-import math
 import functools
 import itertools
 import os
@@ -713,7 +712,9 @@ def download_finewebedu(data_dir, tmp_dir=None):
 
   data_dir = os.path.join(data_dir, 'finewebedu')
   tmp_dir = tmp_dir if tmp_dir is not None else '/tmp'
-  cache_dir = os.path.join(tmp_dir, 'lm') if tmp_dir is not None else os.path.expanduser('~/.cache/huggingface/datasets')
+  cache_dir = os.path.join(tmp_dir,
+                           'lm') if tmp_dir is not None else os.path.expanduser(
+                               '~/.cache/huggingface/datasets')
 
   _maybe_mkdir(data_dir)
   _maybe_mkdir(tmp_dir)
@@ -722,75 +723,93 @@ def download_finewebedu(data_dir, tmp_dir=None):
   os.environ["TMPDIR"] = tmp_dir
 
   ds = hf_datasets.load_dataset(
-    'HuggingFaceFW/fineweb-edu', 
-    name='sample-10BT', 
-    split='train',
-    cache_dir=cache_dir
-  )
-  # TODO (nico): maybe save intermediate dataset to avoid re-downloading 
+      'HuggingFaceFW/fineweb-edu',
+      name='sample-10BT',
+      split='train',
+      cache_dir=cache_dir)
+  # TODO (nico): maybe save intermediate dataset to avoid re-downloading
   # and allow re-chunking with different seq_len?
 
   # Shuffle so that multiproc has shards of similar size.
   ds = ds.shuffle(seed=1996)
 
   seq_len = 2048
-  max_seq_length = seq_len+1
+  max_seq_length = seq_len + 1
   map_setup = dict(batched=True, batch_size=1024, num_proc=8)
 
   # Tokenize
-  tokenizer = AutoTokenizer.from_pretrained('gpt2')
-  logging.info(f"Vocab size of tokenizer = {len(tokenizer)}")
+  lm_tokenizer = AutoTokenizer.from_pretrained('gpt2')
+  logging.info(f"Vocab size of lm_tokenizer = {len(lm_tokenizer)}")
+
   def tokenize(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
-    add_eos = lambda seq: (seq + tokenizer.eos_token) if seq else seq
+    add_eos = lambda seq: (seq + lm_tokenizer.eos_token) if seq else seq
     add_eos_batched = lambda seqs: [add_eos(seq) for seq in seqs]
-    return tokenizer(
-      add_eos_batched(examples["text"]),
-      return_special_tokens_mask=False, 
-      return_attention_mask=False
-    )
-  tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
+    return lm_tokenizer(
+        add_eos_batched(examples["text"]),
+        return_special_tokens_mask=False,
+        return_attention_mask=False)
+
+  lm_tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
   logging.info(f"Tokenizing...")
   tokenized_dataset = ds.map(
-    tokenize, 
-    remove_columns=['text', 'id', 'dump', 'url', 'file_path', 'language', 
-                    'language_score', 'token_count', 'score', 'int_score'],  
-    **map_setup
-  )
-  tokenizer.model_max_length = seq_len
-  
+      tokenize,
+      remove_columns=[
+          'text',
+          'id',
+          'dump',
+          'url',
+          'file_path',
+          'language',
+          'language_score',
+          'token_count',
+          'score',
+          'int_score'
+      ],
+      **map_setup)
+  lm_tokenizer.model_max_length = seq_len
+
   tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
 
-  # Find how many entries to take from dataset to have VAL_TOKENS in validation set.
-  VAL_TOKENS = 10_000_000
+  # Find how many entries to take from dataset to have val_tokens in validation set.
+  val_tokens = 10_000_000  # TODO: decide this value.
   tokens_accumulated, num_examples_for_val = 0, 0
   for example in tokenized_dataset:
     tokens_accumulated += len(example['input_ids'])
     num_examples_for_val += 1
-    if tokens_accumulated >= VAL_TOKENS:
-        break
+    if tokens_accumulated >= val_tokens:
+      break
   # Split in train and valid.
   val_dataset = tokenized_dataset.select(range(num_examples_for_val))
-  train_dataset = tokenized_dataset.select(range(num_examples_for_val, len(tokenized_dataset)))
+  train_dataset = tokenized_dataset.select(
+      range(num_examples_for_val, len(tokenized_dataset)))
 
   # Concat in chunks of max_seq_len.
   # NOTE: expected token loss by batched concat_chunk. Truncates leftover tokens that don't fill a full max_seq_length chunk.
   def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
     """Concatenate text and generate chunks of max_seq_length"""
-    concatenated_examples = {k: list(itertools.chain(*examples[k])) for k in examples.keys()}
+    concatenated_examples = {
+        k: list(itertools.chain(*examples[k])) for k in examples.keys()
+    }
     total_length = len(concatenated_examples[list(examples.keys())[0]])
     if total_length >= max_seq_length:
-        total_length = (total_length // max_seq_length) * max_seq_length
+      total_length = (total_length // max_seq_length) * max_seq_length
     result = {
-      k: [t[i : i + max_seq_length] for i in range(0, total_length, max_seq_length)] 
-      for k, t in concatenated_examples.items()
+        k: [
+            t[i:i + max_seq_length]
+            for i in range(0, total_length, max_seq_length)
+        ] for k, t in concatenated_examples.items()
     }
     return result
+
   # Concat text in validation and train sets.
   logging.info(f"Concatenating and chunking...")
   val_dataset = val_dataset.map(concat_chunck, **map_setup)
   train_dataset = train_dataset.map(concat_chunck, **map_setup)
-  logging.info(f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length:_}")
-  logging.info(f"Number of tokens in train_dataset: {len(train_dataset) * max_seq_length:_}")
+  logging.info(
+      f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length:_}")
+  logging.info(
+      f"Number of tokens in train_dataset: {len(train_dataset) * max_seq_length:_}"
+  )
 
   # Save datasets
   train_dataset.save_to_disk(os.path.join(data_dir, f"train"))
