@@ -148,10 +148,15 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
     weights_shards.append(weights)
 
     if count == num_shards:
+      # yield {
+      #     'inputs': jraph.batch(graphs_shards),
+      #     'targets': np.vstack(labels_shards),
+      #     'weights': np.vstack(weights_shards)
+      # }
 
       def f(x):
-        return jax.tree.map(lambda *vals: np.stack(vals, axis=0), x[0], *x[1:])
-
+        return jax.tree.map(lambda *vals: np.concatenate(vals, axis=0), x[0], *x[1:])
+      
       graphs_shards = f(graphs_shards)
       labels_shards = f(labels_shards)
       weights_shards = f(weights_shards)
