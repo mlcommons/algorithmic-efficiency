@@ -57,22 +57,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     model_state = sharding_utils.shard_replicated(model_state)
     params = sharding_utils.shard_replicated(params)
     return params, model_state
-
-  def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool,
-      use_running_average_bn: Optional[bool] = None
-  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-
-    model_fn_sharded = shard_map(model_fn_ref,
-                                 self.mesh,
-                                 )
-      
+  
   def model_fn_ref(
       self,
       params: spec.ParameterContainer,
@@ -103,6 +88,34 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
           train=False,
           mutable=False)
       return (logits, logit_paddings), model_state
+
+  def model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool,
+      use_running_average_bn: Optional[bool] = None
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+
+    model_fn_partial = jax.tree_util.Partial(self.model_fn_ref,
+                                             mode=mode,
+                                             rng=rng,
+                                             update_batch_norm=update_batch_norm,
+                                             use_running_average_bn=use_running_average_bn)
+
+    model_fn_sharded = shard_map(model_fn_partial,
+                                 sharding_utils.get_mesh(),
+                                 in_specs=(None, P('batch'), None),
+                                 out_specs=(P('batch'), None),
+                                 )
+
+    model_fn_sharded = model_fn_partial
+    return model_fn_sharded(params, 
+                            augmented_and_preprocessed_input_batch,
+                            model_state,)
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'
