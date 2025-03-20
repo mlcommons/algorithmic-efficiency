@@ -64,6 +64,7 @@ from algoperf.workloads import workloads
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
 # disable only for deepspeech if it works fine for other workloads
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
+os.environ['JAX_TRACEBACK_FILTERING'] = "off"
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
