@@ -234,7 +234,7 @@ def train_once(
       dropout_rate = hyperparameters.dropout_rate
     if hasattr(hyperparameters, 'aux_dropout_rate'):
       aux_dropout_rate = hyperparameters.aux_dropout_rate
-    model_params, model_state = workload.init_model_fn( 
+    model_params, model_state = workload.init_model_fn(
         model_init_rng, dropout_rate, aux_dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = [
@@ -384,8 +384,8 @@ def train_once(
         train_step_end_time - train_state['last_step_end_time'])
 
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time'])
+        >= workload.eval_period_time_sec or train_state['training_complete']):
 
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:

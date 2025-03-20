@@ -1,6 +1,5 @@
 """LM workload implemented in PyTorch."""
 
-import contextlib
 from typing import Dict, Iterator, Optional, Tuple
 
 import jax
