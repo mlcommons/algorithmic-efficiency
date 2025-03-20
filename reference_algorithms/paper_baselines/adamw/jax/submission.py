@@ -74,7 +74,7 @@ def train_step(workload,
         model_state,
         spec.ForwardPassMode.TRAIN,
         rng,
-        update_batch_norm=True,)
+        update_batch_norm=True)
     jax.debug.print("logits: {logits}", logits=logits)
     loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
@@ -135,6 +135,10 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
+
+  batch_shapes = jax.tree.map(jnp.shape, batch)
+  print("batch shapes:")
+  print(batch_shapes)
 
   # Set up mesh and sharding
   mesh = sharding_utils.get_mesh()

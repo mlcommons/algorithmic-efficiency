@@ -32,6 +32,8 @@ from absl import logging
 import jax
 import tensorflow as tf
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
 # New PRNG implementation for correct sharding
 jax.config.update('jax_default_prng_impl', 'threefry2x32')
 jax.config.update('jax_threefry_partitionable', True)
