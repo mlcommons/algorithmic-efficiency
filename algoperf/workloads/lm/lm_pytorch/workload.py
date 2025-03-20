@@ -45,8 +45,8 @@ class LmWorkload(BaseLmWorkload):
     not_train = split != 'train'
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
-    seq_len = 2048  # TODO: define it somewehere else
-    DTYPE = torch.int32  # TODO: decide between int32 and int64.
+    seq_len = self._seq_len  # TODO: define it somewehere else?
+    dtype = torch.int32  # TODO: decide between int32 and int64.
 
     # Only create and iterate over tf input pipeline in one Python process to
     # avoid creating too many threads.
@@ -66,10 +66,10 @@ class LmWorkload(BaseLmWorkload):
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         inputs = torch.as_tensor(
-            batch['inputs'], dtype=DTYPE,
+            batch['inputs'], dtype=dtype,
             device=DEVICE)  # (N_GPUS, global_batch_size, seq_len)
         targets = torch.as_tensor(
-            batch['targets'], dtype=DTYPE,
+            batch['targets'], dtype=dtype,
             device=DEVICE)  # (N_GPUS, global_batch_size, seq_len)
 
         # Send batch to other devices when using DDP.
@@ -77,7 +77,7 @@ class LmWorkload(BaseLmWorkload):
           if not_train:
             # During eval, the batch size of the remainder might be different.
             per_device_batch_size = torch.tensor(
-                len(targets[0]), dtype=DTYPE, device=DEVICE)
+                len(targets[0]), dtype=dtype, device=DEVICE)
             dist.broadcast(per_device_batch_size, src=0)
           # We don't broadcast the shard for RANK 0.
           dist.broadcast(inputs[1:], src=0)
@@ -90,15 +90,15 @@ class LmWorkload(BaseLmWorkload):
         # Receive batch from rank 0.
         if not_train:
           # During eval, the batch size of the remainder might be different.
-          per_device_batch_size = torch.empty((1,), dtype=DTYPE, device=DEVICE)
+          per_device_batch_size = torch.empty((1,), dtype=dtype, device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
 
         # N_GPUS - 1 since we don't broadcast the shard for RANK 0.
         inputs = torch.empty((N_GPUS - 1, per_device_batch_size, seq_len),
-                             dtype=DTYPE,
+                             dtype=dtype,
                              device=DEVICE)
         targets = torch.empty((N_GPUS - 1, per_device_batch_size, seq_len),
-                              dtype=DTYPE,
+                              dtype=dtype,
                               device=DEVICE)
         dist.broadcast(inputs, src=0)
         dist.broadcast(targets, src=0)

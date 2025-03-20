@@ -21,6 +21,7 @@ class BaseLmWorkload(spec.Workload):
   """LM workload."""
 
   _vocab_size: int = 32000
+  _seq_len: int = 2048
 
   def __init__(self) -> None:
     super().__init__()
