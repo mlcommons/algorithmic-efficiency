@@ -1,21 +1,10 @@
 """LM workload implemented in Jax."""
 
-import functools
-from typing import Any, Dict, Iterator, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from absl import logging
-from flax import jax_utils
-from flax import linen as nn
-from flax.training import common_utils
-import jax
-import jax.numpy as jnp
-import numpy as np
-import optax
-
-from algoperf import param_utils
-from algoperf import pytorch_utils
 from algoperf import spec
 from algoperf.workloads.lm.workload import BaseLmWorkload
+
 
 class LmWorkload(BaseLmWorkload):
   """LM JAX workload."""

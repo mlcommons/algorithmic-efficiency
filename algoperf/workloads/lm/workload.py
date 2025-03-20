@@ -3,14 +3,11 @@
 import abc
 import math
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional
 
 from absl import flags
-import torch.distributed as dist
-
 import jax
-import numpy as np
-import torch
+import torch.distributed as dist
 
 from algoperf import spec
 from algoperf.workloads.lm import input_pipeline
@@ -155,7 +152,7 @@ class BaseLmWorkload(spec.Workload):
           global_batch_size,
           num_batches,
           repeat_final_dataset=True)
-  
+
     for _ in range(num_batches):
       eval_batch = next(self._eval_iters[split])
       loss += self._eval_batch(params, eval_batch)
@@ -179,6 +176,3 @@ class BaseLmWorkload(spec.Workload):
     (not synced across devices).
     """
     pass
-
-
-

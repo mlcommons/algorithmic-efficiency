@@ -1,11 +1,6 @@
-
 import jax
 import torch
-import pdb
-import numpy as np
-  
-from algoperf import random_utils as prng
-from algoperf import spec
+
 from algoperf.profiler import PassThroughProfiler
 from algoperf.pytorch_utils import pytorch_init
 from algoperf.pytorch_utils import pytorch_setup
@@ -29,20 +24,20 @@ def test_dataloader_torch():
   seq_len = 2048
 
   local_batch_size = global_batch_size // N_GPUS
-  
+
   workload = LmWorkload()
 
   data_rng = jax.random.PRNGKey(rng_seed)
-  
+
   input_queue = workload._build_input_queue(
       data_rng=data_rng,
       split=split,
       data_dir=data_dir,
       global_batch_size=global_batch_size)
-  
+
   print(f"RANK {RANK} of {N_GPUS}")
   sync_ddp()
-  
+
   # batch = next(input_queue)
   # inputs, targets = batch['inputs'], batch['targets']
   # print(f"inputs.shape: {inputs.shape}")
@@ -71,7 +66,7 @@ def test_dataloader_torch():
     assert inputs.shape == (local_batch_size, seq_len)
     assert targets.shape == (local_batch_size, seq_len)
 
-    assert torch.equal(inputs[:,1:], targets[:,:-1])
+    assert torch.equal(inputs[:, 1:], targets[:, :-1])
 
   print(f"=== ALL TEST PASSED ===")
 
@@ -84,4 +79,3 @@ def main():
 
 if __name__ == '__main__':
   main()
-
