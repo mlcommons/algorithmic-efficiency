@@ -797,7 +797,8 @@ def download_finewebedu(data_dir, tmp_dir=None):
         k: [
             t[i:i + max_seq_length]
             for i in range(0, total_length, max_seq_length)
-        ] for k, t in concatenated_examples.items()
+        ] for k,
+        t in concatenated_examples.items()
     }
     return result
 
