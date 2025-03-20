@@ -75,7 +75,6 @@ def train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True,)
-    jax.debug.print("logits: {logits}", logits=logits)
     loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
@@ -222,7 +221,7 @@ def get_batch_size(workload_name):
   elif workload_name == 'librispeech_conformer':
     return 256
   elif workload_name == 'librispeech_deepspeech':
-    return 256
+    return 16
   elif workload_name == 'ogbg':
     return 512
   elif workload_name == 'wmt':

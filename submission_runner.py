@@ -636,20 +636,22 @@ def score_submission_on_workload(workload: spec.Workload,
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
-        timing, metrics = train_once(workload, workload_name,
-                                     global_batch_size,
-                                     global_eval_batch_size,
-                                     data_dir, imagenet_v2_data_dir,
-                                     init_optimizer_state,
-                                     update_params, data_selection,
-                                     prepare_for_eval,
-                                     hyperparameters,
-                                     rng_seed,
-                                     rng,
-                                     profiler,
-                                     max_global_steps,
-                                     tuning_dir_name,
-                                     save_checkpoints=save_checkpoints,)
+        with jax.profiler.trace("/logs/tensorboard"):
+          print('profiling!')
+          timing, metrics = train_once(workload, workload_name,
+                                      global_batch_size,
+                                      global_eval_batch_size,
+                                      data_dir, imagenet_v2_data_dir,
+                                      init_optimizer_state,
+                                      update_params, data_selection,
+                                      prepare_for_eval,
+                                      hyperparameters,
+                                      rng_seed,
+                                      rng,
+                                      profiler,
+                                      max_global_steps,
+                                      tuning_dir_name,
+                                      save_checkpoints=save_checkpoints,)
       all_timings[hi] = timing
       all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')

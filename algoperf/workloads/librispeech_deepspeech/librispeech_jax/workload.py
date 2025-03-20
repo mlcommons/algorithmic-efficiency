@@ -44,6 +44,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
+    # model_init_fn = functools.partial(self._model.init, train=False)
 
     params_rng, dropout_rng = jax.random.split(rng, 2)
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
