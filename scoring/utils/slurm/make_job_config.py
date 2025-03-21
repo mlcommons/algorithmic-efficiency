@@ -19,12 +19,15 @@ TUNING_SEARCH_SPACE = None
 FRAMEWORK = 'pytorch'
 TUNING_RULESET = 'self'
 
-flags.DEFINE_string('submission_path',
-                    SUBMISSION_PATH,
-                    'Path to submission module relative to algorithmic-efficiency dir.')
-flags.DEFINE_string('tuning_search_space',
-                    TUNING_SEARCH_SPACE,
-                    'Path to tuning search space for submission module relative to algorithmic-efficiency dir.')
+flags.DEFINE_string(
+    'submission_path',
+    SUBMISSION_PATH,
+    'Path to submission module relative to algorithmic-efficiency dir.')
+flags.DEFINE_string(
+    'tuning_search_space',
+    TUNING_SEARCH_SPACE,
+    'Path to tuning search space for submission module relative to algorithmic-efficiency dir.'
+)
 flags.DEFINE_string('experiment_dir',
                     EXPERIMENT_DIR,
                     'Path to experiment dir where logs will be saved.')
