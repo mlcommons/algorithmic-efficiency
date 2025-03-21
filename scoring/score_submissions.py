@@ -7,9 +7,10 @@ to compare the performance.
 
 Example usage:
 python3 score_submissions.py \
-  --submission_directory $HOME/algorithmic-efficiency/prize_qualification_baselines/logs \
-  --strict True
-  --compute_performance_profiles
+  --submission_directory $HOME/algoperf-runs/submissions/rolling_leaderboard/self_tuning \
+  --compute_performance_profiles \
+  --output_dir scoring_results_self_tuning \
+  --self_tuning_ruleset
 """
 
 import operator
