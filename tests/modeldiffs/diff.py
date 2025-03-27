@@ -64,3 +64,40 @@ def out_diff(jax_workload,
 
   print(f'Max fprop difference between jax and pytorch: {max_diff}')
   print(f'Min fprop difference between jax and pytorch: {min_diff}')
+
+
+class ModelDiffRunner:
+  def __init__(self, jax_workload,
+             pytorch_workload,
+             jax_model_kwargs,
+             pytorch_model_kwargs,
+             key_transform=None,
+             sd_transform=None,
+             out_transform=None) -> None:
+    """Initializes the instance based on diffing logic.
+    Args:
+      jax_workload: Workload implementation using JAX
+      pytorch_workload: Workload implementation using PyTorch
+      jax_model_kwargs: Arguments to be used for model_fn in jax workload
+      pytorch_model_kwargs: Arguments to be used for model_fn in PyTorch workload
+      key_transform: Transformation function for keys.
+      sd_transform: Transformation function for State Dictionary.
+      out_transform: Transformation function for the output.
+    """
+
+    self.jax_workload = jax_workload
+    self.pytorch_workload = pytorch_workload
+    self.jax_model_kwargs = jax_model_kwargs
+    self.pytorch_model_kwargs = pytorch_model_kwargs
+    self.key_transform = key_transform
+    self.sd_transform = sd_transform
+    self.out_transform = out_transform
+
+  def run(self):
+    out_diff(self.jax_workload,
+             self.pytorch_workload,
+             self.jax_model_kwargs,
+             self.pytorch_model_kwargs,
+             self.key_transform,
+             self.sd_transform,
+             self.out_transform)
