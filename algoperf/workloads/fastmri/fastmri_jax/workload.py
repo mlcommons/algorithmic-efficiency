@@ -10,6 +10,7 @@ import jax.numpy as jnp
 
 from algoperf import param_utils
 from algoperf import spec
+from algoperf import sharding_utils
 import algoperf.random_utils as prng
 from algoperf.workloads.fastmri.fastmri_jax.models import UNet
 from algoperf.workloads.fastmri.fastmri_jax.ssim import ssim
@@ -39,7 +40,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax_utils.replicate(params)
+    params = sharding_utils.shard_replicated(params)
     return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -94,10 +95,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0),
-      static_broadcasted_argnums=(0,))
+      jax.jit,
+      in_shardings=(sharding_utils.get_replicated_sharding(),
+                    sharding_utils.get_naive_sharding_spec(),
+                    sharding_utils.get_replicated_sharding()),
+      static_argnums=(0,),
+      out_shardings=sharding_utils.get_replicated_sharding())
   def _eval_model(self,
                   params: spec.Tensor,
                   batch: Dict[str, spec.Tensor],
@@ -126,7 +129,6 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         'ssim': ssim_sum,
         'loss': summed_loss,
     }
-    metrics = jax.lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _eval_model_on_split(self,
@@ -154,13 +156,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
           num_batches=num_batches)
 
     total_metrics = {'ssim': 0., 'loss': 0.}
-    eval_rngs = prng.split(model_rng, jax.local_device_count())
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already sum these metrics across devices inside _eval_model.
-      synced_metrics = self._eval_model(params, batch, eval_rngs)
+      synced_metrics = self._eval_model(params, batch, model_rng)
       total_metrics = {
-          k: v + synced_metrics[k][0] for k, v in total_metrics.items()
+          k: v + synced_metrics[k] for k, v in total_metrics.items()
       }
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
 
