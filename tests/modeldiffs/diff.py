@@ -67,19 +67,24 @@ def out_diff(jax_workload,
 
 
 class ModelDiffRunner:
-  def __init__(self, jax_workload,
-             pytorch_workload,
-             jax_model_kwargs,
-             pytorch_model_kwargs,
-             key_transform=None,
-             sd_transform=None,
-             out_transform=None) -> None:
-    """Initializes the instance based on diffing logic.
+
+  def __init__(self,
+               jax_workload,
+               pytorch_workload,
+               jax_model_kwargs,
+               pytorch_model_kwargs,
+               key_transform=None,
+               sd_transform=None,
+               out_transform=None) -> None:
+    """
+    Initializes the instance based on diffing logic.
+
     Args:
-      jax_workload: Workload implementation using JAX
-      pytorch_workload: Workload implementation using PyTorch
-      jax_model_kwargs: Arguments to be used for model_fn in jax workload
-      pytorch_model_kwargs: Arguments to be used for model_fn in PyTorch workload
+      jax_workload: Workload implementation using JAX.
+      pytorch_workload: Workload implementation using PyTorch.
+      jax_model_kwargs: Arguments to be used for model_fn in jax workload.
+      pytorch_model_kwargs: Arguments to be used for model_fn in PyTorch 
+      workload.
       key_transform: Transformation function for keys.
       sd_transform: Transformation function for State Dictionary.
       out_transform: Transformation function for the output.
