@@ -20,8 +20,8 @@ USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 class BaseLmWorkload(spec.Workload):
   """LM workload."""
 
-  _vocab_size: int = 32000
-  _seq_len: int = 2048
+  _vocab_size: int = 50257
+  _seq_len: int = 512
 
   def __init__(self) -> None:
     pass
@@ -106,6 +106,7 @@ class BaseLmWorkload(spec.Workload):
   def glu(self) -> bool:
     return True
 
+  @abc.abstractmethod
   def _build_input_queue(self,
                          data_rng: jax.random.PRNGKey,
                          split: str,
@@ -113,17 +114,7 @@ class BaseLmWorkload(spec.Workload):
                          global_batch_size: int,
                          num_batches: Optional[int] = None,
                          repeat_final_dataset: bool = False):
-    ds = input_pipeline.get_lm_dataset(
-        data_rng,
-        split,
-        data_dir,
-        vocab_size=self._vocab_size,
-        global_batch_size=global_batch_size,
-        num_batches=num_batches,
-        repeat_final_dataset=repeat_final_dataset)
-
-    for batch in iter(ds):
-      yield batch
+    """Build an input queue for the given split."""
 
   @abc.abstractmethod
   def _eval_batch(self,
