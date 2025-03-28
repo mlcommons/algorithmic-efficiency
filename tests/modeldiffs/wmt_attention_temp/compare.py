@@ -11,7 +11,7 @@ from algoperf.workloads.wmt.wmt_jax.workload import \
     WmtWorkloadAttentionTemp as JaxWorkload
 from algoperf.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkloadAttentionTemp as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def key_transform(k):
@@ -131,11 +131,11 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=key_transform,
       sd_transform=sd_transform,
-      out_transform=None)
+      out_transform=None).run()

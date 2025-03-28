@@ -13,7 +13,7 @@ from algoperf.workloads.ogbg.ogbg_jax.workload import \
     OgbgGeluWorkload as JaxWorkload
 from algoperf.workloads.ogbg.ogbg_pytorch.workload import \
     OgbgGeluWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 # Todo: refactor tests to use workload properties in cleaner way
 hidden_dims = len(JaxWorkload().hidden_dims)
@@ -110,11 +110,11 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=key_transform,
       sd_transform=sd_transform,
-      out_transform=None)
+      out_transform=None).run()

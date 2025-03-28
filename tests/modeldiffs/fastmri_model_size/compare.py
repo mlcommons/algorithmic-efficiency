@@ -11,7 +11,7 @@ from algoperf.workloads.fastmri.fastmri_jax.workload import \
     FastMRIModelSizeWorkload as JaxWorkload
 from algoperf.workloads.fastmri.fastmri_pytorch.workload import \
     FastMRIModelSizeWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def sd_transform(sd):
@@ -76,11 +76,10 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=None,
-      sd_transform=sd_transform,
-  )
+      sd_transform=sd_transform).run()

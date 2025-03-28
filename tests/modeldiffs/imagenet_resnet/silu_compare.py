@@ -11,7 +11,7 @@ from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import \
     ImagenetResNetSiLUWorkload as JaxWorkload
 from algoperf.workloads.imagenet_resnet.imagenet_pytorch.workload import \
     ImagenetResNetSiLUWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 from tests.modeldiffs.imagenet_resnet.compare import key_transform
 from tests.modeldiffs.imagenet_resnet.compare import sd_transform
 
@@ -40,11 +40,10 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=key_transform,
-      sd_transform=sd_transform,
-  )
+      sd_transform=sd_transform).run()

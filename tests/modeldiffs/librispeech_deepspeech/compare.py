@@ -11,7 +11,7 @@ from algoperf.workloads.librispeech_deepspeech.librispeech_jax.workload import \
     LibriSpeechDeepSpeechWorkload as JaxWorkload
 from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.workload import \
     LibriSpeechDeepSpeechWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def key_transform(k):
@@ -106,7 +106,7 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
@@ -114,4 +114,4 @@ if __name__ == '__main__':
       key_transform=key_transform,
       sd_transform=sd_transform,
       out_transform=lambda out_outpad: out_outpad[0] *
-      (1 - out_outpad[1][:, :, None]))
+      (1 - out_outpad[1][:, :, None])).run()
