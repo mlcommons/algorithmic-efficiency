@@ -61,10 +61,10 @@ if __name__ == '__main__':
   image = torch.randn(2, 320, 320)
 
   jax_batch = {'inputs': image.detach().numpy()}
-  pyt_batch = {'inputs': image}
+  pytorch_batch = {'inputs': image}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,

@@ -79,7 +79,7 @@ if __name__ == '__main__':
   jax_workload = JaxWorkload()
   pytorch_workload = PyTorchWorkload()
 
-  pyt_batch = dict(
+  pytorch_batch = dict(
       n_node=torch.LongTensor([5]),
       n_edge=torch.LongTensor([5]),
       nodes=torch.randn(5, 9),
@@ -88,17 +88,17 @@ if __name__ == '__main__':
       senders=torch.LongTensor(list(range(5))),
       receivers=torch.LongTensor([(i + 1) % 5 for i in range(5)]))
 
-  jax_batch = {k: np.array(v) for k, v in pyt_batch.items()}
+  jax_batch = {k: np.array(v) for k, v in pytorch_batch.items()}
 
   # Test outputs for identical weights and inputs.
   graph_j = jraph.GraphsTuple(**jax_batch)
-  graph_p = jraph.GraphsTuple(**pyt_batch)
+  graph_p = jraph.GraphsTuple(**pytorch_batch)
 
   jax_batch = {'inputs': graph_j}
-  pyt_batch = {'inputs': graph_p}
+  pytorch_batch = {'inputs': graph_p}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,

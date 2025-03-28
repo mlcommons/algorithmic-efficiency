@@ -116,10 +116,10 @@ if __name__ == '__main__':
       'inputs': inp_tokens.detach().numpy(),
       'targets': tgt_tokens.detach().numpy(),
   }
-  pyt_batch = {'inputs': inp_tokens, 'targets': tgt_tokens}
+  pytorch_batch = {'inputs': inp_tokens, 'targets': tgt_tokens}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,

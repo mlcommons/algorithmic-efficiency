@@ -52,16 +52,16 @@ if __name__ == '__main__':
   jax_workload = JaxWorkload()
   pytorch_workload = PyTorchWorkload()
 
-  pyt_batch = {
+  pytorch_batch = {
       'inputs': torch.ones((2, 13 + 26)),
       'targets': torch.randint(low=0, high=1, size=(2,)),
       'weights': torch.ones(2),
   }
-  jax_batch = {k: np.array(v) for k, v in pyt_batch.items()}
+  jax_batch = {k: np.array(v) for k, v in pytorch_batch.items()}
 
   # Test outputs for identical weights and inputs.
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,

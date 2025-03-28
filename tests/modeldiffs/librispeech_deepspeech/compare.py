@@ -91,10 +91,10 @@ if __name__ == '__main__':
   pad[0, 200000:] = 1
 
   jax_batch = {'inputs': (wave.detach().numpy(), pad.detach().numpy())}
-  pyt_batch = {'inputs': (wave, pad)}
+  pytorch_batch = {'inputs': (wave, pad)}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,
