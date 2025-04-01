@@ -106,11 +106,11 @@ jax_core_deps = [
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.5.2",
+  "jax==0.5.3",
   "algoperf[jax_core_deps]",
 ]
 jax_gpu = [
-  "jax[cuda12]==0.5.2",
+  "jax[cuda12]==0.5.3",
   "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]
