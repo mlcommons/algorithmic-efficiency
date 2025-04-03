@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import optax
 
 from algoperf import param_utils
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.mnist.workload import BaseMnistWorkload
 
@@ -103,10 +103,10 @@ class MnistWorkload(BaseMnistWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          sharding_utils.get_replicated_sharding(),  # params
-          sharding_utils.get_naive_sharding_spec(),  # batch
-          sharding_utils.get_replicated_sharding(),  # model_state
-          sharding_utils.get_naive_sharding_spec(),  # rng
+          jax_sharding_utils.get_replicated_sharding(),  # params
+          jax_sharding_utils.get_batch_sharding(),  # batch
+          jax_sharding_utils.get_replicated_sharding(),  # model_state
+          jax_sharding_utils.get_batch_sharding(),  # rng
       ),
       static_argnums=(0,))
   def _eval_model(

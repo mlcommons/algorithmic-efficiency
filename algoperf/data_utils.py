@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import DistributedSampler
 from torch.utils.data import Sampler
 
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 
 
@@ -51,7 +51,6 @@ def shard_and_maybe_pad_np(
     weights = batch.get('weights')
     # The weights will also be padded.
     batch['weights'] = np.ones(mask_shape) if weights is None else weights
-  naive_sharding_spec = sharding_utils.get_naive_sharding_spec()
 
   def _prepare(x):
     # Use _numpy() for zero-copy conversion between TF and NumPy.
@@ -62,7 +61,7 @@ def shard_and_maybe_pad_np(
     if remainder_size != 0 or pad_to_global_batch_size:
       x = pad(x, pad_size, padding_value=padding_value)
 
-    return jax.device_put(x, naive_sharding_spec)
+    return jax.device_put(x, jax.sharding_utils.get_batch_dim_sharding())
 
   return jax.tree.map(_prepare, batch)
 

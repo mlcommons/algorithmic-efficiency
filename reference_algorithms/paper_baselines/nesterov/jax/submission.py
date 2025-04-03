@@ -11,7 +11,7 @@ from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec as P
 import optax
 
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 
 _GRAD_CLIP_EPS = 1e-6
@@ -174,7 +174,7 @@ def update_params(
   else:
     grad_clip = None
 
-  mesh = sharding_utils.get_mesh()
+  mesh = jax_sharding_utils.get_mesh()
   # Create shardings for each argument
   replicated = NamedSharding(mesh, P())  # No partitioning
   sharded = NamedSharding(mesh, P('batch'))  # Partition along batch dimension

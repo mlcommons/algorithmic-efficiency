@@ -20,7 +20,7 @@ import tensorflow_datasets as tfds
 
 from algoperf import param_utils
 from algoperf import random_utils as prng
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet import imagenet_v2
 from algoperf.workloads.imagenet_resnet.imagenet_jax import input_pipeline
@@ -103,14 +103,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model_state, params = pop(variables, "params")
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    mesh = sharding_utils.get_mesh()
+    mesh = jax_sharding_utils.get_mesh()
     params = jax.tree_map(
         lambda x: jax.device_put(x,
-                                 sharding_utils.get_replicated_sharding(mesh)),
+                                 jax_sharding_utils.get_replicated_sharding(mesh)),
         params)
     model_state = jax.tree_map(
         lambda x: jax.device_put(x,
-                                 sharding_utils.get_replicated_sharding(mesh)),
+                                 jax_sharding_utils.get_replicated_sharding(mesh)),
         model_state)
     return params, model_state
 
@@ -120,13 +120,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          sharding_utils.get_replicated_sharding(),  # params
-          sharding_utils.get_naive_sharding_spec(),  # batch
-          sharding_utils.get_replicated_sharding(),  # model_state
-          sharding_utils.get_replicated_sharding(),  # rng
+          jax_sharding_utils.get_replicated_sharding(),  # params
+          jax_sharding_utils.get_batch_sharding(),  # batch
+          jax_sharding_utils.get_replicated_sharding(),  # model_state
+          jax_sharding_utils.get_replicated_sharding(),  # rng
       ),
       static_argnums=(0,),
-      out_shardings=sharding_utils.get_replicated_sharding())
+      out_shardings=jax_sharding_utils.get_replicated_sharding())
   def _eval_model(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor],

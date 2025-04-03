@@ -12,7 +12,7 @@ import optax
 import tensorflow_datasets as tfds
 
 from algoperf import param_utils
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.cifar.cifar_jax import models
 from algoperf.workloads.cifar.cifar_jax.input_pipeline import create_input_iter
@@ -186,10 +186,10 @@ class CifarWorkload(BaseCifarWorkload):
     @functools.partial(
         jax.jit,
         in_shardings=(
-            sharding_utils.get_replicated_sharding(),  # params
-            sharding_utils.get_naive_sharding_spec(),  # batch
-            sharding_utils.get_replicated_sharding(),  # model_state
-            sharding_utils.get_naive_sharding_spec(),  # rng
+            jax_sharding_utils.get_replicated_sharding(),  # params
+            jax_sharding_utils.get_batch_sharding(),  # batch
+            jax_sharding_utils.get_replicated_sharding(),  # model_state
+            jax_sharding_utils.get_batch_sharding(),  # rng
         ),
     )
     def _per_device_eval_model(

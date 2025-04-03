@@ -12,7 +12,7 @@ import torch
 
 from algoperf import data_utils
 from algoperf import param_utils
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.librispeech_conformer import metrics
 from algoperf.workloads.librispeech_conformer import workload
@@ -94,8 +94,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self._param_types = param_utils.jax_param_types(self._param_shapes)
 
     # Add sharding
-    params = sharding_utils.shard_replicated(params)
-    model_state = sharding_utils.shard_replicated(model_state)
+    params = jax_sharding_utils.shard(params)
+    model_state = jax_sharding_utils.shard(model_state)
 
     return params, model_state
 
@@ -310,12 +310,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          sharding_utils.get_replicated_sharding(),  # params
-          sharding_utils.get_naive_sharding_spec(),  # batch
-          sharding_utils.get_replicated_sharding(),  # model_state
-          sharding_utils.get_replicated_sharding(),  # rng
+          jax_sharding_utils.get_replicated_sharding(),  # params
+          jax_sharding_utils.get_batch_sharding(),  # batch
+          jax_sharding_utils.get_replicated_sharding(),  # model_state
+          jax_sharding_utils.get_replicated_sharding(),  # rng
       ),
-      out_shardings=sharding_utils.get_naive_sharding_spec(),
+      out_shardings=jax_sharding_utils.get_batch_sharding(),
       static_argnums=(0,))
   def _eval_step(
       self,

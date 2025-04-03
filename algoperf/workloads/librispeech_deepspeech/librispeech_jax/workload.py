@@ -10,7 +10,7 @@ import numpy as np
 
 from algoperf import param_utils
 from algoperf import spec
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
     LibriSpeechConformerWorkload
 from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
@@ -55,8 +55,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = sharding_utils.shard_replicated(model_state)
-    params = sharding_utils.shard_replicated(params)
+    model_state = jax_sharding_utils.shard(model_state)
+    params = jax_sharding_utils.shard(params)
     return params, model_state
   
   def model_fn_ref(
@@ -108,7 +108,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
                                              use_running_average_bn=use_running_average_bn)
 
     model_fn_sharded = shard_map(model_fn_partial,
-                                 sharding_utils.get_mesh(),
+                                 jax_sharding_utils.get_mesh(),
                                  in_specs=(None, P('batch'), None),
                                  out_specs=(P('batch'), None),
                                  )

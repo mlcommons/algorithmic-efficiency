@@ -7,7 +7,7 @@ from jax import lax
 import jax.numpy as jnp
 import optax
 
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 
 _GRAD_CLIP_EPS = 1e-6
@@ -91,10 +91,10 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  mesh = sharding_utils.get_mesh()
+  mesh = jax_sharding_utils.get_mesh()
   # Create shardings for each argument
-  replicated = sharding_utils.get_replicated_sharding(mesh)  # No partitioning
-  sharded = sharding_utils.get_naive_sharding_spec(
+  replicated = jax_sharding_utils.get_replicated_sharding(mesh)  # No partitioning
+  sharded = jax_sharding_utils.get_batch_sharding(
       mesh)  # Partition along batch dimension
 
   # Create the sharding rules for each argument

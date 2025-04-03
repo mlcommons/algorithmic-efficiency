@@ -14,7 +14,7 @@ import numpy as np
 import optax
 
 from algoperf import param_utils
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.wmt import bleu
 from algoperf.workloads.wmt.wmt_jax import decode
@@ -72,8 +72,8 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          sharding_utils.get_replicated_sharding(),  # params
-          sharding_utils.get_naive_sharding_spec(),  # batch
+          jax_sharding_utils.get_replicated_sharding(),  # params
+          jax_sharding_utils.get_batch_sharding(),  # batch
       ),
       static_argnums=(0,),  # self
   )
@@ -100,7 +100,7 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          sharding_utils.get_naive_sharding_spec(),  # inputs
+          jax_sharding_utils.get_batch_sharding(),  # inputs
       ),
       static_argnums=(
           0,
@@ -112,9 +112,9 @@ class WmtWorkload(BaseWmtWorkload):
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
-    dummy_inputs = sharding_utils.shard_naive(
+    dummy_inputs = jax_sharding_utils.shard_naive(
         jnp.ones(inputs.shape, jnp.float32))
-    dummy_targets = sharding_utils.shard_naive(
+    dummy_targets = jax_sharding_utils.shard_naive(
         jnp.ones(target_shape, jnp.float32))
     initial_variables = models.Transformer(config).init(
         jax.random.PRNGKey(0), dummy_inputs, dummy_targets)
@@ -191,14 +191,14 @@ class WmtWorkload(BaseWmtWorkload):
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       cache = self.initialize_cache(pred_batch['inputs'])
-      cache = sharding_utils.shard_naive(cache)
+      cache = jax_sharding_utils.shard_naive(cache)
       if jitted_predict_step is None:
         jitted_predict_step = jax.jit(
             self.predict_step,
             in_shardings=(
-                sharding_utils.get_naive_sharding_spec(),  # inputs
-                sharding_utils.get_replicated_sharding(),  # params
-                sharding_utils.get_naive_sharding_tree(cache),  # cache
+                jax_sharding_utils.get_batch_sharding(),  # inputs
+                jax_sharding_utils.get_replicated_sharding(),  # params
+                jax_sharding_utils.get_naive_sharding_tree(cache),  # cache
             ),
             static_argnums=(
                 3,  # eos_id
@@ -260,8 +260,8 @@ class WmtWorkload(BaseWmtWorkload):
     params_rng, dropout_rng = jax.random.split(rng)
     inputs = jnp.ones(input_shape, jnp.float32)
     targets = jnp.ones(target_shape, jnp.float32)
-    sharded_inputs = sharding_utils.shard_naive(inputs)
-    sharded_targets = sharding_utils.shard_naive(targets)
+    sharded_inputs = jax_sharding_utils.shard_naive(inputs)
+    sharded_targets = jax_sharding_utils.shard_naive(targets)
 
     initial_variables = jax.jit(
         self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
@@ -271,7 +271,7 @@ class WmtWorkload(BaseWmtWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = sharding_utils.shard_replicated(initial_params)
+    params = jax_sharding_utils.shard(initial_params)
     return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:

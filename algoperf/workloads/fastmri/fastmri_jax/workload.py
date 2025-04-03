@@ -10,7 +10,7 @@ import jax.numpy as jnp
 
 from algoperf import param_utils
 from algoperf import spec
-from algoperf import sharding_utils
+from algoperf import jax_sharding_utils
 import algoperf.random_utils as prng
 from algoperf.workloads.fastmri.fastmri_jax.models import UNet
 from algoperf.workloads.fastmri.fastmri_jax.ssim import ssim
@@ -40,7 +40,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = sharding_utils.shard_replicated(params)
+    params = jax_sharding_utils.shard(params)
     return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -96,11 +96,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   @functools.partial(
       jax.jit,
-      in_shardings=(sharding_utils.get_replicated_sharding(),
-                    sharding_utils.get_naive_sharding_spec(),
-                    sharding_utils.get_replicated_sharding()),
+      in_shardings=(jax_sharding_utils.get_replicated_sharding(),
+                    jax_sharding_utils.get_batch_sharding(),
+                    jax_sharding_utils.get_replicated_sharding()),
       static_argnums=(0,),
-      out_shardings=sharding_utils.get_replicated_sharding())
+      out_shardings=jax_sharding_utils.get_replicated_sharding())
   def _eval_model(self,
                   params: spec.Tensor,
                   batch: Dict[str, spec.Tensor],
