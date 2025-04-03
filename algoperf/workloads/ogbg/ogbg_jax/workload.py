@@ -108,11 +108,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     return metrics.EvalMetrics.single_from_model_output(
         loss=loss['per_example'], logits=logits, labels=labels, mask=masks)
 
-  # @functools.partial(
-  #     jax.pmap,
-  #     axis_name='batch',
-  #     in_axes=(None, 0, 0, 0, None),
-  #     static_broadcasted_argnums=(0,))
+
   @functools.partial(
     jax.jit,
     in_shardings=(sharding_utils.get_replicated_sharding(),
@@ -130,8 +126,6 @@ class OgbgWorkload(BaseOgbgWorkload):
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
     del num_examples
-    # total_metrics = total_metrics.reduce()
-    print(total_metrics)
     return {k: float(v) for k, v in total_metrics.compute().items()}
 
 

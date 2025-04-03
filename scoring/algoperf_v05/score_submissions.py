@@ -7,10 +7,9 @@ to compare the performance.
 
 Example usage:
 python3 score_submissions.py \
-  --submission_directory $HOME/algoperf-runs/submissions/rolling_leaderboard/self_tuning \
-  --compute_performance_profiles \
-  --output_dir scoring_results_self_tuning \
-  --self_tuning_ruleset
+  --submission_directory $HOME/algorithmic-efficiency/prize_qualification_baselines/logs \
+  --strict True
+  --compute_performance_profiles
 """
 
 import operator
@@ -161,7 +160,6 @@ def compute_leaderboard_score(df, normalize=True):
 def main(_):
   results = {}
   os.makedirs(FLAGS.output_dir, exist_ok=True)
-  logging.info(f"Scoring submissions in {FLAGS.submission_directory}")
 
   # Optionally read results to filename
   if FLAGS.load_results_from_filename:
@@ -170,18 +168,22 @@ def main(_):
         'rb') as f:
       results = pickle.load(f)
   else:
-    for submission in os.listdir(FLAGS.submission_directory):
-      print(submission)
-      if submission in FLAGS.exclude_submissions.split(','):
-        continue
-      experiment_path = os.path.join(FLAGS.submission_directory, submission)
-      df = scoring_utils.get_experiment_df(experiment_path)
-      results[submission] = df
-      summary_df = get_submission_summary(df)
-      with open(
-          os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
-          'w') as fout:
-        summary_df.to_csv(fout)
+    for team in os.listdir(FLAGS.submission_directory):
+      for submission in os.listdir(
+          os.path.join(FLAGS.submission_directory, team)):
+        print(submission)
+        if submission in FLAGS.exclude_submissions.split(','):
+          continue
+        experiment_path = os.path.join(FLAGS.submission_directory,
+                                       team,
+                                       submission)
+        df = scoring_utils.get_experiment_df(experiment_path)
+        results[submission] = df
+        summary_df = get_submission_summary(df)
+        with open(
+            os.path.join(FLAGS.output_dir, f'{submission}_summary.csv'),
+            'w') as fout:
+          summary_df.to_csv(fout)
 
     # Optionally save results to filename
     if FLAGS.save_results_to_filename:

@@ -14,7 +14,7 @@ do
 done
 
 # Artifact repostiory
-ARTIFACT_REPO="europe-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo"
+ARTIFACT_REPO="europe-west-4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo"
 
 if [[ -z ${GIT_BRANCH+x} ]]
 then 
