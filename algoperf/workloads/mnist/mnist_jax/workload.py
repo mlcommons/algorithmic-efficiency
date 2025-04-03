@@ -103,10 +103,10 @@ class MnistWorkload(BaseMnistWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          jax_sharding_utils.get_replicated_sharding(),  # params
-          jax_sharding_utils.get_batch_sharding(),  # batch
-          jax_sharding_utils.get_replicated_sharding(),  # model_state
-          jax_sharding_utils.get_batch_sharding(),  # rng
+          jax_sharding_utils.get_replicate_sharding(),  # params
+          jax_sharding_utils.get_batch_dim_sharding(),  # batch
+          jax_sharding_utils.get_replicate_sharding(),  # model_state
+          jax_sharding_utils.get_batch_dim_sharding(),  # rng
       ),
       static_argnums=(0,))
   def _eval_model(

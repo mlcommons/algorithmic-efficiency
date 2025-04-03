@@ -103,14 +103,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model_state, params = pop(variables, "params")
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    mesh = jax_sharding_utils.get_mesh()
     params = jax.tree_map(
         lambda x: jax.device_put(x,
-                                 jax_sharding_utils.get_replicated_sharding(mesh)),
+                                 jax_sharding_utils.get_replicate_sharding()),
         params)
     model_state = jax.tree_map(
         lambda x: jax.device_put(x,
-                                 jax_sharding_utils.get_replicated_sharding(mesh)),
+                                 jax_sharding_utils.get_replicate_sharding()),
         model_state)
     return params, model_state
 
@@ -120,13 +119,13 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          jax_sharding_utils.get_replicated_sharding(),  # params
-          jax_sharding_utils.get_batch_sharding(),  # batch
-          jax_sharding_utils.get_replicated_sharding(),  # model_state
-          jax_sharding_utils.get_replicated_sharding(),  # rng
+          jax_sharding_utils.get_replicate_sharding(),  # params
+          jax_sharding_utils.get_batch_dim_sharding(),  # batch
+          jax_sharding_utils.get_replicate_sharding(),  # model_state
+          jax_sharding_utils.get_replicate_sharding(),  # rng
       ),
       static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicated_sharding())
+      out_shardings=jax_sharding_utils.get_replicate_sharding())
   def _eval_model(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor],

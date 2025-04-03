@@ -100,7 +100,7 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          jax_sharding_utils.get_batch_sharding(),  # inputs
+          jax_sharding_utils.get_batch_dim_sharding(),  # inputs
       ),
       static_argnums=(
           0,
@@ -112,9 +112,9 @@ class WmtWorkload(BaseWmtWorkload):
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
-    dummy_inputs = jax_sharding_utils.shard_naive(
+    dummy_inputs = jax_sharding_utils.shard_along_batch_dim(
         jnp.ones(inputs.shape, jnp.float32))
-    dummy_targets = jax_sharding_utils.shard_naive(
+    dummy_targets = jax_sharding_utils.shard_along_batch_dim(
         jnp.ones(target_shape, jnp.float32))
     initial_variables = models.Transformer(config).init(
         jax.random.PRNGKey(0), dummy_inputs, dummy_targets)
@@ -196,8 +196,8 @@ class WmtWorkload(BaseWmtWorkload):
         jitted_predict_step = jax.jit(
             self.predict_step,
             in_shardings=(
-                jax_sharding_utils.get_batch_sharding(),  # inputs
-                jax_sharding_utils.get_replicated_sharding(),  # params
+                jax_sharding_utils.get_batch_dim_sharding(),  # inputs
+                jax_sharding_utils.get_replicate_sharding(),  # params
                 jax_sharding_utils.get_naive_sharding_tree(cache),  # cache
             ),
             static_argnums=(
@@ -260,8 +260,8 @@ class WmtWorkload(BaseWmtWorkload):
     params_rng, dropout_rng = jax.random.split(rng)
     inputs = jnp.ones(input_shape, jnp.float32)
     targets = jnp.ones(target_shape, jnp.float32)
-    sharded_inputs = jax_sharding_utils.shard_naive(inputs)
-    sharded_targets = jax_sharding_utils.shard_naive(targets)
+    sharded_inputs = jax_sharding_utils.shard_along_batch_dim(inputs)
+    sharded_targets = jax_sharding_utils.shard_along_batch_dim(targets)
 
     initial_variables = jax.jit(
         self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
@@ -271,7 +271,7 @@ class WmtWorkload(BaseWmtWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax_sharding_utils.shard(initial_params)
+    params = jax_sharding_utils.shard_along_batch_dim(initial_params)
     return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:

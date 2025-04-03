@@ -108,7 +108,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
                                              use_running_average_bn=use_running_average_bn)
 
     model_fn_sharded = shard_map(model_fn_partial,
-                                 jax_sharding_utils.get_mesh(),
+                                 jax.sharding.Mesh(jax.devices(), ('batch')),
                                  in_specs=(None, P('batch'), None),
                                  out_specs=(P('batch'), None),
                                  )

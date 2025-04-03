@@ -106,7 +106,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_sharding_utils.shard(initial_params), None
+    return jax_sharding_utils.shard_along_batch_dim(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_7'
@@ -132,11 +132,11 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          jax_sharding_utils.get_replicated_sharding(),
-          jax_sharding_utils.get_batch_sharding(),
+          jax_sharding_utils.get_replicate_sharding(),
+          jax_sharding_utils.get_batch_dim_sharding(),
       ),
       static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicated_sharding())
+      out_shardings=jax_sharding_utils.get_replicate_sharding())
   def _eval_batch_jitted(self,
                          params: spec.ParameterContainer,
                          batch: Dict[str, spec.Tensor]) -> spec.Tensor:

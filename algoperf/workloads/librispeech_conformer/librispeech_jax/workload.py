@@ -310,12 +310,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          jax_sharding_utils.get_replicated_sharding(),  # params
-          jax_sharding_utils.get_batch_sharding(),  # batch
-          jax_sharding_utils.get_replicated_sharding(),  # model_state
-          jax_sharding_utils.get_replicated_sharding(),  # rng
+          jax_sharding_utils.get_replicate_sharding(),  # params
+          jax_sharding_utils.get_batch_dim_sharding(),  # batch
+          jax_sharding_utils.get_replicate_sharding(),  # model_state
+          jax_sharding_utils.get_replicate_sharding(),  # rng
       ),
-      out_shardings=jax_sharding_utils.get_batch_sharding(),
+      out_shardings=jax_sharding_utils.get_batch_dim_sharding(),
       static_argnums=(0,))
   def _eval_step(
       self,
