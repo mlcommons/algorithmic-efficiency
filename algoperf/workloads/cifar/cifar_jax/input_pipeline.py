@@ -171,5 +171,6 @@ def create_input_iter(
           shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
   # FIXME(rka97): Figure out how to do prefetching+sharding.
+  # TODO (kasimbeg)
   # it = jax_utils.prefetch_to_device(it, 2)
   return it
