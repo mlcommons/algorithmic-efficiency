@@ -75,7 +75,6 @@ def train_step(workload,
         spec.ForwardPassMode.TRAIN,
         rng,
         update_batch_norm=True,)
-    jax.debug.print("logits: {logits}", logits=logits)
     loss_dict = workload.loss_fn(
         label_batch=batch['targets'],
         logits_batch=logits,
@@ -163,7 +162,6 @@ def update_params(
                   replicated,  # loss
                   replicated  # grad_norm
   ))
-  # print(batch)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
                               opt_update_fn,
                               model_state,
@@ -229,6 +227,8 @@ def get_batch_size(workload_name):
     return 128
   elif workload_name == 'mnist':
     return 16
+  elif workload_name == 'lm':
+    return 4
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

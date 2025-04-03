@@ -10,7 +10,8 @@ from algoperf import param_utils
 from algoperf import sharding_utils
 from algoperf import spec
 from algoperf.workloads.lm.workload import BaseLmWorkload
-from algoperf.workloads.lm.lm_jax.models import LinearModel
+from algoperf.workloads.lm.lm_jax.nanodo_model import (
+    TransformerDo, DoConfig, init_rope, apply_rope)
 from algoperf.workloads.lm.input_pipeline import get_hf_dataloader
 
 
@@ -42,12 +43,22 @@ class LmWorkload(BaseLmWorkload):
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     
-    self._model = LinearModel(vocab_size=self._vocab_size)
-    input_shape = (1, self._seq_len, self._vocab_size)
+    # Initialize NanoDO transformer model
+    cfg = DoConfig(
+        D=512,  # model dim
+        H=8,    # num heads
+        L=self._seq_len,
+        N=6,    # num layers
+        V=self._vocab_size,
+        F=2048, # feedforward dim
+        dtype=jnp.float32
+    )
+    self._model = TransformerDo(cfg)
+    input_shape = (1, self._seq_len)  # For token IDs
+    
     params_rng, init_rng = jax.random.split(rng)
-    print(params_rng)
-    # variables = model.init(init_rng, jnp.ones(input_shape, jnp.float32))
-    variables = jax.jit(self._model.init)({'params': params_rng}, jnp.ones(input_shape, jnp.float32))
+    variables = jax.jit(self._model.init)({'params': params_rng}, 
+                                        jnp.ones(input_shape, jnp.int32))
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -66,6 +77,11 @@ class LmWorkload(BaseLmWorkload):
     
     del mode, rng, update_batch_norm, model_state
     inputs = batch['inputs']
+    
+    # Convert one-hot inputs to token IDs if needed
+    if inputs.ndim == 3:  # one-hot encoded
+      inputs = jnp.argmax(inputs, axis=-1)
+    
     logits = self._model.apply({'params': params}, inputs)
     return logits, None
 
@@ -76,23 +92,29 @@ class LmWorkload(BaseLmWorkload):
       mask_batch: Optional[spec.Tensor] = None,
       label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:
     """Compute cross-entropy loss for language modeling in JAX."""
-    vocab_size = logits_batch.shape[-1]
+    # Convert one-hot labels to token IDs if needed
+    if len(label_batch.shape) == len(logits_batch.shape):  # one-hot
+      label_batch = jnp.argmax(label_batch, axis=-1)
     
-    if len(label_batch.shape) == len(logits_batch.shape):
-      # One-hot labels
-      loss = -jnp.sum(label_batch * jax.nn.log_softmax(logits_batch, axis=-1))
-    else:
-      # Dense labels
-      loss = -jax.nn.log_softmax(logits_batch)[jnp.arange(label_batch.shape[0]), label_batch]
+    # Reshape for sequence modeling
+    logits = logits_batch.reshape(-1, logits_batch.shape[-1])
+    labels = label_batch.reshape(-1)
+    
+    # Compute cross-entropy loss
+    loss = -jnp.sum(
+        jax.nn.log_softmax(logits)[jnp.arange(labels.shape[0]), labels])
     
     if mask_batch is not None:
-      loss = loss * mask_batch
+      mask = mask_batch.reshape(-1)
+      loss = loss * mask
+      n_valid = mask.sum()
+    else:
+      n_valid = labels.shape[0]
     
-    n_valid = mask_batch.sum() if mask_batch is not None else label_batch.shape[0]
     return {
-        'summed': loss.sum(),
+        'summed': loss,
         'n_valid_examples': n_valid,
-        'per_example': loss
+        'per_example': loss / n_valid  # Return per-token loss
     }
 
   def is_output_params(self, param_name: str) -> bool:
