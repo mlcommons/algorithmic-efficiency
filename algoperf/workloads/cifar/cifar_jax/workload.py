@@ -28,10 +28,9 @@ class CifarWorkload(BaseCifarWorkload):
       data_dir: str,
       batch_size: int,
       cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
+      repeat_final_dataset: Optional[bool] = None
   ) -> Iterator[Dict[str, spec.Tensor]]:
-    data_dir = data_dir + "/cifar10"
-    ds_builder = tfds.builder("cifar10:3.0.2", data_dir=data_dir)
+    ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
     train = split == 'train'
     assert self.num_train_examples + self.num_validation_examples == 50000
     if split in ['train', 'eval_train']:
@@ -92,15 +91,17 @@ class CifarWorkload(BaseCifarWorkload):
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
     input_shape = (1, 32, 32, 3)
-    variables = jax.jit(model.init)({"params": rng},
+    variables = jax.jit(model.init)({'params': rng},
                                     jnp.ones(input_shape, model.dtype))
     model_state, params = pop(variables, 'params')
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
+    model_state = jax_sharding_utils.replicate(params)
+    params = jax_sharding_utils.replicate(params)
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
-    return param_key == "Dense_0"
+    return param_key == 'Dense_0'
 
   def model_fn(
       self,
@@ -114,11 +115,11 @@ class CifarWorkload(BaseCifarWorkload):
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del mode
     del rng
-    variables = {"params": params, **model_state}
+    variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch["inputs"],
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=['batch_stats'],
           use_running_average_bn=use_running_average_bn)
@@ -126,7 +127,7 @@ class CifarWorkload(BaseCifarWorkload):
     else:
       logits = self._model.apply(
           variables,
-          augmented_and_preprocessed_input_batch["inputs"],
+          augmented_and_preprocessed_input_batch['inputs'],
           update_batch_norm=update_batch_norm,
           mutable=False,
           use_running_average_bn=use_running_average_bn)
@@ -139,15 +140,13 @@ class CifarWorkload(BaseCifarWorkload):
       label_batch: spec.Tensor,  # Dense or one-hot labels.
       logits_batch: spec.Tensor,
       mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0,
-  ) -> Dict[str, spec.Tensor]:  # differentiable
+      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
     """Evaluate the (masked) loss function at (label_batch, logits_batch).
 
-        Return {'summed': scalar summed loss,
-        'n_valid_examples': scalar number of
-        valid examples in batch, 'per_example': 1-d array of per-example losses}
-        (not synced across devices).
-        """
+    Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
+    valid examples in batch, 'per_example': 1-d array of per-example losses}
+    (not synced across devices).
+    """
     one_hot_targets = jax.nn.one_hot(label_batch, self._num_classes)
     smoothed_targets = optax.smooth_labels(one_hot_targets, label_smoothing)
     per_example_losses = -jnp.sum(
@@ -160,66 +159,51 @@ class CifarWorkload(BaseCifarWorkload):
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
     return {
-        "summed": summed_loss,
-        "n_valid_examples": n_valid_examples,
-        "per_example": per_example_losses,
+        'summed': summed_loss,
+        'n_valid_examples': n_valid_examples,
+        'per_example': per_example_losses,
     }
 
   def _compute_metrics(self,
                        logits: spec.Tensor,
                        labels: spec.Tensor,
                        weights: spec.Tensor) -> Dict[str, spec.Tensor]:
-    summed_loss = self.loss_fn(labels, logits, weights)["summed"]
+    summed_loss = self.loss_fn(labels, logits, weights)['summed']
     # Number of correct predictions.
     accuracy = jnp.sum((jnp.argmax(logits, -1) == labels) * weights)
-    return jnp.array(summed_loss), jnp.array(accuracy)
+    metrics = {
+        'loss': summed_loss,
+        'accuracy': accuracy,
+    }
+    return metrics
 
+  @functools.partial(
+          jax.jit,
+          in_shardings=(
+              jax_sharding_utils.get_replicated_sharding(),  # params
+              jax_sharding_utils.get_batch_sharding(),  # batch
+              jax_sharding_utils.get_replicated_sharding(),  # model_state
+              jax_sharding  _utils.get_batch_sharding(),  # rng
+          ),
+      )
   def _eval_model(
       self,
       params: spec.ParameterContainer,
       batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState,
-  ) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
-
-    @functools.partial(
-        jax.jit,
-        in_shardings=(
-            jax_sharding_utils.get_replicated_sharding(),  # params
-            jax_sharding_utils.get_batch_sharding(),  # batch
-            jax_sharding_utils.get_replicated_sharding(),  # model_state
-            jax_sharding_utils.get_batch_sharding(),  # rng
-        ),
-    )
-    def _per_device_eval_model(
-        params: spec.ParameterContainer,
-        batch: Dict[str, spec.Tensor],
-        model_state: spec.ModelAuxiliaryState,
-        rng: spec.RandomState,
-    ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
-      logits, _ = self.model_fn(
-          params,
-          batch,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          rng,
-          update_batch_norm=False,
-      )
-      weights = batch.get("weights")
-      if weights is None:
-        weights = jnp.ones(len(logits))
-      return self._compute_metrics(logits, batch["targets"], weights)
-
-    losses, accuracies = _per_device_eval_model(params, batch, model_state, rng)
-    metrics = {
-        "loss":
-            jnp.mean(losses, axis=0) if losses.ndim > 0 else losses,
-        "accuracy":
-            (jnp.mean(accuracies, axis=0) if accuracies.ndim > 0 else accuracies
-            ),
-    }
-    return metrics
+    logits, _ = self.model_fn(
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False)
+    weights = batch.get('weights')
+    if weights is None:
+      weights = jnp.ones(len(logits))
+    return self._compute_metrics(logits, batch['targets'], weights)
 
   def _normalize_eval_metrics(
       self, num_examples: int, total_metrics: Dict[str,

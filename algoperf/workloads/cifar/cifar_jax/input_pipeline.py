@@ -8,6 +8,7 @@ and adjusted to work for CIFAR10.
 import functools
 from typing import Dict, Iterator, Tuple
 
+from flax import jax_utils
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -170,7 +171,6 @@ def create_input_iter(
       functools.partial(
           shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
-  # FIXME(rka97): Figure out how to do prefetching+sharding.
-  # TODO (kasimbeg)
-  # it = jax_utils.prefetch_to_device(it, 2)
+
+  it = jax_utils.prefetch_to_device(it, 2)
   return it
