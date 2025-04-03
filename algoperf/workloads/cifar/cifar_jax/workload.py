@@ -183,7 +183,7 @@ class CifarWorkload(BaseCifarWorkload):
               jax_sharding_utils.get_replicated_sharding(),  # params
               jax_sharding_utils.get_batch_sharding(),  # batch
               jax_sharding_utils.get_replicated_sharding(),  # model_state
-              jax_sharding  _utils.get_batch_sharding(),  # rng
+              jax_sharding_utils.get_batch_sharding(),  # rng
           ),
       )
   def _eval_model(
