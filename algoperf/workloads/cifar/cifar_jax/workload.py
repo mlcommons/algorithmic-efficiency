@@ -32,12 +32,12 @@ class CifarWorkload(BaseCifarWorkload):
   ) -> Iterator[Dict[str, spec.Tensor]]:
     data_dir = data_dir + "/cifar10"
     ds_builder = tfds.builder("cifar10:3.0.2", data_dir=data_dir)
-    train = split == "train"
+    train = split == 'train'
     assert self.num_train_examples + self.num_validation_examples == 50000
-    if split in ["train", "eval_train"]:
-      split = f"train[:{self.num_train_examples}]"
-    elif split == "validation":
-      split = f"train[{self.num_train_examples}:]"
+    if split in ['train', 'eval_train']:
+      split = f'train[:{self.num_train_examples}]'
+    elif split == 'validation':
+      split = f'train[{self.num_train_examples}:]'
     ds = create_input_iter(
         split,
         ds_builder,
@@ -49,8 +49,7 @@ class CifarWorkload(BaseCifarWorkload):
         self.padding_size,
         train=train,
         cache=not train if cache is None else cache,
-        repeat_final_dataset=repeat_final_dataset,
-    )
+        repeat_final_dataset=repeat_final_dataset)
     return ds
 
   def _build_input_queue(
@@ -61,8 +60,7 @@ class CifarWorkload(BaseCifarWorkload):
       global_batch_size: int,
       cache: Optional[bool] = None,
       repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None,
-  ) -> Iterator[Dict[str, spec.Tensor]]:
+      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
     del num_batches
     return self._build_cifar_dataset(data_rng,
                                      split,
@@ -86,12 +84,11 @@ class CifarWorkload(BaseCifarWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None,
-  ) -> spec.ModelInitState:
+      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """Dropout is unused."""
     del dropout_rate
     del aux_dropout_rate
-    model_cls = getattr(models, "ResNet18")
+    model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
     self._model = model
     input_shape = (1, 32, 32, 3)

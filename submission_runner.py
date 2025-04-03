@@ -35,10 +35,6 @@ import tensorflow as tf
 # New PRNG implementation for correct sharding
 jax.config.update('jax_default_prng_impl', 'threefry2x32')
 jax.config.update('jax_threefry_partitionable', True)
-# JAX compilation caching
-jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
-jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
-jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
 import torch
 import torch.distributed as dist
 
@@ -392,9 +388,8 @@ def train_once(
         train_step_end_time - train_state['last_step_end_time'])
 
     # Check if submission is eligible for an untimed eval.
-    if False:
-    # if ((train_step_end_time - train_state['last_eval_time']) >=
-    #     workload.eval_period_time_sec or train_state['training_complete']):
+    if ((train_step_end_time - train_state['last_eval_time']) >=
+        workload.eval_period_time_sec or train_state['training_complete']):
 
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
@@ -636,22 +631,20 @@ def score_submission_on_workload(workload: spec.Workload,
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
-        with jax.profiler.trace("/logs/tensorboard"):
-          print('profiling!')
-          timing, metrics = train_once(workload, workload_name,
-                                      global_batch_size,
-                                      global_eval_batch_size,
-                                      data_dir, imagenet_v2_data_dir,
-                                      init_optimizer_state,
-                                      update_params, data_selection,
-                                      prepare_for_eval,
-                                      hyperparameters,
-                                      rng_seed,
-                                      rng,
-                                      profiler,
-                                      max_global_steps,
-                                      tuning_dir_name,
-                                      save_checkpoints=save_checkpoints,)
+        timing, metrics = train_once(workload, workload_name,
+                                     global_batch_size,
+                                     global_eval_batch_size,
+                                     data_dir, imagenet_v2_data_dir,
+                                     init_optimizer_state,
+                                     update_params, data_selection,
+                                     prepare_for_eval,
+                                     hyperparameters,
+                                     rng_seed,
+                                     rng,
+                                     profiler,
+                                     max_global_steps,
+                                     tuning_dir_name,
+                                     save_checkpoints=save_checkpoints,)
       all_timings[hi] = timing
       all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
@@ -679,7 +672,7 @@ def score_submission_on_workload(workload: spec.Workload,
       score, _ = train_once(
           workload, workload_name, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
-          init_optimizer_state, update_params, data_selection,
+          init_optimizer_state, update_params, data_selection, prepare_for_eval,
           None, rng_seed, rng, profiler, max_global_steps, log_dir,
           save_checkpoints=save_checkpoints)
   return score

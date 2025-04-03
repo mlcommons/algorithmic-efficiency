@@ -99,14 +99,14 @@ wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.18.0"]
 
 # Frameworks
 jax_core_deps = [
-  "flax==0.10.4",
+  "flax==0.8.4",
   "optax==0.2.2",
   "chex==0.1.86",
   "ml_dtypes==0.4.1",
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.5.3",
+  "jax==0.5.3,
   "algoperf[jax_core_deps]",
 ]
 jax_gpu = [

@@ -37,7 +37,7 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[full]
         pip install -e .
-        python tests/reference_algorithm_tests.py --workload=wmt     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=wmt     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
   wmt_pytorch:
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +54,7 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[full]
         pip install -e .
-        python tests/reference_algorithm_tests.py --workload=wmt     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=wmt     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nadamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/wmt/tuning_search_space.json
   imagenet_jax:
     runs-on: ubuntu-latest
     steps:
@@ -71,8 +71,8 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[full]
         pip install -e .
-        python tests/reference_algorithm_tests.py --workload=imagenet_vit     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
-        python tests/reference_algorithm_tests.py --workload=imagenet_resnet     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=imagenet_vit     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=imagenet_resnet     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
   imagenet_pytorch:
     runs-on: ubuntu-latest
     steps:
@@ -89,8 +89,8 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[full]
         pip install -e .
-        python tests/reference_algorithm_tests.py --workload=imagenet_resnet     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
-        python tests/reference_algorithm_tests.py --workload=imagenet_vit     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=imagenet_resnet     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_momentum.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=imagenet_vit     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/imagenet_vit/tuning_search_space.json
   # uncomment when https://github.com/mlcommons/algorithmic-efficiency/issues/339 is resolved.
   criteo_jax:
     runs-on: ubuntu-latest
@@ -142,8 +142,8 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[full]
         pip install -e .
-        python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
-        python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=jax     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
   speech_pytorch:
     runs-on: ubuntu-latest
     steps:
@@ -160,8 +160,8 @@ jobs:
         pip install .[pytorch_cpu]
         pip install .[full]
         pip install -e .
-        python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
-        python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=librispeech_deepspeech     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_deepspeech/tuning_search_space.json
+        python tests/reference_algorithm_tests.py --workload=librispeech_conformer     --framework=pytorch     --global_batch_size=2     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_adamw.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/librispeech_conformer/tuning_search_space.json
   ogbg:
     runs-on: ubuntu-latest
     steps:

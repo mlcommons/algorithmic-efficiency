@@ -79,8 +79,7 @@ class GNN(nn.Module):
               self.hidden_dims, dropout=dropout, activation_fn=activation_fn),
           update_global_fn=_make_mlp(
               self.hidden_dims, dropout=dropout, activation_fn=activation_fn))
-      # jax.debug.print(str(graph))
-    
+
       graph = net(graph)
 
     # Map globals to represent the final result
