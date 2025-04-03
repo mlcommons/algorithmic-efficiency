@@ -71,17 +71,6 @@ class CifarWorkload(BaseCifarWorkload):
                                      cache,
                                      repeat_final_dataset)
 
-  def sync_batch_stats(
-      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
-    """Sync the batch statistics across replicas."""
-    # An axis_name is passed to pmap which can then be used by pmean.
-    # In this case each device has its own version of the batch statistics
-    # and we average them.
-    avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-    new_model_state = model_state.copy()
-    new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
-    return new_model_state
-
   def init_model_fn(
       self,
       rng: spec.RandomState,

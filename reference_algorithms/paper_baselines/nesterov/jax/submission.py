@@ -90,12 +90,6 @@ def sgd(learning_rate, weight_decay, momentum=None, nesterov=False):
           learning_rate=learning_rate, momentum=momentum, nesterov=nesterov))
 
 
-# @functools.partial(
-#     jax.pmap,
-#     axis_name='batch',
-#     in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
-#     static_broadcasted_argnums=(0, 1),
-#     donate_argnums=(2, 3, 4))
 def train_step(workload,
                opt_update_fn,
                model_state,
@@ -272,6 +266,8 @@ def get_batch_size(workload_name):
     return 16
   elif workload_name == 'cifar':
     return 128
+  elif workload_name == 'lm':
+    return 8
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

@@ -87,7 +87,7 @@ def get_hf_dataloader(cache_dir: str,
         tokens = jax.nn.one_hot(token_ids, num_classes=vocab_size)
         inputs, targets = tokens[:, :-1], tokens[:, 1:]
         inputs, targets = jax.device_put(inputs), jax.device_put(targets)
-      yield inputs, targets
+      yield {'inputs': inputs, 'targets': targets}
 
   return batch_iterator()
 
