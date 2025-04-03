@@ -11,7 +11,7 @@ from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
 from algoperf.workloads.lm.workload import BaseLmWorkload
-from algoperf.workloads.lm.lm_pytorch.models import LinearLayer
+from algoperf.workloads.lm.lm_pytorch.plainlm_model import Transformer, ModelConfig
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
@@ -26,11 +26,23 @@ class LmWorkload(BaseLmWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     
     if hasattr(self, '_model'):
-        self._model.reset_parameters()
+        # Reinitialize weights but keep same config
+        self._model.apply(self._model._init_weights)
+        self._model._scale_residual_branches()
         return self._model, None
 
     torch.manual_seed(rng[0])
-    self._model = LinearLayer(vocab_size=self._vocab_size)
+    cfg = ModelConfig(
+        vocab_size=self._vocab_size,
+        seq_len=self._seq_len,
+        dim=512,  # Model dimension
+        expand=4,  # MLP expansion factor
+        n_layers=6,  # Number of transformer layers
+        n_heads=8,  # Number of attention heads
+        rmsnorm_eps=1e-6,
+        tie_embeddings=True
+    )
+    self._model = Transformer(cfg)
     self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     self._model.to(DEVICE)
@@ -46,15 +58,20 @@ class LmWorkload(BaseLmWorkload):
   def model_fn(
       self,
       params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     
-    del model_state, rng, update_batch_norm  # Not used for linear model
+    del model_state, rng, update_batch_norm
     model = params
-    inputs = batch['inputs'].float()  # Convert one-hot to float
+    
+    # Convert one-hot inputs to token IDs if needed
+    inputs = augmented_and_preprocessed_input_batch['inputs']
+    if inputs.dim() == 3:  # one-hot encoded
+        inputs = inputs.argmax(dim=-1)
+    
     logits = model(inputs)
     return logits, None
 
@@ -83,13 +100,14 @@ class LmWorkload(BaseLmWorkload):
     is_train = split == 'train'
     
     for batch in loader:
-      inputs, targets = batch
+      inputs = batch['inputs']
+      targets = batch['targets']
       
       if USE_PYTORCH_DDP:
         if not is_train:
           # During eval, the batch size of the remainder might be different
           per_device_batch_size = torch.tensor(
-              len(targets[0]), dtype=dtype, device=DEVICE)
+              targets.shape[0], dtype=dtype, device=DEVICE)
           dist.broadcast(per_device_batch_size, src=0)
         
         # Broadcast to all devices
@@ -97,10 +115,8 @@ class LmWorkload(BaseLmWorkload):
         dist.broadcast(targets, src=0)
       
       if weights is None:
-        weights = torch.ones(inputs.shape[0], device=DEVICE)
-
-      if weights is None:
-        weights = torch.ones(per_device_batch_size, device=DEVICE)
+        batch_size = targets.shape[0] if not USE_PYTORCH_DDP else per_device_batch_size.item()
+        weights = torch.ones((batch_size, seq_len), device=DEVICE)
       batch = {
           'inputs': inputs,
           'targets': targets,
@@ -110,7 +126,7 @@ class LmWorkload(BaseLmWorkload):
 
   def is_output_params(self, param_name: str) -> bool:
     """Return whether the given parameter is an output parameter."""
-    return 'output.weight' in param_name or 'output.bias' in param_name
+    return 'lm_head.weight' in param_name or 'lm_head.bias' in param_name
     
   def _eval_batch(self,
                   params: spec.ParameterContainer,
@@ -121,11 +137,17 @@ class LmWorkload(BaseLmWorkload):
     model = params
     logits, _ = self.model_fn(
         model, batch, model_state, spec.ForwardPassMode.EVAL, rng, False)
-    targets = batch['targets']
     
-    # Calculate cross-entropy loss
-    log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
-    loss = -torch.sum(targets * log_probs)
+    # Handle both one-hot and token ID targets
+    targets = batch['targets']
+    if targets.dim() == 3:  # one-hot
+        loss = -torch.sum(targets * torch.nn.functional.log_softmax(logits, dim=-1))
+    else:  # token IDs
+        loss = torch.nn.functional.cross_entropy(
+            logits.view(-1, logits.size(-1)),
+            targets.view(-1),
+            reduction='sum'
+        )
     return loss
   def loss_fn(
       self,
@@ -146,7 +168,6 @@ class LmWorkload(BaseLmWorkload):
           logits_batch, 
           label_batch,
           reduction='none')
-    
     if mask_batch is not None:
       loss = loss * mask_batch
     
