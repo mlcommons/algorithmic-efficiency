@@ -41,7 +41,7 @@ def init_optimizer_state(workload: spec.Workload,
       nesterov=True)
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn
 
 
 def create_lr_schedule_fn(
