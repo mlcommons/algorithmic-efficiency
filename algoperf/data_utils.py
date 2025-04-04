@@ -61,7 +61,7 @@ def shard_and_maybe_pad_np(
     if remainder_size != 0 or pad_to_global_batch_size:
       x = pad(x, pad_size, padding_value=padding_value)
 
-    return jax.device_put(x, jax.sharding_utils.get_batch_dim_sharding())
+    return jax.device_put(x, jax_sharding_utils.get_batch_dim_sharding())
 
   return jax.tree.map(_prepare, batch)
 

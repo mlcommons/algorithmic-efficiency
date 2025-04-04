@@ -27,7 +27,7 @@ def replicate(x):
   """Replicates tensor across all devices."""
   mesh = jax.sharding.Mesh(jax.devices(), ('batch',))
   return jax.tree.map(
-      lambda x: jax.device_put(x, NamedSharding(mesh, P())))
+      lambda x: jax.device_put(x, NamedSharding(mesh, P())), x)
 
 
 def disp_shard_info(x: jax.Array):

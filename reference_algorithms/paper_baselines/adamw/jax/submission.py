@@ -136,7 +136,7 @@ def update_params(
     grad_clip = None
 
   # Set up mesh and sharding
-  mesh = jax_sharding_utils.get_mesh()
+  mesh = jax.sharding.Mesh(jax.devices(), ('batch'))
   replicated = NamedSharding(mesh, P())  # No partitioning
   sharded = NamedSharding(mesh, P('batch'))  # Partition along batch dimension
 
@@ -228,6 +228,8 @@ def get_batch_size(workload_name):
     return 128
   elif workload_name == 'mnist':
     return 16
+  elif workload_name == 'cifar':
+    return 32
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

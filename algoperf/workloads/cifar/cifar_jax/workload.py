@@ -31,6 +31,7 @@ class CifarWorkload(BaseCifarWorkload):
       repeat_final_dataset: Optional[bool] = None
   ) -> Iterator[Dict[str, spec.Tensor]]:
     ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
+    ds_builder.download_and_prepare()
     train = split == 'train'
     assert self.num_train_examples + self.num_validation_examples == 50000
     if split in ['train', 'eval_train']:
@@ -177,33 +178,46 @@ class CifarWorkload(BaseCifarWorkload):
     }
     return metrics
 
-  @functools.partial(
-          jax.jit,
-          in_shardings=(
-              jax_sharding_utils.get_replicate_sharding(),  # params
-              jax_sharding_utils.get_batch_dim_sharding(),  # batch
-              jax_sharding_utils.get_replicate_sharding(),  # model_state
-              jax_sharding_utils.get_batch_dim_sharding(),  # rng
-          ),
-      )
   def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+    self,
+    params: spec.ParameterContainer,
+    batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
-    logits, _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
-    weights = batch.get('weights')
-    if weights is None:
-      weights = jnp.ones(len(logits))
-    return self._compute_metrics(logits, batch['targets'], weights)
+
+    @functools.partial(
+        jax.jit,
+        in_shardings=(
+            jax_sharding_utils.get_replicate_sharding(),  # params
+            jax_sharding_utils.get_batch_dim_sharding(),  # batch
+            jax_sharding_utils.get_replicate_sharding(),  # model_state
+            jax_sharding_utils.get_batch_dim_sharding(),  # rng
+        ),
+    )
+    def _eval_model_jitted(
+        params: spec.ParameterContainer,
+        batch: Dict[str, spec.Tensor],
+        model_state: spec.ModelAuxiliaryState,
+        rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+      """Return the mean accuracy and loss as a dict."""
+      logits, _ = self.model_fn(
+          params,
+          batch,
+          model_state,
+          spec.ForwardPassMode.EVAL,
+          rng,
+          update_batch_norm=False)
+      weights = batch.get('weights')
+      if weights is None:
+        weights = jnp.ones(len(logits))
+      return self._compute_metrics(logits, batch['targets'], weights)
+
+    metrics = _eval_model_jitted(params, 
+                                  batch,
+                                  model_state,
+                                  rng)
+    return jax.tree.map(lambda x: x.item(), metrics)
 
   def _normalize_eval_metrics(
       self, num_examples: int, total_metrics: Dict[str,
