@@ -72,8 +72,8 @@ class WmtWorkload(BaseWmtWorkload):
   @functools.partial(
       jax.jit,
       in_shardings=(
-          jax_sharding_utils.get_replicated_sharding(),  # params
-          jax_sharding_utils.get_batch_sharding(),  # batch
+          jax_sharding_utils.get_replicate_sharding(),  # params
+          jax_sharding_utils.get_batch_dim_sharding(),  # batch
       ),
       static_argnums=(0,),  # self
   )
@@ -191,14 +191,13 @@ class WmtWorkload(BaseWmtWorkload):
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       cache = self.initialize_cache(pred_batch['inputs'])
-      cache = jax_sharding_utils.shard_naive(cache)
       if jitted_predict_step is None:
         jitted_predict_step = jax.jit(
             self.predict_step,
             in_shardings=(
                 jax_sharding_utils.get_batch_dim_sharding(),  # inputs
                 jax_sharding_utils.get_replicate_sharding(),  # params
-                jax_sharding_utils.get_naive_sharding_tree(cache),  # cache
+                jax_sharding_utils.get_replicate_sharding(),  # cache
             ),
             static_argnums=(
                 3,  # eos_id

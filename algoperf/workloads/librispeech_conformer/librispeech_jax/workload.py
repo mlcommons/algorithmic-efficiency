@@ -94,8 +94,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     self._param_types = param_utils.jax_param_types(self._param_shapes)
 
     # Add sharding
-    params = jax_sharding_utils.shard(params)
-    model_state = jax_sharding_utils.shard(model_state)
+    params = jax_sharding_utils.replicate(params)
+    model_state = jax_sharding_utils.replicate(model_state)
 
     return params, model_state
 
@@ -342,7 +342,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             decoded,
         'decoded_paddings':
             decoded_paddings,
-        'targets':
+        'targets': 
             targets,
         'target_paddings':
             target_paddings,

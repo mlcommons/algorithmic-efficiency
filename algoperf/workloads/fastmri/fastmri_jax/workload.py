@@ -40,7 +40,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax_sharding_utils.shard(params)
+    params = jax_sharding_utils.replicate(params)
     return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -96,11 +96,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   @functools.partial(
       jax.jit,
-      in_shardings=(jax_sharding_utils.get_replicated_sharding(),
-                    jax_sharding_utils.get_batch_sharding(),
-                    jax_sharding_utils.get_replicated_sharding()),
+      in_shardings=(jax_sharding_utils.get_replicate_sharding(),
+                    jax_sharding_utils.get_batch_dim_sharding(),
+                    jax_sharding_utils.get_replicate_sharding()),
       static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicated_sharding())
+      out_shardings=jax_sharding_utils.get_replicate_sharding())
   def _eval_model(self,
                   params: spec.Tensor,
                   batch: Dict[str, spec.Tensor],

@@ -46,7 +46,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     params = params['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax_sharding_utils.shard(params)
+    params = jax_sharding_utils.replicate(params)
     return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
