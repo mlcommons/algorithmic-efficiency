@@ -135,4 +135,4 @@ class MnistWorkload(BaseMnistWorkload):
       self, num_examples: int, total_metrics: Dict[str,
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
-    return jax.tree.map(lambda: float(x.item() / num_examples), total_metrics)
+    return jax.tree.map(lambda x: float(x.item() / num_examples), total_metrics)
