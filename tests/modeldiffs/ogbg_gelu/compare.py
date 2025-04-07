@@ -13,7 +13,7 @@ from algoperf.workloads.ogbg.ogbg_jax.workload import \
     OgbgGeluWorkload as JaxWorkload
 from algoperf.workloads.ogbg.ogbg_pytorch.workload import \
     OgbgGeluWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 # Todo: refactor tests to use workload properties in cleaner way
 hidden_dims = len(JaxWorkload().hidden_dims)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
   jax_workload = JaxWorkload()
   pytorch_workload = PyTorchWorkload()
 
-  pyt_batch = dict(
+  pytorch_batch = dict(
       n_node=torch.LongTensor([5]),
       n_edge=torch.LongTensor([5]),
       nodes=torch.randn(5, 9),
@@ -88,17 +88,17 @@ if __name__ == '__main__':
       senders=torch.LongTensor(list(range(5))),
       receivers=torch.LongTensor([(i + 1) % 5 for i in range(5)]))
 
-  jax_batch = {k: np.array(v) for k, v in pyt_batch.items()}
+  jax_batch = {k: np.array(v) for k, v in pytorch_batch.items()}
 
   # Test outputs for identical weights and inputs.
   graph_j = jraph.GraphsTuple(**jax_batch)
-  graph_p = jraph.GraphsTuple(**pyt_batch)
+  graph_p = jraph.GraphsTuple(**pytorch_batch)
 
   jax_batch = {'inputs': graph_j}
-  pyt_batch = {'inputs': graph_p}
+  pytorch_batch = {'inputs': graph_p}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,
@@ -110,11 +110,11 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=key_transform,
       sd_transform=sd_transform,
-      out_transform=None)
+      out_transform=None).run()

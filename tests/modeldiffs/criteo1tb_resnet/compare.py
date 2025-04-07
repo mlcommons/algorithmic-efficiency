@@ -13,7 +13,7 @@ from algoperf.workloads.criteo1tb.criteo1tb_jax.workload import \
     Criteo1TbDlrmSmallResNetWorkload as JaxWorkload
 from algoperf.workloads.criteo1tb.criteo1tb_pytorch.workload import \
     Criteo1TbDlrmSmallResNetWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def key_transform(k):
@@ -64,7 +64,7 @@ if __name__ == '__main__':
   jax_workload = JaxWorkload()
   pytorch_workload = PyTorchWorkload()
 
-  pyt_batch = {
+  pytorch_batch = {
       'inputs': torch.ones((2, 13 + 26)),
       'targets': torch.randint(low=0, high=1, size=(2,)),
       'weights': torch.ones(2),
@@ -75,12 +75,12 @@ if __name__ == '__main__':
   input_size = 13 + num_categorical_features
   input_shape = (init_fake_batch_size, input_size)
   fake_inputs = jnp.ones(input_shape, jnp.float32)
-  jax_batch = {k: np.array(v) for k, v in pyt_batch.items()}
+  jax_batch = {k: np.array(v) for k, v in pytorch_batch.items()}
   jax_batch['inputs'] = fake_inputs
 
   # Test outputs for identical weights and inputs.
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,
@@ -92,11 +92,11 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=key_transform,
       sd_transform=sd_transform,
-      out_transform=None)
+      out_transform=None).run()

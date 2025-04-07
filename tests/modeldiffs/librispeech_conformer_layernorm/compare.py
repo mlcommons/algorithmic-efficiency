@@ -11,7 +11,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
     LibriSpeechConformerLayerNormWorkload as JaxWorkload
 from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import \
     LibriSpeechConformerLayerNormWorkload as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def key_transform(k):
@@ -66,10 +66,10 @@ if __name__ == '__main__':
   pad[0, 200000:] = 1
 
   jax_batch = {'inputs': (wave.detach().numpy(), pad.detach().numpy())}
-  pyt_batch = {'inputs': (wave, pad)}
+  pytorch_batch = {'inputs': (wave, pad)}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,
@@ -81,7 +81,7 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
@@ -89,4 +89,4 @@ if __name__ == '__main__':
       key_transform=key_transform,
       sd_transform=sd_transform,
       out_transform=lambda out_outpad: out_outpad[0] *
-      (1 - out_outpad[1][:, :, None]))
+      (1 - out_outpad[1][:, :, None])).run()
