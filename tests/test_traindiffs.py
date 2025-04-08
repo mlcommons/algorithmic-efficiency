@@ -46,11 +46,11 @@ class ModelDiffTest(parameterized.TestCase):
     CUDA OOM errors resulting from the two frameworks competing with each other for GPU memory.
     """
     name = f'Testing {workload}'
-    jax_logs = '/tmp/jax_log.pkl'
-    pyt_logs = '/tmp/pyt_log.pkl'
+    jax_logs_path = '/tmp/jax_log.pkl'
+    pytorch_logs_path = '/tmp/pyt_log.pkl'
     try:
       run(
-          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python3 -m tests.reference_algorithm_tests --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs}'
+          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform python -m tests.reference_algorithm_tests --workload={workload} --framework=jax --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={jax_logs_path}'
           f' --submission_path=tests/modeldiffs/vanilla_sgd_jax.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
           shell=True,
           stdout=DEVNULL,
@@ -60,7 +60,7 @@ class ModelDiffTest(parameterized.TestCase):
       print("Error:", e)
     try:
       run(
-          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8 -m tests.reference_algorithm_tests --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pyt_logs}'
+          f'XLA_PYTHON_CLIENT_ALLOCATOR=platform torchrun --standalone --nnodes 1 --nproc_per_node 8 -m tests.reference_algorithm_tests --workload={workload} --framework=pytorch --global_batch_size={GLOBAL_BATCH_SIZE} --log_file={pytorch_logs_path}'
           f' --submission_path=tests/modeldiffs/vanilla_sgd_pytorch.py --identical=True --tuning_search_space=None --num_train_steps={NUM_TRAIN_STEPS}',
           shell=True,
           stdout=DEVNULL,
@@ -68,13 +68,13 @@ class ModelDiffTest(parameterized.TestCase):
           check=True)
     except subprocess.CalledProcessError as e:
       print("Error:", e)
-    with open(jax_logs, 'rb') as f:
+    with open(jax_logs_path, 'rb') as f:
       jax_results = pickle.load(f)
-    with open(pyt_logs, 'rb') as f:
-      pyt_results = pickle.load(f)
+    with open(pytorch_logs_path, 'rb') as f:
+      pytorch_results = pickle.load(f)
 
     # PRINT RESULTS
-    k = next(
+    eval_metric_key = next(
         iter(
             filter(lambda k: 'train' in k and 'loss' in k,
                    jax_results['eval_results'][0])))
@@ -99,30 +99,30 @@ class ModelDiffTest(parameterized.TestCase):
 
       row = map(lambda x: str(round(x, 5)),
                 [
-                    jax_results['eval_results'][i][k],
-                    pyt_results['eval_results'][i][k],
+                    jax_results['eval_results'][i][eval_metric_key],
+                    pytorch_results['eval_results'][i][eval_metric_key],
                     jax_results['scalars'][i]['grad_norm'],
-                    pyt_results['scalars'][i]['grad_norm'],
+                    pytorch_results['scalars'][i]['grad_norm'],
                     jax_results['scalars'][i]['loss'],
-                    pyt_results['scalars'][i]['loss'],
+                    pytorch_results['scalars'][i]['loss'],
                 ])
       print(fmt([f'{i}', *row]))
     print('=' * len(header))
 
     self.assertTrue(  # eval_results
         allclose(
-            jax_results['eval_results'][i][k],
-            pyt_results['eval_results'][i][k],
+            jax_results['eval_results'][i][eval_metric_key],
+            pytorch_results['eval_results'][i][eval_metric_key],
             rtol=rtol))
     self.assertTrue(  # grad_norms
         allclose(
             jax_results['scalars'][i]['grad_norm'],
-            pyt_results['scalars'][i]['grad_norm'],
+            pytorch_results['scalars'][i]['grad_norm'],
             rtol=rtol))
     self.assertTrue(  # loss
         allclose(
             jax_results['scalars'][i]['loss'],
-            pyt_results['scalars'][i]['loss'],
+            pytorch_results['scalars'][i]['loss'],
             rtol=rtol))
 
 

@@ -88,7 +88,7 @@ gcloud auth configure-docker $ARTIFACT_REGISTRY_URL
 To pull the latest prebuilt image:
 
 ```bash
-docker pull us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/<image_name>
+docker pull europe-west4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo/<image_name>
 ```
 
 The naming convention for `image_name` is `algoperf_<framework>_<branch>`.
@@ -102,7 +102,7 @@ Currently maintained images on the repository are:
 - `algoperf_both_dev`
 
 To reference the pulled image you will have to use the full `image_path`, e.g.
-`us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main`.
+`europe-west4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo/algoperf_jax_main`.
 
 ### Trigger Rebuild and Push of Maintained Images
 
