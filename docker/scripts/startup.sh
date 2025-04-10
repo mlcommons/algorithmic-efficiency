@@ -293,7 +293,6 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         --workload=${WORKLOAD} \
         --submission_path=${SUBMISSION_PATH}  \
         --data_dir=${DATA_DIR} \
-        --num_tuning_trials=1  \
         --experiment_dir=${EXPERIMENT_DIR}  \
         --experiment_name=${EXPERIMENT_NAME} \
         --overwrite=${OVERWRITE} \
