@@ -55,8 +55,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_sharding_utils.shard_along_batch_dim(model_state)
-    params = jax_sharding_utils.shard_along_batch_dim(params)
+    model_state = jax_sharding_utils.replicate(model_state)
+    params = jax_sharding_utils.replicate(params)
     return params, model_state
   
   def model_fn_ref(
