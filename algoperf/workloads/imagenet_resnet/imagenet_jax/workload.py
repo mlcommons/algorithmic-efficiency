@@ -20,6 +20,7 @@ import tensorflow_datasets as tfds
 
 from algoperf import param_utils
 from algoperf import random_utils as prng
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet import imagenet_v2
 from algoperf.workloads.imagenet_resnet.imagenet_jax import input_pipeline
@@ -71,17 +72,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         use_randaug=use_randaug)
     return ds
 
-  def sync_batch_stats(
-      self, model_state: spec.ModelAuxiliaryState) -> spec.ModelAuxiliaryState:
-    """Sync the batch statistics across replicas."""
-    # An axis_name is passed to pmap which can then be used by pmean.
-    # In this case each device has its own version of the batch statistics and
-    # we average them.
-    avg_fn = jax.pmap(lambda x: lax.pmean(x, 'x'), 'x')
-    new_model_state = model_state.copy()  # Create a shallow copy
-    new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
-    return new_model_state
-
   def init_model_fn(
       self,
       rng: spec.RandomState,
@@ -113,18 +103,29 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model_state, params = pop(variables, "params")
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_utils.replicate(model_state)
-    params = jax_utils.replicate(params)
+    params = jax.tree_map(
+        lambda x: jax.device_put(x,
+                                 jax_sharding_utils.get_replicate_sharding()),
+        params)
+    model_state = jax.tree_map(
+        lambda x: jax.device_put(x,
+                                 jax_sharding_utils.get_replicate_sharding()),
+        model_state)
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'
 
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, 0),
-      static_broadcasted_argnums=(0,))
+      jax.jit,
+      in_shardings=(
+          jax_sharding_utils.get_replicate_sharding(),  # params
+          jax_sharding_utils.get_batch_dim_sharding(),  # batch
+          jax_sharding_utils.get_replicate_sharding(),  # model_state
+          jax_sharding_utils.get_replicate_sharding(),  # rng
+      ),
+      static_argnums=(0,),
+      out_shardings=jax_sharding_utils.get_replicate_sharding())
   def _eval_model(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor],
@@ -218,7 +219,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         'loss': summed_loss,
         'accuracy': accuracy,
     }
-    metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _eval_model_on_split(self,
@@ -231,9 +231,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
                            data_dir: str,
                            global_step: int = 0) -> Dict[str, float]:
     del global_step
-    if model_state is not None:
-      # Sync batch statistics across replicas before evaluating.
-      model_state = self.sync_batch_stats(model_state)
     num_batches = int(math.ceil(num_examples / global_batch_size))
     data_rng, eval_rng = prng.split(rng, 2)
     # We already repeat the dataset indefinitely in tf.data.
@@ -250,20 +247,14 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     eval_metrics = {}
     for bi in range(num_batches):
       eval_rng = prng.fold_in(eval_rng, bi)
-      step_eval_rngs = prng.split(eval_rng, jax.local_device_count())
       batch = next(self._eval_iters[split])
-      # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params,
-                                        batch,
-                                        model_state,
-                                        step_eval_rngs)
+      synced_metrics = self._eval_model(params, batch, model_state, eval_rng)
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0
         eval_metrics[metric_name] += metric_value
 
-    eval_metrics = jax.tree.map(lambda x: float(x[0] / num_examples),
-                                eval_metrics)
+    eval_metrics = jax.tree.map(lambda x: x / num_examples, eval_metrics)
     return eval_metrics
 
 
