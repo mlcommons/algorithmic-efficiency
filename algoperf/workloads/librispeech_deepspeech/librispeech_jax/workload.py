@@ -51,10 +51,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_utils.replicate(model_state, jax.devices())
-    params = jax_utils.replicate(params, jax.devices())
-    params_shapes = jax.tree.map(lambda x: jnp.shape(x), model_state)
-    jax.debug.print("params shapes {params_shapes}", params_shapes=params_shapes)
+    model_state = jax_utils.replicate(model_state)
+    params = jax_utils.replicate(params)
     return params, model_state
 
   def model_fn(
