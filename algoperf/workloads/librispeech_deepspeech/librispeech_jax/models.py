@@ -20,6 +20,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
+from algoperf.jax_utils import Dropout
 
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]
@@ -110,7 +111,7 @@ class Subsample(nn.Module):
       input_dropout_rate = 0.1
     else:
       input_dropout_rate = config.input_dropout_rate
-    outputs = nn.Dropout(
+    outputs = Dropout(
         rate=input_dropout_rate, deterministic=not train)(
             outputs)
 
@@ -216,7 +217,7 @@ class FeedForwardModule(nn.Module):
       feed_forward_dropout_rate = 0.1
     else:
       feed_forward_dropout_rate = config.feed_forward_dropout_rate
-    inputs = nn.Dropout(rate=feed_forward_dropout_rate)(
+    inputs = Dropout(rate=feed_forward_dropout_rate)(
         inputs, deterministic=not train)
 
     return inputs

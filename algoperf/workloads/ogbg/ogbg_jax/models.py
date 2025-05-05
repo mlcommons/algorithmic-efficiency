@@ -6,6 +6,8 @@ from flax import linen as nn
 import jax.numpy as jnp
 import jraph
 
+from algoperf.jax_utils import Dropout
+
 
 def _make_embed(latent_dim, name):
 
@@ -50,7 +52,7 @@ class GNN(nn.Module):
       dropout_rate = 0.1
     else:
       dropout_rate = self.dropout_rate
-    dropout = nn.Dropout(rate=dropout_rate, deterministic=not train)
+    dropout = Dropout(rate=dropout_rate, deterministic=not train)
 
     graph = graph._replace(
         globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))

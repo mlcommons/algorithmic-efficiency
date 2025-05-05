@@ -19,6 +19,7 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
+from algoperf.jax_utils import Dropout
 
 def _instance_norm2d(x, axes, epsilon=1e-5):
   # promote x to at least float32, this avoids half precision computation
@@ -172,7 +173,7 @@ class ConvBlock(nn.Module):
     x = activation_fn(x)
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
-    x = nn.Dropout(
+    x = Dropout(
         self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
             x)
     x = nn.Conv(
@@ -186,7 +187,7 @@ class ConvBlock(nn.Module):
     else:
       x = _instance_norm2d(x, (1, 2))
     x = activation_fn(x)
-    x = nn.Dropout(
+    x = Dropout(
         self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
             x)
     return x

@@ -26,6 +26,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
+from algoperf.jax_utils import Dropout
 
 
 @struct.dataclass
@@ -129,7 +130,7 @@ class Subsample(nn.Module):
     outputs = outputs + AddPositionalEmbedding(embedding_dim=self.encoder_dim)(
         seq_length=outputs.shape[1])
 
-    outputs = nn.Dropout(
+    outputs = Dropout(
         rate=self.input_dropout_rate, deterministic=not train)(
             outputs)
 
@@ -217,7 +218,7 @@ class FeedForwardModule(nn.Module):
                        'config.activation_function_name values, recieved '
                        f'{config.activation_function_name}')
     inputs = activation_fn(inputs)
-    inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
+    inputs = Dropout(rate=config.feed_forward_dropout_rate)(
         inputs, deterministic=not train)
 
     inputs = inputs * padding_mask
@@ -234,7 +235,7 @@ class FeedForwardModule(nn.Module):
     else:
       feed_forward_residual_dropout_rate = (
           config.feed_forward_residual_dropout_rate)
-    inputs = nn.Dropout(rate=feed_forward_residual_dropout_rate)(
+    inputs = Dropout(rate=feed_forward_residual_dropout_rate)(
         inputs, deterministic=not train)
 
     return inputs
@@ -416,7 +417,7 @@ class MultiHeadedSelfAttention(nn.Module):
       attention_residual_dropout_rate = 0.1
     else:
       attention_residual_dropout_rate = config.attention_residual_dropout_rate
-    result = nn.Dropout(
+    result = Dropout(
         rate=attention_residual_dropout_rate, deterministic=not train)(
             result)
 
@@ -578,7 +579,7 @@ class ConvolutionBlock(nn.Module):
       conv_residual_dropout_rate = 0.0
     else:
       conv_residual_dropout_rate = config.conv_residual_dropout_rate
-    inputs = nn.Dropout(
+    inputs = Dropout(
         rate=conv_residual_dropout_rate, deterministic=not train)(
             inputs)
     return inputs

@@ -11,6 +11,7 @@ from flax import linen as nn
 import jax.numpy as jnp
 
 from algoperf import spec
+from algoperf.jax_utils import Dropout
 
 
 def posemb_sincos_2d(h: int,
@@ -53,7 +54,7 @@ class MlpBlock(nn.Module):
       y = nn.Dense(self.mlp_dim, **inits)(x)
       x = x * y
 
-    x = nn.Dropout(rate=self.dropout_rate)(x, train)
+    x = Dropout(rate=self.dropout_rate)(x, train)
     x = nn.Dense(d, **inits)(x)
     return x
 
@@ -76,7 +77,7 @@ class Encoder1DBlock(nn.Module):
           deterministic=train,
           name='MultiHeadDotProductAttention_1')(
               y)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+      y = Dropout(rate=self.dropout_rate)(y, train)
       x = x + y
 
       y = nn.LayerNorm(name='LayerNorm_2')(x)
@@ -85,7 +86,7 @@ class Encoder1DBlock(nn.Module):
           use_glu=self.use_glu,
           dropout_rate=self.dropout_rate,
           name='MlpBlock_3')(y, train)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+      y = Dropout(rate=self.dropout_rate)(y, train)
       x = x + y
     else:
       y = x
@@ -95,7 +96,7 @@ class Encoder1DBlock(nn.Module):
           deterministic=train,
           name='MultiHeadDotProductAttention_1')(
               y)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+      y = Dropout(rate=self.dropout_rate)(y, train)
       x = x + y
       x = nn.LayerNorm(name='LayerNorm_0')(x)
 
@@ -105,7 +106,7 @@ class Encoder1DBlock(nn.Module):
           use_glu=self.use_glu,
           dropout_rate=self.dropout_rate,
           name='MlpBlock_3')(y, train)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+      y = Dropout(rate=self.dropout_rate)(y, train)
       x = x + y
       x = nn.LayerNorm(name='LayerNorm_2')(x)
 
@@ -205,7 +206,7 @@ class ViT(nn.Module):
     dropout_rate = self.dropout_rate
     if dropout_rate is None:
       dropout_rate = 0.0
-    x = nn.Dropout(rate=dropout_rate)(x, not train)
+    x = Dropout(rate=dropout_rate)(x, not train)
 
     x = Encoder(
         depth=self.depth,

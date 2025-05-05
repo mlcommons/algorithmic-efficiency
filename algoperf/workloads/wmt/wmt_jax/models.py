@@ -11,6 +11,8 @@ from jax import lax
 import jax.numpy as jnp
 import numpy as np
 
+from algoperf.jax_utils import Dropout
+
 
 @struct.dataclass
 class TransformerConfig:
@@ -172,14 +174,14 @@ class MlpBlock(nn.Module):
       dropout_rate = 0.1
     else:
       dropout_rate = cfg.dropout_rate
-    x = nn.Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
     output = nn.Dense(
         actual_out_dim,
         dtype=cfg.dtype,
         kernel_init=cfg.kernel_init,
         bias_init=cfg.bias_init)(
             x)
-    output = nn.Dropout(rate=dropout_rate)(
+    output = Dropout(rate=dropout_rate)(
         output, deterministic=cfg.deterministic)
     return output
 
@@ -229,7 +231,7 @@ class Encoder1DBlock(nn.Module):
       dropout_rate = 0.1
     else:
       dropout_rate = cfg.dropout_rate
-    x = nn.Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + inputs
     if not pre_ln:
       x = nn.LayerNorm(dtype=cfg.dtype)(x)
@@ -293,7 +295,7 @@ class EncoderDecoder1DBlock(nn.Module):
       dropout_rate = 0.1
     else:
       dropout_rate = cfg.dropout_rate
-    x = nn.Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
     x = x + targets
     if not pre_ln:
       x = nn.LayerNorm(dtype=cfg.dtype)(x)
@@ -312,7 +314,7 @@ class EncoderDecoder1DBlock(nn.Module):
         deterministic=cfg.deterministic)(
             cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
 
-    y = nn.Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
+    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
     y = y + x
     if not pre_ln:
       y = nn.LayerNorm(dtype=cfg.dtype)(y)
@@ -366,7 +368,7 @@ class Encoder(nn.Module):
       dropout_rate = 0.1
     else:
       dropout_rate = cfg.dropout_rate
-    x = nn.Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
 
     x = x.astype(cfg.dtype)
 
@@ -436,7 +438,7 @@ class Decoder(nn.Module):
       dropout_rate = 0.1
     else:
       dropout_rate = cfg.dropout_rate
-    y = nn.Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
+    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
 
     y = y.astype(cfg.dtype)
 

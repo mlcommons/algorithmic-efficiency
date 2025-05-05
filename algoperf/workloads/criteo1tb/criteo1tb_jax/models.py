@@ -1,11 +1,11 @@
 """A JAX implementation of DLRM-Small."""
-
 from typing import Sequence
 
 import flax.linen as nn
 from jax import nn as jnn
 import jax.numpy as jnp
 
+from algoperf.jax_utils import Dropout
 
 class DLRMResNet(nn.Module):
   """Define a DLRMResNet model.
@@ -89,7 +89,7 @@ class DLRMResNet(nn.Module):
                   top_mlp_input)
       x = nn.relu(x)
       if self.dropout_rate and layer_idx == num_layers_top - 2:
-        x = nn.Dropout(rate=self.dropout_rate, deterministic=not train)(x)
+        x = Dropout(rate=self.dropout_rate, deterministic=not train)(x)
       top_mlp_input += x
     # In the DLRM model the last layer width is always 1. We can hardcode that
     # below.
@@ -212,7 +212,7 @@ class DlrmSmall(nn.Module):
           top_mlp_input = nn.LayerNorm()(top_mlp_input)
       if (self.dropout_rate is not None and self.dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
-        top_mlp_input = nn.Dropout(
+        top_mlp_input = Dropout(
             rate=self.dropout_rate, deterministic=not train)(
                 top_mlp_input)
     logits = top_mlp_input
