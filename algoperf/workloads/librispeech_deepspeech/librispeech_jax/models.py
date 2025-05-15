@@ -73,7 +73,7 @@ class Subsample(nn.Module):
   config: DeepspeechConfig
 
   @nn.compact
-  def __call__(self, inputs, output_paddings, train):
+  def __call__(self, inputs, output_paddings, train, dropout_rate=None):
     config = self.config
     outputs = jnp.expand_dims(inputs, axis=-1)
 

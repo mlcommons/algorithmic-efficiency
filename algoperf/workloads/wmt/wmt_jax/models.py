@@ -236,7 +236,7 @@ class Encoder1DBlock(nn.Module):
 
         # MLP block.
         y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
-        y = MlpBlock(config=cfg)(y)
+        y = MlpBlock(config=cfg)(y, dropout_rate=dropout_rate)
 
         return x + y if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(x + y)
 
@@ -324,7 +324,7 @@ class EncoderDecoder1DBlock(nn.Module):
 
         # MLP block.
         z = nn.LayerNorm(dtype=cfg.dtype)(y) if pre_ln else y
-        z = MlpBlock(config=cfg)(z)
+        z = MlpBlock(config=cfg)(z, dropout_rate=dropout_rate)
 
         return y + z if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(y + z)
 
@@ -382,7 +382,7 @@ class Encoder(nn.Module):
 
         # Input Encoder
         for lyr in range(cfg.num_layers):
-            x = Encoder1DBlock(config=cfg, name=f"encoderblock_{lyr}")(x, encoder_mask)
+            x = Encoder1DBlock(config=cfg, name=f"encoderblock_{lyr}")(x, encoder_mask, dropout_rate)
 
         encoded = (
             nn.LayerNorm(dtype=cfg.dtype, name="encoder_layernorm")(x)
@@ -464,6 +464,7 @@ class Decoder(nn.Module):
                 encoded,
                 decoder_mask=decoder_mask,
                 encoder_decoder_mask=encoder_decoder_mask,
+                dropout_rate=dropout_rate,
             )
         y = (
             nn.LayerNorm(dtype=cfg.dtype, name="encoderdecoder_layernorm")(y)
@@ -503,7 +504,7 @@ class Transformer(nn.Module):
     self.encoder = Encoder(config=cfg, shared_embedding=self.shared_embedding)
     self.decoder = Decoder(config=cfg, shared_embedding=self.shared_embedding)
 
-  def encode(self, inputs, inputs_positions=None, inputs_segmentation=None):
+  def encode(self, inputs, inputs_positions=None, inputs_segmentation=None, dropout_rate=None):
     """Applies Transformer encoder-branch on the inputs.
 
     Args:
@@ -528,7 +529,7 @@ class Transformer(nn.Module):
               jnp.equal,
               dtype=cfg.dtype))
     return self.encoder(
-        inputs, inputs_positions=inputs_positions, encoder_mask=encoder_mask)
+        inputs, inputs_positions=inputs_positions, encoder_mask=encoder_mask, dropout_rate=dropout_rate)
 
   def decode(
       self,
@@ -595,7 +596,8 @@ class Transformer(nn.Module):
                inputs_positions=None,
                targets_positions=None,
                inputs_segmentation=None,
-               targets_segmentation=None):
+               targets_segmentation=None,
+               dropout_rate=None):
     """Applies Transformer model on the inputs.
 
     Args:
@@ -612,7 +614,8 @@ class Transformer(nn.Module):
     encoded = self.encode(
         inputs,
         inputs_positions=inputs_positions,
-        inputs_segmentation=inputs_segmentation)
+        inputs_segmentation=inputs_segmentation,
+        dropout_rate=dropout_rate)
 
     return self.decode(
         encoded,
@@ -620,4 +623,5 @@ class Transformer(nn.Module):
         targets,
         targets_positions=targets_positions,
         inputs_segmentation=inputs_segmentation,
-        targets_segmentation=targets_segmentation)
+        targets_segmentation=targets_segmentation,
+        dropout_rate=dropout_rate)
