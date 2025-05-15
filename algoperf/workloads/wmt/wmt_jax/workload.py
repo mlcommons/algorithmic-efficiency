@@ -209,8 +209,8 @@ class WmtWorkload(BaseWmtWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      dropout_rate: Optional[float] = 0.0,
+      aux_dropout_rate: Optional[float] = 0.0) -> spec.ModelInitState:
     """aux_dropout_rate is used as attention_dropout_rate."""
 
     init_fake_batch_size = 2

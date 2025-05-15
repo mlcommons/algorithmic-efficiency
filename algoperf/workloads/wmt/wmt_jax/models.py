@@ -140,325 +140,342 @@ class AddPositionEmbs(nn.Module):
 
 
 class MlpBlock(nn.Module):
-  """Transformer MLP / feed-forward block.
+    """Transformer MLP / feed-forward block.
 
-  Attributes:
-    config: TransformerConfig dataclass containing hyperparameters.
-    out_dim: optionally specify out dimension.
-  """
-  config: TransformerConfig
-  out_dim: Optional[int] = None
+    Attributes:
+      config: TransformerConfig dataclass containing hyperparameters.
+      out_dim: optionally specify out dimension.
+    """
 
-  @nn.compact
-  def __call__(self, inputs):
-    """Applies Transformer MlpBlock module."""
-    cfg = self.config
-    actual_out_dim = (
-        inputs.shape[-1] if self.out_dim is None else self.out_dim)
-    x = nn.Dense(
-        cfg.mlp_dim,
-        dtype=cfg.dtype,
-        kernel_init=cfg.kernel_init,
-        bias_init=cfg.bias_init)(
-            inputs)
-    x = cfg.activation(x)
-    if cfg.glu:
-      y = nn.Dense(
-          cfg.mlp_dim,
-          dtype=cfg.dtype,
-          kernel_init=cfg.kernel_init,
-          bias_init=cfg.bias_init)(
-              inputs)
-      x = x * y
-    if cfg.dropout_rate is None:
-      dropout_rate = 0.1
-    else:
-      dropout_rate = cfg.dropout_rate
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
-    output = nn.Dense(
-        actual_out_dim,
-        dtype=cfg.dtype,
-        kernel_init=cfg.kernel_init,
-        bias_init=cfg.bias_init)(
-            x)
-    output = Dropout(rate=dropout_rate)(
-        output, deterministic=cfg.deterministic)
-    return output
+    config: TransformerConfig
+    out_dim: Optional[int] = None
+
+    @nn.compact
+    def __call__(self, inputs, dropout_rate=None):
+        """Applies Transformer MlpBlock module."""
+        cfg = self.config
+        actual_out_dim = inputs.shape[-1] if self.out_dim is None else self.out_dim
+        x = nn.Dense(
+            cfg.mlp_dim,
+            dtype=cfg.dtype,
+            kernel_init=cfg.kernel_init,
+            bias_init=cfg.bias_init,
+        )(inputs)
+        x = cfg.activation(x)
+        if cfg.glu:
+            y = nn.Dense(
+                cfg.mlp_dim,
+                dtype=cfg.dtype,
+                kernel_init=cfg.kernel_init,
+                bias_init=cfg.bias_init,
+            )(inputs)
+            x = x * y
+        if dropout_rate is None:
+            if cfg.dropout_rate is None:
+                dropout_rate = 0.1
+            else:
+                dropout_rate = cfg.dropout_rate
+        x = Dropout()(x, rate=dropout_rate, deterministic=cfg.deterministic)
+        output = nn.Dense(
+            actual_out_dim,
+            dtype=cfg.dtype,
+            kernel_init=cfg.kernel_init,
+            bias_init=cfg.bias_init,
+        )(x)
+        output = Dropout()(output, rate=dropout_rate, deterministic=cfg.deterministic)
+        return output
 
 
 class Encoder1DBlock(nn.Module):
-  """Transformer encoder layer.
+    """Transformer encoder layer.
 
-  Attributes:
-    config: TransformerConfig dataclass containing hyperparameters.
-  """
-  config: TransformerConfig
-
-  @nn.compact
-  def __call__(self, inputs, encoder_mask=None):
-    """Applies Encoder1DBlock module.
-
-    Args:
-      inputs: input data.
-      encoder_mask: encoder self-attention mask.
-
-    Returns:
-      output after transformer encoder block.
+    Attributes:
+      config: TransformerConfig dataclass containing hyperparameters.
     """
-    cfg = self.config
-    pre_ln = cfg.pre_ln
 
-    # Attention block.
-    assert inputs.ndim == 3
-    x = nn.LayerNorm(dtype=cfg.dtype)(inputs) if pre_ln else inputs
-    if cfg.attention_dropout_rate is None:
-      attention_dropout_rate = 0.1
-    else:
-      attention_dropout_rate = cfg.attention_dropout_rate
-    x = nn.MultiHeadDotProductAttention(
-        num_heads=cfg.num_heads,
-        dtype=cfg.dtype,
-        qkv_features=cfg.qkv_dim,
-        kernel_init=cfg.kernel_init,
-        bias_init=cfg.bias_init,
-        use_bias=False,
-        broadcast_dropout=False,
-        dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(
-            cfg.attention_temp * x, x, mask=encoder_mask)
+    config: TransformerConfig
 
-    if cfg.dropout_rate is None:
-      dropout_rate = 0.1
-    else:
-      dropout_rate = cfg.dropout_rate
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
-    x = x + inputs
-    if not pre_ln:
-      x = nn.LayerNorm(dtype=cfg.dtype)(x)
+    @nn.compact
+    def __call__(self, inputs, encoder_mask=None, dropout_rate=None):
+        """Applies Encoder1DBlock module.
 
-    # MLP block.
-    y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
-    y = MlpBlock(config=cfg)(y)
+        Args:
+          inputs: input data.
+          encoder_mask: encoder self-attention mask.
 
-    return x + y if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(x + y)
+        Returns:
+          output after transformer encoder block.
+        """
+        cfg = self.config
+        pre_ln = cfg.pre_ln
+
+        # Attention block.
+        assert inputs.ndim == 3
+        x = nn.LayerNorm(dtype=cfg.dtype)(inputs) if pre_ln else inputs
+        if dropout_rate is None:
+            if cfg.attention_dropout_rate is None:
+                dropout_rate = 0.1
+            else:
+                dropout_rate = cfg.dropout_rate
+        x = nn.MultiHeadDotProductAttention(
+            num_heads=cfg.num_heads,
+            dtype=cfg.dtype,
+            qkv_features=cfg.qkv_dim,
+            kernel_init=cfg.kernel_init,
+            bias_init=cfg.bias_init,
+            use_bias=False,
+            broadcast_dropout=False,
+            dropout_rate=dropout_rate,
+            deterministic=cfg.deterministic,
+        )(cfg.attention_temp * x, x, mask=encoder_mask)
+
+        x = Dropout()(x, deterministic=cfg.deterministic, rate=dropout_rate)
+        x = x + inputs
+        if not pre_ln:
+            x = nn.LayerNorm(dtype=cfg.dtype)(x)
+
+        # MLP block.
+        y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
+        y = MlpBlock(config=cfg)(y)
+
+        return x + y if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(x + y)
 
 
 class EncoderDecoder1DBlock(nn.Module):
-  """Transformer encoder-decoder layer.
+    """Transformer encoder-decoder layer.
 
-  Attributes:
-    config: TransformerConfig dataclass containing hyperparameters.
-  """
-  config: TransformerConfig
-
-  @nn.compact
-  def __call__(self,
-               targets,
-               encoded,
-               decoder_mask=None,
-               encoder_decoder_mask=None):
-    """Applies EncoderDecoder1DBlock module.
-
-    Args:
-      targets: input data for decoder
-      encoded: input data from encoder
-      decoder_mask: decoder self-attention mask.
-      encoder_decoder_mask: encoder-decoder attention mask.
-
-    Returns:
-      output after transformer encoder-decoder block.
+    Attributes:
+      config: TransformerConfig dataclass containing hyperparameters.
     """
-    cfg = self.config
-    pre_ln = cfg.pre_ln
 
-    # Decoder block.
-    assert targets.ndim == 3
-    x = nn.LayerNorm(dtype=cfg.dtype)(targets) if pre_ln else targets
+    config: TransformerConfig
 
-    if cfg.attention_dropout_rate is None:
-      attention_dropout_rate = 0.1
-    else:
-      attention_dropout_rate = cfg.attention_dropout_rate
-    x = nn.MultiHeadDotProductAttention(
-        num_heads=cfg.num_heads,
-        dtype=cfg.dtype,
-        qkv_features=cfg.qkv_dim,
-        kernel_init=cfg.kernel_init,
-        bias_init=cfg.bias_init,
-        use_bias=False,
-        broadcast_dropout=False,
-        dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic,
-        decode=cfg.decode)(
-            cfg.attention_temp * x, x, mask=decoder_mask)
-    if cfg.dropout_rate is None:
-      dropout_rate = 0.1
-    else:
-      dropout_rate = cfg.dropout_rate
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
-    x = x + targets
-    if not pre_ln:
-      x = nn.LayerNorm(dtype=cfg.dtype)(x)
+    @nn.compact
+    def __call__(
+        self,
+        targets,
+        encoded,
+        decoder_mask=None,
+        encoder_decoder_mask=None,
+        dropout_rate=None,
+    ):
+        """Applies EncoderDecoder1DBlock module.
 
-    # Encoder-Decoder block.
-    y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
-    y = nn.MultiHeadDotProductAttention(
-        num_heads=cfg.num_heads,
-        dtype=cfg.dtype,
-        qkv_features=cfg.qkv_dim,
-        kernel_init=cfg.kernel_init,
-        bias_init=cfg.bias_init,
-        use_bias=False,
-        broadcast_dropout=False,
-        dropout_rate=attention_dropout_rate,
-        deterministic=cfg.deterministic)(
-            cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
+        Args:
+          targets: input data for decoder
+          encoded: input data from encoder
+          decoder_mask: decoder self-attention mask.
+          encoder_decoder_mask: encoder-decoder attention mask.
 
-    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
-    y = y + x
-    if not pre_ln:
-      y = nn.LayerNorm(dtype=cfg.dtype)(y)
+        Returns:
+          output after transformer encoder-decoder block.
+        """
+        cfg = self.config
+        pre_ln = cfg.pre_ln
 
-    # MLP block.
-    z = nn.LayerNorm(dtype=cfg.dtype)(y) if pre_ln else y
-    z = MlpBlock(config=cfg)(z)
+        # Decoder block.
+        assert targets.ndim == 3
+        x = nn.LayerNorm(dtype=cfg.dtype)(targets) if pre_ln else targets
 
-    return y + z if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(y + z)
+        if dropout_rate is None:
+            if cfg.attention_dropout_rate is None:
+                dropout_rate = 0.1
+            else:
+                dropout_rate = cfg.dropout_rate
+        x = nn.MultiHeadDotProductAttention(
+            num_heads=cfg.num_heads,
+            dtype=cfg.dtype,
+            qkv_features=cfg.qkv_dim,
+            kernel_init=cfg.kernel_init,
+            bias_init=cfg.bias_init,
+            use_bias=False,
+            broadcast_dropout=False,
+            dropout_rate=dropout_rate,
+            deterministic=cfg.deterministic,
+            decode=cfg.decode,
+        )(cfg.attention_temp * x, x, mask=decoder_mask)
+        if cfg.dropout_rate is None:
+            dropout_rate = 0.1
+        else:
+            dropout_rate = cfg.dropout_rate
+        x = Dropout()(x, deterministic=cfg.deterministic, rate=dropout_rate)
+        x = x + targets
+        if not pre_ln:
+            x = nn.LayerNorm(dtype=cfg.dtype)(x)
+
+        # Encoder-Decoder block.
+        y = nn.LayerNorm(dtype=cfg.dtype)(x) if pre_ln else x
+        y = nn.MultiHeadDotProductAttention(
+            num_heads=cfg.num_heads,
+            dtype=cfg.dtype,
+            qkv_features=cfg.qkv_dim,
+            kernel_init=cfg.kernel_init,
+            bias_init=cfg.bias_init,
+            use_bias=False,
+            broadcast_dropout=False,
+            dropout_rate=dropout_rate,
+            deterministic=cfg.deterministic,
+        )(cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
+
+        y = Dropout()(y, deterministic=cfg.deterministic, rate=dropout_rate)
+        y = y + x
+        if not pre_ln:
+            y = nn.LayerNorm(dtype=cfg.dtype)(y)
+
+        # MLP block.
+        z = nn.LayerNorm(dtype=cfg.dtype)(y) if pre_ln else y
+        z = MlpBlock(config=cfg)(z)
+
+        return y + z if pre_ln else nn.LayerNorm(dtype=cfg.dtype)(y + z)
 
 
 class Encoder(nn.Module):
-  """Transformer Model Encoder for sequence to sequence translation.
+    """Transformer Model Encoder for sequence to sequence translation.
 
-  Attributes:
-    config: TransformerConfig dataclass containing hyperparameters.
-    shared_embedding: a shared embedding layer to use.
-  """
-  config: TransformerConfig
-  shared_embedding: Any = None
-
-  @nn.compact
-  def __call__(self, inputs, inputs_positions=None, encoder_mask=None):
-    """Applies Transformer model on the inputs.
-
-    Args:
-      inputs: input data
-      inputs_positions: input subsequence positions for packed examples.
-      encoder_mask: decoder self-attention mask.
-
-    Returns:
-      output of a transformer encoder.
+    Attributes:
+      config: TransformerConfig dataclass containing hyperparameters.
+      shared_embedding: a shared embedding layer to use.
     """
-    cfg = self.config
-    assert inputs.ndim == 2  # (batch, len)
 
-    # Input Embedding
-    if self.shared_embedding is None:
-      input_embed = nn.Embed(
-          num_embeddings=cfg.vocab_size,
-          features=cfg.emb_dim,
-          embedding_init=nn.initializers.normal(stddev=1.0))
-    else:
-      input_embed = self.shared_embedding
-    x = inputs.astype('int32')
-    x = input_embed(x)
-    x = AddPositionEmbs(
-        config=cfg, decode=False, name='posembed_input')(
-            x, inputs_positions=inputs_positions)
-    if cfg.dropout_rate is None:
-      dropout_rate = 0.1
-    else:
-      dropout_rate = cfg.dropout_rate
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic)
+    config: TransformerConfig
+    shared_embedding: Any = None
 
-    x = x.astype(cfg.dtype)
+    @nn.compact
+    def __call__(
+        self, inputs, inputs_positions=None, encoder_mask=None, dropout_rate=None
+    ):
+        """Applies Transformer model on the inputs.
 
-    # Input Encoder
-    for lyr in range(cfg.num_layers):
-      x = Encoder1DBlock(
-          config=cfg, name=f'encoderblock_{lyr}')(x, encoder_mask)
+        Args:
+          inputs: input data
+          inputs_positions: input subsequence positions for packed examples.
+          encoder_mask: decoder self-attention mask.
 
-    encoded = (
-        nn.LayerNorm(dtype=cfg.dtype, name='encoder_layernorm')(x)
-        if cfg.pre_ln else x)
+        Returns:
+          output of a transformer encoder.
+        """
+        cfg = self.config
+        assert inputs.ndim == 2  # (batch, len)
 
-    return encoded
+        # Input Embedding
+        if self.shared_embedding is None:
+            input_embed = nn.Embed(
+                num_embeddings=cfg.vocab_size,
+                features=cfg.emb_dim,
+                embedding_init=nn.initializers.normal(stddev=1.0),
+            )
+        else:
+            input_embed = self.shared_embedding
+        x = inputs.astype("int32")
+        x = input_embed(x)
+        x = AddPositionEmbs(config=cfg, decode=False, name="posembed_input")(
+            x, inputs_positions=inputs_positions
+        )
+        if dropout_rate is None:
+            if cfg.dropout_rate is None:
+                dropout_rate = 0.1
+            else:
+                dropout_rate = cfg.dropout_rate
+        x = Dropout()(x, deterministic=cfg.deterministic, rate=dropout_rate)
+
+        x = x.astype(cfg.dtype)
+
+        # Input Encoder
+        for lyr in range(cfg.num_layers):
+            x = Encoder1DBlock(config=cfg, name=f"encoderblock_{lyr}")(x, encoder_mask)
+
+        encoded = (
+            nn.LayerNorm(dtype=cfg.dtype, name="encoder_layernorm")(x)
+            if cfg.pre_ln
+            else x
+        )
+
+        return encoded
 
 
 class Decoder(nn.Module):
-  """Transformer Model Decoder for sequence to sequence translation.
+    """Transformer Model Decoder for sequence to sequence translation.
 
-  Attributes:
-    config: TransformerConfig dataclass containing hyperparameters.
-    shared_embedding: a shared embedding layer to use.
-  """
-  config: TransformerConfig
-  shared_embedding: Any = None
-
-  @nn.compact
-  def __call__(self,
-               encoded,
-               targets,
-               targets_positions=None,
-               decoder_mask=None,
-               encoder_decoder_mask=None):
-    """Applies Transformer model on the inputs.
-
-    Args:
-      encoded: encoded input data from encoder.
-      targets: target inputs.
-      targets_positions: input subsequence positions for packed examples.
-      decoder_mask: decoder self-attention mask.
-      encoder_decoder_mask: encoder-decoder attention mask.
-
-    Returns:
-      output of a transformer decoder.
+    Attributes:
+      config: TransformerConfig dataclass containing hyperparameters.
+      shared_embedding: a shared embedding layer to use.
     """
-    cfg = self.config
 
-    assert encoded.ndim == 3  # (batch, len, depth)
-    assert targets.ndim == 2  # (batch, len)
+    config: TransformerConfig
+    shared_embedding: Any = None
 
-    # Target Embedding
-    if self.shared_embedding is None:
-      output_embed = nn.Embed(
-          num_embeddings=cfg.vocab_size,
-          features=cfg.emb_dim,
-          embedding_init=nn.initializers.normal(stddev=1.0))
-    else:
-      output_embed = self.shared_embedding
+    @nn.compact
+    def __call__(
+        self,
+        encoded,
+        targets,
+        targets_positions=None,
+        decoder_mask=None,
+        encoder_decoder_mask=None,
+        dropout_rate=None,
+    ):
+        """Applies Transformer model on the inputs.
 
-    y = targets.astype('int32')
-    if not cfg.decode:
-      y = shift_right(y)
-    y = output_embed(y)
-    y = AddPositionEmbs(
-        config=cfg, decode=cfg.decode, name='posembed_output')(
-            y, inputs_positions=targets_positions)
-    if cfg.dropout_rate is None:
-      dropout_rate = 0.1
-    else:
-      dropout_rate = cfg.dropout_rate
-    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic)
+        Args:
+          encoded: encoded input data from encoder.
+          targets: target inputs.
+          targets_positions: input subsequence positions for packed examples.
+          decoder_mask: decoder self-attention mask.
+          encoder_decoder_mask: encoder-decoder attention mask.
 
-    y = y.astype(cfg.dtype)
+        Returns:
+          output of a transformer decoder.
+        """
+        cfg = self.config
 
-    # Target-Input Decoder
-    for lyr in range(cfg.num_layers):
-      y = EncoderDecoder1DBlock(
-          config=cfg, name=f'encoderdecoderblock_{lyr}')(
-              y,
-              encoded,
-              decoder_mask=decoder_mask,
-              encoder_decoder_mask=encoder_decoder_mask)
-    y = (
-        nn.LayerNorm(dtype=cfg.dtype, name='encoderdecoder_layernorm')(y)
-        if cfg.pre_ln else y)
+        assert encoded.ndim == 3  # (batch, len, depth)
+        assert targets.ndim == 2  # (batch, len)
 
-    # Use the transpose of embedding matrix for logit transform.
-    logits = output_embed.attend(y.astype(jnp.float32))
-    # Correctly normalize pre-softmax logits for this shared case.
-    logits = logits / jnp.sqrt(y.shape[-1])
-    return logits
+        # Target Embedding
+        if self.shared_embedding is None:
+            output_embed = nn.Embed(
+                num_embeddings=cfg.vocab_size,
+                features=cfg.emb_dim,
+                embedding_init=nn.initializers.normal(stddev=1.0),
+            )
+        else:
+            output_embed = self.shared_embedding
+
+        y = targets.astype("int32")
+        if not cfg.decode:
+            y = shift_right(y)
+        y = output_embed(y)
+        y = AddPositionEmbs(config=cfg, decode=cfg.decode, name="posembed_output")(
+            y, inputs_positions=targets_positions
+        )
+        if dropout_rate is None:
+            if cfg.dropout_rate is None:
+                dropout_rate = 0.1
+            else:
+                dropout_rate = cfg.dropout_rate
+        y = Dropout()(y, deterministic=cfg.deterministic, rate=dropout_rate)
+
+        y = y.astype(cfg.dtype)
+
+        # Target-Input Decoder
+        for lyr in range(cfg.num_layers):
+            y = EncoderDecoder1DBlock(config=cfg, name=f"encoderdecoderblock_{lyr}")(
+                y,
+                encoded,
+                decoder_mask=decoder_mask,
+                encoder_decoder_mask=encoder_decoder_mask,
+            )
+        y = (
+            nn.LayerNorm(dtype=cfg.dtype, name="encoderdecoder_layernorm")(y)
+            if cfg.pre_ln
+            else y
+        )
+
+        # Use the transpose of embedding matrix for logit transform.
+        logits = output_embed.attend(y.astype(jnp.float32))
+        # Correctly normalize pre-softmax logits for this shared case.
+        logits = logits / jnp.sqrt(y.shape[-1])
+        return logits
 
 
 class Transformer(nn.Module):
