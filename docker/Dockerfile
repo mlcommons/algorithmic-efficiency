@@ -16,15 +16,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git ffmpeg
 # Install prerequisites
 RUN apt-get update && apt-get install -y \
     wget \
-    build-essential \
-    zlib1g-dev \
-    libncurses5-dev \
-    libssl-dev \
-    libreadline-dev \
-    libffi-dev \
     curl \
-    libbz2-dev \
-    liblzma-dev \
     vim
 
 # Download and install Python 3.11
