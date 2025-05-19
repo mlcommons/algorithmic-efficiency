@@ -38,7 +38,7 @@ dependencies = [
   "docker==7.1.0",
   "numpy>=2.0.2",
   "pandas>=2.0.1",
-  "tensorflow==2.18.0",
+  "tensorflow==2.19.0",
   "tensorflow-datasets==4.9.7",
   "tensorflow-probability==0.20.0",
   "tensorflow-addons==0.20.0",
@@ -92,25 +92,25 @@ fastmri = ["h5py==3.12.0", "scikit-image==0.24.0"]
 ogbg = ["jraph==0.0.6.dev0", "scikit-learn==1.5.2"]
 librispeech_conformer = [
   "sentencepiece==0.2.0",
-  "tensorflow-text==2.18.0",
+  "tensorflow-text==2.19.0",
   "pydub==0.25.1",
 ]
-wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.18.0"]
+wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.19.0"]
 
 # Frameworks
 jax_core_deps = [
   "flax==0.8.4",
   "optax==0.2.2",
   "chex==0.1.86",
-  "ml_dtypes==0.4.1",
+  "ml_dtypes==0.5.1",
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.5.3",
+  "jax==0.6.0",
   "algoperf[jax_core_deps]",
 ]
 jax_gpu = [
-  "jax[cuda12]==0.5.3",
+  "jax[cuda12]==0.6.0",
   "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]

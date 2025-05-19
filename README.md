@@ -55,7 +55,7 @@ Both options are described in detail in the [**Getting Started**](/docs/GETTING_
 
 ```bash
 pip3 install -e '.[pytorch_cpu]'
-pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+pip3 install -e '.[jax_gpu]'
 pip3 install -e '.[full]'
 ```
 
