@@ -67,18 +67,18 @@ RUN cd /algorithmic-efficiency && git checkout $branch
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
-        && pip3 install -e '.[pytorch_cpu]' --index-url https://download.pytorch.org/whl/cpu; \
-        && pip3 install -e '.[jax_gpu]' \
+        && pip install -e '.[pytorch_cpu]' --index-url https://download.pytorch.org/whl/cpu; \
+        && pip install -e '.[jax_gpu]' \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip3 install -e '.[pytorch_gpu]'; \
-        && pip3 install -e '.[jax_cpu]' \
+        && pip install -e '.[pytorch_gpu]'; \
+        && pip install -e '.[jax_cpu]' \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip3 install -e '.[pytorch_gpu]'; \
-        && pip3 install -e '.[jax_gpu]' \
+        && pip install -e '.[pytorch_gpu]'; \
+        && pip install -e '.[jax_gpu]' \
     else \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
