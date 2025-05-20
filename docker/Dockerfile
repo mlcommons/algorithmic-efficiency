@@ -55,7 +55,7 @@ RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
 
 # Install Algorithmic efficiency repo
-RUN pip3 install --upgrade pip
+RUN pip install --upgrade pip
 
 RUN echo "Setting up algorithmic_efficiency repo"
 ARG branch="main"
