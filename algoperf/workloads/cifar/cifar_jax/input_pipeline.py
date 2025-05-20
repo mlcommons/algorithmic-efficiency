@@ -171,5 +171,5 @@ def create_input_iter(
       functools.partial(
           shard_and_maybe_pad_np, global_batch_size=global_batch_size),
       ds)
-  it = jax_utils.prefetch_to_device(it, 2)
+
   return it
