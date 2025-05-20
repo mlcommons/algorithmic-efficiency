@@ -54,8 +54,6 @@ RUN echo "Setting up directories for data and experiment_runs"
 RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
 
-RUN pip3 install --upgrade pip
-
 # Install Algorithmic efficiency repo
 RUN pip3 install --upgrade pip
 
