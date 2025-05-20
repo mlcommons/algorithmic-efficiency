@@ -67,7 +67,7 @@ RUN cd /algorithmic-efficiency && git checkout $branch
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[pytorch_cpu]' --index-url https://download.pytorch.org/whl/cpu \
+        && pip install -e '.[pytorch_cpu]' -f https://download.pytorch.org/whl/cpu \
         && pip install -e '.[jax_gpu]'; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
