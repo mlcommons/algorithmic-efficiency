@@ -16,6 +16,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git ffmpeg
 # Install prerequisites
 RUN apt-get update && apt-get install -y \
     wget \
+    build-essential \
+    zlib1g-dev \
+    libncurses5-dev \
+    libssl-dev \
+    libreadline-dev \
+    libffi-dev \
     curl \
     vim
 
@@ -48,10 +54,10 @@ RUN echo "Setting up directories for data and experiment_runs"
 RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
 
-RUN pip install --upgrade pip
+RUN pip3 install --upgrade pip
 
 # Install Algorithmic efficiency repo
-RUN pip install --upgrade pip
+RUN pip3 install --upgrade pip
 
 RUN echo "Setting up algorithmic_efficiency repo"
 ARG branch="main"
@@ -63,18 +69,18 @@ RUN cd /algorithmic-efficiency && git checkout $branch
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[jax_gpu]' \
-        && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
+        && pip3 install -e '.[pytorch_cpu]' --index-url https://download.pytorch.org/whl/cpu; \
+        && pip3 install -e '.[jax_gpu]' \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[jax_cpu]' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'; \
+        && pip3 install -e '.[pytorch_gpu]'; \
+        && pip3 install -e '.[jax_cpu]' \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[jax_gpu]' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'; \
+        && pip3 install -e '.[pytorch_gpu]'; \
+        && pip3 install -e '.[jax_gpu]' \
     else \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
