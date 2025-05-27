@@ -110,7 +110,12 @@ jax_cpu = [
   "algoperf[jax_core_deps]",
 ]
 jax_gpu = [
-  "jax[cuda12]==0.6.0",
+  # Temporarily install  with -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre
+  "jax",
+  "jaxlib",
+  "jax-cuda12-plugin[with-cuda]",
+  "jax-cuda12-pjrt"
+  # "jax[cuda12]==0.6.0", 
   "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]

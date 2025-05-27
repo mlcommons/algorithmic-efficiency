@@ -68,7 +68,7 @@ RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
         && pip install -e '.[pytorch_cpu]' -f https://download.pytorch.org/whl/cpu \
-        && pip install -e '.[jax_gpu]'; \
+        && pip install -e '.[jax_gpu]' -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre ; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
@@ -78,7 +78,7 @@ RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd /algorithmic-efficiency \
         && pip install -e '.[pytorch_gpu]' \
-        && pip install -e '.[jax_gpu]'; \
+        && pip install -e '.[jax_gpu]'  -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre ; \
     else \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
