@@ -11,10 +11,17 @@ do
     case "${flag}" in
         b) GIT_BRANCH=${OPTARG};;
     esac
+    case "${flag}" in 
+        p) PROJECT=${OPTARG};;
+    esac
 done
 
 # Artifact repostiory
-ARTIFACT_REPO="europe-west-4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo"
+if [ "$PROJECT" = "mlcommons-algoperf"]; then
+    ARTIFACT_REPO="europe-west-4-docker.pkg.dev/mlcommons-algoperf/algoperf-docker-repo"
+else
+    ARTIFACT_REPO="us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo"
+fi
 
 if [[ -z ${GIT_BRANCH+x} ]]
 then 
