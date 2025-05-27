@@ -50,8 +50,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state = variables[
-        'batch_stats'] if not self.layernorm_everywhere else {}
+    model_state = {'batch_stats': variables[
+        'batch_stats']} if not self.layernorm_everywhere else {}
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -80,6 +80,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
           train=True,
           rngs={'dropout' : rng},
           mutable=['batch_stats'])
+      if 'batch_stats' in new_model_state and new_model_state['batch_stats']:
+        new_model_state = jax.lax.pmean(new_model_state, 'batch')
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(
@@ -109,11 +111,9 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
     model_fn_sharded = shard_map(model_fn_partial,
                                  jax.sharding.Mesh(jax.devices(), ('batch')),
-                                 in_specs=(None, P('batch'), None),
-                                 out_specs=(P('batch'), None),
+                                 in_specs=(P(), P('batch'), P(None)),
+                                 out_specs=(P('batch'), P(None)),
                                  )
-
-    model_fn_sharded = model_fn_partial
     return model_fn_sharded(params, 
                             augmented_and_preprocessed_input_batch,
                             model_state,)
