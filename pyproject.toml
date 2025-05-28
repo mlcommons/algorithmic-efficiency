@@ -114,7 +114,7 @@ jax_gpu = [
   "jax",
   "jaxlib",
   "jax-cuda12-plugin[with-cuda]",
-  "jax-cuda12-pjrt"
+  "jax-cuda12-pjrt",
   # "jax[cuda12]==0.6.0", 
   "algoperf[jax_core_deps]",
 ]
