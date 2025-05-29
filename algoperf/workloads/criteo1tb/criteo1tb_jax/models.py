@@ -30,7 +30,7 @@ class DLRMResNet(nn.Module):
 
   @nn.compact
   def __call__(self, x, train, dropout_rate=None):
-    if not dropout_rate:
+    if dropout_rate is None:
       dropout_rate = self.dropout_rate
 
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
@@ -93,7 +93,7 @@ class DLRMResNet(nn.Module):
                   top_mlp_input)
       x = nn.relu(x)
       if dropout_rate and layer_idx == num_layers_top - 2:
-        x = Dropout(deterministic=not train)(x, rate=dropout_rate)
+        x = Dropout(dropout_rate, deterministic=not train)(x, rate=dropout_rate)
       top_mlp_input += x
     # In the DLRM model the last layer width is always 1. We can hardcode that
     # below.
@@ -156,7 +156,7 @@ class DlrmSmall(nn.Module):
 
   @nn.compact
   def __call__(self, x, train, dropout_rate=None):
-    if not dropout_rate:
+    if dropout_rate is None:
       dropout_rate = self.dropout_rate
 
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
@@ -219,7 +219,8 @@ class DlrmSmall(nn.Module):
           top_mlp_input = nn.LayerNorm()(top_mlp_input)
       if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
-        top_mlp_input = Dropout(deterministic=not train)(
-            top_mlp_input, rate=dropout_rate)
+        top_mlp_input = Dropout(
+            dropout_rate, deterministic=not train)(
+                top_mlp_input, rate=dropout_rate)
     logits = top_mlp_input
     return logits
