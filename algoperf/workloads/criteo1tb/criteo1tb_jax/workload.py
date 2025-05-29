@@ -73,11 +73,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None,
       tabulate: Optional[bool] = False,
   ) -> spec.ModelInitState:
     """Only dropout is used."""
-    del aux_dropout_rate
     if self.use_resnet:
       model_class = models.DLRMResNet
     else:

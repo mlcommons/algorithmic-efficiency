@@ -22,9 +22,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      ) -> spec.ModelInitState:
     """aux_dropout_rate is unused."""
-    del aux_dropout_rate
     fake_batch = jnp.zeros((13, 320, 320))
     if dropout_rate is None:
       self._model = UNet(

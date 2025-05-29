@@ -33,9 +33,7 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    del aux_dropout_rate
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     if dropout_rate is None:
       self._model = models.ViT(
           num_classes=self._num_classes,
