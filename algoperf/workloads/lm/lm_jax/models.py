@@ -7,7 +7,7 @@ class LinearModel(nn.Module):
     @nn.compact
     def __call__(self, inputs: jnp.ndarray) -> jnp.ndarray:
         x = nn.Dense(
-            512,
+            10,
             kernel_init=nn.initializers.normal(0.02),
             bias_init=nn.initializers.zeros
         )(inputs)
