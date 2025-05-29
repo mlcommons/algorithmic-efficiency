@@ -82,15 +82,26 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_class = models.DLRMResNet
     else:
       model_class = models.DlrmSmall
-    self._model = model_class(
-        vocab_size=self.vocab_size,
-        num_dense_features=self.num_dense_features,
-        mlp_bottom_dims=self.mlp_bottom_dims,
-        mlp_top_dims=self.mlp_top_dims,
-        embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate,
-        use_layer_norm=self.use_layer_norm,
-        embedding_init_multiplier=self.embedding_init_multiplier)
+
+    if dropout_rate is None:
+      self._model = model_class(
+          vocab_size=self.vocab_size,
+          num_dense_features=self.num_dense_features,
+          mlp_bottom_dims=self.mlp_bottom_dims,
+          mlp_top_dims=self.mlp_top_dims,
+          embed_dim=self.embed_dim,
+          use_layer_norm=self.use_layer_norm,
+          embedding_init_multiplier=self.embedding_init_multiplier)
+    else:
+      self._model = model_class(
+          vocab_size=self.vocab_size,
+          num_dense_features=self.num_dense_features,
+          mlp_bottom_dims=self.mlp_bottom_dims,
+          mlp_top_dims=self.mlp_top_dims,
+          embed_dim=self.embed_dim,
+          dropout_rate=dropout_rate,
+          use_layer_norm=self.use_layer_norm,
+          embedding_init_multiplier=self.embedding_init_multiplier)
 
     params_rng, dropout_rng = jax.random.split(rng)
     init_fake_batch_size = 2
