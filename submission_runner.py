@@ -250,7 +250,8 @@ def train_once(
           'ogbg',
           'criteo1tb',
           'imagenet_vit',
-          'librispeech_deepspeech'
+          'librispeech_deepspeech',
+          'lm'
       ]
       eager_backend_workloads = []
       aot_eager_backend_workloads = []
@@ -712,7 +713,8 @@ def main(_):
       'librispeech_conformer',
       'librispeech_deepspeech',
       'imagenet_vit',
-      'criteo1tb'
+      'criteo1tb',
+      'lm'
   ]:
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.80'
 

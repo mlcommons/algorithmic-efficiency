@@ -14,5 +14,6 @@ class LinearModel(nn.Module):
         return nn.Dense(
             self.vocab_size,
             kernel_init=nn.initializers.normal(0.02),
-            bias_init=nn.initializers.zeros
+            bias_init=nn.initializers.zeros,
+            name="output"
         )(x)

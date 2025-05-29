@@ -66,35 +66,30 @@ class LmWorkload(BaseLmWorkload):
       global_batch_size: int,
       num_batches: Optional[int] = None,
       repeat_final_dataset: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
-    not_train = split != 'train'
-    per_device_batch_size = int(global_batch_size / N_GPUS)
-
-    seq_len = self._seq_len  # TODO: define it somewehere else?
-    dtype = torch.int32  # TODO: decide between int32 and int64.
-
-    # Only create and iterate over tf input pipeline in one Python process to
-    # avoid creating too many threads.
-    if RANK == 0:
-      np_iter = super()._build_input_queue(
-          data_rng=data_rng,
-          split=split,
-          data_dir=data_dir,
-          global_batch_size=global_batch_size,
-          num_batches=num_batches,
-          repeat_final_dataset=repeat_final_dataset)
+    """Build an input queue for the given split."""
+    from algoperf.workloads.lm.input_pipeline import get_hf_dataloader
+    
+    loader = get_hf_dataloader(
+        cache_dir=data_dir,
+        data_rng=data_rng,
+        batch_size=global_batch_size,
+        seq_len=self._seq_len,
+        framework="torch",
+        split=split)
+    seq_len = self._seq_len 
     weights = None
-
+    
     while True:
       # Only iterate over tf input pipeline in one Python process to
       # avoid creating too many threads.
       if RANK == 0:
-        batch = next(np_iter)  # pylint: disable=stop-iteration-return
+        batch = next(dataset_iter)  # pylint: disable=stop-iteration-return
         inputs = torch.as_tensor(
             batch['inputs'], dtype=dtype,
-            device=DEVICE)  # (N_GPUS, global_batch_size, seq_len)
+            device=DEVICE)  # (N_GPUS, per_device_batch_size, seq_len)
         targets = torch.as_tensor(
             batch['targets'], dtype=dtype,
-            device=DEVICE)  # (N_GPUS, global_batch_size, seq_len)
+            device=DEVICE)  # (N_GPUS, per_device_batch_size, seq_len)
 
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
@@ -138,10 +133,22 @@ class LmWorkload(BaseLmWorkload):
       }
       yield batch
 
+  def is_output_params(self, param_name: str) -> bool:
+    """Return whether the given parameter is an output parameter."""
+    return 'output.weight' in param_name or 'output.bias' in param_name
+    
   def _eval_batch(self,
                   params: spec.ParameterContainer,
                   batch: Dict[str, spec.Tensor],
                   model_state: spec.ModelAuxiliaryState,
                   rng: spec.RandomState) -> spec.Tensor:
     """Evaluate the model on a single batch."""
-    pass
+    model = params
+    logits, _ = self.model_fn(
+        model, batch, model_state, spec.ForwardPassMode.EVAL, rng, False)
+    targets = batch['targets']
+    
+    # Calculate cross-entropy loss
+    log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
+    loss = -torch.sum(targets * log_probs)
+    return loss

@@ -87,19 +87,19 @@ def get_hf_dataloader(cache_dir: str,
         tokens = jax.nn.one_hot(token_ids, num_classes=vocab_size)
         inputs, targets = tokens[:, :-1], tokens[:, 1:]
         inputs, targets = jax.device_put(inputs), jax.device_put(targets)
-      yield inputs, targets
-
+      batch = {
+          "inputs": inputs,
+          "targets": targets,
+      }
+      yield batch
   return batch_iterator()
 
 
 def get_lm_dataset(data_rng: jax.random.PRNGKey,
                    split: str,
                    data_dir: str,
-                   vocab_size: int,
                    global_batch_size: int,
-                   num_batches: Optional[int] = None,
-                   repeat_final_dataset: bool = False,
-                   vocab_path: Optional[str] = None):
+                   num_batches: Optional[int] = None):
   """Load HF dataset and return a TF dataset."""
 
   dataset_path = os.path.join(data_dir, split)
