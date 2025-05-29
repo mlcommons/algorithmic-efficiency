@@ -13,11 +13,8 @@ from absl import app
 from absl import flags
 import jax
 
-SUBMISSION_PATH = 'submissions_algorithms/submissions/self_tuning/schedule_free_adamw_v2/submission.py'
-EXPERIMENT_DIR = 'submissions/rolling_leaderboard/self_tuning/schedule_free_adamw_v2'
-TUNING_SEARCH_SPACE = None
-FRAMEWORK = 'pytorch'
-TUNING_RULESET = 'self'
+SUBMISSION_PATH = 'reference_algorithms/paper_baselines/adamw/jax/submission.py'
+TUNING_SEARCH_SPACE = 'reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 
 flags.DEFINE_string(
     'submission_path',
@@ -29,17 +26,17 @@ flags.DEFINE_string(
     'Path to tuning search space for submission module relative to algorithmic-efficiency dir.'
 )
 flags.DEFINE_string('experiment_dir',
-                    EXPERIMENT_DIR,
+                    '$HOME/experiments/',
                     'Path to experiment dir where logs will be saved.')
 flags.DEFINE_enum(
     'framework',
-    FRAMEWORK,
+    'jax',
     enum_values=['jax', 'pytorch'],
     help='Can be either pytorch or jax.')
 flags.DEFINE_integer('seed', 0, 'RNG seed to to generate study seeds from.')
 flags.DEFINE_enum(
     'tuning_ruleset',
-    TUNING_RULESET,
+    'external',
     enum_values=['external', 'self'],
     help='Which tuning ruleset to score this submission on. Can be external or self.'
 )
