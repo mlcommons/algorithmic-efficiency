@@ -36,13 +36,21 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       dropout_rate: Optional[float] = None,
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     del aux_dropout_rate
-    self._model = models.ViT(
-        dropout_rate=dropout_rate,
-        num_classes=self._num_classes,
-        use_glu=self.use_glu,
-        use_post_layer_norm=self.use_post_layer_norm,
-        use_map=self.use_map,
-        **decode_variant('S/16'))
+    if dropout_rate is None:
+      self._model = models.ViT(
+          num_classes=self._num_classes,
+          use_glu=self.use_glu,
+          use_post_layer_norm=self.use_post_layer_norm,
+          use_map=self.use_map,
+          **decode_variant('S/16'))
+    else:
+      self._model = models.ViT(
+          dropout_rate=dropout_rate,
+          num_classes=self._num_classes,
+          use_glu=self.use_glu,
+          use_post_layer_norm=self.use_post_layer_norm,
+          use_map=self.use_map,
+          **decode_variant('S/16'))
     params, model_state = self.initialized(rng, self._model)
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)

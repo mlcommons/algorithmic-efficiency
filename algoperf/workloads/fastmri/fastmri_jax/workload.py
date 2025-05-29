@@ -26,12 +26,21 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     """aux_dropout_rate is unused."""
     del aux_dropout_rate
     fake_batch = jnp.zeros((13, 320, 320))
-    self._model = UNet(
-        num_pool_layers=self.num_pool_layers,
-        num_channels=self.num_channels,
-        use_tanh=self.use_tanh,
-        use_layer_norm=self.use_layer_norm,
-        dropout_rate=dropout_rate)
+    if dropout_rate is None:
+      self._model = UNet(
+          num_pool_layers=self.num_pool_layers,
+          num_channels=self.num_channels,
+          use_tanh=self.use_tanh,
+          use_layer_norm=self.use_layer_norm,
+      )
+    else:
+      self._model = UNet(
+          num_pool_layers=self.num_pool_layers,
+          num_channels=self.num_channels,
+          use_tanh=self.use_tanh,
+          use_layer_norm=self.use_layer_norm,
+          dropout_rate=dropout_rate)
+
     params_rng, dropout_rng = jax.random.split(rng)
     variables = jax.jit(
         self._model.init)({'params': params_rng, 'dropout': dropout_rng},
