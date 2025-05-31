@@ -60,14 +60,18 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = None) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
-    logits = self._model.apply({'params': params},
-                               augmented_and_preprocessed_input_batch['inputs'],
-                               rngs={'dropout': rng},
-                               train=train)
+
+    if train: 
+      logits = self._model.apply({'params': params},
+                                augmented_and_preprocessed_input_batch['inputs'],
+                                rngs={'dropout': rng},
+                                train=train,
+                                dropout_rate=dropout_rate)
     return logits, None
 
   # Does NOT apply regularization, which is left to the submitter to do in

@@ -63,7 +63,8 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: Optional[float]) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:
@@ -74,7 +75,8 @@ class OgbgWorkload(BaseOgbgWorkload):
     logits = self._model.apply({'params': params},
                                augmented_and_preprocessed_input_batch['inputs'],
                                rngs={'dropout': rng},
-                               train=train)
+                               train=train,
+                               dropout_rate=dropout_rate)
     return logits, None
 
   def _binary_cross_entropy_with_mask(

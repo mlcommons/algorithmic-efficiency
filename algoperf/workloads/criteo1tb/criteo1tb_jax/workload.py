@@ -126,7 +126,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = None) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']
@@ -134,6 +135,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     apply_kwargs = {'train': train}
     if train:
       apply_kwargs['rngs'] = {'dropout': rng}
+      apply_kwargs['dropout_rate'] = dropout_rate
     logits_batch = self._model.apply({'params': params}, inputs, **apply_kwargs)
     return logits_batch, None
 

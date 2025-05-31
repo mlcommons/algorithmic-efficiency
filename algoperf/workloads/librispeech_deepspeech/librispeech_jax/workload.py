@@ -70,7 +70,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      use_running_average_bn: Optional[bool] = None
+      use_running_average_bn: Optional[bool] = None,
       dropout_rate: Optional[bool] = None
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}

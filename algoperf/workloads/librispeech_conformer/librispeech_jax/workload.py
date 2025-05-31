@@ -116,7 +116,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      use_running_average_bn: Optional[bool] = None
+      use_running_average_bn: Optional[bool] = None,
+      dropout_rate: Optional[float] = None,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
@@ -129,7 +130,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
           train=True,
           rngs={'dropout' : rng},
           mutable=['batch_stats'],
-          use_running_average_bn=use_running_average_bn)
+          use_running_average_bn=use_running_average_bn,
+          dropout_rate=dropout_rate)
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(
