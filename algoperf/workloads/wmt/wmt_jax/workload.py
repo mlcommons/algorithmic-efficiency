@@ -209,10 +209,7 @@ class WmtWorkload(BaseWmtWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = 0.0,
-      aux_dropout_rate: Optional[float] = 0.0) -> spec.ModelInitState:
-    """aux_dropout_rate is used as attention_dropout_rate."""
-
+      dropout_rate: Optional[float] = 0.0) -> spec.ModelInitState:
     init_fake_batch_size = 2
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
@@ -224,13 +221,20 @@ class WmtWorkload(BaseWmtWorkload):
     else:
       raise ValueError(f'Unknown activation function {self.activation}.')
 
+    if dropout_rate is None:
+      model_config = models.TransformerConfig(
+          pre_ln=self.pre_ln,
+          attention_temp=self.attention_temp,
+          activation=activation,
+          glu=self.glu)
+    else:
     model_config = models.TransformerConfig(
-        dropout_rate=dropout_rate,
-        attention_dropout_rate=aux_dropout_rate,
-        pre_ln=self.pre_ln,
-        attention_temp=self.attention_temp,
-        activation=activation,
-        glu=self.glu)
+          dropout_rate=dropout_rate,
+          attention_dropout_rate=dropout_rate,
+          pre_ln=self.pre_ln,
+          attention_temp=self.attention_temp,
+          activation=activation,
+          glu=self.glu)
     self._train_model = models.Transformer(model_config)
     eval_config = replace(model_config, deterministic=True)
     self._eval_model = models.Transformer(eval_config)

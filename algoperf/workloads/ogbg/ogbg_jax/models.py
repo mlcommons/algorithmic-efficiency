@@ -48,9 +48,9 @@ class GNN(nn.Module):
 
   @nn.compact
   def __call__(self, graph, train, dropout_rate=None):
-    if not dropout_rate:
+    if dropout_rate is not None:
       dropout_rate = self.dropout_rate
-    dropout = Dropout(deterministic=not train, rate=dropout_rate)
+    dropout = Dropout(dropout_rate, deterministic=not train)(dropout_rate)
 
     graph = graph._replace(
         globals=jnp.zeros([graph.n_node.shape[0], self.num_outputs]))

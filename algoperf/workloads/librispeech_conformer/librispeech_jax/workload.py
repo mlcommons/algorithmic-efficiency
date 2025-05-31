@@ -61,7 +61,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       self,
       rng: spec.RandomState,
       dropout_rate: Optional[float] = None,
-      ) -> spec.ModelInitState:
+  ) -> spec.ModelInitState:
     """Conformer model init function.
 
     Here we use dropout_rate as *_residual_dropout_rate, and for

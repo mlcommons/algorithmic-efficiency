@@ -20,18 +20,24 @@ class OgbgWorkload(BaseOgbgWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """aux_dropout_rate is unused."""
-    del aux_dropout_rate
     rng, params_rng, dropout_rng = jax.random.split(rng, 3)
-    self._model = models.GNN(
-        self._num_outputs,
-        dropout_rate=dropout_rate,
-        activation_fn_name=self.activation_fn_name,
-        hidden_dims=self.hidden_dims,
-        latent_dim=self.latent_dim,
-        num_message_passing_steps=self.num_message_passing_steps)
+    if dropout_rate is None:
+      self._model = models.GNN(
+          self._num_outputs,
+          activation_fn_name=self.activation_fn_name,
+          hidden_dims=self.hidden_dims,
+          latent_dim=self.latent_dim,
+          num_message_passing_steps=self.num_message_passing_steps)
+    else:
+      self._model = models.GNN(
+          self._num_outputs,
+          dropout_rate=dropout_rate,
+          activation_fn_name=self.activation_fn_name,
+          hidden_dims=self.hidden_dims,
+          latent_dim=self.latent_dim,
+          num_message_passing_steps=self.num_message_passing_steps)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
     fake_batch = jraph.GraphsTuple(
         n_node=jnp.asarray([1]),

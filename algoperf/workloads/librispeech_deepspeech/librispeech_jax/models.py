@@ -75,6 +75,9 @@ class Subsample(nn.Module):
   @nn.compact
   def __call__(self, inputs, output_paddings, train, dropout_rate=None):
     config = self.config
+    if dropout_rate is None:
+      dropout_rate = config.dropout_rate
+
     outputs = jnp.expand_dims(inputs, axis=-1)
 
     outputs, output_paddings = Conv2dSubsampling(
@@ -111,7 +114,9 @@ class Subsample(nn.Module):
       input_dropout_rate = 0.1
     else:
       input_dropout_rate = config.input_dropout_rate
-    outputs = Dropout(rate=input_dropout_rate, deterministic=not train)(outputs)
+    outputs = Dropout(
+        rate=input_dropout_rate, deterministic=not train, rate=dropout_rate)(
+            outputs, rate=dropout_rate)
 
     return outputs, output_paddings
 
@@ -187,7 +192,13 @@ class FeedForwardModule(nn.Module):
   config: DeepspeechConfig
 
   @nn.compact
-  def __call__(self, inputs, input_paddings=None, train=False):
+  def __call__(self,
+               inputs,
+               input_paddings=None,
+               train=False,
+               dropout_rate=None):
+    if dropout_rate is None:
+      dropout_rate = self.config.feed_forward_dropout_rate
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
     config = self.config
 
@@ -211,12 +222,8 @@ class FeedForwardModule(nn.Module):
       inputs = nn.relu(inputs)
     inputs *= padding_mask
 
-    if config.feed_forward_dropout_rate is None:
-      feed_forward_dropout_rate = 0.1
-    else:
-      feed_forward_dropout_rate = config.feed_forward_dropout_rate
-    inputs = Dropout(rate=feed_forward_dropout_rate)(
-        inputs, deterministic=not train)
+    inputs = Dropout(rate=dropout_rate)(
+        inputs, deterministic=not train, rate=dropout_rate)
 
     return inputs
 
@@ -472,8 +479,10 @@ class Deepspeech(nn.Module):
     )
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, train):
+  def __call__(self, inputs, input_paddings, train, dropout_rate=None):
     config = self.config
+    if dropout_rate is None:
+      dropout_rate = config.dropout_rate
 
     outputs = inputs
     output_paddings = input_paddings
@@ -493,7 +502,7 @@ class Deepspeech(nn.Module):
 
     # Subsample input by a factor of 4 by performing strided convolutions.
     outputs, output_paddings = Subsample(
-        config=config)(outputs, output_paddings, train)
+        config=config)(outputs, output_paddings, train, dropout_rate=dropout_rate)
 
     # Run the lstm layers.
     for _ in range(config.num_lstm_layers):
@@ -507,9 +516,8 @@ class Deepspeech(nn.Module):
         outputs = outputs + FeedForwardModule(config=self.config)(
             outputs, output_paddings, train)
       else:
-        outputs = FeedForwardModule(config=self.config)(outputs,
-                                                        output_paddings,
-                                                        train)
+        outputs = FeedForwardModule(config=self.config)(
+            outputs, output_paddings, train, dropout_rate=dropout_rate)
 
     # Run the decoder which in this case is a trivial projection layer.
     if config.enable_decoder_layer_norm:
