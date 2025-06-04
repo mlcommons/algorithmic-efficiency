@@ -5,7 +5,7 @@
 # docker build -t <image_name> --build-arg framework=pytorch
 
 # To build Docker image
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu20.04
 
 # Installing machine packages
 RUN echo "Setting up machine"
@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y \
     libreadline-dev \
     libffi-dev \
     curl \
-    libbz2-dev \
     liblzma-dev \
+    libbz2-dev \
     vim
 
 # Download and install Python 3.11
@@ -56,8 +56,6 @@ RUN echo "Setting up directories for data and experiment_runs"
 RUN mkdir -p data/
 RUN mkdir -p experiment_runs/
 
-RUN pip install --upgrade pip
-
 # Install Algorithmic efficiency repo
 RUN pip install --upgrade pip
 
@@ -71,18 +69,18 @@ RUN cd /algorithmic-efficiency && git checkout $branch
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
-        && pip install -e '.[pytorch_cpu]' -f 'https://download.pytorch.org/whl/torch_stable.html'; \
+        && pip install -e '.[pytorch_cpu]' -f https://download.pytorch.org/whl/cpu \
+        && pip install -e '.[jax_gpu]' -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre ; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[jax_cpu]' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'; \
+        && pip install -e '.[pytorch_gpu]' \
+        && pip install -e '.[jax_cpu]'; \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html' \
-        && pip install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'; \
+        && pip install -e '.[pytorch_gpu]' \
+        && pip install -e '.[jax_gpu]'  -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre ; \
     else \
         echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
         && exit 1 ; \
