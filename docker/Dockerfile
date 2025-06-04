@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     libreadline-dev \
     libffi-dev \
     curl \
+    liblzma-dev \
+    libbz2-dev \
     vim
 
 # Download and install Python 3.11

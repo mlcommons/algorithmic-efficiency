@@ -39,7 +39,7 @@ dependencies = [
   "numpy>=2.0.2",
   "pandas>=2.0.1",
   "tensorflow==2.19.0",
-  "tensorflow-datasets==4.9.7",
+  "tensorflow-datasets==4.9.9",
   "tensorflow-probability==0.20.0",
   "tensorflow-addons==0.20.0",
   "gputil==1.4.0",
