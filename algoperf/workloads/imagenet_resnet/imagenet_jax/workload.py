@@ -103,11 +103,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     model_state, params = pop(variables, "params")
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax.tree_map(
+    params = jax.tree.map(
         lambda x: jax.device_put(x,
                                  jax_sharding_utils.get_replicate_sharding()),
         params)
-    model_state = jax.tree_map(
+    model_state = jax.tree.map(
         lambda x: jax.device_put(x,
                                  jax_sharding_utils.get_replicate_sharding()),
         model_state)
