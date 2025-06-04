@@ -259,7 +259,8 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: Optional[float] = None) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
 
@@ -286,7 +287,8 @@ class WmtWorkload(BaseWmtWorkload):
                                targets_positions=targets_positions,
                                inputs_segmentation=inputs_segmentations,
                                targets_segmentation=targets_segmentations,
-                               rngs={'dropout': rng})
+                               rngs={'dropout': rng},
+                               dropout_rate=None)
     return logits_batch, None
 
   def _normalize_eval_metrics(

@@ -28,10 +28,7 @@ class TransformerConfig:
   max_len: int = 256
   activation: Callable = nn.relu
   glu: bool = False
-  #If None, defaults to 0.1.
   dropout_rate: Optional[float] = 0.1
-  #If None, defaults to 0.1.
-  attention_dropout_rate: Optional[float] = 0.1
   attention_temp: float = 1.0
   deterministic: bool = False
   decode: bool = False
@@ -154,6 +151,9 @@ class MlpBlock(nn.Module):
   def __call__(self, inputs, dropout_rate=None):
     """Applies Transformer MlpBlock module."""
     cfg = self.config
+    if dropout_rate is None:
+      dropout_rate = cfg.dropout_rate
+
     actual_out_dim = inputs.shape[-1] if self.out_dim is None else self.out_dim
     x = nn.Dense(
         cfg.mlp_dim,
@@ -172,12 +172,7 @@ class MlpBlock(nn.Module):
       )(
           inputs)
       x = x * y
-    if dropout_rate is None:
-      if cfg.dropout_rate is None:
-        dropout_rate = 0.1
-      else:
-        dropout_rate = cfg.dropout_rate
-    x = Dropout()(x, rate=dropout_rate, deterministic=cfg.deterministic)
+    x = Dropout(rate=dropout_rate)(x, rate=dropout_rate, deterministic=cfg.deterministic)
     output = nn.Dense(
         actual_out_dim,
         dtype=cfg.dtype,
@@ -185,7 +180,7 @@ class MlpBlock(nn.Module):
         bias_init=cfg.bias_init,
     )(
         x)
-    output = Dropout()(
+    output = Dropout(rate=dropout_rate)(
         output, rate=dropout_rate, deterministic=cfg.deterministic)
     return output
 
@@ -211,16 +206,14 @@ class Encoder1DBlock(nn.Module):
           output after transformer encoder block.
         """
     cfg = self.config
+    if dropout_rate is None:
+      dropout_rate = cfg.dropout_rate
+
     pre_ln = cfg.pre_ln
 
     # Attention block.
     assert inputs.ndim == 3
     x = nn.LayerNorm(dtype=cfg.dtype)(inputs) if pre_ln else inputs
-    if dropout_rate is None:
-      if cfg.attention_dropout_rate is None:
-        dropout_rate = 0.1
-      else:
-        dropout_rate = cfg.dropout_rate
     x = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
@@ -233,7 +226,7 @@ class Encoder1DBlock(nn.Module):
         deterministic=cfg.deterministic,
     )(cfg.attention_temp * x, x, mask=encoder_mask)
 
-    x = Dropout()(x, deterministic=cfg.deterministic, rate=dropout_rate)
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic, rate=dropout_rate)
     x = x + inputs
     if not pre_ln:
       x = nn.LayerNorm(dtype=cfg.dtype)(x)
@@ -275,17 +268,15 @@ class EncoderDecoder1DBlock(nn.Module):
           output after transformer encoder-decoder block.
         """
     cfg = self.config
+    if dropout_rate is None:
+      dropout_rate = cfg.dropout_rate
+
     pre_ln = cfg.pre_ln
 
     # Decoder block.
     assert targets.ndim == 3
     x = nn.LayerNorm(dtype=cfg.dtype)(targets) if pre_ln else targets
 
-    if dropout_rate is None:
-      if cfg.attention_dropout_rate is None:
-        dropout_rate = 0.1
-      else:
-        dropout_rate = cfg.dropout_rate
     x = nn.MultiHeadDotProductAttention(
         num_heads=cfg.num_heads,
         dtype=cfg.dtype,
@@ -298,11 +289,8 @@ class EncoderDecoder1DBlock(nn.Module):
         deterministic=cfg.deterministic,
         decode=cfg.decode,
     )(cfg.attention_temp * x, x, mask=decoder_mask)
-    if cfg.dropout_rate is None:
-      dropout_rate = 0.1
-    else:
-      dropout_rate = cfg.dropout_rate
-    x = Dropout()(x, deterministic=cfg.deterministic, rate=dropout_rate)
+
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic, rate=dropout_rate)
     x = x + targets
     if not pre_ln:
       x = nn.LayerNorm(dtype=cfg.dtype)(x)
@@ -321,7 +309,7 @@ class EncoderDecoder1DBlock(nn.Module):
         deterministic=cfg.deterministic,
     )(cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
 
-    y = Dropout()(y, deterministic=cfg.deterministic, rate=dropout_rate)
+    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic, rate=dropout_rate)
     y = y + x
     if not pre_ln:
       y = nn.LayerNorm(dtype=cfg.dtype)(y)
@@ -361,6 +349,9 @@ class Encoder(nn.Module):
           output of a transformer encoder.
         """
     cfg = self.config
+    if dropout_rate is None:
+      dropout_rate = cfg.dropout_rate
+
     assert inputs.ndim == 2  # (batch, len)
 
     # Input Embedding
@@ -377,12 +368,7 @@ class Encoder(nn.Module):
     x = AddPositionEmbs(
         config=cfg, decode=False, name="posembed_input")(
             x, inputs_positions=inputs_positions)
-    if dropout_rate is None:
-      if cfg.dropout_rate is None:
-        dropout_rate = 0.1
-      else:
-        dropout_rate = cfg.dropout_rate
-    x = Dropout()(x, deterministic=cfg.deterministic, rate=dropout_rate)
+    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic, rate=dropout_rate)
 
     x = x.astype(cfg.dtype)
 
@@ -432,6 +418,8 @@ class Decoder(nn.Module):
           output of a transformer decoder.
         """
     cfg = self.config
+    if dropout_rate is None:
+      dropout_rate = cfg.dropout_rate
 
     assert encoded.ndim == 3  # (batch, len, depth)
     assert targets.ndim == 2  # (batch, len)
@@ -453,12 +441,7 @@ class Decoder(nn.Module):
     y = AddPositionEmbs(
         config=cfg, decode=cfg.decode, name="posembed_output")(
             y, inputs_positions=targets_positions)
-    if dropout_rate is None:
-      if cfg.dropout_rate is None:
-        dropout_rate = 0.1
-      else:
-        dropout_rate = cfg.dropout_rate
-    y = Dropout()(y, deterministic=cfg.deterministic, rate=dropout_rate)
+    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic, rate=dropout_rate)
 
     y = y.astype(cfg.dtype)
 
@@ -549,7 +532,8 @@ class Transformer(nn.Module):
       targets,
       targets_positions=None,
       inputs_segmentation=None,
-      targets_segmentation=None):
+      targets_segmentation=None,
+      dropout_rate=None):
     """Applies Transformer decoder-branch on encoded-input and target.
 
     Args:
@@ -598,7 +582,8 @@ class Transformer(nn.Module):
         targets,
         targets_positions=targets_positions,
         decoder_mask=decoder_mask,
-        encoder_decoder_mask=encoder_decoder_mask)
+        encoder_decoder_mask=encoder_decoder_mask,
+        dropout_rate=droput_rate)
     return logits.astype(self.config.dtype)
 
   def __call__(self,
