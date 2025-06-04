@@ -228,7 +228,7 @@ class WmtWorkload(BaseWmtWorkload):
           activation=activation,
           glu=self.glu)
     else:
-    model_config = models.TransformerConfig(
+      model_config = models.TransformerConfig(
           dropout_rate=dropout_rate,
           attention_dropout_rate=dropout_rate,
           pre_ln=self.pre_ln,
