@@ -770,18 +770,10 @@ def download_finewebedu(data_dir, tmp_dir=None):
 
   tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
 
-  # Find how many entries to take from dataset to have val_tokens in validation set.
-  val_tokens = 10_000_000  # TODO: decide this value.
-  tokens_accumulated, num_examples_for_val = 0, 0
-  for example in tokenized_dataset:
-    tokens_accumulated += len(example['input_ids'])
-    num_examples_for_val += 1
-    if tokens_accumulated >= val_tokens:
-      break
   # Split in train and valid.
-  val_dataset = tokenized_dataset.select(range(num_examples_for_val))
-  train_dataset = tokenized_dataset.select(
-      range(num_examples_for_val, len(tokenized_dataset)))
+  dataset_split_dict = tokenized_dataset.train_test_split(test_size=0.1, seed=42)
+  train_dataset = dataset_split_dict['train']
+  val_dataset = dataset_split_dict['test']
 
   # Concat in chunks of max_seq_len.
   # NOTE: expected token loss by batched concat_chunk. Truncates leftover tokens that don't fill a full max_seq_length chunk.
