@@ -161,6 +161,7 @@ class BaseOgbgWorkload(spec.Workload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
+    jax.debug.print(str(logits))
     return self._eval_metric(batch['targets'], logits, batch['weights'])
 
   def _eval_model_on_split(self,

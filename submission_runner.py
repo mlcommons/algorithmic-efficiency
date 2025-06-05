@@ -31,6 +31,14 @@ from absl import flags
 from absl import logging
 import jax
 import tensorflow as tf
+
+# New PRNG implementation for correct sharding
+jax.config.update('jax_default_prng_impl', 'threefry2x32')
+jax.config.update('jax_threefry_partitionable', True)
+# JAX compilation caching
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
+jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
+jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
 import torch
 import torch.distributed as dist
 
@@ -242,7 +250,8 @@ def train_once(
           'ogbg',
           'criteo1tb',
           'imagenet_vit',
-          'librispeech_deepspeech'
+          'librispeech_deepspeech',
+          'lm'
       ]
       eager_backend_workloads = []
       aot_eager_backend_workloads = []
@@ -384,8 +393,9 @@ def train_once(
         train_step_end_time - train_state['last_step_end_time'])
 
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+    if False:
+    # if ((train_step_end_time - train_state['last_eval_time']) >=
+    #     workload.eval_period_time_sec or train_state['training_complete']):
 
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
@@ -703,7 +713,8 @@ def main(_):
       'librispeech_conformer',
       'librispeech_deepspeech',
       'imagenet_vit',
-      'criteo1tb'
+      'criteo1tb',
+      'lm'
   ]:
     os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.80'
 

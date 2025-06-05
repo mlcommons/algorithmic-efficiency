@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import jraph
 import optax
 
+from algoperf import sharding_utils
 from algoperf import param_utils
 from algoperf import spec
 from algoperf.workloads.ogbg import metrics
@@ -45,7 +46,8 @@ class OgbgWorkload(BaseOgbgWorkload):
     params = params['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(params), None
+    params = sharding_utils.shard_replicated(params)
+    return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_17'
@@ -106,11 +108,20 @@ class OgbgWorkload(BaseOgbgWorkload):
     return metrics.EvalMetrics.single_from_model_output(
         loss=loss['per_example'], logits=logits, labels=labels, mask=masks)
 
+  # @functools.partial(
+  #     jax.pmap,
+  #     axis_name='batch',
+  #     in_axes=(None, 0, 0, 0, None),
+  #     static_broadcasted_argnums=(0,))
   @functools.partial(
-      jax.pmap,
-      axis_name='batch',
-      in_axes=(None, 0, 0, 0, None),
-      static_broadcasted_argnums=(0,))
+    jax.jit,
+    in_shardings=(sharding_utils.get_replicated_sharding(),
+                  sharding_utils.get_naive_sharding_spec(),
+                  sharding_utils.get_replicated_sharding(),
+                  sharding_utils.get_replicated_sharding()),
+    static_argnums=(0,),
+    out_shardings=sharding_utils.get_replicated_sharding(),
+  )
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)
 
@@ -119,7 +130,8 @@ class OgbgWorkload(BaseOgbgWorkload):
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
     del num_examples
-    total_metrics = total_metrics.reduce()
+    # total_metrics = total_metrics.reduce()
+    print(total_metrics)
     return {k: float(v) for k, v in total_metrics.compute().items()}
 
 
