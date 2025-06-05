@@ -196,7 +196,7 @@ class FeedForwardModule(nn.Module):
   config: ConformerConfig
 
   @nn.compact
-  def __call__(self, inputs, padding_mask=None, train=False, dropout_rate=dropout_rate):
+  def __call__(self, inputs, padding_mask=None, train=False, dropout_rate=None):
     config = self.config
     if dropout_rate is None:
       dropout_rate = config.dropout_rate

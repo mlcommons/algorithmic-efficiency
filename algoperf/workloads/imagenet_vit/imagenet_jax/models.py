@@ -162,7 +162,7 @@ class MAPHead(nn.Module):
   """Multihead Attention Pooling."""
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
   num_heads: int = 12
-  dropout_rate: 0.0
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, dropout_rate=None):

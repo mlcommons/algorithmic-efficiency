@@ -139,9 +139,9 @@ class ConvBlock(nn.Module):
   dropout_rate: Dropout probability.
   """
   out_channels: int
-  dropout_rate: float = 0.0
   use_tanh: bool
   use_layer_norm: bool
+  dropout_rate: float = 0.0
 
   @nn.compact
   def __call__(self, x, train=True, dropout_rate=None):
