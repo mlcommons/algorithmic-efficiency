@@ -40,7 +40,7 @@ class MeanAveragePrecision(
 
     if USE_PYTORCH_DDP:
       # Sync labels, logits, and masks across devices.
-      all_values = [labels, logits, mask]
+      all_values = [np.array(labels), np.array(logits), np.array(mask)]
       for idx, array in enumerate(all_values):
         tensor = torch.as_tensor(array, device=DEVICE)
         # Assumes that the tensors on all devices have the same shape.
@@ -51,7 +51,7 @@ class MeanAveragePrecision(
 
     mask = mask.astype(bool)
 
-    probs = jax.nn.sigmoid(logits)
+    probs = 1 / (1 + np.exp(-logits))
     num_tasks = labels.shape[1]
     average_precisions = np.full(num_tasks, np.nan)
 
