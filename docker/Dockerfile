@@ -5,7 +5,7 @@
 # docker build -t <image_name> --build-arg framework=pytorch
 
 # To build Docker image
-FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu20.04
+FROM nvidia/cuda:12.1.1-cudnn-devel-ubuntu20.04
 
 # Installing machine packages
 RUN echo "Setting up machine"
