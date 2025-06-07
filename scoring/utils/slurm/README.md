@@ -34,9 +34,9 @@ To set up the new cluster:
 1) [Install the Google Cluster Toolkit](https://github.com/GoogleCloudPlatform/cluster-toolkit?tab=readme-ov-file#quickstart). 
 2) Create and deploy a packer node to create a base image for the cluster nodes. See [packer builder terraform blueprint](/scoring/utils/slurm/algoperf_slurm_packer_builder.yaml).
 3) Manually update the image:
-  1) Create a VM from the Disk image created in the previous step.
-  2) Install the NVIDIA container toolkit on the VM.
-  3) Transfer the data from GCP bucket to `/opt/data`.
-  4) Create a new disk image from the VM.
+    1) Create a VM from the Disk image created in the previous step.
+    2) Install the NVIDIA container toolkit on the VM.
+    3) Transfer the data from GCP bucket to `/opt/data`.
+    4) Create a new disk image from the VM.
 4) Create and deploy the cluster. See [cluster terraform blueprint](/scoring/utils/slurm/algoperf_slurm_cluster.yaml).
 
