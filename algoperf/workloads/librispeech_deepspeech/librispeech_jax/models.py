@@ -115,7 +115,7 @@ class Subsample(nn.Module):
     else:
       input_dropout_rate = config.input_dropout_rate
     outputs = Dropout(
-        rate=input_dropout_rate, deterministic=not train, rate=dropout_rate)(
+        rate=input_dropout_rate, deterministic=not train)(
             outputs, rate=dropout_rate)
 
     return outputs, output_paddings
