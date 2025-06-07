@@ -19,6 +19,8 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
+from algoperf.jax_utils import Dropout
+
 
 def _instance_norm2d(x, axes, epsilon=1e-5):
   # promote x to at least float32, this avoids half precision computation
@@ -56,15 +58,14 @@ class UNet(nn.Module):
   num_channels: int = 32
   num_pool_layers: int = 4
   out_channels = 1
-  dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
+  dropout_rate: float = 0.0
   use_tanh: bool = False
   use_layer_norm: bool = False
 
   @nn.compact
-  def __call__(self, x, train=True):
-    dropout_rate = self.dropout_rate
+  def __call__(self, x, train=True, dropout_rate=None):
     if dropout_rate is None:
-      dropout_rate = 0.0
+      dropout_rate = self.dropout_rate
 
     # pylint: disable=invalid-name
     _ConvBlock = functools.partial(
@@ -138,12 +139,12 @@ class ConvBlock(nn.Module):
   dropout_rate: Dropout probability.
   """
   out_channels: int
-  dropout_rate: float
   use_tanh: bool
   use_layer_norm: bool
+  dropout_rate: float = 0.0
 
   @nn.compact
-  def __call__(self, x, train=True):
+  def __call__(self, x, train=True, dropout_rate=None):
     """Forward function.
     Note: Pytorch is NCHW and jax/flax is NHWC.
     Args:
@@ -152,6 +153,8 @@ class ConvBlock(nn.Module):
     Returns:
         jnp.array: Output tensor of shape `(N, H, W, out_channels)`.
     """
+    if dropout_rate is None:
+      dropout_rate = self.dropout_rate
     x = nn.Conv(
         features=self.out_channels,
         kernel_size=(3, 3),
@@ -172,9 +175,9 @@ class ConvBlock(nn.Module):
     x = activation_fn(x)
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
-    x = nn.Dropout(
-        self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
-            x)
+    x = Dropout(
+        dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
+            x, rate=dropout_rate)
     x = nn.Conv(
         features=self.out_channels,
         kernel_size=(3, 3),
@@ -186,9 +189,9 @@ class ConvBlock(nn.Module):
     else:
       x = _instance_norm2d(x, (1, 2))
     x = activation_fn(x)
-    x = nn.Dropout(
-        self.dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
-            x)
+    x = Dropout(
+        dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
+            x, rate=dropout_rate)
     return x
 
 

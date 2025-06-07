@@ -33,16 +33,22 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    del aux_dropout_rate
-    self._model = models.ViT(
-        dropout_rate=dropout_rate,
-        num_classes=self._num_classes,
-        use_glu=self.use_glu,
-        use_post_layer_norm=self.use_post_layer_norm,
-        use_map=self.use_map,
-        **decode_variant('S/16'))
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    if dropout_rate is None:
+      self._model = models.ViT(
+          num_classes=self._num_classes,
+          use_glu=self.use_glu,
+          use_post_layer_norm=self.use_post_layer_norm,
+          use_map=self.use_map,
+          **decode_variant('S/16'))
+    else:
+      self._model = models.ViT(
+          dropout_rate=dropout_rate,
+          num_classes=self._num_classes,
+          use_glu=self.use_glu,
+          use_post_layer_norm=self.use_post_layer_norm,
+          use_map=self.use_map,
+          **decode_variant('S/16'))
     params, model_state = self.initialized(rng, self._model)
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -60,14 +66,16 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = None) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply({'params': params},
                                augmented_and_preprocessed_input_batch['inputs'],
                                rngs={'dropout': rng},
-                               train=train)
+                               train=train,
+                               dropout_rate=dropout_rate)
     return logits, None
 
   def _eval_model_on_split(self,
