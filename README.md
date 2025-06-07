@@ -60,8 +60,8 @@ Both options are described in detail in the [**Getting Started**](/docs/GETTING_
 *TL;DR to install the Jax version for GPU run:*
 
 ```bash
-pip3 install -e '.[pytorch_cpu]'
-pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+pip3 install -e '.[pytorch_cpu]' -f https://download.pytorch.org/whl/cpu
+pip3 install -e '.[jax_gpu]'
 pip3 install -e '.[full]'
 ```
 
@@ -69,7 +69,7 @@ pip3 install -e '.[full]'
 
 ```bash
 pip3 install -e '.[jax_cpu]'
-pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
+pip3 install -e '.[pytorch_gpu]'
 pip3 install -e '.[full]'
 ```
 

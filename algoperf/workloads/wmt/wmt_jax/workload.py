@@ -14,6 +14,7 @@ import numpy as np
 import optax
 
 from algoperf import param_utils
+from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.wmt import bleu
 from algoperf.workloads.wmt.wmt_jax import decode
@@ -69,10 +70,16 @@ class WmtWorkload(BaseWmtWorkload):
     }
 
   @functools.partial(
-      jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
-  def eval_step_pmapped(
-      self, params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
+      jax.jit,
+      in_shardings=(
+          jax_sharding_utils.get_replicate_sharding(),  # params
+          jax_sharding_utils.get_batch_dim_sharding(),  # batch
+      ),
+      static_argnums=(0,),  # self
+  )
+  def eval_step(self,
+                params: spec.ParameterContainer,
+                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     inputs = batch['inputs']
     targets = batch['targets']
@@ -90,29 +97,29 @@ class WmtWorkload(BaseWmtWorkload):
         'denominator': weight_sum,
     }
 
-  def eval_step(self,
-                params: spec.ParameterContainer,
-                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
-    replicated_eval_metrics = self.eval_step_pmapped(params, batch)
-    return jax.tree.map(lambda x: jnp.sum(x, axis=0), replicated_eval_metrics)
-
   @functools.partial(
-      jax.pmap, axis_name='batch', static_broadcasted_argnums=(0,))
+      jax.jit,
+      in_shardings=(
+          jax_sharding_utils.get_batch_dim_sharding(),  # inputs
+      ),
+      static_argnums=(
+          0,
+          2,
+      ))
   def initialize_cache(self,
                        inputs: spec.Tensor,
                        max_decode_len: int = 256) -> Dict[str, spec.Tensor]:
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
-    initial_variables = models.Transformer(config).init(
-        jax.random.PRNGKey(0),
-        jnp.ones(inputs.shape, jnp.float32),
+    dummy_inputs = jax_sharding_utils.shard_along_batch_dim(
+        jnp.ones(inputs.shape, jnp.float32))
+    dummy_targets = jax_sharding_utils.shard_along_batch_dim(
         jnp.ones(target_shape, jnp.float32))
+    initial_variables = models.Transformer(config).init(
+        jax.random.PRNGKey(0), dummy_inputs, dummy_targets)
     return initial_variables['cache']
 
-  # eos_id, max_decode_len are constant.
-  @functools.partial(
-      jax.pmap, axis_name='batch', static_broadcasted_argnums=(0, 4, 5))
   def predict_step(self,
                    inputs: spec.Tensor,
                    params: spec.ParameterContainer,
@@ -180,20 +187,35 @@ class WmtWorkload(BaseWmtWorkload):
     """Translates the `predict_ds` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
     references, predictions = [], []
+    jitted_predict_step = None
     for _ in range(num_batches):
       pred_batch = next(ds_iter)
       cache = self.initialize_cache(pred_batch['inputs'])
-      predicted = self.predict_step(pred_batch['inputs'],
-                                    params,
-                                    cache,
-                                    decode.EOS_ID,
-                                    max_predict_length)
-      predicted = _to_host(predicted)
-      targets = _to_host(pred_batch['targets'])
+      if jitted_predict_step is None:
+        jitted_predict_step = jax.jit(
+            self.predict_step,
+            in_shardings=(
+                jax_sharding_utils.get_batch_dim_sharding(),  # inputs
+                jax_sharding_utils.get_replicate_sharding(),  # params
+                jax_sharding_utils.get_replicate_sharding(),  # cache
+            ),
+            static_argnums=(
+                3,  # eos_id
+                4,  # max_decode_len,
+                5,  # beam_size
+            ))
+      predicted = jitted_predict_step(pred_batch['inputs'],
+                                      params,
+                                      cache,
+                                      decode.EOS_ID,
+                                      max_predict_length)
+      # predicted = _to_host(predicted)
+      # targets = _to_host(pred_batch['targets'])
+      targets = pred_batch['targets']
       # Find actual batch size, ignoring the potential padding.
       weights = pred_batch.get('weights')
       if weights is not None:
-        weights = _to_host(weights)
+        # weights = _to_host(weights)
         actual_batch_size = int(weights.sum(0)[0].item())
       else:
         actual_batch_size = len(predicted)
@@ -213,7 +235,7 @@ class WmtWorkload(BaseWmtWorkload):
       aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """aux_dropout_rate is used as attention_dropout_rate."""
 
-    init_fake_batch_size = 2
+    init_fake_batch_size = 8
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
 
@@ -235,15 +257,21 @@ class WmtWorkload(BaseWmtWorkload):
     eval_config = replace(model_config, deterministic=True)
     self._eval_model = models.Transformer(eval_config)
     params_rng, dropout_rng = jax.random.split(rng)
+    inputs = jnp.ones(input_shape, jnp.float32)
+    targets = jnp.ones(target_shape, jnp.float32)
+    sharded_inputs = jax_sharding_utils.shard_along_batch_dim(inputs)
+    sharded_targets = jax_sharding_utils.shard_along_batch_dim(targets)
+
     initial_variables = jax.jit(
         self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
-                               jnp.ones(input_shape, jnp.float32),
-                               jnp.ones(target_shape, jnp.float32))
+                               sharded_inputs,
+                               sharded_targets)
 
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(initial_params), None
+    params = jax_sharding_utils.shard_along_batch_dim(initial_params)
+    return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'shared_embedding'
