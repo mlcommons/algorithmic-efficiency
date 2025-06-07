@@ -11,7 +11,7 @@ python3 make_job_config.py \
   --framework <jax|pytorch>
 ```
 2) Save the config.json in the same directory you will run the sbatch script from.
-3) Check the sbatch script `run_jobs.sh`. 
+3) Copy the example sbatch script `run_jobs.sh`. 
 - Set the task range to the number of tasks in the config.
 ```
 #SBATCH --array=0-119
@@ -20,6 +20,16 @@ python3 make_job_config.py \
 ```
 #SBATCH --output=experiments/<tuning_ruleset>/<algorithm>/job_%A_%a.out
 #SBATCH --error=experiments/<tuning_ruleset>/<algorithm>/job_%A_%a.err
+```
+- Update the gcp project information, docker image, config file path and bucket to save the logs to as necessary:
+```
+REPO="us-central1-docker.pkg.dev"
+IMAGE="us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/algoperf_jax_main"
+y | gcloud auth configure-docker $REPO
+docker pull $IMAGE
+# Job config (ATTENTION: you may want to modify this)
+config_file="$HOME/configs/pmap_job_config.json" # Replace with your config file path
+LOGS_BUCKET="algoperf-runs-internal"
 ```
 4) Submit a SLURM batch job by running:
 ```
