@@ -229,13 +229,10 @@ def train_once(
   logging.info('Initializing model.')
   with profiler.profile('Initializing model'):
     dropout_rate = None
-    aux_dropout_rate = None
     if hasattr(hyperparameters, 'dropout_rate'):
       dropout_rate = hyperparameters.dropout_rate
-    if hasattr(hyperparameters, 'aux_dropout_rate'):
-      aux_dropout_rate = hyperparameters.aux_dropout_rate
     model_params, model_state = workload.init_model_fn(
-        model_init_rng, dropout_rate, aux_dropout_rate)
+        model_init_rng, dropout_rate)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = [
           'librispeech_conformer',
