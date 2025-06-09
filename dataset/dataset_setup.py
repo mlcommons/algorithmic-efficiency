@@ -734,7 +734,7 @@ def download_finewebedu(data_dir,
         cache_dir=cache_dir)
     ds.save_to_disk(os.path.join(tmp_dir, 'fwedu_10B_raw'))
   else:
-    ds = hf_datasets.load_from_disk(tmp_dir, 'fwedu_10B_raw')
+    ds = hf_datasets.load_from_disk(os.path.join(tmp_dir, 'fwedu_10B_raw'))
 
   if not skip_tokenization:
     # Tokenize
