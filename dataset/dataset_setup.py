@@ -191,6 +191,7 @@ flags.DEFINE_integer(
 flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
 
 flags.DEFINE_boolean('skip_download', False, 'Skips data download.')
+flags.DEFINE_boolean('skip_tokenization', False, 'Skip Fineweb-edu tokenization.')
 
 FLAGS = flags.FLAGS
 
@@ -707,106 +708,87 @@ def download_wmt(data_dir):
           ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
 
 
-def download_finewebedu(data_dir, tmp_dir=None):
+def download_finewebedu(data_dir, 
+                        tmp_dir=None, 
+                        skip_download=False,
+                        skip_tokenization=False):
   """Download FineWebEdu-10B."""
 
-  data_dir = os.path.join(data_dir, 'finewebedu')
-  tmp_dir = tmp_dir if tmp_dir is not None else '/tmp'
-  cache_dir = os.path.join(tmp_dir,
-                           'lm') if tmp_dir is not None else os.path.expanduser(
-                               '~/.cache/huggingface/datasets')
+  if not skip_download: 
+    data_dir = os.path.join(data_dir, 'finewebedu')
+    tmp_dir = tmp_dir if tmp_dir is not None else '/tmp'
+    cache_dir = os.path.join(tmp_dir,
+                            'lm') if tmp_dir is not None else os.path.expanduser(
+                                '~/.cache/huggingface/datasets')
 
-  _maybe_mkdir(data_dir)
-  _maybe_mkdir(tmp_dir)
-  _maybe_mkdir(cache_dir)
+    _maybe_mkdir(data_dir)
+    _maybe_mkdir(tmp_dir)
+    _maybe_mkdir(cache_dir)
 
-  os.environ["TMPDIR"] = tmp_dir
+    os.environ["TMPDIR"] = tmp_dir
 
-  ds = hf_datasets.load_dataset(
-      'HuggingFaceFW/fineweb-edu',
-      name='sample-10BT',
-      split='train',
-      cache_dir=cache_dir)
-  # TODO (nico): maybe save intermediate dataset to avoid re-downloading
-  # and allow re-chunking with different seq_len?
+    ds = hf_datasets.load_dataset(
+        'HuggingFaceFW/fineweb-edu',
+        name='sample-10BT',
+        split='train',
+        cache_dir=cache_dir)
+    ds.save_to_disk(os.path.join(tmp_dir, 'fwedu_10B_raw'))
+  else:
+    ds = hf_datasets.load_from_disk(tmp_dir, 'fwedu_10B_raw')
 
-  # Shuffle so that multiproc has shards of similar size.
-  ds = ds.shuffle(seed=1996)
+  if not skip_tokenization:
+    # Tokenize
+    lm_tokenizer = AutoTokenizer.from_pretrained('gpt2')
+    logging.info(f"Vocab size of lm_tokenizer = {len(lm_tokenizer)}")
 
-  seq_len = 2048
-  max_seq_length = seq_len + 1
-  map_setup = dict(batched=True, batch_size=1024, num_proc=8)
+    def tokenize(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
 
-  # Tokenize
-  lm_tokenizer = AutoTokenizer.from_pretrained('gpt2')
-  logging.info(f"Vocab size of lm_tokenizer = {len(lm_tokenizer)}")
+      def add_eos(seq):
+        return seq + lm_tokenizer.eos_token if seq else seq
 
-  def tokenize(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
-    add_eos = lambda seq: (seq + lm_tokenizer.eos_token) if seq else seq
-    add_eos_batched = lambda seqs: [add_eos(seq) for seq in seqs]
-    return lm_tokenizer(
-        add_eos_batched(examples["text"]),
-        return_special_tokens_mask=False,
-        return_attention_mask=False)
+      def add_eos_batched(seqs):
+        return [add_eos(seq) for seq in seqs]
 
-  lm_tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
-  logging.info(f"Tokenizing...")
-  tokenized_dataset = ds.map(
-      tokenize,
-      remove_columns=[
-          'text',
-          'id',
-          'dump',
-          'url',
-          'file_path',
-          'language',
-          'language_score',
-          'token_count',
-          'score',
-          'int_score'
-      ],
-      **map_setup)
-  lm_tokenizer.model_max_length = seq_len
+      return lm_tokenizer(
+          add_eos_batched(examples["text"]),
+          return_special_tokens_mask=False,
+          return_attention_mask=False)
 
-  tokenized_dataset.save_to_disk(os.path.join(data_dir, f"fwedu_10B_tokenized"))
+    lm_tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
+    logging.info("Tokenizing...")
+    tokenized_dataset = ds.map(
+        tokenize,
+        remove_columns=[
+            'text',
+            'id',
+            'dump',
+            'url',
+            'file_path',
+            'language',
+            'language_score',
+            'token_count',
+            'score',
+            'int_score'
+        ],)
+
+    tokenized_dataset.save_to_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
+  else:
+    tokenized_dataset.load_from_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
 
   # Split in train and valid.
   dataset_split_dict = tokenized_dataset.train_test_split(test_size=0.1, seed=42)
   train_dataset = dataset_split_dict['train']
   val_dataset = dataset_split_dict['test']
 
-  # Concat in chunks of max_seq_len.
-  # NOTE: expected token loss by batched concat_chunk. Truncates leftover tokens that don't fill a full max_seq_length chunk.
-  def concat_chunck(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
-    """Concatenate text and generate chunks of max_seq_length"""
-    concatenated_examples = {
-        k: list(itertools.chain(*examples[k])) for k in examples.keys()
-    }
-    total_length = len(concatenated_examples[list(examples.keys())[0]])
-    if total_length >= max_seq_length:
-      total_length = (total_length // max_seq_length) * max_seq_length
-    result = {
-        k: [
-            t[i:i + max_seq_length]
-            for i in range(0, total_length, max_seq_length)
-        ] for k,
-        t in concatenated_examples.items()
-    }
-    return result
-
-  # Concat text in validation and train sets.
-  logging.info(f"Concatenating and chunking...")
-  val_dataset = val_dataset.map(concat_chunck, **map_setup)
-  train_dataset = train_dataset.map(concat_chunck, **map_setup)
-  logging.info(
-      f"Number of tokens in val_dataset: {len(val_dataset) * max_seq_length:_}")
-  logging.info(
-      f"Number of tokens in train_dataset: {len(train_dataset) * max_seq_length:_}"
-  )
+  # Convert to tensorflow_datasets.Dataset objects
+  train_dataset = train_dataset.to_tf_dataset()
+  val_dataset = train_dataset.to_tf_dataset()
 
   # Save datasets
-  train_dataset.save_to_disk(os.path.join(data_dir, f"train"))
-  val_dataset.save_to_disk(os.path.join(data_dir, f"val"))
+  train_dataset.Save(os.path.join(data_dir, "train"))
+  val_dataset.save(os.path.join(data_dir, "val"))
+
+  return 
 
 
 def main(_):
@@ -893,7 +875,7 @@ def main(_):
 
   if FLAGS.all or FLAGS.finewebedu:
     logging.info('Downloading FineWebEdu-10B...')
-    download_finewebedu(data_dir, tmp_dir)
+    download_finewebedu(data_dir, tmp_dir, FLAGS.skip_download, FLAGS.skip_tokenization)
 
 
 # pylint: enable=logging-format-interpolation
