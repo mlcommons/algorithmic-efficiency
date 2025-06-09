@@ -31,9 +31,6 @@ class MeanAveragePrecision(
     metrics.CollectingMetric.from_outputs(('logits', 'labels', 'mask'))):
   """Computes the mean average precision (mAP) over different tasks."""
 
-  def sigmoid_np(x):
-    return 1 / (1 + np.exp(-x))
-
   def compute(self):
     # Matches the official OGB evaluation scheme for mean average precision.
     values = super().compute()
@@ -52,6 +49,8 @@ class MeanAveragePrecision(
         dist.all_gather(all_tensors, tensor)
         all_values[idx] = torch.cat(all_tensors).cpu().numpy()
       labels, logits, mask = all_values
+      def sigmoid_np(x):
+        return 1 / (1 + np.exp(-x))
       sigmoid = sigmoid_np
 
     mask = mask.astype(bool)
