@@ -769,7 +769,10 @@ def download_finewebedu(data_dir,
             'token_count',
             'score',
             'int_score'
-        ],)
+        ],
+        batched=True,
+        batch_size=1024,
+        num_proc=8)
 
     tokenized_dataset.save_to_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
   else:
