@@ -715,7 +715,7 @@ def download_finewebedu(data_dir,
   """Download FineWebEdu-10B."""
 
   if not skip_download: 
-    data_dir = os.path.join(data_dir, 'finewebedu')
+    data_dir = os.path.join(data_dir, 'fineweb_edu_10B')
     tmp_dir = tmp_dir if tmp_dir is not None else '/tmp'
     cache_dir = os.path.join(tmp_dir,
                             'lm') if tmp_dir is not None else os.path.expanduser(
