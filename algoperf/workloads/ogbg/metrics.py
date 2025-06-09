@@ -49,8 +49,10 @@ class MeanAveragePrecision(
         dist.all_gather(all_tensors, tensor)
         all_values[idx] = torch.cat(all_tensors).cpu().numpy()
       labels, logits, mask = all_values
+      
       def sigmoid_np(x):
         return 1 / (1 + np.exp(-x))
+        
       sigmoid = sigmoid_np
 
     mask = mask.astype(bool)
