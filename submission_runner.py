@@ -165,6 +165,9 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('capture_jax_trace',
     False,
     'Captures jax profiler trace and writes to experiment directory.')
+flags.DEFINE_boolean('skip_evals',
+    False,
+    'Skip evals on train eval, validation and test splits.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -212,7 +215,8 @@ def train_once(
     profiler: Profiler,
     max_global_steps: int = None,
     log_dir: Optional[str] = None,
-    save_checkpoints: Optional[bool] = True
+    save_checkpoints: Optional[bool] = True,
+    skip_evals: Optional[bool] = False,
 ) -> Tuple[spec.Timing, Dict[str, Any]]:
   _reset_cuda_mem()
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
@@ -388,7 +392,7 @@ def train_once(
 
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']):
+        workload.eval_period_time_sec or train_state['training_complete']) and not skip_evals:
 
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
@@ -550,8 +554,9 @@ def score_submission_on_workload(workload: spec.Workload,
                                  save_checkpoints: Optional[bool] = True,
                                  hparam_start_index: Optional[bool] = None,
                                  hparam_end_index: Optional[bool] = None,
-                                 rng_seed: Optional[int] = None),
-                                 caputre_trace: Optional[bool] = False:
+                                 rng_seed: Optional[int] = None,
+                                 capture_trace: Optional[bool] = False,
+                                 skip_evals: Optional[bool] = False):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -647,7 +652,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      profiler,
                                      max_global_steps,
                                      tuning_dir_name,
-                                     save_checkpoints=save_checkpoints,)
+                                     save_checkpoints=save_checkpoints,
+                                     skip_evals=skip_evals)
         if capture_trace:
           jax.profiler.stop_trace()
       all_timings[hi] = timing
@@ -756,7 +762,8 @@ def main(_):
       hparam_start_index=FLAGS.hparam_start_index,
       hparam_end_index=FLAGS.hparam_end_index,
       rng_seed=FLAGS.rng_seed,
-      capture_trace=FLAGS.capture_jax_trace)
+      capture_trace=FLAGS.capture_jax_trace,
+      skip_evals=FLAGS.skip_evals,)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
