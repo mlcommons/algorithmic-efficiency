@@ -778,20 +778,18 @@ def download_finewebedu(data_dir,
   else:
     tokenized_dataset = hf_datasets.load_from_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
 
-  tokenized_dataset.to_tf_dataset()
-  # Split in train and valid.
-  print(type(tokenized_dataset))
-  dataset_split_dict = tokenized_dataset.train_test_split(test_size=0.1, seed=42)
-  train_dataset = dataset_split_dict['train']
-  val_dataset = dataset_split_dict['test']
-  print(type(train_dataset))
-
   # Convert to tensorflow_datasets.Dataset objects
-  train_dataset = train_dataset.to_tf_dataset()
-  val_dataset = train_dataset.to_tf_dataset()
+  tokenized_dataset = tokenized_dataset.to_tf_dataset()
 
-  # Save datasets
-  train_dataset.Save(os.path.join(data_dir, "train"))
+  # Shuffle dataset
+  dataset_size = tokenized_dataset.cardinality().numpy()
+  shuffled_dataset = tokenized_dataset.shuffle(dataset_size, seed=0)
+  train_size = int(0.9 * dataset_size)
+  train_dataset = shuffled_dataset.take(train_size)
+  val_dataset = shuffled_dataset.skip(train_size)
+
+  # Split in train and valid.
+  train_dataset.save(os.path.join(data_dir, "train"))
   val_dataset.save(os.path.join(data_dir, "val"))
 
   return 
