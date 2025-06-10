@@ -70,7 +70,7 @@ version_file = "algoperf/_version.py"
 [project.optional-dependencies]
 # All workloads
 full = [
-  "algoperf[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]",
+  "algoperf[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt,lm]",
 ]
 # All workloads plus development dependencies
 full_dev = ["algoperf[full,dev]"]
@@ -95,6 +95,7 @@ librispeech_conformer = [
   "pydub==0.25.1",
 ]
 wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.18.0"]
+lm = ["transformers==4.25.4", "datasets==3.6.0"]
 
 # Frameworks
 jax_core_deps = [
@@ -105,15 +106,11 @@ jax_core_deps = [
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.4.28",
-  "jaxlib==0.4.28",
+  "jax",
   "algoperf[jax_core_deps]",
 ]
 jax_gpu = [
-  "jax==0.4.28",
-  "jaxlib==0.4.28",
-  "jax-cuda12-plugin[with_cuda]==0.4.28",
-  "jax-cuda12-pjrt==0.4.28",
+  "jax[cuda12]",
   "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]

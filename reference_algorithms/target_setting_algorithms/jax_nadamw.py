@@ -168,4 +168,4 @@ def init_optimizer_state(workload: spec.Workload,
       weight_decay=hyperparameters.weight_decay)
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn

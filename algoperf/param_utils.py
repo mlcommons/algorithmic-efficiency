@@ -43,6 +43,8 @@ def pytorch_param_types(
         param_types[name] = spec.ParameterType.ATTENTION_BIAS
       elif 'in_proj' in name:
         param_types[name] = spec.ParameterType.ATTENTION_QKV
+      elif 'qkv' in name:
+        param_types[name] = spec.ParameterType.ATTENTION_QKV
       elif 'kv_proj' in name:
         param_types[name] = spec.ParameterType.ATTENTION_KV
       elif 'k_proj' in name or 'key' in name:

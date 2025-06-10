@@ -283,8 +283,7 @@ def ref_stats(output, refs):
       closest_diff = diff
       closest_len = reflen
     elif diff == closest_diff:
-      if reflen < closest_len:
-        closest_len = reflen
+      closest_len = min(reflen, closest_len)
 
     ngrams_ref = extract_ngrams(ref)
     for ngram in ngrams_ref:

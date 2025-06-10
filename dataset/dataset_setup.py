@@ -56,7 +56,7 @@ allowed open at once using `ulimit -n 8192`.
 
 Example command:
 
-python3 datasets/dataset_setup.py \
+python3 dataset/dataset_setup.py \
   --data_dir=~/data \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
@@ -74,15 +74,20 @@ from torchvision.datasets import CIFAR10
 from algoperf.workloads.wmt import tokenizer
 from algoperf.workloads.wmt.input_pipeline import \
     normalize_feature_names
-from datasets import librispeech_preprocess
-from datasets import librispeech_tokenizer
+from dataset import librispeech_preprocess
+from dataset import librispeech_tokenizer
+
+import datasets as hf_datasets
+from transformers import AutoTokenizer
 
 import functools
+import itertools
 import os
 import shutil
 import subprocess
 import tarfile
 
+from typing import Dict, List, Any
 from absl import app
 from absl import flags
 from absl import logging
@@ -120,6 +125,9 @@ flags.DEFINE_boolean('cifar',
 flags.DEFINE_boolean('fastmri',
                      False,
                      'If --all=false, whether or not to download FastMRI.')
+flags.DEFINE_boolean('finewebedu',
+                     False,
+                     'If --all=false, whether or not to download FineWebEdu.')
 flags.DEFINE_boolean('imagenet',
                      False,
                      'If --all=false, whether or not to download Imagenet.')
@@ -183,6 +191,7 @@ flags.DEFINE_integer(
 flags.DEFINE_string('framework', None, 'Can be either jax or pytorch.')
 
 flags.DEFINE_boolean('skip_download', False, 'Skips data download.')
+flags.DEFINE_boolean('skip_tokenization', False, 'Skip Fineweb-edu tokenization.')
 
 FLAGS = flags.FLAGS
 
@@ -699,6 +708,93 @@ def download_wmt(data_dir):
           ds, vocab_path=vocab_path, vocab_size=32000, max_corpus_chars=10**7)
 
 
+def download_finewebedu(data_dir, 
+                        tmp_dir=None, 
+                        skip_download=False,
+                        skip_tokenization=False):
+  """Download FineWebEdu-10B."""
+
+  if not skip_download: 
+    data_dir = os.path.join(data_dir, 'fineweb_edu_10B')
+    tmp_dir = tmp_dir if tmp_dir is not None else '/tmp'
+    cache_dir = os.path.join(tmp_dir,
+                            'lm') if tmp_dir is not None else os.path.expanduser(
+                                '~/.cache/huggingface/datasets')
+
+    _maybe_mkdir(data_dir)
+    _maybe_mkdir(tmp_dir)
+    _maybe_mkdir(cache_dir)
+
+    os.environ["TMPDIR"] = tmp_dir
+
+    ds = hf_datasets.load_dataset(
+        'HuggingFaceFW/fineweb-edu',
+        name='sample-10BT',
+        split='train',
+        cache_dir=cache_dir)
+    ds.save_to_disk(os.path.join(tmp_dir, 'fwedu_10B_raw'))
+  else:
+    ds = hf_datasets.load_from_disk(os.path.join(tmp_dir, 'fwedu_10B_raw'))
+
+  if not skip_tokenization:
+    # Tokenize
+    lm_tokenizer = AutoTokenizer.from_pretrained('gpt2')
+    logging.info(f"Vocab size of lm_tokenizer = {len(lm_tokenizer)}")
+
+    def tokenize(examples: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+
+      def add_eos(seq):
+        return seq + lm_tokenizer.eos_token if seq else seq
+
+      def add_eos_batched(seqs):
+        return [add_eos(seq) for seq in seqs]
+
+      return lm_tokenizer(
+          add_eos_batched(examples["text"]),
+          return_special_tokens_mask=False,
+          return_attention_mask=False)
+
+    lm_tokenizer.model_max_length = 1e30  # prevent truncation during tokenization
+    logging.info("Tokenizing...")
+    tokenized_dataset = ds.map(
+        tokenize,
+        remove_columns=[
+            'text',
+            'id',
+            'dump',
+            'url',
+            'file_path',
+            'language',
+            'language_score',
+            'token_count',
+            'score',
+            'int_score'
+        ],
+        batched=True,
+        batch_size=1024,
+        num_proc=8)
+
+    tokenized_dataset.save_to_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
+  else:
+    tokenized_dataset = hf_datasets.load_from_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
+
+  # Convert to tensorflow_datasets.Dataset objects
+  tokenized_dataset = tokenized_dataset.to_tf_dataset()
+
+  # Shuffle dataset
+  dataset_size = tokenized_dataset.cardinality().numpy()
+  shuffled_dataset = tokenized_dataset.shuffle(dataset_size, seed=0)
+  train_size = int(0.9 * dataset_size)
+  train_dataset = shuffled_dataset.take(train_size)
+  val_dataset = shuffled_dataset.skip(train_size)
+
+  # Split in train and valid.
+  train_dataset.save(os.path.join(data_dir, "train"))
+  val_dataset.save(os.path.join(data_dir, "val"))
+
+  return 
+
+
 def main(_):
   data_dir = FLAGS.data_dir
   tmp_dir = FLAGS.temp_dir
@@ -780,6 +876,10 @@ def main(_):
   if FLAGS.all or FLAGS.wmt:
     logging.info('Downloading WMT...')
     download_wmt(data_dir)
+
+  if FLAGS.all or FLAGS.finewebedu:
+    logging.info('Downloading FineWebEdu-10B...')
+    download_finewebedu(data_dir, tmp_dir, FLAGS.skip_download, FLAGS.skip_tokenization)
 
 
 # pylint: enable=logging-format-interpolation

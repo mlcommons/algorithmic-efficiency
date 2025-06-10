@@ -11,7 +11,6 @@ from absl import logging
 from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
 from flax.training.checkpoints import latest_checkpoint
-import jax
 import numpy as np
 from tensorflow.io import gfile  # pytype: disable=import-error
 import torch
@@ -193,10 +192,7 @@ def save_checkpoint(framework: str,
     train_state, eval_results, global_step, preemption_count).
   """
   if framework == 'jax':
-    model_params = jax.device_get(jax_utils.unreplicate(model_params))
     opt_state, _ = optimizer_state
-    opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
-    model_state = jax.device_get(jax_utils.unreplicate(model_state))
   else:
     if isinstance(
         model_params,
