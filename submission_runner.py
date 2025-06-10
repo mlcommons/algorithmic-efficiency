@@ -162,6 +162,9 @@ flags.DEFINE_integer(
     'Number of workers for ImageNet PyTorch evaluation data loaders.'
     'WARNING: Setting pytorch_eval_num_workers != 0, will result '
     'in incorrect evals currently, see issues/732.')
+flags.DEFINE_boolean('capture_jax_trace',
+    False,
+    'Captures jax profiler trace and writes to experiment directory.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -547,7 +550,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                  save_checkpoints: Optional[bool] = True,
                                  hparam_start_index: Optional[bool] = None,
                                  hparam_end_index: Optional[bool] = None,
-                                 rng_seed: Optional[int] = None):
+                                 rng_seed: Optional[int] = None),
+                                 caputre_trace: Optional[bool] = False:
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -627,6 +631,9 @@ def score_submission_on_workload(workload: spec.Workload,
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
+        if capture_trace:
+          jax.profiler.start_trace(log_dir),
+          logging.info('Capturing and saving jax trace to {log_dir}')
         timing, metrics = train_once(workload, workload_name,
                                      global_batch_size,
                                      global_eval_batch_size,
@@ -641,6 +648,8 @@ def score_submission_on_workload(workload: spec.Workload,
                                      max_global_steps,
                                      tuning_dir_name,
                                      save_checkpoints=save_checkpoints,)
+        if capture_trace:
+          jax.profiler.stop_trace()
       all_timings[hi] = timing
       all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
@@ -746,7 +755,8 @@ def main(_):
       save_checkpoints=FLAGS.save_checkpoints,
       hparam_start_index=FLAGS.hparam_start_index,
       hparam_end_index=FLAGS.hparam_end_index,
-      rng_seed=FLAGS.rng_seed)
+      rng_seed=FLAGS.rng_seed,
+      capture_trace=FLAGS.capture_jax_trace)
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:
