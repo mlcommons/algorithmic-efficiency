@@ -779,9 +779,11 @@ def download_finewebedu(data_dir,
     tokenized_dataset.load_from_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
 
   # Split in train and valid.
+  print(type(tokenized_dataset))
   dataset_split_dict = tokenized_dataset.train_test_split(test_size=0.1, seed=42)
   train_dataset = dataset_split_dict['train']
   val_dataset = dataset_split_dict['test']
+  print(type(train_dataset))
 
   # Convert to tensorflow_datasets.Dataset objects
   train_dataset = train_dataset.to_tf_dataset()
