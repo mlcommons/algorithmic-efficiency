@@ -776,7 +776,7 @@ def download_finewebedu(data_dir,
 
     tokenized_dataset.save_to_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
   else:
-    tokenized_dataset.load_from_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
+    tokenized_dataset = hf_datasets.load_from_disk(os.path.join(data_dir, "fwedu_10B_tokenized"))
 
   # Split in train and valid.
   print(type(tokenized_dataset))
