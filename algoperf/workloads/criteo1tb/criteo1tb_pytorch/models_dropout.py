@@ -79,6 +79,10 @@ class DLRMResNet(nn.Module):
     self.mlp_bottom_dims = mlp_bottom_dims
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
+    if dropout_rate is None:
+      self.dropout_rate = 0.0
+    else:
+      self.dropout_rate = dropout_rate
 
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
@@ -127,17 +131,16 @@ class DLRMResNet(nn.Module):
       block.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         block.append(nn.ReLU(inplace=True))
-      if (dropout_rate is not None and dropout_rate > 0.0 and
-          layer_idx == num_layers_top - 2):
-        block.append(CustomDropout())  # (nico)
-      block = SequentialWithDropout(*block)  # (nico)
+      if layer_idx == num_layers_top - 2:
+        block.append(CustomDropout())
+      block = SequentialWithDropout(*block)
       if (layer_idx != 0) and (layer_idx != num_layers_top - 1):
         block = DenseBlockWithDropout(block, resnet=True)
       else:
         block = DenseBlockWithDropout(block)
       mlp_top_blocks.append(block)
       fan_in = fan_out
-    self.top_mlp = SequentialWithDropout(*mlp_top_blocks)  # (nico)
+    self.top_mlp = SequentialWithDropout(*mlp_top_blocks)
 
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):
@@ -149,7 +152,10 @@ class DLRMResNet(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x, dropout_rate):
+  def forward(self, x, dropout_rate=None):
+    if dropout_rate is None:
+      dropout_rate = self.dropout_rate
+
     batch_size = x.shape[0]
 
     dense_features, sparse_features = torch.split(
@@ -201,6 +207,11 @@ class DlrmSmall(nn.Module):
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
     self.embedding_init_multiplier = embedding_init_multiplier
+    self.dropout_rate = dropout_rate
+    if dropout_rate is None:
+      self.dropout_rate = 0.0
+    else:
+      self.dropout_rate = dropout_rate
 
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
@@ -253,10 +264,9 @@ class DlrmSmall(nn.Module):
         top_mlp_layers.append(nn.ReLU(inplace=True))
         if use_layer_norm:
           top_mlp_layers.append(nn.LayerNorm(fan_out, eps=1e-6))
-      if (dropout_rate is not None and dropout_rate > 0.0 and
-          layer_idx == num_layers_top - 2):
-        top_mlp_layers.append(CustomDropout()) # (nico)
-    self.top_mlp = SequentialWithDropout(*top_mlp_layers) # (nico)
+      if layer_idx == num_layers_top - 2:
+        top_mlp_layers.append(CustomDropout())
+    self.top_mlp = SequentialWithDropout(*top_mlp_layers)
     if use_layer_norm:
       self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
     else:
@@ -271,7 +281,10 @@ class DlrmSmall(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x, dropout_rate):
+  def forward(self, x, dropout_rate=None):
+    if dropout_rate is None:
+      dropout_rate = self.dropout_rate
+
     batch_size = x.shape[0]
 
     dense_features, sparse_features = torch.split(
