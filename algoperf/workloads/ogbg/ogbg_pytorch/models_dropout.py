@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from algoperf import init_utils
-from algoperf.workloads.dropout_modules import CustomDropout, SequentialWithDropout
+from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
 
 
 def _make_mlp(in_dim, hidden_dims, activation_fn):

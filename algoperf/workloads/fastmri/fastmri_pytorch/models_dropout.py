@@ -13,7 +13,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from algoperf import init_utils
-from algoperf.workloads.dropout_modules import CustomDropout2d, SequentialWithDropout
+from algoperf.pytorch_utils import CustomDropout2d, SequentialWithDropout
 
 
 

@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from algoperf.workloads.dropout_modules import CustomDropout, SequentialWithDropout
+from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
 
 
 class DenseBlock(nn.Module):
