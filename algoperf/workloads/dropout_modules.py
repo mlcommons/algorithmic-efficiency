@@ -31,10 +31,9 @@ class SequentialWithDropout(nn.Sequential):
     super().__init__(*args, **kwargs)
     self._supports_custom_dropout = True
 
-  def forward(self, x, p):
+  def forward(self, x: Tensor, p: float) -> Tensor:
     for module in self:
-      # if isinstance(module, (CustomDropout, SequentialWithDropout, DenseBlockWithDropout)):
-      if getattr(module, '_supports_custom_dropout', False):  # TODO (nico): improve
+      if getattr(module, '_supports_custom_dropout', False):
         x = module(x, p)
       else:
         x = module(x) 
