@@ -112,14 +112,15 @@ class Transformer(nn.Module):
                pre_ln: bool = True):
     super().__init__()
     if dropout_rate is None:
-      dropout_rate = 0.1
-    self.pos_encoder = PositionalEncoding(d_model, dropout_rate)
+      self.dropout_rate = 0.1
+    else:
+      self.dropout_rate = dropout_rate
+    self.pos_encoder = PositionalEncoding(d_model)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
     self.encoder = Encoder(d_model,
                            nhead,
                            d_hid,
                            nlayers,
-                           dropout_rate,
                            activation,
                            glu,
                            layer_norm_eps,
@@ -129,7 +130,6 @@ class Transformer(nn.Module):
                            nhead,
                            d_hid,
                            nlayers,
-                           dropout_rate,
                            activation,
                            glu,
                            layer_norm_eps,
@@ -158,7 +158,8 @@ class Transformer(nn.Module):
               targets_positions: Optional[Tensor] = None,
               inputs_segmentation: Optional[Tensor] = None,
               targets_segmentation: Optional[Tensor] = None,
-              decode: bool = False) -> Tensor:
+              decode: bool = False,
+              dropout_rate: Optional[float] = None) -> Tensor:
     """
     Args:
       src: Tensor, shape [batch_size, seq_len]
@@ -168,16 +169,22 @@ class Transformer(nn.Module):
       inputs_segmentation: Optional[Tensor], shape [batch_size, seq_len]
       targets_segmentation: Optional[Tensor], shape [batch_size, seq_len]
       decode: bool
+      dropout_rate: Optional[float]
 
     Returns:
       output Tensor of shape [batch_size, seq_len, ntoken]
     """
     if src.size(0) != tgt.size(0):
       raise RuntimeError('The batch size of src and tgt must be equal.')
+
+    if dropout_rate is None:
+      dropout_rate = self.dropout_rate
+
     memory = self.encoder(
         src,
         inputs_positions=inputs_positions,
-        inputs_segmentation=inputs_segmentation)
+        inputs_segmentation=inputs_segmentation,
+        dropout_rate=dropout_rate)
     output = self.decoder(
         tgt,
         memory,
@@ -185,7 +192,8 @@ class Transformer(nn.Module):
         targets_positions=targets_positions,
         inputs_segmentation=inputs_segmentation,
         targets_segmentation=targets_segmentation,
-        decode=decode)
+        decode=decode,
+        dropout_rate=dropout_rate)
     return output
 
 
@@ -224,12 +232,15 @@ class TransformerEncoder(nn.Module):
     self.enable_nested_tensor = enable_nested_tensor
     self.mask_check = mask_check
 
-  def forward(self, src: Tensor, mask: Optional[Tensor] = None) -> Tensor:
+  def forward(self, src: Tensor, 
+              mask: Optional[Tensor] = None,
+              dropout_rate: Optional[float] = None) -> Tensor:
     """Pass the input through the encoder layers in turn.
 
     Args:
         src: the sequence to the encoder (required).
         mask: the mask for the src sequence (optional).
+        dropout_rate: the dropout probability (optional)
 
     Shape:
         see the docs in Transformer class.
@@ -238,7 +249,7 @@ class TransformerEncoder(nn.Module):
     convert_to_nested = False
 
     for mod in self.layers:
-      output = mod(output, src_mask=mask)
+      output = mod(output, src_mask=mask, dropout_rate=dropout_rate)
 
     if convert_to_nested:
       output = output.to_padded_tensor(0.)
@@ -256,7 +267,6 @@ class Encoder(nn.Module):
                nhead: int = 16,
                d_hid: int = 1024,
                nlayers: int = 6,
-               dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
@@ -270,7 +280,6 @@ class Encoder(nn.Module):
         d_model,
         nhead,
         d_hid,
-        dropout_rate,
         activation=activation,
         glu=glu,
         layer_norm_eps=layer_norm_eps,
@@ -283,12 +292,13 @@ class Encoder(nn.Module):
   def forward(self,
               src: Tensor,
               inputs_positions: Optional[Tensor] = None,
-              inputs_segmentation: Optional[Tensor] = None) -> Tensor:
+              inputs_segmentation: Optional[Tensor] = None,
+              dropout_rate: Optional[float] = None) -> Tensor:
     src = src.to(torch.int)
     src_mask = make_src_mask(src, inputs_segmentation, self.nhead)
     src = self.shared_embedding(src)
-    src = self.pos_encoder(src, inputs_positions)
-    memory = self.encoder(src, mask=src_mask)
+    src = self.pos_encoder(src, inputs_positions, dropout_rate=dropout_rate)
+    memory = self.encoder(src, mask=src_mask, dropout_rate=dropout_rate)
     return memory
 
 
@@ -299,7 +309,6 @@ class Decoder(nn.Module):
                nhead: int = 16,
                d_hid: int = 1024,
                nlayers: int = 6,
-               dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
@@ -312,7 +321,6 @@ class Decoder(nn.Module):
     self.decoder = TransformerDecoder(d_model,
                                       nhead,
                                       d_hid,
-                                      dropout_rate,
                                       activation,
                                       glu,
                                       layer_norm_eps,
@@ -330,7 +338,8 @@ class Decoder(nn.Module):
       targets_segmentation: Optional[Tensor] = None,
       decode: bool = False,
       max_len: Optional[int] = None,
-      cache: Optional[dict] = None) -> Any:
+      cache: Optional[dict] = None,
+      dropout_rate: Optional[float] = None) -> Any:
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
         tgt, src, inputs_segmentation, targets_segmentation,
@@ -338,7 +347,7 @@ class Decoder(nn.Module):
     if not decode:
       tgt = shift_right(tgt)
     tgt = self.shared_embedding(tgt)
-    tgt = self.pos_encoder(tgt, targets_positions, decode=decode, cache=cache)
+    tgt = self.pos_encoder(tgt, targets_positions, decode=decode, cache=cache, dropout_rate=dropout_rate)
     if decode:
       tgt, cache = tgt
     output = self.decoder(
@@ -348,7 +357,8 @@ class Decoder(nn.Module):
         memory_mask=memory_mask,
         decode=decode,
         max_len=max_len,
-        cache=cache)
+        cache=cache,
+        dropout_rate=dropout_rate)
     if decode:
       output, cache = output
     normalize = math.sqrt(output.shape[-1])
@@ -362,10 +372,8 @@ class PositionalEncoding(nn.Module):
 
   def __init__(self,
                d_model: int,
-               dropout_rate: float = 0.1,
                max_len: int = 256):
     super().__init__()
-    self.dropout = nn.Dropout(p=dropout_rate)
 
     position = torch.arange(max_len).unsqueeze(1)
     scale_factor = -math.log(10000.0) / (d_model // 2 - 1)
@@ -380,7 +388,8 @@ class PositionalEncoding(nn.Module):
       x: Tensor,
       inputs_positions: Optional[Tensor] = None,
       decode: bool = False,
-      cache: Optional[Dict[str, Dict[str, Tensor]]] = None
+      cache: Optional[Dict[str, Dict[str, Tensor]]] = None,
+      dropout_rate: Optional[float] = None
   ) -> Union[Tensor, Tuple[Tensor, Dict[str, Dict[str, Tensor]]]]:
     """
     Args:
@@ -403,14 +412,14 @@ class PositionalEncoding(nn.Module):
         }
       pe = self.pe[0, cache[name]['cache_index'], :]
       cache[name]['cache_index'] += 1
-      return self.dropout(x + pe), cache
+      return F.dropout(x + pe, dropout_rate, self.training), cache
     if inputs_positions is None:
       # normal unpacked case:
       pe = self.pe[:, :x.size(1), :]
     else:
       # for packed data we need to use known position indices:
       pe = self.pe[0, inputs_positions, :]
-    return self.dropout(x + pe)
+    return F.dropout(x + pe, dropout_rate, self.training)
 
 
 # TransformerEncoderLayer and TransformerDecoderLayer are taken from:
@@ -448,7 +457,6 @@ class TransformerEncoderLayer(nn.Module):
                d_model: int = 1024,
                nhead: int = 16,
                dim_feedforward: int = 1024,
-               dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
@@ -462,7 +470,6 @@ class TransformerEncoderLayer(nn.Module):
         d_model,
         nhead,
         self_attn=True,
-        dropout_rate=dropout_rate,
         attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
@@ -472,50 +479,55 @@ class TransformerEncoderLayer(nn.Module):
     self.glu = glu
     if self.glu:
       self.linear_glu = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
-    self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
     self.pre_ln = pre_ln
     self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.dropout1 = nn.Dropout(dropout_rate)
-    self.dropout2 = nn.Dropout(dropout_rate)
 
     self.activation = activation
 
-  def forward(self, src: Tensor, src_mask: Optional[Tensor] = None) -> Tensor:
+  def forward(self, 
+              src: Tensor, 
+              src_mask: Optional[Tensor] = None, 
+              dropout_rate: Optional[float] = None) -> Tensor:
     r"""Pass the input through the encoder layer.
 
     Args:
         src: the sequence to the encoder layer (required).
         src_mask: the mask for the src sequence (optional).
-
+        dropout_rate: the dropout probability value (optional).
     Shape:
         see the docs in Transformer class.
     """
     x = src
     if self.pre_ln:
-      x = x + self._sa_block(self.norm1(x), src_mask)
-      x = x + self._ff_block(self.norm2(x))
+      x = x + self._sa_block(self.norm1(x), src_mask, dropout_rate)
+      x = x + self._ff_block(self.norm2(x), dropout_rate)
     else:
-      x = self.norm1(x + self._sa_block(x, src_mask))
-      x = self.norm2(x + self._ff_block(x))
+      x = self.norm1(x + self._sa_block(x, src_mask, dropout_rate))
+      x = self.norm2(x + self._ff_block(x, dropout_rate))
 
     return x
 
   # Self-attention block:
-  def _sa_block(self, x: Tensor, attn_mask: Optional[Tensor]) -> Tensor:
-    x, _ = self.self_attn(x, attn_mask=attn_mask)
-    return self.dropout1(x)
+  def _sa_block(self, 
+                x: Tensor, 
+                attn_mask: Optional[Tensor], 
+                dropout_rate: Optional[float] = None) -> Tensor:
+    x, _ = self.self_attn(x, attn_mask=attn_mask, dropout_rate=dropout_rate)
+    return F.dropout(x, dropout_rate, training=self.training)
 
   # Feed forward block:
-  def _ff_block(self, inputs: Tensor) -> Tensor:
+  def _ff_block(self, 
+                inputs: Tensor, 
+                dropout_rate: Optional[float] = None) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
       y = self.linear_glu(inputs)
       x = x * y
-    x = self.linear2(self.dropout(x))
-    return self.dropout2(x)
+    x = self.linear2(F.dropout(x, dropout_rate, training=self.training))
+    return F.dropout(x, dropout_rate, training=self.training)
 
 
 # Modified to use cache for autoregressive decoding and custom
@@ -527,7 +539,6 @@ class TransformerDecoder(nn.Module):
     nhead: the number of heads in the multiheadattention models (default=16)
     d_hid: the dimension of the feedforward network model
         (default=1024)
-    dropout_rate: the dropout_rate value (default=0.1)
     layer_norm_eps: the eps value in layer normalization components
         (default=1e-6).
     decoder_layer: an instance of the TransformerDecoderLayer() class
@@ -545,7 +556,6 @@ class TransformerDecoder(nn.Module):
                d_model,
                nhead,
                d_hid,
-               dropout_rate,
                activation,
                glu,
                layer_norm_eps,
@@ -558,7 +568,6 @@ class TransformerDecoder(nn.Module):
             d_model,
             nhead,
             d_hid,
-            dropout_rate,
             activation,
             glu,
             layer_norm_eps=layer_norm_eps,
@@ -575,7 +584,8 @@ class TransformerDecoder(nn.Module):
               memory_mask: Optional[Tensor] = None,
               decode: bool = False,
               max_len: Optional[int] = None,
-              cache: Optional[dict] = None) -> Any:
+              cache: Optional[dict] = None,
+              dropout_rate: Optional[float] = None) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer in turn.
     Args:
       tgt: the sequence to the decoder (required).
@@ -584,6 +594,7 @@ class TransformerDecoder(nn.Module):
       memory_mask: the mask for the memory sequence (optional).
       decode: whether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
+      dropout_rate: the dropout probability value (optional)
     Shape:
       see the docs in Transformer class.
     """
@@ -598,7 +609,8 @@ class TransformerDecoder(nn.Module):
           decode=decode,
           max_len=max_len,
           cache=cache,
-          index=idx)
+          index=idx,
+          dropout_rate=dropout_rate)
 
     if self.norm is not None:
       output = self.norm(output)
@@ -624,7 +636,6 @@ class TransformerDecoderLayer(nn.Module):
     nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
         (default=1024).
-    dropout_rate: the dropout_rate value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
         string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
@@ -644,7 +655,6 @@ class TransformerDecoderLayer(nn.Module):
                d_model: int = 1024,
                nhead: int = 16,
                dim_feedforward: int = 1024,
-               dropout_rate: float = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
@@ -658,7 +668,6 @@ class TransformerDecoderLayer(nn.Module):
         d_model,
         nhead,
         self_attn=True,
-        dropout_rate=dropout_rate,
         attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
@@ -666,7 +675,6 @@ class TransformerDecoderLayer(nn.Module):
         d_model,
         nhead,
         self_attn=False,
-        dropout_rate=dropout_rate,
         attention_temp=attention_temp,
         bias=False,
         **factory_kwargs)
@@ -678,16 +686,12 @@ class TransformerDecoderLayer(nn.Module):
       self.linear_glu = nn.Linear(dim_feedforward,
                                   dim_feedforward,
                                   **factory_kwargs)
-    self.dropout = nn.Dropout(dropout_rate)
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
     self.pre_ln = pre_ln
     self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
     self.norm3 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-    self.dropout1 = nn.Dropout(dropout_rate)
-    self.dropout2 = nn.Dropout(dropout_rate)
-    self.dropout3 = nn.Dropout(dropout_rate)
 
     self.activation = activation
 
@@ -700,7 +704,8 @@ class TransformerDecoderLayer(nn.Module):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      index: Optional[int] = None) -> Any:
+      index: Optional[int] = None,
+      dropout_rate: Optional[float] = None) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -709,6 +714,7 @@ class TransformerDecoderLayer(nn.Module):
       memory_mask: the mask for the memory sequence (optional).
       decode: wether to use cache for autoregressive decoding or not.
       max_len: maximum sequence length, necessary for decoding cache.
+      dropout_rate: the dropout probability value (optional)
     Shape:
       see the docs in Transformer class.
     """
@@ -722,10 +728,11 @@ class TransformerDecoderLayer(nn.Module):
           decode=decode,
           max_len=max_len,
           cache=cache,
-          index=index)
+          index=index,
+          dropout_rate=dropout_rate)
       x = x + sa_out
-      x = x + self._mha_block(self.norm2(x), memory, memory_mask)
-      x = x + self._ff_block(self.norm3(x))
+      x = x + self._mha_block(self.norm2(x), memory, memory_mask, dropout_rate)
+      x = x + self._ff_block(self.norm3(x), dropout_rate)
     else:
       sa_out, cache = self._sa_block(
           x,
@@ -733,10 +740,11 @@ class TransformerDecoderLayer(nn.Module):
           decode=decode,
           max_len=max_len,
           cache=cache,
-          index=index)
+          index=index,
+          dropout_rate=dropout_rate)
       x = self.norm1(x + sa_out)
-      x = self.norm2(x + self._mha_block(x, memory, memory_mask))
-      x = self.norm3(x + self._ff_block(x))
+      x = self.norm2(x + self._mha_block(x, memory, memory_mask, dropout_rate))
+      x = self.norm3(x + self._ff_block(x, dropout_rate))
 
     return x, cache
 
@@ -748,30 +756,38 @@ class TransformerDecoderLayer(nn.Module):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      index: Optional[int] = None) -> Any:
+      index: Optional[int] = None,
+      dropout_rate: Optional[float] = None) -> Any:
     x, cache = self.self_attn(
         x,
         attn_mask=attn_mask,
         decode=decode,
         max_len=max_len,
         cache=cache,
-        index=index)
-    return self.dropout1(x), cache
+        index=index,
+        dropout_rate=dropout_rate)
+    return F.dropout(x, dropout_rate, self.training), cache
 
   # Multihead attention block:
   def _mha_block(self, x: Tensor, mem: Tensor,
-                 attn_mask: Optional[Tensor]) -> Tensor:
-    x, _ = self.multihead_attn(x, mem, attn_mask=attn_mask)
-    return self.dropout2(x)
+                 attn_mask: Optional[Tensor],
+                 dropout_rate: Optional[float] = None) -> Tensor:
+    x, _ = self.multihead_attn(
+        x, 
+        mem, 
+        attn_mask=attn_mask, 
+        dropout_rate=dropout_rate)
+    return F.dropout(x, dropout_rate, self.training)
 
   # Feed forward block.
-  def _ff_block(self, inputs: Tensor) -> Tensor:
+  def _ff_block(self, inputs: Tensor,
+                dropout_rate: Optional[float] = None) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
       y = self.linear_glu(inputs)
       x = x * y
-    x = self.linear2(self.dropout(x))
-    return self.dropout3(x)
+    x = self.linear2(F.dropout(x, dropout_rate, self.training))
+    return F.dropout(x, dropout_rate, self.training)
 
 
 class MultiheadAttention(nn.Module):
@@ -789,8 +805,6 @@ class MultiheadAttention(nn.Module):
         ``embed_dim // num_heads``).
     self_attn: Whether self attention or encoder-decoder attention is used.
         Default: ``True``.
-    dropout_rate: Dropout probability on ``attn_output_weights``.
-        Default: ``0.0`` (no dropout_rate).
     bias: If specified, adds bias to input / output projection layers.
        Default: ``False``.
     device: The device of the module.
@@ -804,7 +818,6 @@ class MultiheadAttention(nn.Module):
                embed_dim: int,
                num_heads: int,
                self_attn: bool = True,
-               dropout_rate: float = 0.,
                attention_temp: float = 1.0,
                bias: bool = False,
                device: Optional[torch.device] = None,
@@ -813,7 +826,6 @@ class MultiheadAttention(nn.Module):
     self.embed_dim = embed_dim
     self.num_heads = num_heads
     self.self_attn = self_attn
-    self.dropout = dropout_rate
     self.head_dim = embed_dim // num_heads
     self.attention_temp = attention_temp
     assert self.head_dim * num_heads == self.embed_dim, \
@@ -848,7 +860,8 @@ class MultiheadAttention(nn.Module):
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
-              index: Optional[int] = None) -> Any:
+              index: Optional[int] = None,
+              dropout_rate: Optional[float] = None) -> Any:
     r"""
     Args:
       x: Batch of input sequences of shape
@@ -874,6 +887,7 @@ class MultiheadAttention(nn.Module):
       max_len: maximum sequence length, necessary for decoding cache.
       cache: cache dictionary for autoregressive decoding.
       index: index of the current decoding step, necessary for decoding cache.
+      dropout_rate: dropout probability on ``attn_output_weights``.
     Outputs:
       - **attn_output** - Attention outputs of shape :math:`(N, L, E)`, where
         :math:`L` is the target sequence length, :math:`N` is the batch size,
@@ -963,12 +977,12 @@ class MultiheadAttention(nn.Module):
       attn_mask = new_attn_mask
 
     # Adjust dropout_rate probability.
-    dropout_rate = self.dropout if self.training else 0.0
+    attn_dropout_rate = dropout_rate if self.training else 0.0
 
     # Calculate attention.
     q = self.attention_temp * q
     attn_output = torch.nn.functional.scaled_dot_product_attention(
-        q, k, v, attn_mask, dropout_rate)
+        q, k, v, attn_mask, attn_dropout_rate)
     # Rearrange for output projection.
     attn_output = attn_output.transpose(1, 2).contiguous().view(
         bsz, tgt_len, embed_dim)
