@@ -139,10 +139,7 @@ class OgbgWorkload(BaseOgbgWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """aux_dropout_rate is unused."""
-    del aux_dropout_rate
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = GNN(
         num_outputs=self._num_outputs,

@@ -68,10 +68,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """Only dropout is used."""
-    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False

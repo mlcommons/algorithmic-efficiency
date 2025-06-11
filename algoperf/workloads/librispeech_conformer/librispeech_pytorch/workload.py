@@ -64,13 +64,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Conformer model init function.
-
-    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
-    input_dropout_rate.
-    """
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    """Conformer model init function."""
     torch.random.manual_seed(rng[0])
     # Configure torch backends to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
@@ -86,7 +81,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             attention_residual_dropout_rate=dropout_rate,
             feed_forward_residual_dropout_rate=dropout_rate,
             conv_residual_dropout_rate=dropout_rate,
-            input_dropout_rate=aux_dropout_rate,
+            input_dropout_rate=dropout_rate,
             use_specaug=self.use_specaug,
             attention_temperature=self.attention_temperature,
             use_post_layer_norm=self.use_post_layer_norm,

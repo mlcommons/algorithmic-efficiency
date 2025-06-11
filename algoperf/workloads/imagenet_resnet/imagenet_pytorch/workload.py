@@ -157,11 +157,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     """Dropout is unused."""
     del dropout_rate
-    del aux_dropout_rate
     torch.random.manual_seed(rng[0])
 
     if self.use_silu and self.use_gelu:

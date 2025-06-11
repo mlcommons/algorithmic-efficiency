@@ -108,9 +108,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    del aux_dropout_rate
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = UNet(
         num_pool_layers=self.num_pool_layers,

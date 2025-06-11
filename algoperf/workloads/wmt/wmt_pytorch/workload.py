@@ -168,9 +168,7 @@ class WmtWorkload(BaseWmtWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """aux_dropout_rate is used as attention_dropout_rate."""
+      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
 
     if self.activation == 'relu':
@@ -182,7 +180,7 @@ class WmtWorkload(BaseWmtWorkload):
 
     model = Transformer(
         dropout_rate=dropout_rate,
-        attention_dropout_rate=aux_dropout_rate,
+        attention_dropout_rate=dropout_rate,
         pre_ln=self.pre_ln,
         attention_temp=self.attention_temp,
         activation=activation,
