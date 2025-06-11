@@ -15,9 +15,7 @@ def init_optimizer_state(workload: spec.Workload,
                          hyperparameters: spec.Hyperparameters,
                          rng: spec.RandomState) -> spec.OptimizerState:
   """Creates a Nesterov optimizer and a learning rate schedule.
-    Returns:
-     optimizer state
-     optimizer_update_fn
+    Returns: spec.OptimizerState initialized optimizer state
     """
   pass
 
@@ -37,9 +35,9 @@ def update_params(
     train_state: Optional[Dict[str, Any]] = None) -> spec.UpdateReturn:
   """
     Returns:
-     (new_optimizer_state, update_fn)
-     new_params
-     new_model_state
+     spec.OptimizerState: new optimizer state
+     spec.ParameterTypeTree: new params
+     new_model_state: new model state
     """
   pass
 
