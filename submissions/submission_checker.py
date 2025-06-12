@@ -24,6 +24,8 @@ It is also expected that submission.py has the following APIs:
 - get_batch_size
 - data_selection
 
+A self_tuning submission may optionally include a 
+`fixed_hyperparameters.json` file in the same directory as `submission.py`.
 """
 
 import argparse
