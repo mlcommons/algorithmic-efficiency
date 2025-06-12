@@ -23,7 +23,6 @@ BATCH, DENSE, SPARSE = 16, 13, 26
 FEATURES = DENSE + SPARSE
 VOCAB = 1000
 DEVICE = 'cuda'
-TORCH_COMPILE = False
 SEED = 1996
 
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
@@ -49,16 +48,11 @@ class ModelEquivalenceTest(parameterized.TestCase):
         )
 
         torch.manual_seed(SEED)
-        orig = OrigCls(vocab_size=VOCAB, dropout_rate=dropout_rate)
-        orig.to(DEVICE)
+        orig = OrigCls(vocab_size=VOCAB, dropout_rate=dropout_rate).to(DEVICE)
 
         torch.manual_seed(SEED)
-        cust = CustCls(vocab_size=VOCAB)
-        cust.to(DEVICE)
+        cust = CustCls(vocab_size=VOCAB).to(DEVICE)
 
-        if TORCH_COMPILE:
-          orig = torch.compile(orig); cust = torch.compile(cust)
-        
         x = torch.randn(BATCH, FEATURES, device=DEVICE)
 
         for mode in ('train', 'eval'):
@@ -75,6 +69,29 @@ class ModelEquivalenceTest(parameterized.TestCase):
 
             assert_close(y1, y2, atol=0, rtol=0)
 
+    @parameterized.named_parameters(
+    dict(testcase_name='DLRMResNet, default', model='dlrm_resnet'),
+    dict(testcase_name='DlrmSmall, default', model='dlrm_small'),
+    )
+    def test_default_dropout(self, model):
+        """Test default dropout_rate."""
+        OrigCls, CustCls = (
+            (OriginalDLRMResNet, CustomDLRMResNet)
+            if model == 'dlrm_resnet'
+            else (OriginalDlrmSmall, CustomDlrmSmall)
+        )
+
+        torch.manual_seed(SEED)
+        orig = OrigCls(vocab_size=VOCAB).to(DEVICE)
+        torch.manual_seed(SEED)
+        cust = CustCls(vocab_size=VOCAB).to(DEVICE)
+
+        x = torch.randn(BATCH, FEATURES, device=DEVICE)
+        for mode in ('train', 'eval'):
+            getattr(orig, mode)(); getattr(cust, mode)()
+            torch.manual_seed(0); y1 = orig(x)
+            torch.manual_seed(0); y2 = cust(x)
+            assert_close(y1, y2, atol=0, rtol=0)
 
 if __name__ == '__main__':
     absltest.main()
