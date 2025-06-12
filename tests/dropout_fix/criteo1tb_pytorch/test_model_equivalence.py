@@ -62,7 +62,9 @@ class ModelEquivalenceTest(parameterized.TestCase):
         x = torch.randn(BATCH, FEATURES, device=DEVICE)
 
         for mode in ('train', 'eval'):
-            getattr(orig, mode)(); getattr(cust, mode)()
+            getattr(orig, mode)()
+            getattr(cust, mode)()
+
             torch.manual_seed(SEED)
             y1 = orig(x)
             torch.manual_seed(SEED)
@@ -70,6 +72,7 @@ class ModelEquivalenceTest(parameterized.TestCase):
                 y2 = cust(x, dropout_rate)
             else:
                 y2 = cust(x)
+
             assert_close(y1, y2, atol=0, rtol=0)
 
 
