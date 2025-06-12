@@ -15,6 +15,7 @@ from torch.nn import functional as F
 from algoperf import init_utils
 from algoperf.pytorch_utils import CustomDropout2d, SequentialWithDropout
 
+DEFAULT_DROPOUT_RATE = 0.0
 
 
 class UNet(nn.Module):
@@ -29,7 +30,6 @@ class UNet(nn.Module):
                out_chans: int = 1,
                num_channels: int = 32,
                num_pool_layers: int = 4,
-               dropout_rate: Optional[float] = 0.0,
                use_tanh: bool = False,
                use_layer_norm: bool = False) -> None:
     super().__init__()
@@ -38,10 +38,6 @@ class UNet(nn.Module):
     self.out_chans = out_chans
     self.num_channels = num_channels
     self.num_pool_layers = num_pool_layers
-    if dropout_rate is None:
-      self.dropout_rate = 0.0
-    else:
-      self.dropout_rate = dropout_rate
 
     self.down_sample_layers = nn.ModuleList([
         ConvBlock(in_chans,
@@ -78,9 +74,7 @@ class UNet(nn.Module):
       if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         init_utils.pytorch_default_init(m)
 
-  def forward(self, x: Tensor, dropout_rate: Optional[float] = None) -> Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x: Tensor, dropout_rate: Optional[float] = DEFAULT_DROPOUT_RATE) -> Tensor:
 
     stack = []
     output = x
@@ -145,7 +139,7 @@ class ConvBlock(nn.Module):
         CustomDropout2d(),
     )
 
-  def forward(self, x: Tensor, dropout_rate: Optional[float] = None) -> Tensor:
+  def forward(self, x: Tensor, dropout_rate: float) -> Tensor:
     return self.conv_layers(x, dropout_rate)
 
 

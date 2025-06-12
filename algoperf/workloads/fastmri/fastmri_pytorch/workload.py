@@ -107,15 +107,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = UNet(
         num_pool_layers=self.num_pool_layers,
         num_channels=self.num_channels,
         use_tanh=self.use_tanh,
-        use_layer_norm=self.use_layer_norm,
-        dropout_rate=dropout_rate)
+        use_layer_norm=self.use_layer_norm)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)

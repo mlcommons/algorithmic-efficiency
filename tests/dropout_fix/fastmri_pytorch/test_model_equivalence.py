@@ -33,36 +33,32 @@ class FastMRIModeEquivalenceTest(parameterized.TestCase):
             torch.manual_seed(0)
             y1 = orig(x)
             torch.manual_seed(0)
-            y2 = cust(x, dropout_rate)
+            if mode == 'train': 
+                y2 = cust(x, dropout_rate)
+            else:
+                y2 = cust(x)
             assert_close(y1, y2, atol=0, rtol=0)
 
     @parameterized.named_parameters(
-        dict(testcase_name='p=None', dropout_rate=None),
         dict(testcase_name='p=0.0', dropout_rate=0.0),
         dict(testcase_name='p=0.1', dropout_rate=0.1),
+        dict(testcase_name='p=0.7', dropout_rate=0.7),
         dict(testcase_name='p=1.0', dropout_rate=1.0),
     )
     def test_dropout_values(self, dropout_rate):
         """Test different values of dropout_rate."""
 
-        # Test initalizing custom model with a None dropout_rate
-        for custom_init_dropout_rate in [dropout_rate, None]:
-              
-            torch.manual_seed(SEED)
-            orig = OriginalUNet(
-              IN_CHANS, OUT_CHANS, C, LAYERS, dropout_rate=dropout_rate
-            ).to(DEVICE)
+        torch.manual_seed(SEED)
+        orig = OriginalUNet(IN_CHANS, OUT_CHANS, C, LAYERS, dropout_rate=dropout_rate).to(DEVICE)
 
-            torch.manual_seed(SEED)
-            cust = CustomUNet(
-              IN_CHANS, OUT_CHANS, C, LAYERS, dropout_rate=custom_init_dropout_rate
-            ).to(DEVICE)
+        torch.manual_seed(SEED)
+        cust = CustomUNet(IN_CHANS, OUT_CHANS, C, LAYERS).to(DEVICE)
 
-            cust.load_state_dict(orig.state_dict())  # sync weights
-            if TORCH_COMPILE:
-                orig = torch.compile(orig); cust = torch.compile(cust)
+        cust.load_state_dict(orig.state_dict())  # sync weights
+        if TORCH_COMPILE:
+            orig = torch.compile(orig); cust = torch.compile(cust)
 
-            self.fwd_pass(orig, cust, dropout_rate)
+        self.fwd_pass(orig, cust, dropout_rate)
 
 
     @parameterized.named_parameters(
@@ -71,7 +67,7 @@ class FastMRIModeEquivalenceTest(parameterized.TestCase):
         dict(testcase_name='layer_norm', use_tanh=False, use_layer_norm=True),
         dict(testcase_name='both', use_tanh=True, use_layer_norm=True),
     )
-    def test_arch_setups(self, use_tanh, use_layer_norm):
+    def test_arch_configs(self, use_tanh, use_layer_norm):
         """Test different architecture configurations, fixed dropout_rate."""
         dropout_rate = 0.1
 
