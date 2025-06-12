@@ -117,7 +117,10 @@ jax_gpu = [
   "jax-cuda12-pjrt",
   "algoperf[jax_core_deps]",
 ]
-pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]
+pytorch_cpu = [
+  "torch==2.5.1+cpu", 
+  "torchvision==0.20.1+cpu"
+]
 pytorch_gpu = [
   "torch==2.5.1",
   "torchvision==0.20.1",
