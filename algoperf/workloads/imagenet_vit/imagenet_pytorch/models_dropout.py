@@ -14,7 +14,9 @@ import torch.nn.functional as F
 
 from algoperf import init_utils
 from algoperf import spec
-from algoperf.workloads.wmt.wmt_pytorch.models import MultiheadAttention
+from algoperf.workloads.wmt.wmt_pytorch.models_dropout import MultiheadAttention
+
+DEFAULT_DROPOUT_RATE = 0.0
 
 
 def posemb_sincos_2d(patches: spec.Tensor, temperature=10_000.) -> spec.Tensor:
@@ -41,14 +43,12 @@ class MlpBlock(nn.Module):
       self,
       width: int,
       mlp_dim: Optional[int] = None,  # Defaults to 4x input dim.
-      use_glu: bool = False,
-      dropout_rate: float = 0.0) -> None:
+      use_glu: bool = False) -> None:
     super().__init__()
 
     self.width = width
     self.mlp_dim = mlp_dim or 4 * width
     self.use_glu = use_glu
-    self.dropout_rate = dropout_rate
 
     self.linear1 = nn.Linear(self.width, self.mlp_dim)
     self.act_fnc = nn.GELU(approximate='tanh')
@@ -69,9 +69,7 @@ class MlpBlock(nn.Module):
         if module.bias is not None:
           module.bias.data.normal_(std=1e-6)
 
-  def forward(self, x: spec.Tensor, dropout_rate=None) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x: spec.Tensor, dropout_rate: float) -> spec.Tensor:
 
     x = self.linear1(x)
     x = self.act_fnc(x)
@@ -90,8 +88,7 @@ class SelfAttention(nn.Module):
 
   def __init__(self,
                width: int,
-               num_heads: int = 8,
-               dropout_rate: float = 0.0) -> None:
+               num_heads: int = 8) -> None:
     super().__init__()
 
     self.width = width
@@ -102,7 +99,6 @@ class SelfAttention(nn.Module):
 
     self.head_dim = int(width / num_heads)
     self.all_head_dim = self.num_heads * self.head_dim
-    self.dropout_rate = dropout_rate
 
     self.query = nn.Linear(self.width, self.all_head_dim)
     self.key = nn.Linear(self.width, self.all_head_dim)
@@ -122,9 +118,7 @@ class SelfAttention(nn.Module):
     x = x.view(new_x_shape)
     return x.permute(0, 2, 1, 3)
 
-  def forward(self, x: spec.Tensor, dropout_rate=None) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x: spec.Tensor, dropout_rate: float) -> spec.Tensor:
 
     mixed_query_layer = self.query(x)
 
@@ -136,7 +130,7 @@ class SelfAttention(nn.Module):
     attention_scores = attention_scores / math.sqrt(self.head_dim)
 
     attention_probs = F.softmax(attention_scores, dim=-1)
-    attention_probs = F.dropout(attention_probs, dropout_rate, training=self.training)
+    attention_probs = F.dropout(attention_probs, dropout_rate, self.training)
 
     context_layer = torch.matmul(attention_probs, value_layer)
     context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
@@ -154,8 +148,7 @@ class Encoder1DBlock(nn.Module):
                mlp_dim: Optional[int] = None,
                num_heads: int = 12,
                use_glu: bool = False,
-               use_post_layer_norm: bool = False,
-               dropout_rate: float = 0.0) -> None:
+               use_post_layer_norm: bool = False) -> None:
     super().__init__()
 
     self.width = width
@@ -163,7 +156,6 @@ class Encoder1DBlock(nn.Module):
     self.num_heads = num_heads
     self.use_glu = use_glu
     self.use_post_layer_norm = use_post_layer_norm
-    self.dropout_rate = dropout_rate
 
     self.layer_norm0 = nn.LayerNorm(self.width, eps=1e-6)
     self.self_attention1 = SelfAttention(self.width, self.num_heads)
@@ -171,32 +163,29 @@ class Encoder1DBlock(nn.Module):
     self.mlp3 = MlpBlock(
         width=self.width,
         mlp_dim=self.mlp_dim,
-        use_glu=self.use_glu,
-        dropout_rate=dropout_rate)
+        use_glu=self.use_glu)
 
-  def forward(self, x: spec.Tensor, dropout_rate=None) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x: spec.Tensor, dropout_rate: float) -> spec.Tensor:
 
     if not self.use_post_layer_norm:
       y = self.layer_norm0(x)
-      y = self.self_attention1(y)
+      y = self.self_attention1(y, dropout_rate)
       y = F.dropout(y, dropout_rate, training=self.training)
       x = x + y
 
       y = self.layer_norm2(x)
-      y = self.mlp3(y)
+      y = self.mlp3(y, dropout_rate)
       y = F.dropout(y, dropout_rate, training=self.training)
       x = x + y
     else:
       y = x
-      y = self.self_attention1(y)
+      y = self.self_attention1(y, dropout_rate)
       y = F.dropout(y, dropout_rate, training=self.training)
       x = x + y
       x = self.layer_norm0(x)
 
       y = x
-      y = self.mlp3(y)
+      y = self.mlp3(y, dropout_rate)
       y = F.dropout(y, dropout_rate, training=self.training)
       x = x + y
       x = self.layer_norm2(x)
@@ -212,8 +201,7 @@ class Encoder(nn.Module):
                mlp_dim: Optional[int] = None,
                num_heads: int = 12,
                use_glu: bool = False,
-               use_post_layer_norm: bool = False,
-               dropout_rate: float = 0.0) -> None:
+               use_post_layer_norm: bool = False) -> None:
     super().__init__()
 
     self.depth = depth
@@ -228,8 +216,7 @@ class Encoder(nn.Module):
                        self.mlp_dim,
                        self.num_heads,
                        self.use_glu,
-                       self.use_post_layer_norm,
-                       dropout_rate) for _ in range(depth)
+                       self.use_post_layer_norm) for _ in range(depth)
     ])
 
     if not self.use_post_layer_norm:
@@ -237,10 +224,10 @@ class Encoder(nn.Module):
     else:
       self.encoder_norm = None
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: spec.Tensor, dropout_rate: float) -> spec.Tensor:
     # Input Encoder.
     for block in self.net:
-      x = block(x)
+      x = block(x, dropout_rate)
     if not self.use_post_layer_norm:
       return self.encoder_norm(x)
     else:
@@ -267,13 +254,13 @@ class MAPHead(nn.Module):
     self.layer_norm = nn.LayerNorm(self.width, eps=1e-6)
     self.mlp = MlpBlock(width=self.width, mlp_dim=self.mlp_dim)
 
-  def forward(self, x: spec.Tensor) -> spec.Tensor:
+  def forward(self, x: spec.Tensor, dropout_rate: float) -> spec.Tensor:
     n, _, _ = x.shape
     probe = torch.tile(self.probe, [n, 1, 1])
 
-    x = self.mha(probe, x)[0]
+    x = self.mha(probe, x, dropout_rate=dropout_rate)[0]
     y = self.layer_norm(x)
-    x = x + self.mlp(y)
+    x = x + self.mlp(y, dropout_rate)
     return x[:, 0]
 
 
@@ -293,15 +280,12 @@ class ViT(nn.Module):
       mlp_dim: Optional[int] = None,  # Defaults to 4x input dim.
       num_heads: int = 12,
       rep_size: Union[int, bool] = True,
-      dropout_rate: Optional[float] = 0.0,
       head_zeroinit: bool = True,
       use_glu: bool = False,
       use_post_layer_norm: bool = False,
       use_map: bool = False,
       dtype: Any = torch.float32) -> None:
     super().__init__()
-    if dropout_rate is None:
-      dropout_rate = 0.0
 
     self.num_classes = num_classes
     self.patch_size = patch_size
@@ -315,7 +299,6 @@ class ViT(nn.Module):
     self.use_post_layer_norm = use_post_layer_norm
     self.use_map = use_map
     self.dtype = dtype
-    self.dropout_rate = dropout_rate
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size
@@ -334,8 +317,7 @@ class ViT(nn.Module):
         mlp_dim=self.mlp_dim,
         num_heads=self.num_heads,
         use_glu=self.use_glu,
-        use_post_layer_norm=self.use_post_layer_norm,
-        dropout_rate=dropout_rate)
+        use_post_layer_norm=self.use_post_layer_norm)
 
     if self.num_classes:
       self.head = nn.Linear(self.width, self.num_classes)
@@ -363,9 +345,7 @@ class ViT(nn.Module):
   def get_posemb(self, x: spec.Tensor) -> spec.Tensor:
     return posemb_sincos_2d(x).type(self.dtype)
 
-  def forward(self, x: spec.Tensor, dropout_rate=None) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x: spec.Tensor, dropout_rate=DEFAULT_DROPOUT_RATE) -> spec.Tensor:
 
     # Patch extraction.
     x = self.conv_patch_extract(x)
@@ -379,10 +359,10 @@ class ViT(nn.Module):
     x = x + pes
 
     x = F.dropout(x, dropout_rate, training=self.training)
-    x = self.encoder(x)
+    x = self.encoder(x, dropout_rate)
 
     if self.use_map:
-      x = self.map(x)
+      x = self.map(x, dropout_rate)
     else:
       x = torch.mean(x, dim=1)
 

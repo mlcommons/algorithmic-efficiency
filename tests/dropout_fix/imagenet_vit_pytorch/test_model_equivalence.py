@@ -32,41 +32,41 @@ class ImageNetVitModeEquivalenceTest(parameterized.TestCase):
         for mode in ('train', 'eval'):
             getattr(orig, mode)()
             getattr(cust, mode)()
-            torch.manual_seed(0); y1 = orig(x)
-            torch.manual_seed(0); y2 = cust(x, dropout_rate)
+            torch.manual_seed(0)
+            y1 = orig(x)
+            torch.manual_seed(0)
+            if mode == 'train': 
+                y2 = cust(x, dropout_rate)
+            else:
+                y2 = cust(x)
             assert_close(y1, y2, atol=0, rtol=0)
 
     @parameterized.named_parameters(
-        dict(testcase_name='p=None', dropout_rate=None),
         dict(testcase_name='p=0.0', dropout_rate=0.0),
         dict(testcase_name='p=0.1', dropout_rate=0.1),
         dict(testcase_name='p=0.6', dropout_rate=0.6),
         dict(testcase_name='p=1.0', dropout_rate=1.0),
     )
     def test_dropout_values(self, dropout_rate):
-        """Test different dropout_values."""
+        """Test different dropout_rates."""
+          
+        torch.manual_seed(SEED)
+        orig = OriginalVit(
+            width=WIDTH,
+            depth=DEPTH,
+            num_heads=HEADS,
+            dropout_rate=dropout_rate,
+        ).to(DEVICE)
 
-        # Test initalizing custom model with a None dropout_rate
-        for custom_init_dropout_rate in [dropout_rate, None]:
-              
-            torch.manual_seed(SEED)
-            orig = OriginalVit(
-                width=WIDTH,
-                depth=DEPTH,
-                num_heads=HEADS,
-                dropout_rate=dropout_rate,
-            ).to(DEVICE)
-
-            torch.manual_seed(SEED)
-            cust = CustomVit(
-                width=WIDTH,
-                depth=DEPTH,
-                num_heads=HEADS,
-                dropout_rate=custom_init_dropout_rate,
-            ).to(DEVICE)
-            
-            cust.load_state_dict(orig.state_dict())  # sync weights
-            self.fwd_pass(orig, cust, dropout_rate)
+        torch.manual_seed(SEED)
+        cust = CustomVit(
+            width=WIDTH,
+            depth=DEPTH,
+            num_heads=HEADS,
+        ).to(DEVICE)
+        
+        cust.load_state_dict(orig.state_dict())  # sync weights
+        self.fwd_pass(orig, cust, dropout_rate)
 
 
     @parameterized.named_parameters([
@@ -101,11 +101,29 @@ class ImageNetVitModeEquivalenceTest(parameterized.TestCase):
             use_glu=use_glu,
             use_post_layer_norm=use_post_ln,
             use_map=use_map,
-            dropout_rate=None,
         ).to(DEVICE)
         
         cust.load_state_dict(orig.state_dict())  # sync weights
         self.fwd_pass(orig, cust, dropout_rate)
+
+    @parameterized.named_parameters(
+      dict(testcase_name=''),
+    )
+    def test_default_dropout(self):
+        """Test default dropout_rate."""
+
+        torch.manual_seed(SEED)
+        orig = OriginalVit(width=WIDTH, depth=DEPTH, num_heads=HEADS).to(DEVICE)
+        torch.manual_seed(SEED)
+        cust = CustomVit(width=WIDTH, depth=DEPTH, num_heads=HEADS).to(DEVICE)
+        cust.load_state_dict(orig.state_dict())  # sync weights
+        
+        x = torch.randn(BATCH, C, H, W, device=DEVICE)
+        for mode in ('train', 'eval'):
+            getattr(orig, mode)(); getattr(cust, mode)()
+            torch.manual_seed(0); y1 = orig(x)
+            torch.manual_seed(0); y2 = cust(x)
+            assert_close(y1, y2, atol=0, rtol=0)
 
 
 if __name__ == '__main__':

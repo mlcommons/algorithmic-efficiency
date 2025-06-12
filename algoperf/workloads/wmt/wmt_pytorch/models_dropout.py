@@ -861,7 +861,7 @@ class MultiheadAttention(nn.Module):
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
               index: Optional[int] = None,
-              dropout_rate: Optional[float] = None) -> Any:
+              dropout_rate: Optional[float] = None) -> Any: # TODO: (nico) remove default?!
     r"""
     Args:
       x: Batch of input sequences of shape
