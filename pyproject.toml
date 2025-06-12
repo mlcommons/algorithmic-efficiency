@@ -117,7 +117,7 @@ jax_gpu = [
   "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = [
-  "torch==2.5.1, 
+  "torch==2.5.1", 
   "torchvision==0.20.1"
 ]
 pytorch_gpu = [
