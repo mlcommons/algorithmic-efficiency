@@ -11,7 +11,7 @@ from algoperf.workloads.wmt.wmt_jax.workload import \
     WmtWorkloadPostLN as JaxWorkload
 from algoperf.workloads.wmt.wmt_pytorch.workload import \
     WmtWorkloadPostLN as PyTorchWorkload
-from tests.modeldiffs.diff import out_diff
+from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def key_transform(k):
@@ -116,10 +116,10 @@ if __name__ == '__main__':
       'inputs': inp_tokens.detach().numpy(),
       'targets': tgt_tokens.detach().numpy(),
   }
-  pyt_batch = {'inputs': inp_tokens, 'targets': tgt_tokens}
+  pytorch_batch = {'inputs': inp_tokens, 'targets': tgt_tokens}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pyt_batch,
+      augmented_and_preprocessed_input_batch=pytorch_batch,
       model_state=None,
       mode=spec.ForwardPassMode.EVAL,
       rng=None,
@@ -131,11 +131,11 @@ if __name__ == '__main__':
       rng=jax.random.PRNGKey(0),
       update_batch_norm=False)
 
-  out_diff(
+  ModelDiffRunner(
       jax_workload=jax_workload,
       pytorch_workload=pytorch_workload,
       jax_model_kwargs=jax_model_kwargs,
       pytorch_model_kwargs=pytorch_model_kwargs,
       key_transform=key_transform,
       sd_transform=sd_transform,
-      out_transform=None)
+      out_transform=None).run()
