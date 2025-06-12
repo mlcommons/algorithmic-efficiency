@@ -14,6 +14,8 @@ import numpy as np
 from algoperf.jax_utils import Dropout
 
 
+DROPOUT_RATE = 0.1
+
 @struct.dataclass
 class TransformerConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
@@ -28,7 +30,6 @@ class TransformerConfig:
   max_len: int = 256
   activation: Callable = nn.relu
   glu: bool = False
-  dropout_rate: Optional[float] = 0.1
   attention_temp: float = 1.0
   deterministic: bool = False
   decode: bool = False
@@ -148,11 +149,9 @@ class MlpBlock(nn.Module):
   out_dim: Optional[int] = None
 
   @nn.compact
-  def __call__(self, inputs, dropout_rate=None):
+  def __call__(self, inputs, dropout_rate=DROPOUT_RATE):
     """Applies Transformer MlpBlock module."""
     cfg = self.config
-    if dropout_rate is None:
-      dropout_rate = cfg.dropout_rate
 
     actual_out_dim = inputs.shape[-1] if self.out_dim is None else self.out_dim
     x = nn.Dense(
@@ -195,7 +194,7 @@ class Encoder1DBlock(nn.Module):
   config: TransformerConfig
 
   @nn.compact
-  def __call__(self, inputs, encoder_mask=None, dropout_rate=None):
+  def __call__(self, inputs, encoder_mask=None, dropout_rate=DROPOUT_RATE):
     """Applies Encoder1DBlock module.
 
         Args:
@@ -206,8 +205,6 @@ class Encoder1DBlock(nn.Module):
           output after transformer encoder block.
         """
     cfg = self.config
-    if dropout_rate is None:
-      dropout_rate = cfg.dropout_rate
 
     pre_ln = cfg.pre_ln
 
@@ -254,7 +251,7 @@ class EncoderDecoder1DBlock(nn.Module):
       encoded,
       decoder_mask=None,
       encoder_decoder_mask=None,
-      dropout_rate=None,
+      dropout_rate=DROPOUT_RATE,
   ):
     """Applies EncoderDecoder1DBlock module.
 
@@ -268,8 +265,6 @@ class EncoderDecoder1DBlock(nn.Module):
           output after transformer encoder-decoder block.
         """
     cfg = self.config
-    if dropout_rate is None:
-      dropout_rate = cfg.dropout_rate
 
     pre_ln = cfg.pre_ln
 
@@ -337,7 +332,7 @@ class Encoder(nn.Module):
                inputs,
                inputs_positions=None,
                encoder_mask=None,
-               dropout_rate=None):
+               dropout_rate=DROPOUT_RATE):
     """Applies Transformer model on the inputs.
 
         Args:
@@ -349,8 +344,6 @@ class Encoder(nn.Module):
           output of a transformer encoder.
         """
     cfg = self.config
-    if dropout_rate is None:
-      dropout_rate = cfg.dropout_rate
 
     assert inputs.ndim == 2  # (batch, len)
 
@@ -403,7 +396,7 @@ class Decoder(nn.Module):
       targets_positions=None,
       decoder_mask=None,
       encoder_decoder_mask=None,
-      dropout_rate=None,
+      dropout_rate=DROPOUT_RATE,
   ):
     """Applies Transformer model on the inputs.
 
@@ -418,8 +411,6 @@ class Decoder(nn.Module):
           output of a transformer decoder.
         """
     cfg = self.config
-    if dropout_rate is None:
-      dropout_rate = cfg.dropout_rate
 
     assert encoded.ndim == 3  # (batch, len, depth)
     assert targets.ndim == 2  # (batch, len)
@@ -495,7 +486,7 @@ class Transformer(nn.Module):
              inputs,
              inputs_positions=None,
              inputs_segmentation=None,
-             dropout_rate=None):
+             dropout_rate=DROPOUT_RATE):
     """Applies Transformer encoder-branch on the inputs.
 
     Args:
@@ -533,7 +524,7 @@ class Transformer(nn.Module):
       targets_positions=None,
       inputs_segmentation=None,
       targets_segmentation=None,
-      dropout_rate=None):
+      dropout_rate=DROPOUT_RATE):
     """Applies Transformer decoder-branch on encoded-input and target.
 
     Args:
@@ -593,7 +584,7 @@ class Transformer(nn.Module):
                targets_positions=None,
                inputs_segmentation=None,
                targets_segmentation=None,
-               dropout_rate=None):
+               dropout_rate=DROPOUT_RATE):
     """Applies Transformer model on the inputs.
 
     Args:

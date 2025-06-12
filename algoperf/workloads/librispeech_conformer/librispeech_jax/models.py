@@ -28,6 +28,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
 from algoperf.jax_utils import Dropout
 
+DROPOUT_RATE = 0.1
 
 @struct.dataclass
 class ConformerConfig:
@@ -37,11 +38,7 @@ class ConformerConfig:
   encoder_dim: int = 512
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
-  dropout_rate: float = 0.1
-  attention_residual_dropout_rate: Optional[float] = 0.0
-  conv_residual_dropout_rate: Optional[float] = 0.0
-  feed_forward_dropout_rate: float = 0.0
-  feed_forward_residual_dropout_rate: Optional[float] = 0.0
+  dropout_rate: float = DROPOUT_RATE
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
@@ -96,12 +93,8 @@ class Subsample(nn.Module):
     input_dropout_rate: dropout rate for inputs.
   """
   encoder_dim: int = 0
-  dropout_rate: float = 0.0
-
   @nn.compact
-  def __call__(self, inputs, input_paddings, train, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def __call__(self, inputs, input_paddings, train, dropout_rate=DROPOUT_RATE):
     output_paddings = input_paddings
     outputs = jnp.expand_dims(inputs, axis=-1)
 
@@ -196,7 +189,7 @@ class FeedForwardModule(nn.Module):
   config: ConformerConfig
 
   @nn.compact
-  def __call__(self, inputs, padding_mask=None, train=False, dropout_rate=None):
+  def __call__(self, inputs, padding_mask=None, train=False, dropout_rate=DROPOUT_RATE):
     config = self.config
     if dropout_rate is None:
       dropout_rate = config.dropout_rate
@@ -388,10 +381,8 @@ class MultiHeadedSelfAttention(nn.Module):
   config: ConformerConfig = None
 
   @nn.compact
-  def __call__(self, inputs, paddings, train, dropout_rate=None):
+  def __call__(self, inputs, paddings, train, dropout_rate=DROPOUT_RATE):
     config = self.config
-    if dropout_rate is None:
-      dropout_rate = config.dropout_rate
 
     mask_paddings = 1 - paddings
     attention_mask = nn.make_attention_mask(
@@ -527,10 +518,8 @@ class ConvolutionBlock(nn.Module):
                train,
                update_batch_norm,
                use_running_average_bn,
-               dropout_rate=None):
+               dropout_rate=DROPOUT_RATE):
     config = self.config
-    if dropout_rate is None:
-      dropout_rate = config.dropout_rate
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
     input_gated1 = nn.Dense(
@@ -603,7 +592,7 @@ class ConformerBlock(nn.Module):
                train,
                update_batch_norm,
                use_running_average, 
-               dropout_rate=None):
+               dropout_rate=DROPOUT_RATE):
     config = self.config
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
 
@@ -658,7 +647,7 @@ class Conformer(nn.Module):
                train,
                update_batch_norm: Optional[bool] = None,
                use_running_average_bn: Optional[bool] = None,
-               dropout_rate: Optional[float] = None):
+               dropout_rate: float = DROPOUT_RATE:
     config = self.config
 
     outputs = inputs

@@ -21,6 +21,7 @@ import jax.numpy as jnp
 
 from algoperf.jax_utils import Dropout
 
+DROPOUT_RATE = 0.0
 
 def _instance_norm2d(x, axes, epsilon=1e-5):
   # promote x to at least float32, this avoids half precision computation
@@ -58,15 +59,12 @@ class UNet(nn.Module):
   num_channels: int = 32
   num_pool_layers: int = 4
   out_channels = 1
-  dropout_rate: float = 0.0
+  dropout_rate: float = DROPOUT_RATE
   use_tanh: bool = False
   use_layer_norm: bool = False
 
   @nn.compact
-  def __call__(self, x, train=True, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
-
+  def __call__(self, x, train=True, dropout_rate=DROPOUT_RATE):
     # pylint: disable=invalid-name
     _ConvBlock = functools.partial(
         ConvBlock,
@@ -144,7 +142,7 @@ class ConvBlock(nn.Module):
   dropout_rate: float = 0.0
 
   @nn.compact
-  def __call__(self, x, train=True, dropout_rate=None):
+  def __call__(self, x, train=True, dropout_rate=DROPOUT_RATE):
     """Forward function.
     Note: Pytorch is NCHW and jax/flax is NHWC.
     Args:
@@ -153,8 +151,6 @@ class ConvBlock(nn.Module):
     Returns:
         jnp.array: Output tensor of shape `(N, H, W, out_channels)`.
     """
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
     x = nn.Conv(
         features=self.out_channels,
         kernel_size=(3, 3),

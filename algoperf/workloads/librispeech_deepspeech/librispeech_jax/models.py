@@ -1,4 +1,4 @@
-r"""Deepspeech.
+"""Deepspeech.
 
 This model uses a deepspeech2 network to convert speech to text.
 paper : https://arxiv.org/abs/1512.02595
@@ -31,6 +31,8 @@ Carry = Any
 CarryHistory = Any
 Output = Any
 
+DROPOUT_RATE=0.1
+
 
 @struct.dataclass
 class DeepspeechConfig:
@@ -52,10 +54,6 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
-  # If None, defaults to 0.1.
-  input_dropout_rate: Optional[float] = 0.1
-  # If None, defaults to 0.1.
-  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -73,11 +71,8 @@ class Subsample(nn.Module):
   config: DeepspeechConfig
 
   @nn.compact
-  def __call__(self, inputs, output_paddings, train, dropout_rate=None):
+  def __call__(self, inputs, output_paddings, train, dropout_rate=DROPOUT_RATE):
     config = self.config
-    if dropout_rate is None:
-      dropout_rate = config.dropout_rate
-
     outputs = jnp.expand_dims(inputs, axis=-1)
 
     outputs, output_paddings = Conv2dSubsampling(
@@ -196,9 +191,7 @@ class FeedForwardModule(nn.Module):
                inputs,
                input_paddings=None,
                train=False,
-               dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.config.feed_forward_dropout_rate
+               dropout_rate=DROPOUT_RATE):
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
     config = self.config
 
@@ -479,10 +472,8 @@ class Deepspeech(nn.Module):
     )
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, train, dropout_rate=None):
+  def __call__(self, inputs, input_paddings, train, dropout_rate=DROPOUT_RATE):
     config = self.config
-    if dropout_rate is None:
-      dropout_rate = config.dropout_rate
 
     outputs = inputs
     output_paddings = input_paddings

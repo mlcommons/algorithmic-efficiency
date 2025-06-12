@@ -8,6 +8,7 @@ import jraph
 
 from algoperf.jax_utils import Dropout
 
+DROPOUT_RATE=0.1
 
 def _make_embed(latent_dim, name):
 
@@ -41,15 +42,11 @@ class GNN(nn.Module):
   num_outputs: int
   latent_dim: int = 256
   hidden_dims: Tuple[int] = (256,)
-  # If None, defaults to 0.1.
-  dropout_rate: Optional[float] = 0.1
   num_message_passing_steps: int = 5
   activation_fn_name: str = 'relu'
 
   @nn.compact
-  def __call__(self, graph, train, dropout_rate=None):
-    if dropout_rate is not None:
-      dropout_rate = self.dropout_rate
+  def __call__(self, graph, train, dropout_rate=DROPOUT_RATE):
     dropout = Dropout(dropout_rate, deterministic=not train)(dropout_rate)
 
     graph = graph._replace(

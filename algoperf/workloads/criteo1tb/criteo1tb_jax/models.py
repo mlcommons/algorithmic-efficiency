@@ -7,6 +7,7 @@ import jax.numpy as jnp
 
 from algoperf.jax_utils import Dropout
 
+DROPOUT_RATE = 0.0
 
 class DLRMResNet(nn.Module):
   """Define a DLRMResNet model.
@@ -24,14 +25,12 @@ class DLRMResNet(nn.Module):
   mlp_bottom_dims: Sequence[int] = (256, 256, 256)
   mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
   embed_dim: int = 128
-  dropout_rate: float = 0.0
+  dropout_rate: float = DROPOUT_RATE
   use_layer_norm: bool = False  # Unused.
   embedding_init_multiplier: float = None  # Unused
 
   @nn.compact
-  def __call__(self, x, train, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def __call__(self, x, train, dropout_rate=DROPOUT_RATE):
 
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
@@ -155,9 +154,7 @@ class DlrmSmall(nn.Module):
   embedding_init_multiplier: float = None
 
   @nn.compact
-  def __call__(self, x, train, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def __call__(self, x, train, dropout_rate=DROPOUT_RATE):
 
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)

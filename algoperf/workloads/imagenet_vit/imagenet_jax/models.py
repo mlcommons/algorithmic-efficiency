@@ -13,6 +13,7 @@ import jax.numpy as jnp
 from algoperf import spec
 from algoperf.jax_utils import Dropout
 
+DROPOUT_RATE = 0.0
 
 def posemb_sincos_2d(h: int,
                      w: int,
@@ -36,17 +37,14 @@ class MlpBlock(nn.Module):
   """Transformer MLP / feed-forward block."""
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   use_glu: bool = False
-  dropout_rate: float = 0.0
+  dropout_rate: float = DROPOUT_RATE
 
   @nn.compact
   def __call__(self,
                x: spec.Tensor,
                train: bool = True,
-               dropout_rate=None) -> spec.Tensor:
+               dropout_rate=DROPOUT_RATE) -> spec.Tensor:
     """Applies Transformer MlpBlock module."""
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
-
     inits = {
         'kernel_init': nn.initializers.xavier_uniform(),
         'bias_init': nn.initializers.normal(stddev=1e-6),
@@ -78,8 +76,6 @@ class Encoder1DBlock(nn.Module):
                x: spec.Tensor,
                train: bool = True,
                dropout_rate=dropout_rate) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
 
     if not self.use_post_layer_norm:
       y = nn.LayerNorm(name='LayerNorm_0')(x)
@@ -136,11 +132,7 @@ class Encoder(nn.Module):
   @nn.compact
   def __call__(self,
                x: spec.Tensor,
-               train: bool = True,
-               dropout_rate=None) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
-
+               train: bool = True) -> spec.Tensor:
     # Input Encoder
     for lyr in range(self.depth):
       block = Encoder1DBlock(
@@ -165,9 +157,7 @@ class MAPHead(nn.Module):
   dropout_rate: float = 0.0
 
   @nn.compact
-  def __call__(self, x, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def __call__(self, x, dropout_rate=DROPOUT_RATE):
     n, _, d = x.shape
     probe = self.param('probe',
                        nn.initializers.xavier_uniform(), (1, 1, d),
@@ -194,7 +184,7 @@ class ViT(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   rep_size: Union[int, bool] = True
-  dropout_rate: Optional[float] = 0.0
+  dropout_rate: [float] =  DROPOUT_RATE
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
   use_glu: bool = False
@@ -212,9 +202,7 @@ class ViT(nn.Module):
                x: spec.Tensor,
                *,
                train: bool = False,
-               dropout_rate=None) -> spec.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+               dropout_rate=DROPOUT_RATE) -> spec.Tensor:
     # Patch extraction
     x = nn.Conv(
         self.width,
