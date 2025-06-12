@@ -3,7 +3,6 @@
 import math
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 
 from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
@@ -30,7 +29,7 @@ class DenseBlockWithDropout(nn.Module):
     self.resnet = resnet
     self._supports_custom_dropout = True
 
-  def forward(self, x, p=None):
+  def forward(self, x, p):
       return self.module(x, p) + x if self.resnet else self.module(x, p)
 
 
