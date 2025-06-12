@@ -32,52 +32,79 @@ def _rand_tokens(bs, seqlen):
 class TransformerEquivalenceTest(parameterized.TestCase):
 
     @parameterized.named_parameters(
-        # NOTE: removed dropout=1.0 will generate nan in scaled_dot_product_attention
-
-        dict(testcase_name="None", dropout_rate=None, compile=False),
+        # NOTE: removed dropout=1.0 since it will generate nan in scaled_dot_product_attention
         dict(testcase_name="0.0", dropout_rate=0.0, compile=False),
         dict(testcase_name="0.2", dropout_rate=0.2, compile=False),
         dict(testcase_name="0.7", dropout_rate=0.7, compile=False),
-        
-        dict(testcase_name="p=None, compile", dropout_rate=None, compile=True),
-        dict(testcase_name="p=0.0, compile", dropout_rate=0.0, compile=True),
-        dict(testcase_name="p=0.2, compile", dropout_rate=0.2, compile=True),
-        dict(testcase_name="p=0.7, compile", dropout_rate=0.7, compile=True),
+        dict(testcase_name="p=0.0_compile", dropout_rate=0.0, compile=True),
+        dict(testcase_name="p=0.2_compile", dropout_rate=0.2, compile=True),
+        dict(testcase_name="p=0.7_compile", dropout_rate=0.7, compile=True),
     )
-    def test_forward(self, dropout_rate, compile):
-      
-        # Test initalizing custom model with a None dropout_rate
-        for custom_init_dropout_rate in [None, dropout_rate]:
+    def test_dropout_value(self, dropout_rate, compile):
 
-            orig = OriginalModel(
-              dropout_rate=dropout_rate, 
-              attention_dropout_rate=dropout_rate
-            ).to(DEVICE)
-            cust = CustomModel(
-              dropout_rate=custom_init_dropout_rate
-            ).to(DEVICE)
+        orig = OriginalModel(
+          dropout_rate=dropout_rate, 
+          attention_dropout_rate=dropout_rate
+        ).to(DEVICE)
+        cust = CustomModel().to(DEVICE)
+        
+        orig.load_state_dict(cust.state_dict())  # sync weights
+        
+        if compile:
+          orig = torch.compile(orig)
+          cust = torch.compile(cust)
+
+        src = _rand_tokens(B, SRC_LEN)
+        tgt = _rand_tokens(B, TGT_LEN)
+
+        for mode in ("train", "eval"):
+            getattr(orig, mode)()
+            getattr(cust, mode)()
+
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y1 = orig(src, tgt)
+
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y2 = cust(src, tgt, dropout_rate=dropout_rate)
             
-            orig.load_state_dict(cust.state_dict())  # sync weights
+            assert_close(y1, y2, atol=0, rtol=0)
             
-            if compile:
-              orig = torch.compile(orig)
-              cust = torch.compile(cust)
-
-            src = _rand_tokens(B, SRC_LEN)
-            tgt = _rand_tokens(B, TGT_LEN)
-
-            for mode in ("train", "eval"):
-                getattr(orig, mode)()
-                getattr(cust, mode)()
-
+            if mode == 'eval':  # one extra test: omit dropout at eval
                 torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-                y1 = orig(src, tgt)
-
-                torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-                y2 = cust(src, tgt, dropout_rate=dropout_rate)
-                
+                y2 = cust(src, tgt)
                 assert_close(y1, y2, atol=0, rtol=0)
 
+
+    @parameterized.named_parameters(
+        dict(testcase_name="default", compile=False),
+        dict(testcase_name="default_compile", compile=True),
+    )
+    def test_default(self, compile):
+
+        orig = OriginalModel().to(DEVICE)
+        cust = CustomModel().to(DEVICE)
+
+        orig.load_state_dict(cust.state_dict())  # sync weights
+        
+        if compile:
+          orig = torch.compile(orig)
+          cust = torch.compile(cust)
+
+        src = _rand_tokens(B, SRC_LEN)
+        tgt = _rand_tokens(B, TGT_LEN)
+
+        for mode in ("train", "eval"):
+            getattr(orig, mode)()
+            getattr(cust, mode)()
+
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y1 = orig(src, tgt)
+
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y2 = cust(src, tgt)
+            
+            assert_close(y1, y2, atol=0, rtol=0)
+            
 
 if __name__ == "__main__":
     absltest.main()

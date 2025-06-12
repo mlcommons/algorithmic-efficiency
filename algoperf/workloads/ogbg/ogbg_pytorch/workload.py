@@ -138,12 +138,10 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = GNN(
         num_outputs=self._num_outputs,
-        dropout_rate=dropout_rate,
         hidden_dims=self.hidden_dims,
         latent_dim=self.latent_dim,
         num_message_passing_steps=self.num_message_passing_steps,

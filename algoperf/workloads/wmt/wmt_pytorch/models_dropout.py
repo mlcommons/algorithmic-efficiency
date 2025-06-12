@@ -9,6 +9,8 @@ import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
 
+DEFAULT_DROPOUT_RATE = 0.1
+
 
 def make_causal_mask(x: Tensor, device: str = 'cuda:0') -> Tensor:
   """Make a causal mask for self-attention.
@@ -104,17 +106,12 @@ class Transformer(nn.Module):
                nhead: int = 16,
                d_hid: int = 1024,
                nlayers: int = 6,
-               dropout_rate: Optional[float] = 0.1,
                activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
                glu: bool = False,
                layer_norm_eps: float = 1e-6,
                attention_temp: float = 1.0,
                pre_ln: bool = True):
     super().__init__()
-    if dropout_rate is None:
-      self.dropout_rate = 0.1
-    else:
-      self.dropout_rate = dropout_rate
     self.pos_encoder = PositionalEncoding(d_model)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
     self.encoder = Encoder(d_model,
@@ -159,7 +156,7 @@ class Transformer(nn.Module):
               inputs_segmentation: Optional[Tensor] = None,
               targets_segmentation: Optional[Tensor] = None,
               decode: bool = False,
-              dropout_rate: Optional[float] = None) -> Tensor:
+              dropout_rate: float = DEFAULT_DROPOUT_RATE) -> Tensor:
     """
     Args:
       src: Tensor, shape [batch_size, seq_len]
@@ -169,16 +166,13 @@ class Transformer(nn.Module):
       inputs_segmentation: Optional[Tensor], shape [batch_size, seq_len]
       targets_segmentation: Optional[Tensor], shape [batch_size, seq_len]
       decode: bool
-      dropout_rate: Optional[float]
+      dropout_rate: float
 
     Returns:
       output Tensor of shape [batch_size, seq_len, ntoken]
     """
     if src.size(0) != tgt.size(0):
       raise RuntimeError('The batch size of src and tgt must be equal.')
-
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
 
     memory = self.encoder(
         src,
@@ -234,13 +228,13 @@ class TransformerEncoder(nn.Module):
 
   def forward(self, src: Tensor, 
               mask: Optional[Tensor] = None,
-              dropout_rate: Optional[float] = None) -> Tensor:
+              dropout_rate: Optional[float] = 0.0) -> Tensor:
     """Pass the input through the encoder layers in turn.
 
     Args:
         src: the sequence to the encoder (required).
         mask: the mask for the src sequence (optional).
-        dropout_rate: the dropout probability (optional)
+        dropout_rate: the dropout probability (optional).
 
     Shape:
         see the docs in Transformer class.
@@ -293,7 +287,7 @@ class Encoder(nn.Module):
               src: Tensor,
               inputs_positions: Optional[Tensor] = None,
               inputs_segmentation: Optional[Tensor] = None,
-              dropout_rate: Optional[float] = None) -> Tensor:
+              dropout_rate: Optional[float] = 0.0) -> Tensor:
     src = src.to(torch.int)
     src_mask = make_src_mask(src, inputs_segmentation, self.nhead)
     src = self.shared_embedding(src)
@@ -339,7 +333,7 @@ class Decoder(nn.Module):
       decode: bool = False,
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
-      dropout_rate: Optional[float] = None) -> Any:
+      dropout_rate: Optional[float] = 0.0) -> Any:
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
         tgt, src, inputs_segmentation, targets_segmentation,
@@ -389,7 +383,7 @@ class PositionalEncoding(nn.Module):
       inputs_positions: Optional[Tensor] = None,
       decode: bool = False,
       cache: Optional[Dict[str, Dict[str, Tensor]]] = None,
-      dropout_rate: Optional[float] = None
+      dropout_rate: Optional[float] = 0.0
   ) -> Union[Tensor, Tuple[Tensor, Dict[str, Dict[str, Tensor]]]]:
     """
     Args:
@@ -397,6 +391,7 @@ class PositionalEncoding(nn.Module):
       inputs_positions: Tensor (shape [batch_size, seq_len]) or None
       decode: bool
       cache: Dict[str, Dict[str, Tensor]] or None
+      dropout_rate: Optional[float]
     Returns:
       Tensor or Tuple[Tensor, Dict[str, Dict[str, Tensor]]]
     """
@@ -438,7 +433,6 @@ class TransformerEncoderLayer(nn.Module):
     nhead: the number of heads in the multiheadattention models (default=16).
     dim_feedforward: the dimension of the feedforward network model
         (default=1024).
-    dropout_rate: the dropout_rate value (default=0.1).
     activation: the activation function of the intermediate layer, can be a
        string ("relu" or "gelu") or a unary callable (default=F.relu).
     layer_norm_eps: the eps value in layer normalization components
@@ -490,7 +484,7 @@ class TransformerEncoderLayer(nn.Module):
   def forward(self, 
               src: Tensor, 
               src_mask: Optional[Tensor] = None, 
-              dropout_rate: Optional[float] = None) -> Tensor:
+              dropout_rate: Optional[float] = 0.0) -> Tensor:
     r"""Pass the input through the encoder layer.
 
     Args:
@@ -514,14 +508,14 @@ class TransformerEncoderLayer(nn.Module):
   def _sa_block(self, 
                 x: Tensor, 
                 attn_mask: Optional[Tensor], 
-                dropout_rate: Optional[float] = None) -> Tensor:
+                dropout_rate: Optional[float] = 0.0) -> Tensor:
     x, _ = self.self_attn(x, attn_mask=attn_mask, dropout_rate=dropout_rate)
     return F.dropout(x, dropout_rate, training=self.training)
 
   # Feed forward block:
   def _ff_block(self, 
                 inputs: Tensor, 
-                dropout_rate: Optional[float] = None) -> Tensor:
+                dropout_rate: Optional[float] = 0.0) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
       y = self.linear_glu(inputs)
@@ -585,7 +579,7 @@ class TransformerDecoder(nn.Module):
               decode: bool = False,
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
-              dropout_rate: Optional[float] = None) -> Any:
+              dropout_rate: Optional[float] = 0.0) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer in turn.
     Args:
       tgt: the sequence to the decoder (required).
@@ -705,7 +699,7 @@ class TransformerDecoderLayer(nn.Module):
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
       index: Optional[int] = None,
-      dropout_rate: Optional[float] = None) -> Any:
+      dropout_rate: Optional[float] = 0.0) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -757,7 +751,7 @@ class TransformerDecoderLayer(nn.Module):
       max_len: Optional[int] = None,
       cache: Optional[dict] = None,
       index: Optional[int] = None,
-      dropout_rate: Optional[float] = None) -> Any:
+      dropout_rate: Optional[float] = 0.0) -> Any:
     x, cache = self.self_attn(
         x,
         attn_mask=attn_mask,
@@ -771,7 +765,7 @@ class TransformerDecoderLayer(nn.Module):
   # Multihead attention block:
   def _mha_block(self, x: Tensor, mem: Tensor,
                  attn_mask: Optional[Tensor],
-                 dropout_rate: Optional[float] = None) -> Tensor:
+                 dropout_rate: Optional[float] = 0.0) -> Tensor:
     x, _ = self.multihead_attn(
         x, 
         mem, 
@@ -781,7 +775,7 @@ class TransformerDecoderLayer(nn.Module):
 
   # Feed forward block.
   def _ff_block(self, inputs: Tensor,
-                dropout_rate: Optional[float] = None) -> Tensor:
+                dropout_rate: Optional[float] = 0.0) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
       y = self.linear_glu(inputs)
@@ -861,7 +855,7 @@ class MultiheadAttention(nn.Module):
               max_len: Optional[int] = None,
               cache: Optional[dict] = None,
               index: Optional[int] = None,
-              dropout_rate: Optional[float] = None) -> Any: # TODO: (nico) remove default?!
+              dropout_rate: Optional[float] = 0.0) -> Any: # TODO: (nico) remove default?!
     r"""
     Args:
       x: Batch of input sequences of shape

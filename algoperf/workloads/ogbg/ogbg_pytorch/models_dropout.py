@@ -11,6 +11,8 @@ from torch import nn
 from algoperf import init_utils
 from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
 
+DEFAULT_DROPOUT_RATE = 0.1
+
 
 def _make_mlp(in_dim, hidden_dims, activation_fn):
   """Creates a MLP with specified dimensions."""
@@ -34,7 +36,6 @@ class GNN(nn.Module):
 
   def __init__(self,
                num_outputs: int = 128,
-               dropout_rate: Optional[float] = 0.1,
                activation_fn_name: str = 'relu',
                latent_dim: int = 256,
                hidden_dims: Tuple[int] = (256,),
@@ -44,8 +45,6 @@ class GNN(nn.Module):
     self.hidden_dims = hidden_dims
     self.num_message_passing_steps = num_message_passing_steps
     self.num_outputs = num_outputs
-    if dropout_rate is None:
-      self.dropout_rate = 0.1
     # in_features are specifically chosen for the ogbg workload.
     self.node_embedder = nn.Linear(in_features=9, out_features=self.latent_dim)
     self.edge_embedder = nn.Linear(in_features=3, out_features=self.latent_dim)
@@ -94,9 +93,10 @@ class GNN(nn.Module):
       if isinstance(m, nn.Linear):
         init_utils.pytorch_default_init(m)
 
-  def forward(self, graph: GraphsTuple, dropout_rate=None) -> torch.Tensor:
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(
+      self, 
+      graph: GraphsTuple, 
+      dropout_rate: float = DEFAULT_DROPOUT_RATE) -> torch.Tensor:
 
     graph = graph._replace(
         globals=torch.zeros([graph.n_node.shape[0], self.num_outputs],
@@ -148,7 +148,7 @@ class GraphNetwork(nn.Module):
     self.update_global_fn = update_global_fn
     self._supports_custom_dropout = True  # supports SequentialWithDropout
 
-  def forward(self, graph: GraphsTuple, dropout_rate=None) -> GraphsTuple:
+  def forward(self, graph: GraphsTuple, dropout_rate: float) -> GraphsTuple:
     """Applies a configured GraphNetwork to a graph.
     This implementation follows Algorithm 1 in https://arxiv.org/abs/1806.01261
     There is one difference. For the nodes update the class aggregates over the
@@ -161,6 +161,7 @@ class GraphNetwork(nn.Module):
     GraphNets, for more information please see the paper.
     Args:
       graph: a `GraphsTuple` containing the graph.
+      dropout_rate: dropout probability value.
     Returns:
       Updated `GraphsTuple`.
     """

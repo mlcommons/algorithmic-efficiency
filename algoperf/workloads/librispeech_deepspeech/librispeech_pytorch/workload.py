@@ -24,15 +24,12 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     """Deepspeech model init function."""
     torch.random.manual_seed(rng[0])
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
-            feed_forward_dropout_rate=dropout_rate,
             use_specaug=self.use_specaug,
-            input_dropout_rate=dropout_rate,
             use_tanh=self.use_tanh,
             enable_residual_connections=self.enable_residual_connections,
             enable_decoder_layer_norm=self.enable_decoder_layer_norm,

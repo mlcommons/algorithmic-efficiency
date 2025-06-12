@@ -74,7 +74,10 @@ class UNet(nn.Module):
       if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         init_utils.pytorch_default_init(m)
 
-  def forward(self, x: Tensor, dropout_rate: Optional[float] = DEFAULT_DROPOUT_RATE) -> Tensor:
+  def forward(
+      self, 
+      x: Tensor, 
+      dropout_rate: float = DEFAULT_DROPOUT_RATE) -> Tensor:
 
     stack = []
     output = x

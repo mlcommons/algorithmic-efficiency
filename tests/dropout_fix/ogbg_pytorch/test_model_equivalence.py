@@ -42,34 +42,61 @@ def _rand_graph():
 class GNNEquivalenceTest(parameterized.TestCase):
 
     @parameterized.named_parameters(
-        dict(testcase_name='None', dropout_rate=None),
         dict(testcase_name='0.0', dropout_rate=0.0),
         dict(testcase_name='0.2', dropout_rate=0.2),
         dict(testcase_name='0.7', dropout_rate=0.7),
         dict(testcase_name='1.0', dropout_rate=1.0),
     )
     def test_forward(self, dropout_rate):
+        """Test different dropout_rates."""
 
-        # Test initalizing custom model with a None dropout_rate
-        for custom_init_dropout_rate in [None, dropout_rate]:
+        orig = OriginalModel(dropout_rate=dropout_rate).to(DEVICE)
+        cust = CustomModel().to(DEVICE)
+        orig.load_state_dict(cust.state_dict())  # sync weights
 
-            orig = OriginalModel(dropout_rate=dropout_rate).to(DEVICE)
-            cust = CustomModel(dropout_rate=custom_init_dropout_rate).to(DEVICE)
-            orig.load_state_dict(cust.state_dict())  # sync weights
+        graph = _rand_graph()
 
-            graph = _rand_graph()
+        for mode in ('train', 'eval'):
+            getattr(orig, mode)()
+            getattr(cust, mode)()
 
-            for mode in ('train', 'eval'):
-                getattr(orig, mode)()
-                getattr(cust, mode)()
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y1 = orig(graph)
 
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y2 = cust(graph, dropout_rate=dropout_rate)
+
+            assert_close(y1, y2, atol=0, rtol=0)
+
+            if mode == 'eval':  # one extra test: omit dropout at eval
                 torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-                y1 = orig(graph)
-
-                torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-                y2 = cust(graph, dropout_rate=dropout_rate)
-
+                y2 = cust(graph)
                 assert_close(y1, y2, atol=0, rtol=0)
+
+
+    @parameterized.named_parameters(
+      dict(testcase_name=''),
+    )
+    def test_default_dropout(self):
+        """Test default dropout_rate."""
+        
+        orig = OriginalModel().to(DEVICE)
+        cust = CustomModel().to(DEVICE)
+        orig.load_state_dict(cust.state_dict())  # sync weights
+
+        graph = _rand_graph()
+
+        for mode in ('train', 'eval'):
+            getattr(orig, mode)()
+            getattr(cust, mode)()
+
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y1 = orig(graph)
+
+            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
+            y2 = cust(graph)
+
+            assert_close(y1, y2, atol=0, rtol=0)
 
 
 if __name__ == '__main__':

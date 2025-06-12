@@ -345,7 +345,10 @@ class ViT(nn.Module):
   def get_posemb(self, x: spec.Tensor) -> spec.Tensor:
     return posemb_sincos_2d(x).type(self.dtype)
 
-  def forward(self, x: spec.Tensor, dropout_rate=DEFAULT_DROPOUT_RATE) -> spec.Tensor:
+  def forward(
+      self, 
+      x: spec.Tensor, 
+      dropout_rate: float = DEFAULT_DROPOUT_RATE) -> spec.Tensor:
 
     # Patch extraction.
     x = self.conv_patch_extract(x)

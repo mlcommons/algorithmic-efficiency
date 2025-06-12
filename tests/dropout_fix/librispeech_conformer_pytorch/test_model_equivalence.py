@@ -74,14 +74,16 @@ class ConformerEquivalenceTest(parameterized.TestCase):
             torch.manual_seed(SEED)
             y1, p1 = orig(x, paddings)
             torch.manual_seed(SEED)
-            if mode == 'train': 
-                y2, p2 = cust(x, paddings, dropout_rate=dropout_rate)
-            else:
-                y2, p2 = cust(x, paddings)
-
+            y2, p2 = cust(x, paddings, dropout_rate=dropout_rate)
+            
             assert_close(y1, y2, atol=0, rtol=0)
             assert_close(p1, p2, atol=0, rtol=0)
 
+            if mode == 'eval':  # one extra test: omit dropout at eval
+                torch.manual_seed(SEED)
+                y2, p2 = cust(x, paddings)
+                assert_close(y1, y2, atol=0, rtol=0)
+                assert_close(p1, p2, atol=0, rtol=0)
 
     @parameterized.named_parameters(
       dict(testcase_name=''),

@@ -17,6 +17,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augme
     SpecAug
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+DEFAULT_DROPOUT_RATE = 0.1
 
 
 @dataclass
@@ -38,10 +39,6 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 1 - 0.999
   batch_norm_epsilon: float = 0.001
-  # If None, defaults to 0.1.
-  input_dropout_rate: Optional[float] = 0.1
-  # If None, defaults to 0.1.
-  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -87,14 +84,7 @@ class Subsample(nn.Module):
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
-    if config.input_dropout_rate is None:
-      self.input_dropout_rate = 0.1
-    else:
-      self.input_dropout_rate = config.input_dropout_rate
-
-  def forward(self, inputs, input_paddings, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.input_dropout_rate
+  def forward(self, inputs, input_paddings, dropout_rate):
 
     output_paddings = input_paddings
     outputs = inputs[:, None, :, :]
@@ -207,14 +197,8 @@ class FeedForwardModule(nn.Module):
           batch_norm_momentum=config.batch_norm_momentum,
           batch_norm_epsilon=config.batch_norm_epsilon)
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
-    if config.feed_forward_dropout_rate is None:
-      self.feed_forward_dropout_rate = 0.1
-    else:
-      self.feed_forward_dropout_rate = config.feed_forward_dropout_rate
 
-  def forward(self, inputs, input_paddings, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.feed_forward_dropout_rate
+  def forward(self, inputs, input_paddings, dropout_rate):
 
     padding_mask = (1 - input_paddings)[:, :, None]
     if self.config.layernorm_everywhere:
@@ -367,7 +351,7 @@ class DeepspeechEncoderDecoder(nn.Module):
 
     self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
 
-  def forward(self, inputs, input_paddings, dropout_rate=None):
+  def forward(self, inputs, input_paddings, dropout_rate=DEFAULT_DROPOUT_RATE):
     outputs = inputs
     output_paddings = input_paddings
 

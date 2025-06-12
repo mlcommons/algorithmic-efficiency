@@ -56,18 +56,13 @@ class ModelEquivalenceTest(parameterized.TestCase):
         x = torch.randn(BATCH, FEATURES, device=DEVICE)
 
         for mode in ('train', 'eval'):
-            getattr(orig, mode)()
-            getattr(cust, mode)()
-
-            torch.manual_seed(SEED)
-            y1 = orig(x)
-            torch.manual_seed(SEED)
-            if mode == 'train': 
-                y2 = cust(x, dropout_rate)
-            else:
-                y2 = cust(x)
-
+            getattr(orig, mode)(); getattr(cust, mode)()
+            torch.manual_seed(SEED); y1 = orig(x)
+            torch.manual_seed(SEED); y2 = cust(x, dropout_rate)
             assert_close(y1, y2, atol=0, rtol=0)
+            if mode == 'eval':  # one extra test: omit dropout at eval
+                torch.manual_seed(SEED); y2 = cust(x)
+                assert_close(y1, y2, atol=0, rtol=0)
 
     @parameterized.named_parameters(
     dict(testcase_name='DLRMResNet, default', model='dlrm_resnet'),

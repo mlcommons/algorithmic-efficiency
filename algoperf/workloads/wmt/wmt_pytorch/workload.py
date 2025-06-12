@@ -167,8 +167,7 @@ class WmtWorkload(BaseWmtWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
 
     if self.activation == 'relu':
@@ -179,8 +178,6 @@ class WmtWorkload(BaseWmtWorkload):
       raise ValueError(f'Unknown activation function {self.activation}.')
 
     model = Transformer(
-        dropout_rate=dropout_rate,
-        attention_dropout_rate=dropout_rate,
         pre_ln=self.pre_ln,
         attention_temp=self.attention_temp,
         activation=activation,

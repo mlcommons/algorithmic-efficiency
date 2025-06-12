@@ -28,16 +28,13 @@ class FastMRIModeEquivalenceTest(parameterized.TestCase):
     def fwd_pass(self, orig, cust, dropout_rate):
         x = torch.randn(BATCH, IN_CHANS, H, W, device=DEVICE)
         for mode in ('train', 'eval'):
-            getattr(orig, mode)()
-            getattr(cust, mode)()
-            torch.manual_seed(0)
-            y1 = orig(x)
-            torch.manual_seed(0)
-            if mode == 'train': 
-                y2 = cust(x, dropout_rate)
-            else:
-                y2 = cust(x)
+            getattr(orig, mode)(); getattr(cust, mode)()
+            torch.manual_seed(0); y1 = orig(x)
+            torch.manual_seed(0); y2 = cust(x, dropout_rate)
             assert_close(y1, y2, atol=0, rtol=0)
+            if mode == 'eval':  # one extra test: omit dropout at eval
+                torch.manual_seed(0); y2 = cust(x)
+                assert_close(y1, y2, atol=0, rtol=0)
 
     @parameterized.named_parameters(
         dict(testcase_name='p=0.0', dropout_rate=0.0),
