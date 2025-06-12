@@ -23,11 +23,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = models.ViT(
-        dropout_rate=dropout_rate,
         num_classes=self._num_classes,
         use_glu=self.use_glu,
         use_post_layer_norm=self.use_post_layer_norm,
