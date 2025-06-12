@@ -69,15 +69,14 @@ RUN cd /algorithmic-efficiency && git checkout $branch
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[pytorch_cpu]' -f https://download.pytorch.org/whl/cpu \
+        && pip install -e '.[pytorch_cpu]' --extra-index-url https://download.pytorch.org/whl/cpu \
         # Todo: remove temporary nightly install
         # pip install -e '.[jax_gpu]'
-        && pip install -U --pre jax jaxlib "jax-cuda12-plugin[with-cuda]" jax-cuda12-pjrt -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/; \
+        && c; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[pytorch_gpu]' \
-        && pip install -e '.[jax_cpu]'; \
+        && pip install -e '.[pytorch_gpu, jax_cpu]'; \
     elif [ "$framework" = "both" ] ; then \
         echo "Installing Jax GPU and Pytorch GPU" \
         && cd /algorithmic-efficiency \
