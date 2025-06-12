@@ -67,9 +67,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Only dropout is used."""
+      rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
@@ -83,7 +81,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate,
         use_layer_norm=self.use_layer_norm,
         embedding_init_multiplier=self.embedding_init_multiplier)
     self._param_shapes = param_utils.pytorch_param_shapes(model)

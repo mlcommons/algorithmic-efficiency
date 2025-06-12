@@ -34,8 +34,6 @@ torch.use_deterministic_algorithms(True)
 class ModelEquivalenceTest(parameterized.TestCase):
 
     @parameterized.named_parameters(
-    dict(testcase_name='DLRMResNet, p=None', model='dlrm_resnet', dropout_rate=None),
-    dict(testcase_name='DlrmSmall, p=None',  model='dlrm_small', dropout_rate=None),
     dict(testcase_name='DLRMResNet, p=0.0', model='dlrm_resnet', dropout_rate=0.0),
     dict(testcase_name='DlrmSmall, p=0.0',  model='dlrm_small', dropout_rate=0.0),
     dict(testcase_name='DLRMResNet, p=0.1', model='dlrm_resnet', dropout_rate=0.1),
@@ -50,27 +48,24 @@ class ModelEquivalenceTest(parameterized.TestCase):
             else (OriginalDlrmSmall, CustomDlrmSmall)
         )
 
-        # Test initalizing custom model with a None dropout_rate
-        for custom_init_dropout_rate in [dropout_rate, None]:
+        torch.manual_seed(SEED)
+        orig = OrigCls(vocab_size=VOCAB, dropout_rate=dropout_rate)
+        orig.to(DEVICE)
 
-            torch.manual_seed(SEED)
-            orig = OrigCls(vocab_size=VOCAB, dropout_rate=dropout_rate)
-            orig.to(DEVICE)
+        torch.manual_seed(SEED)
+        cust = CustCls(vocab_size=VOCAB)
+        cust.to(DEVICE)
 
-            torch.manual_seed(SEED)
-            cust = CustCls(vocab_size=VOCAB, dropout_rate=custom_init_dropout_rate)
-            cust.to(DEVICE)
+        if TORCH_COMPILE:
+          orig = torch.compile(orig); cust = torch.compile(cust)
+        
+        x = torch.randn(BATCH, FEATURES, device=DEVICE)
 
-            if TORCH_COMPILE:
-              orig = torch.compile(orig); cust = torch.compile(cust)
-            
-            x = torch.randn(BATCH, FEATURES, device=DEVICE)
-
-            for mode in ('train', 'eval'):
-                getattr(orig, mode)(); getattr(cust, mode)()
-                torch.manual_seed(SEED); y1 = orig(x)
-                torch.manual_seed(SEED); y2 = cust(x, dropout_rate)
-                assert_close(y1, y2, atol=0, rtol=0)
+        for mode in ('train', 'eval'):
+            getattr(orig, mode)(); getattr(cust, mode)()
+            torch.manual_seed(SEED); y1 = orig(x)
+            torch.manual_seed(SEED); y2 = cust(x, dropout_rate)
+            assert_close(y1, y2, atol=0, rtol=0)
         
 
 if __name__ == '__main__':

@@ -8,6 +8,8 @@ from torch import nn
 
 from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
 
+DEFAULT_DROPOUT_RATE = 0.0
+
 
 class DenseBlock(nn.Module):
   """Dense block with optional residual connection.""" ""
@@ -69,7 +71,6 @@ class DLRMResNet(nn.Module):
                mlp_bottom_dims=(256, 256, 256),
                mlp_top_dims=(256, 256, 256, 256, 1),
                embed_dim=128,
-               dropout_rate=0.0,
                use_layer_norm=False,
                embedding_init_multiplier=None):
     super().__init__()
@@ -79,10 +80,6 @@ class DLRMResNet(nn.Module):
     self.mlp_bottom_dims = mlp_bottom_dims
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
-    if dropout_rate is None:
-      self.dropout_rate = 0.0
-    else:
-      self.dropout_rate = dropout_rate
 
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
@@ -152,9 +149,7 @@ class DLRMResNet(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x, dropout_rate=DEFAULT_DROPOUT_RATE):
 
     batch_size = x.shape[0]
 
@@ -196,7 +191,6 @@ class DlrmSmall(nn.Module):
                mlp_bottom_dims=(512, 256, 128),
                mlp_top_dims=(1024, 1024, 512, 256, 1),
                embed_dim=128,
-               dropout_rate=0.0,
                use_layer_norm=False,
                embedding_init_multiplier=None):
     super().__init__()
@@ -207,11 +201,6 @@ class DlrmSmall(nn.Module):
     self.mlp_top_dims = mlp_top_dims
     self.embed_dim = embed_dim
     self.embedding_init_multiplier = embedding_init_multiplier
-    self.dropout_rate = dropout_rate
-    if dropout_rate is None:
-      self.dropout_rate = 0.0
-    else:
-      self.dropout_rate = dropout_rate
 
     # Ideally, we should use the pooled embedding implementation from
     # `TorchRec`. However, in order to have identical implementation
@@ -281,9 +270,7 @@ class DlrmSmall(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = self.dropout_rate
+  def forward(self, x, dropout_rate=DEFAULT_DROPOUT_RATE):
 
     batch_size = x.shape[0]
 
