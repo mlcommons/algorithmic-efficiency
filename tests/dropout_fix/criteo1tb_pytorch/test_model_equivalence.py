@@ -63,10 +63,15 @@ class ModelEquivalenceTest(parameterized.TestCase):
 
         for mode in ('train', 'eval'):
             getattr(orig, mode)(); getattr(cust, mode)()
-            torch.manual_seed(SEED); y1 = orig(x)
-            torch.manual_seed(SEED); y2 = cust(x, dropout_rate)
+            torch.manual_seed(SEED)
+            y1 = orig(x)
+            torch.manual_seed(SEED)
+            if mode == 'train': 
+                y2 = cust(x, dropout_rate)
+            else:
+                y2 = cust(x)
             assert_close(y1, y2, atol=0, rtol=0)
-        
+
 
 if __name__ == '__main__':
     absltest.main()
