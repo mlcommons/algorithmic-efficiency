@@ -63,8 +63,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     """Conformer model init function."""
     torch.random.manual_seed(rng[0])
     # Configure torch backends to avoid OOM errors.
@@ -78,10 +77,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       activation_function_name = 'swish'
     model = models.ConformerEncoderDecoder(
         models.ConformerConfig(
-            attention_residual_dropout_rate=dropout_rate,
-            feed_forward_residual_dropout_rate=dropout_rate,
-            conv_residual_dropout_rate=dropout_rate,
-            input_dropout_rate=dropout_rate,
             use_specaug=self.use_specaug,
             attention_temperature=self.attention_temperature,
             use_post_layer_norm=self.use_post_layer_norm,
