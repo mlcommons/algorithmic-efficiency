@@ -17,40 +17,26 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+      rng: spec.RandomState) -> spec.ModelInitState:
     """Deepspeech model init function.
     """
-    if dropout_rate is None:
-      model_config = models.DeepspeechConfig(
-          use_specaug=self.use_specaug,
-          use_tanh=self.use_tanh,
-          enable_residual_connections=self.enable_residual_connections,
-          enable_decoder_layer_norm=self.enable_decoder_layer_norm,
-          layernorm_everywhere=self.layernorm_everywhere,
-          freq_mask_count=self.freq_mask_count,
-          time_mask_count=self.time_mask_count,
-      )
-    else:
-      model_config = models.DeepspeechConfig(
-          feed_forward_dropout_rate=dropout_rate,
-          use_specaug=self.use_specaug,
-          input_dropout_rate=dropout_rate,
-          use_tanh=self.use_tanh,
-          enable_residual_connections=self.enable_residual_connections,
-          enable_decoder_layer_norm=self.enable_decoder_layer_norm,
-          layernorm_everywhere=self.layernorm_everywhere,
-          freq_mask_count=self.freq_mask_count,
-          time_mask_count=self.time_mask_count,
-      )
+    model_config = models.DeepspeechConfig(
+        use_specaug=self.use_specaug,
+        use_tanh=self.use_tanh,
+        enable_residual_connections=self.enable_residual_connections,
+        enable_decoder_layer_norm=self.enable_decoder_layer_norm,
+        layernorm_everywhere=self.layernorm_everywhere,
+        freq_mask_count=self.freq_mask_count,
+        time_mask_count=self.time_mask_count,
+    )
     self._model = models.Deepspeech(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
-    params_rng, dropout_rng = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
+    params_rng, _ = jax.random.split(rng, 2)
+    variables = model_init_fn({'params': params_rng,},
                               *fake_input_batch)
 
     model_state = variables[

@@ -19,25 +19,14 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """aux_dropout_rate is unused."""
-    rng, params_rng, dropout_rng = jax.random.split(rng, 3)
-    if dropout_rate is None:
-      self._model = models.GNN(
-          self._num_outputs,
-          activation_fn_name=self.activation_fn_name,
-          hidden_dims=self.hidden_dims,
-          latent_dim=self.latent_dim,
-          num_message_passing_steps=self.num_message_passing_steps)
-    else:
-      self._model = models.GNN(
-          self._num_outputs,
-          dropout_rate=dropout_rate,
-          activation_fn_name=self.activation_fn_name,
-          hidden_dims=self.hidden_dims,
-          latent_dim=self.latent_dim,
-          num_message_passing_steps=self.num_message_passing_steps)
+      rng: spec.RandomState) -> spec.ModelInitState:
+    rng, params_rng = jax.random.split(rng, 2)
+    self._model = models.GNN(
+        self._num_outputs,
+        activation_fn_name=self.activation_fn_name,
+        hidden_dims=self.hidden_dims,
+        latent_dim=self.latent_dim,
+        num_message_passing_steps=self.num_message_passing_steps)
     init_fn = jax.jit(functools.partial(self._model.init, train=False))
     fake_batch = jraph.GraphsTuple(
         n_node=jnp.asarray([1]),
@@ -47,7 +36,7 @@ class OgbgWorkload(BaseOgbgWorkload):
         globals=jnp.zeros((1, self._num_outputs)),
         senders=jnp.asarray([0]),
         receivers=jnp.asarray([0]))
-    params = init_fn({'params': params_rng, 'dropout': dropout_rng}, fake_batch)
+    params = init_fn({'params': params_rng}, fake_batch)
     params = params['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)

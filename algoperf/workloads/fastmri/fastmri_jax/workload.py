@@ -21,28 +21,19 @@ class FastMRIWorkload(BaseFastMRIWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
   ) -> spec.ModelInitState:
     """aux_dropout_rate is unused."""
     fake_batch = jnp.zeros((13, 320, 320))
-    if dropout_rate is None:
-      self._model = UNet(
-          num_pool_layers=self.num_pool_layers,
-          num_channels=self.num_channels,
-          use_tanh=self.use_tanh,
-          use_layer_norm=self.use_layer_norm,
+    self._model = UNet(
+        num_pool_layers=self.num_pool_layers,
+        num_channels=self.num_channels,
+        use_tanh=self.use_tanh,
+        use_layer_norm=self.use_layer_norm,
       )
-    else:
-      self._model = UNet(
-          num_pool_layers=self.num_pool_layers,
-          num_channels=self.num_channels,
-          use_tanh=self.use_tanh,
-          use_layer_norm=self.use_layer_norm,
-          dropout_rate=dropout_rate)
 
-    params_rng, dropout_rng = jax.random.split(rng)
-    variables = jax.jit(
-        self._model.init)({'params': params_rng, 'dropout': dropout_rng},
+    params_rng, _ = jax.random.split(rng)
+    init_fn = functools.partial(self._model.init, train=False)
+    variables = jax.jit(init_fn)({'params': params_rng},
                           fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)

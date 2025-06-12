@@ -72,7 +72,6 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
       tabulate: Optional[bool] = False,
   ) -> spec.ModelInitState:
     """Only dropout is used."""
@@ -81,27 +80,16 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     else:
       model_class = models.DlrmSmall
 
-    if dropout_rate is None:
-      self._model = model_class(
-          vocab_size=self.vocab_size,
-          num_dense_features=self.num_dense_features,
-          mlp_bottom_dims=self.mlp_bottom_dims,
-          mlp_top_dims=self.mlp_top_dims,
-          embed_dim=self.embed_dim,
-          use_layer_norm=self.use_layer_norm,
-          embedding_init_multiplier=self.embedding_init_multiplier)
-    else:
-      self._model = model_class(
-          vocab_size=self.vocab_size,
-          num_dense_features=self.num_dense_features,
-          mlp_bottom_dims=self.mlp_bottom_dims,
-          mlp_top_dims=self.mlp_top_dims,
-          embed_dim=self.embed_dim,
-          dropout_rate=dropout_rate,
-          use_layer_norm=self.use_layer_norm,
-          embedding_init_multiplier=self.embedding_init_multiplier)
+    self._model = model_class(
+        vocab_size=self.vocab_size,
+        num_dense_features=self.num_dense_features,
+        mlp_bottom_dims=self.mlp_bottom_dims,
+        mlp_top_dims=self.mlp_top_dims,
+        embed_dim=self.embed_dim,
+        use_layer_norm=self.use_layer_norm,
+        embedding_init_multiplier=self.embedding_init_multiplier)
 
-    params_rng, dropout_rng = jax.random.split(rng)
+    params_rng, _= jax.random.split(rng)
     init_fake_batch_size = 2
     num_categorical_features = 26
     num_dense_features = 13
@@ -109,7 +97,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     input_shape = (init_fake_batch_size, input_size)
     init_fn = functools.partial(self._model.init, train=False)
     initial_variables = jax.jit(init_fn)(
-        {'params': params_rng, 'dropout': dropout_rng},
+        {'params': params_rng,},
         jnp.ones(input_shape, jnp.float32))
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)

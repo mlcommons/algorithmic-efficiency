@@ -60,7 +60,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
   ) -> spec.ModelInitState:
     """Conformer model init function.
 
@@ -71,21 +70,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       activation_function_name = 'gelu'
     else:
       activation_function_name = 'swish'
-    if dropout_rate is None:
-      model_config = models.ConformerConfig(
-          attention_residual_dropout_rate=dropout_rate,
-          feed_forward_residual_dropout_rate=dropout_rate,
-          input_dropout_rate=dropout_rate,
-          use_specaug=self.use_specaug,
-          attention_temperature=self.attention_temperature,
-          use_post_layer_norm=self.use_post_layer_norm,
-          activation_function_name=activation_function_name)
-    else:
-      model_config = models.ConformerConfig(
-          use_specaug=self.use_specaug,
-          attention_temperature=self.attention_temperature,
-          use_post_layer_norm=self.use_post_layer_norm,
-          activation_function_name=activation_function_name)
+    model_config = models.ConformerConfig(
+        attention_residual_dropout_rate=dropout_rate,
+        feed_forward_residual_dropout_rate=dropout_rate,
+        input_dropout_rate=dropout_rate,
+        use_specaug=self.use_specaug,
+        attention_temperature=self.attention_temperature,
+        use_post_layer_norm=self.use_post_layer_norm,
+        activation_function_name=activation_function_name)
 
     self._model = models.Conformer(model_config)
     input_shape = [(320000,), (320000,)]
@@ -93,8 +85,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
-    params_rng, dropout_rng = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
+    params_rng, _ = jax.random.split(rng, 2)
+    variables = model_init_fn({'params': params_rng},
                               *fake_input_batch)
 
     model_state, params = pop(variables, "params")

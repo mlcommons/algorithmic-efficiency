@@ -23,32 +23,22 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
   def initialized(self, key: spec.RandomState,
                   model: nn.Module) -> spec.ModelInitState:
     input_shape = (1, 224, 224, 3)
-    params_rng, dropout_rng = jax.random.split(key)
+    params_rng, _ = jax.random.split(key)
     variables = jax.jit(
-        model.init)({'params': params_rng, 'dropout': dropout_rng},
+        model.init)({'params': params_rng},
                     jnp.ones(input_shape))
     model_state, params = pop(variables, "params")
     return params, model_state
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    if dropout_rate is None:
-      self._model = models.ViT(
-          num_classes=self._num_classes,
-          use_glu=self.use_glu,
-          use_post_layer_norm=self.use_post_layer_norm,
-          use_map=self.use_map,
-          **decode_variant('S/16'))
-    else:
-      self._model = models.ViT(
-          dropout_rate=dropout_rate,
-          num_classes=self._num_classes,
-          use_glu=self.use_glu,
-          use_post_layer_norm=self.use_post_layer_norm,
-          use_map=self.use_map,
-          **decode_variant('S/16'))
+      rng: spec.RandomState) -> spec.ModelInitState:
+    self._model = models.ViT(
+        num_classes=self._num_classes,
+        use_glu=self.use_glu,
+        use_post_layer_norm=self.use_post_layer_norm,
+        use_map=self.use_map,
+        **decode_variant('S/16'))
     params, model_state = self.initialized(rng, self._model)
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
