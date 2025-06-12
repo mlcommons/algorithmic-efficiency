@@ -637,8 +637,8 @@ def score_submission_on_workload(workload: spec.Workload,
 
       with profiler.profile('Train'):
         if capture_trace:
-          jax.profiler.start_trace(log_dir),
-          logging.info('Capturing and saving jax trace to {log_dir}')
+          logging.info(f'Capturing and saving jax trace to {log_dir}')
+          jax.profiler.start_trace(f'{log_dir}/traces'),
         timing, metrics = train_once(workload, workload_name,
                                      global_batch_size,
                                      global_eval_batch_size,
@@ -680,12 +680,17 @@ def score_submission_on_workload(workload: spec.Workload,
       logging.info(f'Creating directory at {log_dir}.')
       logger_utils.makedir(log_dir)
     with profiler.profile('Train'):
+      if capture_trace:
+        jax.profiler.start_trace('/algoperf/traces'),
+        logging.info(f'Capturing and saving jax trace to {log_dir}')
       score, _ = train_once(
           workload, workload_name, global_batch_size, global_eval_batch_size,
           data_dir, imagenet_v2_data_dir,
           init_optimizer_state, update_params, data_selection, prepare_for_eval,
           None, rng_seed, rng, profiler, max_global_steps, log_dir,
           save_checkpoints=save_checkpoints)
+      if capture_trace:
+        jax.profiler.stop_trace()
   return score
 
 
