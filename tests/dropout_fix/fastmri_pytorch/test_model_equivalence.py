@@ -15,7 +15,7 @@ from algoperf.workloads.fastmri.fastmri_pytorch.models_dropout import UNet as Cu
 BATCH, IN_CHANS, H, W = 4, 1, 256, 256
 OUT_CHANS, C, LAYERS = 1, 32, 4
 DEVICE = 'cuda'
-TORCH_COMPILE = True
+TORCH_COMPILE = False
 SEED = 1996
 
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
@@ -89,6 +89,24 @@ class FastMRIModeEquivalenceTest(parameterized.TestCase):
         
         self.fwd_pass(orig, cust, dropout_rate)
 
+    @parameterized.named_parameters(
+      dict(testcase_name=''),
+    )
+    def test_default_dropout(self):
+        """Test default dropout_rate."""
+
+        torch.manual_seed(SEED)
+        orig = OriginalUNet(IN_CHANS, OUT_CHANS, C, LAYERS).to(DEVICE)
+        torch.manual_seed(SEED)
+        cust = CustomUNet(IN_CHANS, OUT_CHANS, C, LAYERS).to(DEVICE)
+        cust.load_state_dict(orig.state_dict())  # sync weights
+        
+        x = torch.randn(BATCH, IN_CHANS, H, W, device=DEVICE)
+        for mode in ('train', 'eval'):
+            getattr(orig, mode)(); getattr(cust, mode)()
+            torch.manual_seed(0); y1 = orig(x)
+            torch.manual_seed(0); y2 = cust(x)
+            assert_close(y1, y2, atol=0, rtol=0)
 
 if __name__ == '__main__':
     absltest.main()
