@@ -250,7 +250,7 @@ class WmtWorkload(BaseWmtWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: Optional[float] = None) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: [float] = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
 
