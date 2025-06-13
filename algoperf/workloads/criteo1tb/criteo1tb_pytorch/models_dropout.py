@@ -7,7 +7,7 @@ from torch import nn
 
 from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
 
-DEFAULT_DROPOUT_RATE = 0.0
+DROPOUT_RATE = 0.0
 
 
 class DenseBlock(nn.Module):
@@ -148,7 +148,7 @@ class DLRMResNet(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x, dropout_rate=DEFAULT_DROPOUT_RATE):
+  def forward(self, x, dropout_rate=DROPOUT_RATE):
 
     batch_size = x.shape[0]
 
@@ -269,7 +269,7 @@ class DlrmSmall(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x, dropout_rate=DEFAULT_DROPOUT_RATE):
+  def forward(self, x, dropout_rate=DROPOUT_RATE):
 
     batch_size = x.shape[0]
 

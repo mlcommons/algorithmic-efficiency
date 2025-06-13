@@ -16,6 +16,7 @@ from algoperf.workloads.imagenet_vit.workload import BaseImagenetVitWorkload
 from algoperf.workloads.imagenet_vit.workload import decode_variant
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
+DROPOUT_RATE = 0.0
 
 
 # Make sure we inherit from the ViT base workload first.
@@ -51,7 +52,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -70,7 +72,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'],
+                           dropout_rate=dropout_rate)
 
     return logits_batch, None
 

@@ -15,7 +15,7 @@ from torch.nn import functional as F
 from algoperf import init_utils
 from algoperf.pytorch_utils import CustomDropout2d, SequentialWithDropout
 
-DEFAULT_DROPOUT_RATE = 0.0
+DROPOUT_RATE = 0.0
 
 
 class UNet(nn.Module):
@@ -77,7 +77,7 @@ class UNet(nn.Module):
   def forward(
       self, 
       x: Tensor, 
-      dropout_rate: float = DEFAULT_DROPOUT_RATE) -> Tensor:
+      dropout_rate: float = DROPOUT_RATE) -> Tensor:
 
     stack = []
     output = x

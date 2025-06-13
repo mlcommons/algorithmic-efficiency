@@ -22,6 +22,8 @@ from algoperf.workloads.wmt.workload import BaseWmtWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
+DROPOUT_RATE = 0.1
+
 
 class WmtWorkload(BaseWmtWorkload):
   """WMT PyTorch workload."""
@@ -202,7 +204,8 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -228,7 +231,8 @@ class WmtWorkload(BaseWmtWorkload):
           inputs_segmentation=augmented_and_preprocessed_input_batch.get(
               'inputs_segmentation', None),
           targets_segmentation=augmented_and_preprocessed_input_batch.get(
-              'targets_segmentation', None))
+              'targets_segmentation', None),
+          dropout_rate=dropout_rate)
 
     return logits_batch, None
 

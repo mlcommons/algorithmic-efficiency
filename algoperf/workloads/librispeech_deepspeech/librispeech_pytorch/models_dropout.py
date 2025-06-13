@@ -17,7 +17,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augme
     SpecAug
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
-DEFAULT_DROPOUT_RATE = 0.1
+DROPOUT_RATE = 0.1
 
 
 @dataclass
@@ -351,7 +351,7 @@ class DeepspeechEncoderDecoder(nn.Module):
 
     self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
 
-  def forward(self, inputs, input_paddings, dropout_rate=DEFAULT_DROPOUT_RATE):
+  def forward(self, inputs, input_paddings, dropout_rate=DROPOUT_RATE):
     outputs = inputs
     output_paddings = input_paddings
 

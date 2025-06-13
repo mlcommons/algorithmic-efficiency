@@ -24,6 +24,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_pytorch import models
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
 MAX_INPUT_LENGTH = 320000
+DROPOUT_RATE = 0.1
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
@@ -105,7 +106,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
 
@@ -126,7 +128,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     with contexts[mode]():
       inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
       logits, logits_paddings = model(inputs.to(DEVICE),
-                                      input_paddings.to(DEVICE))
+                                      input_paddings.to(DEVICE),
+                                      dropout_rate=dropout_rate)
     return (logits, logits_paddings), None
 
   def _build_input_queue(

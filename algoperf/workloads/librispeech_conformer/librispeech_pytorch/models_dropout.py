@@ -17,10 +17,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_pytorch import \
 from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import \
     SpecAug
 
-DEFAULT_ATTN_RESIDUAL_DROPOUT_RATE = 0.1
-DEFAULT_CONV_RESIDUAL_DROPOUT_RATE = 0.0
-DEFAULT_FFN_RESIDUAL_DROPOUT_RATE = 0.1
-DEFAULT_INPUT_DROPOUT_RATE = 0.1
+DROPOUT_RATE = 0.1
 
 
 @dataclass
@@ -93,9 +90,7 @@ class Subsample(nn.Module):
         bias=True)
     self.pos_encode = AddPositionalEmbedding(embedding_dim=self.encoder_dim)
 
-  def forward(self, inputs, input_paddings, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = DEFAULT_INPUT_DROPOUT_RATE
+  def forward(self, inputs, input_paddings, dropout_rate):
 
     output_paddings = input_paddings
     outputs = inputs[:, None, :, :]
@@ -202,9 +197,7 @@ class FeedForwardModule(nn.Module):
         out_features=config.encoder_dim,
         bias=True)
 
-  def forward(self, inputs, padding_mask, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = DEFAULT_FFN_RESIDUAL_DROPOUT_RATE
+  def forward(self, inputs, padding_mask, dropout_rate):
 
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
@@ -310,10 +303,7 @@ class MultiHeadedSelfAttention(nn.Module):
     self.ln = LayerNorm(dim=config.encoder_dim)
     self.self_attention = MHSAwithQS(config)
 
-  def forward(self, outputs, paddings, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = DEFAULT_ATTN_RESIDUAL_DROPOUT_RATE
-
+  def forward(self, outputs, paddings, dropout_rate):
     outputs = self.ln(outputs)
     outputs = self.self_attention(
         outputs,
@@ -400,10 +390,7 @@ class ConvolutionBlock(nn.Module):
     self.bn = BatchNorm(config)
     self.lin3 = nn.Linear(config.encoder_dim, config.encoder_dim)
 
-  def forward(self, inputs, input_paddings, dropout_rate=None):
-    if dropout_rate is None:
-      dropout_rate = DEFAULT_CONV_RESIDUAL_DROPOUT_RATE
-
+  def forward(self, inputs, input_paddings, dropout_rate):
     inputs = self.ln(inputs)
 
     inputs = F.glu(torch.cat([self.lin1(inputs), self.lin2(inputs)], dim=2))
@@ -442,7 +429,7 @@ class ConformerBlock(nn.Module):
     if config.use_post_layer_norm:
       self.ln = LayerNorm(dim=config.encoder_dim)
 
-  def forward(self, inputs, input_paddings, dropout_rate=None):
+  def forward(self, inputs, input_paddings, dropout_rate):
     padding_mask = 1 - input_paddings[:, :, None]
     inputs = inputs + 0.5 * self.ff1(inputs, padding_mask, dropout_rate)
     inputs = inputs + self.mhsa(inputs, input_paddings, dropout_rate)
@@ -481,7 +468,7 @@ class ConformerEncoderDecoder(nn.Module):
     self.ln = LayerNorm(config.encoder_dim)
     self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
 
-  def forward(self, inputs, input_paddings, dropout_rate=None):
+  def forward(self, inputs, input_paddings, dropout_rate=DROPOUT_RATE):
     outputs = inputs
     output_paddings = input_paddings
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)

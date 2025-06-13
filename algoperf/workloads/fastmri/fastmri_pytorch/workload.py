@@ -19,6 +19,8 @@ from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
+DROPOUT_RATE = 0.0
+
 
 class FastMRIWorkload(BaseFastMRIWorkload):
 
@@ -134,7 +136,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -154,8 +157,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
     with contexts[mode]():
       logit_batch = model(
-          augmented_and_preprocessed_input_batch['inputs'].unsqueeze(
-              1)).squeeze(1)
+          augmented_and_preprocessed_input_batch['inputs'].unsqueeze(1),
+          dropout_rate=dropout_rate).squeeze(1)
 
     return logit_batch, None
 

@@ -16,7 +16,7 @@ from algoperf import init_utils
 from algoperf import spec
 from algoperf.workloads.wmt.wmt_pytorch.models_dropout import MultiheadAttention
 
-DEFAULT_DROPOUT_RATE = 0.0
+DROPOUT_RATE = 0.0
 
 
 def posemb_sincos_2d(patches: spec.Tensor, temperature=10_000.) -> spec.Tensor:
@@ -348,7 +348,7 @@ class ViT(nn.Module):
   def forward(
       self, 
       x: spec.Tensor, 
-      dropout_rate: float = DEFAULT_DROPOUT_RATE) -> spec.Tensor:
+      dropout_rate: float = DROPOUT_RATE) -> spec.Tensor:
 
     # Patch extraction.
     x = self.conv_patch_extract(x)

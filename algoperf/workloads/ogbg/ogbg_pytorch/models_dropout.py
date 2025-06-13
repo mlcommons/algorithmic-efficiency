@@ -11,7 +11,7 @@ from torch import nn
 from algoperf import init_utils
 from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
 
-DEFAULT_DROPOUT_RATE = 0.1
+DROPOUT_RATE = 0.1
 
 
 def _make_mlp(in_dim, hidden_dims, activation_fn):
@@ -96,7 +96,7 @@ class GNN(nn.Module):
   def forward(
       self, 
       graph: GraphsTuple, 
-      dropout_rate: float = DEFAULT_DROPOUT_RATE) -> torch.Tensor:
+      dropout_rate: float = DROPOUT_RATE) -> torch.Tensor:
 
     graph = graph._replace(
         globals=torch.zeros([graph.n_node.shape[0], self.num_outputs],

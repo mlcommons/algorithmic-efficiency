@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch.nn.init import normal_
 from torch.nn.init import xavier_uniform_
 
-DEFAULT_DROPOUT_RATE = 0.1
+DROPOUT_RATE = 0.1
 
 
 def make_causal_mask(x: Tensor, device: str = 'cuda:0') -> Tensor:
@@ -156,7 +156,7 @@ class Transformer(nn.Module):
               inputs_segmentation: Optional[Tensor] = None,
               targets_segmentation: Optional[Tensor] = None,
               decode: bool = False,
-              dropout_rate: float = DEFAULT_DROPOUT_RATE) -> Tensor:
+              dropout_rate: float = DROPOUT_RATE) -> Tensor:
     """
     Args:
       src: Tensor, shape [batch_size, seq_len]
