@@ -34,12 +34,7 @@ class MnistWorkload(BaseMnistWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Dropout is unused."""
-    del dropout_rate
-    del aux_dropout_rate
+      rng: spec.RandomState) -> spec.ModelInitState:
     init_val = jnp.ones((1, 28, 28, 1), jnp.float32)
     self._model = _Model()
     initial_params = self._model.init({'params': rng}, init_val,
