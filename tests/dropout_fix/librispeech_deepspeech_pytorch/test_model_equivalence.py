@@ -24,7 +24,7 @@ from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models_dropou
 
 B, T = 32, 30_000
 DEVICE = 'cuda'
-TORCH_COMPILE = True
+TORCH_COMPILE = False
 
 os.environ["CUBLAS_WORKSPACE_CONFIG"]=":4096:8"
 torch.backends.cudnn.benchmark = False
