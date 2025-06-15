@@ -12,12 +12,11 @@ from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
 from algoperf.workloads.ogbg import metrics
+from algoperf.workloads.ogbg.ogbg_pytorch import models
 from algoperf.workloads.ogbg.ogbg_pytorch.models import GNN
 from algoperf.workloads.ogbg.workload import BaseOgbgWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
-
-DROPOUT_RATE = 0.1
 
 
 def _pytorch_map(inputs: Any) -> Any:
@@ -169,7 +168,7 @@ class OgbgWorkload(BaseOgbgWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del rng
     del update_batch_norm  # No BN in the GNN model.

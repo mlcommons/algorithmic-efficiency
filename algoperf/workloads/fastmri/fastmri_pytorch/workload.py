@@ -13,13 +13,12 @@ from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
 import algoperf.random_utils as prng
+from algoperf.workloads.fastmri.fastmri_pytorch import models
 from algoperf.workloads.fastmri.fastmri_pytorch.models import UNet
 from algoperf.workloads.fastmri.fastmri_pytorch.ssim import ssim
 from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
-
-DROPOUT_RATE = 0.0
 
 
 class FastMRIWorkload(BaseFastMRIWorkload):
@@ -137,7 +136,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm

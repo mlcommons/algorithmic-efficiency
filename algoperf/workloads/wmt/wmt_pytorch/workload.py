@@ -17,12 +17,11 @@ from algoperf import pytorch_utils
 from algoperf import spec
 from algoperf.workloads.wmt import bleu
 from algoperf.workloads.wmt.wmt_pytorch import decode
+from algoperf.workloads.wmt.wmt_pytorch import models
 from algoperf.workloads.wmt.wmt_pytorch.models import Transformer
 from algoperf.workloads.wmt.workload import BaseWmtWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
-
-DROPOUT_RATE = 0.1
 
 
 class WmtWorkload(BaseWmtWorkload):
@@ -205,7 +204,7 @@ class WmtWorkload(BaseWmtWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
