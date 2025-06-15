@@ -247,7 +247,8 @@ class Workload(metaclass=abc.ABCMeta):
   #         ModelAuxiliaryState,
   #         ForwardPassMode,
   #         RandomState,
-  #         bool],
+  #         bool,
+  #         float],
   #     Tensor]
   @abc.abstractmethod
   def model_fn(self,
@@ -256,7 +257,8 @@ class Workload(metaclass=abc.ABCMeta):
                model_state: ModelAuxiliaryState,
                mode: ForwardPassMode,
                rng: RandomState,
-               update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
+               update_batch_norm: bool,
+               dropout_rate: float) -> Tuple[Tensor, ModelAuxiliaryState]:
     """Return logits_batch"""
     # Possible side effect of updating BN.
 
