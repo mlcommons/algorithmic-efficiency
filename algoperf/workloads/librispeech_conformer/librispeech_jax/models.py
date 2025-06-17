@@ -221,12 +221,7 @@ class FeedForwardModule(nn.Module):
             inputs)
     inputs = inputs * padding_mask
 
-    if config.feed_forward_residual_dropout_rate is None:
-      feed_forward_residual_dropout_rate = 0.1
-    else:
-      feed_forward_residual_dropout_rate = (
-          config.feed_forward_residual_dropout_rate)
-    inputs = Dropout(rate=feed_forward_residual_dropout_rate)(
+    inputs = Dropout(rate=dropout_rate)(
         inputs, deterministic=not train)
 
     return inputs
@@ -401,7 +396,7 @@ class MultiHeadedSelfAttention(nn.Module):
         use_bias=True,
         broadcast_dropout=False,
         attention_fn=attention_fn,
-        dropout_rate=config.attention_dropout_rate,
+        dropout_rate=dropout_rate,
         deterministic=not train)(
             inputs_q=inputs, mask=attention_mask)
 

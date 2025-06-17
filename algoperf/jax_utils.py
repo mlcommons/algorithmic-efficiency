@@ -14,8 +14,8 @@ class Dropout(Module):
     """Create a dropout layer.
     Forked from https://flax-linen.readthedocs.io/en/latest/_modules/flax/linen/stochastic.html#Dropout.
     The reference dropout implementation is modified support changes to dropout rate during training by:
-    1) adding rate argument to the __call__ method
-    2) removing the if-else condition to check for edge cases, which will trigger a recompile for jitted code
+    1) adding rate argument to the __call__ method.
+    2) removing the if-else condition to check for edge cases, which will trigger a recompile for jitted code.
 
     .. note::
       When using :meth:`Module.apply() <flax.linen.Module.apply>`, make sure
@@ -82,8 +82,8 @@ class Dropout(Module):
         deterministic = merge_param("deterministic", self.deterministic, deterministic)
 
         # Override self.rate if rate is passed to __call__
-        if not (self.rate is not None and rate is not None):
-            rate = merge_param("rate", self.rate, rate)
+        if rate is None:
+          rate = self.rate 
 
         if self.legacy:
             if rate == 0.0:
