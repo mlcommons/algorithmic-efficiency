@@ -228,8 +228,7 @@ def train_once(
         global_batch_size=global_batch_size)
   logging.info('Initializing model.')
   with profiler.profile('Initializing model'):
-    model_params, model_state = workload.init_model_fn(
-        model_init_rng)
+    model_params, model_state = workload.init_model_fn(model_init_rng)
     if FLAGS.framework == 'pytorch' and FLAGS.torch_compile:
       compile_error_workloads = [
           'librispeech_conformer',

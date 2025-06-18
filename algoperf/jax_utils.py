@@ -13,11 +13,15 @@ import jax.numpy as jnp
 
 # Custom Layers
 class Dropout(Module):
+  # pylint: disable=line-too-long
   """Create a dropout layer.
-    Forked from https://flax-linen.readthedocs.io/en/latest/_modules/flax/linen/stochastic.html#Dropout.
-    The reference dropout implementation is modified support changes to dropout rate during training by:
+    Forked from 
+    https://flax-linen.readthedocs.io/en/latest/_modules/flax/linen/stochastic.html#Dropout. 
+    The reference dropout implementation is modified support changes 
+    to dropout rate during  training by:
     1) adding rate argument to the __call__ method.
-    2) removing the if-else condition to check for edge cases, which will trigger a recompile for jitted code.
+    2) removing the if-else condition to check for edge cases, which 
+    will trigger a recompile for jitted code.
 
     .. note::
       When using :meth:`Module.apply() <flax.linen.Module.apply>`, make sure
@@ -47,10 +51,11 @@ class Dropout(Module):
     Attributes:
       rate: the dropout probability.  (_not_ the keep rate!)
       broadcast_dims: dimensions that will share the same dropout mask
-      deterministic: if false the inputs are scaled by ``1 / (1 - rate)`` and
-        masked, whereas if true, no mask is applied and the inputs are returned as
-        is.
-      rng_collection: the rng collection name to use when requesting an rng key.
+      deterministic: if false the inputs are scaled by ``1 / (1 - rate)`` 
+        and masked, whereas if true, no mask is applied and the inputs are 
+        returned as is.
+      rng_collection: the rng collection name to use when requesting an rng 
+        key.
     """
 
   rate: float | None = None
@@ -71,12 +76,13 @@ class Dropout(Module):
 
         Args:
           inputs: the inputs that should be randomly masked.
-          deterministic: if false the inputs are scaled by ``1 / (1 - rate)`` and
-            masked, whereas if true, no mask is applied and the inputs are returned
-            as is.
+          deterministic: if false the inputs are scaled by ``1 / (1 - rate)`` 
+            and masked, whereas if true, no mask is applied and the inputs are
+            returned as is.
           rate: the dropout probability.  (_not_ the keep rate!)
-          rng: an optional PRNGKey used as the random key, if not specified, one
-            will be generated using ``make_rng`` with the ``rng_collection`` name.
+          rng: an optional PRNGKey used as the random key, if not specified, 
+            one will be generated using ``make_rng`` with the 
+            ``rng_collection`` name.
 
         Returns:
           The masked inputs reweighted to preserve mean.
