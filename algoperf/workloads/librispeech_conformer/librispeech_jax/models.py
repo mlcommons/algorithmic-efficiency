@@ -206,8 +206,8 @@ class FeedForwardModule(nn.Module):
                        'config.activation_function_name values, recieved '
                        f'{config.activation_function_name}')
     inputs = activation_fn(inputs)
-    inputs = Dropout(rate=config.feed_forward_dropout_rate)(
-        inputs, deterministic=not train)
+    inputs = Dropout(rate=dropout_rate)(
+        inputs, deterministic=not train, rate=dropout_rate)
 
     inputs = inputs * padding_mask
 
@@ -665,8 +665,7 @@ class Conformer(nn.Module):
       outputs, output_paddings = self.specaug(outputs, output_paddings)
 
     outputs, output_paddings = Subsample(
-        encoder_dim=config.encoder_dim,
-        dropout_rate=dropout_rate)(
+        encoder_dim=config.encoder_dim,)(
         outputs, output_paddings, train, dropout_rate=dropout_rate)
 
     # Run the conformer encoder layers.

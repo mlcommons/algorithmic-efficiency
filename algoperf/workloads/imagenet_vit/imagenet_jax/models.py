@@ -226,8 +226,7 @@ class ViT(nn.Module):
         num_heads=self.num_heads,
         use_glu=self.use_glu,
         use_post_layer_norm=self.use_post_layer_norm,
-        name='Transformer',
-        dropout_rate=dropout_rate)(
+        name='Transformer',)(
             x, train=not train, dropout_rate=dropout_rate)
 
     if self.use_map:
