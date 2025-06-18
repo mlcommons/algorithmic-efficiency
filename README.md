@@ -14,11 +14,11 @@
   <a href="https://arxiv.org/abs/2306.07179" target="_blank">Benchmark</a>/<a href="https://openreview.net/forum?id=CtM5xjRSfm" target="_blank">Results</a> Paper
 </p>
 
-[![CI](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml/badge.svg)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml)
-[![Lint](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml/badge.svg)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/mlcommons/algorithmic-efficiency/blob/main/LICENSE.md)
-[![Code style: yapf](https://img.shields.io/badge/code%20style-yapf-orange)](https://github.com/google/yapf)
-[![Discord](https://dcbadge.vercel.app/api/server/5FPXK7SMt6?style=flat)](https://discord.gg/5FPXK7SMt6)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/mlcommons/algorithmic-efficiency/CI.yml?style=flat-square&logo=github&label=CI)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml)
+[![Linting Status](https://img.shields.io/github/actions/workflow/status/mlcommons/algorithmic-efficiency/linting.yml?style=flat-square&logo=github&label=Linting)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml)
+[![Code Style Ruff](https://img.shields.io/badge/Code%20Style-Ruff-brightgreen?style=flat-square&logo=ruff)](https://github.com/astral-sh/ruff)
+[![GitHub License](https://img.shields.io/github/license/mlcommons/algorithmic-efficiency?style=flat-square&label=License)](LICENSE.md)
+[![Discord](https://dcbadge.limes.pink/api/server/5FPXK7SMt6?style=flat-square)](https://discord.gg/5FPXK7SMt6)
 
 ---
 
@@ -28,11 +28,12 @@ Submissions are evaluated based on their "time-to-result", i.e., the wall-clock 
 
 ---
 
-> This is the repository for the *AlgoPerf: Training Algorithms benchmark* measuring neural network training speedups due to algorithmic improvements.
+> This is the repository for the _AlgoPerf: Training Algorithms benchmark_ measuring neural network training speedups due to algorithmic improvements.
 > It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/).
 > This repository holds the benchmark code, the benchmark's [**technical documentation**](/docs/DOCUMENTATION.md) and [**getting started guides**](/docs/GETTING_STARTED.md). For a detailed description of the benchmark design, see our [**introductory paper**](https://arxiv.org/abs/2306.07179), for the results of the inaugural competition see our [**results paper**](https://openreview.net/forum?id=CtM5xjRSfm).
 >
 > **See our [AlgoPerf Leaderboard](https://github.com/mlcommons/submissions_algorithms) for the latest results of the benchmark and to submit your algorithm.**
+
 ---
 
 > [!IMPORTANT]
@@ -50,14 +51,13 @@ Submissions are evaluated based on their "time-to-result", i.e., the wall-clock 
 
 ## Installation
 
-> [!TIP]
-> **If you have any questions about the benchmark competition or you run into any issues, please feel free to contact us.** Either [file an issue](https://github.com/mlcommons/algorithmic-efficiency/issues), ask a question on [our Discord](https://discord.gg/5FPXK7SMt6) or [join our weekly meetings](https://mlcommons.org/en/groups/research-algorithms/).
+> [!TIP] > **If you have any questions about the benchmark competition or you run into any issues, please feel free to contact us.** Either [file an issue](https://github.com/mlcommons/algorithmic-efficiency/issues), ask a question on [our Discord](https://discord.gg/5FPXK7SMt6) or [join our weekly meetings](https://mlcommons.org/en/groups/research-algorithms/).
 
 You can install this package and dependencies in a [Python virtual environment](/docs/GETTING_STARTED.md#python-virtual-environment) or use a [Docker/Singularity/Apptainer container](/docs/GETTING_STARTED.md#docker) (recommended).
 We recommend using a Docker container (or alternatively, a Singularity/Apptainer container) to ensure a similar environment to our scoring and testing environments.
 Both options are described in detail in the [**Getting Started**](/docs/GETTING_STARTED.md) document.
 
-*TL;DR to install the Jax version for GPU run:*
+_TL;DR to install the Jax version for GPU run:_
 
 ```bash
 pip3 install -e '.[pytorch_cpu]'
@@ -65,7 +65,7 @@ pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax
 pip3 install -e '.[full]'
 ```
 
-*TL;DR to install the PyTorch version for GPU run:*
+_TL;DR to install the PyTorch version for GPU run:_
 
 ```bash
 pip3 install -e '.[jax_cpu]'
@@ -77,7 +77,7 @@ pip3 install -e '.[full]'
 
 For detailed instructions on developing your own algorithm in the benchmark see the [Getting Started](/docs/GETTING_STARTED.md) document.
 
-*TL;DR running a JAX workload:*
+_TL;DR running a JAX workload:_
 
 ```bash
 python3 submission_runner.py \
@@ -89,7 +89,7 @@ python3 submission_runner.py \
     --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
 ```
 
-*TL;DR running a PyTorch workload:*
+_TL;DR running a PyTorch workload:_
 
 ```bash
 python3 submission_runner.py \
@@ -117,17 +117,15 @@ Our [**Contributing**](/docs/CONTRIBUTING.md) document provides further MLCommon
 
 ## License
 
-The *AlgoPerf* codebase is licensed under the [Apache License 2.0](/LICENSE.md).
+The _AlgoPerf_ codebase is licensed under the [Apache License 2.0](/LICENSE.md).
 
 ## Paper and Citing the AlgoPerf Benchmark
 
-In our paper ["Benchmarking Neural Network Training Algorithms"](http://arxiv.org/abs/2306.07179) we motivate, describe, and justify the *AlgoPerf: Training Algorithms* benchmark.
+In our paper ["Benchmarking Neural Network Training Algorithms"](http://arxiv.org/abs/2306.07179) we motivate, describe, and justify the _AlgoPerf: Training Algorithms_ benchmark.
 
-If you are using the *AlgoPerf benchmark*, its codebase, baselines, or workloads, please consider citing our paper:
+If you are using the _AlgoPerf benchmark_, its codebase, baselines, or workloads, please consider citing our paper:
 
-> [Dahl, Schneider, Nado, et al.<br/>
-> **Benchmarking Neural Network Training Algorithms**<br/>
-> *arXiv 2306.07179*](http://arxiv.org/abs/2306.07179)
+> [Dahl, Schneider, Nado, et al.<br/> > **Benchmarking Neural Network Training Algorithms**<br/> > _arXiv 2306.07179_](http://arxiv.org/abs/2306.07179)
 
 ```bibtex
 @Misc{Dahl2023AlgoPerf,
@@ -139,10 +137,9 @@ If you are using the *AlgoPerf benchmark*, its codebase, baselines, or workloads
 }
 ```
 
-If you use the results from the first *AlgoPerf competition*, please consider citing the results paper, as well as the relevant submissions:
+If you use the results from the first _AlgoPerf competition_, please consider citing the results paper, as well as the relevant submissions:
 
-> [Kasimbeg, Schneider, Eschenhagen, et al.<br/>
-> **Accelerating neural network training: An analysis of the AlgoPerf competition**<br/>
+> [Kasimbeg, Schneider, Eschenhagen, et al.<br/> > **Accelerating neural network training: An analysis of the AlgoPerf competition**<br/>
 > ICLR 2025](https://openreview.net/forum?id=CtM5xjRSfm)
 
 ```bibtex
