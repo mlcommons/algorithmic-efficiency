@@ -121,7 +121,8 @@ target-version = "py311"
 quote-style = "single"
 
 [tool.ruff.lint]
-select = ["I", "PL"]
+extend-select = ["I"]
+# Could add (in the future): "E", "F", "UP", "B", "SIM", "PL"
 ignore = [
   # Conflicting lint rules with Ruff's formatter
   # (see https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules).
