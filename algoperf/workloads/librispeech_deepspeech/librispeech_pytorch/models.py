@@ -367,7 +367,8 @@ class DeepspeechEncoderDecoder(nn.Module):
 
     for idx in range(self.config.num_ffn_layers):
       if self.config.enable_residual_connections:
-        outputs = outputs + self.ffns[idx](outputs, output_paddings, dropout_rate)
+        outputs = outputs + self.ffns[idx](
+            outputs, output_paddings, dropout_rate)
       else:
         outputs = self.ffns[idx](outputs, output_paddings, dropout_rate)
 

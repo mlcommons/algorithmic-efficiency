@@ -4,16 +4,19 @@ Run with:
   python3 tests/dropout_fix/wmt_pytorch/test_model_equivalence.py
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch, os, random, numpy as np
+import os
+import random
 
-from algoperf.workloads.wmt.wmt_pytorch.models import (
-    Transformer as OriginalModel,
-)
-from algoperf.workloads.wmt.wmt_pytorch.models_dropout import (
-    Transformer as CustomModel,
-)
+from absl.testing import absltest
+from absl.testing import parameterized
+import numpy as np
+import torch
+from torch.testing import assert_close
+
+from algoperf.workloads.wmt.wmt_pytorch.models import \
+    Transformer as OriginalModel
+from algoperf.workloads.wmt.wmt_pytorch.models_dropout import \
+    Transformer as CustomModel
 
 B, SRC_LEN, TGT_LEN, NTOK = 16, 80, 80, 32_000
 DEVICE = "cuda"

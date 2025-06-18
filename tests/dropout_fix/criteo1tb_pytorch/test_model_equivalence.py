@@ -4,20 +4,21 @@ Run it as:
   python3 tests/dropout_fix/criteo1tb_pytorch/test_model_equivalence.py
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch
 import os
 
-from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models import (
-    DLRMResNet as OriginalDLRMResNet,
-    DlrmSmall  as OriginalDlrmSmall,
-)
-from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models_dropout import (
-    DLRMResNet as CustomDLRMResNet,
-    DlrmSmall  as CustomDlrmSmall,
-)
+from absl.testing import absltest
+from absl.testing import parameterized
+import torch
+from torch.testing import assert_close
 
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models import \
+    DLRMResNet as OriginalDLRMResNet
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models import \
+    DlrmSmall as OriginalDlrmSmall
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models_dropout import \
+    DLRMResNet as CustomDLRMResNet
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models_dropout import \
+    DlrmSmall as CustomDlrmSmall
 
 BATCH, DENSE, SPARSE = 16, 13, 26
 FEATURES = DENSE + SPARSE

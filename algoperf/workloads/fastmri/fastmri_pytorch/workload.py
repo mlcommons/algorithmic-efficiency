@@ -106,9 +106,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         batch['volume_max'] = aux_tensors[2][RANK]
       yield batch
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = UNet(
         num_pool_layers=self.num_pool_layers,
@@ -136,7 +134,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm

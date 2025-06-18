@@ -166,9 +166,7 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_score = bleu.corpus_bleu(predictions, [references]).score
     return bleu_score
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
 
     if self.activation == 'relu':
@@ -204,7 +202,8 @@ class WmtWorkload(BaseWmtWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm

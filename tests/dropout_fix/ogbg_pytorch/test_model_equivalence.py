@@ -4,13 +4,19 @@ Run with:
   python3 tests/dropout_fix/ogbg_pytorch/test_model_equivalence.py
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch, os, random, numpy as np
+import os
+import random
+
+from absl.testing import absltest
+from absl.testing import parameterized
 from jraph import GraphsTuple
+import numpy as np
+import torch
+from torch.testing import assert_close
 
 from algoperf.workloads.ogbg.ogbg_pytorch.models import GNN as OriginalModel
-from algoperf.workloads.ogbg.ogbg_pytorch.models_dropout import GNN as CustomModel
+from algoperf.workloads.ogbg.ogbg_pytorch.models_dropout import \
+    GNN as CustomModel
 
 B, N, E = 8, 20, 40          # graphs, nodes/graph, edges/graph
 NODE_FDIM, EDGE_FDIM = 9, 3  # expected feature dims

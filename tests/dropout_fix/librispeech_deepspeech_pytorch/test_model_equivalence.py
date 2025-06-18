@@ -8,19 +8,21 @@ Run with:
 - `feed_forward_dropout_rate` (if None, 0.1)
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch
 import os
 
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import (
-  DeepspeechEncoderDecoder as OriginalModel,
-  DeepspeechConfig as OriginalConfig
-)
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models_dropout import( 
-  DeepspeechEncoderDecoder as CustomModel,
-  DeepspeechConfig as CustomConfig
-)
+from absl.testing import absltest
+from absl.testing import parameterized
+import torch
+from torch.testing import assert_close
+
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
+    DeepspeechConfig as OriginalConfig
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
+    DeepspeechEncoderDecoder as OriginalModel
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models_dropout import \
+    DeepspeechConfig as CustomConfig
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models_dropout import \
+    DeepspeechEncoderDecoder as CustomModel
 
 B, T = 32, 30_000
 DEVICE = 'cuda'

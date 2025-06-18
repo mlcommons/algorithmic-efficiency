@@ -13,7 +13,8 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from algoperf import init_utils
-from algoperf.pytorch_utils import CustomDropout2d, SequentialWithDropout
+from algoperf.pytorch_utils import CustomDropout2d
+from algoperf.pytorch_utils import SequentialWithDropout
 
 DROPOUT_RATE = 0.0
 
@@ -39,12 +40,8 @@ class UNet(nn.Module):
     self.num_channels = num_channels
     self.num_pool_layers = num_pool_layers
 
-    self.down_sample_layers = nn.ModuleList([
-        ConvBlock(in_chans,
-                  num_channels,
-                  use_tanh,
-                  use_layer_norm)
-    ])
+    self.down_sample_layers = nn.ModuleList(
+        [ConvBlock(in_chans, num_channels, use_tanh, use_layer_norm)])
     ch = num_channels
     for _ in range(num_pool_layers - 1):
       self.down_sample_layers.append(
@@ -58,8 +55,7 @@ class UNet(nn.Module):
     for _ in range(num_pool_layers - 1):
       self.up_transpose_conv.append(
           TransposeConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
-      self.up_conv.append(
-          ConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
+      self.up_conv.append(ConvBlock(ch * 2, ch, use_tanh, use_layer_norm))
       ch //= 2
 
     self.up_transpose_conv.append(
@@ -74,10 +70,7 @@ class UNet(nn.Module):
       if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         init_utils.pytorch_default_init(m)
 
-  def forward(
-      self, 
-      x: Tensor, 
-      dropout_rate: float = DROPOUT_RATE) -> Tensor:
+  def forward(self, x: Tensor, dropout_rate: float = DROPOUT_RATE) -> Tensor:
 
     stack = []
     output = x

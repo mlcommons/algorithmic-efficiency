@@ -154,9 +154,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
     return dataloader
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
 
     if self.use_silu and self.use_gelu:
@@ -190,7 +188,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = 0.0) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = 0.0
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del dropout_rate

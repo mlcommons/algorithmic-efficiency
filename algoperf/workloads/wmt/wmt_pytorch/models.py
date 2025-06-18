@@ -226,7 +226,8 @@ class TransformerEncoder(nn.Module):
     self.enable_nested_tensor = enable_nested_tensor
     self.mask_check = mask_check
 
-  def forward(self, src: Tensor, 
+  def forward(self,
+              src: Tensor,
               mask: Optional[Tensor] = None,
               dropout_rate: Optional[float] = 0.0) -> Tensor:
     """Pass the input through the encoder layers in turn.
@@ -341,7 +342,12 @@ class Decoder(nn.Module):
     if not decode:
       tgt = shift_right(tgt)
     tgt = self.shared_embedding(tgt)
-    tgt = self.pos_encoder(tgt, targets_positions, decode=decode, cache=cache, dropout_rate=dropout_rate)
+    tgt = self.pos_encoder(
+        tgt,
+        targets_positions,
+        decode=decode,
+        cache=cache,
+        dropout_rate=dropout_rate)
     if decode:
       tgt, cache = tgt
     output = self.decoder(
@@ -364,9 +370,7 @@ class Decoder(nn.Module):
 
 class PositionalEncoding(nn.Module):
 
-  def __init__(self,
-               d_model: int,
-               max_len: int = 256):
+  def __init__(self, d_model: int, max_len: int = 256):
     super().__init__()
 
     position = torch.arange(max_len).unsqueeze(1)
@@ -481,9 +485,9 @@ class TransformerEncoderLayer(nn.Module):
 
     self.activation = activation
 
-  def forward(self, 
-              src: Tensor, 
-              src_mask: Optional[Tensor] = None, 
+  def forward(self,
+              src: Tensor,
+              src_mask: Optional[Tensor] = None,
               dropout_rate: Optional[float] = 0.0) -> Tensor:
     r"""Pass the input through the encoder layer.
 
@@ -505,16 +509,16 @@ class TransformerEncoderLayer(nn.Module):
     return x
 
   # Self-attention block:
-  def _sa_block(self, 
-                x: Tensor, 
-                attn_mask: Optional[Tensor], 
+  def _sa_block(self,
+                x: Tensor,
+                attn_mask: Optional[Tensor],
                 dropout_rate: Optional[float] = 0.0) -> Tensor:
     x, _ = self.self_attn(x, attn_mask=attn_mask, dropout_rate=dropout_rate)
     return F.dropout(x, dropout_rate, training=self.training)
 
   # Feed forward block:
-  def _ff_block(self, 
-                inputs: Tensor, 
+  def _ff_block(self,
+                inputs: Tensor,
                 dropout_rate: Optional[float] = 0.0) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
@@ -763,18 +767,21 @@ class TransformerDecoderLayer(nn.Module):
     return F.dropout(x, dropout_rate, self.training), cache
 
   # Multihead attention block:
-  def _mha_block(self, x: Tensor, mem: Tensor,
+  def _mha_block(self,
+                 x: Tensor,
+                 mem: Tensor,
                  attn_mask: Optional[Tensor],
                  dropout_rate: Optional[float] = 0.0) -> Tensor:
     x, _ = self.multihead_attn(
-        x, 
-        mem, 
-        attn_mask=attn_mask, 
+        x,
+        mem,
+        attn_mask=attn_mask,
         dropout_rate=dropout_rate)
     return F.dropout(x, dropout_rate, self.training)
 
   # Feed forward block.
-  def _ff_block(self, inputs: Tensor,
+  def _ff_block(self,
+                inputs: Tensor,
                 dropout_rate: Optional[float] = 0.0) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
@@ -847,15 +854,17 @@ class MultiheadAttention(nn.Module):
         if module.bias is not None:
           normal_(module.bias, std=1e-6)
 
-  def forward(self,
-              x: Tensor,
-              mem: Optional[Tensor] = None,
-              attn_mask: Optional[Tensor] = None,
-              decode: bool = False,
-              max_len: Optional[int] = None,
-              cache: Optional[dict] = None,
-              index: Optional[int] = None,
-              dropout_rate: Optional[float] = 0.0) -> Any: # TODO: (nico) remove default?!
+  def forward(
+      self,
+      x: Tensor,
+      mem: Optional[Tensor] = None,
+      attn_mask: Optional[Tensor] = None,
+      decode: bool = False,
+      max_len: Optional[int] = None,
+      cache: Optional[dict] = None,
+      index: Optional[int] = None,
+      dropout_rate: Optional[float] = 0.0
+  ) -> Any:  # TODO: (nico) remove default?!
     r"""
     Args:
       x: Batch of input sequences of shape

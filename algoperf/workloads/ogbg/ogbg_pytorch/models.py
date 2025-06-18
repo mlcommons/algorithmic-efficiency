@@ -9,7 +9,8 @@ import torch
 from torch import nn
 
 from algoperf import init_utils
-from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
+from algoperf.pytorch_utils import CustomDropout
+from algoperf.pytorch_utils import SequentialWithDropout
 
 DROPOUT_RATE = 0.1
 
@@ -93,10 +94,9 @@ class GNN(nn.Module):
       if isinstance(m, nn.Linear):
         init_utils.pytorch_default_init(m)
 
-  def forward(
-      self, 
-      graph: GraphsTuple, 
-      dropout_rate: float = DROPOUT_RATE) -> torch.Tensor:
+  def forward(self,
+              graph: GraphsTuple,
+              dropout_rate: float = DROPOUT_RATE) -> torch.Tensor:
 
     graph = graph._replace(
         globals=torch.zeros([graph.n_node.shape[0], self.num_outputs],

@@ -14,7 +14,8 @@ import torch.nn.functional as F
 
 from algoperf import init_utils
 from algoperf import spec
-from algoperf.workloads.wmt.wmt_pytorch.models_dropout import MultiheadAttention
+from algoperf.workloads.wmt.wmt_pytorch.models_dropout import \
+    MultiheadAttention
 
 DROPOUT_RATE = 0.0
 
@@ -86,9 +87,7 @@ class MlpBlock(nn.Module):
 class SelfAttention(nn.Module):
   """Self-attention special case of multi-head dot-product attention."""
 
-  def __init__(self,
-               width: int,
-               num_heads: int = 8) -> None:
+  def __init__(self, width: int, num_heads: int = 8) -> None:
     super().__init__()
 
     self.width = width
@@ -161,9 +160,7 @@ class Encoder1DBlock(nn.Module):
     self.self_attention1 = SelfAttention(self.width, self.num_heads)
     self.layer_norm2 = nn.LayerNorm(self.width, eps=1e-6)
     self.mlp3 = MlpBlock(
-        width=self.width,
-        mlp_dim=self.mlp_dim,
-        use_glu=self.use_glu)
+        width=self.width, mlp_dim=self.mlp_dim, use_glu=self.use_glu)
 
   def forward(self, x: spec.Tensor, dropout_rate: float) -> spec.Tensor:
 
@@ -345,10 +342,9 @@ class ViT(nn.Module):
   def get_posemb(self, x: spec.Tensor) -> spec.Tensor:
     return posemb_sincos_2d(x).type(self.dtype)
 
-  def forward(
-      self, 
-      x: spec.Tensor, 
-      dropout_rate: float = DROPOUT_RATE) -> spec.Tensor:
+  def forward(self,
+              x: spec.Tensor,
+              dropout_rate: float = DROPOUT_RATE) -> spec.Tensor:
 
     # Patch extraction.
     x = self.conv_patch_extract(x)

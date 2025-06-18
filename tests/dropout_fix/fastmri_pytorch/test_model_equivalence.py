@@ -4,13 +4,17 @@ Run it as:
   python3 tests/dropout_fix/fastmri_pytorch/test_model_equivalence.py
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch
 import os
 
-from algoperf.workloads.fastmri.fastmri_pytorch.models import UNet as OriginalUNet
-from algoperf.workloads.fastmri.fastmri_pytorch.models_dropout import UNet as CustomUNet
+from absl.testing import absltest
+from absl.testing import parameterized
+import torch
+from torch.testing import assert_close
+
+from algoperf.workloads.fastmri.fastmri_pytorch.models import \
+    UNet as OriginalUNet
+from algoperf.workloads.fastmri.fastmri_pytorch.models_dropout import \
+    UNet as CustomUNet
 
 BATCH, IN_CHANS, H, W = 4, 1, 256, 256
 OUT_CHANS, C, LAYERS = 1, 32, 4

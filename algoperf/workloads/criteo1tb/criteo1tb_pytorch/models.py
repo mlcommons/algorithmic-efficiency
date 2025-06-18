@@ -5,13 +5,15 @@ import math
 import torch
 from torch import nn
 
-from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
+from algoperf.pytorch_utils import CustomDropout
+from algoperf.pytorch_utils import SequentialWithDropout
 
 DROPOUT_RATE = 0.0
 
 
 class DenseBlock(nn.Module):
   """Dense block with optional residual connection.""" ""
+
   def __init__(self, module, resnet=False):
     super().__init__()
     self.module = module
@@ -23,6 +25,7 @@ class DenseBlock(nn.Module):
 
 class DenseBlockWithDropout(nn.Module):
   """Dense block with optional residual connection and support for dropout."""
+
   def __init__(self, module, resnet=False):
     super().__init__()
     self.module = module
@@ -30,7 +33,7 @@ class DenseBlockWithDropout(nn.Module):
     self._supports_custom_dropout = True
 
   def forward(self, x, p):
-      return self.module(x, p) + x if self.resnet else self.module(x, p)
+    return self.module(x, p) + x if self.resnet else self.module(x, p)
 
 
 class DotInteract(nn.Module):

@@ -73,9 +73,7 @@ class LayerNorm(nn.Module):
 
 class Subsample(nn.Module):
 
-  def __init__(self,
-               encoder_dim: int = 0,
-               num_bins: int = 80):
+  def __init__(self, encoder_dim: int = 0, num_bins: int = 80):
     super().__init__()
     self.encoder_dim = encoder_dim
 
@@ -105,7 +103,8 @@ class Subsample(nn.Module):
 
     outputs = self.linear(outputs)
     outputs = outputs + self.pos_encode(seq_length=outputs.shape[1])
-    outputs = F.dropout(outputs, dropout_rate, training=self.training, inplace=True)
+    outputs = F.dropout(
+        outputs, dropout_rate, training=self.training, inplace=True)
 
     return outputs, output_paddings
 
@@ -215,7 +214,8 @@ class FeedForwardModule(nn.Module):
     inputs = inputs * padding_mask
     inputs = self.linear2(inputs)
     inputs = inputs * padding_mask
-    inputs = F.dropout(inputs, dropout_rate, training=self.training, inplace=True)
+    inputs = F.dropout(
+        inputs, dropout_rate, training=self.training, inplace=True)
 
     return inputs
 
@@ -309,7 +309,8 @@ class MultiHeadedSelfAttention(nn.Module):
         outputs,
         key_padding_mask=paddings == 1,
     )
-    outputs = F.dropout(outputs, dropout_rate, training=self.training, inplace=True)
+    outputs = F.dropout(
+        outputs, dropout_rate, training=self.training, inplace=True)
     return outputs
 
 
@@ -412,7 +413,8 @@ class ConvolutionBlock(nn.Module):
     inputs = activation_fn(inputs)
     inputs = self.lin3(inputs)
 
-    inputs = F.dropout(inputs, dropout_rate, training=self.training, inplace=True)
+    inputs = F.dropout(
+        inputs, dropout_rate, training=self.training, inplace=True)
     return inputs
 
 
@@ -460,8 +462,7 @@ class ConformerEncoderDecoder(nn.Module):
         use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames
     )
     self.subsample = Subsample(
-        encoder_dim=config.encoder_dim,
-        num_bins=preprocessing_config.num_bins)
+        encoder_dim=config.encoder_dim, num_bins=preprocessing_config.num_bins)
     self.conformers = nn.ModuleList(
         [ConformerBlock(config) for _ in range(config.num_encoder_layers)])
 

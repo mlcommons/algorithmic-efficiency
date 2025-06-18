@@ -137,9 +137,7 @@ class OgbgWorkload(BaseOgbgWorkload):
 
       yield batch
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = GNN(
         num_outputs=self._num_outputs,
@@ -168,7 +166,8 @@ class OgbgWorkload(BaseOgbgWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del rng
     del update_batch_norm  # No BN in the GNN model.
@@ -188,8 +187,9 @@ class OgbgWorkload(BaseOgbgWorkload):
     }
 
     with contexts[mode]():
-      logits = model(augmented_and_preprocessed_input_batch['inputs'],
-                     dropout_rate=dropout_rate)
+      logits = model(
+          augmented_and_preprocessed_input_batch['inputs'],
+          dropout_rate=dropout_rate)
 
     return logits, None
 

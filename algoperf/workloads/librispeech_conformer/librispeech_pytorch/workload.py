@@ -61,9 +61,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def attention_temperature(self) -> float:
     return 1.0
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     """Conformer model init function."""
     torch.random.manual_seed(rng[0])
     # Configure torch backends to avoid OOM errors.
@@ -106,7 +104,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
 

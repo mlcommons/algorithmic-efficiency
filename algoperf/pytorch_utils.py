@@ -6,8 +6,8 @@ import jax
 import tensorflow as tf
 import torch
 from torch import Tensor
-import torch.nn as nn
 import torch.distributed as dist
+import torch.nn as nn
 import torch.nn.functional as F
 
 from algoperf import spec
@@ -84,6 +84,7 @@ def update_batch_norm_fn(module: spec.ParameterContainer,
 
 class CustomDropout(nn.Module):
   """A module around torch.nn.functional.dropout."""
+
   def __init__(self):
     super().__init__()
     self._supports_custom_dropout = True
@@ -94,6 +95,7 @@ class CustomDropout(nn.Module):
 
 class CustomDropout2d(nn.Module):
   """A module around torch.nn.functional.dropout2d."""
+
   def __init__(self):
     super().__init__()
     self._supports_custom_dropout = True
@@ -104,6 +106,7 @@ class CustomDropout2d(nn.Module):
 
 class SequentialWithDropout(nn.Sequential):
   """Sequential of modules with dropout."""
+
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._supports_custom_dropout = True
@@ -113,5 +116,5 @@ class SequentialWithDropout(nn.Sequential):
       if getattr(module, '_supports_custom_dropout', False):
         x = module(x, p)
       else:
-        x = module(x) 
+        x = module(x)
     return x

@@ -6,19 +6,21 @@ Run with:
 NOTE: we don't test for default dropout_rate values, since they changed.
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch
 import os
 
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import (
-  ConformerConfig as OriginalConfig,
-  ConformerEncoderDecoder as OriginalModel
-)
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models_dropout import( 
-  ConformerConfig as CustomConfig,
-  ConformerEncoderDecoder as CustomModel,
-)
+from absl.testing import absltest
+from absl.testing import parameterized
+import torch
+from torch.testing import assert_close
+
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
+    ConformerConfig as OriginalConfig
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
+    ConformerEncoderDecoder as OriginalModel
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models_dropout import \
+    ConformerConfig as CustomConfig
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models_dropout import \
+    ConformerEncoderDecoder as CustomModel
 
 N_LAYERS = 3
 B, T = 32, 36_000

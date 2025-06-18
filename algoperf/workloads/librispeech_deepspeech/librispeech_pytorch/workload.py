@@ -23,9 +23,7 @@ MAX_INPUT_LENGTH = 320000
 
 class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     """Deepspeech model init function."""
     torch.random.manual_seed(rng[0])
     model = DeepspeechEncoderDecoder(
@@ -55,7 +53,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
-  
+
   def model_fn(
       self,
       params: spec.ParameterContainer,
@@ -64,11 +62,16 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     # override super method, changing only the default dropout_rate
-    return super().model_fn(
-        params, augmented_and_preprocessed_input_batch, model_state,
-        mode, rng, update_batch_norm, dropout_rate)
+    return super().model_fn(params,
+                            augmented_and_preprocessed_input_batch,
+                            model_state,
+                            mode,
+                            rng,
+                            update_batch_norm,
+                            dropout_rate)
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['lin.weight', 'lin.bias']

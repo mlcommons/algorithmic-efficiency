@@ -4,14 +4,18 @@ Run it as:
   python3 tests/dropout_fix/imagenet_vit_pytorch/test_model_equivalence.py
 """
 
-from absl.testing import absltest, parameterized
-from torch.testing import assert_close
-import torch
-import os
 import itertools
+import os
 
-from algoperf.workloads.imagenet_vit.imagenet_pytorch.models import ViT as OriginalVit
-from algoperf.workloads.imagenet_vit.imagenet_pytorch.models_dropout import ViT as CustomVit
+from absl.testing import absltest
+from absl.testing import parameterized
+import torch
+from torch.testing import assert_close
+
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.models import \
+    ViT as OriginalVit
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.models_dropout import \
+    ViT as CustomVit
 
 # Model / test hyper-params
 BATCH, C, H, W = 4, 3, 224, 224 # input shape (N,C,H,W)
