@@ -46,7 +46,6 @@ dependencies = [
   "clu==0.0.12",
   "matplotlib>=3.9.2",
   "tabulate==0.9.0",
-
 ]
 
 [build-system]
@@ -69,9 +68,7 @@ version_file = "algoperf/_version.py"
 ###############################################################################
 [project.optional-dependencies]
 # All workloads
-full = [
-  "algoperf[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]",
-]
+full = ["algoperf[criteo1tb,fastmri,ogbg,librispeech_conformer,wmt]"]
 # All workloads plus development dependencies
 full_dev = ["algoperf[full,dev]"]
 # Dependencies for developing the package
@@ -104,11 +101,7 @@ jax_core_deps = [
   "ml_dtypes==0.4.1",
   "protobuf==4.25.5",
 ]
-jax_cpu = [
-  "jax==0.4.28",
-  "jaxlib==0.4.28",
-  "algoperf[jax_core_deps]",
-]
+jax_cpu = ["jax==0.4.28", "jaxlib==0.4.28", "algoperf[jax_core_deps]"]
 jax_gpu = [
   "jax==0.4.28",
   "jaxlib==0.4.28",
@@ -117,10 +110,8 @@ jax_gpu = [
   "algoperf[jax_core_deps]",
 ]
 pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]
-pytorch_gpu = [
-  "torch==2.5.1",
-  "torchvision==0.20.1",
-] # Note: omit the cuda suffix and installing from the appropriate wheel will result in using locally installed CUDA.
+pytorch_gpu = ["torch==2.5.1", "torchvision==0.20.1"]
+# Note: omit the cuda suffix and installing from the appropriate wheel will result in using locally installed CUDA.
 
 ###############################################################################
 #                           Linting Configurations                            #
@@ -133,7 +124,7 @@ each_dict_entry_on_separate_line = false
 split_all_top_level_comma_separated_values = true
 column_limit = 80
 [tool.yapfignore]
-ignore_patterns = ["algoperf/_version.py"]
+ignore_patterns = ["algoperf/_version.py", ".eggs/**"]
 
 # isort configuration
 [tool.isort]
