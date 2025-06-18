@@ -5,7 +5,10 @@ from absl import logging
 import jax
 import tensorflow as tf
 import torch
+from torch import Tensor
+import torch.nn as nn
 import torch.distributed as dist
+import torch.nn.functional as F
 
 from algoperf import spec
 from algoperf.profiler import Profiler
@@ -77,3 +80,38 @@ def update_batch_norm_fn(module: spec.ParameterContainer,
         module.momentum = 0.0
     elif hasattr(module, 'momentum_backup'):
       module.momentum = module.momentum_backup
+
+
+class CustomDropout(nn.Module):
+  """A module around torch.nn.functional.dropout."""
+  def __init__(self):
+    super().__init__()
+    self._supports_custom_dropout = True
+
+  def forward(self, input: Tensor, p: float) -> Tensor:
+    return F.dropout(input, p, training=self.training)
+
+
+class CustomDropout2d(nn.Module):
+  """A module around torch.nn.functional.dropout2d."""
+  def __init__(self):
+    super().__init__()
+    self._supports_custom_dropout = True
+
+  def forward(self, input: Tensor, p: float) -> Tensor:
+    return F.dropout2d(input, p, training=self.training)
+
+
+class SequentialWithDropout(nn.Sequential):
+  """Sequential of modules with dropout."""
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self._supports_custom_dropout = True
+
+  def forward(self, x: Tensor, p: float) -> Tensor:
+    for module in self:
+      if getattr(module, '_supports_custom_dropout', False):
+        x = module(x, p)
+      else:
+        x = module(x) 
+    return x

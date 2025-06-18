@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -6,6 +6,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from algoperf import param_utils
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch import models
 from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
     initialize
 from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import \
@@ -24,20 +25,12 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Deepspeech model init function.
-
-    Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
-    as input_dropout_rate.
-    """
+      rng: spec.RandomState) -> spec.ModelInitState:
+    """Deepspeech model init function."""
     torch.random.manual_seed(rng[0])
     model = DeepspeechEncoderDecoder(
         DeepspeechConfig(
-            feed_forward_dropout_rate=dropout_rate,
             use_specaug=self.use_specaug,
-            input_dropout_rate=aux_dropout_rate,
             use_tanh=self.use_tanh,
             enable_residual_connections=self.enable_residual_connections,
             enable_decoder_layer_norm=self.enable_decoder_layer_norm,
@@ -62,6 +55,20 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       else:
         model = torch.nn.DataParallel(model)
     return model, None
+  
+  def model_fn(
+      self,
+      params: spec.ParameterContainer,
+      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      mode: spec.ForwardPassMode,
+      rng: spec.RandomState,
+      update_batch_norm: bool,
+      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    # override super method, changing only the default dropout_rate
+    return super().model_fn(
+        params, augmented_and_preprocessed_input_batch, model_state,
+        mode, rng, update_batch_norm, dropout_rate)
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key in ['lin.weight', 'lin.bias']

@@ -9,17 +9,20 @@ import torch
 from torch import nn
 
 from algoperf import init_utils
+from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
+
+DROPOUT_RATE = 0.1
 
 
-def _make_mlp(in_dim, hidden_dims, dropout_rate, activation_fn):
+def _make_mlp(in_dim, hidden_dims, activation_fn):
   """Creates a MLP with specified dimensions."""
-  layers = nn.Sequential()
+  layers = SequentialWithDropout()
   for i, dim in enumerate(hidden_dims):
     layers.add_module(f'dense_{i}',
                       nn.Linear(in_features=in_dim, out_features=dim))
     layers.add_module(f'norm_{i}', nn.LayerNorm(dim, eps=1e-6))
     layers.add_module(f'activation_fn_{i}', activation_fn())
-    layers.add_module(f'dropout_{i}', nn.Dropout(dropout_rate))
+    layers.add_module(f'dropout_{i}', CustomDropout())
     in_dim = dim
   return layers
 
@@ -33,7 +36,6 @@ class GNN(nn.Module):
 
   def __init__(self,
                num_outputs: int = 128,
-               dropout_rate: Optional[float] = 0.1,
                activation_fn_name: str = 'relu',
                latent_dim: int = 256,
                hidden_dims: Tuple[int] = (256,),
@@ -43,8 +45,6 @@ class GNN(nn.Module):
     self.hidden_dims = hidden_dims
     self.num_message_passing_steps = num_message_passing_steps
     self.num_outputs = num_outputs
-    if dropout_rate is None:
-      dropout_rate = 0.1
     # in_features are specifically chosen for the ogbg workload.
     self.node_embedder = nn.Linear(in_features=9, out_features=self.latent_dim)
     self.edge_embedder = nn.Linear(in_features=3, out_features=self.latent_dim)
@@ -77,17 +77,14 @@ class GNN(nn.Module):
           GraphNetwork(
               update_edge_fn=_make_mlp(in_dim_edge_fn,
                                        self.hidden_dims,
-                                       dropout_rate,
                                        activation_fn),
               update_node_fn=_make_mlp(in_dim_node_fn,
                                        self.hidden_dims,
-                                       dropout_rate,
                                        activation_fn),
               update_global_fn=_make_mlp(last_in_dim,
                                          self.hidden_dims,
-                                         dropout_rate,
                                          activation_fn)))
-    self.graph_network = nn.Sequential(*graph_network_layers)
+    self.graph_network = SequentialWithDropout(*graph_network_layers)
 
     self.decoder = nn.Linear(
         in_features=self.hidden_dims[-1], out_features=self.num_outputs)
@@ -96,14 +93,18 @@ class GNN(nn.Module):
       if isinstance(m, nn.Linear):
         init_utils.pytorch_default_init(m)
 
-  def forward(self, graph: GraphsTuple) -> torch.Tensor:
+  def forward(
+      self, 
+      graph: GraphsTuple, 
+      dropout_rate: float = DROPOUT_RATE) -> torch.Tensor:
+
     graph = graph._replace(
         globals=torch.zeros([graph.n_node.shape[0], self.num_outputs],
                             device=graph.n_node.device))
     graph = graph._replace(nodes=self.node_embedder(graph.nodes))
     graph = graph._replace(edges=self.edge_embedder(graph.edges))
 
-    graph = self.graph_network(graph)
+    graph = self.graph_network(graph, dropout_rate)
 
     # Map globals to represent the final result
     graph = graph._replace(globals=self.decoder(graph.globals))
@@ -145,8 +146,9 @@ class GraphNetwork(nn.Module):
     self.update_edge_fn = update_edge_fn
     self.update_node_fn = update_node_fn
     self.update_global_fn = update_global_fn
+    self._supports_custom_dropout = True  # supports SequentialWithDropout
 
-  def forward(self, graph: GraphsTuple) -> GraphsTuple:
+  def forward(self, graph: GraphsTuple, dropout_rate: float) -> GraphsTuple:
     """Applies a configured GraphNetwork to a graph.
     This implementation follows Algorithm 1 in https://arxiv.org/abs/1806.01261
     There is one difference. For the nodes update the class aggregates over the
@@ -159,6 +161,7 @@ class GraphNetwork(nn.Module):
     GraphNets, for more information please see the paper.
     Args:
       graph: a `GraphsTuple` containing the graph.
+      dropout_rate: dropout probability value.
     Returns:
       Updated `GraphsTuple`.
     """
@@ -179,7 +182,7 @@ class GraphNetwork(nn.Module):
       edge_fn_inputs = torch.cat(
           [edges, sent_attributes, received_attributes, global_edge_attributes],
           dim=-1)
-      edges = self.update_edge_fn(edge_fn_inputs)
+      edges = self.update_edge_fn(edge_fn_inputs, dropout_rate)
 
     if self.update_node_fn:
       sent_attributes = tree.tree_map(
@@ -194,7 +197,7 @@ class GraphNetwork(nn.Module):
       node_fn_inputs = torch.cat(
           [nodes, sent_attributes, received_attributes, global_attributes],
           dim=-1)
-      nodes = self.update_node_fn(node_fn_inputs)
+      nodes = self.update_node_fn(node_fn_inputs, dropout_rate)
 
     if self.update_global_fn:
       n_graph = n_node.shape[0]
@@ -213,7 +216,7 @@ class GraphNetwork(nn.Module):
       # These pooled nodes are the inputs to the global update fn.
       global_fn_inputs = torch.cat([node_attributes, edge_attributes, globals_],
                                    dim=-1)
-      globals_ = self.update_global_fn(global_fn_inputs)
+      globals_ = self.update_global_fn(global_fn_inputs, dropout_rate)
 
     return GraphsTuple(
         nodes=nodes,

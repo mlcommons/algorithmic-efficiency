@@ -12,6 +12,7 @@ from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
 from algoperf.workloads.ogbg import metrics
+from algoperf.workloads.ogbg.ogbg_pytorch import models
 from algoperf.workloads.ogbg.ogbg_pytorch.models import GNN
 from algoperf.workloads.ogbg.workload import BaseOgbgWorkload
 
@@ -138,15 +139,10 @@ class OgbgWorkload(BaseOgbgWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """aux_dropout_rate is unused."""
-    del aux_dropout_rate
+      rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = GNN(
         num_outputs=self._num_outputs,
-        dropout_rate=dropout_rate,
         hidden_dims=self.hidden_dims,
         latent_dim=self.latent_dim,
         num_message_passing_steps=self.num_message_passing_steps,
@@ -171,7 +167,8 @@ class OgbgWorkload(BaseOgbgWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del rng
     del update_batch_norm  # No BN in the GNN model.
@@ -191,7 +188,8 @@ class OgbgWorkload(BaseOgbgWorkload):
     }
 
     with contexts[mode]():
-      logits = model(augmented_and_preprocessed_input_batch['inputs'])
+      logits = model(augmented_and_preprocessed_input_batch['inputs'],
+                     dropout_rate=dropout_rate)
 
     return logits, None
 

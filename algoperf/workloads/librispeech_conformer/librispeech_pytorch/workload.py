@@ -63,14 +63,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Conformer model init function.
-
-    Here we use dropout_rate as residual_dropout_rate, and aux_dropout_rate as
-    input_dropout_rate.
-    """
+      rng: spec.RandomState) -> spec.ModelInitState:
+    """Conformer model init function."""
     torch.random.manual_seed(rng[0])
     # Configure torch backends to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
@@ -83,10 +77,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       activation_function_name = 'swish'
     model = models.ConformerEncoderDecoder(
         models.ConformerConfig(
-            attention_residual_dropout_rate=dropout_rate,
-            feed_forward_residual_dropout_rate=dropout_rate,
-            conv_residual_dropout_rate=dropout_rate,
-            input_dropout_rate=aux_dropout_rate,
             use_specaug=self.use_specaug,
             attention_temperature=self.attention_temperature,
             use_post_layer_norm=self.use_post_layer_norm,
@@ -115,7 +105,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
 
@@ -136,7 +127,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     with contexts[mode]():
       inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
       logits, logits_paddings = model(inputs.to(DEVICE),
-                                      input_paddings.to(DEVICE))
+                                      input_paddings.to(DEVICE),
+                                      dropout_rate=dropout_rate)
     return (logits, logits_paddings), None
 
   def _build_input_queue(

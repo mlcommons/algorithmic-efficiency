@@ -17,6 +17,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augme
     SpecAug
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
+DROPOUT_RATE = 0.1
 
 
 @dataclass
@@ -38,10 +39,6 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 1 - 0.999
   batch_norm_epsilon: float = 0.001
-  # If None, defaults to 0.1.
-  input_dropout_rate: Optional[float] = 0.1
-  # If None, defaults to 0.1.
-  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -87,13 +84,8 @@ class Subsample(nn.Module):
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
-    if config.input_dropout_rate is None:
-      input_dropout_rate = 0.1
-    else:
-      input_dropout_rate = config.input_dropout_rate
-    self.dropout = nn.Dropout(p=input_dropout_rate)
+  def forward(self, inputs, input_paddings, dropout_rate):
 
-  def forward(self, inputs, input_paddings):
     output_paddings = input_paddings
     outputs = inputs[:, None, :, :]
 
@@ -106,7 +98,7 @@ class Subsample(nn.Module):
                                                   subsampled_dims * channels)
 
     outputs = self.lin(outputs)
-    outputs = self.dropout(outputs)
+    outputs = F.dropout(outputs, dropout_rate, training=self.training)
 
     return outputs, output_paddings
 
@@ -205,13 +197,9 @@ class FeedForwardModule(nn.Module):
           batch_norm_momentum=config.batch_norm_momentum,
           batch_norm_epsilon=config.batch_norm_epsilon)
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
-    if config.feed_forward_dropout_rate is None:
-      feed_forward_dropout_rate = 0.1
-    else:
-      feed_forward_dropout_rate = config.feed_forward_dropout_rate
-    self.dropout = nn.Dropout(p=feed_forward_dropout_rate)
 
-  def forward(self, inputs, input_paddings):
+  def forward(self, inputs, input_paddings, dropout_rate):
+
     padding_mask = (1 - input_paddings)[:, :, None]
     if self.config.layernorm_everywhere:
       inputs = self.normalization_layer(inputs)
@@ -226,7 +214,7 @@ class FeedForwardModule(nn.Module):
       inputs = F.relu(inputs)
 
     inputs = inputs * padding_mask
-    inputs = self.dropout(inputs)
+    inputs = F.dropout(inputs, dropout_rate, training=self.training)
 
     return inputs
 
@@ -363,14 +351,14 @@ class DeepspeechEncoderDecoder(nn.Module):
 
     self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
 
-  def forward(self, inputs, input_paddings):
+  def forward(self, inputs, input_paddings, dropout_rate=DROPOUT_RATE):
     outputs = inputs
     output_paddings = input_paddings
 
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
-    outputs, output_paddings = self.subsample(outputs, output_paddings)
+    outputs, output_paddings = self.subsample(outputs, output_paddings, dropout_rate)
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:
         outputs = outputs + self.lstms[idx](outputs, output_paddings)
@@ -379,9 +367,9 @@ class DeepspeechEncoderDecoder(nn.Module):
 
     for idx in range(self.config.num_ffn_layers):
       if self.config.enable_residual_connections:
-        outputs = outputs + self.ffns[idx](outputs, output_paddings)
+        outputs = outputs + self.ffns[idx](outputs, output_paddings, dropout_rate)
       else:
-        outputs = self.ffns[idx](outputs, output_paddings)
+        outputs = self.ffns[idx](outputs, output_paddings, dropout_rate)
 
     if self.config.enable_decoder_layer_norm:
       outputs = self.ln(outputs)
