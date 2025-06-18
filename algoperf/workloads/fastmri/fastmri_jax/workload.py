@@ -11,6 +11,7 @@ import jax.numpy as jnp
 from algoperf import param_utils
 from algoperf import spec
 import algoperf.random_utils as prng
+from algoperf.workloads.fastmri.fastmri_jax.models import DROPOUT_RATE
 from algoperf.workloads.fastmri.fastmri_jax.models import UNet
 from algoperf.workloads.fastmri.fastmri_jax.ssim import ssim
 from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
@@ -52,7 +53,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
