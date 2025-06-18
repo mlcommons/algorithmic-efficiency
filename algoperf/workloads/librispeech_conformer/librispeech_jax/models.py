@@ -38,7 +38,6 @@ class ConformerConfig:
   encoder_dim: int = 512
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
-  dropout_rate: float = DROPOUT_RATE
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
@@ -191,8 +190,6 @@ class FeedForwardModule(nn.Module):
   @nn.compact
   def __call__(self, inputs, padding_mask=None, train=False, dropout_rate=DROPOUT_RATE):
     config = self.config
-    if dropout_rate is None:
-      dropout_rate = config.dropout_rate
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
     inputs = nn.Dense(

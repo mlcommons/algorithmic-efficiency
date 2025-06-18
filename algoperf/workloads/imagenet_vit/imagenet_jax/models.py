@@ -125,14 +125,14 @@ class Encoder(nn.Module):
   depth: int
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
-  dropout_rate: float = 0.0
   use_glu: bool = False
   use_post_layer_norm: bool = False
 
   @nn.compact
   def __call__(self,
                x: spec.Tensor,
-               train: bool = True) -> spec.Tensor:
+               train: bool = True,
+               dropout_rate: float = DROPOUT_RATE) -> spec.Tensor:
     # Input Encoder
     for lyr in range(self.depth):
       block = Encoder1DBlock(

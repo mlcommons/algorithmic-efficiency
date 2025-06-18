@@ -71,9 +71,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     else:
       activation_function_name = 'swish'
     model_config = models.ConformerConfig(
-        attention_residual_dropout_rate=dropout_rate,
-        feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=dropout_rate,
         use_specaug=self.use_specaug,
         attention_temperature=self.attention_temperature,
         use_post_layer_norm=self.use_post_layer_norm,

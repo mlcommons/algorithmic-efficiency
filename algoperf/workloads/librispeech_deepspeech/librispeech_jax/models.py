@@ -105,12 +105,8 @@ class Subsample(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(
             outputs)
 
-    if config.input_dropout_rate is None:
-      input_dropout_rate = 0.1
-    else:
-      input_dropout_rate = config.input_dropout_rate
     outputs = Dropout(
-        rate=input_dropout_rate, deterministic=not train)(
+        rate=dropout_rate, deterministic=not train)(
             outputs, rate=dropout_rate)
 
     return outputs, output_paddings

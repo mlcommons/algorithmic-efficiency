@@ -574,7 +574,7 @@ class Transformer(nn.Module):
         targets_positions=targets_positions,
         decoder_mask=decoder_mask,
         encoder_decoder_mask=encoder_decoder_mask,
-        dropout_rate=droput_rate)
+        dropout_rate=dropout_rate)
     return logits.astype(self.config.dtype)
 
   def __call__(self,
