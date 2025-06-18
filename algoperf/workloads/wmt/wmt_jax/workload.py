@@ -206,9 +206,7 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_score = bleu.corpus_bleu(predictions, [references]).score
     return bleu_score
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_fake_batch_size = 2
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
@@ -250,7 +248,8 @@ class WmtWorkload(BaseWmtWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: [float] = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: [float] = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
 

@@ -79,9 +79,7 @@ class CifarWorkload(BaseCifarWorkload):
     new_model_state['batch_stats'] = avg_fn(model_state['batch_stats'])
     return new_model_state
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     """Dropout is unused."""
     model_cls = getattr(models, 'ResNet18')
     model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)

@@ -23,6 +23,7 @@ from algoperf.jax_utils import Dropout
 
 DROPOUT_RATE = 0.0
 
+
 def _instance_norm2d(x, axes, epsilon=1e-5):
   # promote x to at least float32, this avoids half precision computation
   # but preserves double or complex floating points

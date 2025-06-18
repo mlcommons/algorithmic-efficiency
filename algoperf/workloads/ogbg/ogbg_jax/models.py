@@ -8,7 +8,8 @@ import jraph
 
 from algoperf.jax_utils import Dropout
 
-DROPOUT_RATE=0.1
+DROPOUT_RATE = 0.1
+
 
 def _make_embed(latent_dim, name):
 
@@ -28,7 +29,9 @@ def _make_mlp(hidden_dims, activation_fn, train, dropout_rate=DROPOUT_RATE):
       x = nn.Dense(features=dim)(x)
       x = nn.LayerNorm()(x)
       x = activation_fn(x)
-      x = Dropout(rate=dropout_rate, deterministic=not train)(x, rate=dropout_rate)
+      x = Dropout(
+          rate=dropout_rate, deterministic=not train)(
+              x, rate=dropout_rate)
     return x
 
   return make_fn
@@ -69,11 +72,20 @@ class GNN(nn.Module):
     for _ in range(self.num_message_passing_steps):
       net = jraph.GraphNetwork(
           update_edge_fn=_make_mlp(
-              self.hidden_dims, activation_fn=activation_fn, train=train, dropout_rate=dropout_rate),
+              self.hidden_dims,
+              activation_fn=activation_fn,
+              train=train,
+              dropout_rate=dropout_rate),
           update_node_fn=_make_mlp(
-              self.hidden_dims, activation_fn=activation_fn, train=train, dropout_rate=dropout_rate),
+              self.hidden_dims,
+              activation_fn=activation_fn,
+              train=train,
+              dropout_rate=dropout_rate),
           update_global_fn=_make_mlp(
-              self.hidden_dims, activation_fn=activation_fn, train=train, dropout_rate=dropout_rate))
+              self.hidden_dims,
+              activation_fn=activation_fn,
+              train=train,
+              dropout_rate=dropout_rate))
 
       graph = net(graph)
 

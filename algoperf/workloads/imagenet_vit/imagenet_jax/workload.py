@@ -24,15 +24,12 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
                   model: nn.Module) -> spec.ModelInitState:
     input_shape = (1, 224, 224, 3)
     params_rng, _ = jax.random.split(key)
-    variables = jax.jit(
-        model.init)({'params': params_rng},
-                    jnp.ones(input_shape))
+    variables = jax.jit(model.init)({'params': params_rng},
+                                    jnp.ones(input_shape))
     model_state, params = pop(variables, "params")
     return params, model_state
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     self._model = models.ViT(
         num_classes=self._num_classes,
         use_glu=self.use_glu,
@@ -57,7 +54,8 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN

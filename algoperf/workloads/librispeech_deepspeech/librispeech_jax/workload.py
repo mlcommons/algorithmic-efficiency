@@ -15,9 +15,7 @@ from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
 
 class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     """Deepspeech model init function.
     """
     model_config = models.DeepspeechConfig(
@@ -36,8 +34,9 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, _ = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng,},
-                              *fake_input_batch)
+    variables = model_init_fn({
+        'params': params_rng,
+    }, *fake_input_batch)
 
     model_state = variables[
         'batch_stats'] if not self.layernorm_everywhere else {}

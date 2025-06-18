@@ -9,6 +9,7 @@ from algoperf.jax_utils import Dropout
 
 DROPOUT_RATE = 0.0
 
+
 class DLRMResNet(nn.Module):
   """Define a DLRMResNet model.
 

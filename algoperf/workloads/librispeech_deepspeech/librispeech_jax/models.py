@@ -16,11 +16,11 @@ import jax
 from jax.experimental import rnn
 import jax.numpy as jnp
 
+from algoperf.jax_utils import Dropout
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
-from algoperf.jax_utils import Dropout
 
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]
@@ -31,7 +31,7 @@ Carry = Any
 CarryHistory = Any
 Output = Any
 
-DROPOUT_RATE=0.1
+DROPOUT_RATE = 0.1
 
 
 @struct.dataclass

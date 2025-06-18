@@ -84,7 +84,8 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
 
   def init_model_fn(
       self,
-      rng: spec.RandomState,) -> spec.ModelInitState:
+      rng: spec.RandomState,
+  ) -> spec.ModelInitState:
     model_cls = getattr(models, 'ResNet50')
 
     if self.use_silu and self.use_gelu:

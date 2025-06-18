@@ -89,16 +89,17 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         use_layer_norm=self.use_layer_norm,
         embedding_init_multiplier=self.embedding_init_multiplier)
 
-    params_rng, _= jax.random.split(rng)
+    params_rng, _ = jax.random.split(rng)
     init_fake_batch_size = 2
     num_categorical_features = 26
     num_dense_features = 13
     input_size = num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
     init_fn = functools.partial(self._model.init, train=False)
-    initial_variables = jax.jit(init_fn)(
-        {'params': params_rng,},
-        jnp.ones(input_shape, jnp.float32))
+    initial_variables = jax.jit(init_fn)({
+        'params': params_rng,
+    },
+                                         jnp.ones(input_shape, jnp.float32))
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -115,7 +116,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']

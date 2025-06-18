@@ -83,8 +83,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, _ = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng},
-                              *fake_input_batch)
+    variables = model_init_fn({'params': params_rng}, *fake_input_batch)
 
     model_state, params = pop(variables, "params")
 

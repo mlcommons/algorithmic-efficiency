@@ -17,9 +17,7 @@ from algoperf.workloads.ogbg.workload import BaseOgbgWorkload
 
 class OgbgWorkload(BaseOgbgWorkload):
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     rng, params_rng = jax.random.split(rng, 2)
     self._model = models.GNN(
         self._num_outputs,
@@ -53,7 +51,8 @@ class OgbgWorkload(BaseOgbgWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = models.DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     """Get predicted logits from the network for input graphs."""
     del update_batch_norm  # No BN in the GNN model.
     if model_state is not None:

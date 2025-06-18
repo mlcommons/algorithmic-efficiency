@@ -13,8 +13,8 @@ import numpy as np
 
 from algoperf.jax_utils import Dropout
 
-
 DROPOUT_RATE = 0.1
+
 
 @struct.dataclass
 class TransformerConfig:
@@ -171,7 +171,8 @@ class MlpBlock(nn.Module):
       )(
           inputs)
       x = x * y
-    x = Dropout(rate=dropout_rate)(x, rate=dropout_rate, deterministic=cfg.deterministic)
+    x = Dropout(rate=dropout_rate)(
+        x, rate=dropout_rate, deterministic=cfg.deterministic)
     output = nn.Dense(
         actual_out_dim,
         dtype=cfg.dtype,
@@ -223,7 +224,8 @@ class Encoder1DBlock(nn.Module):
         deterministic=cfg.deterministic,
     )(cfg.attention_temp * x, x, mask=encoder_mask)
 
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic, rate=dropout_rate)
+    x = Dropout(rate=dropout_rate)(
+        x, deterministic=cfg.deterministic, rate=dropout_rate)
     x = x + inputs
     if not pre_ln:
       x = nn.LayerNorm(dtype=cfg.dtype)(x)
@@ -285,7 +287,8 @@ class EncoderDecoder1DBlock(nn.Module):
         decode=cfg.decode,
     )(cfg.attention_temp * x, x, mask=decoder_mask)
 
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic, rate=dropout_rate)
+    x = Dropout(rate=dropout_rate)(
+        x, deterministic=cfg.deterministic, rate=dropout_rate)
     x = x + targets
     if not pre_ln:
       x = nn.LayerNorm(dtype=cfg.dtype)(x)
@@ -304,7 +307,8 @@ class EncoderDecoder1DBlock(nn.Module):
         deterministic=cfg.deterministic,
     )(cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
 
-    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic, rate=dropout_rate)
+    y = Dropout(rate=dropout_rate)(
+        y, deterministic=cfg.deterministic, rate=dropout_rate)
     y = y + x
     if not pre_ln:
       y = nn.LayerNorm(dtype=cfg.dtype)(y)
@@ -361,7 +365,8 @@ class Encoder(nn.Module):
     x = AddPositionEmbs(
         config=cfg, decode=False, name="posembed_input")(
             x, inputs_positions=inputs_positions)
-    x = Dropout(rate=dropout_rate)(x, deterministic=cfg.deterministic, rate=dropout_rate)
+    x = Dropout(rate=dropout_rate)(
+        x, deterministic=cfg.deterministic, rate=dropout_rate)
 
     x = x.astype(cfg.dtype)
 
@@ -432,7 +437,8 @@ class Decoder(nn.Module):
     y = AddPositionEmbs(
         config=cfg, decode=cfg.decode, name="posembed_output")(
             y, inputs_positions=targets_positions)
-    y = Dropout(rate=dropout_rate)(y, deterministic=cfg.deterministic, rate=dropout_rate)
+    y = Dropout(rate=dropout_rate)(
+        y, deterministic=cfg.deterministic, rate=dropout_rate)
 
     y = y.astype(cfg.dtype)
 

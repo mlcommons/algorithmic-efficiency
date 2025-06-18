@@ -30,12 +30,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         num_channels=self.num_channels,
         use_tanh=self.use_tanh,
         use_layer_norm=self.use_layer_norm,
-      )
+    )
 
     params_rng, _ = jax.random.split(rng)
     init_fn = functools.partial(self._model.init, train=False)
-    variables = jax.jit(init_fn)({'params': params_rng},
-                          fake_batch)
+    variables = jax.jit(init_fn)({'params': params_rng}, fake_batch)
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -53,16 +52,17 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      dropout_rate: float = DROPOUT_RATE) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      dropout_rate: float = DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
 
     logits = self._model.apply({'params': params},
-                              augmented_and_preprocessed_input_batch['inputs'],
-                              rngs={'dropout': rng},
-                              train=train,
-                              dropout_rate=dropout_rate)
+                               augmented_and_preprocessed_input_batch['inputs'],
+                               rngs={'dropout': rng},
+                               train=train,
+                               dropout_rate=dropout_rate)
     return logits, None
 
   # Does NOT apply regularization, which is left to the submitter to do in

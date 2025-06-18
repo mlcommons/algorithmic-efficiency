@@ -22,13 +22,14 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from algoperf.jax_utils import Dropout
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
-from algoperf.jax_utils import Dropout
 
 DROPOUT_RATE = 0.1
+
 
 @struct.dataclass
 class ConformerConfig:
@@ -92,6 +93,7 @@ class Subsample(nn.Module):
     input_dropout_rate: dropout rate for inputs.
   """
   encoder_dim: int = 0
+
   @nn.compact
   def __call__(self, inputs, input_paddings, train, dropout_rate=DROPOUT_RATE):
     output_paddings = input_paddings
@@ -188,7 +190,11 @@ class FeedForwardModule(nn.Module):
   config: ConformerConfig
 
   @nn.compact
-  def __call__(self, inputs, padding_mask=None, train=False, dropout_rate=DROPOUT_RATE):
+  def __call__(self,
+               inputs,
+               padding_mask=None,
+               train=False,
+               dropout_rate=DROPOUT_RATE):
     config = self.config
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
@@ -218,8 +224,7 @@ class FeedForwardModule(nn.Module):
             inputs)
     inputs = inputs * padding_mask
 
-    inputs = Dropout(rate=dropout_rate)(
-        inputs, deterministic=not train)
+    inputs = Dropout(rate=dropout_rate)(inputs, deterministic=not train)
 
     return inputs
 
@@ -583,7 +588,7 @@ class ConformerBlock(nn.Module):
                input_paddings,
                train,
                update_batch_norm,
-               use_running_average, 
+               use_running_average,
                dropout_rate=DROPOUT_RATE):
     config = self.config
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
