@@ -85,7 +85,7 @@ class Encoder1DBlock(nn.Module):
           deterministic=train,
           name='MultiHeadDotProductAttention_1')(
               y)
-      y = Dropout(dropout_rate)(y, train, dropout_rate=dropout_rate)
+      y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
 
       y = nn.LayerNorm(name='LayerNorm_2')(x)
@@ -121,33 +121,31 @@ class Encoder1DBlock(nn.Module):
 
 
 class Encoder(nn.Module):
-  """Transformer Model Encoder for sequence to sequence translation."""
-  depth: int
-  mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
-  num_heads: int = 12
-  use_glu: bool = False
-  use_post_layer_norm: bool = False
+    """Transformer Model Encoder for sequence to sequence translation."""
 
-  @nn.compact
-  def __call__(self,
-               x: spec.Tensor,
-               train: bool = True,
-               dropout_rate: float = DROPOUT_RATE) -> spec.Tensor:
-    # Input Encoder
-    for lyr in range(self.depth):
-      block = Encoder1DBlock(
-          name=f'encoderblock_{lyr}',
-          mlp_dim=self.mlp_dim,
-          num_heads=self.num_heads,
-          use_glu=self.use_glu,
-          use_post_layer_norm=self.use_post_layer_norm,
-          dropout_rate=dropout_rate)(
-              dropout_rate=dropout_rate)
-      x = block(x, train)
-    if not self.use_post_layer_norm:
-      return nn.LayerNorm(name='encoder_layernorm')(x)
-    else:
-      return x
+    depth: int
+    mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
+    num_heads: int = 12
+    use_glu: bool = False
+    use_post_layer_norm: bool = False
+
+    @nn.compact
+    def __call__(
+        self, x: spec.Tensor, train: bool = True, dropout_rate: float = DROPOUT_RATE
+    ) -> spec.Tensor:
+        # Input Encoder
+        for lyr in range(self.depth):
+            x = Encoder1DBlock(
+                name=f"encoderblock_{lyr}",
+                mlp_dim=self.mlp_dim,
+                num_heads=self.num_heads,
+                use_glu=self.use_glu,
+                use_post_layer_norm=self.use_post_layer_norm,
+            )(x, train=train, dropout_rate=dropout_rate)
+        if not self.use_post_layer_norm:
+            return nn.LayerNorm(name="encoder_layernorm")(x)
+        else:
+            return x
 
 
 class MAPHead(nn.Module):

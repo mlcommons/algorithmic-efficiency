@@ -278,7 +278,7 @@ class WmtWorkload(BaseWmtWorkload):
                                inputs_segmentation=inputs_segmentations,
                                targets_segmentation=targets_segmentations,
                                rngs={'dropout': rng},
-                               dropout_rate=None)
+                               dropout_rate=dropout_rate)
     return logits_batch, None
 
   def _normalize_eval_metrics(
