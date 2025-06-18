@@ -489,7 +489,8 @@ class Deepspeech(nn.Module):
 
     # Subsample input by a factor of 4 by performing strided convolutions.
     outputs, output_paddings = Subsample(
-        config=config)(outputs, output_paddings, train, dropout_rate=dropout_rate)
+        config=config)(outputs, output_paddings, train, 
+        dropout_rate=dropout_rate)
 
     # Run the lstm layers.
     for _ in range(config.num_lstm_layers):

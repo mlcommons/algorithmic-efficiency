@@ -1,6 +1,6 @@
 """OGBG workload implemented in Jax."""
 import functools
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from flax import jax_utils
 import jax

@@ -1,6 +1,6 @@
 """ImageNet workload implemented in Jax."""
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from flax import jax_utils
 from flax import linen as nn

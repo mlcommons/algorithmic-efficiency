@@ -13,7 +13,6 @@ Data:
 github.com/facebookresearch/fastMRI/tree/main/fastmri/data
 """
 import functools
-from typing import Optional
 
 import flax.linen as nn
 import jax

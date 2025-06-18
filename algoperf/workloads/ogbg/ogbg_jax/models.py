@@ -1,6 +1,6 @@
 # Forked from the init2winit implementation here
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
-from typing import Optional, Tuple
+from typing import Tuple
 
 from flax import linen as nn
 import jax.numpy as jnp
