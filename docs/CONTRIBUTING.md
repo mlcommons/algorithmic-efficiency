@@ -179,13 +179,13 @@ docker run -t -d \
 To find the container IDs of running containers
 
 ```bash
-docker ps 
+docker ps
 ```
 
 To see the logging output
 
 ```bash
-docker logs <container_id> 
+docker logs <container_id>
 ```
 
 To enter a bash session in the container
@@ -209,7 +209,7 @@ docker run -t -d \
 --gpus all \
 --ipc=host \
 <image_path> \
---keep_container_alive true 
+--keep_container_alive true
 ```
 
 ## Submitting PRs
@@ -222,38 +222,26 @@ We run tests with GitHub Actions, configured in the [.github/workflows](.github/
 
 ### Style Testing
 
-We run yapf and linting tests on PRs. You can view and fix offending errors with these instructions.
-
+We run formatting and linting tests via ruff on PRs. You can view and fix offending errors with these instructions.
 To run the below commands, use the versions installed via `pip install -e '.[dev]'`.
 
-To automatically fix formatting errors, run the following (*WARNING:* this will edit your code, so it is suggested to make a git commit first!):
+To check whether your code is **formatted** correctly, run the following:
 
 ```bash
-yapf -i -r -vv -p algoperf datasets prize_qualification_baselines reference_algorithms tests *.py
+ruff format --check
 ```
 
-To sort all import orderings, run the following:
+To automatically fix formatting errors you can run `ruff format`, without the `--check` flag.
+(**WARNING**: this will edit your code, so it is suggested to make a git commit first!)
+
+To check whether your code is **linted** correctly, run the following:
 
 ```bash
-isort .
+ruff check
 ```
 
-To just print out all offending import orderings, run the following:
-
-```bash
-isort . --check --diff
-```
-
-To print out all offending pylint issues, run the following:
-
-```bash
-pylint algoperf
-pylint datasets
-pylint prize_qualification_baselines
-pylint reference_algorithms
-pylint submission_runner.py
-pylint tests
-```
+To automatically fix linting errors you can run `ruff check --fix`, with the additional `--fix` flag.
+(**WARNING**: this will edit your code, so it is suggested to make a git commit first!)
 
 ### Unit and Integration Tests
 
@@ -270,9 +258,9 @@ To run a regression test:
 
 1. Build and upload latest Docker images from dev branch.
 
-    ```bash
-    bash ~/algorithmic-efficiency/docker/build_docker_images.sh -b dev
-    ```
+   ```bash
+   bash ~/algorithmic-efficiency/docker/build_docker_images.sh -b dev
+   ```
 
 2. Turn on the self-hosted runner.
 3. Run the self-hosted runner application for the runner to accept jobs.
