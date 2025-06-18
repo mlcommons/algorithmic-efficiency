@@ -13,7 +13,7 @@ import jax.numpy as jnp
 
 # Custom Layers
 class Dropout(Module):
-    """Create a dropout layer.
+  """Create a dropout layer.
     Forked from https://flax-linen.readthedocs.io/en/latest/_modules/flax/linen/stochastic.html#Dropout.
     The reference dropout implementation is modified support changes to dropout rate during training by:
     1) adding rate argument to the __call__ method.
@@ -53,21 +53,21 @@ class Dropout(Module):
       rng_collection: the rng collection name to use when requesting an rng key.
     """
 
-    rate: float | None = None
-    broadcast_dims: Sequence[int] = ()
-    deterministic: bool | None = None
-    rng_collection: str = "dropout"
-    legacy: bool = True
+  rate: float | None = None
+  broadcast_dims: Sequence[int] = ()
+  deterministic: bool | None = None
+  rng_collection: str = "dropout"
+  legacy: bool = True
 
-    @compact
-    def __call__(
-        self,
-        inputs,
-        deterministic: bool | None = None,
-        rate: float | None = None,
-        rng: PRNGKey | None = None,
-    ):
-        """Applies a random dropout mask to the input.
+  @compact
+  def __call__(
+      self,
+      inputs,
+      deterministic: bool | None = None,
+      rate: float | None = None,
+      rng: PRNGKey | None = None,
+  ):
+    """Applies a random dropout mask to the input.
 
         Args:
           inputs: the inputs that should be randomly masked.
@@ -81,40 +81,44 @@ class Dropout(Module):
         Returns:
           The masked inputs reweighted to preserve mean.
         """
-        deterministic = merge_param("deterministic", self.deterministic, deterministic)
+    deterministic = merge_param("deterministic",
+                                self.deterministic,
+                                deterministic)
 
-        # Override self.rate if rate is passed to __call__
-        if rate is None:
-            rate = self.rate
+    # Override self.rate if rate is passed to __call__
+    if rate is None:
+      rate = self.rate
 
-        if self.legacy:
-            if rate == 0.0:
-                return inputs
+    if self.legacy:
+      if rate == 0.0:
+        return inputs
 
-            # Prevent gradient NaNs in 1.0 edge-case.
-            if rate == 1.0:
-                return jnp.zeros_like(inputs)
+      # Prevent gradient NaNs in 1.0 edge-case.
+      if rate == 1.0:
+        return jnp.zeros_like(inputs)
 
-        if deterministic:
-            return inputs
+    if deterministic:
+      return inputs
 
-        keep_prob = 1.0 - rate
-        if rng is None:
-            rng = self.make_rng(self.rng_collection)
-        broadcast_shape = list(inputs.shape)
-        for dim in self.broadcast_dims:
-            broadcast_shape[dim] = 1
-        mask = random.bernoulli(rng, p=keep_prob, shape=broadcast_shape)
-        mask = jnp.broadcast_to(mask, inputs.shape)
-        return lax.select(mask, inputs, jnp.zeros_like(inputs))
+    keep_prob = 1.0 - rate
+    if rng is None:
+      rng = self.make_rng(self.rng_collection)
+    broadcast_shape = list(inputs.shape)
+    for dim in self.broadcast_dims:
+      broadcast_shape[dim] = 1
+    mask = random.bernoulli(rng, p=keep_prob, shape=broadcast_shape)
+    mask = jnp.broadcast_to(mask, inputs.shape)
+    return lax.select(mask, inputs, jnp.zeros_like(inputs))
 
 
 # Utilities for debugging
 def print_jax_model_summary(model, fake_inputs):
-    """Prints a summary of the jax module."""
-    tabulate_fn = nn.tabulate(
-        model,
-        jax.random.PRNGKey(0),
-        console_kwargs={"force_terminal": False, "force_jupyter": False, "width": 240},
-    )
-    print(tabulate_fn(fake_inputs, train=False))
+  """Prints a summary of the jax module."""
+  tabulate_fn = nn.tabulate(
+      model,
+      jax.random.PRNGKey(0),
+      console_kwargs={
+          "force_terminal": False, "force_jupyter": False, "width": 240
+      },
+  )
+  print(tabulate_fn(fake_inputs, train=False))
