@@ -29,85 +29,93 @@ torch.use_deterministic_algorithms(True)
 
 
 def _rand_tokens(bs, seqlen):
-    return torch.randint(1, NTOK, (bs, seqlen), device=DEVICE)
+  return torch.randint(1, NTOK, (bs, seqlen), device=DEVICE)
 
 
 class TransformerEquivalenceTest(parameterized.TestCase):
 
-    @parameterized.named_parameters(
-        # NOTE: removed dropout=1.0 since it will generate nan in scaled_dot_product_attention
-        dict(testcase_name="0.0", dropout_rate=0.0, compile=False),
-        dict(testcase_name="0.2", dropout_rate=0.2, compile=False),
-        dict(testcase_name="0.7", dropout_rate=0.7, compile=False),
-        dict(testcase_name="p=0.0_compile", dropout_rate=0.0, compile=True),
-        dict(testcase_name="p=0.2_compile", dropout_rate=0.2, compile=True),
-        dict(testcase_name="p=0.7_compile", dropout_rate=0.7, compile=True),
-    )
-    def test_dropout_value(self, dropout_rate, compile):
+  @parameterized.named_parameters(
+      # NOTE: removed dropout=1.0 since it will generate nan in scaled_dot_product_attention
+      dict(testcase_name="0.0", dropout_rate=0.0, compile=False),
+      dict(testcase_name="0.2", dropout_rate=0.2, compile=False),
+      dict(testcase_name="0.7", dropout_rate=0.7, compile=False),
+      dict(testcase_name="p=0.0_compile", dropout_rate=0.0, compile=True),
+      dict(testcase_name="p=0.2_compile", dropout_rate=0.2, compile=True),
+      dict(testcase_name="p=0.7_compile", dropout_rate=0.7, compile=True),
+  )
+  def test_dropout_value(self, dropout_rate, compile):
 
-        orig = OriginalModel(
-          dropout_rate=dropout_rate, 
-          attention_dropout_rate=dropout_rate
-        ).to(DEVICE)
-        cust = CustomModel().to(DEVICE)
-        
-        orig.load_state_dict(cust.state_dict())  # sync weights
-        
-        if compile:
-          orig = torch.compile(orig)
-          cust = torch.compile(cust)
+    orig = OriginalModel(
+        dropout_rate=dropout_rate,
+        attention_dropout_rate=dropout_rate).to(DEVICE)
+    cust = CustomModel().to(DEVICE)
 
-        src = _rand_tokens(B, SRC_LEN)
-        tgt = _rand_tokens(B, TGT_LEN)
+    orig.load_state_dict(cust.state_dict())  # sync weights
 
-        for mode in ("train", "eval"):
-            getattr(orig, mode)()
-            getattr(cust, mode)()
+    if compile:
+      orig = torch.compile(orig)
+      cust = torch.compile(cust)
 
-            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-            y1 = orig(src, tgt)
+    src = _rand_tokens(B, SRC_LEN)
+    tgt = _rand_tokens(B, TGT_LEN)
 
-            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-            y2 = cust(src, tgt, dropout_rate=dropout_rate)
-            
-            assert_close(y1, y2, atol=0, rtol=0)
-            
-            if mode == 'eval':  # one extra test: omit dropout at eval
-                torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-                y2 = cust(src, tgt)
-                assert_close(y1, y2, atol=0, rtol=0)
+    for mode in ("train", "eval"):
+      getattr(orig, mode)()
+      getattr(cust, mode)()
 
+      torch.manual_seed(SEED)
+      random.seed(SEED)
+      np.random.seed(SEED)
+      y1 = orig(src, tgt)
 
-    @parameterized.named_parameters(
-        dict(testcase_name="default", compile=False),
-        dict(testcase_name="default_compile", compile=True),
-    )
-    def test_default(self, compile):
+      torch.manual_seed(SEED)
+      random.seed(SEED)
+      np.random.seed(SEED)
+      y2 = cust(src, tgt, dropout_rate=dropout_rate)
 
-        orig = OriginalModel().to(DEVICE)
-        cust = CustomModel().to(DEVICE)
+      assert_close(y1, y2, atol=0, rtol=0)
 
-        orig.load_state_dict(cust.state_dict())  # sync weights
-        
-        if compile:
-          orig = torch.compile(orig)
-          cust = torch.compile(cust)
+      if mode == 'eval':  # one extra test: omit dropout at eval
+        torch.manual_seed(SEED)
+        random.seed(SEED)
+        np.random.seed(SEED)
+        y2 = cust(src, tgt)
+        assert_close(y1, y2, atol=0, rtol=0)
 
-        src = _rand_tokens(B, SRC_LEN)
-        tgt = _rand_tokens(B, TGT_LEN)
+  @parameterized.named_parameters(
+      dict(testcase_name="default", compile=False),
+      dict(testcase_name="default_compile", compile=True),
+  )
+  def test_default(self, compile):
 
-        for mode in ("train", "eval"):
-            getattr(orig, mode)()
-            getattr(cust, mode)()
+    orig = OriginalModel().to(DEVICE)
+    cust = CustomModel().to(DEVICE)
 
-            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-            y1 = orig(src, tgt)
+    orig.load_state_dict(cust.state_dict())  # sync weights
 
-            torch.manual_seed(SEED); random.seed(SEED); np.random.seed(SEED)
-            y2 = cust(src, tgt)
-            
-            assert_close(y1, y2, atol=0, rtol=0)
-            
+    if compile:
+      orig = torch.compile(orig)
+      cust = torch.compile(cust)
+
+    src = _rand_tokens(B, SRC_LEN)
+    tgt = _rand_tokens(B, TGT_LEN)
+
+    for mode in ("train", "eval"):
+      getattr(orig, mode)()
+      getattr(cust, mode)()
+
+      torch.manual_seed(SEED)
+      random.seed(SEED)
+      np.random.seed(SEED)
+      y1 = orig(src, tgt)
+
+      torch.manual_seed(SEED)
+      random.seed(SEED)
+      np.random.seed(SEED)
+      y2 = cust(src, tgt)
+
+      assert_close(y1, y2, atol=0, rtol=0)
+
 
 if __name__ == "__main__":
-    absltest.main()
+  absltest.main()

@@ -28,7 +28,7 @@ B, T = 32, 30_000
 DEVICE = 'cuda'
 TORCH_COMPILE = False
 
-os.environ["CUBLAS_WORKSPACE_CONFIG"]=":4096:8"
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 torch.use_deterministic_algorithms(mode=True)
@@ -37,83 +37,88 @@ SEED = 1996
 
 class DeepSpeechEquivalenceTest(parameterized.TestCase):
 
-    @parameterized.named_parameters(
-        dict(testcase_name='p=0.0', dropout_rate=0.0),
-        dict(testcase_name='p=0.2', dropout_rate=0.2),
-        dict(testcase_name='p=0.7', dropout_rate=0.7),
-        dict(testcase_name='p=1.0', dropout_rate=1.0),
-    )
-    def test_forward(self, dropout_rate):
-        """Test different dropout_rate values."""
-              
-        torch.manual_seed(SEED)
-        orig = OriginalModel(
-          OriginalConfig(
+  @parameterized.named_parameters(
+      dict(testcase_name='p=0.0', dropout_rate=0.0),
+      dict(testcase_name='p=0.2', dropout_rate=0.2),
+      dict(testcase_name='p=0.7', dropout_rate=0.7),
+      dict(testcase_name='p=1.0', dropout_rate=1.0),
+  )
+  def test_forward(self, dropout_rate):
+    """Test different dropout_rate values."""
+
+    torch.manual_seed(SEED)
+    orig = OriginalModel(
+        OriginalConfig(
             num_lstm_layers=2,
             num_ffn_layers=2,
             input_dropout_rate=dropout_rate,
             feed_forward_dropout_rate=dropout_rate,
         )).to(DEVICE)
-        
+
+    torch.manual_seed(SEED)
+    cust = CustomModel(CustomConfig(
+        num_lstm_layers=2,
+        num_ffn_layers=2,
+    )).to(DEVICE)
+
+    orig.load_state_dict(cust.state_dict())  # sync weights
+
+    if TORCH_COMPILE:
+      orig = torch.compile(orig)
+      cust = torch.compile(cust)
+
+    x = torch.randn(B, T, device=DEVICE)
+    paddings = torch.zeros(B, T, dtype=torch.float32, device=DEVICE)
+
+    for mode in ('train', 'eval'):
+      getattr(orig, mode)()
+      getattr(cust, mode)()
+
+      torch.manual_seed(SEED)
+      y1, p1 = orig(x, paddings)
+
+      torch.manual_seed(SEED)
+      y2, p2 = cust(x, paddings, dropout_rate=dropout_rate)
+
+      assert_close(y1, y2, atol=0, rtol=0)
+      assert_close(p1, p2, atol=0, rtol=0)
+
+      if mode == 'eval':  # one extra test: omit dropout at eval
         torch.manual_seed(SEED)
-        cust = CustomModel(CustomConfig(
-            num_lstm_layers=2,
-            num_ffn_layers=2,
-        )).to(DEVICE)
-        
-        orig.load_state_dict(cust.state_dict())  # sync weights
+        y2, p2 = cust(x, paddings)
+        assert_close(y1, y2, atol=0, rtol=0)
+        assert_close(p1, p2, atol=0, rtol=0)
 
-        if TORCH_COMPILE:
-          orig = torch.compile(orig); cust = torch.compile(cust)
+  @parameterized.named_parameters(
+      dict(testcase_name=''),)
+  def test_default_dropout(self):
+    """Test default dropout_rate."""
 
-        x = torch.randn(B, T, device=DEVICE)
-        paddings = torch.zeros(B, T, dtype=torch.float32, device=DEVICE)
+    torch.manual_seed(SEED)
+    orig = OriginalModel(OriginalConfig(num_lstm_layers=2,
+                                        num_ffn_layers=2)).to(DEVICE)
+    torch.manual_seed(SEED)
+    cust = CustomModel(CustomConfig(num_lstm_layers=2,
+                                    num_ffn_layers=2)).to(DEVICE)
+    orig.load_state_dict(cust.state_dict())  # sync weights
 
-        for mode in ('train', 'eval'):
-            getattr(orig, mode)()
-            getattr(cust, mode)()
-            
-            torch.manual_seed(SEED)
-            y1, p1 = orig(x, paddings)
-            
-            torch.manual_seed(SEED)
-            y2, p2 = cust(x, paddings, dropout_rate=dropout_rate)
-            
-            assert_close(y1, y2, atol=0, rtol=0)
-            assert_close(p1, p2, atol=0, rtol=0)
-            
-            if mode == 'eval':  # one extra test: omit dropout at eval
-                torch.manual_seed(SEED)
-                y2, p2 = cust(x, paddings)
-                assert_close(y1, y2, atol=0, rtol=0)
-                assert_close(p1, p2, atol=0, rtol=0)
+    if TORCH_COMPILE:
+      orig = torch.compile(orig)
+      cust = torch.compile(cust)
 
+    x = torch.randn(B, T, device=DEVICE)
+    paddings = torch.zeros(B, T, dtype=torch.float32, device=DEVICE)
 
-    @parameterized.named_parameters(
-      dict(testcase_name=''),
-    )
-    def test_default_dropout(self):
-        """Test default dropout_rate."""
+    for mode in ('train', 'eval'):
+      getattr(orig, mode)()
+      getattr(cust, mode)()
+      torch.manual_seed(SEED)
+      y1, p1 = orig(x, paddings)
+      torch.manual_seed(SEED)
+      y2, p2 = cust(x, paddings)
+      assert_close(y1, y2, atol=0, rtol=0)
+      assert_close(p1, p2, atol=0, rtol=0)
 
-        torch.manual_seed(SEED)
-        orig = OriginalModel(OriginalConfig( num_lstm_layers=2, num_ffn_layers=2)).to(DEVICE)
-        torch.manual_seed(SEED)
-        cust = CustomModel(CustomConfig( num_lstm_layers=2, num_ffn_layers=2)).to(DEVICE)
-        orig.load_state_dict(cust.state_dict())  # sync weights
-
-        if TORCH_COMPILE:
-          orig = torch.compile(orig); cust = torch.compile(cust)
-
-        x = torch.randn(B, T, device=DEVICE)
-        paddings = torch.zeros(B, T, dtype=torch.float32, device=DEVICE)
-
-        for mode in ('train', 'eval'):
-            getattr(orig, mode)(); getattr(cust, mode)()
-            torch.manual_seed(SEED); y1, p1 = orig(x, paddings)
-            torch.manual_seed(SEED); y2, p2 = cust(x, paddings)
-            assert_close(y1, y2, atol=0, rtol=0)
-            assert_close(p1, p2, atol=0, rtol=0)
-            
 
 if __name__ == '__main__':
-    absltest.main()
+  absltest.main()
