@@ -642,7 +642,7 @@ class Conformer(nn.Module):
                train,
                update_batch_norm: Optional[bool] = None,
                use_running_average_bn: Optional[bool] = None,
-               dropout_rate: float = DROPOUT_RATE:
+               dropout_rate: float = DROPOUT_RATE):
     config = self.config
 
     outputs = inputs

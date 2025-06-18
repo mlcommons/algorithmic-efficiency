@@ -58,12 +58,11 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     del update_batch_norm
     train = mode == spec.ForwardPassMode.TRAIN
 
-    if train: 
-      logits = self._model.apply({'params': params},
-                                augmented_and_preprocessed_input_batch['inputs'],
-                                rngs={'dropout': rng},
-                                train=train,
-                                dropout_rate=dropout_rate)
+    logits = self._model.apply({'params': params},
+                              augmented_and_preprocessed_input_batch['inputs'],
+                              rngs={'dropout': rng},
+                              train=train,
+                              dropout_rate=dropout_rate)
     return logits, None
 
   # Does NOT apply regularization, which is left to the submitter to do in
