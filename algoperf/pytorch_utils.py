@@ -5,9 +5,9 @@ from absl import logging
 import jax
 import tensorflow as tf
 import torch
+from torch import nn
 from torch import Tensor
 import torch.distributed as dist
-from torch import nn
 import torch.nn.functional as F
 
 from algoperf import spec
