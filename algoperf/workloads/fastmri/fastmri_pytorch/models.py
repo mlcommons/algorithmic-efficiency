@@ -5,7 +5,6 @@ https://github.com/facebookresearch/fastMRI/blob/main/fastmri/models/unet.py
 """
 
 from functools import partial
-from typing import Optional
 
 import torch
 from torch import nn

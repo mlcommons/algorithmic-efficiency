@@ -4,7 +4,7 @@ https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.
 
 from dataclasses import dataclass
 import os
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -358,7 +358,9 @@ class DeepspeechEncoderDecoder(nn.Module):
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
-    outputs, output_paddings = self.subsample(outputs, output_paddings, dropout_rate)
+    outputs, output_paddings = self.subsample(outputs,
+                                              output_paddings, 
+                                              dropout_rate)
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:
         outputs = outputs + self.lstms[idx](outputs, output_paddings)

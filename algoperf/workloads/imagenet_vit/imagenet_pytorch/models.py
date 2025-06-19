@@ -14,7 +14,7 @@ import torch.nn.functional as F
 
 from algoperf import init_utils
 from algoperf import spec
-from algoperf.workloads.wmt.wmt_pytorch.models_dropout import \
+from algoperf.workloads.wmt.wmt_pytorch.models import \
     MultiheadAttention
 
 DROPOUT_RATE = 0.0

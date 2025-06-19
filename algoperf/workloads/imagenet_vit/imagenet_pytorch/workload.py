@@ -1,7 +1,7 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP

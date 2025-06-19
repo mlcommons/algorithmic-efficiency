@@ -89,8 +89,8 @@ class CustomDropout(nn.Module):
     super().__init__()
     self._supports_custom_dropout = True
 
-  def forward(self, input: Tensor, p: float) -> Tensor:
-    return F.dropout(input, p, training=self.training)
+  def forward(self, x: Tensor, p: float) -> Tensor:
+    return F.dropout(x, p, training=self.training)
 
 
 class CustomDropout2d(nn.Module):
