@@ -1,6 +1,6 @@
 """ImageNet workload implemented in Jax."""
 
-from typing import Dict, Tuple
+from typing import Dict,  Optional, Tuple
 
 from flax import jax_utils
 from flax import linen as nn
@@ -54,10 +54,12 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
+      use_running_average_bn: Optional[bool] = None,
       dropout_rate: float = models.DROPOUT_RATE
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
+    del use_running_average_bn
     train = mode == spec.ForwardPassMode.TRAIN
     logits = self._model.apply({'params': params},
                                augmented_and_preprocessed_input_batch['inputs'],

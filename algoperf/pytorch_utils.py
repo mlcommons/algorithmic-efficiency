@@ -7,7 +7,7 @@ import tensorflow as tf
 import torch
 from torch import Tensor
 import torch.distributed as dist
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
 
 from algoperf import spec
@@ -100,8 +100,8 @@ class CustomDropout2d(nn.Module):
     super().__init__()
     self._supports_custom_dropout = True
 
-  def forward(self, input: Tensor, p: float) -> Tensor:
-    return F.dropout2d(input, p, training=self.training)
+  def forward(self, x: Tensor, p: float) -> Tensor:
+    return F.dropout2d(x, p, training=self.training)
 
 
 class SequentialWithDropout(nn.Sequential):
