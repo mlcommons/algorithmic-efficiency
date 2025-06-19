@@ -65,6 +65,7 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       dropout_rate: float = models.DROPOUT_RATE
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     # override super method, changing only the default dropout_rate
+    # pylint: disable=useless-parent-delegation
     return super().model_fn(params,
                             augmented_and_preprocessed_input_batch,
                             model_state,
