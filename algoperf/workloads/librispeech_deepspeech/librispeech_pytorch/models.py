@@ -359,7 +359,7 @@ class DeepspeechEncoderDecoder(nn.Module):
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
     outputs, output_paddings = self.subsample(outputs,
-                                              output_paddings, 
+                                              output_paddings,
                                               dropout_rate)
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:

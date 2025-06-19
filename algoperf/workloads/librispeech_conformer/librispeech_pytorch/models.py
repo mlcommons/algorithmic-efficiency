@@ -475,7 +475,7 @@ class ConformerEncoderDecoder(nn.Module):
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
-    outputs, output_paddings = self.subsample(outputs, output_paddings, 
+    outputs, output_paddings = self.subsample(outputs, output_paddings,
                                               dropout_rate)
     for conformer in self.conformers:
       outputs = conformer(outputs, output_paddings, dropout_rate)
