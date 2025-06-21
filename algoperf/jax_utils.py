@@ -62,7 +62,7 @@ class Dropout(Module):
   broadcast_dims: Sequence[int] = ()
   deterministic: bool | None = None
   rng_collection: str = "dropout"
-  legacy: bool = True
+  legacy: bool = False
 
   @compact
   def __call__(
@@ -114,7 +114,7 @@ class Dropout(Module):
       broadcast_shape[dim] = 1
     mask = random.bernoulli(rng, p=keep_prob, shape=broadcast_shape)
     mask = jnp.broadcast_to(mask, inputs.shape)
-    return lax.select(mask, inputs, jnp.zeros_like(inputs))
+    return lax.select(mask, inputs / keep_prob, jnp.zeros_like(inputs))
 
 
 # Utilities for debugging
