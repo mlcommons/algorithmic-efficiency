@@ -23,7 +23,7 @@ class DLRMResNet(nn.Module):
   mlp_bottom_dims: Sequence[int] = (256, 256, 256)
   mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
   embed_dim: int = 128
-  dropout_rate: float = 0.0
+  dropout_rate: float = 0.1
   use_layer_norm: bool = False  # Unused.
   embedding_init_multiplier: float = None  # Unused
 

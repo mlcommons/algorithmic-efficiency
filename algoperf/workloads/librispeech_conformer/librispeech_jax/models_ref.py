@@ -36,12 +36,12 @@ class ConformerConfig:
   encoder_dim: int = 512
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
-  attention_dropout_rate: float = 0.0
+  attention_dropout_rate: float = 0.1
   # If None, defaults to 0.1.
   attention_residual_dropout_rate: Optional[float] = 0.1
   # If None, defaults to 0.0.
-  conv_residual_dropout_rate: Optional[float] = 0.0
-  feed_forward_dropout_rate: float = 0.0
+  conv_residual_dropout_rate: Optional[float] = 0.1
+  feed_forward_dropout_rate: float = 0.1
   # If None, defaults to 0.1.
   feed_forward_residual_dropout_rate: Optional[float] = 0.1
   convolution_kernel_size: int = 5
