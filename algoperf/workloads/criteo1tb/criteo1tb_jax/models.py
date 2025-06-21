@@ -1,10 +1,13 @@
 """A JAX implementation of DLRM-Small."""
-
 from typing import Sequence
 
 import flax.linen as nn
 from jax import nn as jnn
 import jax.numpy as jnp
+
+from algoperf.jax_utils import Dropout
+
+DROPOUT_RATE = 0.0
 
 
 class DLRMResNet(nn.Module):
@@ -23,12 +26,13 @@ class DLRMResNet(nn.Module):
   mlp_bottom_dims: Sequence[int] = (256, 256, 256)
   mlp_top_dims: Sequence[int] = (256, 256, 256, 256, 1)
   embed_dim: int = 128
-  dropout_rate: float = 0.0
+  dropout_rate: float = DROPOUT_RATE
   use_layer_norm: bool = False  # Unused.
   embedding_init_multiplier: float = None  # Unused
 
   @nn.compact
-  def __call__(self, x, train):
+  def __call__(self, x, train, dropout_rate=DROPOUT_RATE):
+
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
@@ -88,8 +92,8 @@ class DLRMResNet(nn.Module):
               stddev=jnp.sqrt(1.0 / mlp_top_dims[layer_idx])))(
                   top_mlp_input)
       x = nn.relu(x)
-      if self.dropout_rate and layer_idx == num_layers_top - 2:
-        x = nn.Dropout(rate=self.dropout_rate, deterministic=not train)(x)
+      if dropout_rate and layer_idx == num_layers_top - 2:
+        x = Dropout(dropout_rate, deterministic=not train)(x, rate=dropout_rate)
       top_mlp_input += x
     # In the DLRM model the last layer width is always 1. We can hardcode that
     # below.
@@ -151,7 +155,8 @@ class DlrmSmall(nn.Module):
   embedding_init_multiplier: float = None
 
   @nn.compact
-  def __call__(self, x, train):
+  def __call__(self, x, train, dropout_rate=DROPOUT_RATE):
+
     bot_mlp_input, cat_features = jnp.split(x, [self.num_dense_features], 1)
     cat_features = jnp.asarray(cat_features, dtype=jnp.int32)
 
@@ -210,10 +215,10 @@ class DlrmSmall(nn.Module):
         top_mlp_input = nn.relu(top_mlp_input)
         if self.use_layer_norm:
           top_mlp_input = nn.LayerNorm()(top_mlp_input)
-      if (self.dropout_rate is not None and self.dropout_rate > 0.0 and
+      if (dropout_rate is not None and dropout_rate > 0.0 and
           layer_idx == num_layers_top - 2):
-        top_mlp_input = nn.Dropout(
-            rate=self.dropout_rate, deterministic=not train)(
-                top_mlp_input)
+        top_mlp_input = Dropout(
+            dropout_rate, deterministic=not train)(
+                top_mlp_input, rate=dropout_rate)
     logits = top_mlp_input
     return logits

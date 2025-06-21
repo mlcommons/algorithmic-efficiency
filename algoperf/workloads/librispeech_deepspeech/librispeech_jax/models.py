@@ -1,4 +1,4 @@
-r"""Deepspeech.
+"""Deepspeech.
 
 This model uses a deepspeech2 network to convert speech to text.
 paper : https://arxiv.org/abs/1512.02595
@@ -16,6 +16,7 @@ import jax
 from jax.experimental import rnn
 import jax.numpy as jnp
 
+from algoperf.jax_utils import Dropout
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
@@ -29,6 +30,8 @@ Dtype = Any
 Carry = Any
 CarryHistory = Any
 Output = Any
+
+DROPOUT_RATE = 0.1
 
 
 @struct.dataclass
@@ -51,10 +54,6 @@ class DeepspeechConfig:
   use_dynamic_time_mask_max_frames: bool = True
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
-  # If None, defaults to 0.1.
-  input_dropout_rate: Optional[float] = 0.1
-  # If None, defaults to 0.1.
-  feed_forward_dropout_rate: Optional[float] = 0.1
   enable_residual_connections: bool = True
   enable_decoder_layer_norm: bool = True
   bidirectional: bool = True
@@ -72,7 +71,7 @@ class Subsample(nn.Module):
   config: DeepspeechConfig
 
   @nn.compact
-  def __call__(self, inputs, output_paddings, train):
+  def __call__(self, inputs, output_paddings, train, dropout_rate=DROPOUT_RATE):
     config = self.config
     outputs = jnp.expand_dims(inputs, axis=-1)
 
@@ -106,13 +105,9 @@ class Subsample(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(
             outputs)
 
-    if config.input_dropout_rate is None:
-      input_dropout_rate = 0.1
-    else:
-      input_dropout_rate = config.input_dropout_rate
-    outputs = nn.Dropout(
-        rate=input_dropout_rate, deterministic=not train)(
-            outputs)
+    outputs = Dropout(
+        rate=dropout_rate, deterministic=not train)(
+            outputs, rate=dropout_rate)
 
     return outputs, output_paddings
 
@@ -188,7 +183,11 @@ class FeedForwardModule(nn.Module):
   config: DeepspeechConfig
 
   @nn.compact
-  def __call__(self, inputs, input_paddings=None, train=False):
+  def __call__(self,
+               inputs,
+               input_paddings=None,
+               train=False,
+               dropout_rate=DROPOUT_RATE):
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
     config = self.config
 
@@ -212,12 +211,8 @@ class FeedForwardModule(nn.Module):
       inputs = nn.relu(inputs)
     inputs *= padding_mask
 
-    if config.feed_forward_dropout_rate is None:
-      feed_forward_dropout_rate = 0.1
-    else:
-      feed_forward_dropout_rate = config.feed_forward_dropout_rate
-    inputs = nn.Dropout(rate=feed_forward_dropout_rate)(
-        inputs, deterministic=not train)
+    inputs = Dropout(rate=dropout_rate)(
+        inputs, deterministic=not train, rate=dropout_rate)
 
     return inputs
 
@@ -473,7 +468,7 @@ class Deepspeech(nn.Module):
     )
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, train):
+  def __call__(self, inputs, input_paddings, train, dropout_rate=DROPOUT_RATE):
     config = self.config
 
     outputs = inputs
@@ -494,7 +489,8 @@ class Deepspeech(nn.Module):
 
     # Subsample input by a factor of 4 by performing strided convolutions.
     outputs, output_paddings = Subsample(
-        config=config)(outputs, output_paddings, train)
+        config=config)(outputs, output_paddings, train,
+        dropout_rate=dropout_rate)
 
     # Run the lstm layers.
     for _ in range(config.num_lstm_layers):
@@ -508,9 +504,8 @@ class Deepspeech(nn.Module):
         outputs = outputs + FeedForwardModule(config=self.config)(
             outputs, output_paddings, train)
       else:
-        outputs = FeedForwardModule(config=self.config)(outputs,
-                                                        output_paddings,
-                                                        train)
+        outputs = FeedForwardModule(config=self.config)(
+            outputs, output_paddings, train, dropout_rate=dropout_rate)
 
     # Run the decoder which in this case is a trivial projection layer.
     if config.enable_decoder_layer_norm:

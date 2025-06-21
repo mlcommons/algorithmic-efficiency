@@ -184,12 +184,11 @@ def _make_one_batch_workload(workload_class,
       if 'librispeech' in workload_name:
         self.tokenizer = _FakeTokenizer()
 
-    def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
+    def init_model_fn(self, rng):
       # pylint: disable=line-too-long
       if not (FLAGS.identical and
               os.path.exists(f'tests/modeldiffs/{workload_name}/compare.py')):
-        return super().init_model_fn(
-            rng, dropout_rate=dropout_rate, aux_dropout_rate=aux_dropout_rate)
+        return super().init_model_fn(rng)
       if framework == 'jax':
         compare_module = importlib.import_module(
             f'tests.modeldiffs.{workload_name}.compare')
@@ -201,7 +200,7 @@ def _make_one_batch_workload(workload_class,
         return (FrozenDict(**jax_utils.replicate(jax_params)),
                 FrozenDict(**jax_utils.replicate(model_state))
                 if model_state is not None else model_state)
-      return super().init_model_fn([0], dropout_rate=0.0, aux_dropout_rate=0.0)
+      return super().init_model_fn([0])
 
     @property
     def num_eval_train_examples(self):

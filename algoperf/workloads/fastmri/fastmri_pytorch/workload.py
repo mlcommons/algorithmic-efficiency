@@ -13,6 +13,7 @@ from algoperf import param_utils
 from algoperf import pytorch_utils
 from algoperf import spec
 import algoperf.random_utils as prng
+from algoperf.workloads.fastmri.fastmri_pytorch import models
 from algoperf.workloads.fastmri.fastmri_pytorch.models import UNet
 from algoperf.workloads.fastmri.fastmri_pytorch.ssim import ssim
 from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
@@ -105,19 +106,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         batch['volume_max'] = aux_tensors[2][RANK]
       yield batch
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    del aux_dropout_rate
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = UNet(
         num_pool_layers=self.num_pool_layers,
         num_channels=self.num_channels,
         use_tanh=self.use_tanh,
-        use_layer_norm=self.use_layer_norm,
-        dropout_rate=dropout_rate)
+        use_layer_norm=self.use_layer_norm)
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -138,7 +133,9 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -158,8 +155,8 @@ class FastMRIWorkload(BaseFastMRIWorkload):
 
     with contexts[mode]():
       logit_batch = model(
-          augmented_and_preprocessed_input_batch['inputs'].unsqueeze(
-              1)).squeeze(1)
+          augmented_and_preprocessed_input_batch['inputs'].unsqueeze(1),
+          dropout_rate=dropout_rate).squeeze(1)
 
     return logit_batch, None
 

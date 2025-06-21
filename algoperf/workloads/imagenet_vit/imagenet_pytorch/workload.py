@@ -1,7 +1,7 @@
 """ImageNet ViT workload implemented in PyTorch."""
 
 import contextlib
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -21,15 +21,9 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 # Make sure we inherit from the ViT base workload first.
 class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    del aux_dropout_rate
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     model = models.ViT(
-        dropout_rate=dropout_rate,
         num_classes=self._num_classes,
         use_glu=self.use_glu,
         use_post_layer_norm=self.use_post_layer_norm,
@@ -55,7 +49,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -74,7 +70,9 @@ class ImagenetVitWorkload(BaseImagenetVitWorkload, ImagenetResNetWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      logits_batch = model(
+          augmented_and_preprocessed_input_batch['inputs'],
+          dropout_rate=dropout_rate)
 
     return logits_batch, None
 

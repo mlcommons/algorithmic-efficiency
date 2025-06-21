@@ -15,20 +15,11 @@ from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
 
 class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     """Deepspeech model init function.
-
-    Here we use dropout_rate as feed_forward_dropout_rate, and aux_dropout_rate
-    as input_dropout_rate.
     """
     model_config = models.DeepspeechConfig(
-        feed_forward_dropout_rate=dropout_rate,
         use_specaug=self.use_specaug,
-        input_dropout_rate=aux_dropout_rate,
         use_tanh=self.use_tanh,
         enable_residual_connections=self.enable_residual_connections,
         enable_decoder_layer_norm=self.enable_decoder_layer_norm,
@@ -42,9 +33,10 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
-    params_rng, dropout_rng = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
-                              *fake_input_batch)
+    params_rng, _ = jax.random.split(rng, 2)
+    variables = model_init_fn({
+        'params': params_rng,
+    }, *fake_input_batch)
 
     model_state = variables[
         'batch_stats'] if not self.layernorm_everywhere else {}
@@ -63,7 +55,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
       update_batch_norm: bool,
-      use_running_average_bn: Optional[bool] = None
+      use_running_average_bn: Optional[bool] = None,
+      dropout_rate: Optional[bool] = models.DROPOUT_RATE,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
@@ -75,7 +68,8 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
           input_paddings,
           train=True,
           rngs={'dropout' : rng},
-          mutable=['batch_stats'])
+          mutable=['batch_stats'],
+          dropout_rate=dropout_rate)
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(

@@ -17,6 +17,8 @@ from algoperf.workloads.librispeech_conformer.librispeech_pytorch import \
 from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import \
     SpecAug
 
+DROPOUT_RATE = 0.1
+
 
 @dataclass
 class ConformerConfig:
@@ -26,10 +28,7 @@ class ConformerConfig:
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
   attention_dropout_rate: float = 0.0
-  attention_residual_dropout_rate: float = 0.1
-  conv_residual_dropout_rate: float = 0.0
   feed_forward_dropout_rate: float = 0.0
-  feed_forward_residual_dropout_rate: float = 0.1
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
@@ -39,7 +38,6 @@ class ConformerConfig:
   time_mask_max_ratio: float = 0.05
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
-  input_dropout_rate: float = 0.1
   batch_norm_momentum: float = 1 - 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
@@ -75,13 +73,9 @@ class LayerNorm(nn.Module):
 
 class Subsample(nn.Module):
 
-  def __init__(self,
-               encoder_dim: int = 0,
-               input_dropout_rate: float = 0.0,
-               num_bins: int = 80):
+  def __init__(self, encoder_dim: int = 0, num_bins: int = 80):
     super().__init__()
     self.encoder_dim = encoder_dim
-    self.input_dropout_rate = input_dropout_rate
 
     self.conv1 = Conv2dSubsampling(
         input_channels=1, output_channels=encoder_dim)
@@ -93,9 +87,9 @@ class Subsample(nn.Module):
         out_features=self.encoder_dim,
         bias=True)
     self.pos_encode = AddPositionalEmbedding(embedding_dim=self.encoder_dim)
-    self.dropout = nn.Dropout(p=self.input_dropout_rate, inplace=True)
 
-  def forward(self, inputs, input_paddings):
+  def forward(self, inputs, input_paddings, dropout_rate):
+
     output_paddings = input_paddings
     outputs = inputs[:, None, :, :]
 
@@ -109,7 +103,8 @@ class Subsample(nn.Module):
 
     outputs = self.linear(outputs)
     outputs = outputs + self.pos_encode(seq_length=outputs.shape[1])
-    outputs = self.dropout(outputs)
+    outputs = F.dropout(
+        outputs, dropout_rate, training=self.training, inplace=True)
 
     return outputs, output_paddings
 
@@ -201,15 +196,8 @@ class FeedForwardModule(nn.Module):
         out_features=config.encoder_dim,
         bias=True)
 
-    if config.feed_forward_residual_dropout_rate is None:
-      feed_forward_residual_dropout_rate = 0.1
-    else:
-      feed_forward_residual_dropout_rate = (
-          config.feed_forward_residual_dropout_rate)
-    self.dropout2 = nn.Dropout(
-        p=feed_forward_residual_dropout_rate, inplace=True)
+  def forward(self, inputs, padding_mask, dropout_rate):
 
-  def forward(self, inputs, padding_mask):
     inputs = self.ln(inputs)
     inputs = self.linear1(inputs)
     if self.config.activation_function_name == 'swish':
@@ -226,7 +214,8 @@ class FeedForwardModule(nn.Module):
     inputs = inputs * padding_mask
     inputs = self.linear2(inputs)
     inputs = inputs * padding_mask
-    inputs = self.dropout2(inputs)
+    inputs = F.dropout(
+        inputs, dropout_rate, training=self.training, inplace=True)
 
     return inputs
 
@@ -280,7 +269,7 @@ class MHSAwithQS(nn.Module):
     super().__init__()
     self.embed_dim = config.encoder_dim
     self.num_heads = config.num_attention_heads
-    self.dropout = config.attention_dropout_rate
+    self.attention_dropout_rate = config.attention_dropout_rate
     self.in_proj = nn.Linear(config.encoder_dim, 3 * config.encoder_dim)
     self.out_proj = nn.Linear(config.encoder_dim, config.encoder_dim)
     self.qs = QueryScaler(dim=config.encoder_dim // config.num_attention_heads)
@@ -297,7 +286,7 @@ class MHSAwithQS(nn.Module):
         key=k,
         value=v,
         attn_mask=~key_padding_mask[:, None, None],
-        dropout_p=self.dropout,
+        dropout_p=self.attention_dropout_rate,
     ).transpose(1, 2).reshape(batch_size, seq_len, embed_dim)
     out = out * self.attention_temperature
     out = self.out_proj(out)
@@ -313,19 +302,15 @@ class MultiHeadedSelfAttention(nn.Module):
 
     self.ln = LayerNorm(dim=config.encoder_dim)
     self.self_attention = MHSAwithQS(config)
-    if config.attention_residual_dropout_rate is None:
-      attention_residual_dropout_rate = 0.1
-    else:
-      attention_residual_dropout_rate = config.attention_residual_dropout_rate
-    self.dropout = nn.Dropout(p=attention_residual_dropout_rate, inplace=True)
 
-  def forward(self, outputs, paddings):
+  def forward(self, outputs, paddings, dropout_rate):
     outputs = self.ln(outputs)
     outputs = self.self_attention(
         outputs,
         key_padding_mask=paddings == 1,
     )
-    outputs = self.dropout(outputs)
+    outputs = F.dropout(
+        outputs, dropout_rate, training=self.training, inplace=True)
     return outputs
 
 
@@ -405,13 +390,8 @@ class ConvolutionBlock(nn.Module):
         groups=config.encoder_dim)
     self.bn = BatchNorm(config)
     self.lin3 = nn.Linear(config.encoder_dim, config.encoder_dim)
-    if config.conv_residual_dropout_rate is None:
-      conv_residual_dropout_rate = 0.0
-    else:
-      conv_residual_dropout_rate = config.conv_residual_dropout_rate
-    self.dropout = nn.Dropout(p=conv_residual_dropout_rate, inplace=True)
 
-  def forward(self, inputs, input_paddings):
+  def forward(self, inputs, input_paddings, dropout_rate):
     inputs = self.ln(inputs)
 
     inputs = F.glu(torch.cat([self.lin1(inputs), self.lin2(inputs)], dim=2))
@@ -433,7 +413,8 @@ class ConvolutionBlock(nn.Module):
     inputs = activation_fn(inputs)
     inputs = self.lin3(inputs)
 
-    inputs = self.dropout(inputs)
+    inputs = F.dropout(
+        inputs, dropout_rate, training=self.training, inplace=True)
     return inputs
 
 
@@ -450,12 +431,12 @@ class ConformerBlock(nn.Module):
     if config.use_post_layer_norm:
       self.ln = LayerNorm(dim=config.encoder_dim)
 
-  def forward(self, inputs, input_paddings):
+  def forward(self, inputs, input_paddings, dropout_rate):
     padding_mask = 1 - input_paddings[:, :, None]
-    inputs = inputs + 0.5 * self.ff1(inputs, padding_mask)
-    inputs = inputs + self.mhsa(inputs, input_paddings)
-    inputs = inputs + self.conv(inputs, input_paddings)
-    inputs = inputs + 0.5 * self.ff2(inputs, padding_mask)
+    inputs = inputs + 0.5 * self.ff1(inputs, padding_mask, dropout_rate)
+    inputs = inputs + self.mhsa(inputs, input_paddings, dropout_rate)
+    inputs = inputs + self.conv(inputs, input_paddings, dropout_rate)
+    inputs = inputs + 0.5 * self.ff2(inputs, padding_mask, dropout_rate)
     if self.ln:
       inputs = self.ln(inputs)
     return inputs
@@ -480,29 +461,24 @@ class ConformerEncoderDecoder(nn.Module):
         time_masks_per_frame=config.time_masks_per_frame,
         use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames
     )
-    if config.input_dropout_rate is None:
-      input_dropout_rate = 0.1
-    else:
-      input_dropout_rate = config.input_dropout_rate
     self.subsample = Subsample(
-        encoder_dim=config.encoder_dim,
-        input_dropout_rate=input_dropout_rate,
-        num_bins=preprocessing_config.num_bins)
+        encoder_dim=config.encoder_dim, num_bins=preprocessing_config.num_bins)
     self.conformers = nn.ModuleList(
         [ConformerBlock(config) for _ in range(config.num_encoder_layers)])
 
     self.ln = LayerNorm(config.encoder_dim)
     self.lin = nn.Linear(config.encoder_dim, config.vocab_size)
 
-  def forward(self, inputs, input_paddings):
+  def forward(self, inputs, input_paddings, dropout_rate=DROPOUT_RATE):
     outputs = inputs
     output_paddings = input_paddings
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
-    outputs, output_paddings = self.subsample(outputs, output_paddings)
+    outputs, output_paddings = self.subsample(outputs, output_paddings,
+                                              dropout_rate)
     for conformer in self.conformers:
-      outputs = conformer(outputs, output_paddings)
+      outputs = conformer(outputs, output_paddings, dropout_rate)
     outputs = self.ln(outputs)
     outputs = self.lin(outputs)
     return outputs, output_paddings

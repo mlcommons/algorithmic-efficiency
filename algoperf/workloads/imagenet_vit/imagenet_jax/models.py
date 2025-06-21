@@ -11,6 +11,9 @@ from flax import linen as nn
 import jax.numpy as jnp
 
 from algoperf import spec
+from algoperf.jax_utils import Dropout
+
+DROPOUT_RATE = 0.0
 
 
 def posemb_sincos_2d(h: int,
@@ -35,10 +38,13 @@ class MlpBlock(nn.Module):
   """Transformer MLP / feed-forward block."""
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   use_glu: bool = False
-  dropout_rate: float = 0.0
+  dropout_rate: float = DROPOUT_RATE
 
   @nn.compact
-  def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
+  def __call__(self,
+               x: spec.Tensor,
+               train: bool = True,
+               dropout_rate=DROPOUT_RATE) -> spec.Tensor:
     """Applies Transformer MlpBlock module."""
     inits = {
         'kernel_init': nn.initializers.xavier_uniform(),
@@ -53,7 +59,7 @@ class MlpBlock(nn.Module):
       y = nn.Dense(self.mlp_dim, **inits)(x)
       x = x * y
 
-    x = nn.Dropout(rate=self.dropout_rate)(x, train)
+    x = Dropout(dropout_rate)(x, train, rate=dropout_rate)
     x = nn.Dense(d, **inits)(x)
     return x
 
@@ -67,7 +73,11 @@ class Encoder1DBlock(nn.Module):
   dropout_rate: float = 0.0
 
   @nn.compact
-  def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
+  def __call__(self,
+               x: spec.Tensor,
+               train: bool = True,
+               dropout_rate=dropout_rate) -> spec.Tensor:
+
     if not self.use_post_layer_norm:
       y = nn.LayerNorm(name='LayerNorm_0')(x)
       y = nn.MultiHeadDotProductAttention(
@@ -76,16 +86,14 @@ class Encoder1DBlock(nn.Module):
           deterministic=train,
           name='MultiHeadDotProductAttention_1')(
               y)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+      y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
 
       y = nn.LayerNorm(name='LayerNorm_2')(x)
       y = MlpBlock(
-          mlp_dim=self.mlp_dim,
-          use_glu=self.use_glu,
-          dropout_rate=self.dropout_rate,
-          name='MlpBlock_3')(y, train)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+          mlp_dim=self.mlp_dim, use_glu=self.use_glu, name='MlpBlock_3')(
+              y, train, dropout_rate=dropout_rate)
+      y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
     else:
       y = x
@@ -95,7 +103,7 @@ class Encoder1DBlock(nn.Module):
           deterministic=train,
           name='MultiHeadDotProductAttention_1')(
               y)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+      y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
       x = nn.LayerNorm(name='LayerNorm_0')(x)
 
@@ -103,9 +111,10 @@ class Encoder1DBlock(nn.Module):
       y = MlpBlock(
           mlp_dim=self.mlp_dim,
           use_glu=self.use_glu,
-          dropout_rate=self.dropout_rate,
-          name='MlpBlock_3')(y, train)
-      y = nn.Dropout(rate=self.dropout_rate)(y, train)
+          name='MlpBlock_3',
+          dropout_rate=dropout_rate)(
+              y, train, dropout_rate=dropout_rate)
+      y = Dropout(dropout_rate)(y, train)(rate=dropout_rate)
       x = x + y
       x = nn.LayerNorm(name='LayerNorm_2')(x)
 
@@ -114,27 +123,29 @@ class Encoder1DBlock(nn.Module):
 
 class Encoder(nn.Module):
   """Transformer Model Encoder for sequence to sequence translation."""
+
   depth: int
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
-  dropout_rate: float = 0.0
   use_glu: bool = False
   use_post_layer_norm: bool = False
 
   @nn.compact
-  def __call__(self, x: spec.Tensor, train: bool = True) -> spec.Tensor:
+  def __call__(self,
+               x: spec.Tensor,
+               train: bool = True,
+               dropout_rate: float = DROPOUT_RATE) -> spec.Tensor:
     # Input Encoder
     for lyr in range(self.depth):
-      block = Encoder1DBlock(
-          name=f'encoderblock_{lyr}',
+      x = Encoder1DBlock(
+          name=f"encoderblock_{lyr}",
           mlp_dim=self.mlp_dim,
           num_heads=self.num_heads,
           use_glu=self.use_glu,
           use_post_layer_norm=self.use_post_layer_norm,
-          dropout_rate=self.dropout_rate)
-      x = block(x, train)
+      )(x, train=train, dropout_rate=dropout_rate)
     if not self.use_post_layer_norm:
-      return nn.LayerNorm(name='encoder_layernorm')(x)
+      return nn.LayerNorm(name="encoder_layernorm")(x)
     else:
       return x
 
@@ -143,9 +154,10 @@ class MAPHead(nn.Module):
   """Multihead Attention Pooling."""
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
   num_heads: int = 12
+  dropout_rate: float = 0.0
 
   @nn.compact
-  def __call__(self, x):
+  def __call__(self, x, dropout_rate=DROPOUT_RATE):
     n, _, d = x.shape
     probe = self.param('probe',
                        nn.initializers.xavier_uniform(), (1, 1, d),
@@ -158,7 +170,7 @@ class MAPHead(nn.Module):
         kernel_init=nn.initializers.xavier_uniform())(probe, x)
 
     y = nn.LayerNorm()(x)
-    x = x + MlpBlock(mlp_dim=self.mlp_dim)(y)
+    x = x + MlpBlock(mlp_dim=self.mlp_dim, dropout_rate=dropout_rate)(y)
     return x[:, 0]
 
 
@@ -172,7 +184,7 @@ class ViT(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   rep_size: Union[int, bool] = True
-  dropout_rate: Optional[float] = 0.0  # If None, defaults to 0.0.
+  dropout_rate: [float] = DROPOUT_RATE
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
   use_glu: bool = False
@@ -186,7 +198,11 @@ class ViT(nn.Module):
     return posemb_sincos_2d(*seqshape, width, dtype=dtype)
 
   @nn.compact
-  def __call__(self, x: spec.Tensor, *, train: bool = False) -> spec.Tensor:
+  def __call__(self,
+               x: spec.Tensor,
+               *,
+               train: bool = False,
+               dropout_rate=DROPOUT_RATE) -> spec.Tensor:
     # Patch extraction
     x = nn.Conv(
         self.width,
@@ -202,10 +218,7 @@ class ViT(nn.Module):
     # Add posemb before adding extra token.
     x = x + self.get_posemb((h, w), c, x.dtype)
 
-    dropout_rate = self.dropout_rate
-    if dropout_rate is None:
-      dropout_rate = 0.0
-    x = nn.Dropout(rate=dropout_rate)(x, not train)
+    x = Dropout(dropout_rate)(x, not train, rate=dropout_rate)
 
     x = Encoder(
         depth=self.depth,
@@ -213,12 +226,15 @@ class ViT(nn.Module):
         num_heads=self.num_heads,
         use_glu=self.use_glu,
         use_post_layer_norm=self.use_post_layer_norm,
-        dropout_rate=dropout_rate,
-        name='Transformer')(
-            x, train=not train)
+        name='Transformer',
+    )(x, train=not train, dropout_rate=dropout_rate)
 
     if self.use_map:
-      x = MAPHead(num_heads=self.num_heads, mlp_dim=self.mlp_dim)(x)
+      x = MAPHead(
+          num_heads=self.num_heads,
+          mlp_dim=self.mlp_dim,
+          dropout_rate=dropout_rate)(
+              x, dropout_rate=dropout_rate)
     else:
       x = jnp.mean(x, axis=1)
 

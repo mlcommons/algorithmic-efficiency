@@ -131,6 +131,7 @@ pytorch_gpu = [
 based_on_style = "yapf"
 each_dict_entry_on_separate_line = false
 split_all_top_level_comma_separated_values = true
+column_limit = 80
 [tool.yapfignore]
 ignore_patterns = ["algoperf/_version.py"]
 

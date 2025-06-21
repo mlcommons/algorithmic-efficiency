@@ -72,36 +72,34 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   def init_model_fn(
       self,
       rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None,
       tabulate: Optional[bool] = False,
   ) -> spec.ModelInitState:
     """Only dropout is used."""
-    del aux_dropout_rate
     if self.use_resnet:
       model_class = models.DLRMResNet
     else:
       model_class = models.DlrmSmall
+
     self._model = model_class(
         vocab_size=self.vocab_size,
         num_dense_features=self.num_dense_features,
         mlp_bottom_dims=self.mlp_bottom_dims,
         mlp_top_dims=self.mlp_top_dims,
         embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate,
         use_layer_norm=self.use_layer_norm,
         embedding_init_multiplier=self.embedding_init_multiplier)
 
-    params_rng, dropout_rng = jax.random.split(rng)
+    params_rng, _ = jax.random.split(rng)
     init_fake_batch_size = 2
     num_categorical_features = 26
     num_dense_features = 13
     input_size = num_dense_features + num_categorical_features
     input_shape = (init_fake_batch_size, input_size)
     init_fn = functools.partial(self._model.init, train=False)
-    initial_variables = jax.jit(init_fn)(
-        {'params': params_rng, 'dropout': dropout_rng},
-        jnp.ones(input_shape, jnp.float32))
+    initial_variables = jax.jit(init_fn)({
+        'params': params_rng,
+    },
+                                         jnp.ones(input_shape, jnp.float32))
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -117,7 +115,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: float = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
     inputs = augmented_and_preprocessed_input_batch['inputs']
@@ -125,6 +125,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     apply_kwargs = {'train': train}
     if train:
       apply_kwargs['rngs'] = {'dropout': rng}
+      apply_kwargs['dropout_rate'] = dropout_rate
     logits_batch = self._model.apply({'params': params}, inputs, **apply_kwargs)
     return logits_batch, None
 
