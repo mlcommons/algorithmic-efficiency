@@ -28,17 +28,18 @@ AUDIO_MAX_LENGTH = 320000
 # taken from TFDS page for librispeech dataset :
 # https://www.tensorflow.org/datasets/catalog/librispeech
 librispeech_example_counts = {
-    'train-clean-100': 28539,
-    'train-clean-360': 104014,
-    'train-other-500': 148688,
-    'test-clean': 2620,  # 'test-other': 2939,
-    'dev-clean': 2703,
-    'dev-other': 2864,
+  'train-clean-100': 28539,
+  'train-clean-360': 104014,
+  'train-other-500': 148688,
+  'test-clean': 2620,  # 'test-other': 2939,
+  'dev-clean': 2703,
+  'dev-other': 2864,
 }
 
 
 class Counter:
   """A threadsafe counter."""
+
   lock = threading.Lock()
   value = 0
 
@@ -56,10 +57,12 @@ def report_progress(count, total, start_time):
   now = time.time()
   size = 50
   filled = int(round(size * count / float(total)))
-  percent = round(100. * count / float(total), 1)
-  bar = "-" * filled + "." * (size - filled)
-  sys.stdout.write("[%s] %d%% (%d of %d) %.2f sample/sec\r" %
-                   (bar, percent, count, total, count / (now - start_time)))
+  percent = round(100.0 * count / float(total), 1)
+  bar = '-' * filled + '.' * (size - filled)
+  sys.stdout.write(
+    '[%s] %d%% (%d of %d) %.2f sample/sec\r'
+    % (bar, percent, count, total, count / (now - start_time))
+  )
   sys.stdout.flush()
 
 
@@ -72,8 +75,10 @@ def preprocess_data(in_folder, out_folder, tokenizer, split):
     data_folder, speaker_folder, chapter_folder = index
     utterance_ids = []
 
-    trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
-                  f'{speaker_folder}-{chapter_folder}.trans.txt')
+    trans_file = (
+      f'{data_folder}/{speaker_folder}/{chapter_folder}/'
+      f'{speaker_folder}-{chapter_folder}.trans.txt'
+    )
     if not exists(trans_file):
       skipped.inc()
       return utterance_ids
@@ -82,7 +87,8 @@ def preprocess_data(in_folder, out_folder, tokenizer, split):
       for l in f:
         utt, trans = l.strip().split(' ', maxsplit=1)
         audio_path = (
-            f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac')
+          f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac'
+        )
 
         if not os.path.isfile(audio_path):
           skipped.inc()
@@ -105,9 +111,11 @@ def preprocess_data(in_folder, out_folder, tokenizer, split):
         np.save('{}/{}/{}_targets.npy'.format(out_folder, split, utt), targets)
 
         finished.inc()
-        report_progress(finished.val() + skipped.val(),
-                        librispeech_example_counts[split],
-                        start_time)
+        report_progress(
+          finished.val() + skipped.val(),
+          librispeech_example_counts[split],
+          start_time,
+        )
 
         utterance_ids.append(utt)
     return utterance_ids
@@ -126,10 +134,12 @@ def preprocess_data(in_folder, out_folder, tokenizer, split):
   end_time = time.time()
   elapsed_time = end_time - start_time
 
-  print(' \n time taken to preprocess split : ',
-        split,
-        ' = ',
-        time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+  print(
+    ' \n time taken to preprocess split : ',
+    split,
+    ' = ',
+    time.strftime('%H:%M:%S', time.gmtime(elapsed_time)),
+  )
 
   final_count = finished.val() + skipped.val()
   return pd.DataFrame(file_trans, columns=['id']), final_count
@@ -147,12 +157,12 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
   os.makedirs(output_dir, exist_ok=True)
 
   subset_list = [
-      'train-clean-100',
-      'train-clean-360',
-      'train-other-500',
-      'dev-clean',
-      'dev-other',
-      'test-clean',  # 'test-other',
+    'train-clean-100',
+    'train-clean-360',
+    'train-other-500',
+    'dev-clean',
+    'dev-other',
+    'test-clean',  # 'test-other',
   ]
   for subset in subset_list:
     logging.info('Processing split = %s...', subset)
@@ -160,10 +170,14 @@ def run(input_dir, output_dir, tokenizer_vocab_path):
     out_dir = os.path.join(output_dir, subset)
     os.makedirs(out_dir, exist_ok=True)
     example_ids, num_entries = preprocess_data(
-      in_dir, output_dir, tokenizer, subset)
+      in_dir, output_dir, tokenizer, subset
+    )
 
     if num_entries != librispeech_example_counts[subset]:
-      raise ValueError('Preprocessed dataframe final count not equal to '
-                       'expected count: {} vs expected {}'.format(
-                           num_entries, librispeech_example_counts[subset]))
+      raise ValueError(
+        'Preprocessed dataframe final count not equal to '
+        'expected count: {} vs expected {}'.format(
+          num_entries, librispeech_example_counts[subset]
+        )
+      )
     example_ids.to_csv(os.path.join(output_dir, f'{subset}.csv'))
