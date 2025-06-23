@@ -11,12 +11,12 @@ import subprocess
 import sys
 from typing import Any, Dict, Optional
 
-from absl import flags
-from clu import metric_writers
 import GPUtil
 import pandas as pd
 import psutil
 import torch.distributed as dist
+from absl import flags
+from clu import metric_writers
 
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
@@ -198,7 +198,7 @@ def _get_system_hardware_info() -> Dict:
   try:
     system_hardware_info['cpu_model_name'] = _get_cpu_model_name()
     system_hardware_info['cpu_count'] = psutil.cpu_count()
-  except:  # pylint: disable=bare-except
+  except:  # noqa: E722
     logging.info('Unable to record cpu information. Continuing without it.')
 
   gpus = GPUtil.getGPUs()
@@ -207,7 +207,7 @@ def _get_system_hardware_info() -> Dict:
       system_hardware_info['gpu_model_name'] = gpus[0].name
       system_hardware_info['gpu_count'] = len(gpus)
       system_hardware_info['gpu_driver'] = gpus[0].driver
-    except:  # pylint: disable=bare-except
+    except:  # noqa: E722
       logging.info('Unable to record gpu information. Continuing without it.')
 
   return system_hardware_info
@@ -232,7 +232,7 @@ def _get_system_software_info() -> Dict:
     system_software_info['git_commit_hash'] = _get_git_commit_hash()
     # Note: do not store git repo url as it may be sensitive or contain a
     # secret.
-  except:  # pylint: disable=bare-except
+  except:  # noqa: E722
     logging.info('Unable to record git information. Continuing without it.')
 
   return system_software_info
@@ -279,7 +279,7 @@ def _get_workload_properties(workload: spec.Workload) -> Dict:
   for key in keys:
     try:
       attr = getattr(workload, key)
-    except:  # pylint: disable=bare-except
+    except:  # noqa: E722
       logging.info(
         f'Unable to record workload.{key} information. Continuing without it.'
       )

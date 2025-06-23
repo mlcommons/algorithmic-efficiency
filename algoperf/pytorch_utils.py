@@ -1,14 +1,13 @@
 import os
 from typing import Tuple
 
-from absl import logging
 import jax
 import tensorflow as tf
 import torch
-from torch import nn
-from torch import Tensor
 import torch.distributed as dist
 import torch.nn.functional as F
+from absl import logging
+from torch import Tensor, nn
 
 from algoperf import spec
 from algoperf.profiler import Profiler

@@ -2,14 +2,14 @@
 https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.py.
 """
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from typing import Tuple
 
 import torch
-from torch import nn
 import torch.distributed.nn as dist_nn
 import torch.nn.functional as F
+from torch import nn
 
 from algoperf.workloads.librispeech_conformer.librispeech_pytorch import (
   preprocessor,
@@ -88,7 +88,6 @@ class Subsample(nn.Module):
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
   def forward(self, inputs, input_paddings, dropout_rate):
-
     output_paddings = input_paddings
     outputs = inputs[:, None, :, :]
 
@@ -209,7 +208,6 @@ class FeedForwardModule(nn.Module):
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
 
   def forward(self, inputs, input_paddings, dropout_rate):
-
     padding_mask = (1 - input_paddings)[:, :, None]
     if self.config.layernorm_everywhere:
       inputs = self.normalization_layer(inputs)
@@ -381,9 +379,9 @@ class DeepspeechEncoderDecoder(nn.Module):
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
-    outputs, output_paddings = self.subsample(outputs,
-                                              output_paddings,
-                                              dropout_rate)
+    outputs, output_paddings = self.subsample(
+      outputs, output_paddings, dropout_rate
+    )
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:
         outputs = outputs + self.lstms[idx](outputs, output_paddings)
@@ -393,7 +391,8 @@ class DeepspeechEncoderDecoder(nn.Module):
     for idx in range(self.config.num_ffn_layers):
       if self.config.enable_residual_connections:
         outputs = outputs + self.ffns[idx](
-            outputs, output_paddings, dropout_rate)
+          outputs, output_paddings, dropout_rate
+        )
       else:
         outputs = self.ffns[idx](outputs, output_paddings, dropout_rate)
 

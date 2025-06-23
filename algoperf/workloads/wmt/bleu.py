@@ -5,19 +5,17 @@ Reference:
 https://github.com/mjpost/sacrebleu/blob/v1.3.1/sacrebleu.py.
 """
 
-from collections import Counter
-from collections import namedtuple
-from itertools import zip_longest
-import logging
 import math
 import re
 import sys
-from typing import List, Sequence
 import unicodedata
+from collections import Counter, namedtuple
+from itertools import zip_longest
+from typing import List, Sequence
 
-from absl import logging
 import torch
 import torch.distributed as dist
+from absl import logging
 
 from algoperf.pytorch_utils import pytorch_setup
 

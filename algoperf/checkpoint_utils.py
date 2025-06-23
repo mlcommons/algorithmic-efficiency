@@ -7,14 +7,14 @@ https://github.com/google/init2winit/blob/master/init2winit/checkpoint.py.
 import os
 from typing import Sequence, Tuple
 
+import jax
+import numpy as np
+import torch
 from absl import logging
 from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
 from flax.training.checkpoints import latest_checkpoint
-import jax
-import numpy as np
 from tensorflow.io import gfile  # pytype: disable=import-error
-import torch
 
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup

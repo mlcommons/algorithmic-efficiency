@@ -4,9 +4,9 @@ and step times.
 
 import csv
 
-from absl import logging
 import numpy as np
 import torch
+from absl import logging
 
 
 class LibriSpeechDataset(torch.utils.data.Dataset):

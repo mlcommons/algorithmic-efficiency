@@ -9,8 +9,7 @@ import jax
 
 from algoperf import random_utils as prng
 from algoperf import spec
-from algoperf.workloads.ogbg import input_pipeline
-from algoperf.workloads.ogbg import metrics
+from algoperf.workloads.ogbg import input_pipeline, metrics
 
 
 class BaseOgbgWorkload(spec.Workload):

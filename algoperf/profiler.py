@@ -4,10 +4,10 @@ Modified from:
 https://github.com/Lightning-AI/lightning/tree/master/src/pytorch_lightning/profilers.
 """
 
-from collections import defaultdict
-from contextlib import contextmanager
 import os
 import time
+from collections import defaultdict
+from contextlib import contextmanager
 from typing import Dict, Generator, List, Optional, Tuple
 
 import numpy as np

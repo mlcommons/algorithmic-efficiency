@@ -7,9 +7,9 @@ from typing import Any, Dict, Iterator, Optional, Tuple
 import jax
 import torch
 
+import algoperf.random_utils as prng
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
-import algoperf.random_utils as prng
 
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 

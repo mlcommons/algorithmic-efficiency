@@ -11,11 +11,7 @@ import tensorflow as tf
 
 from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import (
   rotate_img,
-)
-from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import (
   transform,
-)
-from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import (
   translate,
 )
 

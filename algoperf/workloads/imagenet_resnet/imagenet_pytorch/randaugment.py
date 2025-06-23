@@ -11,8 +11,8 @@ import numpy as np
 import PIL
 import torch
 from torch import Tensor
-from torchvision.transforms import functional as F
 from torchvision.transforms import InterpolationMode
+from torchvision.transforms import functional as F
 
 from algoperf import spec
 

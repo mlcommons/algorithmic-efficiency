@@ -7,13 +7,12 @@ https://github.com/google/flax/blob/main/examples/imagenet/input_pipeline.py.
 import functools
 from typing import Dict, Iterator, Tuple
 
-from flax import jax_utils
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from flax import jax_utils
 
-from algoperf import data_utils
-from algoperf import spec
+from algoperf import data_utils, spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax import randaugment
 
 TFDS_SPLIT_NAME = {

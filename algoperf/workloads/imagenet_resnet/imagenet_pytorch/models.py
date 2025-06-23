@@ -8,8 +8,7 @@ import collections
 from typing import Any, Callable, List, Optional, Type, Union
 
 import torch
-from torch import nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from algoperf import spec
 from algoperf.init_utils import pytorch_default_init

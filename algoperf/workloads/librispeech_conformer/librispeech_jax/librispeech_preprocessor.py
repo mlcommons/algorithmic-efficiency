@@ -10,11 +10,11 @@ https://github.com/tensorflow/lingvo/blob/master/lingvo/tasks/asr/frontend.py
 
 from typing import Any, Optional, Union
 
-from flax import linen as nn
-from flax import struct
 import jax
 import jax.numpy as jnp
 import numpy as np
+from flax import linen as nn
+from flax import struct
 
 # mel spectrum constants.
 _MEL_BREAK_FREQUENCY_HERTZ = 700.0

@@ -7,8 +7,8 @@ https://github.com/google/flax/blob/main/examples/imagenet/models.py.
 import functools
 from typing import Any, Callable, Tuple
 
-from flax import linen as nn
 import jax.numpy as jnp
+from flax import linen as nn
 
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax.models import ResNetBlock

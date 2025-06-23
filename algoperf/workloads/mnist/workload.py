@@ -10,10 +10,9 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
 
-from algoperf import data_utils
-from algoperf import spec
-from algoperf.pytorch_utils import pytorch_setup
 import algoperf.random_utils as prng
+from algoperf import data_utils, spec
+from algoperf.pytorch_utils import pytorch_setup
 
 USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 

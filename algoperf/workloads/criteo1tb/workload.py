@@ -4,8 +4,8 @@ import math
 import os
 from typing import Dict, Iterator, Optional, Tuple
 
-from absl import flags
 import torch.distributed as dist
+from absl import flags
 
 from algoperf import spec
 from algoperf.workloads.criteo1tb import input_pipeline

@@ -2,9 +2,8 @@
 
 from typing import Any, List, Union
 
-from absl import flags
-from absl import logging
 import numpy as np
+from absl import flags, logging
 
 try:
   import jax.random as jax_rng

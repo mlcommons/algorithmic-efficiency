@@ -12,10 +12,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
-from algoperf import data_utils
-from algoperf import param_utils
-from algoperf import pytorch_utils
-from algoperf import spec
+from algoperf import data_utils, param_utils, pytorch_utils, spec
 from algoperf.workloads.cifar.cifar_pytorch.models import resnet18
 from algoperf.workloads.cifar.workload import BaseCifarWorkload
 

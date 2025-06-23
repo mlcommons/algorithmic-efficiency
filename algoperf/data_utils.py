@@ -7,9 +7,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from torch.utils.data import DistributedSampler
-from torch.utils.data import Sampler
+from torch.utils.data import DataLoader, DistributedSampler, Sampler
 
 from algoperf import spec
 
@@ -266,7 +264,7 @@ class PrefetchedWrapper:
         next_targets = next_targets.to(self.device, non_blocking=True)
 
       if not first:
-        yield inputs, targets
+        yield inputs, targets  # noqa: F821
       else:
         first = False
 

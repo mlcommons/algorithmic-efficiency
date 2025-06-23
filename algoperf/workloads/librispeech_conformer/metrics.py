@@ -1,8 +1,8 @@
-from clu import metrics
 import flax
 import numpy as np
 import tensorflow as tf
 import tensorflow_text as tftxt
+from clu import metrics
 
 gfile = tf.io.gfile
 

@@ -2,14 +2,14 @@
 # https://github.com/google/flax/blob/main/examples/ogbg_molpcba/train.py
 from typing import Any
 
-from clu import metrics
 import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
-from sklearn.metrics import average_precision_score
 import torch
 import torch.distributed as dist
+from clu import metrics
+from sklearn.metrics import average_precision_score
 
 from algoperf.pytorch_utils import pytorch_setup
 

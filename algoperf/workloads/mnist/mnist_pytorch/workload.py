@@ -1,18 +1,16 @@
 """MNIST workload implemented in PyTorch."""
 
-from collections import OrderedDict
 import contextlib
+from collections import OrderedDict
 from typing import Any, Dict, Iterator, Optional, Tuple
 
 import torch
-from torch import nn
 import torch.distributed as dist
 import torch.nn.functional as F
+from torch import nn
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algoperf import init_utils
-from algoperf import param_utils
-from algoperf import spec
+from algoperf import init_utils, param_utils, spec
 from algoperf.pytorch_utils import pytorch_setup
 from algoperf.workloads.mnist.workload import BaseMnistWorkload
 

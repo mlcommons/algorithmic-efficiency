@@ -238,8 +238,8 @@ def preprocess_wmt_data(
   def length_filter(max_len):
     def filter_fn(x):
       source, target = x['inputs'], x['targets']
-      l = tf.maximum(tf.shape(source)[0], tf.shape(target)[0])
-      return tf.less(l, max_len + 1)
+      length = tf.maximum(tf.shape(source)[0], tf.shape(target)[0])
+      return tf.less(length, max_len + 1)
 
     return filter_fn
 
