@@ -15,7 +15,6 @@ USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 
 class BaseCifarWorkload(spec.Workload):
-
   _num_classes: int = 10
 
   @property
@@ -23,8 +22,9 @@ class BaseCifarWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'accuracy'
 
-  def has_reached_validation_target(self, eval_result: Dict[str,
-                                                            float]) -> bool:
+  def has_reached_validation_target(
+    self, eval_result: Dict[str, float]
+  ) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value
 
   @property
@@ -51,8 +51,9 @@ class BaseCifarWorkload(spec.Workload):
     # Round up from num_validation_examples (which is the default for
     # num_eval_train_examples) to the next multiple of eval_batch_size, so that
     # we don't have to extract the correctly sized subset of the training data.
-    rounded_up_multiple = math.ceil(self.num_validation_examples /
-                                    self.eval_batch_size)
+    rounded_up_multiple = math.ceil(
+      self.num_validation_examples / self.eval_batch_size
+    )
     return rounded_up_multiple * self.eval_batch_size
 
   @property
@@ -93,37 +94,35 @@ class BaseCifarWorkload(spec.Workload):
     return 600  # 10 mins.
 
   def _build_dataset(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
   ) -> Iterator[Dict[str, spec.Tensor]]:
     raise NotImplementedError
 
   def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ) -> Iterator[Dict[str, spec.Tensor]]:
     del num_batches
     if split == 'test':
       if not cache:
         raise ValueError('cache must be True for split=test.')
       if not repeat_final_dataset:
         raise ValueError('repeat_final_dataset must be True for split=test.')
-    return self._build_dataset(data_rng,
-                               split,
-                               data_dir,
-                               global_batch_size,
-                               cache,
-                               repeat_final_dataset)
+    return self._build_dataset(
+      data_rng, split, data_dir, global_batch_size, cache, repeat_final_dataset
+    )
 
   @property
   def step_hint(self) -> int:
@@ -133,39 +132,43 @@ class BaseCifarWorkload(spec.Workload):
     return 4883
 
   def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+    self,
+    params: spec.ParameterContainer,
+    batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+  ) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     raise NotImplementedError
 
   @abc.abstractmethod
   def _normalize_eval_metrics(
-      self, num_examples: int, total_metrics: Dict[str,
-                                                   Any]) -> Dict[str, float]:
+    self, num_examples: int, total_metrics: Dict[str, Any]
+  ) -> Dict[str, float]:
     """Normalize eval metrics."""
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int = 0) -> Dict[str, float]:
+  def _eval_model_on_split(
+    self,
+    split: str,
+    num_examples: int,
+    global_batch_size: int,
+    params: spec.ParameterContainer,
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+    data_dir: str,
+    global_step: int = 0,
+  ) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          data_rng=data_rng,
-          split=split,
-          data_dir=data_dir,
-          global_batch_size=global_batch_size,
-          cache=True,
-          repeat_final_dataset=True)
+        data_rng=data_rng,
+        split=split,
+        data_dir=data_dir,
+        global_batch_size=global_batch_size,
+        cache=True,
+        repeat_final_dataset=True,
+      )
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     num_devices = max(torch.cuda.device_count(), jax.local_device_count())
@@ -174,10 +177,9 @@ class BaseCifarWorkload(spec.Workload):
       batch = next(self._eval_iters[split])
       per_device_model_rngs = prng.split(model_rng, num_devices)
       # We already average these metrics across devices inside _compute_metrics.
-      synced_metrics = self._eval_model(params,
-                                        batch,
-                                        model_state,
-                                        per_device_model_rngs)
+      synced_metrics = self._eval_model(
+        params, batch, model_state, per_device_model_rngs
+      )
       for metric_name, metric_value in synced_metrics.items():
         if metric_name not in eval_metrics:
           eval_metrics[metric_name] = 0.0

@@ -1,4 +1,5 @@
 """Input pipeline for a WMT dataset."""
+
 import functools
 import os
 from typing import Dict, List, Optional, Union
@@ -16,10 +17,10 @@ AUTOTUNE = tf.data.AUTOTUNE if RANK == 0 else None
 Features = Dict[str, tf.Tensor]
 
 TFDS_SPLIT_NAME = {
-    'train': 'train',
-    'eval_train': 'train',
-    'validation': 'validation',
-    'test': 'test',
+  'train': 'train',
+  'eval_train': 'train',
+  'validation': 'validation',
+  'test': 'test',
 }
 
 
@@ -31,9 +32,11 @@ def normalize_feature_names(ds_info, features: Features) -> Features:
   return features
 
 
-def pack_dataset(dataset: tf.data.Dataset,
-                 key2length: Union[int, Dict[str, int]],
-                 keys: Optional[List[str]] = None) -> tf.data.Dataset:
+def pack_dataset(
+  dataset: tf.data.Dataset,
+  key2length: Union[int, Dict[str, int]],
+  keys: Optional[List[str]] = None,
+) -> tf.data.Dataset:
   """Creates a 'packed' version of a dataset on-the-fly.
   Adapted from the mesh-tf implementation.
   This is meant to replace the irritation of having to create a separate
@@ -75,7 +78,8 @@ def pack_dataset(dataset: tf.data.Dataset,
   for k in keys:
     if k not in shapes:
       raise ValueError(
-          f'Key {k} not found in dataset.  Available keys are {shapes.keys()}')
+        f'Key {k} not found in dataset.  Available keys are {shapes.keys()}'
+      )
     if not shapes[k].is_compatible_with(tf.TensorShape([None])):
       raise ValueError('Tensors to be packed must be one-dimensional.')
   # make sure that the length dictionary contains all keys as well as the
@@ -88,13 +92,15 @@ def pack_dataset(dataset: tf.data.Dataset,
 
   # trim to length
   dataset = dataset.map(
-      lambda x: {k: x[k][:key2length[k]] for k in keys},
-      num_parallel_calls=AUTOTUNE)
+    lambda x: {k: x[k][: key2length[k]] for k in keys},
+    num_parallel_calls=AUTOTUNE,
+  )
   # Setting batch_size=length ensures that the concatenated sequences (if they
   # have length >=1) are sufficient to fill at least one packed example.
   batch_size = max(key2length.values())
   dataset = dataset.padded_batch(
-      batch_size, padded_shapes={k: [-1] for k in keys})
+    batch_size, padded_shapes={k: [-1] for k in keys}
+  )
   dataset = _pack_with_tf_ops(dataset, keys, key2length)
 
   # Set the Tensor shapes correctly since they get lost in the process.
@@ -104,9 +110,9 @@ def pack_dataset(dataset: tf.data.Dataset,
   return dataset.map(my_fn, num_parallel_calls=AUTOTUNE)
 
 
-def _pack_with_tf_ops(dataset: tf.data.Dataset,
-                      keys: List[str],
-                      key2length: Dict[str, int]) -> tf.data.Dataset:
+def _pack_with_tf_ops(
+  dataset: tf.data.Dataset, keys: List[str], key2length: Dict[str, int]
+) -> tf.data.Dataset:
   """Helper-function for packing a dataset which has already been batched.
   Helper for pack_dataset()  Uses tf.while_loop.
   Args:
@@ -127,8 +133,9 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset,
     new_outputs = {}
     for k in keys_etc:
       new_outputs[k] = outputs[k].write(
-          outputs[k].size(),
-          tf.pad(partial[k], [[0, key2length[k] - tf.size(partial[k])]]))
+        outputs[k].size(),
+        tf.pad(partial[k], [[0, key2length[k] - tf.size(partial[k])]]),
+      )
     return new_partial, new_outputs
 
   def map_fn(x):
@@ -146,9 +153,11 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset,
     outputs = {}
     for k in keys:
       outputs[k] = tf.TensorArray(
-          tf.int32, size=0, dynamic_size=True, element_shape=[key2length[k]])
+        tf.int32, size=0, dynamic_size=True, element_shape=[key2length[k]]
+      )
       outputs[k + '_position'] = tf.TensorArray(
-          tf.int32, size=0, dynamic_size=True, element_shape=[key2length[k]])
+        tf.int32, size=0, dynamic_size=True, element_shape=[key2length[k]]
+      )
 
     def body_fn(i, partial, outputs):
       """Body function for while_loop.
@@ -163,13 +172,15 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset,
       one_example = {}
       for k in keys:
         val = tf.cast(x[k][i], tf.int32)
-        val = val[:tf.reduce_sum(tf.cast(tf.not_equal(val, 0), tf.int32))]
+        val = val[: tf.reduce_sum(tf.cast(tf.not_equal(val, 0), tf.int32))]
         one_example[k] = val
       for k in keys:
         can_append = tf.logical_and(
-            can_append,
-            tf.less_equal(
-                tf.size(partial[k]) + tf.size(one_example[k]), key2length[k]))
+          can_append,
+          tf.less_equal(
+            tf.size(partial[k]) + tf.size(one_example[k]), key2length[k]
+          ),
+        )
 
       def false_fn():
         return write_packed_example(partial, outputs)
@@ -180,49 +191,51 @@ def _pack_with_tf_ops(dataset: tf.data.Dataset,
       partial, outputs = tf.cond(can_append, true_fn, false_fn)
       new_partial = {}
       for k in keys:
-        new_seq = one_example[k][:key2length[k]]
+        new_seq = one_example[k][: key2length[k]]
         new_seq_len = tf.size(new_seq)
         new_partial[k] = tf.concat([partial[k], new_seq], 0)
         new_partial[k + '_position'] = tf.concat(
-            [partial[k + '_position'], tf.range(new_seq_len)], 0)
+          [partial[k + '_position'], tf.range(new_seq_len)], 0
+        )
       partial = new_partial
       return i + 1, partial, outputs
 
     # For loop over all examples in the batch.
     i, partial, outputs = tf.while_loop(
-        cond=lambda *_: True,
-        body=body_fn,
-        loop_vars=(i, partial, outputs),
-        shape_invariants=(
-            tf.TensorShape([]),
-            {k: tf.TensorShape([None]) for k in keys_etc},
-            {k: tf.TensorShape(None) for k in keys_etc},
-        ),
-        maximum_iterations=dynamic_batch_size)
+      cond=lambda *_: True,
+      body=body_fn,
+      loop_vars=(i, partial, outputs),
+      shape_invariants=(
+        tf.TensorShape([]),
+        {k: tf.TensorShape([None]) for k in keys_etc},
+        {k: tf.TensorShape(None) for k in keys_etc},
+      ),
+      maximum_iterations=dynamic_batch_size,
+    )
     _, outputs = write_packed_example(partial, outputs)
     packed = {k: outputs[k].stack() for k in keys_etc}
     for k in keys:
-      packed[k + '_segmentation'] = (
-          tf.cumsum(
-              tf.cast(tf.equal(packed[k + '_position'], 0), tf.int32), axis=1) *
-          tf.cast(tf.not_equal(packed[k], 0), tf.int32))
+      packed[k + '_segmentation'] = tf.cumsum(
+        tf.cast(tf.equal(packed[k + '_position'], 0), tf.int32), axis=1
+      ) * tf.cast(tf.not_equal(packed[k], 0), tf.int32)
     return packed
 
   dataset = dataset.map(map_fn, num_parallel_calls=AUTOTUNE)
   return dataset.unbatch()
 
 
-def preprocess_wmt_data(dataset: tf.data.Dataset,
-                        data_rng,
-                        train: bool,
-                        shuffle: bool,
-                        shuffle_buffer_size: int = 1024,
-                        max_length: int = 256,
-                        global_batch_size: int = 128):
+def preprocess_wmt_data(
+  dataset: tf.data.Dataset,
+  data_rng,
+  train: bool,
+  shuffle: bool,
+  shuffle_buffer_size: int = 1024,
+  max_length: int = 256,
+  global_batch_size: int = 128,
+):
   """Shuffle and batch/pack the given dataset."""
 
   def length_filter(max_len):
-
     def filter_fn(x):
       source, target = x['inputs'], x['targets']
       l = tf.maximum(tf.shape(source)[0], tf.shape(target)[0])
@@ -242,24 +255,27 @@ def preprocess_wmt_data(dataset: tf.data.Dataset,
     dataset = dataset.batch(global_batch_size, drop_remainder=train)
   else:  # simple (static-shape) padded batching
     dataset = dataset.padded_batch(
-        global_batch_size,
-        padded_shapes={'inputs': max_length, 'targets': max_length},
-        padding_values={'inputs': 0, 'targets': 0},
-        drop_remainder=False)
+      global_batch_size,
+      padded_shapes={'inputs': max_length, 'targets': max_length},
+      padding_values={'inputs': 0, 'targets': 0},
+      drop_remainder=False,
+    )
 
   dataset = dataset.prefetch(AUTOTUNE)
   return dataset
 
 
-def get_wmt_dataset(data_rng,
-                    split: str,
-                    data_dir: str,
-                    is_training: bool,
-                    vocab_size: int,
-                    global_batch_size: int,
-                    num_batches: Optional[int] = None,
-                    repeat_final_dataset: bool = False,
-                    vocab_path: Optional[str] = None):
+def get_wmt_dataset(
+  data_rng,
+  split: str,
+  data_dir: str,
+  is_training: bool,
+  vocab_size: int,
+  global_batch_size: int,
+  num_batches: Optional[int] = None,
+  repeat_final_dataset: bool = False,
+  vocab_path: Optional[str] = None,
+):
   """Load and return dataset of batched examples for use during training."""
   if vocab_path is None:
     vocab_path = os.path.join(data_dir, 'wmt_sentencepiece_model')
@@ -271,7 +287,8 @@ def get_wmt_dataset(data_rng,
   dataset_builder = tfds.builder(ds_name, data_dir=data_dir)
 
   ds = dataset_builder.as_dataset(
-      split=TFDS_SPLIT_NAME[split], shuffle_files=False)
+    split=TFDS_SPLIT_NAME[split], shuffle_files=False
+  )
 
   # Avoid creating too many threads when using PyTorch DDP.
   if RANK != 0:
@@ -280,8 +297,9 @@ def get_wmt_dataset(data_rng,
     ds = ds.with_options(options)
 
   ds = ds.map(
-      functools.partial(normalize_feature_names, dataset_builder.info),
-      num_parallel_calls=AUTOTUNE)
+    functools.partial(normalize_feature_names, dataset_builder.info),
+    num_parallel_calls=AUTOTUNE,
+  )
 
   # Load tf-text SentencePiece tokenizer.
   sp_tokenizer = tokenizer.load_tokenizer(vocab_path=vocab_path)
@@ -289,12 +307,13 @@ def get_wmt_dataset(data_rng,
 
   shuffle = split in ['train', 'eval_train']
   ds = preprocess_wmt_data(
-      ds,
-      data_rng,
-      train=is_training,
-      shuffle=shuffle,
-      global_batch_size=global_batch_size,
-      max_length=256)
+    ds,
+    data_rng,
+    train=is_training,
+    shuffle=shuffle,
+    global_batch_size=global_batch_size,
+    max_length=256,
+  )
 
   if num_batches:
     ds = ds.take(num_batches)
@@ -303,9 +322,10 @@ def get_wmt_dataset(data_rng,
     ds = ds.repeat()
 
   ds = map(
-      functools.partial(
-          data_utils.shard_and_maybe_pad_np,
-          global_batch_size=global_batch_size),
-      ds)
+    functools.partial(
+      data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size
+    ),
+    ds,
+  )
 
   return ds, sp_tokenizer

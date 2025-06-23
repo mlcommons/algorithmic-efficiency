@@ -12,10 +12,12 @@ import torch.nn.functional as F
 
 from algoperf import spec
 from algoperf.profiler import Profiler
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
-    BatchNorm as ConformerBatchNorm
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import \
-    BatchNorm as DeepspeechBatchNorm
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import (
+  BatchNorm as ConformerBatchNorm,
+)
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import (
+  BatchNorm as DeepspeechBatchNorm,
+)
 
 
 def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
@@ -61,12 +63,13 @@ def sync_ddp_time(time: float, device: torch.device) -> float:
   return time_tensor.item()
 
 
-def update_batch_norm_fn(module: spec.ParameterContainer,
-                         update_batch_norm: bool) -> None:
+def update_batch_norm_fn(
+  module: spec.ParameterContainer, update_batch_norm: bool
+) -> None:
   bn_layers = (
-      torch.nn.modules.batchnorm._BatchNorm,  # PyTorch BN base class.
-      ConformerBatchNorm,  # Custom BN class for conformer model.
-      DeepspeechBatchNorm,  # Custom BN class for deepspeech model.
+    torch.nn.modules.batchnorm._BatchNorm,  # PyTorch BN base class.
+    ConformerBatchNorm,  # Custom BN class for conformer model.
+    DeepspeechBatchNorm,  # Custom BN class for deepspeech model.
   )
   if isinstance(module, bn_layers):
     if not update_batch_norm:

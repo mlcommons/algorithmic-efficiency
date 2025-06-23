@@ -16,10 +16,9 @@ from algoperf.pytorch_utils import pytorch_setup
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-def predictions_match_labels(*,
-                             logits: jnp.ndarray,
-                             labels: jnp.ndarray,
-                             **kwargs) -> jnp.ndarray:
+def predictions_match_labels(
+  *, logits: jnp.ndarray, labels: jnp.ndarray, **kwargs
+) -> jnp.ndarray:
   """Returns a binary array indicating where predictions match the labels."""
   del kwargs  # Unused.
   preds = logits > 0
@@ -28,7 +27,8 @@ def predictions_match_labels(*,
 
 @flax.struct.dataclass
 class MeanAveragePrecision(
-    metrics.CollectingMetric.from_outputs(('logits', 'labels', 'mask'))):
+  metrics.CollectingMetric.from_outputs(('logits', 'labels', 'mask'))
+):
   """Computes the mean average precision (mAP) over different tasks."""
 
   def compute(self):
@@ -62,7 +62,8 @@ class MeanAveragePrecision(
       if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:, task] == 1) > 0:
         is_labeled = mask[:, task]
         average_precisions[task] = average_precision_score(
-            labels[is_labeled, task], probs[is_labeled, task])
+          labels[is_labeled, task], probs[is_labeled, task]
+        )
 
     # When all APs are NaNs, return NaN. This avoids raising a RuntimeWarning.
     if np.isnan(average_precisions).all():

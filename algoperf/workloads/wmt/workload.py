@@ -60,8 +60,9 @@ class BaseWmtWorkload(spec.Workload):
     # Round up from num_validation_examples (which is the default for
     # num_eval_train_examples) to the next multiple of eval_batch_size, so that
     # we don't have to extract the correctly sized subset of the training data.
-    rounded_up_multiple = math.ceil(self.num_validation_examples /
-                                    self.eval_batch_size)
+    rounded_up_multiple = math.ceil(
+      self.num_validation_examples / self.eval_batch_size
+    )
     return rounded_up_multiple * self.eval_batch_size
 
   @property
@@ -115,23 +116,26 @@ class BaseWmtWorkload(spec.Workload):
   def glu(self) -> bool:
     return False
 
-  def _build_input_queue(self,
-                         data_rng: jax.random.PRNGKey,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         num_batches: Optional[int] = None,
-                         repeat_final_dataset: bool = False):
+  def _build_input_queue(
+    self,
+    data_rng: jax.random.PRNGKey,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    num_batches: Optional[int] = None,
+    repeat_final_dataset: bool = False,
+  ):
     is_training = split == 'train'
     ds, self._tokenizer = input_pipeline.get_wmt_dataset(
-        data_rng,
-        split,
-        data_dir,
-        is_training=is_training,
-        vocab_size=self._vocab_size,
-        global_batch_size=global_batch_size,
-        num_batches=num_batches,
-        repeat_final_dataset=repeat_final_dataset)
+      data_rng,
+      split,
+      data_dir,
+      is_training=is_training,
+      vocab_size=self._vocab_size,
+      global_batch_size=global_batch_size,
+      num_batches=num_batches,
+      repeat_final_dataset=repeat_final_dataset,
+    )
 
     # Separate function is necessary because the code above has to be executed
     # when _build_input_queue is called (not when next() is first called on it).
@@ -148,19 +152,21 @@ class BaseWmtWorkload(spec.Workload):
 
   @abc.abstractmethod
   def _normalize_eval_metrics(
-      self, num_examples: int, total_metrics: Dict[str,
-                                                   Any]) -> Dict[str, float]:
+    self, num_examples: int, total_metrics: Dict[str, Any]
+  ) -> Dict[str, float]:
     """Normalize eval metrics."""
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int = 0) -> Dict[str, float]:
+  def _eval_model_on_split(
+    self,
+    split: str,
+    num_examples: int,
+    global_batch_size: int,
+    params: spec.ParameterContainer,
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+    data_dir: str,
+    global_step: int = 0,
+  ) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del model_state
     del global_step
@@ -168,12 +174,13 @@ class BaseWmtWorkload(spec.Workload):
     if split not in self._eval_iters:
       # These iterators will repeat indefinitely.
       self._eval_iters[split] = self._build_input_queue(
-          rng,
-          split,
-          data_dir,
-          global_batch_size,
-          num_batches,
-          repeat_final_dataset=True)
+        rng,
+        split,
+        data_dir,
+        global_batch_size,
+        num_batches,
+        repeat_final_dataset=True,
+      )
 
     eval_metrics = {}
     for _ in range(num_batches):
@@ -186,16 +193,17 @@ class BaseWmtWorkload(spec.Workload):
     eval_results = self._normalize_eval_metrics(num_examples, eval_metrics)
 
     eval_results['bleu'] = self.translate_and_calculate_bleu(
-        params=params,
-        ds_iter=self._eval_iters[split],
-        num_batches=num_batches,
-        max_predict_length=256)
+      params=params,
+      ds_iter=self._eval_iters[split],
+      num_batches=num_batches,
+      max_predict_length=256,
+    )
 
     return eval_results
 
   def compute_weighted_accuracy(
-      self, logits: spec.Tensor, targets: spec.Tensor,
-      weights: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
+    self, logits: spec.Tensor, targets: spec.Tensor, weights: spec.Tensor
+  ) -> Tuple[spec.Tensor, spec.Tensor]:
     """Compute weighted accuracy for log probs and targets.
 
     Args:
@@ -207,8 +215,10 @@ class BaseWmtWorkload(spec.Workload):
       Tuple of scalar summed accuracy and batch normalizing factor.
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
-                       f'{targets.shape} targets.')
+      raise ValueError(
+        f'Incorrect shapes. Got shape {logits.shape} logits and '
+        f'{targets.shape} targets.'
+      )
     accuracy = (logits.argmax(-1) == targets) * weights
     normalizing_factor = weights.sum()
     return accuracy.sum(), normalizing_factor
@@ -216,17 +226,18 @@ class BaseWmtWorkload(spec.Workload):
   def _decode_tokens(self, toks: spec.Tensor) -> spec.Tensor:
     if isinstance(toks, torch.Tensor):
       toks = toks.cpu().numpy()
-    valid_toks = toks[:np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
+    valid_toks = toks[: np.argmax(toks == decode.EOS_ID) + 1].astype(np.int32)
     return self._tokenizer.detokenize(valid_toks).numpy().decode('utf-8')
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
-      self,
-      label_batch: spec.Tensor,  # Dense or one-hot labels.
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    self,
+    label_batch: spec.Tensor,  # Dense or one-hot labels.
+    logits_batch: spec.Tensor,
+    mask_batch: Optional[spec.Tensor] = None,
+    label_smoothing: float = 0.0,
+  ) -> Dict[str, spec.Tensor]:  # differentiable
     """Evaluate the (masked) loss function at (label_batch, logits_batch).
 
     Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
@@ -234,7 +245,8 @@ class BaseWmtWorkload(spec.Workload):
     (not synced across devices).
     """
     return self.compute_weighted_cross_entropy(
-        logits_batch,
-        label_batch,
-        weights=mask_batch,
-        label_smoothing=label_smoothing)
+      logits_batch,
+      label_batch,
+      weights=mask_batch,
+      label_smoothing=label_smoothing,
+    )

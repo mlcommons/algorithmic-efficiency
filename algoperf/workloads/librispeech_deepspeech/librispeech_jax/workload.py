@@ -1,31 +1,29 @@
 import functools
 from typing import Dict, Optional, Tuple
 
-from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
+from flax import jax_utils
 
-from algoperf import param_utils
-from algoperf import spec
-from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
-    LibriSpeechConformerWorkload
+from algoperf import param_utils, spec
+from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import (
+  LibriSpeechConformerWorkload,
+)
 from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
 
 
 class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
-
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-    """Deepspeech model init function.
-    """
+    """Deepspeech model init function."""
     model_config = models.DeepspeechConfig(
-        use_specaug=self.use_specaug,
-        use_tanh=self.use_tanh,
-        enable_residual_connections=self.enable_residual_connections,
-        enable_decoder_layer_norm=self.enable_decoder_layer_norm,
-        layernorm_everywhere=self.layernorm_everywhere,
-        freq_mask_count=self.freq_mask_count,
-        time_mask_count=self.time_mask_count,
+      use_specaug=self.use_specaug,
+      use_tanh=self.use_tanh,
+      enable_residual_connections=self.enable_residual_connections,
+      enable_decoder_layer_norm=self.enable_decoder_layer_norm,
+      layernorm_everywhere=self.layernorm_everywhere,
+      freq_mask_count=self.freq_mask_count,
+      time_mask_count=self.time_mask_count,
     )
     self._model = models.Deepspeech(model_config)
     input_shape = [(320000,), (320000,)]
@@ -34,12 +32,16 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
     params_rng, _ = jax.random.split(rng, 2)
-    variables = model_init_fn({
+    variables = model_init_fn(
+      {
         'params': params_rng,
-    }, *fake_input_batch)
+      },
+      *fake_input_batch,
+    )
 
-    model_state = variables[
-        'batch_stats'] if not self.layernorm_everywhere else {}
+    model_state = (
+      variables['batch_stats'] if not self.layernorm_everywhere else {}
+    )
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -48,36 +50,34 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     return params, model_state
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool,
-      use_running_average_bn: Optional[bool] = None,
-      dropout_rate: Optional[bool] = models.DROPOUT_RATE,
+    self,
+    params: spec.ParameterContainer,
+    augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    mode: spec.ForwardPassMode,
+    rng: spec.RandomState,
+    update_batch_norm: bool,
+    use_running_average_bn: Optional[bool] = None,
+    dropout_rate: Optional[bool] = models.DROPOUT_RATE,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm or is_train_mode:
       (logits, logit_paddings), new_model_state = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=True,
-          rngs={'dropout' : rng},
-          mutable=['batch_stats'],
-          dropout_rate=dropout_rate)
+        variables,
+        inputs,
+        input_paddings,
+        train=True,
+        rngs={'dropout': rng},
+        mutable=['batch_stats'],
+        dropout_rate=dropout_rate,
+      )
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=False,
-          mutable=False)
+        variables, inputs, input_paddings, train=False, mutable=False
+      )
       return (logits, logit_paddings), model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -126,7 +126,6 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
 
 class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechDeepSpeechWorkload):
-
   @property
   def use_tanh(self) -> bool:
     return True
@@ -141,7 +140,6 @@ class LibriSpeechDeepSpeechTanhWorkload(LibriSpeechDeepSpeechWorkload):
 
 
 class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
-
   @property
   def enable_residual_connections(self) -> bool:
     return False
@@ -155,9 +153,9 @@ class LibriSpeechDeepSpeechNoResNetWorkload(LibriSpeechDeepSpeechWorkload):
     return 0.079297
 
 
-class LibriSpeechDeepSpeechNormAndSpecAugWorkload(LibriSpeechDeepSpeechWorkload
-                                                 ):
-
+class LibriSpeechDeepSpeechNormAndSpecAugWorkload(
+  LibriSpeechDeepSpeechWorkload
+):
   @property
   def eval_batch_size(self) -> int:
     return 128

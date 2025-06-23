@@ -15,44 +15,49 @@ from algoperf import spec
 from algoperf.init_utils import pytorch_default_init
 
 
-def conv3x3(in_planes: int,
-            out_planes: int,
-            stride: int = 1,
-            groups: int = 1,
-            dilation: int = 1) -> nn.Conv2d:
+def conv3x3(
+  in_planes: int,
+  out_planes: int,
+  stride: int = 1,
+  groups: int = 1,
+  dilation: int = 1,
+) -> nn.Conv2d:
   """3x3 convolution with padding."""
   return nn.Conv2d(
-      in_planes,
-      out_planes,
-      kernel_size=3,
-      stride=stride,
-      padding=dilation,
-      groups=groups,
-      bias=False,
-      dilation=dilation)
+    in_planes,
+    out_planes,
+    kernel_size=3,
+    stride=stride,
+    padding=dilation,
+    groups=groups,
+    bias=False,
+    dilation=dilation,
+  )
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
   """1x1 convolution."""
   return nn.Conv2d(
-      in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+    in_planes, out_planes, kernel_size=1, stride=stride, bias=False
+  )
 
 
 class BasicBlock(nn.Module):
   """ResNet block."""
+
   expansion: int = 1
 
   def __init__(
-      self,
-      inplanes: int,
-      planes: int,
-      stride: int = 1,
-      downsample: Optional[nn.Module] = None,
-      groups: int = 1,
-      base_width: int = 64,
-      dilation: int = 1,
-      norm_layer: Optional[Callable[..., nn.Module]] = None,
-      act_fnc: nn.Module = nn.ReLU(inplace=True)
+    self,
+    inplanes: int,
+    planes: int,
+    stride: int = 1,
+    downsample: Optional[nn.Module] = None,
+    groups: int = 1,
+    base_width: int = 64,
+    dilation: int = 1,
+    norm_layer: Optional[Callable[..., nn.Module]] = None,
+    act_fnc: nn.Module = nn.ReLU(inplace=True),
   ) -> None:
     super().__init__()
     if norm_layer is None:
@@ -60,7 +65,7 @@ class BasicBlock(nn.Module):
     if groups != 1 or base_width != 64:
       raise ValueError('BasicBlock only supports groups=1 and base_width=64')
     if dilation > 1:
-      raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+      raise NotImplementedError('Dilation > 1 not supported in BasicBlock')
     # Both self.conv1 and self.downsample layers downsample
     # the input when stride != 1.
     self.conv1 = conv3x3(inplanes, planes, stride)
@@ -92,24 +97,25 @@ class BasicBlock(nn.Module):
 
 class Bottleneck(nn.Module):
   """Bottleneck ResNet block."""
+
   expansion: int = 4
 
   def __init__(
-      self,
-      inplanes: int,
-      planes: int,
-      stride: int = 1,
-      downsample: Optional[nn.Module] = None,
-      groups: int = 1,
-      base_width: int = 64,
-      dilation: int = 1,
-      norm_layer: Optional[Callable[..., nn.Module]] = None,
-      act_fnc: nn.Module = nn.ReLU(inplace=True)
+    self,
+    inplanes: int,
+    planes: int,
+    stride: int = 1,
+    downsample: Optional[nn.Module] = None,
+    groups: int = 1,
+    base_width: int = 64,
+    dilation: int = 1,
+    norm_layer: Optional[Callable[..., nn.Module]] = None,
+    act_fnc: nn.Module = nn.ReLU(inplace=True),
   ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
-    width = int(planes * (base_width / 64.)) * groups
+    width = int(planes * (base_width / 64.0)) * groups
     # Both self.conv2 and self.downsample layers downsample
     # the input when stride != 1.
     self.conv1 = conv1x1(inplanes, width)
@@ -146,18 +152,19 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-
-  def __init__(self,
-               block: Type[Union[BasicBlock, Bottleneck]],
-               layers: List[int],
-               num_classes: int = 1000,
-               zero_init_residual: bool = True,
-               groups: int = 1,
-               width_per_group: int = 64,
-               replace_stride_with_dilation: Optional[List[bool]] = None,
-               norm_layer: Optional[Callable[..., nn.Module]] = None,
-               act_fnc: nn.Module = nn.ReLU(inplace=True),
-               bn_init_scale: float = 0.) -> None:
+  def __init__(
+    self,
+    block: Type[Union[BasicBlock, Bottleneck]],
+    layers: List[int],
+    num_classes: int = 1000,
+    zero_init_residual: bool = True,
+    groups: int = 1,
+    width_per_group: int = 64,
+    replace_stride_with_dilation: Optional[List[bool]] = None,
+    norm_layer: Optional[Callable[..., nn.Module]] = None,
+    act_fnc: nn.Module = nn.ReLU(inplace=True),
+    bn_init_scale: float = 0.0,
+  ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
@@ -171,37 +178,42 @@ class ResNet(nn.Module):
       replace_stride_with_dilation = [False, False, False]
     if len(replace_stride_with_dilation) != 3:
       raise ValueError(
-          'replace_stride_with_dilation should be None '
-          f'or a 3-element tuple, got {replace_stride_with_dilation}')
+        'replace_stride_with_dilation should be None '
+        f'or a 3-element tuple, got {replace_stride_with_dilation}'
+      )
     self.groups = groups
     self.base_width = width_per_group
     self.conv1 = nn.Conv2d(
-        3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+      3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
+    )
     self.bn1 = norm_layer(self.inplanes)
     self.act_fnc = act_fnc
     self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
     self.layer1 = self._make_layer(block, self.act_fnc, 64, layers[0])
     self.layer2 = self._make_layer(
-        block,
-        self.act_fnc,
-        128,
-        layers[1],
-        stride=2,
-        dilate=replace_stride_with_dilation[0])
+      block,
+      self.act_fnc,
+      128,
+      layers[1],
+      stride=2,
+      dilate=replace_stride_with_dilation[0],
+    )
     self.layer3 = self._make_layer(
-        block,
-        self.act_fnc,
-        256,
-        layers[2],
-        stride=2,
-        dilate=replace_stride_with_dilation[1])
+      block,
+      self.act_fnc,
+      256,
+      layers[2],
+      stride=2,
+      dilate=replace_stride_with_dilation[1],
+    )
     self.layer4 = self._make_layer(
-        block,
-        self.act_fnc,
-        512,
-        layers[3],
-        stride=2,
-        dilate=replace_stride_with_dilation[2])
+      block,
+      self.act_fnc,
+      512,
+      layers[3],
+      stride=2,
+      dilate=replace_stride_with_dilation[2],
+    )
     self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
     self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -212,7 +224,7 @@ class ResNet(nn.Module):
         nn.init.constant_(m.weight, 1)
         nn.init.constant_(m.bias, 0)
     nn.init.normal_(self.fc.weight, std=1e-2)
-    nn.init.constant_(self.fc.bias, 0.)
+    nn.init.constant_(self.fc.bias, 0.0)
 
     # Zero-initialize the last BN in each residual branch,
     # so that the residual branch starts with zeros,
@@ -226,13 +238,15 @@ class ResNet(nn.Module):
         elif isinstance(m, BasicBlock):
           nn.init.constant_(m.bn2.weight, bn_init_scale)
 
-  def _make_layer(self,
-                  block: Type[Union[BasicBlock, Bottleneck]],
-                  act_fnc: nn.Module,
-                  planes: int,
-                  blocks: int,
-                  stride: int = 1,
-                  dilate: bool = False) -> nn.Sequential:
+  def _make_layer(
+    self,
+    block: Type[Union[BasicBlock, Bottleneck]],
+    act_fnc: nn.Module,
+    planes: int,
+    blocks: int,
+    stride: int = 1,
+    dilate: bool = False,
+  ) -> nn.Sequential:
     norm_layer = self._norm_layer
     downsample = None
     previous_dilation = self.dilation
@@ -241,34 +255,41 @@ class ResNet(nn.Module):
       stride = 1
     if stride != 1 or self.inplanes != planes * block.expansion:
       downsample = torch.nn.Sequential(
-          collections.OrderedDict([
-              ("conv", conv1x1(self.inplanes, planes * block.expansion,
-                               stride)),
-              ("bn", norm_layer(planes * block.expansion)),
-          ]))
+        collections.OrderedDict(
+          [
+            ('conv', conv1x1(self.inplanes, planes * block.expansion, stride)),
+            ('bn', norm_layer(planes * block.expansion)),
+          ]
+        )
+      )
 
     layers = []
     layers.append(
-        block(self.inplanes,
-              planes,
-              stride,
-              downsample,
-              self.groups,
-              self.base_width,
-              previous_dilation,
-              norm_layer,
-              act_fnc))
+      block(
+        self.inplanes,
+        planes,
+        stride,
+        downsample,
+        self.groups,
+        self.base_width,
+        previous_dilation,
+        norm_layer,
+        act_fnc,
+      )
+    )
     self.inplanes = planes * block.expansion
     for _ in range(1, blocks):
       layers.append(
-          block(
-              self.inplanes,
-              planes,
-              groups=self.groups,
-              base_width=self.base_width,
-              dilation=self.dilation,
-              norm_layer=norm_layer,
-              act_fnc=act_fnc))
+        block(
+          self.inplanes,
+          planes,
+          groups=self.groups,
+          base_width=self.base_width,
+          dilation=self.dilation,
+          norm_layer=norm_layer,
+          act_fnc=act_fnc,
+        )
+      )
 
     return nn.Sequential(*layers)
 

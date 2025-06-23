@@ -8,7 +8,6 @@ from algoperf.workloads.fastmri import input_pipeline
 
 
 class BaseFastMRIWorkload(spec.Workload):
-
   @property
   def target_metric_name(self) -> str:
     """The name of the target metric (useful for scoring/processing code)."""
@@ -61,8 +60,9 @@ class BaseFastMRIWorkload(spec.Workload):
     # Round up from num_validation_examples (which is the default for
     # num_eval_train_examples) to the next multiple of eval_batch_size, so that
     # we don't have to extract the correctly sized subset of the training data.
-    rounded_up_multiple = math.ceil(self.num_validation_examples /
-                                    self.eval_batch_size)
+    rounded_up_multiple = math.ceil(
+      self.num_validation_examples / self.eval_batch_size
+    )
     return rounded_up_multiple * self.eval_batch_size
 
   @property
@@ -106,18 +106,22 @@ class BaseFastMRIWorkload(spec.Workload):
     """Approx. steps the baseline can do in the allowed runtime budget."""
     return 18_094
 
-  def _build_input_queue(self,
-                         data_rng: spec.RandomState,
-                         split: str,
-                         data_dir: str,
-                         global_batch_size: int,
-                         cache: Optional[bool] = None,
-                         repeat_final_dataset: Optional[bool] = None,
-                         num_batches: Optional[int] = None):
+  def _build_input_queue(
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ):
     del cache
-    return input_pipeline.load_fastmri_split(global_batch_size,
-                                             split,
-                                             data_dir,
-                                             data_rng,
-                                             num_batches,
-                                             repeat_final_dataset)
+    return input_pipeline.load_fastmri_split(
+      global_batch_size,
+      split,
+      data_dir,
+      data_rng,
+      num_batches,
+      repeat_final_dataset,
+    )

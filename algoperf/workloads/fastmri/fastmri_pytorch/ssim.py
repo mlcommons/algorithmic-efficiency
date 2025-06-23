@@ -32,9 +32,9 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
 
   # NOTE(dsuo): `volume_max` can be 0 if we have a padded batch, but this will
   # lead to NaN values in `ssim`.
-  volume_max = torch.where(volume_max == 0,
-                           torch.ones_like(volume_max),
-                           volume_max)
+  volume_max = torch.where(
+    volume_max == 0, torch.ones_like(volume_max), volume_max
+  )
 
   if mean is None:
     mean = torch.zeros(logits.shape[0], device=DEVICE)
@@ -56,12 +56,9 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   return ssims
 
 
-def structural_similarity(im1,
-                          im2,
-                          data_range=1.0,
-                          win_size=7,
-                          k1=0.01,
-                          k2=0.03):
+def structural_similarity(
+  im1, im2, data_range=1.0, win_size=7, k1=0.01, k2=0.03
+):
   """Compute the mean structural similarity index between two images.
 
   NOTE(dsuo): modified from skimage.metrics.structural_similarity.
@@ -92,7 +89,7 @@ def structural_similarity(im1,
   """
   filter_func = functools.partial(_uniform_filter, size=win_size)
 
-  num_points = win_size**len(im1.shape)
+  num_points = win_size ** len(im1.shape)
 
   # filter has already normalized by num_points
   cov_norm = num_points / (num_points - 1)  # sample covariance
@@ -109,8 +106,8 @@ def structural_similarity(im1,
   vy = cov_norm * (uyy - uy * uy)
   vxy = cov_norm * (uxy - ux * uy)
 
-  c1 = (k1 * data_range)**2
-  c2 = (k2 * data_range)**2
+  c1 = (k1 * data_range) ** 2
+  c2 = (k2 * data_range) ** 2
 
   a1 = 2 * ux * uy + c1
   a2 = 2 * vxy + c2

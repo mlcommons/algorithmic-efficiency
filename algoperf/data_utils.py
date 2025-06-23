@@ -15,9 +15,10 @@ from algoperf import spec
 
 
 def shard_and_maybe_pad_np(
-    batch: Dict[str, spec.Tensor],
-    padding_value: int = 0,
-    global_batch_size: Optional[int] = None) -> Dict[str, spec.Tensor]:
+  batch: Dict[str, spec.Tensor],
+  padding_value: int = 0,
+  global_batch_size: Optional[int] = None,
+) -> Dict[str, spec.Tensor]:
   """Prepare tf data for JAX or PyTorch DDP.
 
   Convert an input batch from tf Tensors to numpy arrays, pad it with
@@ -26,11 +27,13 @@ def shard_and_maybe_pad_np(
   """
   local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
   inputs = batch['inputs']
-  current_batch_size = inputs[0].shape[0] if isinstance(
-      inputs, tuple) else inputs.shape[0]
+  current_batch_size = (
+    inputs[0].shape[0] if isinstance(inputs, tuple) else inputs.shape[0]
+  )
   if global_batch_size is not None:
-    assert global_batch_size >= current_batch_size, \
-        'global_batch_size must be larger than or equal to current_batch_size.'
+    assert global_batch_size >= current_batch_size, (
+      'global_batch_size must be larger than or equal to current_batch_size.'
+    )
     # Always pad to global_batch_size if it is provided.
     pad_to_global_batch_size = global_batch_size > current_batch_size
   else:
@@ -43,7 +46,8 @@ def shard_and_maybe_pad_np(
       pad_size = local_device_count - remainder_size
     targets = batch['targets']
     targets_shape = tuple(
-        targets[0].shape if isinstance(targets, tuple) else targets.shape)
+      targets[0].shape if isinstance(targets, tuple) else targets.shape
+    )
     # We need a 2d mask for WMT.
     mask_shape = targets_shape if len(targets_shape) < 3 else targets_shape[0]
     # Get weights from batch if there are any.
@@ -68,9 +72,9 @@ def shard_and_maybe_pad_np(
   return jax.tree.map(_prepare, batch)
 
 
-def pad(tensor: np.ndarray,
-        pad_size: int,
-        padding_value: int = 0) -> np.ndarray:
+def pad(
+  tensor: np.ndarray, pad_size: int, padding_value: int = 0
+) -> np.ndarray:
   if tensor.ndim > 1:
     pad_size = (pad_size, *tensor.shape[1:])
   padding = np.full(pad_size, padding_value, dtype=tensor.dtype)
@@ -78,8 +82,9 @@ def pad(tensor: np.ndarray,
   return padded_tensor
 
 
-def mixup_pytorch(batch: Tuple[spec.Tensor, spec.Tensor],
-                  alpha: float = 0.2) -> Tuple[spec.Tensor, spec.Tensor]:
+def mixup_pytorch(
+  batch: Tuple[spec.Tensor, spec.Tensor], alpha: float = 0.2
+) -> Tuple[spec.Tensor, spec.Tensor]:
   inputs, targets = batch
   # Transform to one-hot targets.
   targets = F.one_hot(targets, num_classes=1000)
@@ -144,12 +149,14 @@ class DistributedEvalSampler(Sampler):
     ...     train(loader)
   """
 
-  def __init__(self,
-               dataset: torch.utils.data.Dataset,
-               num_replicas: Optional[int] = None,
-               rank: Optional[int] = None,
-               shuffle: bool = False,
-               seed: int = 0) -> None:
+  def __init__(
+    self,
+    dataset: torch.utils.data.Dataset,
+    num_replicas: Optional[int] = None,
+    rank: Optional[int] = None,
+    shuffle: bool = False,
+    seed: int = 0,
+  ) -> None:
     if num_replicas is None:
       if not dist.is_available():
         raise RuntimeError('Requires distributed package to be available.')
@@ -165,7 +172,7 @@ class DistributedEvalSampler(Sampler):
     # true value without extra samples
     self.total_size = len(self.dataset)
     indices = list(range(self.total_size))
-    indices = indices[self.rank:self.total_size:self.num_replicas]
+    indices = indices[self.rank : self.total_size : self.num_replicas]
     # true value without extra samples
     self.num_samples = len(indices)
 
@@ -182,7 +189,7 @@ class DistributedEvalSampler(Sampler):
       indices = list(range(len(self.dataset)))
 
     # Subsample.
-    indices = indices[self.rank:self.total_size:self.num_replicas]
+    indices = indices[self.rank : self.total_size : self.num_replicas]
     assert len(indices) == self.num_samples
 
     return iter(indices)
@@ -203,11 +210,13 @@ class DistributedEvalSampler(Sampler):
 
 
 # Modified from github.com/pytorch/pytorch/issues/23900#issuecomment-518858050.
-def cycle(iterable: Iterable,
-          keys: Tuple[str, ...] = ('inputs', 'targets'),
-          custom_sampler: bool = False,
-          use_mixup: bool = False,
-          mixup_alpha: float = 0.2) -> Iterable:
+def cycle(
+  iterable: Iterable,
+  keys: Tuple[str, ...] = ('inputs', 'targets'),
+  custom_sampler: bool = False,
+  use_mixup: bool = False,
+  mixup_alpha: float = 0.2,
+) -> Iterable:
   iterator = iter(iterable)
   epoch = 0
   while True:
@@ -229,11 +238,9 @@ def cycle(iterable: Iterable,
 # github.com/NVIDIA/DeepLearningExamples/blob/master/PyTorch/Classification/
 # ConvNets/image_classification/dataloaders.py
 class PrefetchedWrapper:
-
-  def __init__(self,
-               dataloader: DataLoader,
-               device: torch.device,
-               start_epoch: int = 0) -> None:
+  def __init__(
+    self, dataloader: DataLoader, device: torch.device, start_epoch: int = 0
+  ) -> None:
     self.dataloader = dataloader
     self.epoch = start_epoch
     self.device = device
@@ -254,7 +261,8 @@ class PrefetchedWrapper:
     for next_inputs, next_targets in self.dataloader:
       with torch.cuda.stream(stream):
         next_inputs = next_inputs.to(
-            self.device, dtype=torch.float, non_blocking=True)
+          self.device, dtype=torch.float, non_blocking=True
+        )
         next_targets = next_targets.to(self.device, non_blocking=True)
 
       if not first:

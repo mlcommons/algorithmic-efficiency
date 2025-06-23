@@ -17,6 +17,7 @@ class SpecAug(nn.Module):
   This is an essential component in speech recognition models that helps achieve
   better word error rates.
   """
+
   freq_mask_count: int = 2
   freq_mask_max_bins: int = 27
   time_mask_count: int = 10
@@ -28,26 +29,30 @@ class SpecAug(nn.Module):
   def next_prng_key(self, name='dropout'):
     return self.make_rng(name)
 
-  def _get_mask(self,
-                batch_size,
-                choose_range,
-                mask_size,
-                max_length=None,
-                masks_per_frame=0.0,
-                multiplicity=1,
-                max_ratio=1.0):
+  def _get_mask(
+    self,
+    batch_size,
+    choose_range,
+    mask_size,
+    max_length=None,
+    masks_per_frame=0.0,
+    multiplicity=1,
+    max_ratio=1.0,
+  ):
     # Sample lengths for multiple masks.
     if max_length and max_length > 0:
       max_length = jnp.tile(max_length, (batch_size,))
     else:
       max_length = choose_range * max_ratio
     masked_portion = jax.random.uniform(
-        key=self.next_prng_key(),
-        shape=(batch_size, multiplicity),
-        minval=0.0,
-        maxval=1.0)
-    masked_frame_size = jnp.einsum('b,bm->bm', max_length,
-                                   masked_portion).astype(jnp.int32)
+      key=self.next_prng_key(),
+      shape=(batch_size, multiplicity),
+      minval=0.0,
+      maxval=1.0,
+    )
+    masked_frame_size = jnp.einsum(
+      'b,bm->bm', max_length, masked_portion
+    ).astype(jnp.int32)
     # Make sure the sampled length was smaller than max_ratio * length_bound.
     # Note that sampling in this way was biased
     # (shorter sequence may over-masked.)
@@ -57,7 +62,8 @@ class SpecAug(nn.Module):
 
     # Choose starting point.
     random_start = jax.random.uniform(
-        key=self.next_prng_key(), shape=(batch_size, multiplicity), maxval=1.0)
+      key=self.next_prng_key(), shape=(batch_size, multiplicity), maxval=1.0
+    )
 
     start_with_in_valid_range = random_start * (choose_range - length + 1)
     start = start_with_in_valid_range.astype(jnp.int32)
@@ -78,11 +84,13 @@ class SpecAug(nn.Module):
     # Sum masks with appropriate multiplicity.
     if masks_per_frame > 0:
       multiplicity_weights = jnp.tile(
-          jnp.expand_dims(jnp.arange(multiplicity, dtype=jnp.int32), 0),
-          [batch_size, 1])
+        jnp.expand_dims(jnp.arange(multiplicity, dtype=jnp.int32), 0),
+        [batch_size, 1],
+      )
       multiplicity_tensor = masks_per_frame * choose_range
-      multiplicity_weights = (multiplicity_weights <
-                              multiplicity_tensor).astype(jnp.int32)
+      multiplicity_weights = (
+        multiplicity_weights < multiplicity_tensor
+      ).astype(jnp.int32)
       pre_mask = jnp.einsum('bmt,bm->bt', pre_mask, multiplicity_weights)
     else:
       pre_mask = jnp.einsum('bmt->bt', pre_mask)
@@ -98,8 +106,9 @@ class SpecAug(nn.Module):
     max_ratio = self.time_mask_max_ratio
 
     # If maximum mask length is zero, do nothing.
-    if ((time_mask_max_frames == 0 and not use_dynamic_time_mask_max_frames) or
-        max_ratio <= 0.0):
+    if (
+      time_mask_max_frames == 0 and not use_dynamic_time_mask_max_frames
+    ) or max_ratio <= 0.0:
       return inputs
     if multiplicity == 0:
       return inputs
@@ -111,13 +120,14 @@ class SpecAug(nn.Module):
       time_mask_max_frames = None
     # Create masks in time direction and apply.
     block_arrays = self._get_mask(
-        batch_size,
-        choose_range=length,
-        mask_size=time_length,
-        max_length=time_mask_max_frames,
-        masks_per_frame=self.time_masks_per_frame,
-        multiplicity=multiplicity,
-        max_ratio=max_ratio)
+      batch_size,
+      choose_range=length,
+      mask_size=time_length,
+      max_length=time_mask_max_frames,
+      masks_per_frame=self.time_masks_per_frame,
+      multiplicity=multiplicity,
+      max_ratio=max_ratio,
+    )
 
     outputs = jnp.einsum('bxy,bx->bxy', inputs, block_arrays)
     return outputs
@@ -136,13 +146,14 @@ class SpecAug(nn.Module):
     choose_range = jnp.tile(num_freq, (batch_size,))
     # Create masks in frequency direction and apply.
     block_arrays = self._get_mask(
-        batch_size,
-        choose_range=choose_range,
-        mask_size=num_freq,
-        max_length=freq_mask_max_bins,
-        masks_per_frame=0.0,
-        multiplicity=multiplicity,
-        max_ratio=1.0)
+      batch_size,
+      choose_range=choose_range,
+      mask_size=num_freq,
+      max_length=freq_mask_max_bins,
+      masks_per_frame=0.0,
+      multiplicity=multiplicity,
+      max_ratio=1.0,
+    )
 
     outputs = jnp.einsum('bxy,by->bxy', inputs, block_arrays)
     return outputs

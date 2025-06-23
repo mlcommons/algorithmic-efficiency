@@ -9,16 +9,19 @@ import math
 
 import tensorflow as tf
 
-from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
-    rotate_img
-from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
-    transform
-from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import \
-    translate
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import (
+  rotate_img,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import (
+  transform,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_jax.custom_tf_addons import (
+  translate,
+)
 
 # This signifies the max integer that the controller RNN could predict for the
 # augmentation scheme.
-_MAX_LEVEL = 10.
+_MAX_LEVEL = 10.0
 
 
 def blend(image1, image2, factor):
@@ -86,10 +89,12 @@ def cutout(image, pad_size, replace=0):
 
   # Sample the center location in the image where the zero mask will be applied.
   cutout_center_height = tf.random.uniform(
-      shape=[], minval=0, maxval=image_height, dtype=tf.int32)
+    shape=[], minval=0, maxval=image_height, dtype=tf.int32
+  )
 
   cutout_center_width = tf.random.uniform(
-      shape=[], minval=0, maxval=image_width, dtype=tf.int32)
+    shape=[], minval=0, maxval=image_width, dtype=tf.int32
+  )
 
   lower_pad = tf.maximum(0, cutout_center_height - pad_size)
   upper_pad = tf.maximum(0, image_height - cutout_center_height - pad_size)
@@ -97,20 +102,18 @@ def cutout(image, pad_size, replace=0):
   right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size)
 
   cutout_shape = [
-      image_height - (lower_pad + upper_pad),
-      image_width - (left_pad + right_pad),
+    image_height - (lower_pad + upper_pad),
+    image_width - (left_pad + right_pad),
   ]
   padding_dims = [[lower_pad, upper_pad], [left_pad, right_pad]]
   mask = tf.pad(
-      tf.zeros(cutout_shape, dtype=image.dtype),
-      padding_dims,
-      constant_values=1)
+    tf.zeros(cutout_shape, dtype=image.dtype), padding_dims, constant_values=1
+  )
   mask = tf.expand_dims(mask, -1)
   mask = tf.tile(mask, [1, 1, 3])
   image = tf.where(
-      tf.equal(mask, 0),
-      tf.ones_like(image, dtype=image.dtype) * replace,
-      image)
+    tf.equal(mask, 0), tf.ones_like(image, dtype=image.dtype) * replace, image
+  )
   return image
 
 
@@ -204,7 +207,7 @@ def shear_x(image, level, replace):
   # with a matrix form of:
   # [1  level
   #  0  1].
-  image = transform(wrap(image), [1., level, 0., 0., 1., 0., 0., 0.])
+  image = transform(wrap(image), [1.0, level, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
   return unwrap(image, replace)
 
 
@@ -214,7 +217,7 @@ def shear_y(image, level, replace):
   # with a matrix form of:
   # [1  0
   #  level  1].
-  image = transform(wrap(image), [1., 0., 0., level, 1., 0., 0., 0.])
+  image = transform(wrap(image), [1.0, 0.0, 0.0, level, 1.0, 0.0, 0.0, 0.0])
   return unwrap(image, replace)
 
 
@@ -264,9 +267,12 @@ def sharpness(image, factor):
   # Make image 4D for conv operation.
   image = tf.expand_dims(image, 0)
   # SMOOTH PIL Kernel.
-  kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
-                       dtype=tf.float32,
-                       shape=[3, 3, 1, 1]) / 13.
+  kernel = (
+    tf.constant(
+      [[1, 1, 1], [1, 5, 1], [1, 1, 1]], dtype=tf.float32, shape=[3, 3, 1, 1]
+    )
+    / 13.0
+  )
   # Tile across channel dimension.
   kernel = tf.tile(kernel, [1, 1, 3, 1])
   strides = [1, 1, 1, 1]
@@ -274,7 +280,8 @@ def sharpness(image, factor):
     # Some augmentation that uses depth-wise conv will cause crashing when
     # training on GPU.
     degenerate = tf.nn.depthwise_conv2d(
-        image, kernel, strides, padding='VALID', dilations=[1, 1])
+      image, kernel, strides, padding='VALID', dilations=[1, 1]
+    )
   degenerate = tf.clip_by_value(degenerate, 0.0, 255.0)
   degenerate = tf.squeeze(tf.cast(degenerate, tf.uint8), [0])
 
@@ -316,9 +323,10 @@ def equalize(image):
     # If step is zero, return the original image.  Otherwise, build
     # lut from the full histogram and step and then index from it.
     result = tf.cond(
-        tf.equal(step, 0),
-        lambda: im,
-        lambda: tf.gather(build_lut(histo, step), im))
+      tf.equal(step, 0),
+      lambda: im,
+      lambda: tf.gather(build_lut(histo, step), im),
+    )
 
     return tf.cast(result, tf.uint8)
 
@@ -373,9 +381,10 @@ def unwrap(image, replace):
 
   # Where they are zero, fill them in with 'replace'.
   flattened_image = tf.where(
-      tf.equal(alpha_channel, 0),
-      tf.ones_like(flattened_image, dtype=image.dtype) * replace,
-      flattened_image)
+    tf.equal(alpha_channel, 0),
+    tf.ones_like(flattened_image, dtype=image.dtype) * replace,
+    flattened_image,
+  )
 
   image = tf.reshape(flattened_image, image_shape)
   image = tf.slice(image, [0, 0, 0], [image_shape[0], image_shape[1], 3])
@@ -383,22 +392,22 @@ def unwrap(image, replace):
 
 
 NAME_TO_FUNC = {
-    'AutoContrast': autocontrast,
-    'Equalize': equalize,
-    'Invert': invert,
-    'Rotate': rotate,
-    'Posterize': posterize,
-    'Solarize': solarize,
-    'SolarizeAdd': solarize_add,
-    'Color': color,
-    'Contrast': contrast,
-    'Brightness': brightness,
-    'Sharpness': sharpness,
-    'ShearX': shear_x,
-    'ShearY': shear_y,
-    'TranslateX': translate_x,
-    'TranslateY': translate_y,
-    'Cutout': cutout,
+  'AutoContrast': autocontrast,
+  'Equalize': equalize,
+  'Invert': invert,
+  'Rotate': rotate,
+  'Posterize': posterize,
+  'Solarize': solarize,
+  'SolarizeAdd': solarize_add,
+  'Color': color,
+  'Contrast': contrast,
+  'Brightness': brightness,
+  'Sharpness': sharpness,
+  'ShearX': shear_x,
+  'ShearY': shear_y,
+  'TranslateX': translate_x,
+  'TranslateY': translate_y,
+  'Cutout': cutout,
 }
 
 
@@ -410,7 +419,7 @@ def _randomly_negate_tensor(tensor):
 
 
 def _rotate_level_to_arg(level):
-  level = (level / _MAX_LEVEL) * 30.
+  level = (level / _MAX_LEVEL) * 30.0
   level = _randomly_negate_tensor(level)
   return (level,)
 
@@ -435,47 +444,28 @@ def _translate_level_to_arg(level, translate_const):
 
 def level_to_arg(cutout_const, translate_const):
   return {
-      'AutoContrast':
-          lambda level: (),
-      'Equalize':
-          lambda level: (),
-      'Invert':
-          lambda level: (),
-      'Rotate':
-          _rotate_level_to_arg,
-      'Posterize':
-          lambda level: (int((level / _MAX_LEVEL) * 4),),
-      'Solarize':
-          lambda level: (int((level / _MAX_LEVEL) * 256),),
-      'SolarizeAdd':
-          lambda level: (int((level / _MAX_LEVEL) * 110),),
-      'Color':
-          _enhance_level_to_arg,
-      'Contrast':
-          _enhance_level_to_arg,
-      'Brightness':
-          _enhance_level_to_arg,
-      'Sharpness':
-          _enhance_level_to_arg,
-      'ShearX':
-          _shear_level_to_arg,
-      'ShearY':
-          _shear_level_to_arg,
-      'Cutout':
-          lambda level: (int((level / _MAX_LEVEL) * cutout_const),),
-      'TranslateX':
-          lambda level: _translate_level_to_arg(level, translate_const),
-      'TranslateY':
-          lambda level: _translate_level_to_arg(level, translate_const),
+    'AutoContrast': lambda level: (),
+    'Equalize': lambda level: (),
+    'Invert': lambda level: (),
+    'Rotate': _rotate_level_to_arg,
+    'Posterize': lambda level: (int((level / _MAX_LEVEL) * 4),),
+    'Solarize': lambda level: (int((level / _MAX_LEVEL) * 256),),
+    'SolarizeAdd': lambda level: (int((level / _MAX_LEVEL) * 110),),
+    'Color': _enhance_level_to_arg,
+    'Contrast': _enhance_level_to_arg,
+    'Brightness': _enhance_level_to_arg,
+    'Sharpness': _enhance_level_to_arg,
+    'ShearX': _shear_level_to_arg,
+    'ShearY': _shear_level_to_arg,
+    'Cutout': lambda level: (int((level / _MAX_LEVEL) * cutout_const),),
+    'TranslateX': lambda level: _translate_level_to_arg(level, translate_const),
+    'TranslateY': lambda level: _translate_level_to_arg(level, translate_const),
   }
 
 
-def _parse_policy_info(name,
-                       prob,
-                       level,
-                       replace_value,
-                       cutout_const,
-                       translate_const):
+def _parse_policy_info(
+  name, prob, level, replace_value, cutout_const, translate_const
+):
   """Return the function that corresponds to `name` and update `level` param."""
   func = NAME_TO_FUNC[name]
   args = level_to_arg(cutout_const, translate_const)[name](level)
@@ -514,45 +504,49 @@ def distort_image_with_randaugment(image, num_layers, magnitude, key):
   """
   replace_value = [128] * 3
   available_ops = [
-      'AutoContrast',
-      'Equalize',
-      'Invert',
-      'Rotate',
-      'Posterize',
-      'Solarize',
-      'Color',
-      'Contrast',
-      'Brightness',
-      'Sharpness',
-      'ShearX',
-      'ShearY',
-      'TranslateX',
-      'TranslateY',
-      'Cutout',
-      'SolarizeAdd',
+    'AutoContrast',
+    'Equalize',
+    'Invert',
+    'Rotate',
+    'Posterize',
+    'Solarize',
+    'Color',
+    'Contrast',
+    'Brightness',
+    'Sharpness',
+    'ShearX',
+    'ShearY',
+    'TranslateX',
+    'TranslateY',
+    'Cutout',
+    'SolarizeAdd',
   ]
 
   for layer_num in range(num_layers):
     key = tf.random.experimental.stateless_fold_in(key, layer_num)
-    op_to_select = tf.random.stateless_uniform([],
-                                               seed=key,
-                                               maxval=len(available_ops),
-                                               dtype=tf.int32)
+    op_to_select = tf.random.stateless_uniform(
+      [], seed=key, maxval=len(available_ops), dtype=tf.int32
+    )
     random_magnitude = float(magnitude)
     with tf.name_scope('randaug_layer_{}'.format(layer_num)):
-      for (i, op_name) in enumerate(available_ops):
+      for i, op_name in enumerate(available_ops):
         key = tf.random.experimental.stateless_fold_in(key, i)
-        prob = tf.random.stateless_uniform([],
-                                           seed=key,
-                                           minval=0.2,
-                                           maxval=0.8,
-                                           dtype=tf.float32)
-        func, _, args = _parse_policy_info(op_name, prob, random_magnitude,
-                                           replace_value, cutout_const=40,
-                                           translate_const=100)
+        prob = tf.random.stateless_uniform(
+          [], seed=key, minval=0.2, maxval=0.8, dtype=tf.float32
+        )
+        func, _, args = _parse_policy_info(
+          op_name,
+          prob,
+          random_magnitude,
+          replace_value,
+          cutout_const=40,
+          translate_const=100,
+        )
         image = tf.cond(
-            tf.equal(i, op_to_select),
-            lambda selected_func=func,
-            selected_args=args: selected_func(image, *selected_args),
-            lambda: image)
+          tf.equal(i, op_to_select),
+          lambda selected_func=func, selected_args=args: selected_func(
+            image, *selected_args
+          ),
+          lambda: image,
+        )
   return image

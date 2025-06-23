@@ -17,13 +17,15 @@ from algoperf import spec
 from algoperf.data_utils import shard_and_maybe_pad_np
 
 
-def preprocess_for_train(image: spec.Tensor,
-                         rng: spec.RandomState,
-                         mean_rgb: Tuple[float, float, float],
-                         stddev_rgb: Tuple[float, float, float],
-                         crop_size: int,
-                         padding_size: int,
-                         dtype: tf.DType = tf.float32) -> spec.Tensor:
+def preprocess_for_train(
+  image: spec.Tensor,
+  rng: spec.RandomState,
+  mean_rgb: Tuple[float, float, float],
+  stddev_rgb: Tuple[float, float, float],
+  crop_size: int,
+  padding_size: int,
+  dtype: tf.DType = tf.float32,
+) -> spec.Tensor:
   """Preprocesses the given image for training.
 
   Args:
@@ -44,20 +46,23 @@ def preprocess_for_train(image: spec.Tensor,
   flip_rng = rng[1, :]
 
   image_shape = tf.shape(image)
-  image = tf.image.resize_with_crop_or_pad(image,
-                                           image_shape[0] + padding_size,
-                                           image_shape[1] + padding_size)
+  image = tf.image.resize_with_crop_or_pad(
+    image, image_shape[0] + padding_size, image_shape[1] + padding_size
+  )
   image = tf.image.stateless_random_crop(
-      image, (crop_size, crop_size, 3), seed=crop_rng)
+    image, (crop_size, crop_size, 3), seed=crop_rng
+  )
   image = tf.image.stateless_random_flip_left_right(image, seed=flip_rng)
   image = normalize_image(image, mean_rgb, stddev_rgb, dtype=dtype)
   return image
 
 
-def preprocess_for_eval(image: spec.Tensor,
-                        mean_rgb: Tuple[float, float, float],
-                        stddev_rgb: Tuple[float, float, float],
-                        dtype: tf.DType = tf.float32) -> spec.Tensor:
+def preprocess_for_eval(
+  image: spec.Tensor,
+  mean_rgb: Tuple[float, float, float],
+  stddev_rgb: Tuple[float, float, float],
+  dtype: tf.DType = tf.float32,
+) -> spec.Tensor:
   """Preprocesses the given image for evaluation.
 
   Args:
@@ -74,10 +79,12 @@ def preprocess_for_eval(image: spec.Tensor,
   return image
 
 
-def normalize_image(image: spec.Tensor,
-                    mean_rgb: Tuple[float, float, float],
-                    stddev_rgb: Tuple[float, float, float],
-                    dtype=tf.float32) -> spec.Tensor:
+def normalize_image(
+  image: spec.Tensor,
+  mean_rgb: Tuple[float, float, float],
+  stddev_rgb: Tuple[float, float, float],
+  dtype=tf.float32,
+) -> spec.Tensor:
   image = tf.image.convert_image_dtype(image, dtype)
   image -= tf.constant(mean_rgb, shape=[1, 1, 3], dtype=image.dtype)
   image /= tf.constant(stddev_rgb, shape=[1, 1, 3], dtype=image.dtype)
@@ -85,17 +92,17 @@ def normalize_image(image: spec.Tensor,
 
 
 def create_split(
-    split: str,
-    dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
-    rng: spec.RandomState,
-    global_batch_size: int,
-    train: bool,
-    mean_rgb: Tuple[float, float, float],
-    stddev_rgb: Tuple[float, float, float],
-    cache: bool = False,
-    repeat_final_dataset: bool = False,
-    crop_size: int = 32,
-    padding_size: int = 4,
+  split: str,
+  dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
+  rng: spec.RandomState,
+  global_batch_size: int,
+  train: bool,
+  mean_rgb: Tuple[float, float, float],
+  stddev_rgb: Tuple[float, float, float],
+  cache: bool = False,
+  repeat_final_dataset: bool = False,
+  crop_size: int = 32,
+  padding_size: int = 4,
 ) -> Iterator[Dict[str, spec.Tensor]]:
   """Creates a split from the CIFAR-10 dataset using TensorFlow Datasets."""
   shuffle_rng, preprocess_rng = jax.random.split(rng, 2)
@@ -104,14 +111,17 @@ def create_split(
     dtype = tf.float32
     if train:
       per_step_preprocess_rng = tf.random.experimental.stateless_fold_in(
-          tf.cast(preprocess_rng, tf.int64), example_index)
-      image = preprocess_for_train(example['image'],
-                                   per_step_preprocess_rng,
-                                   mean_rgb,
-                                   stddev_rgb,
-                                   crop_size,
-                                   padding_size,
-                                   dtype)
+        tf.cast(preprocess_rng, tf.int64), example_index
+      )
+      image = preprocess_for_train(
+        example['image'],
+        per_step_preprocess_rng,
+        mean_rgb,
+        stddev_rgb,
+        crop_size,
+        padding_size,
+        dtype,
+      )
     else:
       image = preprocess_for_eval(example['image'], mean_rgb, stddev_rgb, dtype)
     return {'inputs': image, 'targets': example['label']}
@@ -132,7 +142,8 @@ def create_split(
   # index that we can fold into the RNG seed.
   ds = ds.enumerate()
   ds = ds.map(
-      preprocess_example, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    preprocess_example, num_parallel_calls=tf.data.experimental.AUTOTUNE
+  )
   ds = ds.batch(global_batch_size, drop_remainder=train)
 
   if repeat_final_dataset:
@@ -144,32 +155,36 @@ def create_split(
 
 
 def create_input_iter(
-    split: str,
-    dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
-    rng: spec.RandomState,
-    global_batch_size: int,
-    mean_rgb: Tuple[float, float, float],
-    stddev_rgb: Tuple[float, float, float],
-    crop_size: int,
-    padding_size: int,
-    train: bool,
-    cache: bool,
-    repeat_final_dataset: bool) -> Iterator[Dict[str, spec.Tensor]]:
+  split: str,
+  dataset_builder: tfds.core.dataset_builder.DatasetBuilder,
+  rng: spec.RandomState,
+  global_batch_size: int,
+  mean_rgb: Tuple[float, float, float],
+  stddev_rgb: Tuple[float, float, float],
+  crop_size: int,
+  padding_size: int,
+  train: bool,
+  cache: bool,
+  repeat_final_dataset: bool,
+) -> Iterator[Dict[str, spec.Tensor]]:
   ds = create_split(
-      split,
-      dataset_builder,
-      rng,
-      global_batch_size,
-      train=train,
-      mean_rgb=mean_rgb,
-      stddev_rgb=stddev_rgb,
-      cache=cache,
-      repeat_final_dataset=repeat_final_dataset,
-      crop_size=crop_size,
-      padding_size=padding_size)
+    split,
+    dataset_builder,
+    rng,
+    global_batch_size,
+    train=train,
+    mean_rgb=mean_rgb,
+    stddev_rgb=stddev_rgb,
+    cache=cache,
+    repeat_final_dataset=repeat_final_dataset,
+    crop_size=crop_size,
+    padding_size=padding_size,
+  )
   it = map(
-      functools.partial(
-          shard_and_maybe_pad_np, global_batch_size=global_batch_size),
-      ds)
+    functools.partial(
+      shard_and_maybe_pad_np, global_batch_size=global_batch_size
+    ),
+    ds,
+  )
   it = jax_utils.prefetch_to_device(it, 2)
   return it
