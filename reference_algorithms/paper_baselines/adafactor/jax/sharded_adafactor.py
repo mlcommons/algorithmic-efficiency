@@ -30,8 +30,8 @@ import re
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import jax
-from jax import numpy as jnp
 import optax
+from jax import numpy as jnp
 
 JTensor = Any
 NestedJTensor = Any

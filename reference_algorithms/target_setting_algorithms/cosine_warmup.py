@@ -1,9 +1,7 @@
 """Implementions of a linear warmup then cosine decay LR schedule."""
 
 import optax
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.optim.lr_scheduler import LinearLR
-from torch.optim.lr_scheduler import SequentialLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 
 def jax_cosine_warmup(step_hint: int, hyperparameters):

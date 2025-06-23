@@ -3,11 +3,11 @@
 import functools
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from flax import jax_utils
 import jax
-from jax import lax
 import jax.numpy as jnp
 import optax
+from flax import jax_utils
+from jax import lax
 
 from algoperf import spec
 from reference_algorithms.paper_baselines.shampoo.jax.distributed_shampoo import (

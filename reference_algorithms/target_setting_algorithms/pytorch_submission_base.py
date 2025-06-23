@@ -2,9 +2,9 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from absl import logging
 import torch
 import torch.distributed.nn as dist_nn
+from absl import logging
 
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup

@@ -36,17 +36,17 @@ import enum
 import functools
 import itertools
 import logging
-from typing import Any, cast, List, NamedTuple, Optional, TypeVar, Union
+from typing import Any, List, NamedTuple, Optional, TypeVar, Union, cast
 
 import chex
-from flax import struct
 import jax
-from jax import lax
-from jax.experimental import pjit
-from jax.experimental.sparse import linalg
 import jax.numpy as jnp
 import numpy as np
 import optax
+from flax import struct
+from jax import lax
+from jax.experimental import pjit
+from jax.experimental.sparse import linalg
 
 # Dtype for inverse-pth root routine
 # Switch to f64 if you have hardware that supports it. Enable the jax flag

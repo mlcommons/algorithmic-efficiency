@@ -4,9 +4,9 @@ import functools
 from typing import Any, Dict, List, Optional, Tuple
 
 import jax
-from jax import lax
 import jax.numpy as jnp
 import optax
+from jax import lax
 
 from algoperf import spec
 

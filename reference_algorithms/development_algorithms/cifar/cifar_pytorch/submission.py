@@ -3,9 +3,7 @@
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.optim.lr_scheduler import LinearLR
-from torch.optim.lr_scheduler import SequentialLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from algoperf import spec
 

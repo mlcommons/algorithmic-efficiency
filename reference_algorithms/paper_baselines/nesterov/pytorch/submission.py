@@ -2,10 +2,10 @@
 
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
-from absl import logging
 import optax
 import torch
 import torch.distributed.nn as dist_nn
+from absl import logging
 from torch.optim.lr_scheduler import LambdaLR
 
 from algoperf import spec

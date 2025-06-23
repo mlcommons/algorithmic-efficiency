@@ -4,18 +4,18 @@ import torch
 from torch.optim.lr_scheduler import LambdaLR
 
 from algoperf import spec
-from reference_algorithms.target_setting_algorithms.data_selection import (
+from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
   data_selection,
-)  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.get_batch_size import (
+)
+from reference_algorithms.target_setting_algorithms.get_batch_size import (  # noqa: F401
   get_batch_size,
-)  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.jax_nesterov import (
+)
+from reference_algorithms.target_setting_algorithms.jax_momentum import (
   create_lr_schedule_fn,
 )
-from reference_algorithms.target_setting_algorithms.pytorch_submission_base import (
+from reference_algorithms.target_setting_algorithms.pytorch_submission_base import (  # noqa: F401
   update_params,
-)  # pylint: disable=unused-import
+)
 
 
 def init_optimizer_state(

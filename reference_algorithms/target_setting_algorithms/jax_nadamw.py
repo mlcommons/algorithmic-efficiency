@@ -3,22 +3,22 @@
 from typing import Any, Callable, NamedTuple, Optional, Union
 
 import chex
-from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import optax
+from flax import jax_utils
 
 from algoperf import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
-from reference_algorithms.target_setting_algorithms.data_selection import (
+from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
   data_selection,
-)  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.get_batch_size import (
+)
+from reference_algorithms.target_setting_algorithms.get_batch_size import (  # noqa: F401
   get_batch_size,
-)  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.jax_submission_base import (
+)
+from reference_algorithms.target_setting_algorithms.jax_submission_base import (  # noqa: F401
   update_params,
-)  # pylint: disable=unused-import
+)
 
 
 # Forked from
