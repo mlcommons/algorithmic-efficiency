@@ -8,10 +8,10 @@ import os
 import tempfile
 from typing import Dict
 
-from absl import logging
 import sentencepiece as spm
 import tensorflow as tf
 import tensorflow_text as tftxt
+from absl import logging
 
 gfile = tf.io.gfile
 copy = tf.io.gfile.copy
@@ -41,8 +41,8 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
             logging.info('path does not exist -> %s', trans_file)
             continue
           with open(trans_file, 'r', encoding='UTF-8') as f:
-            for l in f:
-              _, line = l.strip().split(' ', maxsplit=1)
+            for lines in f:
+              _, line = lines.strip().split(' ', maxsplit=1)
               line = line + '\n'
               char_count += len(line)
               if char_count > maxchars:

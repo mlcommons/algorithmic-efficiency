@@ -4,16 +4,15 @@ Modified from https://github.com/lsari/librispeech_100.
 
 import multiprocessing.dummy
 import os
-from os.path import exists
 import sys
 import threading
 import time
 
-from absl import logging
 import numpy as np
 import pandas as pd
-from pydub import AudioSegment
 import tensorflow as tf
+from absl import logging
+from pydub import AudioSegment
 
 from datasets import librispeech_tokenizer
 
@@ -84,8 +83,8 @@ def preprocess_data(in_folder, out_folder, tokenizer, split):
       return utterance_ids
 
     with open(trans_file, 'r', encoding='UTF-8') as f:
-      for l in f:
-        utt, trans = l.strip().split(' ', maxsplit=1)
+      for line in f:
+        utt, trans = line.strip().split(' ', maxsplit=1)
         audio_path = (
           f'{data_folder}/{speaker_folder}/{chapter_folder}/{utt}.flac'
         )
