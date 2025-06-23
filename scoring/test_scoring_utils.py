@@ -2,8 +2,7 @@ import os
 
 from absl.testing import absltest
 
-from scoring import performance_profile
-from scoring import scoring_utils
+from scoring import performance_profile, scoring_utils
 
 TEST_LOGFILE = 'test_data/adamw_fastmri_jax_04-18-2023-13-10-58.log'
 TEST_DIR = 'test_data/experiment_dir'
@@ -11,7 +10,6 @@ NUM_EVALS = 18
 
 
 class Test(absltest.TestCase):
-
   def test_get_trials_dict(self):
     trials_dict = scoring_utils.get_trials_dict(TEST_LOGFILE)
     self.assertEqual(len(trials_dict['1']['global_step']), NUM_EVALS)

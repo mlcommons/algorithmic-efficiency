@@ -32,74 +32,74 @@ vars:
 #    bucket: <<BUCKET_NAME>>
 
 deployment_groups:
-- group: primary
-  modules:
-  - id: network
-    source: modules/network/vpc
+  - group: primary
+    modules:
+      - id: network
+        source: modules/network/vpc
 
-  - id: homefs
-    source: community/modules/file-system/nfs-server
-    use: [network]
-    settings:
-      local_mounts: [/home]
-      disk_size: 3000
-      zone: $(vars.zone)
+      - id: homefs
+        source: community/modules/file-system/nfs-server
+        use: [network]
+        settings:
+          local_mounts: [/home]
+          disk_size: 3000
+          zone: $(vars.zone)
 
-  - id: script
-    source: modules/scripts/startup-script
-    settings:
+      - id: script
+        source: modules/scripts/startup-script
+        settings:
 
-- group: cluster
-  modules:
-  - id: v100_nodeset
-    source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
-    use: 
-    - network
-    settings:
-      node_count_dynamic_max: 25 # set to 0 if you want node to live forever
-      region: $(vars.region)
-      zone: $(vars.zone)
-      enable_placement: false
-      bandwidth_tier: gvnic_enabled
-      machine_type: n1-standard-64 
-      guest_accelerator: 
-        - type: nvidia-tesla-v100
-          count: 8 
-      instance_image: 
-        project: $(vars.project_id)
-        name: $(vars.image_name)
-      instance_image_custom: true
+  - group: cluster
+    modules:
+      - id: v100_nodeset
+        source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
+        use:
+          - network
+        settings:
+          node_count_dynamic_max: 25 # set to 0 if you want node to live forever
+          region: $(vars.region)
+          zone: $(vars.zone)
+          enable_placement: false
+          bandwidth_tier: gvnic_enabled
+          machine_type: n1-standard-64
+          guest_accelerator:
+            - type: nvidia-tesla-v100
+              count: 8
+          instance_image:
+            project: $(vars.project_id)
+            name: $(vars.image_name)
+          instance_image_custom: true
 
-  - id: v100_partition
-    source: community/modules/compute/schedmd-slurm-gcp-v6-partition
-    use: [v100_nodeset]
-    settings:
-      exclusive: false
-      partition_name: v100
-      is_default: true
+      - id: v100_partition
+        source: community/modules/compute/schedmd-slurm-gcp-v6-partition
+        use: [v100_nodeset]
+        settings:
+          exclusive: false
+          partition_name: v100
+          is_default: true
 
-  - id: slurm_login
-    source: community/modules/scheduler/schedmd-slurm-gcp-v6-login
-    use: [network]
-    settings:
-      enable_login_public_ips: true
-      instance_image: 
-        project: $(vars.project_id)
-        name: $(vars.image_name)
-      instance_image_custom: true
-      zone: $(vars.zone)
+      - id: slurm_login
+        source: community/modules/scheduler/schedmd-slurm-gcp-v6-login
+        use: [network]
+        settings:
+          enable_login_public_ips: true
+          instance_image:
+            project: $(vars.project_id)
+            name: $(vars.image_name)
+          instance_image_custom: true
+          zone: $(vars.zone)
 
-  - id: slurm_controller
-    source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
-    use:
-    - network
-    - v100_partition
-    - homefs
-    - slurm_login
-    settings:
-      enable_controller_public_ips: true
-      instance_image:
-        project: $(vars.project_id)
-        name: $(vars.image_name)
-      instance_image_custom: true
-      region: $(vars.region)
+      - id: slurm_controller
+        source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
+        use:
+          - network
+          - v100_partition
+          - homefs
+          - slurm_login
+        settings:
+          enable_controller_public_ips: true
+          instance_image:
+            project: $(vars.project_id)
+            name: $(vars.image_name)
+          instance_image_custom: true
+          region: $(vars.region)

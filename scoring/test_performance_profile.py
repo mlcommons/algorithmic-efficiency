@@ -2,12 +2,10 @@ import os
 
 from absl.testing import absltest
 
-from scoring import performance_profile
-from scoring import scoring_utils
+from scoring import performance_profile, scoring_utils
 
 
 class Test(absltest.TestCase):
-
   def test_get_workloads_time_to_target(self):
     # TODO(kasimbeg)
     pass

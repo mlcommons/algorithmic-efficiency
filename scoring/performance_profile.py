@@ -25,21 +25,22 @@ The two primary inputs to `compute_performance_profiles` are
   The keys in this dictionary should match the workload identifiers used in
   the dictionary of submissions.
 """
+
 import itertools
 import json
 import operator
 import os
 import re
 
-from absl import logging
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from absl import logging
 from tabulate import tabulate
 
-from algoperf.workloads.workloads import get_base_workload_name
 import algoperf.workloads.workloads as workloads_registry
+from algoperf.workloads.workloads import get_base_workload_name
 from scoring import scoring_utils
 
 WORKLOADS = workloads_registry.WORKLOADS
@@ -49,7 +50,7 @@ BASE_WORKLOADS_DIR = 'algoperf/workloads/'
 # Open json file to read heldout workloads
 # TODO: This probably shouldn't be hardcoded but passed as an argument.\
 try:
-  with open("held_out_workloads_algoperf_v05.json", "r") as f:
+  with open('held_out_workloads_algoperf_v05.json', 'r') as f:
     HELDOUT_WORKLOADS = json.load(f)
 except:
   HELDOUT_WORKLOADS = None
@@ -64,22 +65,22 @@ NUM_TRIALS = 5
 NUM_STUDIES = 3
 
 MIN_EVAL_METRICS = [
-    'ce_loss',
-    'error_rate',
-    'ctc_loss',
-    'wer',
-    'l1_loss',
-    'loss',
+  'ce_loss',
+  'error_rate',
+  'ctc_loss',
+  'wer',
+  'l1_loss',
+  'loss',
 ]
 
 MAX_EVAL_METRICS = ['mean_average_precision', 'ssim', 'accuracy', 'bleu']
 
-#MPL params
+# MPL params
 mpl.rcParams['figure.figsize'] = (16, 10)  # Width, height in inches
 mpl.rcParams['font.family'] = 'serif'
-mpl.rcParams['font.serif'] = [
-    'Times New Roman'
-] + mpl.rcParams['font.serif']  # Add Times New Roman as first choice
+mpl.rcParams['font.serif'] = ['Times New Roman'] + mpl.rcParams[
+  'font.serif'
+]  # Add Times New Roman as first choice
 mpl.rcParams['font.size'] = 22
 mpl.rcParams['savefig.dpi'] = 300  # Set resolution for saved figures
 
@@ -87,16 +88,17 @@ mpl.rcParams['savefig.dpi'] = 300  # Set resolution for saved figures
 mpl.rcParams['lines.linewidth'] = 3  # Adjust line thickness if needed
 mpl.rcParams['lines.markersize'] = 6  # Adjust marker size if needed
 mpl.rcParams['axes.prop_cycle'] = mpl.cycler(
-    color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
-           "#9467bd"])  # Example color cycle (consider ColorBrewer or viridis)
+  color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+)  # Example color cycle (consider ColorBrewer or viridis)
 mpl.rcParams['axes.labelsize'] = 22  # Axis label font size
 mpl.rcParams['xtick.labelsize'] = 20  # Tick label font size
 mpl.rcParams['ytick.labelsize'] = 20
 
 # Legends and Gridlines
 mpl.rcParams['legend.fontsize'] = 20  # Legend font size
-mpl.rcParams[
-    'legend.loc'] = 'best'  # Let matplotlib decide the best legend location
+mpl.rcParams['legend.loc'] = (
+  'best'  # Let matplotlib decide the best legend location
+)
 mpl.rcParams['axes.grid'] = True  # Enable grid
 mpl.rcParams['grid.alpha'] = 0.4  # Gridline transparency
 
@@ -113,7 +115,8 @@ def generate_eval_cols(metrics):
 
 MINIMIZE_REGISTRY = {k: True for k in generate_eval_cols(MIN_EVAL_METRICS)}
 MINIMIZE_REGISTRY.update(
-    {k: False for k in generate_eval_cols(MAX_EVAL_METRICS)})
+  {k: False for k in generate_eval_cols(MAX_EVAL_METRICS)}
+)
 MINIMIZE_REGISTRY['train_cost'] = True
 
 
@@ -125,13 +128,15 @@ def check_if_minimized(col_name):
     if col in col_name:
       return MINIMIZE_REGISTRY[col]
 
-  raise ValueError(f'Column {col_name} not found in `MINIMIZE_REGISTRY` as '
-                   'either a column name or a substring of a column name.')
+  raise ValueError(
+    f'Column {col_name} not found in `MINIMIZE_REGISTRY` as '
+    'either a column name or a substring of a column name.'
+  )
 
 
-def get_best_trial_index(workload_df,
-                         validation_metric,
-                         validation_target=None):
+def get_best_trial_index(
+  workload_df, validation_metric, validation_target=None
+):
   """Get the eval index in which a workload reaches the target metric_col.
 
   Args:
@@ -150,7 +155,8 @@ def get_best_trial_index(workload_df,
 
   op = operator.le if is_minimized else operator.ge
   validation_target_reached = validation_series.apply(
-      lambda x: op(x, validation_target))
+    lambda x: op(x, validation_target)
+  )
   target_reached = pd.Series(validation_target_reached)
 
   # Remove trials that never reach the target
@@ -166,12 +172,14 @@ def get_best_trial_index(workload_df,
     return trial, index_reached[trial]
 
 
-def get_workloads_time_to_target(submission,
-                                 submission_name,
-                                 time_col='global_step',
-                                 verbosity=1,
-                                 self_tuning_ruleset=False,
-                                 strict=False):
+def get_workloads_time_to_target(
+  submission,
+  submission_name,
+  time_col='global_step',
+  verbosity=1,
+  self_tuning_ruleset=False,
+  strict=False,
+):
   """Get times to target for each workload in a submission.
 
   Args:
@@ -191,60 +199,72 @@ def get_workloads_time_to_target(submission,
   if num_workloads != NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS:
     if strict:
       raise ValueError(
-          f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
-          f'but found {num_workloads} workloads for {submission_name}.')
-    logging.warning(
         f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
-        f'but found {num_workloads} workloads for {submission_name}.')
+        f'but found {num_workloads} workloads for {submission_name}.'
+      )
+    logging.warning(
+      f'Expecting {NUM_BASE_WORKLOADS + NUM_VARIANT_WORKLOADS} workloads '
+      f'but found {num_workloads} workloads for {submission_name}.'
+    )
 
   # For each workload get submission time get the submission times to target.
   for workload, group in submission.groupby('workload'):
-    validation_metric, validation_target = scoring_utils.get_workload_metrics_and_targets(workload)
+    validation_metric, validation_target = (
+      scoring_utils.get_workload_metrics_and_targets(workload)
+    )
 
     # Check number of studies
     time_vals_per_study = []
     num_studies = len(group.groupby('study'))
     if num_studies != NUM_STUDIES:
       if strict:
-        raise ValueError(f'Expecting {NUM_STUDIES} studies for workload '
-                         f'{workload} but found {num_studies} studies '
-                         f'for {submission_name}.')
+        raise ValueError(
+          f'Expecting {NUM_STUDIES} studies for workload '
+          f'{workload} but found {num_studies} studies '
+          f'for {submission_name}.'
+        )
       else:
-        logging.warning(f'Expecting {NUM_STUDIES} studies for workload '
-                        f'{workload} but found {num_studies} studies '
-                        f'for {submission_name}.')
+        logging.warning(
+          f'Expecting {NUM_STUDIES} studies for workload '
+          f'{workload} but found {num_studies} studies '
+          f'for {submission_name}.'
+        )
 
     # For each study check trials
     for study, group in group.groupby('study'):
-
       # Check number of trials per study
       num_trials = len(group)
       if num_trials != NUM_TRIALS and not self_tuning_ruleset:
         if strict:
           raise ValueError(
-              f'In Study {study}: Expecting {NUM_TRIALS} trials for workload '
-              f'{workload} but found {num_trials} trials '
-              f'for {submission_name}.')
+            f'In Study {study}: Expecting {NUM_TRIALS} trials for workload '
+            f'{workload} but found {num_trials} trials '
+            f'for {submission_name}.'
+          )
         else:
           logging.warning(
-              f'In Study {study}: Expecting {NUM_TRIALS} trials for workload '
-              f'{workload} but found {num_trials} trials '
-              f'for {submission_name}.')
+            f'In Study {study}: Expecting {NUM_TRIALS} trials for workload '
+            f'{workload} but found {num_trials} trials '
+            f'for {submission_name}.'
+          )
 
       # Get trial and time index that reaches target
       trial_idx, time_idx = get_best_trial_index(
-          group, validation_metric, validation_target)
+        group, validation_metric, validation_target
+      )
       if time_idx > -1:
         time_val = group[time_col].loc[trial_idx][time_idx]
       else:
         time_val = float('inf')
       time_vals_per_study.append(time_val)
 
-    workloads.append({
+    workloads.append(
+      {
         'submission': submission_name,
         'workload': re.sub(r'_(jax|pytorch)$', '', workload),
         time_col: np.median(time_vals_per_study),
-    })
+      }
+    )
 
   df = pd.DataFrame.from_records(workloads)
   df = df.pivot(index='submission', columns='workload', values=time_col)
@@ -252,7 +272,6 @@ def get_workloads_time_to_target(submission,
 
 
 def variant_criteria_filter(base_workload, variant_workload):
-
   def filter(x):
     try:
       if x[variant_workload] == np.inf:
@@ -269,17 +288,19 @@ def variant_criteria_filter(base_workload, variant_workload):
   return filter
 
 
-def compute_performance_profiles(submissions,
-                                 time_col='global_step',
-                                 min_tau=1.0,
-                                 max_tau=None,
-                                 reference_submission_tag=None,
-                                 num_points=100,
-                                 scale='linear',
-                                 verbosity=0,
-                                 strict=False,
-                                 self_tuning_ruleset=False,
-                                 output_dir=None):
+def compute_performance_profiles(
+  submissions,
+  time_col='global_step',
+  min_tau=1.0,
+  max_tau=None,
+  reference_submission_tag=None,
+  num_points=100,
+  scale='linear',
+  verbosity=0,
+  strict=False,
+  self_tuning_ruleset=False,
+  output_dir=None,
+):
   """Compute performance profiles for a set of submission by some time column.
 
   Args:
@@ -308,16 +329,20 @@ def compute_performance_profiles(submissions,
 
   for submission_tag, submission in submissions.items():
     logging.info(
-        f'\nComputing performance profile with respect to `{time_col}` for '
-        f'{submission_tag}')
+      f'\nComputing performance profile with respect to `{time_col}` for '
+      f'{submission_tag}'
+    )
     # Get time to targets for each submission across studies and trials
     dfs.append(
-        get_workloads_time_to_target(submission,
-                                     submission_tag,
-                                     time_col,
-                                     verbosity,
-                                     self_tuning_ruleset,
-                                     strict))
+      get_workloads_time_to_target(
+        submission,
+        submission_tag,
+        time_col,
+        verbosity,
+        self_tuning_ruleset,
+        strict,
+      )
+    )
   df = pd.concat(dfs)
   # Restrict to base and sampled held-out workloads
   # (ignore the additional workload variants of the baseline
@@ -335,7 +360,8 @@ def compute_performance_profiles(submissions,
       # If base do not have finite score set variant score to inf
       base_workload = get_base_workload_name(workload)
       df[workload] = df.apply(
-          variant_criteria_filter(workload, base_workload), axis=1)
+        variant_criteria_filter(workload, base_workload), axis=1
+      )
 
   # Set score to inf if not within 4x of fastest submission
   best_scores = df.min(axis=0)
@@ -347,17 +373,20 @@ def compute_performance_profiles(submissions,
       # If variants do not have finite score set base_workload score to inf
       base_workload = get_base_workload_name(workload)
       df[base_workload] = df.apply(
-          variant_criteria_filter(base_workload, workload), axis=1)
+        variant_criteria_filter(base_workload, workload), axis=1
+      )
   df = df[BASE_WORKLOADS]
 
   if verbosity > 0:
     logging.info('\n`{time_col}` to reach target:')
-    with pd.option_context('display.max_rows',
-                           None,
-                           'display.max_columns',
-                           None,
-                           'display.width',
-                           1000):
+    with pd.option_context(
+      'display.max_rows',
+      None,
+      'display.max_columns',
+      None,
+      'display.width',
+      1000,
+    ):
       logging.info(df)
 
   # Divide by the fastest.
@@ -368,12 +397,14 @@ def compute_performance_profiles(submissions,
 
   if verbosity > 0:
     logging.info('\n`{time_col}` to reach target normalized to best:')
-    with pd.option_context('display.max_rows',
-                           None,
-                           'display.max_columns',
-                           None,
-                           'display.width',
-                           1000):
+    with pd.option_context(
+      'display.max_rows',
+      None,
+      'display.max_columns',
+      None,
+      'display.width',
+      1000,
+    ):
       logging.info(df)
 
   # If no max_tau is supplied, choose the value of tau that would plot all non
@@ -385,7 +416,8 @@ def compute_performance_profiles(submissions,
     points = np.linspace(min_tau, max_tau, num=num_points)
   elif scale == 'log':
     points = np.logspace(
-        np.log10(min_tau), np.log10(max_tau), num=num_points, base=10.0)
+      np.log10(min_tau), np.log10(max_tau), num=num_points, base=10.0
+    )
 
   def rho(r, tau):
     return (r <= tau).sum(axis=1) / NUM_BASE_WORKLOADS
@@ -431,11 +463,9 @@ def maybe_save_df_to_csv(save_dir, df, path, **to_csv_kwargs):
       df.to_csv(fout, **to_csv_kwargs)
 
 
-def plot_performance_profiles(perf_df,
-                              df_col,
-                              scale='linear',
-                              save_dir=None,
-                              figsize=(30, 10)):
+def plot_performance_profiles(
+  perf_df, df_col, scale='linear', save_dir=None, figsize=(30, 10)
+):
   """Plot performance profiles.
 
   Args:
@@ -462,6 +492,6 @@ def plot_performance_profiles(perf_df,
   fig.legend(bbox_to_anchor=(1.0, 1.0))
   plt.tight_layout()
   maybe_save_figure(save_dir, f'performance_profile_by_{df_col_display}')
-  maybe_save_df_to_csv(save_dir,
-                       perf_df,
-                       f'performance_profile_{df_col_display}.csv')
+  maybe_save_df_to_csv(
+    save_dir, perf_df, f'performance_profile_{df_col_display}.csv'
+  )
