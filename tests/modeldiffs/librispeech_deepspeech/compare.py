@@ -7,10 +7,12 @@ import jax
 import torch
 
 from algoperf import spec
-from algoperf.workloads.librispeech_deepspeech.librispeech_jax.workload import \
-    LibriSpeechDeepSpeechWorkload as JaxWorkload
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.workload import \
-    LibriSpeechDeepSpeechWorkload as PyTorchWorkload
+from algoperf.workloads.librispeech_deepspeech.librispeech_jax.workload import (
+  LibriSpeechDeepSpeechWorkload as JaxWorkload,
+)
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.workload import (
+  LibriSpeechDeepSpeechWorkload as PyTorchWorkload,
+)
 from tests.modeldiffs.diff import ModelDiffRunner
 
 
@@ -67,10 +69,12 @@ def sd_transform(sd):
     if isinstance(out[k], dict):
       kernels = ['kernel_ih_l0', 'kernel_hh_l0']
       biases = ['bias_ih_l0', 'bias_hh_l0']
-      weights = torch.cat([out[k][i].view(-1) for i in kernels] +
-                          [out[k][i + '_reverse'].view(-1) for i in kernels] +
-                          [out[k][i].view(-1) for i in biases] +
-                          [out[k][i + '_reverse'].view(-1) for i in biases])
+      weights = torch.cat(
+        [out[k][i].view(-1) for i in kernels]
+        + [out[k][i + '_reverse'].view(-1) for i in kernels]
+        + [out[k][i].view(-1) for i in biases]
+        + [out[k][i + '_reverse'].view(-1) for i in biases]
+      )
       updates[k + ('weights',)] = weights
       keys_to_del.append(k)
   out.update(updates)
@@ -94,24 +98,27 @@ if __name__ == '__main__':
   pytorch_batch = {'inputs': (wave, pad)}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pytorch_batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=None,
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=pytorch_batch,
+    model_state=None,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=None,
+    update_batch_norm=False,
+  )
 
   jax_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=jax_batch,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=jax.random.PRNGKey(0),
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=jax_batch,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=jax.random.PRNGKey(0),
+    update_batch_norm=False,
+  )
 
   ModelDiffRunner(
-      jax_workload=jax_workload,
-      pytorch_workload=pytorch_workload,
-      jax_model_kwargs=jax_model_kwargs,
-      pytorch_model_kwargs=pytorch_model_kwargs,
-      key_transform=key_transform,
-      sd_transform=sd_transform,
-      out_transform=lambda out_outpad: out_outpad[0] *
-      (1 - out_outpad[1][:, :, None])).run()
+    jax_workload=jax_workload,
+    pytorch_workload=pytorch_workload,
+    jax_model_kwargs=jax_model_kwargs,
+    pytorch_model_kwargs=pytorch_model_kwargs,
+    key_transform=key_transform,
+    sd_transform=sd_transform,
+    out_transform=lambda out_outpad: out_outpad[0]
+    * (1 - out_outpad[1][:, :, None]),
+  ).run()

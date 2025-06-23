@@ -10,10 +10,12 @@ import jax
 import torch
 
 from algoperf import spec
-from algoperf.workloads.imagenet_vit.imagenet_jax.workload import \
-    ImagenetVitGluWorkload as JaxWorkload
-from algoperf.workloads.imagenet_vit.imagenet_pytorch.workload import \
-    ImagenetVitGluWorkload as PyTorchWorkload
+from algoperf.workloads.imagenet_vit.imagenet_jax.workload import (
+  ImagenetVitGluWorkload as JaxWorkload,
+)
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.workload import (
+  ImagenetVitGluWorkload as PyTorchWorkload,
+)
 
 sd_transform = None
 
@@ -30,22 +32,25 @@ if __name__ == '__main__':
   pytorch_batch = {'inputs': image}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pytorch_batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=None,
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=pytorch_batch,
+    model_state=None,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=None,
+    update_batch_norm=False,
+  )
 
   jax_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=jax_batch,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=jax.random.PRNGKey(0),
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=jax_batch,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=jax.random.PRNGKey(0),
+    update_batch_norm=False,
+  )
 
   ModelDiffRunner(
-      jax_workload=jax_workload,
-      pytorch_workload=pytorch_workload,
-      jax_model_kwargs=jax_model_kwargs,
-      pytorch_model_kwargs=pytorch_model_kwargs,
-      key_transform=key_transform,
-      sd_transform=None).run()
+    jax_workload=jax_workload,
+    pytorch_workload=pytorch_workload,
+    jax_model_kwargs=jax_model_kwargs,
+    pytorch_model_kwargs=pytorch_model_kwargs,
+    key_transform=key_transform,
+    sd_transform=None,
+  ).run()

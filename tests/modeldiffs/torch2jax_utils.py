@@ -32,13 +32,17 @@ def flatten(jm, ret, keys=None):
 
 def value_transform(k, value, jax_value):
   k_str = ''.join(k).lower()
-  if ('conv' in k_str and 'kernel' in k_str) or \
-    ('embedding' in k_str and 'kernel' in k_str):
+  if ('conv' in k_str and 'kernel' in k_str) or (
+    'embedding' in k_str and 'kernel' in k_str
+  ):
     if 'transpose' in k_str:
       # Assumes 2D ConvTranspose with stride equal to kernel_size.
-      return value.reshape(value.shape[0], value.shape[1],
-                           -1).flip(-1).permute(2, 0,
-                                                1).reshape(*jax_value.shape)
+      return (
+        value.reshape(value.shape[0], value.shape[1], -1)
+        .flip(-1)
+        .permute(2, 0, 1)
+        .reshape(*jax_value.shape)
+      )
     else:
       rank = len(value.shape)
       if rank == 3:
@@ -51,16 +55,17 @@ def value_transform(k, value, jax_value):
     value = value.t().reshape(*list(jax_value.shape))
   elif 'attention' in k_str and 'bias' in k_str:
     value = value.reshape(*list(jax_value.shape))
-  elif ('dense' in k_str and 'kernel' in k_str) or \
-    ('lstm' in k_str and 'kernel' in k_str) or \
-    ('head' in k_str and 'kernel' in k_str) or \
-    ('pre_logits' in k_str and 'kernel' in k_str):
+  elif (
+    ('dense' in k_str and 'kernel' in k_str)
+    or ('lstm' in k_str and 'kernel' in k_str)
+    or ('head' in k_str and 'kernel' in k_str)
+    or ('pre_logits' in k_str and 'kernel' in k_str)
+  ):
     value = value.t()
   return value
 
 
 class Torch2Jax:
-
   def __init__(self, torch_model, jax_model):
     self.torch_model = torch_model
     self.jax_model = jax_model
@@ -73,13 +78,13 @@ class Torch2Jax:
 
   def key_transform(self, k_transform_fn):
     self.pytorch_sd = {
-        k_transform_fn(k): self.pytorch_sd[k] for k in self.pytorch_sd
+      k_transform_fn(k): self.pytorch_sd[k] for k in self.pytorch_sd
     }
 
   def value_transform(self, v_transform_fn):
     self.pytorch_sd = {
-        k: v_transform_fn(k, self.pytorch_sd[k], self.flattened_jax_model[k])
-        for k in self.pytorch_sd
+      k: v_transform_fn(k, self.pytorch_sd[k], self.flattened_jax_model[k])
+      for k in self.pytorch_sd
     }
 
   def sd_transform(self, sd_transform_fn):

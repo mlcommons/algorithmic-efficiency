@@ -5,8 +5,9 @@ import jax
 import jax.numpy as jnp
 
 from algoperf import spec
-from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import \
-    ImagenetResNetWorkload
+from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import (
+  ImagenetResNetWorkload,
+)
 
 
 def _pytree_total_diff(pytree_a, pytree_b):
@@ -32,42 +33,48 @@ class ModelsTest(absltest.TestCase):
     # this function because we call it with a different combination of those two
     # args each time. Can't call with kwargs.
     pmapped_model_fn = jax.pmap(
-        workload.model_fn,
-        axis_name='batch',
-        in_axes=(0, 0, 0, None, None, None),
-        static_broadcasted_argnums=(3, 5))
+      workload.model_fn,
+      axis_name='batch',
+      in_axes=(0, 0, 0, None, None, None),
+      static_broadcasted_argnums=(3, 5),
+    )
     logits, updated_batch_stats = pmapped_model_fn(
-        model_params,
-        {'inputs': first_input_batch},
-        batch_stats,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        True)
+      model_params,
+      {'inputs': first_input_batch},
+      batch_stats,
+      spec.ForwardPassMode.TRAIN,
+      rng,
+      True,
+    )
     self.assertEqual(logits.shape, expected_logits_shape)
     # Test that batch stats are updated.
     self.assertNotEqual(
-        _pytree_total_diff(batch_stats, updated_batch_stats), 0.0)
+      _pytree_total_diff(batch_stats, updated_batch_stats), 0.0
+    )
 
     second_input_batch = jax.random.normal(data_rngs[1], shape=input_shape)
     # Test that batch stats are not updated when we say so.
     _, same_batch_stats = pmapped_model_fn(
-        model_params,
-        {'inputs': second_input_batch},
-        updated_batch_stats,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        False)
+      model_params,
+      {'inputs': second_input_batch},
+      updated_batch_stats,
+      spec.ForwardPassMode.TRAIN,
+      rng,
+      False,
+    )
     self.assertEqual(
-        _pytree_total_diff(same_batch_stats, updated_batch_stats), 0.0)
+      _pytree_total_diff(same_batch_stats, updated_batch_stats), 0.0
+    )
 
     # Test eval model.
     logits, _ = pmapped_model_fn(
-        model_params,
-        {'inputs': second_input_batch},
-        batch_stats,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        False)
+      model_params,
+      {'inputs': second_input_batch},
+      batch_stats,
+      spec.ForwardPassMode.EVAL,
+      rng,
+      False,
+    )
     self.assertEqual(logits.shape, expected_logits_shape)
 
 
