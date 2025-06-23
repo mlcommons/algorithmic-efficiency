@@ -29,7 +29,6 @@ It is also expected that submission.py has the following APIs:
 import argparse
 import logging
 import os
-import subprocess
 
 SELF_TUNING = 'self_tuning'
 EXTERNAL_TUNING = 'external_tuning'
