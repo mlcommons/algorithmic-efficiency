@@ -1,11 +1,8 @@
 import jax
 import pytest
-
 from absl import logging
-from algoperf import spec
 
-# isort: skip_file
-# pylint:disable=line-too-long
+from algoperf import spec
 from algoperf.workloads.cifar.cifar_jax.workload import (
   CifarWorkload as JaxCifarWorkload,
 )
@@ -66,7 +63,6 @@ from algoperf.workloads.wmt.wmt_jax.workload import (
 from algoperf.workloads.wmt.wmt_pytorch.workload import (
   WmtWorkload as PyTorchWmtWorkload,
 )
-# pylint:enable=line-too-long
 
 WORKLOADS = [
   'cifar',

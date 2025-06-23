@@ -58,9 +58,9 @@ def sd_transform(sd):
       else:
         out[k] = sd[k]
     elif 'LSTM' in ''.join(k):
-      l = out.get(k[:-1], dict())
-      l[k[-1]] = sd[k]
-      out[k[:-1]] = l
+      l_tmp = out.get(k[:-1], dict())
+      l_tmp[k[-1]] = sd[k]
+      out[k[:-1]] = l_tmp
     else:
       out[k] = sd[k]
   keys_to_del = []

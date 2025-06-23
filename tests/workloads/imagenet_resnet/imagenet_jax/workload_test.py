@@ -1,8 +1,8 @@
 """Tests for imagenet_resnet/imagenet_jax/workload.py."""
 
-from absl.testing import absltest
 import jax
 import jax.numpy as jnp
+from absl.testing import absltest
 
 from algoperf import spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import (

@@ -8,14 +8,12 @@ import copy
 import os
 import sys
 
-from absl import flags
-from absl import logging
-from absl.testing import absltest
-from absl.testing import parameterized
+from absl import flags, logging
+from absl.testing import absltest, parameterized
 
+import submission_runner
 from algoperf.profiler import PassThroughProfiler
 from algoperf.workloads import workloads
-import submission_runner
 
 FLAGS = flags.FLAGS
 # Needed to avoid UnparsedFlagAccessError

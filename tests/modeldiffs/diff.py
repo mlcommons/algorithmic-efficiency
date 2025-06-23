@@ -1,11 +1,10 @@
-from flax import jax_utils
-from flax.core import FrozenDict
 import jax
 import numpy as np
 import torch
+from flax import jax_utils
+from flax.core import FrozenDict
 
-from tests.modeldiffs.torch2jax_utils import Torch2Jax
-from tests.modeldiffs.torch2jax_utils import value_transform
+from tests.modeldiffs.torch2jax_utils import Torch2Jax, value_transform
 
 
 # pylint: disable=dangerous-default-value

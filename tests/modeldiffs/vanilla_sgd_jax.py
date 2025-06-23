@@ -1,15 +1,15 @@
-from flax import jax_utils
 import jax
 import jax.numpy as jnp
 import optax
+from flax import jax_utils
 
 from algoperf import spec
-from reference_algorithms.target_setting_algorithms.data_selection import (
+from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
   data_selection,
-)  # pylint: disable=unused-import
-from reference_algorithms.target_setting_algorithms.jax_submission_base import (
+)
+from reference_algorithms.target_setting_algorithms.jax_submission_base import (  # noqa: F401
   update_params,
-)  # pylint: disable=unused-import
+)
 
 
 def init_optimizer_state(

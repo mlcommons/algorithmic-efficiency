@@ -14,8 +14,10 @@ from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.workload impo
   LibriSpeechDeepSpeechNormAndSpecAugWorkload as PyTorchWorkload,
 )
 from tests.modeldiffs.diff import ModelDiffRunner
-from tests.modeldiffs.librispeech_deepspeech.compare import key_transform
-from tests.modeldiffs.librispeech_deepspeech.compare import sd_transform
+from tests.modeldiffs.librispeech_deepspeech.compare import (
+  key_transform,
+  sd_transform,
+)
 
 if __name__ == '__main__':
   # pylint: disable=locally-disabled, not-callable

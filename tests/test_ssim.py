@@ -3,11 +3,10 @@
 import os
 from typing import Tuple
 
-from absl.testing import absltest
-from absl.testing import parameterized
 import jax.numpy as jnp
 import numpy as np
 import torch
+from absl.testing import absltest, parameterized
 
 from algoperf.pytorch_utils import pytorch_setup
 from algoperf.workloads.fastmri.fastmri_jax.ssim import (

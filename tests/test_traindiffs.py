@@ -6,13 +6,10 @@ Run it as:
 
 import pickle
 import subprocess
-from subprocess import DEVNULL
-from subprocess import run
-from subprocess import STDOUT
+from subprocess import DEVNULL, STDOUT, run
 
 from absl import flags
-from absl.testing import absltest
-from absl.testing import parameterized
+from absl.testing import absltest, parameterized
 from numpy import allclose
 
 FLAGS = flags.FLAGS
@@ -92,7 +89,10 @@ class ModelDiffTest(parameterized.TestCase):
       'Train Loss (jax)',
       'Train Loss (torch)',
     ]
-    fmt = lambda l: '|' + '|'.join(map(lambda x: f'{x:^20s}', l)) + '|'
+
+    def fmt(line):
+      return '|' + '|'.join(map(lambda x: f'{x:^20s}', line)) + '|'
+
     header = fmt(header)
     pad = (len(header) - len((name))) // 2
     print('=' * pad, name, '=' * (len(header) - len(name) - pad), sep='')
