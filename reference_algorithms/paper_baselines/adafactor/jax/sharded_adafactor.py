@@ -38,8 +38,9 @@ NestedJTensor = Any
 NestedHParams = Any
 
 
-def to_quantized(fvalue: JTensor,
-                 quantized_dtype: jnp.dtype) -> Tuple[JTensor, JTensor]:
+def to_quantized(
+  fvalue: JTensor, quantized_dtype: jnp.dtype
+) -> Tuple[JTensor, JTensor]:
   """Converts floating point values `fvalues` to quantized values.
 
   We use a very simple quantization scheme where the range is symmetric around
@@ -82,16 +83,17 @@ def to_quantized(fvalue: JTensor,
   # We first decide the scale.
   if fvalue.ndim < 1:
     raise ValueError(
-        f'Input array {fvalue} must have a strictly positive number of '
-        'dimensions.')
+      f'Input array {fvalue} must have a strictly positive number of '
+      'dimensions.'
+    )
 
   max_abs = jnp.max(jnp.abs(fvalue), axis=0)
   bucket_size = max_abs / num_buckets
   bs_expanded = bucket_size[jnp.newaxis, ...]
   # To avoid divide by 0.0
-  bs_nonzero = jnp.where(bs_expanded > 0.0,
-                         bs_expanded,
-                         jnp.ones_like(bs_expanded))
+  bs_nonzero = jnp.where(
+    bs_expanded > 0.0, bs_expanded, jnp.ones_like(bs_expanded)
+  )
   ratio = fvalue / bs_nonzero
   # We use rounding to remove bias.
   quantized = jnp.round(ratio)
@@ -128,8 +130,8 @@ def adafactor_decay_rate_adam(beta2: float, step_counter: JTensor) -> JTensor:
   """
   step = step_counter
   beta2 = jnp.array(beta2, dtype=jnp.float32)
-  t = step + 1.
-  return beta2 * (1. - jnp.power(beta2, t - 1.)) / (1. - jnp.power(beta2, t))
+  t = step + 1.0
+  return beta2 * (1.0 - jnp.power(beta2, t - 1.0)) / (1.0 - jnp.power(beta2, t))
 
 
 def adafactor_decay_rate_pow(exponent: float, step_counter: JTensor) -> JTensor:
@@ -145,7 +147,7 @@ def adafactor_decay_rate_pow(exponent: float, step_counter: JTensor) -> JTensor:
   """
   step = step_counter
   exponent = jnp.array(exponent, dtype=jnp.float32)
-  return 1. - jnp.power((step + 1.), -exponent)
+  return 1.0 - jnp.power((step + 1.0), -exponent)
 
 
 def reduce_mean(array: JTensor) -> JTensor:
@@ -187,6 +189,7 @@ def reduce_rms(array: JTensor) -> JTensor:
 @dataclasses.dataclass(frozen=True)
 class _ShardedAdafactorUpdateResult:
   """Structure containing per-variable info for Adafactor."""
+
   update: Optional[Any]
   m: Optional[Any]
   m_scale: Optional[Any]
@@ -197,6 +200,7 @@ class _ShardedAdafactorUpdateResult:
 
 class ShardedAdafactorState(NamedTuple):
   """Overall state of the ShardedAdafactor optimizer."""
+
   count: JTensor
   m: Optional[NestedJTensor]
   m_scale: Optional[NestedJTensor]
@@ -208,27 +212,29 @@ class ShardedAdafactorState(NamedTuple):
 class _ShardedAdafactorHelper:
   """Helper class to implement optax-based sharded Adafactor."""
 
-  def __init__(self,
-               learning_rate: optax.Schedule,
-               weight_decay: Optional[float],
-               layerwise_adaptation: bool,
-               decay_method: str,
-               decay_adam: float,
-               decay_pow: float,
-               beta1: float,
-               clip_threshold: Optional[float],
-               factored: bool,
-               epsilon1_grad_sq_reg: float,
-               quantized_dtype: jnp.dtype,
-               respect_skip_lp_regularization: bool,
-               exclude_from_layerwise_adaptation: Optional[List[str]],
-               per_var_learning_summary: bool,
-               sort_factored_second_moment_dims: bool,
-               min_dim_size_to_factor: int,
-               multiply_by_parameter_scale: bool,
-               epsilon2_param_scale_reg: float,
-               maybe_inf_to_nan: bool,
-               nesterov: bool) -> None:
+  def __init__(
+    self,
+    learning_rate: optax.Schedule,
+    weight_decay: Optional[float],
+    layerwise_adaptation: bool,
+    decay_method: str,
+    decay_adam: float,
+    decay_pow: float,
+    beta1: float,
+    clip_threshold: Optional[float],
+    factored: bool,
+    epsilon1_grad_sq_reg: float,
+    quantized_dtype: jnp.dtype,
+    respect_skip_lp_regularization: bool,
+    exclude_from_layerwise_adaptation: Optional[List[str]],
+    per_var_learning_summary: bool,
+    sort_factored_second_moment_dims: bool,
+    min_dim_size_to_factor: int,
+    multiply_by_parameter_scale: bool,
+    epsilon2_param_scale_reg: float,
+    maybe_inf_to_nan: bool,
+    nesterov: bool,
+  ) -> None:
     """Constructor. See ShardedAdafactor() below."""
 
     self._learning_rate = learning_rate
@@ -315,12 +321,13 @@ class _ShardedAdafactorHelper:
   def to_state(self, count, result_tree):
     """Maps from a tree of (factored) values to separate trees of values."""
     return ShardedAdafactorState(
-        count=count,
-        m=jax.tree.map(lambda o: o.m, result_tree),
-        m_scale=jax.tree.map(lambda o: o.m_scale, result_tree),
-        vr=jax.tree.map(lambda o: o.vr, result_tree),
-        vc=jax.tree.map(lambda o: o.vc, result_tree),
-        v=jax.tree.map(lambda o: o.v, result_tree))
+      count=count,
+      m=jax.tree.map(lambda o: o.m, result_tree),
+      m_scale=jax.tree.map(lambda o: o.m_scale, result_tree),
+      vr=jax.tree.map(lambda o: o.vr, result_tree),
+      vc=jax.tree.map(lambda o: o.vc, result_tree),
+      v=jax.tree.map(lambda o: o.v, result_tree),
+    )
 
   def init(self, param):
     """Initializes the optimizer state for a given param."""
@@ -353,12 +360,13 @@ class _ShardedAdafactorHelper:
     else:
       output_v = jnp.zeros(shape, dtype=jnp.float32)
     return _ShardedAdafactorUpdateResult(
-        update=output_update,
-        m=output_m,
-        m_scale=output_m_scale,
-        vr=output_vr,
-        vc=output_vc,
-        v=output_v)
+      update=output_update,
+      m=output_m,
+      m_scale=output_m_scale,
+      vr=output_vr,
+      vc=output_vc,
+      v=output_v,
+    )
 
   def inf_to_nan(self, array):
     """Converting Infinity values to the more sticky NaN."""
@@ -386,16 +394,9 @@ class _ShardedAdafactorHelper:
     """
     return jnp.maximum(reduce_rms(var), jnp.asarray(self._epsilon2, var.dtype))
 
-  def compute_var_and_slot_update(self,
-                                  count,
-                                  grad,
-                                  m,
-                                  m_scale,
-                                  vr,
-                                  vc,
-                                  v,
-                                  param,
-                                  var_name=None):
+  def compute_var_and_slot_update(
+    self, count, grad, m, m_scale, vr, vc, v, param, var_name=None
+  ):
     """Computes the var and optimizer slots updates for a single variable."""
     # We can probably skip this step
     grad = grad.astype(jnp.float32)
@@ -434,7 +435,7 @@ class _ShardedAdafactorHelper:
     update_scale += grad_squared_mean * 1e-30
     # END HACK
 
-    mixing_rate = 1. - decay_rate
+    mixing_rate = 1.0 - decay_rate
     shape = param.shape
 
     output_m = jnp.zeros((1,))
@@ -449,18 +450,23 @@ class _ShardedAdafactorHelper:
       # reduce_mean().
       vr_axis, vc_axis = factored_second_moment_dims
       grad_squared_row_mean = self.inf_to_nan(
-          jnp.mean(grad_squared, axis=vr_axis))
+        jnp.mean(grad_squared, axis=vr_axis)
+      )
       grad_squared_col_mean = self.inf_to_nan(
-          jnp.mean(grad_squared, axis=vc_axis))
+        jnp.mean(grad_squared, axis=vc_axis)
+      )
       new_vr = decay_rate * vr + mixing_rate * grad_squared_row_mean
       new_vc = decay_rate * vc + mixing_rate * grad_squared_col_mean
       output_vr = new_vr
       output_vc = new_vc
       long_term_mean = jnp.mean(new_vr, axis=-1, keepdims=True)
-      r_factor = 1. / jnp.sqrt(new_vr / long_term_mean)
-      c_factor = 1. / jnp.sqrt(new_vc)
-      x = grad * jnp.expand_dims(r_factor, vr_axis) * jnp.expand_dims(
-          c_factor, vc_axis)
+      r_factor = 1.0 / jnp.sqrt(new_vr / long_term_mean)
+      c_factor = 1.0 / jnp.sqrt(new_vc)
+      x = (
+        grad
+        * jnp.expand_dims(r_factor, vr_axis)
+        * jnp.expand_dims(c_factor, vc_axis)
+      )
     else:
       # v with sharding annotation.
       new_v = decay_rate * v + mixing_rate * grad_squared
@@ -468,7 +474,7 @@ class _ShardedAdafactorHelper:
       x = grad / jnp.sqrt(new_v)
 
     if self._clip_threshold is not None:
-      clipping_denom = jnp.maximum(1., reduce_rms(x) / self._clip_threshold)
+      clipping_denom = jnp.maximum(1.0, reduce_rms(x) / self._clip_threshold)
       clipping_denom = self.inf_to_nan(clipping_denom)
       x /= clipping_denom
 
@@ -481,7 +487,7 @@ class _ShardedAdafactorHelper:
         m = to_float(m, m_scale)
       if self._nesterov:
         subtrahend_original = subtrahend
-      subtrahend = self._beta1 * m + (1. - self._beta1) * subtrahend
+      subtrahend = self._beta1 * m + (1.0 - self._beta1) * subtrahend
       subtrahend = self.inf_to_nan(subtrahend)
       if self._quantized_dtype == jnp.bfloat16:
         new_m = subtrahend.astype(jnp.bfloat16)
@@ -496,8 +502,8 @@ class _ShardedAdafactorHelper:
 
       if self._nesterov:
         subtrahend = (
-            self._beta1 * subtrahend +
-            (1.0 - self._beta1) * subtrahend_original)
+          self._beta1 * subtrahend + (1.0 - self._beta1) * subtrahend_original
+        )
 
     if self._weight_decay is not None:
       # Apply decoupled weight decay to be consistent with AdamW.
@@ -527,43 +533,45 @@ class _ShardedAdafactorHelper:
         g_norm = reduce_rms(subtrahend / update_scale) + self._epsilon1
         ratio = w_norm / g_norm
         ratio = jnp.where(
-            jnp.greater(w_norm, 0),
-            jnp.where(jnp.greater(g_norm, 0), (w_norm / g_norm), 1.0),
-            1.0)
+          jnp.greater(w_norm, 0),
+          jnp.where(jnp.greater(g_norm, 0), (w_norm / g_norm), 1.0),
+          1.0,
+        )
         subtrahend *= ratio
 
     return _ShardedAdafactorUpdateResult(
-        update=-subtrahend,
-        m=output_m,
-        m_scale=output_m_scale,
-        vr=output_vr,
-        vc=output_vc,
-        v=output_v)
+      update=-subtrahend,
+      m=output_m,
+      m_scale=output_m_scale,
+      vr=output_vr,
+      vc=output_vc,
+      v=output_v,
+    )
 
 
 def sharded_adafactor(
-    learning_rate: optax.Schedule,
-    weight_decay: Optional[Union[float, Dict[str, float]]] = None,
-    layerwise_adaptation: bool = False,
-    decay_method: str = 'adam',
-    decay_adam: float = 0.99,
-    decay_pow: float = 0.,
-    beta1: float = 0.9,
-    clip_threshold: Optional[float] = 1.,
-    factored: bool = True,
-    epsilon1_grad_sq_reg: float = 1e-30,
-    quantized_dtype: jnp.dtype = jnp.int8,
-    respect_skip_lp_regularization: bool = False,
-    exclude_from_layerwise_adaptation: Optional[List[str]] = None,
-    per_var_learning_summary: bool = False,
-    sort_factored_second_moment_dims: bool = False,
-    # min_dim_size_to_factor is only used when
-    # sort_factored_second_moment_dims=True.
-    min_dim_size_to_factor: int = 128,
-    multiply_by_parameter_scale: bool = False,
-    epsilon2_param_scale_reg: float = 1e-3,
-    maybe_inf_to_nan: bool = True,
-    nesterov: bool = False,
+  learning_rate: optax.Schedule,
+  weight_decay: Optional[Union[float, Dict[str, float]]] = None,
+  layerwise_adaptation: bool = False,
+  decay_method: str = 'adam',
+  decay_adam: float = 0.99,
+  decay_pow: float = 0.0,
+  beta1: float = 0.9,
+  clip_threshold: Optional[float] = 1.0,
+  factored: bool = True,
+  epsilon1_grad_sq_reg: float = 1e-30,
+  quantized_dtype: jnp.dtype = jnp.int8,
+  respect_skip_lp_regularization: bool = False,
+  exclude_from_layerwise_adaptation: Optional[List[str]] = None,
+  per_var_learning_summary: bool = False,
+  sort_factored_second_moment_dims: bool = False,
+  # min_dim_size_to_factor is only used when
+  # sort_factored_second_moment_dims=True.
+  min_dim_size_to_factor: int = 128,
+  multiply_by_parameter_scale: bool = False,
+  epsilon2_param_scale_reg: float = 1e-3,
+  maybe_inf_to_nan: bool = True,
+  nesterov: bool = False,
 ) -> optax.GradientTransformation:
   """AdaFactor optimizer that supports SPMD sharding.
 
@@ -638,53 +646,60 @@ def sharded_adafactor(
   assert decay_pow >= 0
   assert learning_rate is not None
   assert decay_method == 'adam' or decay_method == 'pow', (
-      f'decay_method: {decay_method} not supported. Supported methods are '
-      '"pow", or "adam".')
+    f'decay_method: {decay_method} not supported. Supported methods are '
+    '"pow", or "adam".'
+  )
 
   sharded_adafactor_helper = _ShardedAdafactorHelper(
-      learning_rate=learning_rate,
-      weight_decay=weight_decay,
-      layerwise_adaptation=layerwise_adaptation,
-      decay_method=decay_method,
-      decay_adam=decay_adam,
-      decay_pow=decay_pow,
-      beta1=beta1,
-      clip_threshold=clip_threshold,
-      factored=factored,
-      epsilon1_grad_sq_reg=epsilon1_grad_sq_reg,
-      quantized_dtype=quantized_dtype,
-      respect_skip_lp_regularization=respect_skip_lp_regularization,
-      exclude_from_layerwise_adaptation=exclude_from_layerwise_adaptation,
-      per_var_learning_summary=per_var_learning_summary,
-      sort_factored_second_moment_dims=sort_factored_second_moment_dims,
-      min_dim_size_to_factor=min_dim_size_to_factor,
-      multiply_by_parameter_scale=multiply_by_parameter_scale,
-      epsilon2_param_scale_reg=epsilon2_param_scale_reg,
-      maybe_inf_to_nan=maybe_inf_to_nan,
-      nesterov=nesterov)
+    learning_rate=learning_rate,
+    weight_decay=weight_decay,
+    layerwise_adaptation=layerwise_adaptation,
+    decay_method=decay_method,
+    decay_adam=decay_adam,
+    decay_pow=decay_pow,
+    beta1=beta1,
+    clip_threshold=clip_threshold,
+    factored=factored,
+    epsilon1_grad_sq_reg=epsilon1_grad_sq_reg,
+    quantized_dtype=quantized_dtype,
+    respect_skip_lp_regularization=respect_skip_lp_regularization,
+    exclude_from_layerwise_adaptation=exclude_from_layerwise_adaptation,
+    per_var_learning_summary=per_var_learning_summary,
+    sort_factored_second_moment_dims=sort_factored_second_moment_dims,
+    min_dim_size_to_factor=min_dim_size_to_factor,
+    multiply_by_parameter_scale=multiply_by_parameter_scale,
+    epsilon2_param_scale_reg=epsilon2_param_scale_reg,
+    maybe_inf_to_nan=maybe_inf_to_nan,
+    nesterov=nesterov,
+  )
 
   def init_fn(params):
     """Initializes the optimizer's state."""
     return sharded_adafactor_helper.to_state(
-        jnp.zeros([], jnp.int32),
-        jax.tree.map(sharded_adafactor_helper.init, params))
+      jnp.zeros([], jnp.int32),
+      jax.tree.map(sharded_adafactor_helper.init, params),
+    )
 
   def update_fn(updates, state, params=None):
     if params is None:
       raise ValueError(
-          'You are using a transformation that requires the current value of '
-          'parameters, but you are not passing `params` when calling `update`.')
+        'You are using a transformation that requires the current value of '
+        'parameters, but you are not passing `params` when calling `update`.'
+      )
 
     compute_var_and_slot_update_fn = functools.partial(
-        sharded_adafactor_helper.compute_var_and_slot_update, state.count)
-    output = jax.tree.map(compute_var_and_slot_update_fn,
-                          updates,
-                          state.m,
-                          state.m_scale,
-                          state.vr,
-                          state.vc,
-                          state.v,
-                          params)
+      sharded_adafactor_helper.compute_var_and_slot_update, state.count
+    )
+    output = jax.tree.map(
+      compute_var_and_slot_update_fn,
+      updates,
+      state.m,
+      state.m_scale,
+      state.vr,
+      state.vc,
+      state.v,
+      params,
+    )
     updates = jax.tree.map(lambda o: o.update, output)
     count_plus_one = state.count + jnp.array(1, jnp.int32)
     updated_states = sharded_adafactor_helper.to_state(count_plus_one, output)
