@@ -18,11 +18,11 @@ from typing import (
 # isort: on
 
 import chex
-from flax import jax_utils
 import jax
-from jax import lax
 import jax.numpy as jnp
 import optax
+from flax import jax_utils
+from jax import lax
 
 from algoperf import spec
 
