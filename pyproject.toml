@@ -121,8 +121,36 @@ target-version = "py311"
 quote-style = "single"
 
 [tool.ruff.lint]
-extend-select = ["I"]
-# Could add (in the future): "E", "F", "UP", "B", "SIM", "PL"
+# Could add the commented out rules in the future:
+extend-select = [
+    "BLE",      # disallow catch-all exceptions
+    "COM",      # enforce trailing comma rules
+    "F",        # Pyflakes rules
+    "FA",       # Enforce from __future__ import annotations
+    "I",        # Isort rules
+    "ICN",      # Use common import conventions
+    "TID",      # Some good import practices
+    # "A",        # flake8-builtins: detect shadowed builtins
+    # "B",        # flake8-bugbear: 
+    # "C4",       # flake8-comprehensions: catch incorrect use of comprehensions
+    # "DOC",      # pydoclint
+    # "D",        # pydocstyle
+    # "DTZ",      # flake8-datetimez: strict timezone manipulation with datetime
+    # "E",        # pycodestyle errors
+    # "FBT",      # flake8-boolean-trap: detect boolean traps
+    # "ISC",      # flake8-implicit-str-concat: good use of string concatenation
+    # "N",        # pep8-naming: enforce naming conventions
+    # "NPY",      # Some numpy-specific things
+    # "PL",       # Pylint rules
+    # "PTH",      # flake8-use-pathlib: use pathlib instead of os.path
+    # "RET",      # flake8-return: good return practices
+    # "S",        # flake8-bandit: security testing
+    # "SIM",      # flake8-simplify: common simplification rules
+    # "TC",       # flake8-type-checking: enforce importing certain types in a TYPE_CHECKING block
+    # "TD",       # flake8-todo: Be diligent with TODO comments
+    # "UP",       # pyupgrade: Warn if things can changed due to newer versions
+    # "W",        # pycodestyle warnings
+]
 ignore = [
   # Conflicting lint rules with Ruff's formatter
   # (see https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules).
