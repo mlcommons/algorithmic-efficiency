@@ -129,19 +129,23 @@ extend-select = [
     "FA",       # Enforce from __future__ import annotations
     "I",        # Isort rules
     "ICN",      # Use common import conventions
+    "PLE",      # Pylint Errors
     "TID",      # Some good import practices
     # "A",        # flake8-builtins: detect shadowed builtins
     # "B",        # flake8-bugbear: 
     # "C4",       # flake8-comprehensions: catch incorrect use of comprehensions
-    # "DOC",      # pydoclint
     # "D",        # pydocstyle
+    # "DOC",      # pydoclint
     # "DTZ",      # flake8-datetimez: strict timezone manipulation with datetime
     # "E",        # pycodestyle errors
     # "FBT",      # flake8-boolean-trap: detect boolean traps
     # "ISC",      # flake8-implicit-str-concat: good use of string concatenation
     # "N",        # pep8-naming: enforce naming conventions
     # "NPY",      # Some numpy-specific things
-    # "PL",       # Pylint rules
+    # "PL",       # All Pylint rules
+    # "PLC",      # Pylint Convention
+    # "PLR",      # Pylint Refactor
+    # "PLW",      # Pylint Warnings
     # "PTH",      # flake8-use-pathlib: use pathlib instead of os.path
     # "RET",      # flake8-return: good return practices
     # "S",        # flake8-bandit: security testing
