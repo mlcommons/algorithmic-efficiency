@@ -200,7 +200,7 @@ def get_experiment_df(experiment_dir):
           )
           try:
             trial_df = pd.read_csv(eval_measurements_filepath)
-          except FileNotFoundError as e:
+          except FileNotFoundError:
             logging.info(f'Could not read {eval_measurements_filepath}')
             continue
           data['trial'] = (trial, experiment_dir)

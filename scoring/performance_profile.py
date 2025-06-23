@@ -52,7 +52,7 @@ BASE_WORKLOADS_DIR = 'algoperf/workloads/'
 try:
   with open('held_out_workloads_algoperf_v05.json', 'r') as f:
     HELDOUT_WORKLOADS = json.load(f)
-except:
+except FileNotFoundError:
   HELDOUT_WORKLOADS = None
 
 # These global variables have to be set according to the current set of
