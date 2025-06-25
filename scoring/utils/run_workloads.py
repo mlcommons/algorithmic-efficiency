@@ -65,7 +65,7 @@ flags.DEFINE_enum(
   enum_values=['external', 'self'],
   help='Can be either external of self.',
 )
-flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
+flags.DEFINE_integer('num_studies', 3, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
 flags.DEFINE_integer('num_tuning_trials', 5, 'Number of tuning trials.')

@@ -350,8 +350,8 @@ To score your submission we will score over all fixed workloads, held-out worklo
 We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled held-out workloads in the scoring criteria for the matching fixed base workloads.
 In other words, the total number of runs expected for official scoring is:
 
-- for external tuning ruleset: **350** = (8 (fixed workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
-- for self-tuning ruleset: **70** = (8 (fixed workloads) + 6 (held-out workloads)) x 5 (studies)
+- for external tuning ruleset: **210** = (8 (fixed workloads) + 6 (held-out workloads)) x 3 (studies) x 5 (trials)
+- for self-tuning ruleset: **42** = (8 (fixed workloads) + 6 (held-out workloads)) x 3 (studies)
 
 ### Running workloads
 
@@ -380,7 +380,7 @@ python scoring/run_workloads.py \
 
 Note that to run the above script you will need at least the `jax_cpu` and `pytorch_cpu` installations of the `algorithmic-efficiency` package.
 
-During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow some flexibility.
+During submission development, it might be useful to do faster, approximate scoring (e.g. without `3` different studies or when some trials are missing) so the scoring scripts allow some flexibility.
 To simulate official scoring, pass the `--strict=True` flag in `score_submission.py`. To get the raw scores and performance profiles of group of submissions or single submission:
 
 ```bash
