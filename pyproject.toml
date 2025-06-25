@@ -61,6 +61,7 @@ zip-safe = false
 find = {} # Scanning implicit namespaces is active by default
 
 [tool.setuptools_scm]
+# Version is automatically managed by setuptools_scm from GitHub tags.
 version_file = "algoperf/_version.py"
 
 ###############################################################################
