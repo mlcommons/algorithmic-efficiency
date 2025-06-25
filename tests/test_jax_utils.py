@@ -215,7 +215,6 @@ class DropoutTest(parameterized.TestCase):
           x,
           train=train,
           rngs={"dropout": dropout_rng})
-      return y1
 
     for d in [i * 0.1 * dropout_rate for i in range(0, 11)]:
       y2 = jitted_custom_apply(
@@ -225,8 +224,6 @@ class DropoutTest(parameterized.TestCase):
           dropout_rate=d,
           rngs={"dropout": dropout_rng},
       )
-    return y2
-
     assert jnp.allclose(y1, y2, atol=1e-3, rtol=1e-3)
 
 
