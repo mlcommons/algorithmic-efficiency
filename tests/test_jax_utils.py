@@ -185,7 +185,7 @@ class DropoutTest(parameterized.TestCase):
     """
 
     # initialize models
-    rng, data_rng, dropout_rng = jax.random.split(jax.random.key(SEED), 3)
+    rng, dropout_rng = jax.random.split(jax.random.key(SEED), 2)
     fake_batch = jnp.ones((10,))
     orig_model = LegacyDropoutModel(dropout_rate=dropout_rate)
     cust_model = DropoutModel()
