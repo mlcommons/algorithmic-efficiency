@@ -24,6 +24,7 @@
     - [Benchmarking hardware](#benchmarking-hardware)
     - [Defining target performance](#defining-target-performance)
     - [Benchmark score using performance profiles](#benchmark-score-using-performance-profiles)
+- [Versioning Policy](#versioning-policy)
   - [Version freeze](#version-freeze)
 - [FAQs](#faqs)
   - [Setup and Platform](#setup-and-platform)
@@ -555,9 +556,19 @@ For a given workload $\bar{w}$, we define the "speedup of a submission $\bar{s}$
 
 The working group will independently verify the scores of the highest-scoring submissions in each ruleset. Results that have been verified by the working group will be clearly marked on the leaderboard.
 
+## Versioning Policy
+
+AlgoPerf uses a unified versioning scheme: codebase, rules, and leaderboard all share the same `Major.Minor` version. `Patch` versions may differ for minor updates to each component. All results produced under the same `Major.Minor` version are comparable, making it easy to cite "`AlgoPerf v0.X`" and know exactly which set of rules, code, and submissions are being referenced.
+
+- **Codebase:** The version is automatically set from the latest GitHub tag and accessible via `algoperf.__version__`.
+- **Rules/Documentation:** This document reflects the unified version shown above.
+- **Leaderboard:** The leaderboard in the [submissions repository](https://github.com/mlcommons/submissions_algorithms) displays which version of the benchmark was used for scoring.
+
+For detailed information about releases and version history, see the [README](../README.md#releases--roadmap) and our [Changelog](CHANGELOG.md).
+
 ### Version freeze
 
-To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we freeze the package versions of the codebase dependencies in between benchmark iterations. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will try to minimize changes to the benchmark codebase as best as possible.
+To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we freeze the package versions of the codebase dependencies in between benchmark versions. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will try to minimize changes to the benchmark codebase as best as possible.
 
 ## FAQs
 
