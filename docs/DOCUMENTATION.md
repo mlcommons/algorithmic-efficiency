@@ -1,6 +1,6 @@
 # MLCommons™ AlgoPerf: Technical Documentation & FAQs
 
-**Version:** 0.6.0 _(Last updated June 24, 2025)_
+**Version:** 0.6.0 _(Last updated June 25, 2025)_
 
 > **TL;DR** New training algorithms and models can make neural net training faster.
 > We need a rigorous training time benchmark that measures time to result given a fixed hardware configuration and stimulates algorithmic progress. We propose a _Training Algorithm Track_ and a _Model Track_ in order to help disentangle optimizer improvements and model architecture improvements. This two-track structure lets us enforce a requirement that new optimizers work well on multiple models and that new models aren't highly specific to particular training hacks. The following is the technical documentation for the Training Algorithm Track.
@@ -424,27 +424,24 @@ The fixed workloads are fully specified with the call for submissions. They cont
 
 The currently eight fixed workloads are:
 
-|            | **Task**                      | **Dataset** | **Model**               | **Loss** | **Metric** | Validation<br>**Target** | Test<br>**Target**   | Maximum<br>**Runtime** <br>(in secs) |
-| ---------- | ----------------------------- | ----------- | ----------------------- | -------- | ---------- | ------------------------ | -------------------- | ------------------------------------ |
-| **1**      | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall               | CE       | CE         | 0.123735                 | 0.126041             | 7,703                                |
-| **2**      | MRI reconstruction            | fastMRI     | U-Net                   | L1       | SSIM       | 0.723653                 | 0.740633             | 4,430                                |
-| **3<br>4** | Image classification          | ImageNet    | ResNet-50<br>ViT        | CE       | ER         | 0.22569<br>0.22691       | 0.3440<br>0.3481     | 66,159 <br> 69,768                   |
-| **5<br>6** | Speech recognition            | LibriSpeech | Conformer<br>DeepSpeech | CTC      | WER        | 0.085884<br>0.119936     | 0.052981<br>0.074143 | 58,015<br>44,405                     |
-| **7**      | Molecular property prediction | OGBG        | GNN                     | CE       | mAP        | 0.28098                  | 0.268729             | 12,011                               |
-| **8**      | Translation                   | WMT         | Transformer             | CE       | BLEU       | 30.8491                  | 30.7219              | 43,336                               |
+|       | **Task**                      | **Dataset** | **Model**   | **Loss** | **Metric** | Validation<br>**Target** | Test<br>**Target** | Maximum<br>**Runtime** <br>(in secs) | Default<br>**Dropout**<br>Value             |
+| ----- | ----------------------------- | ----------- | ----------- | -------- | ---------- | ------------------------ | ------------------ | ------------------------------------ | ------------------------------------------- |
+| **1** | Clickthrough rate prediction  | Criteo 1TB  | DLRMsmall   | CE       | CE         | 0.123735                 | 0.126041           | 7,703                                | 0                                           |
+| **2** | MRI reconstruction            | fastMRI     | U-Net       | L1       | SSIM       | 0.723653                 | 0.740633           | 4,430                                | 0                                           |
+| **3** | Image classification          | ImageNet    | ResNet-50   | CE       | ER         | 0.22569                  | 0.3440             | 66,159                               | None                                        |
+| **4** |                               |             | ViT         | CE       | ER         | 0.22691                  | 0.3481             | 69,768                               | 0                                           |
+| **5** | Speech recognition            | LibriSpeech | Conformer   | CTC      | WER        | 0.085884                 | 0.052981           | 58,015                               | 0.1 (`input`, `attn_res`, `ff_res`); else 0 |
+| **6** |                               |             | DeepSpeech  | CTC      | WER        | 0.119936                 | 0.074143           | 44,405                               | 0.1 (`input`, `ff`); `JAX CudnnLSTM`: 0     |
+| **7** | Molecular property prediction | OGBG        | GNN         | CE       | mAP        | 0.28098                  | 0.268729           | 12,011                               | 0.1                                         |
+| **8** | Translation                   | WMT         | Transformer | CE       | BLEU       | 30.8491                  | 30.7219            | 43,336                               | 0.1 (`main`, `attn`)                        |
 
-Default Dropout Values for Different Workloads:
+Notes on the default dropout column:
 
-| Workload               | Dropout Values                                                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| criteo 1tb             | dropout_rate: 0.0                                                                                                                                                                                                        |
-| fastmri                | dropout_rate: 0.0                                                                                                                                                                                                        |
-| imagenet_resnet        | dropout not used                                                                                                                                                                                                         |
-| imagenet_vit           | dropout_rate: 0.0                                                                                                                                                                                                        |
-| librispeech_conformer  | attention_dropout_rate: 0.0 <br> attention_residual_dropout_rate: 0.1 <br> conv_residual_dropout_rate: 0.0 <br> feed_forward_dropout_rate: 0.0 <br> feed_forward_residual_dropout_rate: 0.1 <br> input_dropout_rate: 0.1 |
-| librispeech_deepspeech | input_dropout_rate: 0.1 <br> feed_forward_dropout_rate: 0.1 <br> (Only for JAX - dropout_rate in CudnnLSTM class: 0.0)                                                                                                   |
-| ogbg                   | dropout_rate: 0.1                                                                                                                                                                                                        |
-| wmt                    | dropout_rate: 0.1 <br> attention_dropout_rate: 0.1                                                                                                                                                                       |
+- `None` indicates that the model does not use dropout.
+- `0` or `0.1` indicates that the model uses dropout with a default value of 0.0 or 0.1, respectively.
+- `0.1 (main, attn)` indicates that the model uses dropout with a default value of 0.1 for the main `dropout_rate` and the `attention_dropout_rate`.
+- `0.1 (input, attn_res, ff_res) else 0` indicates that the model uses dropout with a default value of 0.1 for `input_dropout_rate`, `attention_residual_dropout_rate`, and `feed_forward_residual_dropout_rate` and use a default value of 0 for all other dropout rates.
+- `0.1 (input, ff) else 0; JAX CudnnLSTM: 0` indicates that the model uses dropout with a default value of 0.1 for `input_dropout_rate` and `feed_forward_dropout_rate`. For JAX models, the `dropout_rate` is set to 0.0 for the `CudnnLSTM` class.
 
 #### Randomized workloads
 
