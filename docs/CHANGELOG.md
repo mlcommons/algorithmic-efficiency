@@ -21,6 +21,7 @@ Improved and streamlined version of the benchmark which includes important bug f
 - [Code, Rules] Updated API to allow for `prepare_for_eval` function.
 - [Docs] Document default dropout values for each workload ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/806)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/786)).
 - [Docs] Unified versioning policy section.
+- [Code] Add the ability to change dropout values during training ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/875)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/753)).
 
 ### Changed/Removed
 
@@ -39,6 +40,7 @@ Improved and streamlined version of the benchmark which includes important bug f
 
 - [Code] Batch norm bug ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/783)/[PR](https://github.com/mlcommons/algorithmic-efficiency/pull/798)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/767)).
 - [Code] Fix bug of potentially giving a free evaluation to a submission that goes out of `max_runtime` ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/789)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/719#issuecomment-2328797610)).
+- [Code] Fix that models in the self-tuning ruleset will always be initialized with default dropout ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/873)/[PR](https://github.com/mlcommons/algorithmic-efficiency/pull/875)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/753)).
 
 ## [0.5.0] - 2024-03-26
 
