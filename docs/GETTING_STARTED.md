@@ -26,10 +26,10 @@ To get started you will have to make a few decisions and install the repository 
 
 1. Decide if you would like to develop your submission in either PyTorch or JAX.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](/DOCUMENTATION.md#benchmarking-hardware).
-The specs on the benchmarking machines are:
-    - 8xV100 16GB GPUs
-    - 240 GB in RAM
-    - 2 TB in storage (for datasets).
+   The specs on the benchmarking machines are:
+   - 8xV100 16GB GPUs
+   - 240 GB in RAM
+   - 2 TB in storage (for datasets).
 3. Install the `algoperf` package and dependencies either in a [Python virtual environment](#python-virtual-environment) or use a [Docker](#docker) (recommended) or [Singularity/Apptainer container](#using-singularityapptainer-instead-of-docker).
 
 ### Python Virtual Environment
@@ -44,42 +44,42 @@ To set up a virtual enviornment and install this repository
 
 1. Create new environment, e.g. via `conda` or `virtualenv`
 
-    ```bash
-    sudo apt-get install python3-venv
-    python3 -m venv env
-    source env/bin/activate
-    ```
+   ```bash
+   sudo apt-get install python3-venv
+   python3 -m venv env
+   source env/bin/activate
+   ```
 
 2. Clone this repository
 
-    ```bash
-    git clone https://github.com/mlcommons/algorithmic-efficiency.git
-    cd algorithmic-efficiency
-    ```
+   ```bash
+   git clone https://github.com/mlcommons/algorithmic-efficiency.git
+   cd algorithmic-efficiency
+   ```
 
 3. Run the following pip3 install commands based on your chosen framework to install `algoperf` and its dependencies.
 
-    For **JAX**:
+   For **JAX**:
 
-    ```bash
-    pip3 install -e '.[pytorch_cpu]'
-    pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-    pip3 install -e '.[full]'
-    ```
+   ```bash
+   pip3 install -e '.[pytorch_cpu]'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+   pip3 install -e '.[full]'
+   ```
 
-    For **PyTorch**
+   For **PyTorch**
 
-    Note: the below command assumes you have CUDA 12.1 installed locally.
-    This is the default in the provided Docker image.
-    We recommend you match this CUDA version but if you decide to run
-    with a different local CUDA version, please find the appropriate wheel
-    url to pass to the `pip install` command for `pytorch`.
+   Note: the below command assumes you have CUDA 12.1 installed locally.
+   This is the default in the provided Docker image.
+   We recommend you match this CUDA version but if you decide to run
+   with a different local CUDA version, please find the appropriate wheel
+   url to pass to the `pip install` command for `pytorch`.
 
-    ```bash
-    pip3 install -e '.[jax_cpu]'
-    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
-    pip3 install -e '.[full]'
-    ```
+   ```bash
+   pip3 install -e '.[jax_cpu]'
+   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
+   pip3 install -e '.[full]'
+   ```
 
 <details>
 <summary>
@@ -132,29 +132,29 @@ To use the Docker container as an interactive virtual environment, you can run a
 
 1. Run detached Docker container. The `container_id` will be printed if the container is run successfully.
 
-    ```bash
-    docker run -t -d \
-      -v $HOME/data/:/data/ \
-      -v $HOME/experiment_runs/:/experiment_runs \
-      -v $HOME/experiment_runs/logs:/logs \
-      -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
-      --gpus all \
-      --ipc=host \
-      <docker_image_name> \
-      --keep_container_alive true
-    ```
+   ```bash
+   docker run -t -d \
+     -v $HOME/data/:/data/ \
+     -v $HOME/experiment_runs/:/experiment_runs \
+     -v $HOME/experiment_runs/logs:/logs \
+     -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
+     --gpus all \
+     --ipc=host \
+     <docker_image_name> \
+     --keep_container_alive true
+   ```
 
-    > Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
-    >
-    > ```bash
-    > -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
-    > ```
-    >
-    > with
-    >
-    > ```bash
-    > -v $HOME"/algorithmic-efficiency:/algorithmic-efficiency" \
-    > ```
+   > Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
+   >
+   > ```bash
+   > -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
+   > ```
+   >
+   > with
+   >
+   > ```bash
+   > -v $HOME"/algorithmic-efficiency:/algorithmic-efficiency" \
+   > ```
 
 2. Open a bash terminal
 
@@ -209,35 +209,36 @@ A submission for the external ruleset will consist of a submission module and a 
 1. Copy the template submission module `submissions/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
 2. Implement at least the methods in the template submission module. Feel free to use helper functions and/or modules as you see fit. Make sure you adhere to to the competition rules. Check out the guidelines for [allowed submissions](/DOCUMENTATION.md#allowed-submissions), [disallowed submissions](/DOCUMENTATION.md#allowed-submissions) and pay special attention to the [software dependencies rule](/DOCUMENTATION.md#software-dependencies).
 3. Add a tuning configuration e.g. `tuning_search_space.json` file to your submission directory. For the tuning search space you can either:
-    1. Define the set of feasible points by defining a value for "feasible_points" for the hyperparameters:
 
-        ```JSON
-        {
-            "learning_rate": {
-                "feasible_points": 0.999
-                },
-        }
-        ```
+   1. Define the set of feasible points by defining a value for "feasible_points" for the hyperparameters:
 
-        For a complete example see [tuning_search_space.json](/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
+      ```JSON
+      {
+          "learning_rate": {
+              "feasible_points": 0.999
+              },
+      }
+      ```
 
-    2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
+      For a complete example see [tuning_search_space.json](/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
-        ```JSON
-        {
-            "weight_decay": {
-                "min": 5e-3, 
-                "max": 1.0, 
-                "scaling": "log",
-                }
-        }
-        ```
+   2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
 
-        For a complete example see [tuning_search_space.json](/reference_algorithms/paper_baselines/nadamw/tuning_search_space.json).
+      ```JSON
+      {
+          "weight_decay": {
+              "min": 5e-3,
+              "max": 1.0,
+              "scaling": "log",
+              }
+      }
+      ```
+
+      For a complete example see [tuning_search_space.json](/reference_algorithms/paper_baselines/nadamw/tuning_search_space.json).
 
 ## Run your Submission
 
-From your virtual environment or interactively running Docker container run your submission with `submission_runner.py`:  
+From your virtual environment or interactively running Docker container run your submission with `submission_runner.py`:
 
 **JAX**: to score your submission on a workload, from the algorithmic-efficency directory run:
 
@@ -328,13 +329,13 @@ This will print the container ID to the terminal.
 To find the container IDs of running containers
 
 ```bash
-docker ps 
+docker ps
 ```
 
 To see output of the entrypoint script
 
 ```bash
-docker logs <container_id> 
+docker logs <container_id>
 ```
 
 To enter a bash session in the container
