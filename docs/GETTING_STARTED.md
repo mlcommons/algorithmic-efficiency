@@ -106,7 +106,7 @@ We recommend using a Docker container to ensure a similar environment to our sco
 > **Prerequisites:**
 >
 > - NVIDIA Driver version 535.104.05
-> - NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs. See instructions [here](https://github.com/NVIDIA/nvidia-docker).
+> - NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs. See instructions in the [NVIDIA Docker documentation](https://github.com/NVIDIA/nvidia-docker).
 
 #### Building Docker Image
 
@@ -177,7 +177,7 @@ singularity shell --bind $HOME/data:/data,$HOME/experiment_runs:/experiment_runs
     --nv <singularity_image_name>.sif
 ```
 
-Note the `--bind` flag which, similarly to Docker, allows to bind specific paths on the host system and the container, as explained [here](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
+Note the `--bind` flag which, similarly to Docker, allows to bind specific paths on the host system and the container, as explained in the [Singularity User Guide](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
 
 Also note that we generated `Singularity.def` automatically from the `Dockerfile` using [spython](https://github.com/singularityhub/singularity-cli), as follows:
 
