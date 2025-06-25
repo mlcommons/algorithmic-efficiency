@@ -5,6 +5,11 @@ import math
 import torch
 from torch import nn
 
+from algoperf.pytorch_utils import CustomDropout
+from algoperf.pytorch_utils import SequentialWithDropout
+
+DROPOUT_RATE = 0.0
+
 
 class DenseBlock(nn.Module):
   """Dense block with optional residual connection.""" ""
@@ -15,10 +20,20 @@ class DenseBlock(nn.Module):
     self.resnet = resnet
 
   def forward(self, x):
-    if self.resnet:
-      return self.module(x) + x
-    else:
-      return self.module(x)
+    return self.module(x) + x if self.resnet else self.module(x)
+
+
+class DenseBlockWithDropout(nn.Module):
+  """Dense block with optional residual connection and support for dropout."""
+
+  def __init__(self, module, resnet=False):
+    super().__init__()
+    self.module = module
+    self.resnet = resnet
+    self._supports_custom_dropout = True
+
+  def forward(self, x, p):
+    return self.module(x, p) + x if self.resnet else self.module(x, p)
 
 
 class DotInteract(nn.Module):
@@ -58,7 +73,6 @@ class DLRMResNet(nn.Module):
                mlp_bottom_dims=(256, 256, 256),
                mlp_top_dims=(256, 256, 256, 256, 1),
                embed_dim=128,
-               dropout_rate=0.0,
                use_layer_norm=False,
                embedding_init_multiplier=None):
     super().__init__()
@@ -116,17 +130,16 @@ class DLRMResNet(nn.Module):
       block.append(nn.Linear(fan_in, fan_out))
       if layer_idx < (num_layers_top - 1):
         block.append(nn.ReLU(inplace=True))
-      if (dropout_rate is not None and dropout_rate > 0.0 and
-          layer_idx == num_layers_top - 2):
-        block.append(nn.Dropout(p=dropout_rate))
-      block = nn.Sequential(*block)
+      if layer_idx == num_layers_top - 2:
+        block.append(CustomDropout())
+      block = SequentialWithDropout(*block)
       if (layer_idx != 0) and (layer_idx != num_layers_top - 1):
-        block = DenseBlock(block, resnet=True)
+        block = DenseBlockWithDropout(block, resnet=True)
       else:
-        block = DenseBlock(block)
+        block = DenseBlockWithDropout(block)
       mlp_top_blocks.append(block)
       fan_in = fan_out
-    self.top_mlp = nn.Sequential(*mlp_top_blocks)
+    self.top_mlp = SequentialWithDropout(*mlp_top_blocks)
 
     for module in self.top_mlp.modules():
       if isinstance(module, nn.Linear):
@@ -138,7 +151,8 @@ class DLRMResNet(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x):
+  def forward(self, x, dropout_rate=DROPOUT_RATE):
+
     batch_size = x.shape[0]
 
     dense_features, sparse_features = torch.split(
@@ -157,7 +171,7 @@ class DLRMResNet(nn.Module):
     top_mlp_input = torch.cat([embedded_dense, embedded_sparse], axis=1)
 
     # Final MLP.
-    logits = self.top_mlp(top_mlp_input)
+    logits = self.top_mlp(top_mlp_input, dropout_rate)
     return logits
 
 
@@ -179,7 +193,6 @@ class DlrmSmall(nn.Module):
                mlp_bottom_dims=(512, 256, 128),
                mlp_top_dims=(1024, 1024, 512, 256, 1),
                embed_dim=128,
-               dropout_rate=0.0,
                use_layer_norm=False,
                embedding_init_multiplier=None):
     super().__init__()
@@ -242,10 +255,9 @@ class DlrmSmall(nn.Module):
         top_mlp_layers.append(nn.ReLU(inplace=True))
         if use_layer_norm:
           top_mlp_layers.append(nn.LayerNorm(fan_out, eps=1e-6))
-      if (dropout_rate is not None and dropout_rate > 0.0 and
-          layer_idx == num_layers_top - 2):
-        top_mlp_layers.append(nn.Dropout(p=dropout_rate))
-    self.top_mlp = nn.Sequential(*top_mlp_layers)
+      if layer_idx == num_layers_top - 2:
+        top_mlp_layers.append(CustomDropout())
+    self.top_mlp = SequentialWithDropout(*top_mlp_layers)
     if use_layer_norm:
       self.embed_ln = nn.LayerNorm(self.embed_dim, eps=1e-6)
     else:
@@ -260,7 +272,8 @@ class DlrmSmall(nn.Module):
                         0.,
                         math.sqrt(1. / module.out_features))
 
-  def forward(self, x):
+  def forward(self, x, dropout_rate=DROPOUT_RATE):
+
     batch_size = x.shape[0]
 
     dense_features, sparse_features = torch.split(
@@ -283,5 +296,5 @@ class DlrmSmall(nn.Module):
         dense_features=embedded_dense, sparse_features=embedded_sparse)
 
     # Final MLP.
-    logits = self.top_mlp(concatenated_dense)
+    logits = self.top_mlp(concatenated_dense, dropout_rate)
     return logits

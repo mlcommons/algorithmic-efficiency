@@ -206,13 +206,7 @@ class WmtWorkload(BaseWmtWorkload):
     bleu_score = bleu.corpus_bleu(predictions, [references]).score
     return bleu_score
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """aux_dropout_rate is used as attention_dropout_rate."""
-
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     init_fake_batch_size = 2
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
@@ -225,8 +219,6 @@ class WmtWorkload(BaseWmtWorkload):
       raise ValueError(f'Unknown activation function {self.activation}.')
 
     model_config = models.TransformerConfig(
-        dropout_rate=dropout_rate,
-        attention_dropout_rate=aux_dropout_rate,
         pre_ln=self.pre_ln,
         attention_temp=self.attention_temp,
         activation=activation,
@@ -234,9 +226,9 @@ class WmtWorkload(BaseWmtWorkload):
     self._train_model = models.Transformer(model_config)
     eval_config = replace(model_config, deterministic=True)
     self._eval_model = models.Transformer(eval_config)
-    params_rng, dropout_rng = jax.random.split(rng)
+    params_rng, _ = jax.random.split(rng)
     initial_variables = jax.jit(
-        self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
+        self._eval_model.init)({'params': params_rng},
                                jnp.ones(input_shape, jnp.float32),
                                jnp.ones(target_shape, jnp.float32))
 
@@ -255,7 +247,9 @@ class WmtWorkload(BaseWmtWorkload):
       model_state: spec.ModelAuxiliaryState,
       mode: spec.ForwardPassMode,
       rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+      update_batch_norm: bool,
+      dropout_rate: [float] = models.DROPOUT_RATE
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
 
@@ -282,7 +276,8 @@ class WmtWorkload(BaseWmtWorkload):
                                targets_positions=targets_positions,
                                inputs_segmentation=inputs_segmentations,
                                targets_segmentation=targets_segmentations,
-                               rngs={'dropout': rng})
+                               rngs={'dropout': rng},
+                               dropout_rate=dropout_rate)
     return logits_batch, None
 
   def _normalize_eval_metrics(

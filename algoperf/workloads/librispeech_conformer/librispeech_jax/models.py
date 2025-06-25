@@ -22,10 +22,13 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from algoperf.jax_utils import Dropout
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
+
+DROPOUT_RATE = 0.1
 
 
 @struct.dataclass
@@ -36,14 +39,6 @@ class ConformerConfig:
   encoder_dim: int = 512
   num_attention_heads: int = 8
   num_encoder_layers: int = 4
-  attention_dropout_rate: float = 0.0
-  # If None, defaults to 0.1.
-  attention_residual_dropout_rate: Optional[float] = 0.1
-  # If None, defaults to 0.0.
-  conv_residual_dropout_rate: Optional[float] = 0.0
-  feed_forward_dropout_rate: float = 0.0
-  # If None, defaults to 0.1.
-  feed_forward_residual_dropout_rate: Optional[float] = 0.1
   convolution_kernel_size: int = 5
   feed_forward_expansion_factor: int = 4
   freq_mask_count: int = 2
@@ -53,8 +48,6 @@ class ConformerConfig:
   time_mask_max_ratio: float = 0.05
   time_masks_per_frame: float = 0.0
   use_dynamic_time_mask_max_frames: bool = True
-  # If None, defaults to 0.1.
-  input_dropout_rate: Optional[float] = 0.1
   batch_norm_momentum: float = 0.999
   batch_norm_epsilon: float = 0.001
   use_specaug: bool = True
@@ -100,10 +93,9 @@ class Subsample(nn.Module):
     input_dropout_rate: dropout rate for inputs.
   """
   encoder_dim: int = 0
-  input_dropout_rate: float = 0.0
 
   @nn.compact
-  def __call__(self, inputs, input_paddings, train):
+  def __call__(self, inputs, input_paddings, train, dropout_rate=DROPOUT_RATE):
     output_paddings = input_paddings
     outputs = jnp.expand_dims(inputs, axis=-1)
 
@@ -129,9 +121,9 @@ class Subsample(nn.Module):
     outputs = outputs + AddPositionalEmbedding(embedding_dim=self.encoder_dim)(
         seq_length=outputs.shape[1])
 
-    outputs = nn.Dropout(
-        rate=self.input_dropout_rate, deterministic=not train)(
-            outputs)
+    outputs = Dropout(
+        rate=dropout_rate, deterministic=not train)(
+            outputs, rate=dropout_rate)
 
     return outputs, output_paddings
 
@@ -198,9 +190,12 @@ class FeedForwardModule(nn.Module):
   config: ConformerConfig
 
   @nn.compact
-  def __call__(self, inputs, padding_mask=None, train=False):
+  def __call__(self,
+               inputs,
+               padding_mask=None,
+               train=False,
+               dropout_rate=DROPOUT_RATE):
     config = self.config
-
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
     inputs = nn.Dense(
@@ -217,8 +212,8 @@ class FeedForwardModule(nn.Module):
                        'config.activation_function_name values, recieved '
                        f'{config.activation_function_name}')
     inputs = activation_fn(inputs)
-    inputs = nn.Dropout(rate=config.feed_forward_dropout_rate)(
-        inputs, deterministic=not train)
+    inputs = Dropout(rate=dropout_rate)(
+        inputs, deterministic=not train, rate=dropout_rate)
 
     inputs = inputs * padding_mask
 
@@ -229,13 +224,7 @@ class FeedForwardModule(nn.Module):
             inputs)
     inputs = inputs * padding_mask
 
-    if config.feed_forward_residual_dropout_rate is None:
-      feed_forward_residual_dropout_rate = 0.1
-    else:
-      feed_forward_residual_dropout_rate = (
-          config.feed_forward_residual_dropout_rate)
-    inputs = nn.Dropout(rate=feed_forward_residual_dropout_rate)(
-        inputs, deterministic=not train)
+    inputs = Dropout(rate=dropout_rate)(inputs, deterministic=not train)
 
     return inputs
 
@@ -389,8 +378,9 @@ class MultiHeadedSelfAttention(nn.Module):
   config: ConformerConfig = None
 
   @nn.compact
-  def __call__(self, inputs, paddings, train):
+  def __call__(self, inputs, paddings, train, dropout_rate=DROPOUT_RATE):
     config = self.config
+
     mask_paddings = 1 - paddings
     attention_mask = nn.make_attention_mask(
         mask_paddings > 0, mask_paddings > 0, dtype=jnp.float32)
@@ -408,17 +398,13 @@ class MultiHeadedSelfAttention(nn.Module):
         use_bias=True,
         broadcast_dropout=False,
         attention_fn=attention_fn,
-        dropout_rate=config.attention_dropout_rate,
+        dropout_rate=dropout_rate,
         deterministic=not train)(
             inputs_q=inputs, mask=attention_mask)
 
-    if config.attention_residual_dropout_rate is None:
-      attention_residual_dropout_rate = 0.1
-    else:
-      attention_residual_dropout_rate = config.attention_residual_dropout_rate
-    result = nn.Dropout(
-        rate=attention_residual_dropout_rate, deterministic=not train)(
-            result)
+    result = Dropout(
+        rate=dropout_rate, deterministic=not train)(
+            result, rate=dropout_rate)
 
     return result
 
@@ -528,7 +514,8 @@ class ConvolutionBlock(nn.Module):
                input_paddings,
                train,
                update_batch_norm,
-               use_running_average_bn):
+               use_running_average_bn,
+               dropout_rate=DROPOUT_RATE):
     config = self.config
     inputs = LayerNorm(dim=config.encoder_dim)(inputs)
 
@@ -574,13 +561,9 @@ class ConvolutionBlock(nn.Module):
         config.encoder_dim, kernel_init=nn.initializers.xavier_uniform())(
             inputs)
 
-    if config.conv_residual_dropout_rate is None:
-      conv_residual_dropout_rate = 0.0
-    else:
-      conv_residual_dropout_rate = config.conv_residual_dropout_rate
-    inputs = nn.Dropout(
-        rate=conv_residual_dropout_rate, deterministic=not train)(
-            inputs)
+    inputs = Dropout(
+        rate=dropout_rate, deterministic=not train)(
+            inputs, rate=dropout_rate)
     return inputs
 
 
@@ -605,26 +588,28 @@ class ConformerBlock(nn.Module):
                input_paddings,
                train,
                update_batch_norm,
-               use_running_average):
+               use_running_average,
+               dropout_rate=DROPOUT_RATE):
     config = self.config
     padding_mask = jnp.expand_dims(1 - input_paddings, -1)
 
     inputs = inputs + 0.5 * FeedForwardModule(config=self.config)(
-        inputs, padding_mask, train)
+        inputs, padding_mask, train, dropout_rate)
 
     inputs = inputs + MultiHeadedSelfAttention(config=self.config)(
-        inputs, input_paddings, train)
+        inputs, input_paddings, train, dropout_rate=dropout_rate)
 
     inputs = inputs + \
       ConvolutionBlock(config)(inputs,
                                input_paddings,
                                train,
                                update_batch_norm,
-                               use_running_average
+                               use_running_average,
+                               dropout_rate
                                )
 
     inputs = inputs + 0.5 * FeedForwardModule(config=self.config)(
-        inputs, padding_mask, train)
+        inputs, padding_mask, train, dropout_rate)
 
     if config.use_post_layer_norm:
       inputs = LayerNorm(dim=config.encoder_dim)(inputs)
@@ -658,7 +643,8 @@ class Conformer(nn.Module):
                input_paddings,
                train,
                update_batch_norm: Optional[bool] = None,
-               use_running_average_bn: Optional[bool] = None):
+               use_running_average_bn: Optional[bool] = None,
+               dropout_rate: float = DROPOUT_RATE):
     config = self.config
 
     outputs = inputs
@@ -683,15 +669,9 @@ class Conformer(nn.Module):
     if train and config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
 
-    # Subsample input by a factor of 4 by performing strided convolutions.
-    if config.input_dropout_rate is None:
-      input_dropout_rate = 0.1
-    else:
-      input_dropout_rate = config.input_dropout_rate
     outputs, output_paddings = Subsample(
-        encoder_dim=config.encoder_dim,
-        input_dropout_rate=input_dropout_rate)(
-        outputs, output_paddings, train)
+        encoder_dim=config.encoder_dim,)(
+        outputs, output_paddings, train, dropout_rate=dropout_rate)
 
     # Run the conformer encoder layers.
     for _ in range(config.num_encoder_layers):
@@ -699,7 +679,8 @@ class Conformer(nn.Module):
                                        output_paddings,
                                        train,
                                        update_batch_norm,
-                                       use_running_average_bn)
+                                       use_running_average_bn,
+                                       dropout_rate)
 
     outputs = LayerNorm(config.encoder_dim)(outputs)
     # Run the decoder which in this case is a trivial projection layer.
