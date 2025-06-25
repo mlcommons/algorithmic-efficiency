@@ -22,13 +22,12 @@ DEFAULT_DROPOUT = 0.5
 
 def pytrees_are_equal(a, b, rtol=1e-5, atol=1e-8):
   """
-    A custom function to check if two PyTrees are equal, handling floats with a tolerance.
+    A custom function to check if two PyTrees are equal, handling floats with
+    a tolerance.
     """
-  # 1. Check if the structures are the same
   if tree_structure(a) != tree_structure(b):
     return False
 
-  # 2. Define a comparison function for leaves
   def leaf_comparator(x, y):
     # Use allclose for floating-point JAX arrays
     if isinstance(x, jnp.ndarray) and jnp.issubdtype(x.dtype, jnp.floating):
@@ -37,8 +36,6 @@ def pytrees_are_equal(a, b, rtol=1e-5, atol=1e-8):
     else:
       return x == y
 
-  # 3. Map the comparison function over the trees and check if all results are True
-  # We also need to flatten the results of the tree_map and check if all are True
   comparison_tree = tree_map(leaf_comparator, a, b)
   all_equal = all(tree_leaves(comparison_tree))
 
@@ -80,7 +77,7 @@ class DropoutTest(parameterized.TestCase):
     """
 
     # initialize models
-    rng, data_rng, dropout_rng = jax.random.split(jax.random.key(SEED), 3)
+    rng, dropout_rng = jax.random.split(jax.random.key(SEED), 2)
     fake_batch = jnp.ones((10,))
     orig_model = LegacyDropoutModel(dropout_rate=dropout_rate)
     cust_model = DropoutModel()
@@ -130,7 +127,7 @@ class DropoutTest(parameterized.TestCase):
     eval mode.
     """
     # init model
-    rng, data_rng, dropout_rng = jax.random.split(jax.random.key(SEED), 3)
+    rng, dropout_rng = jax.random.split(jax.random.key(SEED), 2)
     fake_batch = jnp.ones((10,))
     orig_model = LegacyDropoutModel(dropout_rate=dropout_rate)
     cust_model = DropoutModel()
