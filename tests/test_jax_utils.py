@@ -4,7 +4,6 @@ Run it as: pytest <path to this module>
 """
 
 from functools import partial
-import os
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -63,7 +62,7 @@ class DropoutModel(nn.Module):
             x, rate=dropout_rate)
 
 
-class ModelEquivalenceTest(parameterized.TestCase):
+class DropoutTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       dict(
@@ -185,8 +184,7 @@ class ModelEquivalenceTest(parameterized.TestCase):
       dict(testcase_name="Dropout, p=0.1, eval", dropout_rate=0.1, mode="eval"),
   )
   def test_jitted_updates(self, dropout_rate, mode):
-    """ Compare forward pass of Dropout layer to flax.linen.Dropout in train and
-    eval mode.
+    """ Compare jitted updates with dropout.
     """
 
     # initialize models
@@ -214,24 +212,25 @@ class ModelEquivalenceTest(parameterized.TestCase):
     jitted_custom_apply = jax.jit(
         partial(cust_model.apply), static_argnames=['train'])
 
-    def multiple_fwd_passes_custom_layer():
-      for d in [i * 0.1 * dropout_rate for i in range(0, 11)]:
-        y2 = jitted_custom_apply(
-            initial_variables_custom,
-            x,
-            train=train,
-            dropout_rate=d,
-            rngs={"dropout": dropout_rng},
-        )
-      return y2
+    for d in [i * 0.1 * dropout_rate for i in range(0, 11)]:
+      y1 = jitted_original_apply(
+          initial_variables_original,
+          x,
+          train=train,
+          rngs={"dropout": dropout_rng})
+      return y1
 
-    def multiple_fwd_passes_original_layer():
-      for d in [i * 0.1 * dropout_rate for i in range(0, 11)]:
-        y1 = jitted_original_apply(
-            initial_variables_original,
-            x,
-            train=train,
-            rngs={"dropout": dropout_rng})
+    for d in [i * 0.1 * dropout_rate for i in range(0, 11)]:
+      y2 = jitted_custom_apply(
+          initial_variables_custom,
+          x,
+          train=train,
+          dropout_rate=d,
+          rngs={"dropout": dropout_rng},
+      )
+    return y2
+
+    assert jnp.allclose(y1, y2, atol=1e-3, rtol=1e-3)
 
 
 if __name__ == "__main__":
