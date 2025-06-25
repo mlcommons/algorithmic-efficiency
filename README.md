@@ -9,7 +9,8 @@
   <strong><a href="https://github.com/mlcommons/submissions_algorithms">🏆 Leaderboard</a></strong> •
   <strong><a href="/docs/GETTING_STARTED.md">🚀 Getting Started</a></strong> •
   <strong><a href="https://github.com/mlcommons/submissions_algorithms">📥 Submit</a></strong> •
-  <strong><a href="/docs/DOCUMENTATION.md">📖 Docs/Rules</a></strong> •
+  <strong><a href="/docs/DOCUMENTATION.md">📖 Docs/Rules</a></strong>
+  <br>
   <strong><a href="https://arxiv.org/abs/2306.07179" target="_blank">📜 Benchmark Paper</a></strong> •
   <strong><a href="https://openreview.net/forum?id=CtM5xjRSfm" target="_blank">📊 Results Paper</a></strong>
 </p>
@@ -149,9 +150,10 @@ AlgoPerf is an open, community-driven project organized by the [MLCommons Algori
 
 ## Releases & Roadmap
 
-The AlgoPerf benchmark is an actively evolving project designed to keep pace with the rapidly changing field of machine learning. To ensure clarity and reproducibility, we have adopted a unified versioning system. All results produced under the same `Major.Minor` version are comparable, making it easy to cite "`AlgoPerf v0.X`" and know exactly which set of rules, code, and submissions are being referenced.
+The AlgoPerf benchmark is an actively evolving project designed to keep pace with the rapidly changing field of machine learning. To ensure clarity and reproducibility, we have adopted a unified versioning system: codebase, rules, and leaderboard all share the same `Major.Minor` version. `Patch` versions may differ for minor updates.
+All results produced under the same `Major.Minor` version are comparable, making it easy to cite "`AlgoPerf v0.X`" and know exactly which set of rules, code, and submissions are being referenced.
 
-Here is an overview of our key releases and the future roadmap:
+Here is an overview of our key releases and the future roadmap. For a detailed list of changes in each release, see our [**Changelog**](docs/CHANGELOG.md).:
 
 - `v0.5` - Inaugural Competition <br> The benchmark as run for the first AlgoPerf competition in 2024. The key findings and analysis from this competition are detailed in our [**ICLR 2025 Results Paper**](https://openreview.net/forum?id=CtM5xjRSfm). It serves as a historical reference.
   - **Leaderboard:** Archived at [**AlgoPerf v0.5 Leaderboard**](https://github.com/mlcommons/submissions_algorithms/tree/main/previous_leaderboards/algoperf_v05).
