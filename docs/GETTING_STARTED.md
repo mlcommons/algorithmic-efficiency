@@ -346,23 +346,13 @@ docker exec -it <container_id> /bin/bash
 
 ## Score your Submission
 
-To score your submission we will score over all fixed workloads, held-out workloads and studies as described in the rules.
-We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled held-out workloads in the scoring criteria for the matching fixed base workloads.
+To score your submission we will score over all workloads, studies, and trials as described in the rules.
 In other words, the total number of runs expected for official scoring is:
 
-- for external tuning ruleset: **210** = (8 (fixed workloads) + 6 (held-out workloads)) x 3 (studies) x 5 (trials)
-- for self-tuning ruleset: **42** = (8 (fixed workloads) + 6 (held-out workloads)) x 3 (studies)
+- for external tuning ruleset: **120** = 8 (workloads) x 3 (studies) x 5 (trials)
+- for self-tuning ruleset: **24** = 8 (workloads) x 3 (studies)
 
 ### Running workloads
-
-To run workloads for (a mock) scoring you may specify a "virtual" list of held-out workloads. It is important to note that the official set of held-out workloads will be sampled by the competition organizers during scoring time.
-
-An example config for held-out workloads is stored in `scoring/held_workloads_example.json`.
-To generate a new sample of held out workloads run:
-
-```bash
-python3 generate_held_out_workloads.py --seed <optional_rng_seed> --output_filename <output_filename>
-```
 
 To run a number of studies and trials over all workload using Docker containers for each run:
 
