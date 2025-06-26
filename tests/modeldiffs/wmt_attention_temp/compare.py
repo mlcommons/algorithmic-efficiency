@@ -7,19 +7,23 @@ import jax
 import torch
 
 from algoperf import spec
-from algoperf.workloads.wmt.wmt_jax.workload import \
-    WmtWorkloadAttentionTemp as JaxWorkload
-from algoperf.workloads.wmt.wmt_pytorch.workload import \
-    WmtWorkloadAttentionTemp as PyTorchWorkload
+from algoperf.workloads.wmt.wmt_jax.workload import (
+  WmtWorkloadAttentionTemp as JaxWorkload,
+)
+from algoperf.workloads.wmt.wmt_pytorch.workload import (
+  WmtWorkloadAttentionTemp as PyTorchWorkload,
+)
 from tests.modeldiffs.diff import ModelDiffRunner
 
 
 def key_transform(k):
   new_key = []
   for i in k:
-    if 'ModuleList' in i or\
-        'TransformerDecoder_' in i or\
-        'TransformerEncoder_' in i:
+    if (
+      'ModuleList' in i
+      or 'TransformerDecoder_' in i
+      or 'TransformerEncoder_' in i
+    ):
       continue
     if 'Linear' in i:
       if 'NonDynamicallyQuantizableLinear' in i:
@@ -61,7 +65,7 @@ def sd_transform(sd):
           pass
       else:
         if new_key[-2] == 'Dense_0':
-          #q
+          # q
           out[(*new_key[:-2], 'query', new_key[-1])] = sd[k]
           pass
         elif new_key[-2] == 'Dense_1':
@@ -74,11 +78,11 @@ def sd_transform(sd):
           out[(*new_key[:-2], 'out', new_key[-1])] = sd[k]
           pass
       out = {
-          tuple(
-              k.replace('SelfAttention', 'MultiHeadDotProductAttention')
-              for k in key): value
-          for key,
-          value in out.items()
+        tuple(
+          k.replace('SelfAttention', 'MultiHeadDotProductAttention')
+          for k in key
+        ): value
+        for key, value in out.items()
       }
     elif 'Dense' in k_str:
       new_key = (*k[:2], 'MlpBlock_0', *k[2:])
@@ -113,29 +117,32 @@ if __name__ == '__main__':
   tgt_tokens = torch.randint(low=0, high=32000, size=(2, 256))
 
   jax_batch = {
-      'inputs': inp_tokens.detach().numpy(),
-      'targets': tgt_tokens.detach().numpy(),
+    'inputs': inp_tokens.detach().numpy(),
+    'targets': tgt_tokens.detach().numpy(),
   }
   pytorch_batch = {'inputs': inp_tokens, 'targets': tgt_tokens}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pytorch_batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=None,
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=pytorch_batch,
+    model_state=None,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=None,
+    update_batch_norm=False,
+  )
 
   jax_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=jax_batch,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=jax.random.PRNGKey(0),
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=jax_batch,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=jax.random.PRNGKey(0),
+    update_batch_norm=False,
+  )
 
   ModelDiffRunner(
-      jax_workload=jax_workload,
-      pytorch_workload=pytorch_workload,
-      jax_model_kwargs=jax_model_kwargs,
-      pytorch_model_kwargs=pytorch_model_kwargs,
-      key_transform=key_transform,
-      sd_transform=sd_transform,
-      out_transform=None).run()
+    jax_workload=jax_workload,
+    pytorch_workload=pytorch_workload,
+    jax_model_kwargs=jax_model_kwargs,
+    pytorch_model_kwargs=pytorch_model_kwargs,
+    key_transform=key_transform,
+    sd_transform=sd_transform,
+    out_transform=None,
+  ).run()

@@ -3,11 +3,9 @@ import math
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import torch
-from torch import nn
-from torch import Tensor
 import torch.nn.functional as F
-from torch.nn.init import normal_
-from torch.nn.init import xavier_uniform_
+from torch import Tensor, nn
+from torch.nn.init import normal_, xavier_uniform_
 
 DROPOUT_RATE = 0.1
 
@@ -23,7 +21,8 @@ def make_causal_mask(x: Tensor, device: str = 'cuda:0') -> Tensor:
     A `[batch..., len, len]` shaped causal attention mask.
   """
   idxs = torch.broadcast_to(
-      torch.arange(x.shape[-1], dtype=torch.int32, device=device), x.shape)
+    torch.arange(x.shape[-1], dtype=torch.int32, device=device), x.shape
+  )
   return torch.greater_equal(idxs.unsqueeze(-1), idxs.unsqueeze(-2))
 
 
@@ -33,55 +32,60 @@ def make_src_mask(src, inputs_segmentation, nhead):
   # Add segmentation block-diagonal attention mask if using segmented data.
   if inputs_segmentation is not None:
     src_mask = torch.logical_and(
-        src_mask,
-        torch.eq(
-            inputs_segmentation.unsqueeze(-1),
-            inputs_segmentation.unsqueeze(-2)))
+      src_mask,
+      torch.eq(
+        inputs_segmentation.unsqueeze(-1), inputs_segmentation.unsqueeze(-2)
+      ),
+    )
   # Flip values and ensure numerical stability.
   src_mask = torch.repeat_interleave(
-      torch.logical_not(src_mask), repeats=nhead, dim=0)
+    torch.logical_not(src_mask), repeats=nhead, dim=0
+  )
   new_src_mask = torch.zeros_like(src_mask, dtype=torch.float32)
   new_src_mask.masked_fill_(src_mask, -1e10)
   return new_src_mask
 
 
-def make_tgt_and_memory_mask(tgt,
-                             src,
-                             inputs_segmentation,
-                             targets_segmentation,
-                             decode,
-                             nhead):
-  """ Utility for creating target and memory mask and adjust them for PyTorch
+def make_tgt_and_memory_mask(
+  tgt, src, inputs_segmentation, targets_segmentation, decode, nhead
+):
+  """Utility for creating target and memory mask and adjust them for PyTorch
   Transformer API."""
   if not decode:
     tgt_mask = torch.logical_and(
-        torch.mul((tgt > 0).unsqueeze(-1), (tgt > 0).unsqueeze(-2)),
-        make_causal_mask(tgt, device=tgt.device))
+      torch.mul((tgt > 0).unsqueeze(-1), (tgt > 0).unsqueeze(-2)),
+      make_causal_mask(tgt, device=tgt.device),
+    )
     memory_mask = torch.mul((tgt > 0).unsqueeze(-1), (src > 0).unsqueeze(-2))
   else:
     tgt_mask = None
-    memory_mask = torch.mul((torch.ones_like(tgt) > 0).unsqueeze(-1),
-                            (src > 0).unsqueeze(-2))
+    memory_mask = torch.mul(
+      (torch.ones_like(tgt) > 0).unsqueeze(-1), (src > 0).unsqueeze(-2)
+    )
   # Add segmentation block-diagonal attention masks if using segmented data.
   if inputs_segmentation is not None:
     tgt_mask = torch.logical_and(
-        tgt_mask,
-        torch.eq(
-            targets_segmentation.unsqueeze(-1),
-            targets_segmentation.unsqueeze(-2)))
+      tgt_mask,
+      torch.eq(
+        targets_segmentation.unsqueeze(-1), targets_segmentation.unsqueeze(-2)
+      ),
+    )
     memory_mask = torch.logical_and(
-        memory_mask,
-        torch.eq(
-            targets_segmentation.unsqueeze(-1),
-            inputs_segmentation.unsqueeze(-2)))
+      memory_mask,
+      torch.eq(
+        targets_segmentation.unsqueeze(-1), inputs_segmentation.unsqueeze(-2)
+      ),
+    )
   # Flip values and ensure numerical stability.
   memory_mask = torch.repeat_interleave(
-      torch.logical_not(memory_mask), repeats=nhead, dim=0)
+    torch.logical_not(memory_mask), repeats=nhead, dim=0
+  )
   new_memory_mask = torch.zeros_like(memory_mask, dtype=torch.float32)
   new_memory_mask.masked_fill_(memory_mask, -1e10)
   if tgt_mask is not None:
     tgt_mask = torch.repeat_interleave(
-        torch.logical_not(tgt_mask), repeats=nhead, dim=0)
+      torch.logical_not(tgt_mask), repeats=nhead, dim=0
+    )
     new_tgt_mask = torch.zeros_like(tgt_mask, dtype=torch.float32)
     new_tgt_mask.masked_fill_(tgt_mask, -1e10)
     tgt_mask = new_tgt_mask
@@ -100,38 +104,44 @@ def shift_right(x, axis=1):
 class Transformer(nn.Module):
   """Transformer architecture based on the model from the WMT Jax workload."""
 
-  def __init__(self,
-               ntoken: int = 32000,
-               d_model: int = 1024,
-               nhead: int = 16,
-               d_hid: int = 1024,
-               nlayers: int = 6,
-               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               glu: bool = False,
-               layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0,
-               pre_ln: bool = True):
+  def __init__(
+    self,
+    ntoken: int = 32000,
+    d_model: int = 1024,
+    nhead: int = 16,
+    d_hid: int = 1024,
+    nlayers: int = 6,
+    activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+    glu: bool = False,
+    layer_norm_eps: float = 1e-6,
+    attention_temp: float = 1.0,
+    pre_ln: bool = True,
+  ):
     super().__init__()
     self.pos_encoder = PositionalEncoding(d_model)
     self.shared_embedding = nn.Embedding(ntoken, d_model)
-    self.encoder = Encoder(d_model,
-                           nhead,
-                           d_hid,
-                           nlayers,
-                           activation,
-                           glu,
-                           layer_norm_eps,
-                           attention_temp,
-                           pre_ln)
-    self.decoder = Decoder(d_model,
-                           nhead,
-                           d_hid,
-                           nlayers,
-                           activation,
-                           glu,
-                           layer_norm_eps,
-                           attention_temp,
-                           pre_ln)
+    self.encoder = Encoder(
+      d_model,
+      nhead,
+      d_hid,
+      nlayers,
+      activation,
+      glu,
+      layer_norm_eps,
+      attention_temp,
+      pre_ln,
+    )
+    self.decoder = Decoder(
+      d_model,
+      nhead,
+      d_hid,
+      nlayers,
+      activation,
+      glu,
+      layer_norm_eps,
+      attention_temp,
+      pre_ln,
+    )
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
     self.encoder.shared_embedding = self.shared_embedding
@@ -148,15 +158,17 @@ class Transformer(nn.Module):
         if module.bias is not None:
           normal_(module.bias, std=1e-6)
 
-  def forward(self,
-              src: Tensor,
-              tgt: Tensor,
-              inputs_positions: Optional[Tensor] = None,
-              targets_positions: Optional[Tensor] = None,
-              inputs_segmentation: Optional[Tensor] = None,
-              targets_segmentation: Optional[Tensor] = None,
-              decode: bool = False,
-              dropout_rate: float = DROPOUT_RATE) -> Tensor:
+  def forward(
+    self,
+    src: Tensor,
+    tgt: Tensor,
+    inputs_positions: Optional[Tensor] = None,
+    targets_positions: Optional[Tensor] = None,
+    inputs_segmentation: Optional[Tensor] = None,
+    targets_segmentation: Optional[Tensor] = None,
+    decode: bool = False,
+    dropout_rate: float = DROPOUT_RATE,
+  ) -> Tensor:
     """
     Args:
       src: Tensor, shape [batch_size, seq_len]
@@ -175,19 +187,21 @@ class Transformer(nn.Module):
       raise RuntimeError('The batch size of src and tgt must be equal.')
 
     memory = self.encoder(
-        src,
-        inputs_positions=inputs_positions,
-        inputs_segmentation=inputs_segmentation,
-        dropout_rate=dropout_rate)
+      src,
+      inputs_positions=inputs_positions,
+      inputs_segmentation=inputs_segmentation,
+      dropout_rate=dropout_rate,
+    )
     output = self.decoder(
-        tgt,
-        memory,
-        src,  # just for calculating the padding mask
-        targets_positions=targets_positions,
-        inputs_segmentation=inputs_segmentation,
-        targets_segmentation=targets_segmentation,
-        decode=decode,
-        dropout_rate=dropout_rate)
+      tgt,
+      memory,
+      src,  # just for calculating the padding mask
+      targets_positions=targets_positions,
+      inputs_segmentation=inputs_segmentation,
+      targets_segmentation=targets_segmentation,
+      decode=decode,
+      dropout_rate=dropout_rate,
+    )
     return output
 
 
@@ -210,26 +224,32 @@ class TransformerEncoder(nn.Module):
     >>> src = torch.rand(10, 32, 512)
     >>> out = transformer_encoder(src)
   """
+
   __constants__ = ['norm']
 
-  def __init__(self,
-               encoder_layer,
-               num_layers,
-               norm=None,
-               enable_nested_tensor=True,
-               mask_check=True):
+  def __init__(
+    self,
+    encoder_layer,
+    num_layers,
+    norm=None,
+    enable_nested_tensor=True,
+    mask_check=True,
+  ):
     super().__init__()
     self.layers = nn.ModuleList(
-        [copy.deepcopy(encoder_layer) for _ in range(num_layers)])
+      [copy.deepcopy(encoder_layer) for _ in range(num_layers)]
+    )
     self.num_layers = num_layers
     self.norm = norm
     self.enable_nested_tensor = enable_nested_tensor
     self.mask_check = mask_check
 
-  def forward(self,
-              src: Tensor,
-              mask: Optional[Tensor] = None,
-              dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def forward(
+    self,
+    src: Tensor,
+    mask: Optional[Tensor] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Tensor:
     """Pass the input through the encoder layers in turn.
 
     Args:
@@ -247,7 +267,7 @@ class TransformerEncoder(nn.Module):
       output = mod(output, src_mask=mask, dropout_rate=dropout_rate)
 
     if convert_to_nested:
-      output = output.to_padded_tensor(0.)
+      output = output.to_padded_tensor(0.0)
 
     if self.norm is not None:
       output = self.norm(output)
@@ -256,39 +276,42 @@ class TransformerEncoder(nn.Module):
 
 
 class Encoder(nn.Module):
-
-  def __init__(self,
-               d_model: int = 1024,
-               nhead: int = 16,
-               d_hid: int = 1024,
-               nlayers: int = 6,
-               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               glu: bool = False,
-               layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0,
-               pre_ln: bool = True):
+  def __init__(
+    self,
+    d_model: int = 1024,
+    nhead: int = 16,
+    d_hid: int = 1024,
+    nlayers: int = 6,
+    activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+    glu: bool = False,
+    layer_norm_eps: float = 1e-6,
+    attention_temp: float = 1.0,
+    pre_ln: bool = True,
+  ):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
     self.pos_encoder = None
     encoder_layer = TransformerEncoderLayer(
-        d_model,
-        nhead,
-        d_hid,
-        activation=activation,
-        glu=glu,
-        layer_norm_eps=layer_norm_eps,
-        attention_temp=attention_temp,
-        pre_ln=pre_ln)
-    encoder_norm = (
-        nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
+      d_model,
+      nhead,
+      d_hid,
+      activation=activation,
+      glu=glu,
+      layer_norm_eps=layer_norm_eps,
+      attention_temp=attention_temp,
+      pre_ln=pre_ln,
+    )
+    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
-  def forward(self,
-              src: Tensor,
-              inputs_positions: Optional[Tensor] = None,
-              inputs_segmentation: Optional[Tensor] = None,
-              dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def forward(
+    self,
+    src: Tensor,
+    inputs_positions: Optional[Tensor] = None,
+    inputs_segmentation: Optional[Tensor] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Tensor:
     src = src.to(torch.int)
     src_mask = make_src_mask(src, inputs_segmentation, self.nhead)
     src = self.shared_embedding(src)
@@ -298,67 +321,73 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-
-  def __init__(self,
-               d_model: int = 1024,
-               nhead: int = 16,
-               d_hid: int = 1024,
-               nlayers: int = 6,
-               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               glu: bool = False,
-               layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0,
-               pre_ln: bool = True):
+  def __init__(
+    self,
+    d_model: int = 1024,
+    nhead: int = 16,
+    d_hid: int = 1024,
+    nlayers: int = 6,
+    activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+    glu: bool = False,
+    layer_norm_eps: float = 1e-6,
+    attention_temp: float = 1.0,
+    pre_ln: bool = True,
+  ):
     super().__init__()
     self.nhead = nhead
     self.shared_embedding = None
     self.pos_encoder = None
-    self.decoder = TransformerDecoder(d_model,
-                                      nhead,
-                                      d_hid,
-                                      activation,
-                                      glu,
-                                      layer_norm_eps,
-                                      nlayers,
-                                      attention_temp,
-                                      pre_ln)
+    self.decoder = TransformerDecoder(
+      d_model,
+      nhead,
+      d_hid,
+      activation,
+      glu,
+      layer_norm_eps,
+      nlayers,
+      attention_temp,
+      pre_ln,
+    )
 
   def forward(
-      self,
-      tgt: Tensor,
-      memory: Tensor,
-      src: Tensor,  # just for calculating the padding mask
-      targets_positions: Optional[Tensor] = None,
-      inputs_segmentation: Optional[Tensor] = None,
-      targets_segmentation: Optional[Tensor] = None,
-      decode: bool = False,
-      max_len: Optional[int] = None,
-      cache: Optional[dict] = None,
-      dropout_rate: Optional[float] = 0.0) -> Any:
+    self,
+    tgt: Tensor,
+    memory: Tensor,
+    src: Tensor,  # just for calculating the padding mask
+    targets_positions: Optional[Tensor] = None,
+    inputs_segmentation: Optional[Tensor] = None,
+    targets_segmentation: Optional[Tensor] = None,
+    decode: bool = False,
+    max_len: Optional[int] = None,
+    cache: Optional[dict] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Any:
     tgt = tgt.to(torch.int)
     tgt_mask, memory_mask = make_tgt_and_memory_mask(
-        tgt, src, inputs_segmentation, targets_segmentation,
-        decode, self.nhead)
+      tgt, src, inputs_segmentation, targets_segmentation, decode, self.nhead
+    )
     if not decode:
       tgt = shift_right(tgt)
     tgt = self.shared_embedding(tgt)
     tgt = self.pos_encoder(
-        tgt,
-        targets_positions,
-        decode=decode,
-        cache=cache,
-        dropout_rate=dropout_rate)
+      tgt,
+      targets_positions,
+      decode=decode,
+      cache=cache,
+      dropout_rate=dropout_rate,
+    )
     if decode:
       tgt, cache = tgt
     output = self.decoder(
-        tgt,
-        memory,
-        tgt_mask=tgt_mask,
-        memory_mask=memory_mask,
-        decode=decode,
-        max_len=max_len,
-        cache=cache,
-        dropout_rate=dropout_rate)
+      tgt,
+      memory,
+      tgt_mask=tgt_mask,
+      memory_mask=memory_mask,
+      decode=decode,
+      max_len=max_len,
+      cache=cache,
+      dropout_rate=dropout_rate,
+    )
     if decode:
       output, cache = output
     normalize = math.sqrt(output.shape[-1])
@@ -369,7 +398,6 @@ class Decoder(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
-
   def __init__(self, d_model: int, max_len: int = 256):
     super().__init__()
 
@@ -377,17 +405,17 @@ class PositionalEncoding(nn.Module):
     scale_factor = -math.log(10000.0) / (d_model // 2 - 1)
     div_term = torch.exp(torch.arange(d_model // 2) * scale_factor)
     pe = torch.zeros(1, max_len, d_model)
-    pe[0, :, :d_model // 2] = torch.sin(position * div_term)
-    pe[0, :, d_model // 2:2 * (d_model // 2)] = torch.cos(position * div_term)
+    pe[0, :, : d_model // 2] = torch.sin(position * div_term)
+    pe[0, :, d_model // 2 : 2 * (d_model // 2)] = torch.cos(position * div_term)
     self.register_buffer('pe', pe)
 
   def forward(
-      self,
-      x: Tensor,
-      inputs_positions: Optional[Tensor] = None,
-      decode: bool = False,
-      cache: Optional[Dict[str, Dict[str, Tensor]]] = None,
-      dropout_rate: Optional[float] = 0.0
+    self,
+    x: Tensor,
+    inputs_positions: Optional[Tensor] = None,
+    decode: bool = False,
+    cache: Optional[Dict[str, Dict[str, Tensor]]] = None,
+    dropout_rate: Optional[float] = 0.0,
   ) -> Union[Tensor, Tuple[Tensor, Dict[str, Dict[str, Tensor]]]]:
     """
     Args:
@@ -404,17 +432,18 @@ class PositionalEncoding(nn.Module):
       name = self._get_name()
       if cache is None:
         cache = {
-            name: {
-                'cache_index':
-                    torch.tensor(0, dtype=torch.long, device=self.pe.device),
-            },
+          name: {
+            'cache_index': torch.tensor(
+              0, dtype=torch.long, device=self.pe.device
+            ),
+          },
         }
       pe = self.pe[0, cache[name]['cache_index'], :]
       cache[name]['cache_index'] += 1
       return F.dropout(x + pe, dropout_rate, self.training), cache
     if inputs_positions is None:
       # normal unpacked case:
-      pe = self.pe[:, :x.size(1), :]
+      pe = self.pe[:, : x.size(1), :]
     else:
       # for packed data we need to use known position indices:
       pe = self.pe[0, inputs_positions, :]
@@ -449,28 +478,32 @@ class TransformerEncoderLayer(nn.Module):
     >>> src = torch.rand(32, 10, 512)
     >>> out = encoder_layer(src)
   """
+
   __constants__ = ['pre_ln']
 
-  def __init__(self,
-               d_model: int = 1024,
-               nhead: int = 16,
-               dim_feedforward: int = 1024,
-               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               glu: bool = False,
-               layer_norm_eps: float = 1e-6,
-               attention_temp: float = 1.0,
-               pre_ln: bool = True,
-               device=None,
-               dtype=None) -> None:
+  def __init__(
+    self,
+    d_model: int = 1024,
+    nhead: int = 16,
+    dim_feedforward: int = 1024,
+    activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+    glu: bool = False,
+    layer_norm_eps: float = 1e-6,
+    attention_temp: float = 1.0,
+    pre_ln: bool = True,
+    device=None,
+    dtype=None,
+  ) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     super().__init__()
     self.self_attn = MultiheadAttention(
-        d_model,
-        nhead,
-        self_attn=True,
-        attention_temp=attention_temp,
-        bias=False,
-        **factory_kwargs)
+      d_model,
+      nhead,
+      self_attn=True,
+      attention_temp=attention_temp,
+      bias=False,
+      **factory_kwargs,
+    )
 
     # Implementation of Feedforward model.
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
@@ -485,10 +518,12 @@ class TransformerEncoderLayer(nn.Module):
 
     self.activation = activation
 
-  def forward(self,
-              src: Tensor,
-              src_mask: Optional[Tensor] = None,
-              dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def forward(
+    self,
+    src: Tensor,
+    src_mask: Optional[Tensor] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Tensor:
     r"""Pass the input through the encoder layer.
 
     Args:
@@ -509,17 +544,19 @@ class TransformerEncoderLayer(nn.Module):
     return x
 
   # Self-attention block:
-  def _sa_block(self,
-                x: Tensor,
-                attn_mask: Optional[Tensor],
-                dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def _sa_block(
+    self,
+    x: Tensor,
+    attn_mask: Optional[Tensor],
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Tensor:
     x, _ = self.self_attn(x, attn_mask=attn_mask, dropout_rate=dropout_rate)
     return F.dropout(x, dropout_rate, training=self.training)
 
   # Feed forward block:
-  def _ff_block(self,
-                inputs: Tensor,
-                dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def _ff_block(
+    self, inputs: Tensor, dropout_rate: Optional[float] = 0.0
+  ) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
       y = self.linear_glu(inputs)
@@ -548,42 +585,51 @@ class TransformerDecoder(nn.Module):
     >>> tgt = torch.rand(20, 32, 512)
     >>> out = transformer_decoder(tgt, memory)
   """
+
   __constants__ = ['norm']
 
-  def __init__(self,
-               d_model,
-               nhead,
-               d_hid,
-               activation,
-               glu,
-               layer_norm_eps,
-               num_layers,
-               attention_temp,
-               pre_ln):
+  def __init__(
+    self,
+    d_model,
+    nhead,
+    d_hid,
+    activation,
+    glu,
+    layer_norm_eps,
+    num_layers,
+    attention_temp,
+    pre_ln,
+  ):
     super().__init__()
-    self.layers = nn.ModuleList([
+    self.layers = nn.ModuleList(
+      [
         TransformerDecoderLayer(
-            d_model,
-            nhead,
-            d_hid,
-            activation,
-            glu,
-            layer_norm_eps=layer_norm_eps,
-            attention_temp=attention_temp,
-            pre_ln=pre_ln) for _ in range(num_layers)
-    ])
+          d_model,
+          nhead,
+          d_hid,
+          activation,
+          glu,
+          layer_norm_eps=layer_norm_eps,
+          attention_temp=attention_temp,
+          pre_ln=pre_ln,
+        )
+        for _ in range(num_layers)
+      ]
+    )
     self.num_layers = num_layers
-    self.norm = (nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None)
+    self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None
 
-  def forward(self,
-              tgt: Tensor,
-              memory: Tensor,
-              tgt_mask: Optional[Tensor] = None,
-              memory_mask: Optional[Tensor] = None,
-              decode: bool = False,
-              max_len: Optional[int] = None,
-              cache: Optional[dict] = None,
-              dropout_rate: Optional[float] = 0.0) -> Any:
+  def forward(
+    self,
+    tgt: Tensor,
+    memory: Tensor,
+    tgt_mask: Optional[Tensor] = None,
+    memory_mask: Optional[Tensor] = None,
+    decode: bool = False,
+    max_len: Optional[int] = None,
+    cache: Optional[dict] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer in turn.
     Args:
       tgt: the sequence to the decoder (required).
@@ -600,15 +646,16 @@ class TransformerDecoder(nn.Module):
 
     for idx, mod in enumerate(self.layers):
       output, cache = mod(
-          output,
-          memory,
-          tgt_mask=tgt_mask,
-          memory_mask=memory_mask,
-          decode=decode,
-          max_len=max_len,
-          cache=cache,
-          index=idx,
-          dropout_rate=dropout_rate)
+        output,
+        memory,
+        tgt_mask=tgt_mask,
+        memory_mask=memory_mask,
+        decode=decode,
+        max_len=max_len,
+        cache=cache,
+        index=idx,
+        dropout_rate=dropout_rate,
+      )
 
     if self.norm is not None:
       output = self.norm(output)
@@ -647,43 +694,48 @@ class TransformerDecoderLayer(nn.Module):
     >>> tgt = torch.rand(32, 20, 512)
     >>> out = decoder_layer(tgt, memory)
   """
+
   __constants__ = ['pre_ln']
 
-  def __init__(self,
-               d_model: int = 1024,
-               nhead: int = 16,
-               dim_feedforward: int = 1024,
-               activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-               glu: bool = False,
-               layer_norm_eps: float = 1e-6,
-               pre_ln: bool = True,
-               attention_temp: float = 1.0,
-               device=None,
-               dtype=None) -> None:
+  def __init__(
+    self,
+    d_model: int = 1024,
+    nhead: int = 16,
+    dim_feedforward: int = 1024,
+    activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+    glu: bool = False,
+    layer_norm_eps: float = 1e-6,
+    pre_ln: bool = True,
+    attention_temp: float = 1.0,
+    device=None,
+    dtype=None,
+  ) -> None:
     factory_kwargs = {'device': device, 'dtype': dtype}
     super().__init__()
     self.self_attn = MultiheadAttention(
-        d_model,
-        nhead,
-        self_attn=True,
-        attention_temp=attention_temp,
-        bias=False,
-        **factory_kwargs)
+      d_model,
+      nhead,
+      self_attn=True,
+      attention_temp=attention_temp,
+      bias=False,
+      **factory_kwargs,
+    )
     self.multihead_attn = MultiheadAttention(
-        d_model,
-        nhead,
-        self_attn=False,
-        attention_temp=attention_temp,
-        bias=False,
-        **factory_kwargs)
+      d_model,
+      nhead,
+      self_attn=False,
+      attention_temp=attention_temp,
+      bias=False,
+      **factory_kwargs,
+    )
 
     # Implementation of Feedforward model.
     self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
     self.glu = glu
     if self.glu:
-      self.linear_glu = nn.Linear(dim_feedforward,
-                                  dim_feedforward,
-                                  **factory_kwargs)
+      self.linear_glu = nn.Linear(
+        dim_feedforward, dim_feedforward, **factory_kwargs
+      )
     self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
 
     self.pre_ln = pre_ln
@@ -694,16 +746,17 @@ class TransformerDecoderLayer(nn.Module):
     self.activation = activation
 
   def forward(  # pylint: disable=arguments-renamed
-      self,
-      tgt: Tensor,
-      memory: Tensor,
-      tgt_mask: Optional[Tensor] = None,
-      memory_mask: Optional[Tensor] = None,
-      decode: bool = False,
-      max_len: Optional[int] = None,
-      cache: Optional[dict] = None,
-      index: Optional[int] = None,
-      dropout_rate: Optional[float] = 0.0) -> Any:
+    self,
+    tgt: Tensor,
+    memory: Tensor,
+    tgt_mask: Optional[Tensor] = None,
+    memory_mask: Optional[Tensor] = None,
+    decode: bool = False,
+    max_len: Optional[int] = None,
+    cache: Optional[dict] = None,
+    index: Optional[int] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Any:
     r"""Pass the inputs (and mask) through the decoder layer.
     Args:
       tgt: the sequence to the decoder layer (required).
@@ -721,25 +774,27 @@ class TransformerDecoderLayer(nn.Module):
     x = tgt
     if self.pre_ln:
       sa_out, cache = self._sa_block(
-          self.norm1(x),
-          tgt_mask,
-          decode=decode,
-          max_len=max_len,
-          cache=cache,
-          index=index,
-          dropout_rate=dropout_rate)
+        self.norm1(x),
+        tgt_mask,
+        decode=decode,
+        max_len=max_len,
+        cache=cache,
+        index=index,
+        dropout_rate=dropout_rate,
+      )
       x = x + sa_out
       x = x + self._mha_block(self.norm2(x), memory, memory_mask, dropout_rate)
       x = x + self._ff_block(self.norm3(x), dropout_rate)
     else:
       sa_out, cache = self._sa_block(
-          x,
-          tgt_mask,
-          decode=decode,
-          max_len=max_len,
-          cache=cache,
-          index=index,
-          dropout_rate=dropout_rate)
+        x,
+        tgt_mask,
+        decode=decode,
+        max_len=max_len,
+        cache=cache,
+        index=index,
+        dropout_rate=dropout_rate,
+      )
       x = self.norm1(x + sa_out)
       x = self.norm2(x + self._mha_block(x, memory, memory_mask, dropout_rate))
       x = self.norm3(x + self._ff_block(x, dropout_rate))
@@ -748,41 +803,43 @@ class TransformerDecoderLayer(nn.Module):
 
   # Self-attention block:
   def _sa_block(  # pylint: disable=arguments-renamed
-      self,
-      x: Tensor,
-      attn_mask: Optional[Tensor],
-      decode: bool = False,
-      max_len: Optional[int] = None,
-      cache: Optional[dict] = None,
-      index: Optional[int] = None,
-      dropout_rate: Optional[float] = 0.0) -> Any:
+    self,
+    x: Tensor,
+    attn_mask: Optional[Tensor],
+    decode: bool = False,
+    max_len: Optional[int] = None,
+    cache: Optional[dict] = None,
+    index: Optional[int] = None,
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Any:
     x, cache = self.self_attn(
-        x,
-        attn_mask=attn_mask,
-        decode=decode,
-        max_len=max_len,
-        cache=cache,
-        index=index,
-        dropout_rate=dropout_rate)
+      x,
+      attn_mask=attn_mask,
+      decode=decode,
+      max_len=max_len,
+      cache=cache,
+      index=index,
+      dropout_rate=dropout_rate,
+    )
     return F.dropout(x, dropout_rate, self.training), cache
 
   # Multihead attention block:
-  def _mha_block(self,
-                 x: Tensor,
-                 mem: Tensor,
-                 attn_mask: Optional[Tensor],
-                 dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def _mha_block(
+    self,
+    x: Tensor,
+    mem: Tensor,
+    attn_mask: Optional[Tensor],
+    dropout_rate: Optional[float] = 0.0,
+  ) -> Tensor:
     x, _ = self.multihead_attn(
-        x,
-        mem,
-        attn_mask=attn_mask,
-        dropout_rate=dropout_rate)
+      x, mem, attn_mask=attn_mask, dropout_rate=dropout_rate
+    )
     return F.dropout(x, dropout_rate, self.training)
 
   # Feed forward block.
-  def _ff_block(self,
-                inputs: Tensor,
-                dropout_rate: Optional[float] = 0.0) -> Tensor:
+  def _ff_block(
+    self, inputs: Tensor, dropout_rate: Optional[float] = 0.0
+  ) -> Tensor:
     x = self.activation(self.linear1(inputs))
     if self.glu:
       y = self.linear_glu(inputs)
@@ -815,33 +872,38 @@ class MultiheadAttention(nn.Module):
     >>> attn_output, cache = multihead_attn(x)
   """
 
-  def __init__(self,
-               embed_dim: int,
-               num_heads: int,
-               self_attn: bool = True,
-               attention_temp: float = 1.0,
-               bias: bool = False,
-               device: Optional[torch.device] = None,
-               dtype: Optional[torch.dtype] = None) -> None:
+  def __init__(
+    self,
+    embed_dim: int,
+    num_heads: int,
+    self_attn: bool = True,
+    attention_temp: float = 1.0,
+    bias: bool = False,
+    device: Optional[torch.device] = None,
+    dtype: Optional[torch.dtype] = None,
+  ) -> None:
     super().__init__()
     self.embed_dim = embed_dim
     self.num_heads = num_heads
     self.self_attn = self_attn
     self.head_dim = embed_dim // num_heads
     self.attention_temp = attention_temp
-    assert self.head_dim * num_heads == self.embed_dim, \
-        'embed_dim must be divisible by num_heads.'
+    assert self.head_dim * num_heads == self.embed_dim, (
+      'embed_dim must be divisible by num_heads.'
+    )
 
     factory_kwargs = {'device': device, 'dtype': dtype}
     if self_attn:
       # Self-attention.
       self.in_proj = nn.Linear(
-          embed_dim, 3 * embed_dim, bias=bias, **factory_kwargs)
+        embed_dim, 3 * embed_dim, bias=bias, **factory_kwargs
+      )
     else:
       # Encoder-decoder attention.
       self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias, **factory_kwargs)
       self.kv_proj = nn.Linear(
-          embed_dim, 2 * embed_dim, bias=bias, **factory_kwargs)
+        embed_dim, 2 * embed_dim, bias=bias, **factory_kwargs
+      )
     self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias, **factory_kwargs)
 
     self._reset_parameters()
@@ -855,15 +917,15 @@ class MultiheadAttention(nn.Module):
           normal_(module.bias, std=1e-6)
 
   def forward(
-      self,
-      x: Tensor,
-      mem: Optional[Tensor] = None,
-      attn_mask: Optional[Tensor] = None,
-      decode: bool = False,
-      max_len: Optional[int] = None,
-      cache: Optional[dict] = None,
-      index: Optional[int] = None,
-      dropout_rate: Optional[float] = 0.0
+    self,
+    x: Tensor,
+    mem: Optional[Tensor] = None,
+    attn_mask: Optional[Tensor] = None,
+    decode: bool = False,
+    max_len: Optional[int] = None,
+    cache: Optional[dict] = None,
+    index: Optional[int] = None,
+    dropout_rate: Optional[float] = 0.0,
   ) -> Any:  # TODO: (nico) remove default?!
     r"""
     Args:
@@ -872,7 +934,7 @@ class MultiheadAttention(nn.Module):
           attention mechanism. See "Attention Is All You Need" for more details.
       mem: Batch of input sequences of shape
           (batch size, sequence length, embedding dimensionality) for
-          encoder-decoder attention. See "Attention Is All You Need" for more 
+          encoder-decoder attention. See "Attention Is All You Need" for more
           details.
       attn_mask: If specified, a 2D or 3D mask preventing attention to certain
           positions. Must be of shape :math:`(L, S)` or
@@ -915,16 +977,13 @@ class MultiheadAttention(nn.Module):
     if decode:
       if loc_cache is None:
         loc_cache = {
-            'cached_key':
-                torch.zeros((bsz, max_len, embed_dim),
-                            dtype=k.dtype,
-                            device=k.device),
-            'cached_value':
-                torch.zeros((bsz, max_len, embed_dim),
-                            dtype=v.dtype,
-                            device=v.device),
-            'cache_index':
-                torch.tensor(0, dtype=torch.long, device=k.device),
+          'cached_key': torch.zeros(
+            (bsz, max_len, embed_dim), dtype=k.dtype, device=k.device
+          ),
+          'cached_value': torch.zeros(
+            (bsz, max_len, embed_dim), dtype=v.dtype, device=v.device
+          ),
+          'cache_index': torch.tensor(0, dtype=torch.long, device=k.device),
         }
       cached_key = loc_cache['cached_key']
       cached_value = loc_cache['cached_value']
@@ -932,11 +991,13 @@ class MultiheadAttention(nn.Module):
       # Shape check of cached keys against query input.
       expected_shape = (bsz, 1, embed_dim)
       if expected_shape != x.shape:
-        raise ValueError('Autoregressive cache shape error, expected query '
-                         f'shape {expected_shape} instead got {x.shape}.')
+        raise ValueError(
+          'Autoregressive cache shape error, expected query '
+          f'shape {expected_shape} instead got {x.shape}.'
+        )
       # Update key, value caches with our new 1d spatial slices.
-      cached_key[:, cache_index:cache_index + 1, :] = k
-      cached_value[:, cache_index:cache_index + 1, :] = v
+      cached_key[:, cache_index : cache_index + 1, :] = k
+      cached_value[:, cache_index : cache_index + 1, :] = v
       k = cached_key
       v = cached_value
       cache_index += 1
@@ -946,8 +1007,9 @@ class MultiheadAttention(nn.Module):
       # not the remaining zero elements.
       if attn_mask is not None:
         raise ValueError('Attention mask has to be None for decode == True.')
-      attn_mask = (torch.arange(max_len, device=k.device) >=
-                   cache_index).reshape(1, max_len)
+      attn_mask = (
+        torch.arange(max_len, device=k.device) >= cache_index
+      ).reshape(1, max_len)
 
     # Update sequence length to account for complete sequence.
     seq_len = k.size(1)
@@ -959,17 +1021,21 @@ class MultiheadAttention(nn.Module):
 
     # Check dtype and shape of attention mask.
     if not decode and attn_mask is not None:
-      assert attn_mask.is_floating_point() or attn_mask.dtype == torch.bool, \
-            f'Float and bool dtypes are supported, not {attn_mask.dtype}.'
+      assert attn_mask.is_floating_point() or attn_mask.dtype == torch.bool, (
+        f'Float and bool dtypes are supported, not {attn_mask.dtype}.'
+      )
       # Ensure attn_mask's dim is 3.
       if attn_mask.dim() == 3:
         correct_3d_size = (bsz * self.num_heads, tgt_len, seq_len)
         if attn_mask.shape != correct_3d_size:
-          raise RuntimeError(f'The shape of attn_mask is {attn_mask.shape}, '
-                             f'but should be {correct_3d_size}.')
+          raise RuntimeError(
+            f'The shape of attn_mask is {attn_mask.shape}, '
+            f'but should be {correct_3d_size}.'
+          )
       else:
         raise RuntimeError(
-            f"attn_mask's dimension {attn_mask.dim()} is not supported")
+          f"attn_mask's dimension {attn_mask.dim()} is not supported"
+        )
       # Reshape attention mask to be consistent with q, k, v.
       attn_mask = attn_mask.view(bsz, self.num_heads, tgt_len, seq_len)
 
@@ -985,10 +1051,12 @@ class MultiheadAttention(nn.Module):
     # Calculate attention.
     q = self.attention_temp * q
     attn_output = torch.nn.functional.scaled_dot_product_attention(
-        q, k, v, attn_mask, attn_dropout_rate)
+      q, k, v, attn_mask, attn_dropout_rate
+    )
     # Rearrange for output projection.
-    attn_output = attn_output.transpose(1, 2).contiguous().view(
-        bsz, tgt_len, embed_dim)
+    attn_output = (
+      attn_output.transpose(1, 2).contiguous().view(bsz, tgt_len, embed_dim)
+    )
     # Output projection.
     attn_output = self.out_proj(attn_output)
 

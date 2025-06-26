@@ -1,8 +1,8 @@
-from clu import metrics
 import flax
 import numpy as np
 import tensorflow as tf
 import tensorflow_text as tftxt
+from clu import metrics
 
 gfile = tf.io.gfile
 
@@ -15,17 +15,20 @@ def average_ctc_loss():
   @flax.struct.dataclass
   class _Metric(metrics.Metric):
     """Applies `fun` and computes the average."""
+
     total: np.float32
     weight: np.float32
 
     @classmethod
     def from_model_output(cls, loss_dict, **_):
       return cls(
-          total=loss_dict['summed'], weight=loss_dict['n_valid_examples'])
+        total=loss_dict['summed'], weight=loss_dict['n_valid_examples']
+      )
 
     def merge(self, other):
       return type(self)(
-          total=self.total + other.total, weight=self.weight + other.weight)
+        total=self.total + other.total, weight=self.weight + other.weight
+      )
 
     def compute(self):
       return self.total / self.weight
@@ -74,9 +77,10 @@ def edit_distance(source, target):
       # possibilities and find minimum.
       else:
         distance[i][j] = 1 + min(
-            distance[i][j - 1],  # Insert
-            distance[i - 1][j],  # Remove
-            distance[i - 1][j - 1])  # Replace
+          distance[i][j - 1],  # Insert
+          distance[i - 1][j],  # Remove
+          distance[i - 1][j - 1],
+        )  # Replace
 
   return distance[num_source_words][num_target_words]
 
@@ -109,17 +113,20 @@ def compute_wer(decoded, decoded_paddings, targets, target_paddings, tokenizer):
   return word_errors, num_words
 
 
-def load_tokenizer(model_path: str,
-                   add_bos: bool = False,
-                   add_eos: bool = True,
-                   reverse: bool = False):
+def load_tokenizer(
+  model_path: str,
+  add_bos: bool = False,
+  add_eos: bool = True,
+  reverse: bool = False,
+):
   """Load a tf-text SentencePiece tokenizer from given model filepath."""
   if model_path is None:
     return None
   with gfile.GFile(model_path, 'rb') as model_fp:
     sp_model = model_fp.read()
   sp_tokenizer = tftxt.SentencepieceTokenizer(
-      model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse)
+    model=sp_model, add_bos=add_bos, add_eos=add_eos, reverse=reverse
+  )
   return sp_tokenizer
 
 
@@ -128,8 +135,10 @@ def wer(tokenizer_vocab_path):
 
   @flax.struct.dataclass
   class WER(
-      metrics.CollectingMetric.from_outputs(
-          ('decoded', 'decoded_paddings', 'targets', 'target_paddings'))):
+    metrics.CollectingMetric.from_outputs(
+      ('decoded', 'decoded_paddings', 'targets', 'target_paddings')
+    )
+  ):
     """Computes the mean average precision for a binary classifier on CPU."""
 
     def compute(self):
@@ -144,7 +153,8 @@ def wer(tokenizer_vocab_path):
         values['decoded_paddings'],
         values['targets'].astype(np.int32),
         values['target_paddings'],
-        tokenizer)
+        tokenizer,
+      )
 
       return word_errors / num_words
 
@@ -153,4 +163,5 @@ def wer(tokenizer_vocab_path):
 
 def get_metrics_bundle(tokenizer_vocab_path):
   return metrics.Collection.create(
-      ctc_loss=average_ctc_loss(), wer=wer(tokenizer_vocab_path))
+    ctc_loss=average_ctc_loss(), wer=wer(tokenizer_vocab_path)
+  )

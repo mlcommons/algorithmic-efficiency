@@ -49,12 +49,9 @@ def ssim(logits, targets, mean=None, std=None, volume_max=None):
   return ssims
 
 
-def structural_similarity(im1,
-                          im2,
-                          data_range=1.0,
-                          win_size=7,
-                          k1=0.01,
-                          k2=0.03):
+def structural_similarity(
+  im1, im2, data_range=1.0, win_size=7, k1=0.01, k2=0.03
+):
   """Compute the mean structural similarity index between two images.
 
   NOTE(dsuo): modified from skimage.metrics.structural_similarity.
@@ -85,7 +82,7 @@ def structural_similarity(im1,
   """
   filter_func = functools.partial(_uniform_filter, size=win_size)
 
-  num_points = win_size**len(im1.shape)
+  num_points = win_size ** len(im1.shape)
 
   # filter has already normalized by num_points
   cov_norm = num_points / (num_points - 1)  # sample covariance
@@ -102,8 +99,8 @@ def structural_similarity(im1,
   vy = cov_norm * (uyy - uy * uy)
   vxy = cov_norm * (uxy - ux * uy)
 
-  c1 = (k1 * data_range)**2
-  c2 = (k2 * data_range)**2
+  c1 = (k1 * data_range) ** 2
+  c2 = (k2 * data_range) ** 2
 
   a1 = 2 * ux * uy + c1
   a2 = 2 * vxy + c2
@@ -121,12 +118,15 @@ def structural_similarity(im1,
 
 
 def _uniform_filter(im, size=7):
-
   def conv(im):
-    return jnp.convolve(
+    return (
+      jnp.convolve(
         jnp.pad(im, pad_width=size // 2, mode='symmetric'),
         jnp.ones(size),
-        mode='valid') / size
+        mode='valid',
+      )
+      / size
+    )
 
   im = jax.vmap(conv, (0,))(im)
   im = jax.vmap(conv, (1,))(im)

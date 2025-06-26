@@ -2,19 +2,21 @@
 https://github.com/google/init2winit/blob/master/init2winit/model_lib/conformer.py.
 """
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from typing import Tuple
 
 import torch
-from torch import nn
 import torch.distributed.nn as dist_nn
 import torch.nn.functional as F
+from torch import nn
 
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch import \
-    preprocessor
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import \
-    SpecAug
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch import (
+  preprocessor,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.spectrum_augmenter import (
+  SpecAug,
+)
 
 USE_PYTORCH_DDP = 'LOCAL_RANK' in os.environ
 DROPOUT_RATE = 0.1
@@ -23,6 +25,7 @@ DROPOUT_RATE = 0.1
 @dataclass
 class DeepspeechConfig:
   """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
+
   vocab_size: int = 1024
   encoder_dim: int = 512
   num_lstm_layers: int = 6
@@ -47,7 +50,6 @@ class DeepspeechConfig:
 
 
 class LayerNorm(nn.Module):
-
   def __init__(self, dim, epsilon=1e-6):
     super().__init__()
     self.dim = dim
@@ -61,14 +63,13 @@ class LayerNorm(nn.Module):
     var = x.var(dim=-1, unbiased=False, keepdims=True)
 
     normed_x = (x - mean) * torch.rsqrt(var + self.epsilon)
-    normed_x *= (1 + self.scale)
+    normed_x *= 1 + self.scale
     normed_x += self.bias
 
     return normed_x
 
 
 class Subsample(nn.Module):
-
   def __init__(self, config: DeepspeechConfig):
     super().__init__()
     encoder_dim = config.encoder_dim
@@ -76,16 +77,17 @@ class Subsample(nn.Module):
     self.encoder_dim = encoder_dim
 
     self.conv1 = Conv2dSubsampling(
-        input_channels=1, output_channels=encoder_dim, use_tanh=config.use_tanh)
+      input_channels=1, output_channels=encoder_dim, use_tanh=config.use_tanh
+    )
     self.conv2 = Conv2dSubsampling(
-        input_channels=encoder_dim,
-        output_channels=encoder_dim,
-        use_tanh=config.use_tanh)
+      input_channels=encoder_dim,
+      output_channels=encoder_dim,
+      use_tanh=config.use_tanh,
+    )
 
     self.lin = nn.LazyLinear(out_features=self.encoder_dim, bias=True)
 
   def forward(self, inputs, input_paddings, dropout_rate):
-
     output_paddings = input_paddings
     outputs = inputs[:, None, :, :]
 
@@ -93,9 +95,9 @@ class Subsample(nn.Module):
     outputs, output_paddings = self.conv2(outputs, output_paddings)
 
     batch_size, channels, subsampled_lengths, subsampled_dims = outputs.shape
-    outputs = outputs.permute(0, 2, 3, 1).reshape(batch_size,
-                                                  subsampled_lengths,
-                                                  subsampled_dims * channels)
+    outputs = outputs.permute(0, 2, 3, 1).reshape(
+      batch_size, subsampled_lengths, subsampled_dims * channels
+    )
 
     outputs = self.lin(outputs)
     outputs = F.dropout(outputs, dropout_rate, training=self.training)
@@ -104,15 +106,16 @@ class Subsample(nn.Module):
 
 
 class Conv2dSubsampling(nn.Module):
-
-  def __init__(self,
-               input_channels: int,
-               output_channels: int,
-               filter_stride: Tuple[int] = (2, 2),
-               padding: str = 'SAME',
-               batch_norm_momentum: float = 0.999,
-               batch_norm_epsilon: float = 0.001,
-               use_tanh: bool = False):
+  def __init__(
+    self,
+    input_channels: int,
+    output_channels: int,
+    filter_stride: Tuple[int] = (2, 2),
+    padding: str = 'SAME',
+    batch_norm_momentum: float = 0.999,
+    batch_norm_epsilon: float = 0.001,
+    use_tanh: bool = False,
+  ):
     super().__init__()
 
     self.input_channels = input_channels
@@ -123,7 +126,8 @@ class Conv2dSubsampling(nn.Module):
     self.filter_shape = (output_channels, input_channels, 3, 3)
 
     self.kernel = nn.Parameter(
-        nn.init.xavier_uniform_(torch.empty(*self.filter_shape)))
+      nn.init.xavier_uniform_(torch.empty(*self.filter_shape))
+    )
     self.bias = nn.Parameter(torch.zeros(output_channels))
 
     self.use_tanh = use_tanh
@@ -154,12 +158,13 @@ class Conv2dSubsampling(nn.Module):
     else:
       in_ = inputs
     outputs = F.conv2d(
-        input=in_,
-        weight=self.kernel,
-        bias=self.bias,
-        stride=self.filter_stride,
-        dilation=(1, 1),
-        groups=groups)
+      input=in_,
+      weight=self.kernel,
+      bias=self.bias,
+      stride=self.filter_stride,
+      dilation=(1, 1),
+      groups=groups,
+    )
 
     if self.use_tanh:
       outputs = F.tanh(outputs)
@@ -170,21 +175,24 @@ class Conv2dSubsampling(nn.Module):
     stride = self.filter_stride[0]
     pad_len = (input_length + stride - 1) // stride * stride - input_length
     out_padding = F.conv1d(
-        input=torch.cat([
-            paddings[:, None, :],
-            torch.zeros(
-                size=(paddings.shape[0], 1, pad_len), device=paddings.device)
+      input=torch.cat(
+        [
+          paddings[:, None, :],
+          torch.zeros(
+            size=(paddings.shape[0], 1, pad_len), device=paddings.device
+          ),
         ],
-                        dim=2),
-        weight=torch.ones([1, 1, 1], device=paddings.device),
-        stride=self.filter_stride[:1])
+        dim=2,
+      ),
+      weight=torch.ones([1, 1, 1], device=paddings.device),
+      stride=self.filter_stride[:1],
+    )
     out_padding = out_padding.squeeze(dim=1)
     outputs = outputs * (1 - out_padding[:, None, :, None])
     return outputs, out_padding
 
 
 class FeedForwardModule(nn.Module):
-
   def __init__(self, config: DeepspeechConfig):
     super().__init__()
     self.config = config
@@ -193,13 +201,13 @@ class FeedForwardModule(nn.Module):
       self.normalization_layer = LayerNorm(config.encoder_dim)
     else:
       self.bn_normalization_layer = BatchNorm(
-          dim=config.encoder_dim,
-          batch_norm_momentum=config.batch_norm_momentum,
-          batch_norm_epsilon=config.batch_norm_epsilon)
+        dim=config.encoder_dim,
+        batch_norm_momentum=config.batch_norm_momentum,
+        batch_norm_epsilon=config.batch_norm_epsilon,
+      )
     self.lin = nn.LazyLinear(out_features=config.encoder_dim, bias=True)
 
   def forward(self, inputs, input_paddings, dropout_rate):
-
     padding_mask = (1 - input_paddings)[:, :, None]
     if self.config.layernorm_everywhere:
       inputs = self.normalization_layer(inputs)
@@ -220,7 +228,6 @@ class FeedForwardModule(nn.Module):
 
 
 class BatchNorm(nn.Module):
-
   def __init__(self, dim, batch_norm_momentum, batch_norm_epsilon):
     super().__init__()
     running_mean = torch.zeros(dim)
@@ -235,8 +242,8 @@ class BatchNorm(nn.Module):
     self.dim = dim
 
   def forward(self, inputs, input_paddings):
-    #inputs: NHD
-    #padding: NH
+    # inputs: NHD
+    # padding: NH
     mask = 1 - input_paddings[:, :, None]
     if self.training:
       count = mask.sum()
@@ -253,9 +260,11 @@ class BatchNorm(nn.Module):
       var = sum_ / count
 
       self.running_mean = (1 - self.momentum) * self.running_mean + (
-          self.momentum) * mean.detach()
+        self.momentum
+      ) * mean.detach()
       self.running_var = (1 - self.momentum) * self.running_var + (
-          self.momentum) * var.detach()
+        self.momentum
+      ) * var.detach()
     else:
       mean = self.running_mean
       var = self.running_var
@@ -266,7 +275,6 @@ class BatchNorm(nn.Module):
 
 
 class BatchRNN(nn.Module):
-
   def __init__(self, config: DeepspeechConfig):
     super().__init__()
     self.config = config
@@ -278,19 +286,23 @@ class BatchRNN(nn.Module):
     if config.layernorm_everywhere:
       self.normalization_layer = LayerNorm(config.encoder_dim)
     else:
-      self.bn_normalization_layer = BatchNorm(config.encoder_dim,
-                                              config.batch_norm_momentum,
-                                              config.batch_norm_epsilon)
+      self.bn_normalization_layer = BatchNorm(
+        config.encoder_dim,
+        config.batch_norm_momentum,
+        config.batch_norm_epsilon,
+      )
 
     if bidirectional:
       self.lstm = nn.LSTM(
-          input_size=input_size,
-          hidden_size=hidden_size // 2,
-          bidirectional=True,
-          batch_first=True)
+        input_size=input_size,
+        hidden_size=hidden_size // 2,
+        bidirectional=True,
+        batch_first=True,
+      )
     else:
       self.lstm = nn.LSTM(
-          input_size=input_size, hidden_size=hidden_size, batch_first=True)
+        input_size=input_size, hidden_size=hidden_size, batch_first=True
+      )
 
   def forward(self, inputs, input_paddings):
     if self.config.layernorm_everywhere:
@@ -299,50 +311,59 @@ class BatchRNN(nn.Module):
       inputs = self.bn_normalization_layer(inputs, input_paddings)
     lengths = torch.sum(1 - input_paddings, dim=1).detach().cpu().numpy()
     packed_inputs = torch.nn.utils.rnn.pack_padded_sequence(
-        inputs, lengths, batch_first=True, enforce_sorted=False)
+      inputs, lengths, batch_first=True, enforce_sorted=False
+    )
     packed_outputs, _ = self.lstm(packed_inputs)
     outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(
-        packed_outputs, batch_first=True)
+      packed_outputs, batch_first=True
+    )
     if outputs.shape[1] < inputs.shape[1]:
-      outputs = torch.cat([
+      outputs = torch.cat(
+        [
           outputs,
           torch.zeros(
-              size=(outputs.shape[0],
-                    inputs.shape[1] - outputs.shape[1],
-                    outputs.shape[2]),
-              device=outputs.device)
-      ],
-                          dim=1)
+            size=(
+              outputs.shape[0],
+              inputs.shape[1] - outputs.shape[1],
+              outputs.shape[2],
+            ),
+            device=outputs.device,
+          ),
+        ],
+        dim=1,
+      )
     return outputs
 
 
 class DeepspeechEncoderDecoder(nn.Module):
-
   def __init__(self, config: DeepspeechConfig):
     super().__init__()
     self.config = config
 
     self.specaug = SpecAug(
-        freq_mask_count=config.freq_mask_count,
-        freq_mask_max_bins=config.freq_mask_max_bins,
-        time_mask_count=config.time_mask_count,
-        time_mask_max_frames=config.time_mask_max_frames,
-        time_mask_max_ratio=config.time_mask_max_ratio,
-        time_masks_per_frame=config.time_masks_per_frame,
-        use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames
+      freq_mask_count=config.freq_mask_count,
+      freq_mask_max_bins=config.freq_mask_max_bins,
+      time_mask_count=config.time_mask_count,
+      time_mask_max_frames=config.time_mask_max_frames,
+      time_mask_max_ratio=config.time_mask_max_ratio,
+      time_masks_per_frame=config.time_masks_per_frame,
+      use_dynamic_time_mask_max_frames=config.use_dynamic_time_mask_max_frames,
     )
     preprocessing_config = preprocessor.PreprocessorConfig()
     self.preprocessor = preprocessor.MelFilterbankFrontend(
-        preprocessing_config,
-        per_bin_mean=preprocessor.LIBRISPEECH_MEAN_VECTOR,
-        per_bin_stddev=preprocessor.LIBRISPEECH_STD_VECTOR)
+      preprocessing_config,
+      per_bin_mean=preprocessor.LIBRISPEECH_MEAN_VECTOR,
+      per_bin_stddev=preprocessor.LIBRISPEECH_STD_VECTOR,
+    )
 
     self.subsample = Subsample(config=config)
 
     self.lstms = nn.ModuleList(
-        [BatchRNN(config) for _ in range(config.num_lstm_layers)])
+      [BatchRNN(config) for _ in range(config.num_lstm_layers)]
+    )
     self.ffns = nn.ModuleList(
-        [FeedForwardModule(config) for _ in range(config.num_ffn_layers)])
+      [FeedForwardModule(config) for _ in range(config.num_ffn_layers)]
+    )
 
     if config.enable_decoder_layer_norm:
       self.ln = LayerNorm(config.encoder_dim)
@@ -358,9 +379,9 @@ class DeepspeechEncoderDecoder(nn.Module):
     outputs, output_paddings = self.preprocessor(outputs, output_paddings)
     if self.training and self.config.use_specaug:
       outputs, output_paddings = self.specaug(outputs, output_paddings)
-    outputs, output_paddings = self.subsample(outputs,
-                                              output_paddings,
-                                              dropout_rate)
+    outputs, output_paddings = self.subsample(
+      outputs, output_paddings, dropout_rate
+    )
     for idx in range(self.config.num_lstm_layers):
       if self.config.enable_residual_connections:
         outputs = outputs + self.lstms[idx](outputs, output_paddings)
@@ -370,7 +391,8 @@ class DeepspeechEncoderDecoder(nn.Module):
     for idx in range(self.config.num_ffn_layers):
       if self.config.enable_residual_connections:
         outputs = outputs + self.ffns[idx](
-            outputs, output_paddings, dropout_rate)
+          outputs, output_paddings, dropout_rate
+        )
       else:
         outputs = self.ffns[idx](outputs, output_paddings, dropout_rate)
 

@@ -8,10 +8,10 @@ import os
 import tempfile
 from typing import Dict
 
-from absl import logging
 import sentencepiece as spm
 import tensorflow as tf
 import tensorflow_text as tftxt
+from absl import logging
 
 gfile = tf.io.gfile
 copy = tf.io.gfile.copy
@@ -24,7 +24,8 @@ Features = Dict[str, tf.Tensor]
 def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
   char_count = 0
   with tempfile.NamedTemporaryFile(
-      delete=False, prefix='/tmp/ds_chars') as outfp:
+    delete=False, prefix='/tmp/ds_chars'
+  ) as outfp:
     for split in splits:
       data_folder = data_folder + '/' + split
       for _, speaker_folder in enumerate(os.listdir(data_folder)):
@@ -32,14 +33,16 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
           break
 
         for chapter_folder in os.listdir(f'{data_folder}/{speaker_folder}'):
-          trans_file = (f'{data_folder}/{speaker_folder}/{chapter_folder}/'
-                        f'{speaker_folder}-{chapter_folder}.trans.txt')
+          trans_file = (
+            f'{data_folder}/{speaker_folder}/{chapter_folder}/'
+            f'{speaker_folder}-{chapter_folder}.trans.txt'
+          )
           if not exists(trans_file):
             logging.info('path does not exist -> %s', trans_file)
             continue
           with open(trans_file, 'r', encoding='UTF-8') as f:
-            for l in f:
-              _, line = l.strip().split(' ', maxsplit=1)
+            for lines in f:
+              _, line = lines.strip().split(' ', maxsplit=1)
               line = line + '\n'
               char_count += len(line)
               if char_count > maxchars:
@@ -50,13 +53,15 @@ def dump_chars_for_training(data_folder, splits, maxchars: int = int(1e7)):
   return outfp
 
 
-def train_tokenizer(data_dir: str,
-                    splits,
-                    vocab_size: int = 1024,
-                    model_path: str = 'spm_model.vocab',
-                    maxchars: int = int(1e7),
-                    model_type: str = 'unigram',
-                    character_coverage: float = 1.0):
+def train_tokenizer(
+  data_dir: str,
+  splits,
+  vocab_size: int = 1024,
+  model_path: str = 'spm_model.vocab',
+  maxchars: int = int(1e7),
+  model_type: str = 'unigram',
+  character_coverage: float = 1.0,
+):
   """Train SentencePiece tokenizer from subset of tf dataset.
 
   Args:
@@ -77,15 +82,18 @@ def train_tokenizer(data_dir: str,
   charfile = dump_chars_for_training(data_dir, splits, maxchars=maxchars)
 
   with tempfile.NamedTemporaryFile(
-      delete=False, prefix='/tmp/sp_tmp') as model_fp:
+    delete=False, prefix='/tmp/sp_tmp'
+  ) as model_fp:
     pass  # we just want a prefix'd tmp-filename
-  argstr = ' '.join([
+  argstr = ' '.join(
+    [
       f'--input={charfile.name}',
       f'--vocab_size={vocab_size}',
       f'--character_coverage={character_coverage}',
       f'--model_prefix={model_fp.name}',
       f'--model_type={model_type}',
-  ])
+    ]
+  )
   spm.SentencePieceTrainer.Train(argstr)
 
   copy_rename_path = abs_model_path + '.rntmp'
@@ -104,7 +112,8 @@ def load_tokenizer(model_filepath):
   with gfile.GFile(model_filepath, 'rb') as model_fp:
     sp_model = model_fp.read()
   sp_tokenizer = tftxt.SentencepieceTokenizer(
-      model=sp_model, add_bos=False, add_eos=True, reverse=False)
+    model=sp_model, add_bos=False, add_eos=True, reverse=False
+  )
   return sp_tokenizer
 
 
@@ -123,8 +132,9 @@ def run(train, input_dir, tokenizer_vocab_path):
     detokenized = tokenizer.detokenize(tokens).numpy().decode('utf-8')
 
     logging.info('Original input = %s', test_input)
-    logging.info('Output after after tokenizing and detokenizing = %s',
-                 detokenized)
+    logging.info(
+      'Output after after tokenizing and detokenizing = %s', detokenized
+    )
 
     if detokenized == test_input:
       logging.info('Tokenizer working correctly!')

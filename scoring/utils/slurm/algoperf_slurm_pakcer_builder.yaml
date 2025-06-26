@@ -13,7 +13,6 @@
 # limitations under the License.
 
 ---
-
 blueprint_name: algoperf-slurm-packer
 
 vars:
@@ -36,97 +35,97 @@ vars:
 #    bucket: <<BUCKET_NAME>>
 
 deployment_groups:
-- group: primary
-  modules:
-  - id: network
-    source: modules/network/vpc
+  - group: primary
+    modules:
+      - id: network
+        source: modules/network/vpc
 
-  - id: script
-    source: modules/scripts/startup-script
-    settings:
-      region: $(vars.region)
-      install_ansible: true
-      docker:
-        enabled: true
-        world_writable: true
-      # (TODO) Do I need this?
-      configure_ssh_host_patterns:
-      - 10.0.0.*
-      - 10.1.0.*
-      - 10.2.0.*
-      - 10.3.0.*
-      - 10.4.0.*
-      - 10.5.0.*
-      - 10.6.0.*
-      - 10.7.0.*
-      - $(vars.slurm_cluster_name)*
-      runners:
-      - type: shell
-        destination: install-ml-libraries.sh
-        content: |
-          #!/bin/bash
-          # this script is designed to execute on Slurm images published by SchedMD that:
-          # - are based on Debian distribution of Linux
-          # - have NVIDIA drivers pre-installed
+      - id: script
+        source: modules/scripts/startup-script
+        settings:
+          region: $(vars.region)
+          install_ansible: true
+          docker:
+            enabled: true
+            world_writable: true
+          # (TODO) Do I need this?
+          configure_ssh_host_patterns:
+            - 10.0.0.*
+            - 10.1.0.*
+            - 10.2.0.*
+            - 10.3.0.*
+            - 10.4.0.*
+            - 10.5.0.*
+            - 10.6.0.*
+            - 10.7.0.*
+            - $(vars.slurm_cluster_name)*
+          runners:
+            - type: shell
+              destination: install-ml-libraries.sh
+              content: |
+                #!/bin/bash
+                # this script is designed to execute on Slurm images published by SchedMD that:
+                # - are based on Debian distribution of Linux
+                # - have NVIDIA drivers pre-installed
 
-          set -e -o pipefail
+                set -e -o pipefail
 
-          echo "deb https://packages.cloud.google.com/apt google-fast-socket main" > /etc/apt/sources.list.d/google-fast-socket.list
-          apt-get update --allow-releaseinfo-change
-          apt-get install --assume-yes google-fast-socket
+                echo "deb https://packages.cloud.google.com/apt google-fast-socket main" > /etc/apt/sources.list.d/google-fast-socket.list
+                apt-get update --allow-releaseinfo-change
+                apt-get install --assume-yes google-fast-socket
 
-          CONDA_BASE=/opt/conda
+                CONDA_BASE=/opt/conda
 
-          if [ -d $CONDA_BASE ]; then
-                  exit 0
-          fi
+                if [ -d $CONDA_BASE ]; then
+                        exit 0
+                fi
 
-          DL_DIR=\$(mktemp -d)
-          cd $DL_DIR
-          curl -L -O https://github.com/conda-forge/miniforge/releases/download/24.7.1-2/Miniforge3-24.7.1-2-Linux-x86_64.sh
-          HOME=$DL_DIR bash Miniforge3-24.7.1-2-Linux-x86_64.sh -b -p $CONDA_BASE
-          cd -
-          rm -rf $DL_DIR
-          unset DL_DIR
+                DL_DIR=\$(mktemp -d)
+                cd $DL_DIR
+                curl -L -O https://github.com/conda-forge/miniforge/releases/download/24.7.1-2/Miniforge3-24.7.1-2-Linux-x86_64.sh
+                HOME=$DL_DIR bash Miniforge3-24.7.1-2-Linux-x86_64.sh -b -p $CONDA_BASE
+                cd -
+                rm -rf $DL_DIR
+                unset DL_DIR
 
-          source $CONDA_BASE/bin/activate base
-          conda init --system
-          conda config --system --set auto_activate_base False
-          # following channel ordering is important! use strict_priority!
-          conda config --system --set channel_priority strict
-          conda update -n base conda --yes
+                source $CONDA_BASE/bin/activate base
+                conda init --system
+                conda config --system --set auto_activate_base False
+                # following channel ordering is important! use strict_priority!
+                conda config --system --set channel_priority strict
+                conda update -n base conda --yes
 
-          ### create a virtual environment for tensorflow
-          conda create -n tf python=3.11 --yes
-          conda activate tf
-          pip install tensorflow[and-cuda]==2.18.*
-          pip install tensorrt==10.6.*
+                ### create a virtual environment for tensorflow
+                conda create -n tf python=3.11 --yes
+                conda activate tf
+                pip install tensorflow[and-cuda]==2.18.*
+                pip install tensorrt==10.6.*
 
-          ### create a virtual environment for pytorch
-          conda create -n pytorch python=3.11 --yes
-          conda activate pytorch
-          pip install torch torchvision torchaudio
+                ### create a virtual environment for pytorch
+                conda create -n pytorch python=3.11 --yes
+                conda activate pytorch
+                pip install torch torchvision torchaudio
 
-- group: packer
-  modules:
-  - id: custom-image
-    source: modules/packer/custom-image
-    kind: packer
-    use:
-    - network
-    - script
-    settings:
-      # give VM a public IP to ensure startup script can reach public internet
-      # w/o new VPC
-      omit_external_ip: false
-      source_image_project_id: [schedmd-slurm-public]
-      # see latest in https://github.com/GoogleCloudPlatform/slurm-gcp/blob/master/docs/images.md#published-image-family
-      source_image_family: slurm-gcp-6-8-debian-11
-      # You can find size of source image by using following command
-      # gcloud compute images describe-from-family <source_image_family> --project schedmd-slurm-public
-      disk_size: $(vars.disk_size_gb)
-      image_family: $(vars.new_image.family)
-      # building this image does not require a GPU-enabled VM
-      machine_type: c2-standard-16
-      state_timeout: 300m
-      zone: $(vars.zone)
+  - group: packer
+    modules:
+      - id: custom-image
+        source: modules/packer/custom-image
+        kind: packer
+        use:
+          - network
+          - script
+        settings:
+          # give VM a public IP to ensure startup script can reach public internet
+          # w/o new VPC
+          omit_external_ip: false
+          source_image_project_id: [schedmd-slurm-public]
+          # see latest in https://github.com/GoogleCloudPlatform/slurm-gcp/blob/master/docs/images.md#published-image-family
+          source_image_family: slurm-gcp-6-8-debian-11
+          # You can find size of source image by using following command
+          # gcloud compute images describe-from-family <source_image_family> --project schedmd-slurm-public
+          disk_size: $(vars.disk_size_gb)
+          image_family: $(vars.new_image.family)
+          # building this image does not require a GPU-enabled VM
+          machine_type: c2-standard-16
+          state_timeout: 300m
+          zone: $(vars.zone)

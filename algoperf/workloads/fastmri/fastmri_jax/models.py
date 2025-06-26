@@ -12,6 +12,7 @@ github.com/facebookresearch/fastMRI/blob/main/fastmri/pl_modules/unet_module.py
 Data:
 github.com/facebookresearch/fastMRI/tree/main/fastmri/data
 """
+
 import functools
 
 import flax.linen as nn
@@ -31,7 +32,7 @@ def _instance_norm2d(x, axes, epsilon=1e-5):
   mean2 = jnp.mean(jnp.square(x), axes)
   # mean2 - _abs_sq(mean) is not guaranteed to be non-negative due
   # to floating point round-off errors.
-  var = jnp.maximum(0., mean2 - jnp.square(mean))
+  var = jnp.maximum(0.0, mean2 - jnp.square(mean))
   stats_shape = list(x.shape)
   for axis in axes:
     stats_shape[axis] = 1
@@ -46,16 +47,17 @@ def _instance_norm2d(x, axes, epsilon=1e-5):
 class UNet(nn.Module):
   """Jax / Flax implementation of a U-Net model.
 
-    O. Ronneberger, P. Fischer, and Thomas Brox. U-net: Convolutional networks
-    for biomedical image segmentation. In International Conference on Medical
-    image computing and computer-assisted intervention, pages 234–241.
-    Springer, 2015.
+  O. Ronneberger, P. Fischer, and Thomas Brox. U-net: Convolutional networks
+  for biomedical image segmentation. In International Conference on Medical
+  image computing and computer-assisted intervention, pages 234–241.
+  Springer, 2015.
 
-    out_channels: Number of channels in the output to the U-Net model.
-    channels: Number of output channels of the first convolution layer.
-    num_pool_layers: Number of down-sampling and up-sampling layers.
-    dropout_rate: Dropout probability.
+  out_channels: Number of channels in the output to the U-Net model.
+  channels: Number of output channels of the first convolution layer.
+  num_pool_layers: Number of down-sampling and up-sampling layers.
+  dropout_rate: Dropout probability.
   """
+
   num_channels: int = 32
   num_pool_layers: int = 4
   out_channels = 1
@@ -67,14 +69,16 @@ class UNet(nn.Module):
   def __call__(self, x, train=True, dropout_rate=DROPOUT_RATE):
     # pylint: disable=invalid-name
     _ConvBlock = functools.partial(
-        ConvBlock,
-        dropout_rate=dropout_rate,
-        use_tanh=self.use_tanh,
-        use_layer_norm=self.use_layer_norm)
+      ConvBlock,
+      dropout_rate=dropout_rate,
+      use_tanh=self.use_tanh,
+      use_layer_norm=self.use_layer_norm,
+    )
     _TransposeConvBlock = functools.partial(
-        TransposeConvBlock,
-        use_tanh=self.use_tanh,
-        use_layer_norm=self.use_layer_norm)
+      TransposeConvBlock,
+      use_tanh=self.use_tanh,
+      use_layer_norm=self.use_layer_norm,
+    )
 
     down_sample_layers = [_ConvBlock(self.num_channels)]
 
@@ -125,9 +129,9 @@ class UNet(nn.Module):
       output = jnp.concatenate((output, downsample_layer), axis=-1)
       output = conv(output, train)
 
-    output = nn.Conv(
-        self.out_channels, kernel_size=(1, 1), strides=(1, 1))(
-            output)
+    output = nn.Conv(self.out_channels, kernel_size=(1, 1), strides=(1, 1))(
+      output
+    )
     return output.squeeze(-1)
 
 
@@ -136,6 +140,7 @@ class ConvBlock(nn.Module):
   out_channels: Number of channels in the output.
   dropout_rate: Dropout probability.
   """
+
   out_channels: int
   use_tanh: bool
   use_layer_norm: bool
@@ -152,11 +157,11 @@ class ConvBlock(nn.Module):
         jnp.array: Output tensor of shape `(N, H, W, out_channels)`.
     """
     x = nn.Conv(
-        features=self.out_channels,
-        kernel_size=(3, 3),
-        strides=(1, 1),
-        use_bias=False)(
-            x)
+      features=self.out_channels,
+      kernel_size=(3, 3),
+      strides=(1, 1),
+      use_bias=False,
+    )(x)
     if self.use_layer_norm:
       x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
@@ -171,23 +176,23 @@ class ConvBlock(nn.Module):
     x = activation_fn(x)
     # Ref code uses dropout2d which applies the same mask for the entire channel
     # Replicated by using broadcast dims to have the same filter on HW
-    x = Dropout(
-        dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
-            x, rate=dropout_rate)
+    x = Dropout(dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
+      x, rate=dropout_rate
+    )
     x = nn.Conv(
-        features=self.out_channels,
-        kernel_size=(3, 3),
-        strides=(1, 1),
-        use_bias=False)(
-            x)
+      features=self.out_channels,
+      kernel_size=(3, 3),
+      strides=(1, 1),
+      use_bias=False,
+    )(x)
     if self.use_layer_norm:
       x = nn.LayerNorm(reduction_axes=(1, 2, 3))(x)
     else:
       x = _instance_norm2d(x, (1, 2))
     x = activation_fn(x)
-    x = Dropout(
-        dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
-            x, rate=dropout_rate)
+    x = Dropout(dropout_rate, broadcast_dims=(1, 2), deterministic=not train)(
+      x, rate=dropout_rate
+    )
     return x
 
 
@@ -195,6 +200,7 @@ class TransposeConvBlock(nn.Module):
   """A Transpose Convolutional Block.
   out_channels: Number of channels in the output.
   """
+
   out_channels: int
   use_tanh: bool
   use_layer_norm: bool
@@ -208,8 +214,8 @@ class TransposeConvBlock(nn.Module):
         jnp.array: Output tensor of shape `(N, H*2, W*2, out_channels)`.
     """
     x = nn.ConvTranspose(
-        self.out_channels, kernel_size=(2, 2), strides=(2, 2), use_bias=False)(
-            x)
+      self.out_channels, kernel_size=(2, 2), strides=(2, 2), use_bias=False
+    )(x)
     x = _instance_norm2d(x, (1, 2))
     if self.use_tanh:
       activation_fn = nn.tanh

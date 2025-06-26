@@ -4,13 +4,12 @@ and step times.
 
 import csv
 
-from absl import logging
 import numpy as np
 import torch
+from absl import logging
 
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
-
   def __init__(self, split, data_dir):
     super().__init__()
     self.data_dir = data_dir
@@ -38,13 +37,14 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
 
     audio_paddings = np.zeros_like(audio, dtype=np.float32)
     audio_paddings = np.pad(
-        audio_paddings, (0, 320000 - audio.shape[0]), constant_values=1.0)
+      audio_paddings, (0, 320000 - audio.shape[0]), constant_values=1.0
+    )
     audio = np.pad(audio, (0, 320000 - audio.shape[0]), constant_values=0.0)
 
     target_paddings = np.zeros_like(targets, dtype=np.float32)
     target_paddings = np.pad(
-        target_paddings, (0, 256 - target_paddings.shape[0]),
-        constant_values=1.0)
+      target_paddings, (0, 256 - target_paddings.shape[0]), constant_values=1.0
+    )
     targets = np.pad(targets, (0, 256 - targets.shape[0]), constant_values=0)
     audio = audio.astype(np.float32)
     audio_paddings = audio_paddings.astype(np.float32)
