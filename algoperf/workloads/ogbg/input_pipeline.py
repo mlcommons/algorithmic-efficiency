@@ -147,17 +147,33 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
     labels_shards.append(replaced_labels)
     weights_shards.append(weights)
 
+    def get_shape(p):
+      return jax.tree.map(lambda x: x.shape, p)
+
+
     if count == num_shards:
+      # batched_graph_manual = f(graphs_shards)
+      # batched_graph_jraph = jraph.batch(graphs_shards)
+
+      # graph_shards_shape = get_shape(graphs_shards)
+      # manual_shape = get_shape(batched_graph_manual)
+      # jraph_shape = get_shape(batched_graph_jraph)
+
+      # print('graph shards shape:', graph_shards_shape)
+      # print('manual_shape', manual_shape)
+      # print('jraph_shape: ', jraph_shape)
       yield {
+          # 'inputs': jraph.batch_np(graphs_shards),
           'inputs': jraph.batch(graphs_shards),
           'targets': np.vstack(labels_shards),
-          'weights': np.vstack(weights_shards)
+          'weights': np.vstack(weights_shards),
       }
 
       count = 0
       graphs_shards = []
       labels_shards = []
       weights_shards = []
+
 
 
 def get_dataset_iter(split, data_rng, data_dir, global_batch_size):

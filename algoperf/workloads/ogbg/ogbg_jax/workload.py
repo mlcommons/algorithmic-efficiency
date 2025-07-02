@@ -125,8 +125,11 @@ class OgbgWorkload(BaseOgbgWorkload):
       self, num_examples: int, total_metrics: Dict[str,
                                                    Any]) -> Dict[str, float]:
     """Normalize eval metrics."""
+    print(f'num examples {num_examples}')
     del num_examples
-    return {k: float(v) for k, v in total_metrics.compute().items()}
+    normalized_metrics = {k: float(v) for k, v in total_metrics.compute().items()}
+    print('computed total metrics')
+    return normalized_metrics
 
 
 class OgbgGeluWorkload(OgbgWorkload):

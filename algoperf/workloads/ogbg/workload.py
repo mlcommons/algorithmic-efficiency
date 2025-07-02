@@ -12,6 +12,8 @@ from algoperf import spec
 from algoperf.workloads.ogbg import input_pipeline
 from algoperf.workloads.ogbg import metrics
 
+from operator import attrgetter
+
 
 class BaseOgbgWorkload(spec.Workload):
 
@@ -40,15 +42,17 @@ class BaseOgbgWorkload(spec.Workload):
     return 5
 
   def has_reached_validation_target(self, eval_result: float) -> bool:
-    return eval_result[
-        'validation/mean_average_precision'] > self.validation_target_value
+    return False
+    # return eval_result[
+    #     'validation/mean_average_precision'] > self.validation_target_value
 
   @property
   def validation_target_value(self) -> float:
     return 0.28098
 
   def has_reached_test_target(self, eval_result: float) -> bool:
-    return eval_result['test/mean_average_precision'] > self.test_target_value
+    return False
+    # return eval_result['test/mean_average_precision'] > self.test_target_value
 
   @property
   def test_target_value(self) -> float:
@@ -77,6 +81,8 @@ class BaseOgbgWorkload(spec.Workload):
   @property
   def eval_batch_size(self) -> int:
     return 32768
+    # return 16384
+  
 
   @property
   def train_mean(self):
@@ -122,16 +128,20 @@ class BaseOgbgWorkload(spec.Workload):
     valid examples in batch, 'per_example': 1-d array of per-example losses}
     (not synced across devices).
     """
+    print('in loss_fn')
     per_example_losses = self._binary_cross_entropy_with_mask(
         labels=label_batch,
         logits=logits_batch,
         mask=mask_batch,
         label_smoothing=label_smoothing)
+    print('before mask')
     if mask_batch is not None:
       n_valid_examples = mask_batch.sum()
     else:
       n_valid_examples = len(per_example_losses)
+    print('summing loss')
     summed_loss = per_example_losses.sum()
+    print('returning summed loss')
     return {
         'summed': summed_loss,
         'n_valid_examples': n_valid_examples,
@@ -161,7 +171,6 @@ class BaseOgbgWorkload(spec.Workload):
         spec.ForwardPassMode.EVAL,
         rng,
         update_batch_norm=False)
-    # jax.debug.print(str(logits))
     return self._eval_metric(batch['targets'], logits, batch['weights'])
 
   def _eval_model_on_split(self,
@@ -174,7 +183,7 @@ class BaseOgbgWorkload(spec.Workload):
                            data_dir: str,
                            global_step: int = 0) -> Dict[str, float]:
     """Run a full evaluation of the model."""
-    del global_step
+    # del global_step
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
@@ -183,12 +192,36 @@ class BaseOgbgWorkload(spec.Workload):
     total_metrics = None
     num_eval_steps = int(math.ceil(float(num_examples) / global_batch_size))
     # Loop over graph batches in eval dataset.
-    for _ in range(num_eval_steps):
+    live_arrays = {}
+    for s in range(num_eval_steps):      
+      print(f'Eval step {s}')
       batch = next(self._eval_iters[split])
-      batch_metrics = self._eval_batch(params, batch, model_state, model_rng)
-      total_metrics = (
-          batch_metrics
-          if total_metrics is None else total_metrics.merge(batch_metrics))
+      jax.profiler.save_device_memory_profile(f"/logs/memory_filtered_{global_step}_{s}.prof")
+
+      # batch_metrics = self._eval_batch(params, batch, model_state, model_rng)
+      # print(f'merging metrics')
+      # total_metrics = (
+      #     batch_metrics
+      #     if total_metrics is None else total_metrics.merge(batch_metrics))
+      
+      # len_arrays = len(jax.live_arrays())
+      # print(f'Length of live arrays {len_arrays}')
+      # live_arrays_new = { id(arr) : arr for arr in jax.live_arrays() }
+      # diff_keys = live_arrays_new.keys() - live_arrays.keys()
+      # diff_bytes = sum(map(attrgetter("nbytes"), [live_arrays_new[k] for k in diff_keys]))
+      # live_arrays = live_arrays_new
+      # if s == 1:
+      #   print('DIFF IN ARRAYS:')
+      #   for k in diff_keys:
+      #     print(live_arrays_new[k].shape)
+      #   print('DIFF in bytes')
+      #   print(diff_bytes)
+      # batch_shape = jax.tree.map(lambda x: x.shape, batch)
+      # print('BATCH SHAPE')
+      # print(batch_shape)
+      # del(batch)
     if total_metrics is None:
       return {}
-    return self._normalize_eval_metrics(num_examples, total_metrics)
+    # print('Normalizing eval metrics')
+    # return self._normalize_eval_metrics(num_examples, total_metrics)
+    return None

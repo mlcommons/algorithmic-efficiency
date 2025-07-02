@@ -13,6 +13,7 @@ python3 submission_runner.py \
     --experiment_dir=/home/znado/experiment_dir \
     --experiment_name=baseline
 """
+from operator import attrgetter
 
 import datetime
 import gc
@@ -58,6 +59,8 @@ from algoperf.workloads import workloads
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Disables tensorRT, cuda warnings.
 # disable only for deepspeech if it works fine for other workloads
 os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false'
+# os.environ['XLA_FLAGS'] = '--xla_gpu_enable_triton_gemm=false --xla_dump_hlo_as_proto --xla_dump_to=/logs/ogbg_jit_1_hlo_dump'
+
 
 # TODO(znado): make a nicer registry of workloads that lookup in.
 BASE_WORKLOADS_DIR = workloads.BASE_WORKLOADS_DIR
@@ -175,6 +178,26 @@ flags.DEFINE_boolean('skip_evals',
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
+
+def log_live_array_diff(live_arrays):
+  len_arrays = len(jax.live_arrays())
+  print(f'Length of live arrays {len_arrays}')
+
+  # Convert to dict 
+  live_arrays_new = { id(arr) : arr for arr in jax.live_arrays() }
+
+  old_bytes = sum(map(attrgetter("nbytes"), [live_arrays[k] for k in live_arrays]))
+  new_bytes = sum(map(attrgetter("nbytes"), [live_arrays_new[k] for k in live_arrays_new]))
+  diff_bytes = new_bytes - old_bytes
+  # print array diffs
+  # print('Diff in arrays:')
+  # for k in diff_keys:
+  #   print(live_arrays_new[k].shape)
+
+  # print diff in sizes
+  print('Total bytes:', new_bytes)
+  print('Diff in bytes: ', diff_bytes)
+  return live_arrays_new
 
 def _get_time():
   if torch.cuda.is_available():
@@ -349,6 +372,8 @@ def train_once(
   goals_reached = (
       train_state['validation_goal_reached'] and
       train_state['test_goal_reached'])
+  
+  live_arrays = {}
   while train_state['is_time_remaining'] and \
       not goals_reached and \
       not train_state['training_complete']:
@@ -357,8 +382,8 @@ def train_once(
 
     data_select_rng, update_rng, prep_eval_rng, eval_rng = \
       prng.split(step_rng, 4)
-
     with profiler.profile('Data selection'):
+      print('GETTING DATA!!!!!!!!')
       batch = data_selection(workload,
                              input_queue,
                              optimizer_state,
@@ -367,24 +392,34 @@ def train_once(
                              hyperparameters,
                              global_step,
                              data_select_rng)
-    try:
-      with profiler.profile('Update parameters'):
-        optimizer_state, model_params, model_state = update_params(
-            workload=workload,
-            current_param_container=model_params,
-            current_params_types=workload.model_params_types,
-            model_state=model_state,
-            hyperparameters=hyperparameters,
-            batch=batch,
-            loss_type=workload.loss_type,
-            optimizer_state=optimizer_state,
-            eval_results=eval_results,
-            global_step=global_step,
-            rng=update_rng,
-            **({'train_state': MappingProxyType(train_state)}
-               if needs_train_state else {}))
-    except spec.TrainingCompleteError:
-      train_state['training_complete'] = True
+    live_arrays = log_live_array_diff(live_arrays)
+      # graph_shards = batch['graph_shards']
+      # import jraph
+      # live_arrays = {}
+      # for i in range(10):
+      #   print(i)
+      #   _ = jraph.batch(graph_shards)
+      #   live_arrays = log_live_array_diff(live_arrays)
+       
+    # jax.profiler.save_device_memory_profile(f'/logs/memory_submission_runner_{global_step}.prof')
+    # try:
+    #   with profiler.profile('Update parameters'):
+    #     optimizer_state, model_params, model_state = update_params(
+    #         workload=workload,
+    #         current_param_container=model_params,
+    #         current_params_types=workload.model_params_types,
+    #         model_state=model_state,
+    #         hyperparameters=hyperparameters,
+    #         batch=batch,
+    #         loss_type=workload.loss_type,
+    #         optimizer_state=optimizer_state,
+    #         eval_results=eval_results,
+    #         global_step=global_step,
+    #         rng=update_rng,
+    #         **({'train_state': MappingProxyType(train_state)}
+    #            if needs_train_state else {}))
+    # except spec.TrainingCompleteError:
+    #   train_state['training_complete'] = True
     global_step += 1
     if (max_global_steps is not None) and (global_step == max_global_steps):
       train_state['training_complete'] = True
@@ -395,14 +430,14 @@ def train_once(
         train_step_end_time - train_state['last_step_end_time'])
 
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']) and not skip_evals:
-
+    # if ((train_step_end_time - train_state['last_eval_time']) >=
+    #     workload.eval_period_time_sec or train_state['training_complete']) and not skip_evals:
+    if False:
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
 
         with profiler.profile('Prepare for eval'):
-          del batch
+          # del batch
           prepare_for_eval_start_time = get_time()
           optimizer_state, model_params, model_state = prepare_for_eval(
               workload=workload,
@@ -431,12 +466,14 @@ def train_once(
 
       # Eval if time is remaining (untimed).
       if train_state['is_time_remaining']:
+        print(f'GLOBAL STEP {global_step}')
 
         with profiler.profile('Evaluation'):
           _reset_cuda_mem()
 
           try:
             eval_start_time = get_time()
+            print(f'EVAL RNG {eval_rng}')
             latest_eval_result = workload.eval_model(global_eval_batch_size,
                                                      model_params,
                                                      model_state,
@@ -540,7 +577,7 @@ def train_once(
           preemption_count=preemption_count,
           checkpoint_dir=log_dir,
           save_intermediate_checkpoints=FLAGS.save_intermediate_checkpoints)
-
+  del(batch)
   return train_state['accumulated_submission_time'], metrics
 
 
