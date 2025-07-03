@@ -15,6 +15,8 @@ import jax
 
 SUBMISSION_PATH = 'reference_algorithms/paper_baselines/adamw/jax/submission.py'
 TUNING_SEARCH_SPACE = 'reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
+NUM_TUNING_TRIALS = 3  # For external tuning ruleset
+NUM_STUDIES = 3
 
 flags.DEFINE_string(
     'submission_path',
@@ -40,13 +42,21 @@ flags.DEFINE_enum(
     enum_values=['external', 'self'],
     help='Which tuning ruleset to score this submission on. Can be external or self.'
 )
+flags.DEFINE_string(
+    'workloads',
+    None,
+    help='Comma seperated list of workloads to run.'
+)
+flags.DEFINE_integer(
+    'num_studies',
+    NUM_STUDIES,
+    help='Number of studies.'
+)
 
 FLAGS = flags.FLAGS
 
 MIN_INT = -2**(31)
 MAX_INT = 2**(31) - 1
-NUM_TUNING_TRIALS = 5  # For external tuning ruleset
-NUM_STUDIES = 3
 
 WORKLOADS = {
     "imagenet_resnet": {"dataset": "imagenet"},
@@ -61,7 +71,11 @@ WORKLOADS = {
 
 
 def main(_):
-  workloads = WORKLOADS.keys()
+  if not FLAGS.workloads:
+    workloads = WORKLOADS.keys()
+  else:
+    workloads = FLAGS.workloads.split(',')
+
   key = jax.random.key(FLAGS.seed)
 
   jobs = []
