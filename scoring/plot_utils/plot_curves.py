@@ -8,9 +8,9 @@ import pandas as pd
 import os
 import wandb
 
-flags.DEFINE_string('experiment_dir', None, 'Path to experiment dir.')
-flags.DEFINE_string('workload', None, 'Filter only for workload. If None include all workloads in experiment.')
-flags.DEFINE_string('project_name', 'visulaize-training-curves', 'Wandb project name.')
+flags.DEFINE_string('experiment_dir', '/home/kasimbeg/algoperf-runs-internal/experiments/pmap_ref', 'Path to experiment dir.')
+flags.DEFINE_string('workloads', 'librispeech_conformer_jax', 'Filter only for workload. If None include all workloads in experiment.')
+flags.DEFINE_string('project_name', 'visulaize-training-curves-pmap', 'Wandb project name.')
 flags.DEFINE_string('run_postfix', '', 'Postfix for wandb runs.')
 
 FLAGS = flags.FLAGS
@@ -27,12 +27,15 @@ def main(_):
     experiment_dir = FLAGS.experiment_dir
     study_dirs = os.listdir(experiment_dir)
     for study_dir in study_dirs:
-      workload_dirs = os.listdir(os.path.join(experiment_dir, study_dir))
-      workload_dirs = [
-          w for w in workload_dirs
-          if os.path.isdir(os.path.join(experiment_dir, study_dir, w))
-      ]
-      print(workload_dirs)
+      if not FLAGS.workloads:
+        workload_dirs = os.listdir(os.path.join(experiment_dir, study_dir))
+        workload_dirs = [
+            w for w in workload_dirs
+            if os.path.isdir(os.path.join(experiment_dir, study_dir, w))
+        ]
+        print(workload_dirs)
+      else:
+        workload_dirs = FLAGS.workloads.split(',')
       for workload in workload_dirs:
         data = {
             'workload': workload,
@@ -44,9 +47,14 @@ def main(_):
             if re.match(TRIAL_DIR_REGEX, t)
         ]
         for trial in trial_dirs:
-            filename = get_filename(FLAGS.trial_dir)
+            trial_dir = os.path.join(FLAGS.experiment_dir, study_dir, workload, trial)
+            print(trial_dir)
+            filename = get_filename(trial_dir)
+            if not os.path.exists(filename):
+                continue
+            
             # Start a new W&B run
-            run = wandb.init(project="visualize-training-curve", name=(f'{workload}_{study_dir}_{trial}' + FLAGS.run_postfix))
+            run = wandb.init(project=FLAGS.project_name, name=(f'{workload}_{study_dir}_{trial}' + FLAGS.run_postfix))
 
             # Log the CSV as a versioned Artifact
             artifact = wandb.Artifact(name="training-data", type="dataset")
