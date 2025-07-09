@@ -4,16 +4,16 @@ import torch
 from torch.optim.lr_scheduler import LambdaLR
 
 from algoperf import spec
-from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
+from algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
   data_selection,
 )
-from reference_algorithms.target_setting_algorithms.get_batch_size import (  # noqa: F401
+from algorithms.target_setting_algorithms.get_batch_size import (  # noqa: F401
   get_batch_size,
 )
-from reference_algorithms.target_setting_algorithms.jax_momentum import (
+from algorithms.target_setting_algorithms.jax_momentum import (
   create_lr_schedule_fn,
 )
-from reference_algorithms.target_setting_algorithms.pytorch_submission_base import (  # noqa: F401
+from algorithms.target_setting_algorithms.pytorch_submission_base import (  # noqa: F401
   update_params,
 )
 

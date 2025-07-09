@@ -6,14 +6,14 @@ import optax
 from flax import jax_utils
 
 from algoperf import spec
-from reference_algorithms.target_setting_algorithms import cosine_warmup
-from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
+from algorithms.target_setting_algorithms import cosine_warmup
+from algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
   data_selection,
 )
-from reference_algorithms.target_setting_algorithms.get_batch_size import (  # noqa: F401
+from algorithms.target_setting_algorithms.get_batch_size import (  # noqa: F401
   get_batch_size,
 )
-from reference_algorithms.target_setting_algorithms.jax_submission_base import (  # noqa: F401
+from algorithms.target_setting_algorithms.jax_submission_base import (  # noqa: F401
   update_params,
 )
 
