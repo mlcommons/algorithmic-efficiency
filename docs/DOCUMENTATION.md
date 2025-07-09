@@ -234,7 +234,7 @@ def prepare_for_eval(
 ) -> (updated_optimizer_state, updated_params, updated_model_state)
 ```
 
-- Arguments are the same of `update_param`, with the only exception of `batch`.
+- Arguments are the same as `update_params`, with the only exception of `batch`.
 - This function is called when a submission is deemed eligible for an evaluation (see [Evluation during training](#evaluation-during-training) section).
   - The call to `prepare_for_eval` is timed and its runtime accumulates to the overall submission time.
   - The returned model parameters are evaluated on the validation and test sets, provided that the accumulated submission time does not exceed the maximum runtime after this function call.
