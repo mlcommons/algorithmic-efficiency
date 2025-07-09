@@ -46,7 +46,7 @@ frameworks = [
   'jax',
 ]
 
-baseline_path = 'reference_algorithms/paper_baselines'
+baseline_path = 'algorithms/archived_paper_baselines'
 
 named_parameters = []
 for f in frameworks:

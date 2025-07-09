@@ -10,7 +10,7 @@ from flax import jax_utils
 from jax import lax
 
 from algoperf import spec
-from reference_algorithms.paper_baselines.adafactor.jax.sharded_adafactor import (
+from algorithms.archived_paper_baselines.adafactor.jax.sharded_adafactor import (
   sharded_adafactor,
 )
 

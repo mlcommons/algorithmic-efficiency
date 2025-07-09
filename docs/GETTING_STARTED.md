@@ -203,10 +203,10 @@ Make a submissions subdirectory to store your submission modules e.g. `algorithm
 
 ### Coding your Submission
 
-You can find examples of submission modules under `algorithmic-efficiency/prize_qualification_baselines` and `algorithmic-efficiency/reference_algorithms`. \
+You can find examples of submission modules under `algorithmic-efficiency/algorithms`. \
 A submission for the external ruleset will consist of a submission module and a tuning search space definition.
 
-1. Copy the template submission module `submissions/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
+1. Copy the template submission module `algorithms/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
 2. Implement at least the methods in the template submission module. Feel free to use helper functions and/or modules as you see fit. Make sure you adhere to to the competition rules. Check out the guidelines for [allowed submissions](/DOCUMENTATION.md#allowed-submissions), [disallowed submissions](/DOCUMENTATION.md#allowed-submissions) and pay special attention to the [software dependencies rule](/DOCUMENTATION.md#software-dependencies).
 3. Add a tuning configuration e.g. `tuning_search_space.json` file to your submission directory. For the tuning search space you can either:
 
@@ -220,7 +220,7 @@ A submission for the external ruleset will consist of a submission module and a 
       }
       ```
 
-      For a complete example see [tuning_search_space.json](/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
+      For a complete example see [tuning_search_space.json](/algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
    2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
 
@@ -234,7 +234,7 @@ A submission for the external ruleset will consist of a submission module and a 
       }
       ```
 
-      For a complete example see [tuning_search_space.json](/reference_algorithms/paper_baselines/nadamw/tuning_search_space.json).
+      For a complete example see [tuning_search_space.json](/algorithms/archived_paper_baselines/nadamw/tuning_search_space.json).
 
 ## Run your Submission
 
@@ -377,7 +377,7 @@ To simulate official scoring, pass the `--strict=True` flag in `score_submission
 python score_submissions.py --submission_directory <directory_with_submissions> --output_dir <output_dir> --compute_performance_profiles
 ```
 
-We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
+We provide the scores and performance profiles for the [paper baseline algorithms](/algorithms/archived_paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
 ## Submit your Submission
 

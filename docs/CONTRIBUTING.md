@@ -247,7 +247,7 @@ To automatically fix linting errors you can run `ruff check --fix`, with the add
 ### Unit and Integration Tests
 
 We run unit tests and integration tests as part of the of github actions as well.
-You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `reference_algorithms/target_setting_algorithms/`.
+You can also use `python tests/reference_algorithm_tests.py` to run a single model update and two model evals for each workload using the reference algorithm in `algorithms/target_setting_algorithms/`.
 
 ### Regression Tests
 

@@ -10,7 +10,7 @@ from flax import jax_utils
 from jax import lax
 
 from algoperf import spec
-from reference_algorithms.paper_baselines.shampoo.jax.distributed_shampoo import (
+from algorithms.archived_paper_baselines.shampoo.jax.distributed_shampoo import (
   distributed_shampoo,
 )
 
