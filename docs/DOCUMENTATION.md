@@ -4,7 +4,8 @@
 
 > [!IMPORTANT]
 >
-> **TL;DR:** The MLCommons™ **AlgoPerf: Training Algorithms benchmark is designed to find training algorithms that can train neural networks faster** by rigorously measuring how quickly they reach a specific performance target across a diverse set of deep learning workloads.This document provides the technical documentation, benchmark process, and FAQs for the AlgoPerf benchmark.
+> **TL;DR:** The MLCommons™ **AlgoPerf: Training Algorithms benchmark is designed to find training algorithms that can train neural networks faster** by rigorously measuring how quickly they reach a specific performance target across a diverse set of deep learning workloads.
+> This document provides the technical documentation, benchmark process, and FAQs for the AlgoPerf benchmark.
 
 ## Table of Contents <!-- omit from toc -->
 
@@ -26,16 +27,9 @@
 - [Versioning Policy](#versioning-policy)
   - [Version freeze](#version-freeze)
 - [FAQs](#faqs)
-  - [My machine only has one GPU. How can I use this repo?](#my-machine-only-has-one-gpu-how-can-i-use-this-repo)
-  - [How do I run this on my SLURM cluster?](#how-do-i-run-this-on-my-slurm-cluster)
-  - [How can I run this on my AWS/GCP/Azure cloud project?](#how-can-i-run-this-on-my-awsgcpazure-cloud-project)
-  - [How do I submit my algorithm to the benchmark?](#how-do-i-submit-my-algorithm-to-the-benchmark)
-  - [Can I submit multiple times?](#can-i-submit-multiple-times)
-  - [Can my submission span multiple files?](#can-my-submission-span-multiple-files)
-  - [Can I install custom dependencies?](#can-i-install-custom-dependencies)
-  - [How can I know if my code can be run on benchmarking hardware?](#how-can-i-know-if-my-code-can-be-run-on-benchmarking-hardware)
-  - [This benchmark seems computationally expensive. Do I have to run it myself?](#this-benchmark-seems-computationally-expensive-do-i-have-to-run-it-myself)
-  - [Can I submit previously published training algorithms as submissions?](#can-i-submit-previously-published-training-algorithms-as-submissions)
+  - [Setup \& Platform](#setup--platform)
+  - [Submitting](#submitting)
+  - [Scoring \& Hardware](#scoring--hardware)
 - [Disclaimers](#disclaimers)
   - [Shared Data Pipelines between `JAX` and `PyTorch`](#shared-data-pipelines-between-jax-and-pytorch)
 
@@ -553,70 +547,91 @@ To ensure that all submitters can develop their submissions based on the same co
 
 ## FAQs
 
-Here, we provide answers to some frequently asked questions. If you have any questions that are not answered here, please [**contact us**](mailto:algorithms-chairs@mlcommons.org).
+> If your question isn't answered here, please [**contact us**](mailto:algorithms-chairs@mlcommons.org).
 
-<!-- SETUP -->
-<details id="setup--platform">
-<summary><strong>Setup & Platform</strong></summary>
+### Setup & Platform
 
-### My machine only has one GPU. How can I use this repo?
+<details>
+<summary><strong>My machine only has one GPU. How can I use this repo?</strong></summary>
 
-You can run this repo on a machine with an arbitrary number of GPUs. However, the default batch sizes of our algorithms collection (e.g. `algorithms/`) are tuned for a machine with 8xV100 (16GB) GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batch sizes for the submission. Note that your final submission must 'fit' on the [**benchmarking hardware**](#benchmarking-hardware), so if you are using fewer GPUs with higher per GPU memory, please monitor your memory usage to make sure it will fit on 8xV100 GPUs with 16GB of VRAM per card.
-
-### How do I run this on my SLURM cluster?
-
-You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [**section**](/docs/GETTING_STARTED.md#using-singularityapptainer-instead-of-docker).
-
-### How can I run this on my AWS/GCP/Azure cloud project?
-
-Depending on your virtual machine, you may have to install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
-
-1. If you don't have a VM instance yet, we recommend creating a
-   new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options.
-2. To install the NVIDIA Docker toolkit, you can use [`docker/scripts/cloud-startup.sh`](/docker/scripts/cloud-startup.sh) as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
+> You can run this repo on a machine with an arbitrary number of GPUs. However, the default batch sizes of our algorithms collection (e.g. `algorithms/`) are tuned for a machine with 8xV100 (16GB) GPUs. You may run into OOMs if you run these algorithms with fewer than 8 GPUs. If you run into these issues because you are using a machine with less total GPU memory, please reduce the batch sizes for the submission. Note that your final submission must 'fit' on the [**benchmarking hardware**](#benchmarking-hardware), so if you are using fewer GPUs with higher per-GPU memory, please monitor your memory usage to make sure it will fit on 8xV100 GPUs with 16 GB of VRAM per card.
 
 </details>
 
-<!-- SUBMITTING -->
-<details id="submitting">
-<summary><strong>Submitting</strong></summary>
+<details>
+<summary><strong>How do I run this on my SLURM cluster?</strong></summary>
 
-### How do I submit my algorithm to the benchmark?
-
-Please see our [**How to Submit**](/README.md#how-to-submit) section. You can submit your algorithm to the benchmark by opening a PR on the [**submission repository**](https://github.com/mlcommons/submissions_algorithms).
-
-### Can I submit multiple times?
-
-Our benchmark allows multiple submissions as long as they are substantially different. We discourage submitters from creating bulk submissions as this is not in the spirit of the benchmark.
-
-### Can my submission span multiple files?
-
-Yes, your submission can be structured using multiple files.
-
-### Can I install custom dependencies?
-
-You may use custom dependencies as long as they do not conflict with any of the pinned packages in [`pyproject.toml`](/pyproject.toml).
-To include your custom dependencies in your submission, please include them in a `requirements.txt` file. Please refer to the [**Software dependencies**](#software-dependencies) section of our rules.
+> You may run into issues with `sudo` and `docker` on a SLURM cluster. To run the workloads in a SLURM cluster you can use Apptainer (previously Singularity), see this [**section**](/docs/GETTING_STARTED.md#using-singularityapptainer-instead-of-docker).
 
 </details>
 
-<!-- SCORING -->
-<details id="scoring--hardware">
-<summary><strong>Scoring & Hardware</strong></summary>
+<details>
+<summary><strong>How can I run this on my AWS/GCP/Azure cloud project?</strong></summary>
 
-### How can I know if my code can be run on benchmarking hardware?
+> Depending on your virtual machine, you may have to install the correct GPU drivers and the NVIDIA Docker toolkit. For example, in GCP you will have to do the following.
+>
+> 1. If you don't have a VM instance yet, we recommend creating a
+>    new Compute Instance with the "Deep Learning on Linux" Image in Boot disk options.
+> 2. To install the NVIDIA Docker toolkit, you can use [`docker/scripts/cloud-startup.sh`](/docker/scripts/cloud-startup.sh) as a startup script for the VM. This will automate the installation of the NVIDIA GPU Drivers and NVIDIA Docker toolkit.
 
-The benchmarking hardware specifications are documented in the [**Benchmarking Hardware Section**](#benchmarking-hardware). We recommend monitoring your submission's memory usage so that it does not exceed the available memory on the benchmarking hardware. We also recommend to do a dry run using a cloud instance.
+</details>
 
-### This benchmark seems computationally expensive. Do I have to run it myself?
+### Submitting
 
-Submitters are no longer required to self-report results to get on the _AlgoPerf_ leaderboard. Instead, they can open a PR in the [**submission repository**](https://github.com/mlcommons/submissions_algorithms) and the working group will score the most promising submissions, see our [**How to Submit**](/README.md#how-to-submit) section for more details. You can use self-reported results to provide evidence of performance on the benchmark. Even if you fully self-report, we will still verify the scores by rerunning the submission on our setup.
+<details>
+<summary><strong>How do I submit my algorithm to the benchmark?</strong></summary>
 
-### Can I submit previously published training algorithms as submissions?
+> Please see our [**How to Submit**](/README.md#how-to-submit) section. You can submit your algorithm to the benchmark by opening a PR on the [**submission repository**](https://github.com/mlcommons/submissions_algorithms).
 
-Yes, you may, as long as it isn't an exact copy of an existing submission.
-For example, you may submit the Adam optimizer with your particularly effective hyperparameter search space and hyperparameter configuration, as different choices for hyperparameter values and/or search spaces constitute different training algorithms and are potential sources of innovation.
-That said, while submitting Adam with some novel heuristic to set various hyperparameters, some especially effective hyperparameter search space, or your single best hyperparameter configuration is fine, avoid making multiple submissions that only differ by their hyperparameter configuration without a convincing justification they are substantially different (see [**"Can I submit multiple times to the benchmark competition?"**](#can-i-submit-multiple-times), above).
+</details>
+
+<details>
+<summary><strong>Can I submit multiple times?</strong></summary>
+
+> Our benchmark allows multiple submissions as long as they are substantially different. We discourage submitters from creating bulk submissions as this is not in the spirit of the benchmark.
+
+</details>
+
+<details>
+<summary><strong>Can my submission span multiple files?</strong></summary>
+
+> Yes, your submission can be structured using multiple files.
+
+</details>
+
+<details>
+<summary><strong>Can I install custom dependencies?</strong></summary>
+
+> You may use custom dependencies as long as they do not conflict with any of the pinned packages in [`pyproject.toml`](/pyproject.toml).
+>
+> To include your custom dependencies in your submission, please include them in a `requirements.txt` file. Please refer to the [**Software dependencies**](#software-dependencies) section of our rules.
+
+</details>
+
+### Scoring & Hardware
+
+<details>
+<summary><strong>How can I know if my code can be run on benchmarking hardware?</strong></summary>
+
+> The benchmarking hardware specifications are documented in the [**Benchmarking Hardware Section**](#benchmarking-hardware). We recommend monitoring your submission's memory usage so that it does not exceed the available memory on the benchmarking hardware. We also recommend to do a dry run using a cloud instance.
+
+</details>
+
+<details>
+<summary><strong>This benchmark seems computationally expensive. Do I have to run it myself?</strong></summary>
+
+> Submitters are no longer required to self-report results to get on the _AlgoPerf_ leaderboard. Instead, they can open a PR in the [**submission repository**](https://github.com/mlcommons/submissions_algorithms) and the working group will score the most promising submissions, see our [**How to Submit**](/README.md#how-to-submit) section for more details. You can use self-reported results to provide evidence of performance on the benchmark. Even if you fully self-report, we will still verify the scores by rerunning the submission on our setup.
+
+</details>
+
+<details>
+<summary><strong>Can I submit previously published training algorithms as submissions?</strong></summary>
+
+> Yes, you may, as long as it isn't an exact copy of an existing submission.
+>
+> For example, you may submit the Adam optimizer with your particularly effective hyperparameter search space and hyperparameter configuration, as different choices for hyperparameter values and/or search spaces constitute different training algorithms and are potential sources of innovation.
+>
+> That said, while submitting Adam with some novel heuristic to set various hyperparameters, some especially effective hyperparameter search space, or your single best hyperparameter configuration is fine, avoid making multiple submissions that only differ by their hyperparameter configuration without a convincing justification they are substantially different (see the [**"Can I submit multiple times to the benchmark competition?"**](#submitting) question, above).
 
 </details>
 
