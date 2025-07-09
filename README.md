@@ -53,6 +53,7 @@ Unlike benchmarks focused on hardware or model architecture, AlgoPerf isolates t
 - [Rules, Documentation \& FAQ](#rules-documentation--faq)
 - [Contributing \& Resources](#contributing--resources)
 - [Releases \& Roadmap](#releases--roadmap)
+- [Training Algorithm Collection](#training-algorithm-collection)
 - [Citing Our Work](#citing-our-work)
 - [License](#license)
 
@@ -173,6 +174,11 @@ Here is an overview of our key releases and the future roadmap. For a detailed l
 >   - Migrating from `pmap` to `jit` in JAX for better performance and scalability.
 >   - Potentially adding a new language model (LM) workload.
 >   - Stronger baselines, especially for the self-tuning leaderboard.
+
+## Training Algorithm Collection
+
+This repository also provides a collection of implemented training algorithms with different purposes. They including [**submission templates**](./algorithms/template), [**development examples**](./algorithms/development_algorithms), [**target-setting algorithms**](./algorithms/target_setting_algorithms), [**historical baselines**](./algorithms/archived_paper_baselines), and [**current baselines**](./algorithms/baselines). For a detailed overview of these algorithms and their organization, please refer to the [`algorithms/README.md`](./algorithms/README.md) file. You can also find all benchmark submissions and their results on the official [**Leaderboard**](https://github.com/mlcommons/submissions_algorithms).
+These algorithms provide a starting point for developing your own training algorithm and are a great resource for understanding the AlgoPerf benchmark and its API.
 
 ## Citing Our Work
 
