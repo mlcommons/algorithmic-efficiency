@@ -132,7 +132,9 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
   @property
   def step_hint(self) -> int:
     """Approx. steps the baseline can do in the allowed runtime budget."""
-    return 38_400
+    # TODO(kasimbeg): revert old version
+    # return 38_400
+    return 48_000
 
   @property
   def max_allowed_runtime_sec(self) -> int:
