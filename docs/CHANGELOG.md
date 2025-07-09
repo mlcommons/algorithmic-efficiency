@@ -20,7 +20,7 @@ Improved and streamlined version of the benchmark which includes important bug f
 
 - [Code, Rules] Updated API to allow for `prepare_for_eval` function.
 - [Docs] Document default dropout values for each workload ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/806)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/786)).
-- [Docs] Unified versioning policy section.
+- [Docs] Unified versioning policy section ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/876)).
 - [Code] Add the ability to change dropout values during training ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/875)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/753)).
 
 ### Changed/Removed
@@ -28,13 +28,14 @@ Improved and streamlined version of the benchmark which includes important bug f
 - [Code, Docs] Rename package to `algoperf` ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/833)).
 - [Code, Docs] Switch to `ruff` for linting and formatting([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/874)).
 - [Code, Rules] Pass `train_state` to `update_params` function ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/790)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/785)).
-- [Code, Rules] Reduced number of studies from 5 to 3.
-- [Code, Rules] Remove held-out workloads from the benchmark.
+- [Code, Rules] Reduced number of studies from 5 to 3 ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/876)).
+- [Code, Rules] Remove held-out workloads from the benchmark ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/876)).
 - [Code] Remove sacrebleu dependency ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/828)).
 - [Code] Switch to `pyproject.toml` for package management ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/830)).
 - [Code] Update Python version to 3.11 and dependencies accordingly ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/811)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/805)).
 - [Rules] Modify the runtime budgets and step hints for each workload ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/838)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/836)).
 - [Code] Automatically determine the package version via the latest GitHub tag ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/831)).
+- [Code, Docs] Move all algorithms into a dedicated `algorithms` directory ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/876)).
 
 ### Fixed
 
