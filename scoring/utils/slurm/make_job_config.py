@@ -28,7 +28,7 @@ flags.DEFINE_string(
     'Path to tuning search space for submission module relative to algorithmic-efficiency dir.'
 )
 flags.DEFINE_string('experiment_dir',
-                    '$HOME/experiments/',
+                    'experiments/',
                     'Path to experiment dir where logs will be saved.')
 flags.DEFINE_enum(
     'framework',
