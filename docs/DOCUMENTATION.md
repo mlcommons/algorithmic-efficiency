@@ -36,14 +36,18 @@
 
 ## Introduction
 
-We need a more scientifically sound methodology for evaluating training speedups due to new algorithms, including both new optimizers and new model architectures. Cutting edge machine learning (ML) models are exceeding the compute budgets of many researchers, and ML compute is becoming a larger and larger cost in industry. To reduce the compute and potentially environmental cost of ML research and practice, we need rigorous benchmarking of efficiency. Such benchmarks will guide us in selecting the best directions to evolve existing techniques and ultimately enable progress toward models that produce not only better results, but better results **at lower cost**.
+Neural networks are powerful models, but only after careful training.
+Training cutting-edge models now exceeds the compute budgets of many researchers, and is also a growing expense in industry.
+Practitioners also face many opaque, but high-stakes decisions when training models:
+What optimizer to choose?
+How should its learning rate be tuned?
+What learning rate schedule should be used?
+These choices can make or break training, yet the community has lacked a clear, standardized way to identify the state of the art neural network training method.
 
-MLCommons' mission is to build fair and useful benchmarks for measuring training and inference performance of ML hardware, software, and services. Improvements in training speed can come from better hardware, better software stacks, and better algorithms.
-To date, the Closed Division of the MLPerf™ Training benchmark has been extremely successful in driving systems innovation by requiring mathematical equivalence to a reference implementation, while still allowing submissions on different hardware. Although the Open Division allows new models and training algorithms, it has several issues that make it inappropriate as a benchmark for progress in training algorithms. By allowing arbitrary hardware, it is impossible to isolate improvements due to algorithms or due to extra computation. Unrestricted hardware makes the benchmark only accessible to the most well-funded organizations, even if many academic labs and others have interesting algorithms to measure. Finally, even if we could isolate improvements due to particular algorithmic changes and make the benchmark more broadly accessible, there is still no incentive to avoid hyper-specific changes that only help the particular benchmark workload.
+To cut both computational (and potentially environmental) costs and guide practitioners, we need more scientifically sound methods for evaluating training speedups due to new algorithms.
+Unlike benchmarks focused on hardware systems or model architectures, **_AlgoPerf_ isolates the training algorithm** (including the optimizer, regularization, data selection, and hyperparameters like the learning rate schedule) while **fixing hardware, models, and other aspects of the training process**.
 
-In order to drive innovation in machine learning algorithms that reduce the time needed to create useful models, we propose a new set of benchmarks called **AlgoPerf** to evaluate the training time for different algorithms (models, optimizers, preprocessing, etc.) on a **fixed hardware configuration** (future iterations can adopt new hardware configurations as needed). Our proposal includes two tracks: (1) the **Training Algorithm Track** and (2) the **Model Track**. The goal of the Training Algorithm Track is to find training algorithms (optimizers, etc.) that train benchmark models to reach the goal out-of-sample error rate as fast as possible. However, to incentivize practically useful algorithms, in the Training Algorithm Track we require that a single training algorithm simultaneously performs well across all benchmark models and datasets. Similarly, the goal of the Model Track is to find models that can be trained to achieve the target solution quality (out-of-sample error) in the least amount of time on each benchmark dataset. Although submissions in the Model Track will be inherently dataset-specific, we sharply constrain what parts of the training program can be modified in the Model Track and require submitted models to be easily trainable using standard optimizers. Thus the two-track structure discourages overly specific solutions that aren't generally useful to practitioners and will hopefully produce evidence on the relative returns of speeding up training by finding new models or by developing new training algorithms.
-
-In the following, we will focus on the **Training Algorithm Track** of the _AlgoPerf benchmark_.
+By standardizing the benchmark process, _AlgoPerf_ offers a more meaningful apples-to-apples comparison of training speedups delivered by new neural network training algorithms.
 
 ## Benchmark Process
 
