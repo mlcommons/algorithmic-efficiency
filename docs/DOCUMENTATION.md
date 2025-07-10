@@ -12,9 +12,9 @@
 - [Introduction](#introduction)
 - [Benchmark Process](#benchmark-process)
   - [Submissions](#submissions)
-    - [Specification](#specification)
-    - [Evaluation during training](#evaluation-during-training)
-    - [Valid submissions](#valid-submissions)
+    - [Submission API](#submission-api)
+    - [Valid Submissions](#valid-submissions)
+    - [Runtime Environment and Evaluation](#runtime-environment-and-evaluation)
   - [Tuning](#tuning)
     - [External tuning ruleset](#external-tuning-ruleset)
     - [Self-tuning ruleset](#self-tuning-ruleset)
@@ -56,7 +56,7 @@ The benchmark process follows these **key principles**:
 - 🧠 **Diverse Workloads:** The benchmark includes [**8 diverse deep learning workloads**](#workloads) across domains like image classification, speech recognition, and machine translation. A submission's score is computed by aggregating its performance, using [**performance profiles**](#algoperf-benchmark-score-via-integrated-performance-profiles), across all workloads to ensure general-purpose algorithms.
 - 📦 **Fully-Specified Algorithms:** Submissions must be complete procedures and thus hyperparameter tuning is treated as part of the algorithm. Depending on the ruleset, submissions may use parallel tuning resources. This ensures that the benchmark measures the _total_ practical cost of a training algorithm and provides practitioners with a complete method, eliminating the guesswork of how to apply it.
 
-To participate, you [**submit a training algorithm**](/README.md#how-to-submit) by implementing a specific set of functions within our API (the [**submission functions**](#submission-functions)). All other components, including the model architecture, loss function, and evaluation logic, are fixed. This ensures that any performance gains are directly attributable to your algorithmic innovations.
+To participate, you [**submit a training algorithm**](/README.md#how-to-submit) by implementing a specific set of functions within our API (the [**submission functions**](#submission-api)). All other components, including the model architecture, loss function, and evaluation logic, are fixed. This ensures that any performance gains are directly attributable to your algorithmic innovations.
 
 Submissions can be entered under two distinct rulesets:
 
@@ -67,22 +67,144 @@ A core tenet of the benchmark is to foster the development of broadly applicable
 
 ### Submissions
 
-A valid submission is a piece of code that defines all of the submission functions and is able to train all benchmark workloads on the [benchmarking hardware](#benchmarking-hardware) (defined in the [Scoring](#scoring) section). Both the validation set and the test set performance will be checked regularly during training (see the [Evaluation during training](#evaluation-during-training) section), however, only the validation performance is relevant for scoring. Training halts when the workload-specific [target performance](#defining-target-performance-and-max_runtime) for the validation and test sets have been reached. For each workload, only the training time to reach the _validation_ set target error is used as input to the [scoring process](#scoring) for the submission. Submissions using [external tuning](#external-tuning-ruleset) will be tuned independently for each workload using a single workload-agnostic search space for their specified hyperparameters. The tuning trials are selected based on the time to reach the _validation_ target. Submissions under either tuning ruleset may always self-tune while on the clock.
+A submission to the _AlgoPerf_ benchmark consists of `submission.py` which implements a set of Python functions that define your custom training algorithm. This code will be called by the benchmark harness that manages the overall training and evaluation loop.
+The core idea is that a submission replaces specific parts of a standard training pipeline with its own logic to train the _AlgoPerf_ workloads to the target performance as quickly as possible, while adhering to the benchmark's rules.
 
-#### Specification
+This section details the functions you must implement (the [**Submission API**](#submission-api)), the functions and data provided by the benchmark environment (the [**fixed functions**](#fixed-functions)), the [**rules to create a valid submission**](#valid-submissions), as well as the [**runtime environment and evaluation procedure**](#runtime-environment-and-evaluation).
 
-Any function defined in the reference implementations that isn't a [submission function](#submission-functions) is a [fixed function](#fixed-functions) for the Training Algorithm Track. No submitted code is run to compute the evaluation metrics in the Training Algorithm Track. We just use the final model parameters and the fixed functions from this track at test time.
+#### Submission API
 
-In principle, submissions are allowed to use the available hardware systems in any data- or model-parallel manner they desire, within the constraints of the submission function APIs. However, in practice, model-parallelism may not be possible with the API. They are allowed to access any framework-specific device information necessary to exploit the hardware.
+The submission functions are the [`get_batch_size`](#get_batch_size), [`init_optimizer_state`](#init_optimizer_state), [`update_params`](#update_params), [`prepare_for_eval`](#prepare_for_eval), and [`data_selection`](#data_selection) functions. These functions are the only ones that the submitter is allowed to modify.
+All other functions are [**fixed functions**](#fixed-functions) and contain among other things the `step_hint`, `_build_input_queue`, `init_model_fn`, `model_fn`, or `loss_fn` functions.
+Although a submission might access these fixed functions, e.g., to re-initalize the model after a failed training effort, it is not allowed to modify them.
+The trained model will be evaluated in a separate step that does not call any of the submitted code.
 
-Submissions provide a [per-workload batch size](#batch-size-getter) to use. Specification of the batch size for each workload is necessary to avoid running out of memory for different workloads. Therefore, submitters can determine this batch size in advance and specify it as part of the submission.
-Note that submitters are _not_ allowed to modify the _evaluation batch size_, which is set by the benchmarking codebase. However, you can file an issue if you believe that the evaluation batch size of a particular workload is set inappropriately. The working group will review this request and consider adjusting the evaluation batch size in the benchmarking codebase, thus affecting all submitters equally.
+> 💡 In principle, submissions are allowed to use the available hardware systems in any data- or model-parallel manner they desire, within the constraints of the submission function APIs. However, in practice, model-parallelism may not be possible with the API. Submitters are allowed to access any framework-specific device information necessary to exploit the hardware.
 
-The **submission functions** are the `init_optimizer_state`, `update_params`, `prepare_for_eval`, `data_selection`, and `get_batch_size` functions. All other functions are _fixed functions_ and contain among other things the `step_hint`, `_build_input_queue`, `init_model_fn`, `model_fn`, or `loss_fn` functions. The trained model will be evaluated in a separate step that does not call any of the submitted code.
+##### `get_batch_size`
 
-##### Fixed functions
+```python
+def get_batch_size(workload_name: str) -> int
+```
 
-With the exception of `_build_input_queue`, submitters can call any of these functions (along with any public function in the provided `Workload` instance) at any time in their submitted functions.
+**Purpose:** To specify the training batch size for a given workload.
+
+- This function allows submitters to define a different batch size for each workload to ensure that the training does not run out of memory.
+- For example, in advance, submitters can determine the largest batch size that fits into memory, for each workload.
+
+> [!NOTE]
+>
+> This does not change the _evaluation batch size_ (i.e., the batch size used during the evaluation phase). By design, submitters are not allowed to modify the evaluation batch size, which is set by the benchmarking codebase. However, you can file an issue if you believe that the evaluation batch size of a particular workload is set inappropriately. The working group will review this request and consider adjusting the evaluation batch size in the benchmarking codebase, thus affecting all submitters equally.
+
+##### `init_optimizer_state`
+
+```python
+def init_optimizer_state(
+    workload: Workload,
+    model_params: ParameterContainer,
+    model_state: ModelAuxiliaryState,
+    hyperparameters: Hyperparameters,
+    rng: RandomState
+) -> initial_optimizer_state
+```
+
+**Purpose:** To initialize the optimizer state, i.e., momentum buffers or defining learning rate schedules.
+
+- It does not involve the [initialization for the model parameters](#fixed-functions), which in this benchmark is considered a fixed function.
+- The optimizer state is a dictionary (`Dict[str, Any]`). For a PyTorch submission, any value in this dictionary which is a class instance with internal state has to have a `state_dict()` method implemented to be stored correctly at the training checkpoints.
+
+##### `update_params`
+
+```python
+def update_params(
+    workload: Workload,
+    current_param_container: ParameterContainer,
+    current_params_types: ParameterTypeTree,
+    model_state: ModelAuxiliaryState,
+    hyperparameters: Hyperparameters,
+    batch: Dict[str, Tensor],
+    loss_type: LossType,
+    optimizer_state: OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: RandomState,
+    train_state: Optional[Dict[str, Any]] = None
+) -> (updated_optimizer_state, updated_params, updated_model_state)
+```
+
+**Purpose:** To perform a single training step, i.e., update the model parameters and optimizer state.
+
+- Inside this function, you will typically call the workload's `loss_fn` and `model_fn` to perform a forward and backward pass to get gradients.
+  - Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state).
+- The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
+- **A call to this function will be considered a step**. The time between a call to this function and the next call to this function will be considered the per-step time.
+- A submission can access the elapsed training time and get further information about the evaluation through `train_state`. It may also access the target evaluation metric via the `workload` variable.
+- `current_param_container` is the same kind of nested structure as used by `model_fn` which constitutes a nested collection of `float32` arrays, each endowed with information about what kind of parameter that array represents stored in a parallel structure of `current_params_types`.
+  - Parameter kind is one of `{"weights", "biases", "embeddings", "conv", "batch norm"}`.
+- `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics.
+- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_type` enum/name.
+- The `loss_fn` produces a loss per example and a summed loss (both only for one device), which both can be used.
+- Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
+
+##### `prepare_for_eval`
+
+```python
+def prepare_for_eval(
+    workload: Workload,
+    current_param_container: ParameterContainer,
+    current_params_types: ParameterTypeTree,
+    model_state: ModelAuxiliaryState,
+    hyperparameters: Hyperparameters,
+    loss_type: LossType,
+    optimizer_state: OptimizerState,
+    eval_results: List[Tuple[int, float]],
+    global_step: int,
+    rng: RandomState
+) -> (updated_optimizer_state, updated_params, updated_model_state)
+```
+
+**Purpose:** To prepare the model for evaluation, e.g., for swapping model parameters.
+
+- Arguments are the same as `update_params`, with the only exception of `batch`.
+- This function is called when a submission is deemed eligible for an evaluation (see [Evluation during training](#evaluation-during-training) section).
+  - The call to `prepare_for_eval` is timed and its runtime accumulates to the overall submission time.
+  - The returned model parameters are evaluated on the validation and test sets, provided that the accumulated submission time does not exceed the maximum runtime after this function call.
+- This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
+- Allowed to update model state and model parameters.
+- Allowed to update state for the optimizer.
+
+##### `data_selection`
+
+```python
+def data_selection(
+    workload: Workload,
+    input_queue: Iterator[Dict[str, Any]],
+    optimizer_state: OptimizerState,
+    current_param_container: ParameterContainer,
+    model_state: ModelAuxiliaryState,
+    hyperparameters: Hyperparameters,
+    global_step: int,
+    rng: RandomState
+) -> Dict[str, Tensor]
+```
+
+**Purpose:** To select a subset of the training data for the next training step.
+
+- `input_queue` can yield up to the number of elements in the training dataset
+- Want to allow for submitters to construct their own data batches from the dataset
+- Submissions are allowed to arbitrarily modify the input examples, as long as the modifications are sufficiently generic to be applicable to any workload
+- This is only called on the training inputs. **No submitted code will be called during evaluation.**
+- This allows for any of the following methods:
+  - Data echoing
+  - Curriculum learning
+  - Bootstrapping
+  - Biased sampling (based on loss values, so need to store the forward pass in the `optimizer_state`, potentially forward pass of a cheaper proxy model)
+  - Submissions need batching control
+
+##### Fixed Functions
+
+Any function that is not part of the [**Submission API**](#submission-api) and thus a submission function, is considered a fixed function, which submitters are not allowed to modify.
+Below, we describe some of the fixed functions to provide a better understanding of the _AlgoPerf_ benchmark API. With the exception of `_build_input_queue`, submitter can call any of these functions (along with any public function in the provided `workload` instance) at any time in their submission functions.
 
 ###### Step hint
 
@@ -152,135 +274,13 @@ def loss_fn(
     label_smoothing: float = 0.0) -> Dict[str, Tensor]  # differentiable
 ```
 
-- Unlike in the _Model Track_, we will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
+- We will specify the loss function name in order to let training algorithms depend on the loss function. It will be one of {**mean squared error**, **cross-entropy**, **CTC**, or **L1 reconstruction error**}.
   - The optimizer must work with all values of the enum, which will be provided via a property on the workload object that is provided to all submissions functions.
 - The loss function does **not** include regularization. Instead, regularization can be added by the submissions in the `update_params` function.
-- The loss function returns a dict {'summed': scalar summed loss, 'n_valid_examples': scalar number of valid examples in batch, 'per_example': 1-d array of per-example losses}.
-  Note that the returned quantities are not synced across devices; this can be done by the user in the `update_params` function.
+- The loss function returns a dict `{'summed': scalar summed loss, 'n_valid_examples': scalar number of valid examples in batch, 'per_example': 1-d array of per-example losses}`.
+  - Note that the returned quantities are not synced across devices; this can be done by the user in the `update_params` function.
 
-##### Submission functions
-
-###### Batch size getter
-
-```python
-def get_batch_size(workload_name: str) -> int
-```
-
-- Submitters define a specific batch size for each [workload](#workloads).
-- For example, in advance, they can determine the largest batch size without running out of memory for each workload.
-- This does not affect the _evaluation batch size_ (i.e. the batch size used during the evaluation phase), which is, by design, a quantity submitters are not allowed to change.
-
-###### Optimizer state initializer
-
-```python
-def init_optimizer_state(
-    workload: Workload,
-    model_params: ParameterContainer,
-    model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparameters,
-    rng: RandomState
-) -> initial_optimizer_state
-```
-
-- Allowed to create state for the optimizer
-- Does not involve the initialization for the model parameters, which in the Training Algorithm Track, is considered a fixed function, see [Model initialization](#model-initialization).
-- The optimizer state is a dictionary (`Dict[str, Any]`). For a PyTorch submission, any value in this dictionary which is a class instance with internal state has to have a `state_dict()` method implemented to be stored correctly at the training checkpoints.
-
-###### Variable update function
-
-```python
-def update_params(
-    workload: Workload,
-    current_param_container: ParameterContainer,
-    current_params_types: ParameterTypeTree,
-    model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparameters,
-    batch: Dict[str, Tensor],
-    loss_type: LossType,
-    optimizer_state: OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: RandomState,
-    train_state: Optional[Dict[str, Any]] = None
-) -> (updated_optimizer_state, updated_params, updated_model_state)
-```
-
-- `current_param_container` is the same kind of nested structure as used by `model_fn` which constitutes a nested collection of `float32` arrays, each endowed with information about what kind of parameter that array represents stored in a parallel structure of `current_params_types`.
-  - Parameter kind is one of {"weights", "biases", "embeddings", "conv", "batch norm"}.
-- `model_state` holds auxiliary state necessary for some models, such as the current batch norm statistics.
-- The loss function will be one of a small set of known possibilities and the update function is allowed to branch on the `loss_type` enum/name.
-- The `loss_fn` produces a loss per example and a summed loss (both only for one device), which both can be used.
-- Allowed to update state for the optimizer.
-- Uses the `model_fn` of the `workload` in order to decouple the loss from the model so that model outputs (forward passes) can be reused (by storing them in the optimizer state).
-- The submission can access the elapsed training time and get further information about the evaluation through `train_state`.
-- The submission can access the target evaluation metric via the `workload` variable.
-- **A call to this function will be considered a step**
-  - The time between a call to this function and the next call to this function will be considered the per-step time.
-- Cannot modify the given hyperparameters in a workload-conditional way (please see the [Valid submission](#valid-submissions) section). This rule is intended to prohibit circumventing the tuning rules by looking up a pre-tuned optimal set of hyperparameters for each workload. It is not intended to prohibit line searches and other similar techniques.
-- The fixed `init_model_fn` can optionally be called during training, for example, to reinitialize the model after a failed training effort.
-- Cannot replace the model parameters with pre-trained ones.
-- Batch norm should work here because the `model_fn` will return updated batch norm moving averages when it is told to with `update_batch_norm`.
-
-###### Prepare for evaluation function
-
-```python
-def prepare_for_eval(
-    workload: Workload,
-    current_param_container: ParameterContainer,
-    current_params_types: ParameterTypeTree,
-    model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparameters,
-    loss_type: LossType,
-    optimizer_state: OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: RandomState
-) -> (updated_optimizer_state, updated_params, updated_model_state)
-```
-
-- Arguments are the same as `update_params`, with the only exception of `batch`.
-- This function is called when a submission is deemed eligible for an evaluation (see [Evluation during training](#evaluation-during-training) section).
-  - The call to `prepare_for_eval` is timed and its runtime accumulates to the overall submission time.
-  - The returned model parameters are evaluated on the validation and test sets, provided that the accumulated submission time does not exceed the maximum runtime after this function call.
-- This API supports Polyak averaging and similar methods that implement moving averages of model parameters.
-- Allowed to update model state and model parameters.
-- Allowed to update state for the optimizer.
-- Cannot replace the model parameters with pre-trained ones.
-
-###### Data selection
-
-```python
-def data_selection(
-    workload: Workload,
-    input_queue: Iterator[Dict[str, Any]],
-    optimizer_state: OptimizerState,
-    current_param_container: ParameterContainer,
-    model_state: ModelAuxiliaryState,
-    hyperparameters: Hyperparameters,
-    global_step: int,
-    rng: RandomState
-) -> Dict[str, Tensor]
-```
-
-- `input_queue` can yield up to the number of elements in the training dataset
-- Want to allow for submitters to construct their own data batches from the dataset
-- Submissions are allowed to arbitrarily modify the input examples, as long as the modifications are sufficiently generic to be applicable to any workload
-- This is only called on the training inputs. **No submitted code will be called at eval in the training track.**
-- This allows for any of the following methods:
-  - Data echoing
-  - Curriculum learning
-  - Bootstrapping
-  - Biased sampling (based on loss values, so need to store the forward pass in the `optimizer_state`, potentially forward pass of a cheaper proxy model)
-  - Submissions need batching control
-
-#### Evaluation during training
-
-In general, with noisy, non-deterministic training, evaluation frequency can affect training time measurements as more "bites of the apple" potentially allows the training code to exploit instability. We also want to discourage submissions from complicated and unrealistic logic that attempts to guess when training is close to complete and increases the evaluation rate, while not producing a well-sampled training curve at the start of training. Simply allowing submissions complete freedom over evaluation frequency encourages competitors to work to minimize the number of evaluations, which distracts from the primary goal of finding better training algorithms.
-
-Submissions are eligible for an untimed eval every `eval_period` seconds. Before proceeding to evaluation, the submission can prepare the model through a call to `prepare_for_eval`, effectively modifying the model parameters and state as well as the the optimizer state. Any additional evaluations performed by the submission code count against the runtime for scoring.
-The harness that runs the submission code will attempt to eval every `eval_period` seconds by checking between each submission step (call of `update_params`) whether it has been at least `eval_period` seconds since that last eval, if so, the submission is given the possibility to prepare for evaluation (through a timed call to `prepare_for_eval`). If the accumulated runtime does not exceed the maximum allowed runtime after the preparation step, the clock is paused, and the submission is evaluated. This means that if calls to `update_params` typically take a lot more than `eval_period` seconds, such submissions will not receive as many untimed evals as a submission that had an `update_params` function that took less time. However, for appropriate settings of `eval_period`, we expect this to be quite rare. Submissions are always free to restructure their `update_params` code to split work into two subsequent steps to regain the potential benefits of these untimed model evaluations. For each workload, the `eval_period` will be set such that the total evaluation time is roughly between 10% and 20% of the total training time for the target-setting runs.
-
-#### Valid submissions
+#### Valid Submissions
 
 The intention of this benchmark is to identify training algorithm submissions that will be broadly applicable and effective in practical scenarios without customization to the specific [workload](#workloads) (model, dataset, and loss function). Generally useful training algorithms can train models faster and thus require less compute resources, decreasing the cost of machine learning. We want to discourage all submissions that sidestep the purpose of this benchmark. We welcome creative ideas and novel research. Therefore, the API aims to allow a wide variety of submissions. However, in some cases, routines that would be allowed in principle might not be practically feasible to express in the provided framework.
 
@@ -380,13 +380,22 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 
 </details>
 
-##### Software dependencies
+#### Runtime Environment and Evaluation
+
+##### Evaluation during training
+
+In general, with noisy, non-deterministic training, evaluation frequency can affect training time measurements as more "bites of the apple" potentially allows the training code to exploit instability. We also want to discourage submissions from complicated and unrealistic logic that attempts to guess when training is close to complete and increases the evaluation rate, while not producing a well-sampled training curve at the start of training. Simply allowing submissions complete freedom over evaluation frequency encourages competitors to work to minimize the number of evaluations, which distracts from the primary goal of finding better training algorithms.
+
+Submissions are eligible for an untimed eval every `eval_period` seconds. Before proceeding to evaluation, the submission can prepare the model through a call to `prepare_for_eval`, effectively modifying the model parameters and state as well as the the optimizer state. Any additional evaluations performed by the submission code count against the runtime for scoring.
+The harness that runs the submission code will attempt to eval every `eval_period` seconds by checking between each submission step (call of `update_params`) whether it has been at least `eval_period` seconds since that last eval, if so, the submission is given the possibility to prepare for evaluation (through a timed call to `prepare_for_eval`). If the accumulated runtime does not exceed the maximum allowed runtime after the preparation step, the clock is paused, and the submission is evaluated. This means that if calls to `update_params` typically take a lot more than `eval_period` seconds, such submissions will not receive as many untimed evals as a submission that had an `update_params` function that took less time. However, for appropriate settings of `eval_period`, we expect this to be quite rare. Submissions are always free to restructure their `update_params` code to split work into two subsequent steps to regain the potential benefits of these untimed model evaluations. For each workload, the `eval_period` will be set such that the total evaluation time is roughly between 10% and 20% of the total training time for the target-setting runs.
+
+##### Software Dependencies
 
 If your Submission will have any software dependencies, you must create a `requirements.txt` file in the `/submission` directory. This file must clearly list all software dependencies your Submission requires in order to be a valid Submission. File must be "pip readable" (the dependencies listed can be installed via the `pip install -r requirements.txt` command). You may not modify the package versions of the software dependencies used by the benchmarking codebase, including using a different version of libraries such as PyTorch or JAX from those specified in the benchmark.
 
 We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section.
 
-##### Environment variables
+##### Environment Variables
 
 The benchmark codebase sets environment variables, and submitters are not permitted to modify (or add) environment variables for the software dependencies. However, if you believe some of these variables are not optimally set, you can suggest changes, e.g. by creating an issue. The working group will evaluate your suggestions and consider making adjustments if necessary. This ensures that all submissions are equally affected by the environment variables and maintains the competition's primary focus on algorithmic improvements.
 
