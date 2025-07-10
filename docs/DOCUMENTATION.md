@@ -36,28 +36,34 @@
 
 ## Introduction
 
-Neural networks are powerful models, but only after careful training.
-Training cutting-edge models now exceeds the compute budgets of many researchers, and is also a growing expense in industry.
-Practitioners also face many opaque, but high-stakes decisions when training models:
-What optimizer to choose?
-How should its learning rate be tuned?
-What learning rate schedule should be used?
-These choices can make or break training, yet the community has lacked a clear, standardized way to identify the state of the art neural network training method.
+Neural networks are powerful models, but they need to be trained to be useful. Training cutting-edge machine learning (ML) models is exceeding the compute budgets of many researchers, and ML compute is becoming a larger and larger cost in industry.
+Additionally, when training neural nets, practitioners face many critical yet often opaque decisions: What optimizer to choose? How should its learning rate be tuned? What learning rate schedule should be used? These choices can make or break training, yet the community has lacked a clear, standardized way to identify the state of the art.
 
-To cut both computational (and potentially environmental) costs and guide practitioners, we need more scientifically sound methods for evaluating training speedups due to new algorithms.
-Unlike benchmarks focused on hardware systems or model architectures, **_AlgoPerf_ isolates the training algorithm** (including the optimizer, regularization, data selection, and hyperparameters like the learning rate schedule) while **fixing hardware, models, and other aspects of the training process**.
+To reduce the compute and potentially environmental cost of machine learning models, as well as provide guidance for practitioners, we need more scientifically sound methods for evaluating training speedups due to new algorithms.
 
-By standardizing the benchmark process, _AlgoPerf_ offers a more meaningful apples-to-apples comparison of training speedups delivered by new neural network training algorithms.
+Unlike benchmarks focused on hardware or model architecture, AlgoPerf isolates the training algorithm itself, which includes the optimizer, regularization, data selection, and hyperparameters like the learning rate schedule. By standardizing the benchmark process, AlgoPerf offers a meaningful apples-to-apples comparison of training algorithms.
+
+This document focuses on the **Training Algorithm Track** of the _AlgoPerf benchmark_.
 
 ## Benchmark Process
 
-The goal of the **AlgoPerf: Training Algorithm Track** is to reach the same results faster ("time to result") by using better optimizers, data ordering/weighting schemes, and weight update strategies while producing techniques that work well on a wide variety of models and datasets. We hope to encourage generally useful training algorithms that are not specific to only a small number of particular workloads.
+The **AlgoPerf: Training Algorithms benchmark** challenges participants to submit training algorithms that accelerate the training of neural networks. The goal is to reach a pre-defined performance target in the shortest possible time ("time-to-result") across a diverse set of workloads. The benchmark is designed to identify general-purpose training algorithms, such as new optimizers, data selection methods, regularization techniques, etc., that provide practical speedups for the broader ML community.
 
-In general, submissions to the Training Algorithm Track will replace specific pieces of a reference implementation in order to produce a training program that reaches the same results faster on as many workloads as possible. The training program has a fixed, high-level structure and competitors are allowed to replace a particular set of functions in the program (the [**submission functions**](#submission-functions)), but must leave all other pieces ([**fixed functions**](#fixed-functions) and high-level structure) of the reference implementation unchanged. The submitted code must perform well on multiple datasets and models simultaneously (a model and dataset pair constitute a [workload](#workloads) for the purposes of this track).
+The benchmark process follows these **key principles**:
 
-Submissions to the Training Algorithm Track can be entered under two separate rulesets, named [external tuning ruleset](#external-tuning-ruleset) and [self-tuning ruleset](#self-tuning-ruleset), with it being possible to submit to both rulesets. The main difference is that the external tuning ruleset allows moderate, automatic, parallel tuning of the optimizer's hyperparameters on each workload, using the submitted workload-agnostic search space. This allows the training algorithm to adapt to a particular task while ensuring that it is not too difficult to tune automatically. Under the self-tuning ruleset, there is no external tuning and submissions need to adapt to a particular task autonomously within a single optimization run. Unless otherwise specified, the rules in this section apply to both rulesets (see, for example, the [Tuning](#tuning) section for the most substantial difference between the rulesets).
+- 🎯 **Fixed Target, Model & Hardware:** Submitted training algorithms must train a set of [**fixed models**](#workloads) to a pre-defined validation performance target as fast as possible. All submissions use the same model architecture and are run on the same [**standardized hardware**](#benchmarking-hardware) (8x NVIDIA V100 GPUs). This isolates the training algorithm's performance and allows a fair apples-to-apples comparison.
+- ⏱️ **Time-To-Result:** Submissions are evaluated based on the total wall-clock time required to reach the target, rewarding practical and efficient algorithms.
+- 🧠 **Diverse Workloads:** The benchmark includes [**8 diverse deep learning workloads**](#workloads) across domains like image classification, speech recognition, and machine translation. A submission's score is computed by aggregating its performance, using [**performance profiles**](#algoperf-benchmark-score-via-integrated-performance-profiles), across all workloads to ensure general-purpose algorithms.
+- 📦 **Fully-Specified Algorithms:** Submissions must be complete procedures and thus hyperparameter tuning is treated as part of the algorithm. Depending on the ruleset, submissions may use parallel tuning resources. This ensures that the benchmark measures the _total_ practical cost of a training algorithm and provides practitioners with a complete method, eliminating the guesswork of how to apply it.
 
-The intention is that a training algorithm submission will be broadly applicable and useful without customization to the specific [workload](#workloads) (model, dataset, loss function). We want to discourage detecting the particular workload and doing something highly specific that isn't generally useful.
+To participate, you [**submit a training algorithm**](/README.md#how-to-submit) by implementing a specific set of functions within our API (the [**submission functions**](#submission-functions)). All other components, including the model architecture, loss function, and evaluation logic, are fixed. This ensures that any performance gains are directly attributable to your algorithmic innovations.
+
+Submissions can be entered under two distinct rulesets:
+
+1. **External Tuning Ruleset:** This ruleset permits a limited, automated, parallel hyperparameter search for each workload, where the search space is defined by the submitter but must be the same for all workloads. A submission's workload score uses only the fastest run to reach the target out of $5$ tuning trials.
+2. **Self-Tuning Ruleset:** This ruleset is for hyperparameter-free or fully autonomous algorithms. All workload adaptations or hyperparameter tuning must be performed by the algorithm "on the clock" during a single training run.
+
+A core tenet of the benchmark is to foster the development of broadly applicable methods. Submissions must be able to generalize and are prohibited from using logic or pre-computed solutions specific to any single workload. The following sections provide the complete technical specifications of the benchmark process.
 
 ### Submissions
 
