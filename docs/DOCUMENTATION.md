@@ -25,7 +25,8 @@
     - [Benchmarking hardware](#benchmarking-hardware)
     - [Defining target performance and `max_runtime`](#defining-target-performance-and-max_runtime)
 - [Versioning Policy](#versioning-policy)
-  - [Version freeze](#version-freeze)
+  - [Version Freeze](#version-freeze)
+- [License and Legal Requirements](#license-and-legal-requirements)
 - [FAQs](#faqs)
   - [Setup \& Platform](#setup--platform)
   - [Submitting](#submitting)
@@ -330,6 +331,8 @@ Submissions can use additional software dependencies provided they have the inte
 
 ##### Disallowed submissions
 
+Submissions must rely on new algorithmic or mathematical ideas and concepts, and must not use software engineering approaches in order to increase primitive operations in PyTorch, JAX, their dependencies, the operating systems, or the hardware. Submissions may use public APIs in JAX and PyTorch from within the submission function APIs, but may not use APIs to optimize the internals of primitive operations and/or standard dependencies to benefit any Submission.
+
 Submissions are not allowed to circumvent the tuning rules by looking up the result of an offline computation that was performed ahead of time.
 
 <details>
@@ -368,6 +371,8 @@ Valid submissions must rely on new algorithmic or mathematical ideas and should 
 </details>
 
 ##### Software dependencies
+
+If your Submission will have any software dependencies, you must create a `requirements.txt` file in the `/submission` directory. This file must clearly list all software dependencies your Submission requires in order to be a valid Submission. File must be "pip readable" (the dependencies listed can be installed via the `pip install -r requirements.txt` command). You may not modify the package versions of the software dependencies used by the benchmarking codebase, including using a different version of libraries such as PyTorch or JAX from those specified in the benchmark.
 
 We require submissions to use specific versions of `PyTorch`/`JAX` as well as additional dependencies in order to facilitate fair comparisons. Submitters must build on top of these provided software packages, which might be provided as a `Docker` container. Additional dependencies can be added as long as they include a comment describing what was added and why. Submitters are free to add dependencies that support new algorithmic and mathematical ideas but they should not circumvent the intention of the benchmark to measure training speedups due to new training methods. For example, software engineering techniques that lead to faster implementations of existing software, e.g. using newer versions of `PyTorch` or `JAX`, are not allowed and these are described in more detail in the [Disallowed submissions](#disallowed-submissions) section.
 
@@ -541,9 +546,18 @@ _AlgoPerf_ uses a unified versioning scheme: codebase, rules, and leaderboard al
 
 For detailed information about releases and version history, see our [**README**](../README.md#releases--roadmap) and our [**Changelog**](CHANGELOG.md).
 
-### Version freeze
+### Version Freeze
 
 To ensure that all submitters can develop their submissions based on the same code that will be utilized for scoring, we freeze the package versions of the codebase dependencies in between benchmark versions. By doing so, we level the playing field for everyone involved, ensuring fairness and consistency in the assessment of submissions. We will try to minimize changes to the benchmark codebase as best as possible.
+
+## License and Legal Requirements
+
+All submissions must be licensed under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).
+Furthermore, all submitters must sign the following agreements:
+
+- A signed [Contributor License Agreement (CLA) "Corporate CLA"](https://mlcommons.org/en/policies/) of MLCommons.
+- _Either_ a membership in MLCommons _or_ a signed [non-member test agreement](https://mlcommons.org/en/policies/).
+- A signed trademark license agreement, either the member or the non-member version, as appropriate. These license agreements are available upon request to [support@mlcommons.org](mailto:support@mlcommons.org).
 
 ## FAQs
 
