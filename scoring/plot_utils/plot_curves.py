@@ -9,8 +9,8 @@ import os
 import wandb
 
 flags.DEFINE_string('experiment_dir', '/home/kasimbeg/algoperf-runs-internal/experiments/pmap_ref', 'Path to experiment dir.')
-flags.DEFINE_string('workloads', 'librispeech_conformer_jax', 'Filter only for workload. If None include all workloads in experiment.')
-flags.DEFINE_string('project_name', 'visulaize-training-curves-pmap', 'Wandb project name.')
+flags.DEFINE_string('workloads', 'librispeech_deepspeech_jax', 'Filter only for workload e.g. fastmri_jax. If None include all workloads in experiment.')
+flags.DEFINE_string('project_name', 'visualize-training-curves-legacy-stephint', 'Wandb project name.')
 flags.DEFINE_string('run_postfix', '', 'Postfix for wandb runs.')
 
 FLAGS = flags.FLAGS
