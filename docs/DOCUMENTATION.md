@@ -239,7 +239,7 @@ def init_model_fn(
 ) -> initial model parameters
 ```
 
-- Unlike in the _Model Track_, this function that initializes the parameters of the model, is fixed. While it can be called by the submission (e.g. to restart the model after a failed training effort) it cannot be changed.
+- This function initializes the parameters of the model. While it can be called by the submission (e.g. to restart the model after a failed training effort) it cannot be changed.
 
 ###### Forward pass
 
