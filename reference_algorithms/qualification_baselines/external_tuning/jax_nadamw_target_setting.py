@@ -320,8 +320,8 @@ def update_params(
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
         {
-            'loss': loss[0],
-            'grad_norm': grad_norm[0],
+            'loss': loss.item(),
+            'grad_norm': grad_norm.item(),
         }, global_step)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
