@@ -1,7 +1,5 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in Jax."""
 
-import functools
-
 # isort: off
 # We have to turn off isort here to resolve a conflict between isort and yapf.
 from typing import (Any,
@@ -16,13 +14,13 @@ from typing import (Any,
 # isort: on
 
 import chex
-from flax import jax_utils
 import jax
 from jax import lax
 import jax.numpy as jnp
 import optax
 
 from algoperf import spec
+from algoperf import jax_sharding_utils
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -204,16 +202,10 @@ def init_optimizer_state(workload: spec.Workload,
                                    workload.param_shapes)
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn
 
 
-@functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
-    static_broadcasted_argnums=(0, 1),
-    donate_argnums=(2, 3, 4))
-def pmapped_train_step(workload,
+def train_step(workload,
                        opt_update_fn,
                        model_state,
                        optimizer_state,
@@ -296,13 +288,47 @@ def update_params(
     grad_clip = hyperparameters['grad_clip']
   else:
     grad_clip = None
-  outputs = pmapped_train_step(workload,
+  
+    # Create shardings for each argument
+  mesh = jax_sharding_utils.get_mesh()
+  replicated = jax_sharding_utils.get_replicated_sharding(mesh)  # No partitioning
+  sharded = jax_sharding_utils.get_batch_sharding(
+      mesh)  # Partition along batch dimension
+
+  # Create the sharding rules for each argument
+  arg_shardings = (
+      # workload is static
+      # opt_update_fn is static
+      replicated,  # model_state
+      replicated,  # optimizer_state
+      replicated,  # current_param_container
+      sharded,  # batch
+      replicated,  # rng
+      replicated,  # grad_clip
+      replicated  # label_smoothing
+  )
+  out_shardings = (
+      replicated,  # new_optimizer_state
+      replicated,  # updated_params
+      replicated,  # new_model_state
+      replicated,  # loss
+      replicated  # grad_norm
+  )
+
+  # Jit with shardings
+  jitted_train_step = jax.jit(
+      train_step,
+      static_argnums=(0, 1),
+      donate_argnums=(2, 3, 4),
+      in_shardings=arg_shardings,
+      out_shardings=out_shardings)
+  outputs = jitted_train_step(workload,
                                opt_update_fn,
                                model_state,
                                optimizer_state,
                                current_param_container,
                                batch,
-                               per_device_rngs,
+                               rng,
                                grad_clip,
                                label_smoothing)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs

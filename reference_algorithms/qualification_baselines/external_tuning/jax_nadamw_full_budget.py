@@ -16,13 +16,12 @@ from typing import (Any,
 # isort: on
 
 import chex
-from flax import jax_utils
 import jax
-from jax import lax
 import jax.numpy as jnp
 import optax
 
 from algoperf import spec
+from algoperf import jax_sharding_utils
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -316,7 +315,6 @@ def update_params(
                                rng,
                                grad_clip,
                                label_smoothing)
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:

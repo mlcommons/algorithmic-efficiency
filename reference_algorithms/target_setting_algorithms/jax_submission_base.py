@@ -1,9 +1,7 @@
 """Update submission function in Jax."""
-import functools
 from typing import Any, Dict, List, Optional, Tuple
 
 import jax
-from jax import lax
 import jax.numpy as jnp
 import optax
 
@@ -82,7 +80,6 @@ def update_params(
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
   else:
@@ -91,8 +88,8 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  mesh = jax_sharding_utils.get_mesh()
   # Create shardings for each argument
+  mesh = jax_sharding_utils.get_mesh()
   replicated = jax_sharding_utils.get_replicated_sharding(mesh)  # No partitioning
   sharded = jax_sharding_utils.get_batch_sharding(
       mesh)  # Partition along batch dimension
