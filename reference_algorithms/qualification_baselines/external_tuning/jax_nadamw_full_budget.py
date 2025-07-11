@@ -272,7 +272,7 @@ def update_params(
 
   # Create shardings for each argument
   replicated = jax_sharding_utils.get_replicate_sharding()  # No partitioning
-  sharded = jax_sharding_utils.get_batch_sharding()  # Partition along batch dimension
+  sharded = jax_sharding_utils.get_batch_dim_sharding()  # Partition along batch dimension
 
   # Create the sharding rules for each argument
   arg_shardings = (
