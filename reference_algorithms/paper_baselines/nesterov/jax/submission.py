@@ -171,7 +171,7 @@ def update_params(
   else:
     grad_clip = None
 
-  mesh = jax_sharding_utils.get_mesh()
+  mesh = jax.sharding.Mesh(jax.devices(), ('batch'))
   # Create shardings for each argument
   replicated = NamedSharding(mesh, P())  # No partitioning
   sharded = NamedSharding(mesh, P('batch'))  # Partition along batch dimension
