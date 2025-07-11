@@ -291,7 +291,7 @@ def update_params(
 
     # Create shardings for each argument
   mesh = jax.sharding.Mesh(jax.devices(), ('batch'))
-  replicated = jax_sharding_utils.get_replicated_sharding(
+  replicated = jax_sharding_utils.get_replicate_sharding(
       mesh)  # No partitioning
   sharded = jax_sharding_utils.get_batch_sharding(
       mesh)  # Partition along batch dimension
