@@ -1,11 +1,8 @@
 """Submission file for a SGD with Nesterov momentum optimizer in Jax."""
 
-import functools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
-from flax import jax_utils
 import jax
-from jax import lax
 import jax.numpy as jnp
 from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec as P

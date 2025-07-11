@@ -1,7 +1,5 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in Jax."""
 
-import functools
-
 # isort: off
 # We have to turn off isort here to resolve a conflict between isort and yapf.
 from typing import (Any,

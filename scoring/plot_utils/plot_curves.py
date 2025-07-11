@@ -2,7 +2,6 @@ from absl import flags
 from absl import app
 from absl import logging
 
-import matplotlib.pyplot as plt
 import re
 import pandas as pd
 import os
@@ -47,9 +46,6 @@ def main(_):
     else:
       workload_dirs = FLAGS.workloads.split(',')
     for workload in workload_dirs:
-      data = {
-          'workload': workload,
-      }
       logging.info(os.path.join(experiment_dir, study_dir, workload))
       trial_dirs = [
           t for t in os.listdir(
