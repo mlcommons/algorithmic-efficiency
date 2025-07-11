@@ -196,14 +196,14 @@ def init_optimizer_state(workload: spec.Workload,
 
 
 def train_step(workload,
-                       opt_update_fn,
-                       model_state,
-                       optimizer_state,
-                       current_param_container,
-                       batch,
-                       rng,
-                       grad_clip,
-                       label_smoothing):
+               opt_update_fn,
+               model_state,
+               optimizer_state,
+               current_param_container,
+               batch,
+               rng,
+               grad_clip,
+               label_smoothing):
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -276,7 +276,8 @@ def update_params(
 
     # Create shardings for each argument
   mesh = jax_sharding_utils.get_mesh()
-  replicated = jax_sharding_utils.get_replicated_sharding(mesh)  # No partitioning
+  replicated = jax_sharding_utils.get_replicated_sharding(
+      mesh)  # No partitioning
   sharded = jax_sharding_utils.get_batch_sharding(
       mesh)  # Partition along batch dimension
 
@@ -308,14 +309,14 @@ def update_params(
       in_shardings=arg_shardings,
       out_shardings=out_shardings)
   outputs = jitted_train_step(workload,
-                               opt_update_fn,
-                               model_state,
-                               optimizer_state,
-                               current_param_container,
-                               batch,
-                               rng,
-                               grad_clip,
-                               label_smoothing)
+                              opt_update_fn,
+                              model_state,
+                              optimizer_state,
+                              current_param_container,
+                              batch,
+                              rng,
+                              grad_clip,
+                              label_smoothing)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
   # Log loss, grad_norm.

@@ -179,11 +179,11 @@ class CifarWorkload(BaseCifarWorkload):
     return metrics
 
   def _eval_model(
-    self,
-    params: spec.ParameterContainer,
-    batch: Dict[str, spec.Tensor],
-    model_state: spec.ModelAuxiliaryState,
-    rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+      self,
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
 
     @functools.partial(
@@ -213,10 +213,7 @@ class CifarWorkload(BaseCifarWorkload):
         weights = jnp.ones(len(logits))
       return self._compute_metrics(logits, batch['targets'], weights)
 
-    metrics = _eval_model_jitted(params, 
-                                  batch,
-                                  model_state,
-                                  rng)
+    metrics = _eval_model_jitted(params, batch, model_state, rng)
     return jax.tree.map(lambda x: x.item(), metrics)
 
   def _normalize_eval_metrics(

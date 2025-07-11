@@ -226,6 +226,7 @@ def _get_system_software_info() -> Dict:
 
   return system_software_info
 
+
 def _get_git_commit_hash() -> str:
   return subprocess.check_output(['git', 'rev-parse',
                                   'HEAD']).decode('ascii').strip()

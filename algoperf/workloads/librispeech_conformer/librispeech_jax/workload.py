@@ -342,7 +342,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
             decoded,
         'decoded_paddings':
             decoded_paddings,
-        'targets': 
+        'targets':
             targets,
         'target_paddings':
             target_paddings,

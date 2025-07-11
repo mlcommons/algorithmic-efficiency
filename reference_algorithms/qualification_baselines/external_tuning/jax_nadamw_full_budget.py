@@ -272,10 +272,11 @@ def update_params(
   else:
     grad_clip = None
 
-  # Get mesh 
+  # Get mesh
   mesh = jax_sharding_utils.get_mesh()
   # Create shardings for each argument
-  replicated = jax_sharding_utils.get_replicated_sharding(mesh)  # No partitioning
+  replicated = jax_sharding_utils.get_replicated_sharding(
+      mesh)  # No partitioning
   sharded = jax_sharding_utils.get_batch_sharding(
       mesh)  # Partition along batch dimension
 
@@ -319,10 +320,7 @@ def update_params(
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
-        {
-            'loss': loss.item(),
-            'grad_norm': grad_norm.item()
-        }, global_step)
+        {'loss': loss.item(), 'grad_norm': grad_norm.item()}, global_step)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

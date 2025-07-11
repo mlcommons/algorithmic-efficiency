@@ -50,15 +50,15 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
     variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
                               *fake_input_batch)
 
-    model_state = {'batch_stats': variables[
-        'batch_stats']} if not self.layernorm_everywhere else {}
+    model_state = {'batch_stats': variables['batch_stats']
+                  } if not self.layernorm_everywhere else {}
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     model_state = jax_sharding_utils.replicate(model_state)
     params = jax_sharding_utils.replicate(params)
     return params, model_state
-  
+
   def model_fn_ref(
       self,
       params: spec.ParameterContainer,
@@ -103,20 +103,24 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       use_running_average_bn: Optional[bool] = None
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
 
-    model_fn_partial = jax.tree_util.Partial(self.model_fn_ref,
-                                             mode=mode,
-                                             rng=rng,
-                                             update_batch_norm=update_batch_norm,
-                                             use_running_average_bn=use_running_average_bn)
+    model_fn_partial = jax.tree_util.Partial(
+        self.model_fn_ref,
+        mode=mode,
+        rng=rng,
+        update_batch_norm=update_batch_norm,
+        use_running_average_bn=use_running_average_bn)
 
-    model_fn_sharded = shard_map(model_fn_partial,
-                                 jax.sharding.Mesh(jax.devices(), ('batch')),
-                                 in_specs=(P(), P('batch'), P(None)),
-                                 out_specs=(P('batch'), P(None)),
-                                 )
-    return model_fn_sharded(params, 
-                            augmented_and_preprocessed_input_batch,
-                            model_state,)
+    model_fn_sharded = shard_map(
+        model_fn_partial,
+        jax.sharding.Mesh(jax.devices(), ('batch')),
+        in_specs=(P(), P('batch'), P(None)),
+        out_specs=(P('batch'), P(None)),
+    )
+    return model_fn_sharded(
+        params,
+        augmented_and_preprocessed_input_batch,
+        model_state,
+    )
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'

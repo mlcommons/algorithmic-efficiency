@@ -193,14 +193,14 @@ def init_optimizer_state(workload: spec.Workload,
 
 
 def train_step(workload,
-                       opt_update_fn,
-                       model_state,
-                       optimizer_state,
-                       current_param_container,
-                       batch,
-                       rng,
-                       grad_clip,
-                       label_smoothing):
+               opt_update_fn,
+               model_state,
+               optimizer_state,
+               current_param_container,
+               batch,
+               rng,
+               grad_clip,
+               label_smoothing):
 
   def _loss_fn(params):
     """Loss function used for training."""
@@ -274,7 +274,8 @@ def update_params(
     grad_clip = None
   # Create shardings for each argument
   mesh = jax_sharding_utils.get_mesh()
-  replicated = jax_sharding_utils.get_replicated_sharding(mesh)  # No partitioning
+  replicated = jax_sharding_utils.get_replicated_sharding(
+      mesh)  # No partitioning
   sharded = jax_sharding_utils.get_batch_sharding(
       mesh)  # Partition along batch dimension
 
@@ -310,7 +311,6 @@ def update_params(
       workload, opt_update_fn, model_state, optimizer_state,
       current_param_container, batch, rng, grad_clip,
       label_smoothing)
-
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:

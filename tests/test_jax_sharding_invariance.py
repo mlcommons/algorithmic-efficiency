@@ -22,28 +22,27 @@ FLAGS = flags.FLAGS
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-FRAMEWORK = 'jax' # Can extend to pytorch later
+FRAMEWORK = 'jax'  # Can extend to pytorch later
 
-
-test_case = dict(testcase_name='test_ogbg',
-                workload='ogbg')
+test_case = dict(testcase_name='test_ogbg', workload='ogbg')
 
 
 class SubmissionRunnerTest(parameterized.TestCase):
   """Tests for reference submissions."""
-
 
   @parameterized.named_parameters(test_case)
   def test_invariance(self, workload_name):
     workload_name = 'ogbg'
     dataset_dir = f'/data/{workload_name}'
     workload_metadata = copy.deepcopy(WORKLOADS[workload_name])
-    workload_metadata['workload_path'] = os.path.join(BASE_WORKLOADS_DIR,
-                                                    workload_metadata['workload_path'] + '_' + FRAMEWORK,
-                                                    'workload.py')
-    workload = import_workload(workload_path=workload_metadata['workload_path'],
-                                workload_class_name=workload_metadata['workload_class_name'],
-                                workload_init_kwargs={})
+    workload_metadata['workload_path'] = os.path.join(
+        BASE_WORKLOADS_DIR,
+        workload_metadata['workload_path'] + '_' + FRAMEWORK,
+        'workload.py')
+    workload = import_workload(
+        workload_path=workload_metadata['workload_path'],
+        workload_class_name=workload_metadata['workload_class_name'],
+        workload_init_kwargs={})
 
     rng = jax.random.PRNGKey(0)
     initial_params, model_state = workload.init_model_fn(rng)
@@ -51,35 +50,43 @@ class SubmissionRunnerTest(parameterized.TestCase):
     batch = next(data_iter)
     inputs = batch['inputs']
 
-    def forward_pass(params,
-                    batch,
-                    model_state,
-                    rng,):
-        logits, _ = workload.model_fn(initial_params, 
-                                batch, 
-                                model_state, 
-                                spec.ForwardPassMode.TRAIN, 
-                                rng, 
-                                update_batch_norm=True)
-        return logits
+    def forward_pass(
+        params,
+        batch,
+        model_state,
+        rng,
+    ):
+      logits, _ = workload.model_fn(initial_params,
+                              batch,
+                              model_state,
+                              spec.ForwardPassMode.TRAIN,
+                              rng,
+                              update_batch_norm=True)
+      return logits
 
-    forward_pass_jitted = jax.jit(forward_pass,
-                            in_shardings=(jax_sharding_utils.get_replicate_sharding(),
-                                            jax_sharding_utils.get_batch_dim_sharding(),
-                                            jax_sharding_utils.get_replicate_sharding(),
-                                            jax_sharding_utils.get_replicate_sharding(),
-                                            ),
-                            out_shardings=jax_sharding_utils.get_batch_dim_sharding())
+    forward_pass_jitted = jax.jit(
+        forward_pass,
+        in_shardings=(
+            jax_sharding_utils.get_replicate_sharding(),
+            jax_sharding_utils.get_batch_dim_sharding(),
+            jax_sharding_utils.get_replicate_sharding(),
+            jax_sharding_utils.get_replicate_sharding(),
+        ),
+        out_shardings=jax_sharding_utils.get_batch_dim_sharding())
 
-    logits = forward_pass(initial_params,
-                        batch,
-                        model_state,
-                        rng,)
+    logits = forward_pass(
+        initial_params,
+        batch,
+        model_state,
+        rng,
+    )
 
-    logits_jitted = forward_pass_jitted(initial_params,
-                        batch,
-                        model_state,
-                        rng,)
+    logits_jitted = forward_pass_jitted(
+        initial_params,
+        batch,
+        model_state,
+        rng,
+    )
 
     jax.debug.visualize_array_sharding(logits_jitted)
 

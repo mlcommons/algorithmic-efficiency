@@ -149,10 +149,10 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
 
     if count == num_shards:
       # jraph.batch has a memory leak and OOMs
-      # It is possible with jraph.batch_np we may have transferred the leak 
+      # It is possible with jraph.batch_np we may have transferred the leak
       # to the cpu.
       yield {
-          'inputs': jraph.batch_np(graphs_shards), 
+          'inputs': jraph.batch_np(graphs_shards),
           'targets': np.vstack(labels_shards),
           'weights': np.vstack(weights_shards)
       }

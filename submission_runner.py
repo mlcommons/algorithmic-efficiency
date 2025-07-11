@@ -166,12 +166,13 @@ flags.DEFINE_integer(
     'Number of workers for ImageNet PyTorch evaluation data loaders.'
     'WARNING: Setting pytorch_eval_num_workers != 0, will result '
     'in incorrect evals currently, see issues/732.')
-flags.DEFINE_boolean('capture_jax_trace',
+flags.DEFINE_boolean(
+    'capture_jax_trace',
     False,
     'Captures jax profiler trace and writes to experiment directory.')
 flags.DEFINE_boolean('skip_evals',
-    False,
-    'Skip evals on train eval, validation and test splits.')
+                     False,
+                     'Skip evals on train eval, validation and test splits.')
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -396,7 +397,8 @@ def train_once(
 
     # Check if submission is eligible for an untimed eval.
     if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or train_state['training_complete']) and not skip_evals:
+        workload.eval_period_time_sec or
+        train_state['training_complete']) and not skip_evals:
 
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
@@ -772,7 +774,8 @@ def main(_):
       hparam_end_index=FLAGS.hparam_end_index,
       rng_seed=FLAGS.rng_seed,
       capture_trace=FLAGS.capture_jax_trace,
-      skip_evals=FLAGS.skip_evals,)
+      skip_evals=FLAGS.skip_evals,
+  )
   logging.info(f'Final {FLAGS.workload} score: {score}')
 
   if FLAGS.profile:

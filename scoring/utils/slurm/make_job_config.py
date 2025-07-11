@@ -43,15 +43,8 @@ flags.DEFINE_enum(
     help='Which tuning ruleset to score this submission on. Can be external or self.'
 )
 flags.DEFINE_string(
-    'workloads',
-    None,
-    help='Comma seperated list of workloads to run.'
-)
-flags.DEFINE_integer(
-    'num_studies',
-    NUM_STUDIES,
-    help='Number of studies.'
-)
+    'workloads', None, help='Comma seperated list of workloads to run.')
+flags.DEFINE_integer('num_studies', NUM_STUDIES, help='Number of studies.')
 
 FLAGS = flags.FLAGS
 

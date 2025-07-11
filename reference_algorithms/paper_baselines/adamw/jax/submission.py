@@ -144,24 +144,24 @@ def update_params(
       train_step,
       static_argnums=(0, 1),
       donate_argnums=(2, 3, 4),
-      in_shardings= (
-                  # workload is static
-                  # opt_update_fn is static
-                  replicated,  # model_state
-                  replicated,  # optimizer_state
-                  replicated,  # current_param_container
-                  sharded,  # batch
-                  replicated,  # rng
-                  replicated,  # grad_clip
-                  replicated  # label_smoothing
-                  ),
+      in_shardings=(
+          # workload is static
+          # opt_update_fn is static
+          replicated,  # model_state
+          replicated,  # optimizer_state
+          replicated,  # current_param_container
+          sharded,  # batch
+          replicated,  # rng
+          replicated,  # grad_clip
+          replicated  # label_smoothing
+      ),
       out_shardings=(
-                  replicated,  # new_optimizer_state
-                  replicated,  # updated_params
-                  replicated,  # new_model_state
-                  replicated,  # loss
-                  replicated  # grad_norm
-  ))
+          replicated,  # new_optimizer_state
+          replicated,  # updated_params
+          replicated,  # new_model_state
+          replicated,  # loss
+          replicated  # grad_norm
+      ))
   # print(batch)
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
                               opt_update_fn,
