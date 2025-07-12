@@ -223,9 +223,6 @@ def train_step(workload,
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
       current_param_container)
-  # Get correct global mean loss and grad.
-  (summed_loss, n_valid_examples, grad) = lax.psum(
-      (summed_loss, n_valid_examples, grad), axis_name='batch')
   loss = summed_loss / n_valid_examples
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
@@ -263,7 +260,6 @@ def update_params(
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
   else:
@@ -313,8 +309,8 @@ def update_params(
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
         {
-            'loss': loss[0],
-            'grad_norm': grad_norm[0],
+            'loss': loss.item(),
+            'grad_norm': grad_norm.item(),
         }, global_step)
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
