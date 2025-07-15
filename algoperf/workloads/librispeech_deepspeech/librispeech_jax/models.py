@@ -27,6 +27,8 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     librispeech_preprocessor as preprocessor
 from algoperf.workloads.librispeech_conformer.librispeech_jax import \
     spectrum_augmenter
+from algoperf.workloads.librispeech_deepspeech.librispeech_jax import \
+    lstm
 
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]
@@ -340,6 +342,7 @@ class BatchNorm(nn.Module):
     # return inputs
 
 
+# Note: This model is currently unused due to bug in gradient calculation.
 class CudnnLSTM(nn.Module):
   features: int
   num_layers: int = 1
@@ -446,8 +449,8 @@ class BatchRNN(nn.Module):
                          config.batch_norm_epsilon)(inputs,
                                                     input_paddings,
                                                     train)
-    output = CudnnLSTM(
-        features=config.encoder_dim // 2,
+    output, _ = lstm.LSTM(
+        hidden_size=config.encoder_dim // 2,
         bidirectional=config.bidirectional,
         num_layers=1)(inputs, input_paddings)
 
