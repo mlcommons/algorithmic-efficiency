@@ -80,8 +80,6 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
           train=True,
           rngs={'dropout' : rng},
           mutable=['batch_stats'])
-      if 'batch_stats' in new_model_state and new_model_state['batch_stats']:
-        new_model_state = jax.lax.pmean(new_model_state, 'batch')
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(

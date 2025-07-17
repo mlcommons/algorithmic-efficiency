@@ -10,17 +10,17 @@ import wandb
 flags.DEFINE_string(
     'experiment_dir',
     # '/home/kasimbeg/algoperf-runs-internal/experiments/jit_switch_debug_conformer_old_step_hint',
-    '/home/kasimbeg/submissions_algorithms/logs/external_tuning/baseline',
+    '/home/kasimbeg/algoperf-runs-internal/experiments/jit_switch_debug_deepspeech_nadamw_jit_branch',
     'Path to experiment dir.')
 flags.DEFINE_string(
     'workloads',
-    'librispeech_conformer_jax',
+    'librispeech_deepspeech_jax',
     'Filter only for workload e.g. fastmri_jax. If None include all workloads in experiment.'
 )
 flags.DEFINE_string('project_name',
-                    'visualize-training-curves-legacy-stephint-conformer',
+                    'visualize-training-curves-legacy-stephint-deepspeech',
                     'Wandb project name.')
-flags.DEFINE_string('run_postfix', 'pmap', 'Postfix for wandb runs.')
+flags.DEFINE_string('run_postfix', 'jit_legacy_lstm', 'Postfix for wandb runs.')
 
 FLAGS = flags.FLAGS
 

@@ -439,6 +439,8 @@ class BatchRNN(nn.Module):
   @nn.compact
   def __call__(self, inputs, input_paddings, train):
     config = self.config
+    lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
+
 
     if config.layernorm_everywhere:
       inputs = LayerNorm(config.encoder_dim)(inputs)
@@ -452,7 +454,7 @@ class BatchRNN(nn.Module):
     output, _ = lstm.LSTM(
         hidden_size=config.encoder_dim // 2,
         bidirectional=config.bidirectional,
-        num_layers=1)(inputs, input_paddings)
+        num_layers=1)(inputs, lengths)
 
     return output
 
