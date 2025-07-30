@@ -94,24 +94,22 @@ wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.19.0"]
 
 # Frameworks
 jax_core_deps = [
-  "flax==0.10.6",
+  "flax==0.10.7",
   "optax==0.2.2",
   "chex==0.1.86",
   "ml_dtypes==0.5.1",
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.6.0",
+  "jax==0.7.0",
   "algoperf[jax_core_deps]",
 ]
+
 jax_gpu = [
-  # Temporarily install  with -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre
-  "jax",
-  "jaxlib",
-  "jax-cuda12-plugin[with-cuda]",
-  "jax-cuda12-pjrt",
+  "jax[cuda12]==0.7.0"
   "algoperf[jax_core_deps]",
 ]
+
 pytorch_cpu = [
   "torch==2.5.1", 
   "torchvision==0.20.1"
