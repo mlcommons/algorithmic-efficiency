@@ -106,7 +106,7 @@ jax_cpu = [
 ]
 
 jax_gpu = [
-  "jax[cuda12]==0.7.0"
+  "jax[cuda12]==0.7.0",
   "algoperf[jax_core_deps]",
 ]
 
