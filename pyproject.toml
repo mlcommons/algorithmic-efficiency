@@ -101,12 +101,12 @@ jax_core_deps = [
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.6.2",
+  "jax==0.6.1",
   "algoperf[jax_core_deps]",
 ]
 
 jax_gpu = [
-  "jax[cuda12]==0.6.2",
+  "jax[cuda12]==0.6.1",
   "algoperf[jax_core_deps]",
 ]
 
