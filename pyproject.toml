@@ -101,13 +101,14 @@ jax_core_deps = [
   "protobuf==4.25.5",
 ]
 jax_cpu = [
-  "jax==0.6.1",
+  "jax==0.7.0",
   "algoperf[jax_core_deps]",
 ]
 
 jax_gpu = [
-  "jax[cuda12]==0.6.1",
+  "jax[cuda12]==0.7.0",
   "algoperf[jax_core_deps]",
+  "nvidia-cudnn-cu12==9.10.2.21", # temporary workaround for https://github.com/jax-ml/jax/issues/30663
 ]
 
 pytorch_cpu = [
