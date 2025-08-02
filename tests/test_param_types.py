@@ -1,44 +1,80 @@
 import jax
 import pytest
-
 from absl import logging
-from algoperf import spec
 
-# isort: skip_file
-# pylint:disable=line-too-long
-from algoperf.workloads.cifar.cifar_jax.workload import CifarWorkload as JaxCifarWorkload
-from algoperf.workloads.cifar.cifar_pytorch.workload import CifarWorkload as PyTorchCifarWorkload
-from algoperf.workloads.criteo1tb.criteo1tb_jax.workload import Criteo1TbDlrmSmallWorkload as JaxCriteoWorkload
-from algoperf.workloads.criteo1tb.criteo1tb_pytorch.workload import Criteo1TbDlrmSmallWorkload as PyTorchCriteoWorkload
-from algoperf.workloads.fastmri.fastmri_jax.workload import FastMRIWorkload as JaxFastMRIWorkload
-from algoperf.workloads.fastmri.fastmri_pytorch.workload import FastMRIWorkload as PyTorchFastMRIWorkload
-from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import ImagenetResNetWorkload as JaxImagenetResNetWorkload
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch.workload import ImagenetResNetWorkload as PyTorchImagenetResNetWorkload
-from algoperf.workloads.imagenet_vit.imagenet_jax.workload import ImagenetVitWorkload as JaxImagenetViTWorkload
-from algoperf.workloads.imagenet_vit.imagenet_pytorch.workload import ImagenetVitWorkload as PyTorchImagenetViTWorkload
-from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import LibriSpeechConformerWorkload as JaxLibriSpeechConformerWorkload
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import LibriSpeechConformerWorkload as PytorchLibriSpeechConformerWorkload
-from algoperf.workloads.librispeech_deepspeech.librispeech_jax.workload import LibriSpeechDeepSpeechWorkload as JaxLibriSpeechDeepSpeechWorkload
-from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.workload import LibriSpeechDeepSpeechWorkload as PytorchLibriSpeechDeepSpeechWorkload
-from algoperf.workloads.mnist.mnist_jax.workload import MnistWorkload as JaxMnistWorkload
-from algoperf.workloads.mnist.mnist_pytorch.workload import MnistWorkload as PyTorchMnistWorkload
-from algoperf.workloads.ogbg.ogbg_jax.workload import OgbgWorkload as JaxOgbgWorkload
-from algoperf.workloads.ogbg.ogbg_pytorch.workload import OgbgWorkload as PyTorchOgbgWorkload
-from algoperf.workloads.wmt.wmt_jax.workload import WmtWorkload as JaxWmtWorkload
-from algoperf.workloads.wmt.wmt_pytorch.workload import WmtWorkload as PyTorchWmtWorkload
-# pylint:enable=line-too-long
+from algoperf import spec
+from algoperf.workloads.cifar.cifar_jax.workload import (
+  CifarWorkload as JaxCifarWorkload,
+)
+from algoperf.workloads.cifar.cifar_pytorch.workload import (
+  CifarWorkload as PyTorchCifarWorkload,
+)
+from algoperf.workloads.criteo1tb.criteo1tb_jax.workload import (
+  Criteo1TbDlrmSmallWorkload as JaxCriteoWorkload,
+)
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.workload import (
+  Criteo1TbDlrmSmallWorkload as PyTorchCriteoWorkload,
+)
+from algoperf.workloads.fastmri.fastmri_jax.workload import (
+  FastMRIWorkload as JaxFastMRIWorkload,
+)
+from algoperf.workloads.fastmri.fastmri_pytorch.workload import (
+  FastMRIWorkload as PyTorchFastMRIWorkload,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import (
+  ImagenetResNetWorkload as JaxImagenetResNetWorkload,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.workload import (
+  ImagenetResNetWorkload as PyTorchImagenetResNetWorkload,
+)
+from algoperf.workloads.imagenet_vit.imagenet_jax.workload import (
+  ImagenetVitWorkload as JaxImagenetViTWorkload,
+)
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.workload import (
+  ImagenetVitWorkload as PyTorchImagenetViTWorkload,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import (
+  LibriSpeechConformerWorkload as JaxLibriSpeechConformerWorkload,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.workload import (
+  LibriSpeechConformerWorkload as PytorchLibriSpeechConformerWorkload,
+)
+from algoperf.workloads.librispeech_deepspeech.librispeech_jax.workload import (
+  LibriSpeechDeepSpeechWorkload as JaxLibriSpeechDeepSpeechWorkload,
+)
+from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.workload import (
+  LibriSpeechDeepSpeechWorkload as PytorchLibriSpeechDeepSpeechWorkload,
+)
+from algoperf.workloads.mnist.mnist_jax.workload import (
+  MnistWorkload as JaxMnistWorkload,
+)
+from algoperf.workloads.mnist.mnist_pytorch.workload import (
+  MnistWorkload as PyTorchMnistWorkload,
+)
+from algoperf.workloads.ogbg.ogbg_jax.workload import (
+  OgbgWorkload as JaxOgbgWorkload,
+)
+from algoperf.workloads.ogbg.ogbg_pytorch.workload import (
+  OgbgWorkload as PyTorchOgbgWorkload,
+)
+from algoperf.workloads.wmt.wmt_jax.workload import (
+  WmtWorkload as JaxWmtWorkload,
+)
+from algoperf.workloads.wmt.wmt_pytorch.workload import (
+  WmtWorkload as PyTorchWmtWorkload,
+)
 
 WORKLOADS = [
-    'cifar',
-    'criteo1tb',
-    'fastmri',
-    'imagenet_resnet',
-    'imagenet_vit',
-    'librispeech_conformer',
-    'librispeech_deepspeech',
-    'mnist',
-    'ogbg',
-    'wmt',
+  'cifar',
+  'criteo1tb',
+  'fastmri',
+  'imagenet_resnet',
+  'imagenet_vit',
+  'librispeech_conformer',
+  'librispeech_deepspeech',
+  'mnist',
+  'ogbg',
+  'wmt',
 ]
 
 
@@ -66,40 +102,32 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
   # Sometimes one framework will implement QKV as a single parameter, so we need
   # to make sure there are the same number of QKV params as Q, K, V.
   num_qkv = {
-      'jax':
-          jax_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
-      'pytorch':
-          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
+    'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_QKV, 0),
+    'pytorch': pytorch_param_types_dict.get(
+      spec.ParameterType.ATTENTION_QKV, 0
+    ),
   }
   num_kv = {
-      'jax':
-          jax_param_types_dict.get(spec.ParameterType.ATTENTION_KV, 0),
-      'pytorch':
-          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_KV, 0),
+    'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_KV, 0),
+    'pytorch': pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_KV, 0),
   }
   num_q = {
-      'jax':
-          jax_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
-      'pytorch':
-          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
+    'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
+    'pytorch': pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_Q, 0),
   }
   num_k = {
-      'jax':
-          jax_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
-      'pytorch':
-          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
+    'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
+    'pytorch': pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_K, 0),
   }
   num_v = {
-      'jax':
-          jax_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
-      'pytorch':
-          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
+    'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
+    'pytorch': pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_V, 0),
   }
   num_bias = {
-      'jax':
-          jax_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
-      'pytorch':
-          pytorch_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
+    'jax': jax_param_types_dict.get(spec.ParameterType.ATTENTION_BIAS, 0),
+    'pytorch': pytorch_param_types_dict.get(
+      spec.ParameterType.ATTENTION_BIAS, 0
+    ),
   }
   qkv_match = num_qkv['jax'] == num_qkv['pytorch']
   kv_match = num_kv['jax'] == num_kv['pytorch']
@@ -108,24 +136,33 @@ def _check_attention_qkv_match(jax_param_types_dict, pytorch_param_types_dict):
   v_match = num_v['jax'] == num_v['pytorch']
   bias_match = num_bias['jax'] == num_bias['pytorch']
   qkv_match = (
-      qkv_match and kv_match and q_match and k_match and v_match and bias_match)
+    qkv_match and kv_match and q_match and k_match and v_match and bias_match
+  )
 
   # We subtract 2 * num_qkv from the number of biases because there are 2
   # missing for each of q, k, v.
-  jax_qkv_match = (
-      num_q['pytorch'] == num_k['pytorch'] == num_v['pytorch'] == num_qkv['jax']
-      and (num_qkv['jax'] != 0 and
-           (num_bias['pytorch'] - 2 * num_qkv['jax']) == num_bias['jax']))
-  pytorch_qkv_match = (
-      num_q['jax'] == num_k['jax'] == num_v['jax'] == num_qkv['pytorch'] and
-      (num_qkv['pytorch'] != 0 and
-       (num_bias['jax'] - 2 * num_qkv['pytorch']) == num_bias['pytorch']))
+  jax_qkv_match = num_q['pytorch'] == num_k['pytorch'] == num_v[
+    'pytorch'
+  ] == num_qkv['jax'] and (
+    num_qkv['jax'] != 0
+    and (num_bias['pytorch'] - 2 * num_qkv['jax']) == num_bias['jax']
+  )
+  pytorch_qkv_match = num_q['jax'] == num_k['jax'] == num_v['jax'] == num_qkv[
+    'pytorch'
+  ] and (
+    num_qkv['pytorch'] != 0
+    and (num_bias['jax'] - 2 * num_qkv['pytorch']) == num_bias['pytorch']
+  )
   pytorch_kv_match = (
-      num_q['jax'] == num_k['jax'] == num_v['jax'] ==
-      num_qkv['pytorch'] + num_kv['pytorch'] and
-      num_q['pytorch'] == num_kv['pytorch'])
+    num_q['jax']
+    == num_k['jax']
+    == num_v['jax']
+    == num_qkv['pytorch'] + num_kv['pytorch']
+    and num_q['pytorch'] == num_kv['pytorch']
+  )
   qkv_match = (
-      qkv_match or jax_qkv_match or pytorch_qkv_match or pytorch_kv_match)
+    qkv_match or jax_qkv_match or pytorch_qkv_match or pytorch_kv_match
+  )
   return qkv_match
 
 
@@ -137,7 +174,8 @@ def test_param_types(workload_name):
   # Compare number of parameter tensors of both models.
   jax_param_types = jax.tree_util.tree_leaves(jax_workload.model_params_types)
   pytorch_param_types = jax.tree_util.tree_leaves(
-      pytorch_workload.model_params_types)
+    pytorch_workload.model_params_types
+  )
 
   jax_param_types_dict = count_param_types(jax_param_types)
   pytorch_param_types_dict = count_param_types(pytorch_param_types)
@@ -161,30 +199,33 @@ def test_param_types(workload_name):
 
   # Check if total number of each type match.
   attention_keys = {
-      spec.ParameterType.ATTENTION_QKV,
-      spec.ParameterType.ATTENTION_KV,
-      spec.ParameterType.ATTENTION_Q,
-      spec.ParameterType.ATTENTION_K,
-      spec.ParameterType.ATTENTION_V,
-      spec.ParameterType.ATTENTION_BIAS,
+    spec.ParameterType.ATTENTION_QKV,
+    spec.ParameterType.ATTENTION_KV,
+    spec.ParameterType.ATTENTION_Q,
+    spec.ParameterType.ATTENTION_K,
+    spec.ParameterType.ATTENTION_V,
+    spec.ParameterType.ATTENTION_BIAS,
   }
   non_attention_keys = set(jax_param_types_dict.keys()).union(
-      set(pytorch_param_types_dict.keys()))
+    set(pytorch_param_types_dict.keys())
+  )
   non_attention_keys -= attention_keys
 
   mismatches = ''
-  mismatches += _count_mismatches(jax_param_types_dict,
-                                  pytorch_param_types_dict,
-                                  non_attention_keys)
-  qkv_match = _check_attention_qkv_match(jax_param_types_dict,
-                                         pytorch_param_types_dict)
+  mismatches += _count_mismatches(
+    jax_param_types_dict, pytorch_param_types_dict, non_attention_keys
+  )
+  qkv_match = _check_attention_qkv_match(
+    jax_param_types_dict, pytorch_param_types_dict
+  )
   if not qkv_match:
-    mismatches += _count_mismatches(jax_param_types_dict,
-                                    pytorch_param_types_dict,
-                                    attention_keys)
+    mismatches += _count_mismatches(
+      jax_param_types_dict, pytorch_param_types_dict, attention_keys
+    )
   if mismatches:
     raise ValueError(
-        f'On workload {workload_name}, count mismatch: {mismatches}')
+      f'On workload {workload_name}, count mismatch: {mismatches}'
+    )
 
 
 def get_workload(workload_name):

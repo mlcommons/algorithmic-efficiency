@@ -1,27 +1,17 @@
 {
-    "learning_rate": {
-        "feasible_points": [
-            0.003604759885558324
-        ]
-    },
-    "beta1": {
-        "feasible_points": [
-            0.9931094324430452
-        ]
-    },
-    "beta2": {
-        "feasible_points": [
-            0.9976871843749077
-        ]
-    },
-    "warmup_steps": {
-        "feasible_points": [
-            720
-        ]
-    },
-    "weight_decay": {
-        "feasible_points": [
-            0.120077307855989
-        ]
-    }
+  "learning_rate": {
+    "feasible_points": [0.003604759885558324]
+  },
+  "beta1": {
+    "feasible_points": [0.9931094324430452]
+  },
+  "beta2": {
+    "feasible_points": [0.9976871843749077]
+  },
+  "warmup_steps": {
+    "feasible_points": [720]
+  },
+  "weight_decay": {
+    "feasible_points": [0.120077307855989]
+  }
 }

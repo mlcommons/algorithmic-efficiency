@@ -21,8 +21,9 @@ EOS_ID = 2
 NEG_INF = torch.tensor(-1.0e7, device=DEVICE)
 
 
-def brevity_penalty(alpha: float, length: Union[int,
-                                                torch.Tensor]) -> torch.Tensor:
+def brevity_penalty(
+  alpha: float, length: Union[int, torch.Tensor]
+) -> torch.Tensor:
   """Brevity penalty function for beam search penalizing short sequences.
 
   Args:
@@ -57,8 +58,9 @@ def flatten_beam_dim(x: torch.Tensor) -> torch.Tensor:
   return x.view(-1, *x.shape[2:])
 
 
-def unflatten_beam_dim(x: torch.Tensor, batch_size: int,
-                       beam_size: int) -> torch.Tensor:
+def unflatten_beam_dim(
+  x: torch.Tensor, batch_size: int, beam_size: int
+) -> torch.Tensor:
   """Unflattens the first, flat batch*beam dimension of a non-scalar tensor."""
   if x.dim() < 2:  # ignore scalars (e.g. cache index)
     return x
@@ -71,10 +73,12 @@ def flat_batch_beam_expand(x: torch.Tensor, beam_size: int) -> torch.Tensor:
   return flatten_beam_dim(add_beam_dim(x, beam_size))
 
 
-def gather_beams(nested: Dict[str, Any],
-                 beam_indices: torch.Tensor,
-                 batch_size: int,
-                 new_beam_size: int) -> Dict[str, Any]:
+def gather_beams(
+  nested: Dict[str, Any],
+  beam_indices: torch.Tensor,
+  batch_size: int,
+  new_beam_size: int,
+) -> Dict[str, Any]:
   """Gathers the beam slices indexed by beam_indices into new beam tensor.
 
   Args:
@@ -88,10 +92,13 @@ def gather_beams(nested: Dict[str, Any],
     [batch_size, old_beam_size, ...] --> [batch_size, new_beam_size, ...]
   """
   batch_indices = torch.reshape(
-      torch.div(
-          torch.arange(batch_size * new_beam_size, device=DEVICE),
-          new_beam_size,
-          rounding_mode='floor'), (batch_size, new_beam_size))
+    torch.div(
+      torch.arange(batch_size * new_beam_size, device=DEVICE),
+      new_beam_size,
+      rounding_mode='floor',
+    ),
+    (batch_size, new_beam_size),
+  )
 
   def gather_fn(x):
     if x.dim() < 2:  # ignore scalars (e.g. cache index)
@@ -101,10 +108,12 @@ def gather_beams(nested: Dict[str, Any],
   return jax.tree.map(gather_fn, nested)
 
 
-def gather_topk_beams(nested: Dict[str, Any],
-                      score_or_log_prob: torch.Tensor,
-                      batch_size: int,
-                      new_beam_size: int) -> Dict[str, Any]:
+def gather_topk_beams(
+  nested: Dict[str, Any],
+  score_or_log_prob: torch.Tensor,
+  batch_size: int,
+  new_beam_size: int,
+) -> Dict[str, Any]:
   """Gathers the top-k beam slices given by score_or_log_prob array.
 
   Args:
@@ -129,6 +138,7 @@ def gather_topk_beams(nested: Dict[str, Any],
 @dataclass
 class BeamState:
   """Holds beam search state data."""
+
   # The position of the decoding loop in the length dimension.
   cur_index: torch.Tensor  # scalar int32: current decoded length index.
   # The active sequence log probabilities and finished sequence scores.
@@ -143,49 +153,52 @@ class BeamState:
   cache: Dict[str, Any]  # Any dict (of dicts), with torch.Tensors as leafs.
 
 
-def beam_init(batch_size: int,
-              beam_size: int,
-              max_decode_len: int,
-              cache: Dict[str, Any]) -> BeamState:
+def beam_init(
+  batch_size: int, beam_size: int, max_decode_len: int, cache: Dict[str, Any]
+) -> BeamState:
   """Initializes the beam search state data structure."""
   cur_index0 = torch.tensor(0, device=DEVICE)
   live_logprobs0 = torch.tile(
-      torch.tensor([0.0] + [NEG_INF] * (beam_size - 1), device=DEVICE),
-      [batch_size, 1])
+    torch.tensor([0.0] + [NEG_INF] * (beam_size - 1), device=DEVICE),
+    [batch_size, 1],
+  )
   finished_scores0 = (
-      torch.ones((batch_size, beam_size), device=DEVICE) * NEG_INF)
-  live_seqs0 = torch.zeros((batch_size, beam_size, max_decode_len),
-                           dtype=torch.int32,
-                           device=DEVICE)
-  finished_seqs0 = torch.zeros((batch_size, beam_size, max_decode_len),
-                               dtype=torch.int32,
-                               device=DEVICE)
-  finished_flags0 = torch.zeros((batch_size, beam_size),
-                                dtype=torch.bool,
-                                device=DEVICE)
+    torch.ones((batch_size, beam_size), device=DEVICE) * NEG_INF
+  )
+  live_seqs0 = torch.zeros(
+    (batch_size, beam_size, max_decode_len), dtype=torch.int32, device=DEVICE
+  )
+  finished_seqs0 = torch.zeros(
+    (batch_size, beam_size, max_decode_len), dtype=torch.int32, device=DEVICE
+  )
+  finished_flags0 = torch.zeros(
+    (batch_size, beam_size), dtype=torch.bool, device=DEVICE
+  )
   # add beam dimension to attention cache pytree elements
   beam_cache0 = jax.tree.map(lambda x: add_beam_dim(x, beam_size), cache)
   return BeamState(
-      cur_index=cur_index0,
-      live_logprobs=live_logprobs0,
-      finished_scores=finished_scores0,
-      live_seqs=live_seqs0,
-      finished_seqs=finished_seqs0,
-      finished_flags=finished_flags0,
-      cache=beam_cache0)
+    cur_index=cur_index0,
+    live_logprobs=live_logprobs0,
+    finished_scores=finished_scores0,
+    live_seqs=live_seqs0,
+    finished_seqs=finished_seqs0,
+    finished_flags=finished_flags0,
+    cache=beam_cache0,
+  )
 
 
 # Beam search routine:
 
 
 def beam_search(
-    inputs: torch.Tensor,
-    cache: Optional[Dict[str, Any]],
-    tokens_to_logits: Callable,
-    beam_size: int = 4,
-    alpha: float = 0.6,
-    eos_id: int = EOS_ID,
-    max_decode_len: Optional[int] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+  inputs: torch.Tensor,
+  cache: Optional[Dict[str, Any]],
+  tokens_to_logits: Callable,
+  beam_size: int = 4,
+  alpha: float = 0.6,
+  eos_id: int = EOS_ID,
+  max_decode_len: Optional[int] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
   """Beam search for transformer machine translation.
 
   Args:
@@ -211,10 +224,9 @@ def beam_search(
   end_marker = torch.tensor(eos_id, device=DEVICE)
 
   # initialize beam search state
-  beam_search_init_state = beam_init(batch_size,
-                                     beam_size,
-                                     max_decode_len,
-                                     cache)
+  beam_search_init_state = beam_init(
+    batch_size, beam_size, max_decode_len, cache
+  )
 
   def beam_search_loop_cond_fn(state: BeamState) -> bool:
     """Beam search loop termination condition."""
@@ -227,11 +239,12 @@ def beam_search(
     best_live_scores = state.live_logprobs[:, -1:] / min_brevity_penalty
     # Get the worst scores from finished sequences.
     worst_finished_scores, _ = torch.min(
-        state.finished_scores, dim=1, keepdim=True)
+      state.finished_scores, dim=1, keepdim=True
+    )
     # Mask out scores from slots without any actual finished sequences.
-    worst_finished_scores = torch.where(state.finished_flags,
-                                        worst_finished_scores,
-                                        NEG_INF)
+    worst_finished_scores = torch.where(
+      state.finished_flags, worst_finished_scores, NEG_INF
+    )
     # If no best possible live score is better than current worst finished
     # scores, the search cannot improve the finished set further.
     search_terminated = torch.all(worst_finished_scores > best_live_scores)
@@ -248,7 +261,8 @@ def beam_search(
     # --> [batch * beam, 1]
     cur_index = state.cur_index
     flat_ids = flatten_beam_dim(
-        state.live_seqs[:batch_size, :beam_size, cur_index:cur_index + 1])
+      state.live_seqs[:batch_size, :beam_size, cur_index : cur_index + 1]
+    )
     # Flatten beam dimension into batch to be compatible with model.
     # {[batch, beam, ...], ...} --> {[batch * beam, ...], ...}
     flat_cache = jax.tree.map(flatten_beam_dim, state.cache)
@@ -263,7 +277,8 @@ def beam_search(
     # Unflatten beam dimension in attention cache arrays
     # {[batch * beam, ...], ...} --> {[batch, beam, ...], ...}
     new_cache = jax.tree.map(
-        lambda x: unflatten_beam_dim(x, batch_size, beam_size), new_flat_cache)
+      lambda x: unflatten_beam_dim(x, batch_size, beam_size), new_flat_cache
+    )
 
     # Gather log probabilities from logits
     candidate_log_probs = F.log_softmax(logits, dim=-1)
@@ -287,13 +302,13 @@ def beam_search(
     topk_log_probs, topk_indices = torch.topk(flat_log_probs, k=beams_to_keep)
     # Recover the beam index by floor division.
     topk_beam_indices = torch.div(
-        topk_indices, vocab_size, rounding_mode='floor')
+      topk_indices, vocab_size, rounding_mode='floor'
+    )
     # Gather 2*k top beams.
     # --> [batch, 2*beams, length]
-    topk_seq = gather_beams(state.live_seqs,
-                            topk_beam_indices,
-                            batch_size,
-                            beams_to_keep)
+    topk_seq = gather_beams(
+      state.live_seqs, topk_beam_indices, batch_size, beams_to_keep
+    )
 
     # Append the most probable 2*K token IDs to the top 2*K sequences
     # Recover token id by modulo division and expand Id array for broadcasting.
@@ -301,11 +316,11 @@ def beam_search(
     topk_ids = torch.unsqueeze(topk_indices % vocab_size, dim=2)
     # Update sequences for the 2*K top-k new sequences.
     # --> [batch, 2*beams, length]
-    topk_seq[:, :, cur_index + 1:] = topk_ids
+    topk_seq[:, :, cur_index + 1 :] = topk_ids
     # Update LIVE (in-progress) sequences:
     # Did any of these sequences reach an end marker?
     # --> [batch, 2*beams]
-    newly_finished = (topk_seq[:, :, cur_index + 1] == end_marker)
+    newly_finished = topk_seq[:, :, cur_index + 1] == end_marker
     # To prevent these newly finished sequences from being added to the LIVE
     # set of active beam search sequences, set their log probs to a very large
     # negative value.
@@ -316,22 +331,20 @@ def beam_search(
     new_topk_indices = torch.flip(new_topk_indices, (1,))
     # Gather the top k beams (from top 2*k beams).
     # --> [batch, beams, length], [batch, beams]
-    top_alive_seq, top_alive_log_probs = gather_beams([topk_seq, new_log_probs],
-                                                      new_topk_indices,
-                                                      batch_size, beam_size)
+    top_alive_seq, top_alive_log_probs = gather_beams(
+      [topk_seq, new_log_probs], new_topk_indices, batch_size, beam_size
+    )
 
     # Determine the top k beam indices from the original set of all beams.
     # --> [batch, beams]
-    top_alive_indices = gather_beams(topk_beam_indices,
-                                     new_topk_indices,
-                                     batch_size,
-                                     beam_size)
+    top_alive_indices = gather_beams(
+      topk_beam_indices, new_topk_indices, batch_size, beam_size
+    )
     # With these, gather the top k beam-associated caches.
     # --> {[batch, beams, ...], ...}
-    top_alive_cache = gather_beams(new_cache,
-                                   top_alive_indices,
-                                   batch_size,
-                                   beam_size)
+    top_alive_cache = gather_beams(
+      new_cache, top_alive_indices, batch_size, beam_size
+    )
 
     # Update FINISHED (reached end of sentence) sequences:
     # Calculate new seq scores from log probabilities.
@@ -344,24 +357,33 @@ def beam_search(
     # new finished sequence scores to existing finished scores and select the
     # best from the new set of beams.
     finished_seqs = torch.cat(  # --> [batch, 3*beams, length]
-        [state.finished_seqs, topk_seq], dim=1)
+      [state.finished_seqs, topk_seq], dim=1
+    )
     finished_scores = torch.cat(  # --> [batch, 3*beams]
-        [state.finished_scores, new_scores], dim=1)
+      [state.finished_scores, new_scores], dim=1
+    )
     finished_flags = torch.cat(  # --> [batch, 3*beams]
-        [state.finished_flags, newly_finished], dim=1)
+      [state.finished_flags, newly_finished], dim=1
+    )
     # --> [batch, beams, length], [batch, beams], [batch, beams]
     top_finished_seq, top_finished_scores, top_finished_flags = (
-        gather_topk_beams([finished_seqs, finished_scores, finished_flags],
-                          finished_scores, batch_size, beam_size))
+      gather_topk_beams(
+        [finished_seqs, finished_scores, finished_flags],
+        finished_scores,
+        batch_size,
+        beam_size,
+      )
+    )
 
     return BeamState(
-        cur_index=cur_index + 1,
-        live_logprobs=top_alive_log_probs,
-        finished_scores=top_finished_scores,
-        live_seqs=top_alive_seq,
-        finished_seqs=top_finished_seq,
-        finished_flags=top_finished_flags,
-        cache=top_alive_cache)
+      cur_index=cur_index + 1,
+      live_logprobs=top_alive_log_probs,
+      finished_scores=top_finished_scores,
+      live_seqs=top_alive_seq,
+      finished_seqs=top_finished_seq,
+      finished_flags=top_finished_flags,
+      cache=top_alive_cache,
+    )
 
   state = beam_search_init_state
   while beam_search_loop_cond_fn(state):
@@ -373,12 +395,16 @@ def beam_search(
   # --> [batch]
   none_finished = torch.any(final_state.finished_flags, dim=1)
   # --> [batch, beams, length]
-  finished_seqs = torch.where(none_finished[:, None, None],
-                              final_state.finished_seqs,
-                              final_state.live_seqs)
+  finished_seqs = torch.where(
+    none_finished[:, None, None],
+    final_state.finished_seqs,
+    final_state.live_seqs,
+  )
   # --> [batch, beams]
-  finished_scores = torch.where(none_finished[:, None],
-                                final_state.finished_scores,
-                                final_state.live_logprobs)
+  finished_scores = torch.where(
+    none_finished[:, None],
+    final_state.finished_scores,
+    final_state.live_logprobs,
+  )
 
   return finished_seqs, finished_scores

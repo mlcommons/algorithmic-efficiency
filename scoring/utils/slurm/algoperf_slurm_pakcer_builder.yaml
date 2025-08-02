@@ -1,0 +1,131 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+blueprint_name: algoperf-slurm-packer
+
+vars:
+  project_id: training-algorithms-external
+  deployment_name: algoperf-slurm-packer
+  region: europe-west4
+  zone: europe-west4-a
+  new_image:
+    family: algoperf-image
+    project: $(vars.project_id)
+  disk_size_gb: 3000
+  slurm_cluster_name: algoperf-packer
+
+# Recommended to use GCS backend for Terraform state
+# See https://github.com/GoogleCloudPlatform/hpc-toolkit/tree/main/examples#optional-setting-up-a-remote-terraform-state
+#
+# terraform_backend_defaults:
+#  type: gcs
+#  configuration:
+#    bucket: <<BUCKET_NAME>>
+
+deployment_groups:
+  - group: primary
+    modules:
+      - id: network
+        source: modules/network/vpc
+
+      - id: script
+        source: modules/scripts/startup-script
+        settings:
+          region: $(vars.region)
+          install_ansible: true
+          docker:
+            enabled: true
+            world_writable: true
+          # (TODO) Do I need this?
+          configure_ssh_host_patterns:
+            - 10.0.0.*
+            - 10.1.0.*
+            - 10.2.0.*
+            - 10.3.0.*
+            - 10.4.0.*
+            - 10.5.0.*
+            - 10.6.0.*
+            - 10.7.0.*
+            - $(vars.slurm_cluster_name)*
+          runners:
+            - type: shell
+              destination: install-ml-libraries.sh
+              content: |
+                #!/bin/bash
+                # this script is designed to execute on Slurm images published by SchedMD that:
+                # - are based on Debian distribution of Linux
+                # - have NVIDIA drivers pre-installed
+
+                set -e -o pipefail
+
+                echo "deb https://packages.cloud.google.com/apt google-fast-socket main" > /etc/apt/sources.list.d/google-fast-socket.list
+                apt-get update --allow-releaseinfo-change
+                apt-get install --assume-yes google-fast-socket
+
+                CONDA_BASE=/opt/conda
+
+                if [ -d $CONDA_BASE ]; then
+                        exit 0
+                fi
+
+                DL_DIR=\$(mktemp -d)
+                cd $DL_DIR
+                curl -L -O https://github.com/conda-forge/miniforge/releases/download/24.7.1-2/Miniforge3-24.7.1-2-Linux-x86_64.sh
+                HOME=$DL_DIR bash Miniforge3-24.7.1-2-Linux-x86_64.sh -b -p $CONDA_BASE
+                cd -
+                rm -rf $DL_DIR
+                unset DL_DIR
+
+                source $CONDA_BASE/bin/activate base
+                conda init --system
+                conda config --system --set auto_activate_base False
+                # following channel ordering is important! use strict_priority!
+                conda config --system --set channel_priority strict
+                conda update -n base conda --yes
+
+                ### create a virtual environment for tensorflow
+                conda create -n tf python=3.11 --yes
+                conda activate tf
+                pip install tensorflow[and-cuda]==2.18.*
+                pip install tensorrt==10.6.*
+
+                ### create a virtual environment for pytorch
+                conda create -n pytorch python=3.11 --yes
+                conda activate pytorch
+                pip install torch torchvision torchaudio
+
+  - group: packer
+    modules:
+      - id: custom-image
+        source: modules/packer/custom-image
+        kind: packer
+        use:
+          - network
+          - script
+        settings:
+          # give VM a public IP to ensure startup script can reach public internet
+          # w/o new VPC
+          omit_external_ip: false
+          source_image_project_id: [schedmd-slurm-public]
+          # see latest in https://github.com/GoogleCloudPlatform/slurm-gcp/blob/master/docs/images.md#published-image-family
+          source_image_family: slurm-gcp-6-8-debian-11
+          # You can find size of source image by using following command
+          # gcloud compute images describe-from-family <source_image_family> --project schedmd-slurm-public
+          disk_size: $(vars.disk_size_gb)
+          image_family: $(vars.new_image.family)
+          # building this image does not require a GPU-enabled VM
+          machine_type: c2-standard-16
+          state_timeout: 300m
+          zone: $(vars.zone)

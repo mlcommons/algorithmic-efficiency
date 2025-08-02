@@ -7,7 +7,6 @@ from algoperf import spec
 
 
 class BaseImagenetResNetWorkload(spec.Workload):
-
   _num_classes: int = 1000
 
   @property
@@ -15,8 +14,9 @@ class BaseImagenetResNetWorkload(spec.Workload):
     """The name of the target metric (useful for scoring/processing code)."""
     return 'accuracy'
 
-  def has_reached_validation_target(self, eval_result: Dict[str,
-                                                            float]) -> bool:
+  def has_reached_validation_target(
+    self, eval_result: Dict[str, float]
+  ) -> bool:
     return eval_result['validation/accuracy'] > self.validation_target_value
 
   @property
@@ -58,8 +58,9 @@ class BaseImagenetResNetWorkload(spec.Workload):
     # Round up from num_validation_examples (which is the default for
     # num_eval_train_examples) to the next multiple of eval_batch_size, so that
     # we don't have to extract the correctly sized subset of the training data.
-    rounded_up_multiple = math.ceil(self.num_validation_examples /
-                                    self.eval_batch_size)
+    rounded_up_multiple = math.ceil(
+      self.num_validation_examples / self.eval_batch_size
+    )
     return rounded_up_multiple * self.eval_batch_size
 
   @property
@@ -109,38 +110,37 @@ class BaseImagenetResNetWorkload(spec.Workload):
     return 510  # 8.5 minutes.
 
   def _build_dataset(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      use_mixup: bool = False,
-      use_randaug: bool = False) -> Iterator[Dict[str, spec.Tensor]]:
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    use_mixup: bool = False,
+    use_randaug: bool = False,
+  ) -> Iterator[Dict[str, spec.Tensor]]:
     raise NotImplementedError
 
   def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ) -> Iterator[Dict[str, spec.Tensor]]:
     del num_batches
     if split == 'test':
       if not cache:
         raise ValueError('cache must be True for split=test.')
       if not repeat_final_dataset:
         raise ValueError('repeat_final_dataset must be True for split=test.')
-    return self._build_dataset(data_rng,
-                               split,
-                               data_dir,
-                               global_batch_size,
-                               cache,
-                               repeat_final_dataset)
+    return self._build_dataset(
+      data_rng, split, data_dir, global_batch_size, cache, repeat_final_dataset
+    )
 
   @property
   def step_hint(self) -> int:

@@ -11,12 +11,12 @@ import subprocess
 import sys
 from typing import Any, Dict, Optional
 
-from absl import flags
-from clu import metric_writers
 import GPUtil
 import pandas as pd
 import psutil
 import torch.distributed as dist
+from absl import flags
+from clu import metric_writers
 
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
@@ -37,12 +37,12 @@ def makedir(dir_name: str, exist_ok: bool = True) -> None:
 
 
 def get_log_dir(
-    experiment_dir: str,
-    workload: spec.Workload,
-    framework: str,
-    experiment_name: str,
-    resume_last_run: bool,
-    overwrite: bool,
+  experiment_dir: str,
+  workload: spec.Workload,
+  framework: str,
+  experiment_name: str,
+  resume_last_run: bool,
+  overwrite: bool,
 ) -> Optional[str]:
   # Construct path to experiment workload directory.
   experiment_dir = os.path.expanduser(experiment_dir)
@@ -50,26 +50,29 @@ def get_log_dir(
   if experiment_name is None:
     experiment_path = os.path.join(experiment_dir, workload_dir_name)
   else:
-    experiment_path = os.path.join(experiment_dir,
-                                   experiment_name,
-                                   workload_dir_name)
+    experiment_path = os.path.join(
+      experiment_dir, experiment_name, workload_dir_name
+    )
 
   if os.path.exists(experiment_path):
     if overwrite:
       logging.info(
-          f'Removing existing experiment directory {experiment_path} because '
-          '--overwrite was set.')
+        f'Removing existing experiment directory {experiment_path} because '
+        '--overwrite was set.'
+      )
       if RANK == 0:
         shutil.rmtree(experiment_path)
     elif resume_last_run:
       logging.info(
-          f'Resuming from experiment directory {experiment_path} because '
-          '--resume_last_run was set.')
+        f'Resuming from experiment directory {experiment_path} because '
+        '--resume_last_run was set.'
+      )
     else:
       if RANK == 0:
         resume = input(
-            'Found existing experiment dir with the same name: {}. Do you wish '
-            'to resume training from this dir? [y/N]:'.format(experiment_path))
+          'Found existing experiment dir with the same name: {}. Do you wish '
+          'to resume training from this dir? [y/N]:'.format(experiment_path)
+        )
         if resume.lower() != 'y':
           sys.exit()
 
@@ -83,16 +86,18 @@ def get_log_dir(
   return experiment_path
 
 
-def write_hparams(hparams: spec.Hyperparameters,
-                  tuning_dir: str) -> spec.Hyperparameters:
+def write_hparams(
+  hparams: spec.Hyperparameters, tuning_dir: str
+) -> spec.Hyperparameters:
   hparams_file_name = os.path.join(tuning_dir, 'hparams.json')
   if os.path.exists(hparams_file_name):
     # If hparams.json already exist, use the previously saved hyperparameters.
     logging.info('Loading hparams from %s.', hparams_file_name)
     with open(hparams_file_name, 'r') as f:
       hparams_dict = json.load(f)
-    hparams = collections.namedtuple('Hyperparameters',
-                                     hparams_dict)(**hparams_dict)
+    hparams = collections.namedtuple('Hyperparameters', hparams_dict)(
+      **hparams_dict
+    )
   else:
     logging.info('Saving hparams to %s.', hparams_file_name)
     if RANK == 0:
@@ -108,8 +113,8 @@ def write_json(name: str, log_dict: Dict, indent: int = 2) -> None:
 
 
 def write_to_csv(
-    metrics: Dict,
-    csv_path: str,
+  metrics: Dict,
+  csv_path: str,
 ) -> None:
   try:
     with open(csv_path, 'r') as csv_file:
@@ -118,8 +123,10 @@ def write_to_csv(
   except (pd.errors.EmptyDataError, FileNotFoundError) as e:
     measurements = pd.DataFrame([metrics], columns=sorted(metrics.keys()))
     if isinstance(e, pd.errors.EmptyDataError):
-      logging.info('Measurements file is empty. Create a new one, starting '
-                   'with metrics from this step.')
+      logging.info(
+        'Measurements file is empty. Create a new one, starting '
+        'with metrics from this step.'
+      )
   with open(csv_path, 'w') as csv_file:
     measurements.to_csv(csv_file, index=False)
   return
@@ -130,7 +137,8 @@ def _get_utilization() -> Dict:
 
   # CPU
   util_data['cpu.util.avg_percent_since_last'] = psutil.cpu_percent(
-      interval=None)  # non-blocking (cpu util percentage since last call)
+    interval=None
+  )  # non-blocking (cpu util percentage since last call)
   util_data['cpu.freq.current'] = psutil.cpu_freq().current
 
   # Memory
@@ -190,7 +198,7 @@ def _get_system_hardware_info() -> Dict:
   try:
     system_hardware_info['cpu_model_name'] = _get_cpu_model_name()
     system_hardware_info['cpu_count'] = psutil.cpu_count()
-  except:  # pylint: disable=bare-except
+  except:  # noqa: E722
     logging.info('Unable to record cpu information. Continuing without it.')
 
   gpus = GPUtil.getGPUs()
@@ -199,7 +207,7 @@ def _get_system_hardware_info() -> Dict:
       system_hardware_info['gpu_model_name'] = gpus[0].name
       system_hardware_info['gpu_count'] = len(gpus)
       system_hardware_info['gpu_driver'] = gpus[0].driver
-    except:  # pylint: disable=bare-except
+    except:  # noqa: E722
       logging.info('Unable to record gpu information. Continuing without it.')
 
   return system_hardware_info
@@ -208,11 +216,14 @@ def _get_system_hardware_info() -> Dict:
 def _get_system_software_info() -> Dict:
   system_software_info = {}
 
-  system_software_info['os_platform'] = \
-      platform.platform()  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
-  system_software_info['python_version'] = platform.python_version(
+  system_software_info['os_platform'] = (
+    platform.platform()
+  )  # Ex. 'Linux-5.4.48-x86_64-with-glibc2.29'
+  system_software_info['python_version'] = (
+    platform.python_version()
   )  # Ex. '3.11.10'
-  system_software_info['python_compiler'] = platform.python_compiler(
+  system_software_info['python_compiler'] = (
+    platform.python_compiler()
   )  # Ex. 'GCC 9.3.0'
   # Note: do not store hostname as that may be sensitive
 
@@ -221,26 +232,35 @@ def _get_system_software_info() -> Dict:
     system_software_info['git_commit_hash'] = _get_git_commit_hash()
     # Note: do not store git repo url as it may be sensitive or contain a
     # secret.
-  except:  # pylint: disable=bare-except
+  except:  # noqa: E722
     logging.info('Unable to record git information. Continuing without it.')
 
   return system_software_info
 
 
 def _get_git_commit_hash() -> str:
-  return subprocess.check_output(['git', 'rev-parse',
-                                  'HEAD']).decode('ascii').strip()
+  return (
+    subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    .decode('ascii')
+    .strip()
+  )
 
 
 def _get_git_branch() -> str:
-  return subprocess.check_output(['git', 'rev-parse', '--abbrev-ref',
-                                  'HEAD']).decode('ascii').strip()
+  return (
+    subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
+    .decode('ascii')
+    .strip()
+  )
 
 
 def _get_cpu_model_name() -> str:
   output = subprocess.check_output(['lscpu']).decode('ascii').strip()
-  return re.findall(r'(?=Model name:\s{1,}).*',
-                    output)[0].split('Model name:')[1].strip()
+  return (
+    re.findall(r'(?=Model name:\s{1,}).*', output)[0]
+    .split('Model name:')[1]
+    .strip()
+  )
 
 
 def _is_primitive_type(item: Any) -> bool:
@@ -252,23 +272,25 @@ def _get_workload_properties(workload: spec.Workload) -> Dict:
   workload_properties = {}
   skip_list = ['param_shapes', 'model_params_types']
   keys = [
-      key for key in dir(workload)
-      if not key.startswith('_') and key not in skip_list
+    key
+    for key in dir(workload)
+    if not key.startswith('_') and key not in skip_list
   ]
   for key in keys:
     try:
       attr = getattr(workload, key)
-    except:  # pylint: disable=bare-except
+    except:  # noqa: E722
       logging.info(
-          f'Unable to record workload.{key} information. Continuing without it.'
+        f'Unable to record workload.{key} information. Continuing without it.'
       )
     if _is_primitive_type(attr):
       workload_properties[f'workload.{key}'] = attr
   return workload_properties
 
 
-def get_meta_data(workload: spec.Workload,
-                  rng_seed: Optional[int] = None) -> Dict:
+def get_meta_data(
+  workload: spec.Workload, rng_seed: Optional[int] = None
+) -> Dict:
   meta_data = {}
   workload_properties = _get_workload_properties(workload)
   meta_data.update(workload_properties)
@@ -290,12 +312,14 @@ class MetricLogger(object):
   the wrong time.
   """
 
-  def __init__(self,
-               csv_path: str,
-               eval_csv_path: str,
-               events_dir: Optional[str] = None,
-               configs: Optional[flags.FLAGS] = None,
-               hyperparameters: Optional[spec.Hyperparameters] = None) -> None:
+  def __init__(
+    self,
+    csv_path: str,
+    eval_csv_path: str,
+    events_dir: Optional[str] = None,
+    configs: Optional[flags.FLAGS] = None,
+    hyperparameters: Optional[spec.Hyperparameters] = None,
+  ) -> None:
     self._measurements = {}
     self._csv_path = csv_path
     self._eval_csv_path = eval_csv_path
@@ -305,15 +329,18 @@ class MetricLogger(object):
       self._tb_metric_writer = metric_writers.create_default_writer(events_dir)
       if wandb is not None and self.use_wandb:
         wandb.init(
-            dir=events_dir, tags=[flags.FLAGS.workload, flags.FLAGS.framework])
+          dir=events_dir, tags=[flags.FLAGS.workload, flags.FLAGS.framework]
+        )
         wandb.config.update(configs)
         wandb.config.update(hyperparameters._asdict())
 
-  def append_scalar_metrics(self,
-                            metrics: Dict,
-                            global_step: int,
-                            preemption_count: Optional[int] = None,
-                            is_eval: bool = False) -> None:
+  def append_scalar_metrics(
+    self,
+    metrics: Dict,
+    global_step: int,
+    preemption_count: Optional[int] = None,
+    is_eval: bool = False,
+  ) -> None:
     metrics['global_step'] = global_step
     if preemption_count is not None:
       metrics['preemption_count'] = preemption_count
@@ -324,7 +351,8 @@ class MetricLogger(object):
 
     if self._tb_metric_writer:
       self._tb_metric_writer.write_scalars(
-          step=int(metrics['global_step']), scalars=metrics)
+        step=int(metrics['global_step']), scalars=metrics
+      )
       self._tb_metric_writer.flush()
 
     if wandb is not None and self.use_wandb:
@@ -335,15 +363,16 @@ class MetricLogger(object):
       wandb.finish()
 
 
-def set_up_loggers(train_dir: str,
-                   configs: flags.FLAGS,
-                   hyperparameters: spec.Hyperparameters) -> MetricLogger:
+def set_up_loggers(
+  train_dir: str, configs: flags.FLAGS, hyperparameters: spec.Hyperparameters
+) -> MetricLogger:
   csv_path = os.path.join(train_dir, 'measurements.csv')
   eval_csv_path = os.path.join(train_dir, 'eval_measurements.csv')
   metrics_logger = MetricLogger(
-      csv_path=csv_path,
-      eval_csv_path=eval_csv_path,
-      events_dir=train_dir,
-      configs=configs,
-      hyperparameters=hyperparameters)
+    csv_path=csv_path,
+    eval_csv_path=eval_csv_path,
+    events_dir=train_dir,
+    configs=configs,
+    hyperparameters=hyperparameters,
+  )
   return metrics_logger

@@ -14,7 +14,8 @@ def pytorch_param_shapes(model: nn.Module) -> Dict[str, spec.ShapeTuple]:
 
 
 def pytorch_param_types(
-    param_shapes: Dict[str, spec.ShapeTuple]) -> Dict[str, spec.ParameterType]:
+  param_shapes: Dict[str, spec.ShapeTuple],
+) -> Dict[str, spec.ParameterType]:
   param_types = {}
   for name in param_shapes.keys():
     if 'bn' in name:
@@ -65,18 +66,21 @@ def pytorch_param_types(
 
 
 def jax_param_shapes(
-    params: spec.ParameterContainer) -> spec.ParameterShapeTree:
+  params: spec.ParameterContainer,
+) -> spec.ParameterShapeTree:
   return jax.tree.map(lambda x: spec.ShapeTuple(x.shape), params)
 
 
-def jax_param_types(param_shapes: spec.ParameterShapeTree,
-                    parent_name: str = '') -> Dict[str, spec.ParameterType]:
+def jax_param_types(
+  param_shapes: spec.ParameterShapeTree, parent_name: str = ''
+) -> Dict[str, spec.ParameterType]:
   param_types = {}
   for name, value in param_shapes.items():
     name = name.lower()
     if isinstance(value, dict) or isinstance(value, flax.core.FrozenDict):
       param_types[name] = jax_param_types(
-          value, parent_name=parent_name + '/' + name)
+        value, parent_name=parent_name + '/' + name
+      )
     else:
       if 'batchnorm' in parent_name or 'bn' in parent_name:
         if name == 'scale':
@@ -85,7 +89,8 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           param_types[name] = spec.ParameterType.BATCH_NORM_BIAS
         else:
           raise ValueError(
-              f'Unrecognized batch norm parameter: {parent_name}/{name}.')
+            f'Unrecognized batch norm parameter: {parent_name}/{name}.'
+          )
       elif 'layernorm' in parent_name or 'ln' in parent_name:
         if name == 'scale':
           param_types[name] = spec.ParameterType.LAYER_NORM_SCALE
@@ -93,7 +98,8 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           param_types[name] = spec.ParameterType.LAYER_NORM_BIAS
         else:
           raise ValueError(
-              f'Unrecognized layer norm parameter: {parent_name}/{name}.')
+            f'Unrecognized layer norm parameter: {parent_name}/{name}.'
+          )
       elif 'conv' in parent_name:
         if 'bias' in name:
           param_types[name] = spec.ParameterType.BIAS
@@ -102,8 +108,9 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
       # Note that this is exact equality, not contained in, because
       # flax.linen.Embed names the embedding parameter "embedding"
       # https://github.com/google/flax/blob/main/flax/linen/linear.py#L604.
-      elif ('embedding' in name or
-            ('embedding' in parent_name and name == 'kernel')):
+      elif 'embedding' in name or (
+        'embedding' in parent_name and name == 'kernel'
+      ):
         param_types[name] = spec.ParameterType.EMBEDDING
       elif 'attention' in parent_name:
         if name == 'bias':
@@ -122,7 +129,8 @@ def jax_param_types(param_shapes: spec.ParameterShapeTree,
           param_types[name] = spec.ParameterType.ATTENTION_QKV
         else:
           raise ValueError(
-              f'Unrecognized attention parameter: {parent_name}/{name}.')
+            f'Unrecognized attention parameter: {parent_name}/{name}.'
+          )
       elif 'bias' in name:
         param_types[name] = spec.ParameterType.BIAS
       else:

@@ -27,67 +27,66 @@ import json
 import os
 import pickle
 
-from absl import flags
-from absl import logging
-from absl.testing import absltest
 import flax
-from flax import jax_utils
-from flax.core.frozen_dict import FrozenDict
 import jax
-from jraph import GraphsTuple
 import numpy as np
 import tensorflow as tf
 import torch
 import torch.distributed as dist
+from absl import flags, logging
+from absl.testing import absltest
+from flax import jax_utils
+from flax.core.frozen_dict import FrozenDict
+from jraph import GraphsTuple
 
-from algoperf import halton
-from algoperf import pytorch_utils
+import submission_runner
+from algoperf import halton, pytorch_utils
 from algoperf import random_utils as prng
 from algoperf.profiler import PassThroughProfiler
 from algoperf.workloads import workloads
 from algoperf.workloads.ogbg import input_pipeline as ogbg_input_pipeline
 from algoperf.workloads.ogbg.ogbg_pytorch.workload import _graph_map
-import submission_runner
 from tests.modeldiffs import diff as diff_utils
 
 flags.DEFINE_integer(
-    'global_batch_size',
-    -1,
-    ('Global Batch size to use when running an individual workload. Otherwise '
-     'a per-device batch size of 2 is used.'))
+  'global_batch_size',
+  -1,
+  (
+    'Global Batch size to use when running an individual workload. Otherwise '
+    'a per-device batch size of 2 is used.'
+  ),
+)
 flags.DEFINE_integer('num_train_steps', 1, 'Number of steps to train.')
 flags.DEFINE_boolean('use_fake_input_queue', True, 'Use fake data examples.')
 flags.DEFINE_string('log_file', '/tmp/log.pkl', 'The log file')
 flags.DEFINE_boolean(
-    'all',
-    False,
-    'Run all workloads instead of using --workload and --framework.')
-flags.DEFINE_boolean('identical',
-                     False,
-                     'Run jax and pytorch with identical weights.')
+  'all', False, 'Run all workloads instead of using --workload and --framework.'
+)
+flags.DEFINE_boolean(
+  'identical', False, 'Run jax and pytorch with identical weights.'
+)
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, PYTORCH_DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 tf.config.set_visible_devices([], 'GPU')
 _EXPECTED_METRIC_NAMES = {
-    'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
-    'criteo1tb': ['train/loss', 'validation/loss'],
-    'criteo1tb_test': ['train/loss', 'validation/loss'],
-    'fastmri': ['train/ssim', 'validation/ssim'],
-    'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
-    'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
-    'librispeech_conformer': ['train/wer', 'validation/wer', 'train/ctc_loss'],
-    'librispeech_deepspeech': ['train/wer', 'validation/wer', 'train/ctc_loss'],
-    'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
-    'ogbg': [
-        'train/accuracy', 'validation/loss', 'test/mean_average_precision'
-    ],
-    'wmt': ['train/bleu', 'validation/loss', 'validation/accuracy'],
+  'cifar': ['train/loss', 'validation/loss', 'test/accuracy'],
+  'criteo1tb': ['train/loss', 'validation/loss'],
+  'criteo1tb_test': ['train/loss', 'validation/loss'],
+  'fastmri': ['train/ssim', 'validation/ssim'],
+  'imagenet_resnet': ['train/accuracy', 'validation/accuracy'],
+  'imagenet_vit': ['train/accuracy', 'validation/accuracy'],
+  'librispeech_conformer': ['train/wer', 'validation/wer', 'train/ctc_loss'],
+  'librispeech_deepspeech': ['train/wer', 'validation/wer', 'train/ctc_loss'],
+  'mnist': ['train/loss', 'validation/accuracy', 'test/accuracy'],
+  'ogbg': ['train/accuracy', 'validation/loss', 'test/mean_average_precision'],
+  'wmt': ['train/bleu', 'validation/loss', 'validation/accuracy'],
 }
 
 
 def _make_fake_image_batch(batch_shape, data_shape, num_classes):
-  examples = np.random.normal(size=(*batch_shape,
-                                    *data_shape)).astype(np.float32)
+  examples = np.random.normal(size=(*batch_shape, *data_shape)).astype(
+    np.float32
+  )
   labels = np.random.randint(0, num_classes, size=batch_shape)
   masks = np.ones(batch_shape, dtype=np.float32)
   return {'inputs': examples, 'targets': labels, 'weights': masks}
@@ -96,16 +95,17 @@ def _make_fake_image_batch(batch_shape, data_shape, num_classes):
 def _pytorch_map(inputs):
   if USE_PYTORCH_DDP:
     return jax.tree.map(
-        lambda a: torch.as_tensor(a[RANK], device=PYTORCH_DEVICE), inputs)
+      lambda a: torch.as_tensor(a[RANK], device=PYTORCH_DEVICE), inputs
+    )
   return jax.tree.map(
-      lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE).view(-1, a.shape[-1])
-      if len(a.shape) == 3 else torch.as_tensor(a, device=PYTORCH_DEVICE).view(
-          -1),
-      inputs)
+    lambda a: torch.as_tensor(a, device=PYTORCH_DEVICE).view(-1, a.shape[-1])
+    if len(a.shape) == 3
+    else torch.as_tensor(a, device=PYTORCH_DEVICE).view(-1),
+    inputs,
+  )
 
 
 class _FakeTokenizer:
-
   def detokenize(self, *args):
     del args
     return tf.constant('this is a fake sequence?')
@@ -113,15 +113,14 @@ class _FakeTokenizer:
 
 @flax.struct.dataclass
 class _FakeMetricsCollection:
-
   def merge(self, *args):
     del args
     return self
 
   def compute(self):
     return {
-        'wer': 0.0,
-        'ctc_loss': 0.0,
+      'wer': 0.0,
+      'ctc_loss': 0.0,
     }
 
   def unreplicate(self):
@@ -129,7 +128,6 @@ class _FakeMetricsCollection:
 
 
 class _FakeMetricsLogger:
-
   def __init__(self):
     self.filename = FLAGS.log_file
     self.scalars = []
@@ -152,27 +150,27 @@ class _FakeMetricsLogger:
 
   def save(self):
     with open(self.filename, 'wb') as f:
-      pickle.dump({'scalars': self.scalars, 'eval_results': self.eval_results},
-                  f)
+      pickle.dump(
+        {'scalars': self.scalars, 'eval_results': self.eval_results}, f
+      )
 
 
 class _FakeMetricsBundle:
-
   def gather_from_model_output(self, *args, **kwargs):
     del args
     del kwargs
     return _FakeMetricsCollection()
 
 
-def _make_one_batch_workload(workload_class,
-                             workload_name,
-                             framework,
-                             global_batch_size,
-                             use_fake_input_queue,
-                             n_gpus):
-
+def _make_one_batch_workload(
+  workload_class,
+  workload_name,
+  framework,
+  global_batch_size,
+  use_fake_input_queue,
+  n_gpus,
+):
   class _OneEvalBatchWorkload(workload_class):
-
     def __init__(self):
       kwargs = {}
       if 'librispeech' in workload_name:
@@ -184,24 +182,30 @@ def _make_one_batch_workload(workload_class,
       if 'librispeech' in workload_name:
         self.tokenizer = _FakeTokenizer()
 
-    def init_model_fn(self, rng, dropout_rate=None, aux_dropout_rate=None):
+    def init_model_fn(self, rng):
       # pylint: disable=line-too-long
-      if not (FLAGS.identical and
-              os.path.exists(f'tests/modeldiffs/{workload_name}/compare.py')):
-        return super().init_model_fn(
-            rng, dropout_rate=dropout_rate, aux_dropout_rate=aux_dropout_rate)
+      if not (
+        FLAGS.identical
+        and os.path.exists(f'tests/modeldiffs/{workload_name}/compare.py')
+      ):
+        return super().init_model_fn(rng)
       if framework == 'jax':
         compare_module = importlib.import_module(
-            f'tests.modeldiffs.{workload_name}.compare')
+          f'tests.modeldiffs.{workload_name}.compare'
+        )
         jax_params, model_state, _ = diff_utils.torch2jax(
           jax_workload=super(),
           pytorch_workload=compare_module.PyTorchWorkload(**self.init_kwargs),
           key_transform=compare_module.key_transform,
-          sd_transform=compare_module.sd_transform)
-        return (FrozenDict(**jax_utils.replicate(jax_params)),
-                FrozenDict(**jax_utils.replicate(model_state))
-                if model_state is not None else model_state)
-      return super().init_model_fn([0], dropout_rate=0.0, aux_dropout_rate=0.0)
+          sd_transform=compare_module.sd_transform,
+        )
+        return (
+          FrozenDict(**jax_utils.replicate(jax_params)),
+          FrozenDict(**jax_utils.replicate(model_state))
+          if model_state is not None
+          else model_state,
+        )
+      return super().init_model_fn([0])
 
     @property
     def num_eval_train_examples(self):
@@ -236,73 +240,74 @@ def _make_one_batch_workload(workload_class,
         else:
           data_shape = (3, 32, 32)
         fake_batch = _make_fake_image_batch(
-            batch_shape, data_shape=data_shape, num_classes=10)
+          batch_shape, data_shape=data_shape, num_classes=10
+        )
       elif workload_name == 'criteo1tb' or workload_name == 'criteo1tb_test':
         targets = np.ones(batch_shape)
         targets[0] = 0
         fake_batch = {
-            'inputs': np.ones((*batch_shape, 13 + 26)),
-            'targets': targets,
-            'weights': np.ones(batch_shape),
+          'inputs': np.ones((*batch_shape, 13 + 26)),
+          'targets': targets,
+          'weights': np.ones(batch_shape),
         }
       elif workload_name in ['imagenet_resnet', 'imagenet_vit']:
         data_shape = (224, 224, 3)
         fake_batch = _make_fake_image_batch(
-            batch_shape, data_shape=data_shape, num_classes=1000)
+          batch_shape, data_shape=data_shape, num_classes=1000
+        )
         if framework == 'pytorch':
           num_dims = len(fake_batch['inputs'].shape)
           fake_batch['inputs'] = fake_batch['inputs'].transpose(
-              (*range(num_dims - 3), num_dims - 1, num_dims - 3, num_dims - 2))
+            (*range(num_dims - 3), num_dims - 1, num_dims - 3, num_dims - 2)
+          )
       elif 'librispeech' in workload_name:
         rate = 16000
-        l = None
-        while l is None or l.shape[-1] < 320000:
+        audio_signal = None
+        while audio_signal is None or audio_signal.shape[-1] < 320000:
           duration = 0.5
-          freq = 2**(np.random.rand(*batch_shape, 1) * 13)
+          freq = 2 ** (np.random.rand(*batch_shape, 1) * 13)
           wav = np.sin(2 * np.pi * freq * np.arange(rate * duration) / rate)
-          if l is None:
-            l = wav
+          if audio_signal is None:
+            audio_signal = wav
           else:
-            l = np.concatenate([l, wav], axis=-1)
-        inputs = l
+            audio_signal = np.concatenate([audio_signal, wav], axis=-1)
+        inputs = audio_signal
         targets = np.random.randint(low=1, high=1024, size=(*batch_shape, 256))
         tgt_pad = np.arange(0, 256)[tuple([None] * len(batch_shape))]
         tgt_lengths = np.random.randint(
-            low=100, high=256, size=(*batch_shape, 1))
+          low=100, high=256, size=(*batch_shape, 1)
+        )
         tgt_pad = 1 * (tgt_pad > tgt_lengths)
         fake_batch = {
-            'inputs': (inputs, np.zeros_like(inputs)),
-            'targets': (targets, tgt_pad),
+          'inputs': (inputs, np.zeros_like(inputs)),
+          'targets': (targets, tgt_pad),
         }
       elif workload_name == 'mnist':
         fake_batch = _make_fake_image_batch(
-            batch_shape, data_shape=(28, 28, 1), num_classes=10)
+          batch_shape, data_shape=(28, 28, 1), num_classes=10
+        )
       elif workload_name == 'ogbg':
         tf.random.set_seed(5)
 
         def _fake_iter():
           while True:
             fake_batch = {
-                'num_nodes':
-                    tf.ones((1,), dtype=tf.int64),
-                'edge_index':
-                    tf.ones((1, 2), dtype=tf.int64),
-                'node_feat':
-                    tf.random.normal((1, 9)),
-                'edge_feat':
-                    tf.random.normal((1, 3)),
-                'labels':
-                    tf.cast(
-                        tf.random.uniform((self._num_outputs,),
-                                          minval=0,
-                                          maxval=2,
-                                          dtype=tf.int32),
-                        tf.float32),
+              'num_nodes': tf.ones((1,), dtype=tf.int64),
+              'edge_index': tf.ones((1, 2), dtype=tf.int64),
+              'node_feat': tf.random.normal((1, 9)),
+              'edge_feat': tf.random.normal((1, 3)),
+              'labels': tf.cast(
+                tf.random.uniform(
+                  (self._num_outputs,), minval=0, maxval=2, dtype=tf.int32
+                ),
+                tf.float32,
+              ),
             }
             yield fake_batch
 
         fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
-            _fake_iter(), global_batch_size)
+          _fake_iter(), global_batch_size
+        )
         fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
           fake_batch['inputs'] = _graph_map(_pytorch_map, fake_batch['inputs'])
@@ -311,48 +316,49 @@ def _make_one_batch_workload(workload_class,
       elif workload_name == 'wmt':
         max_len = 256
         fake_batch = {
-            'inputs':
-                np.random.randint(
-                    low=0, high=32000, size=(*batch_shape, max_len)),
-            'targets':
-                np.random.randint(
-                    low=0, high=32000, size=(*batch_shape, max_len)),
-            'weights':
-                np.random.randint(low=0, high=2, size=(*batch_shape, max_len)),
+          'inputs': np.random.randint(
+            low=0, high=32000, size=(*batch_shape, max_len)
+          ),
+          'targets': np.random.randint(
+            low=0, high=32000, size=(*batch_shape, max_len)
+          ),
+          'weights': np.random.randint(
+            low=0, high=2, size=(*batch_shape, max_len)
+          ),
         }
         self._tokenizer = _FakeTokenizer()
       elif workload_name == 'fastmri':
         data_shape = (320, 320)
         fake_batch = {
-            'inputs':
-                _make_fake_image_batch(
-                    batch_shape, data_shape=data_shape, num_classes=1000)
-                ['inputs'],
-            'targets':
-                _make_fake_image_batch(
-                    batch_shape, data_shape=data_shape, num_classes=1000)
-                ['inputs'],
-            'mean':
-                np.zeros(batch_shape),
-            'std':
-                np.ones(batch_shape),
-            'volume_max':
-                np.zeros(batch_shape),
-            'weights':
-                np.ones(batch_shape),
+          'inputs': _make_fake_image_batch(
+            batch_shape, data_shape=data_shape, num_classes=1000
+          )['inputs'],
+          'targets': _make_fake_image_batch(
+            batch_shape, data_shape=data_shape, num_classes=1000
+          )['inputs'],
+          'mean': np.zeros(batch_shape),
+          'std': np.ones(batch_shape),
+          'volume_max': np.zeros(batch_shape),
+          'weights': np.ones(batch_shape),
         }
       else:
         raise ValueError(
-            'Workload {} does not have a fake batch defined, you '
-            'can add it or use --use_fake_input_queue=false.'.format(
-                workload_name))
+          'Workload {} does not have a fake batch defined, you '
+          'can add it or use --use_fake_input_queue=false.'.format(
+            workload_name
+          )
+        )
 
       if framework == 'pytorch':
 
         def to_device(k, v):
           dtype = (
-              torch.long if (k == 'targets' and workload_name != 'fastmri') else
-              torch.bool if k == 'weights' else torch.float)
+            torch.long
+            if (k == 'targets' and workload_name != 'fastmri')
+            else torch.bool
+            if k == 'weights'
+            else torch.float
+          )
           if USE_PYTORCH_DDP:
             v = v[RANK]
           return torch.as_tensor(v, device=PYTORCH_DEVICE, dtype=dtype)
@@ -388,24 +394,28 @@ def _make_one_batch_workload(workload_class,
   return _OneEvalBatchWorkload()
 
 
-def _test_submission(workload_name,
-                     framework,
-                     submission_path,
-                     search_space_path,
-                     data_dir,
-                     use_fake_input_queue,
-                     n_gpus):
+def _test_submission(
+  workload_name,
+  framework,
+  submission_path,
+  search_space_path,
+  data_dir,
+  use_fake_input_queue,
+  n_gpus,
+):
   logging.info(f'========= Testing {workload_name} in {framework}.')
   FLAGS.framework = framework
   workload_metadata = copy.deepcopy(submission_runner.WORKLOADS[workload_name])
   workload_metadata['workload_path'] = os.path.join(
-      submission_runner.BASE_WORKLOADS_DIR,
-      workload_metadata['workload_path'] + '_' + framework,
-      'workload.py')
+    submission_runner.BASE_WORKLOADS_DIR,
+    workload_metadata['workload_path'] + '_' + framework,
+    'workload.py',
+  )
   workload_class = workloads.import_workload(
-      workload_path=workload_metadata['workload_path'],
-      workload_class_name=workload_metadata['workload_class_name'],
-      return_class=True)
+    workload_path=workload_metadata['workload_path'],
+    workload_class_name=workload_metadata['workload_class_name'],
+    return_class=True,
+  )
   print(f'Workload class for {workload_name} is {workload_class}')
 
   submission_module_path = workloads.convert_filepath_to_module(submission_path)
@@ -422,30 +432,32 @@ def _test_submission(workload_name,
     global_batch_size = FLAGS.global_batch_size
     if FLAGS.global_batch_size < 0:
       raise ValueError('Must set --global_batch_size.')
-  workload = _make_one_batch_workload(workload_class,
-                                      workload_name,
-                                      framework,
-                                      global_batch_size,
-                                      use_fake_input_queue,
-                                      n_gpus)
+  workload = _make_one_batch_workload(
+    workload_class,
+    workload_name,
+    framework,
+    global_batch_size,
+    use_fake_input_queue,
+    n_gpus,
+  )
 
   # Get a sample hyperparameter setting.
   hyperparameters = {}
   if search_space_path != 'None':
     with open(search_space_path, 'r', encoding='UTF-8') as search_space_file:
       hyperparameters = halton.generate_search(
-          json.load(search_space_file), num_trials=1)[0]
+        json.load(search_space_file), num_trials=1
+      )[0]
 
   rng = prng.PRNGKey(0)
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
   input_queue = workload._build_input_queue(
-      data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size)
+    data_rng, 'train', data_dir=data_dir, global_batch_size=global_batch_size
+  )
   model_params, model_state = workload.init_model_fn(model_init_rng)
-  optimizer_state = init_optimizer_state(workload,
-                                         model_params,
-                                         model_state,
-                                         hyperparameters,
-                                         opt_init_rng)
+  optimizer_state = init_optimizer_state(
+    workload, model_params, model_state, hyperparameters, opt_init_rng
+  )
 
   if USE_PYTORCH_DDP:
     torch.cuda.empty_cache()
@@ -453,44 +465,49 @@ def _test_submission(workload_name,
   for global_step in range(FLAGS.num_train_steps):
     step_rng = prng.fold_in(rng, global_step)
     data_select_rng, update_rng, eval_rng = prng.split(step_rng, 3)
-    batch = data_selection(workload,
-                           input_queue,
-                           optimizer_state,
-                           model_params,
-                           model_state,
-                           hyperparameters,
-                           global_step,
-                           data_select_rng)
+    batch = data_selection(
+      workload,
+      input_queue,
+      optimizer_state,
+      model_params,
+      model_state,
+      hyperparameters,
+      global_step,
+      data_select_rng,
+    )
     optimizer_state, model_params, model_state = update_params(
-        workload=workload,
-        current_param_container=model_params,
-        current_params_types=workload.model_params_types,
-        model_state=model_state,
-        hyperparameters=hyperparameters,
-        batch=batch,
-        loss_type=workload.loss_type,
-        optimizer_state=optimizer_state,
-        train_state={},
-        eval_results=[],
-        global_step=global_step,
-        rng=update_rng)
+      workload=workload,
+      current_param_container=model_params,
+      current_params_types=workload.model_params_types,
+      model_state=model_state,
+      hyperparameters=hyperparameters,
+      batch=batch,
+      loss_type=workload.loss_type,
+      optimizer_state=optimizer_state,
+      train_state={},
+      eval_results=[],
+      global_step=global_step,
+      rng=update_rng,
+    )
 
     eval_result = workload.eval_model(
-        global_batch_size,
-        model_params,
-        model_state,
-        eval_rng,
-        data_dir,
-        imagenet_v2_data_dir=None,
-        global_step=global_step)
-  _ = workload.eval_model(
       global_batch_size,
       model_params,
       model_state,
       eval_rng,
       data_dir,
       imagenet_v2_data_dir=None,
-      global_step=global_step)
+      global_step=global_step,
+    )
+  _ = workload.eval_model(
+    global_batch_size,
+    model_params,
+    model_state,
+    eval_rng,
+    data_dir,
+    imagenet_v2_data_dir=None,
+    global_step=global_step,
+  )
   return eval_result
 
 
@@ -500,12 +517,15 @@ def _make_paths(repo_location, framework, workload_name):
   else:
     dataset_name = workload_name
   workload_dir = (
-      f'{repo_location}/reference_algorithms/target_setting_algorithms/'
-      f'{workload_name}')
+    f'{repo_location}/reference_algorithms/target_setting_algorithms/'
+    f'{workload_name}'
+  )
   search_space_path = f'{workload_dir}/tuning_search_space.json'
-  submission_path = (f'reference_algorithms/target_setting_algorithms/'
-                     f'{workload_name}/{dataset_name}_{framework}/'
-                     'submission.py')
+  submission_path = (
+    f'reference_algorithms/target_setting_algorithms/'
+    f'{workload_name}/{dataset_name}_{framework}/'
+    'submission.py'
+  )
   full_submission_path = f'{repo_location}/{submission_path}'
   if not os.path.exists(full_submission_path):
     return None, None
@@ -535,7 +555,8 @@ class ReferenceSubmissionTest(absltest.TestCase):
       if FLAGS.tuning_search_space:
         raise ValueError('Cannot set --tuning_search_space and --all.')
       references_dir = (
-          f'{repo_location}/reference_algorithms/target_setting_algorithms')
+        f'{repo_location}/reference_algorithms/target_setting_algorithms'
+      )
       for workload_name in os.listdir(references_dir):
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':
@@ -543,17 +564,19 @@ class ReferenceSubmissionTest(absltest.TestCase):
           # First jax operation has to be called after pytorch_init.
           n_gpus = max(N_GPUS, jax.local_device_count())
           search_space_path, submission_path = _make_paths(
-              repo_location, framework, workload_name)
+            repo_location, framework, workload_name
+          )
           if search_space_path is None:
             continue
           eval_result = _test_submission(
-              workload_name,
-              framework,
-              submission_path,
-              search_space_path,
-              data_dir=FLAGS.data_dir,
-              use_fake_input_queue=FLAGS.use_fake_input_queue,
-              n_gpus=n_gpus)
+            workload_name,
+            framework,
+            submission_path,
+            search_space_path,
+            data_dir=FLAGS.data_dir,
+            use_fake_input_queue=FLAGS.use_fake_input_queue,
+            n_gpus=n_gpus,
+          )
           self._assert_eval_result(workload_name, eval_result)
     else:
       framework = FLAGS.framework
@@ -567,15 +590,17 @@ class ReferenceSubmissionTest(absltest.TestCase):
         submission_path = FLAGS.submission_path
       else:
         search_space_path, submission_path = _make_paths(
-            repo_location, framework, workload_name)
+          repo_location, framework, workload_name
+        )
       eval_result = _test_submission(
-          workload_name,
-          framework,
-          submission_path,
-          search_space_path,
-          data_dir=FLAGS.data_dir,
-          use_fake_input_queue=FLAGS.use_fake_input_queue,
-          n_gpus=n_gpus)
+        workload_name,
+        framework,
+        submission_path,
+        search_space_path,
+        data_dir=FLAGS.data_dir,
+        use_fake_input_queue=FLAGS.use_fake_input_queue,
+        n_gpus=n_gpus,
+      )
       self._assert_eval_result(workload_name, eval_result)
 
     if USE_PYTORCH_DDP:

@@ -2,10 +2,10 @@
 
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
-from absl import logging
 import optax
 import torch
 import torch.distributed.nn as dist_nn
+from absl import logging
 from torch.optim.lr_scheduler import LambdaLR
 
 from algoperf import spec
@@ -14,24 +14,26 @@ from algoperf.pytorch_utils import pytorch_setup
 USE_PYTORCH_DDP = pytorch_setup()[0]
 
 
-def init_optimizer_state(workload: spec.Workload,
-                         model_params: spec.ParameterContainer,
-                         model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparameters,
-                         rng: spec.RandomState) -> spec.OptimizerState:
+def init_optimizer_state(
+  workload: spec.Workload,
+  model_params: spec.ParameterContainer,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  rng: spec.RandomState,
+) -> spec.OptimizerState:
   """Creates a Nesterov optimizer and a learning rate schedule."""
   del model_state
   del rng
 
   # Create optimizer.
   optimizer_state = {
-      'optimizer':
-          torch.optim.SGD(
-              model_params.parameters(),
-              lr=hyperparameters.learning_rate,
-              momentum=1.0 - hyperparameters.one_minus_beta1,
-              weight_decay=hyperparameters.weight_decay,
-              nesterov=True),
+    'optimizer': torch.optim.SGD(
+      model_params.parameters(),
+      lr=hyperparameters.learning_rate,
+      momentum=1.0 - hyperparameters.one_minus_beta1,
+      weight_decay=hyperparameters.weight_decay,
+      nesterov=True,
+    ),
   }
 
   # Create learning rate schedule.
@@ -43,43 +45,48 @@ def init_optimizer_state(workload: spec.Workload,
     return lr_schedule_fn(step).item() / hyperparameters.learning_rate
 
   optimizer_state['scheduler'] = LambdaLR(
-      optimizer_state['optimizer'], lr_lambda=_lr_lambda)
+    optimizer_state['optimizer'], lr_lambda=_lr_lambda
+  )
 
   return optimizer_state
 
 
 def create_lr_schedule_fn(
-    step_hint: int,
-    hyperparameters: spec.Hyperparameters) -> Callable[[int], float]:
+  step_hint: int, hyperparameters: spec.Hyperparameters
+) -> Callable[[int], float]:
   warmup_steps = int(hyperparameters.warmup_factor * step_hint)
   warmup_fn = optax.linear_schedule(
-      init_value=0.,
-      end_value=hyperparameters.learning_rate,
-      transition_steps=warmup_steps)
+    init_value=0.0,
+    end_value=hyperparameters.learning_rate,
+    transition_steps=warmup_steps,
+  )
   decay_steps = step_hint - warmup_steps
   polynomial_schedule_fn = optax.polynomial_schedule(
-      init_value=hyperparameters.learning_rate,
-      end_value=hyperparameters.learning_rate * hyperparameters.end_factor,
-      power=1,
-      transition_steps=int(decay_steps * hyperparameters.decay_steps_factor))
+    init_value=hyperparameters.learning_rate,
+    end_value=hyperparameters.learning_rate * hyperparameters.end_factor,
+    power=1,
+    transition_steps=int(decay_steps * hyperparameters.decay_steps_factor),
+  )
   lr_schedule_fn = optax.join_schedules(
-      schedules=[warmup_fn, polynomial_schedule_fn], boundaries=[warmup_steps])
+    schedules=[warmup_fn, polynomial_schedule_fn], boundaries=[warmup_steps]
+  )
   return lr_schedule_fn
 
 
 def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState,
-    train_state: Optional[Dict[str, Any]] = None) -> spec.UpdateReturn:
+  workload: spec.Workload,
+  current_param_container: spec.ParameterContainer,
+  current_params_types: spec.ParameterTypeTree,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  batch: Dict[str, spec.Tensor],
+  loss_type: spec.LossType,
+  optimizer_state: spec.OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: spec.RandomState,
+  train_state: Optional[Dict[str, Any]] = None,
+) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
@@ -91,26 +98,30 @@ def update_params(
   optimizer_state['optimizer'].zero_grad()
 
   logits_batch, new_model_state = workload.model_fn(
-      params=current_model,
-      augmented_and_preprocessed_input_batch=batch,
-      model_state=model_state,
-      mode=spec.ForwardPassMode.TRAIN,
-      rng=rng,
-      update_batch_norm=True)
+    params=current_model,
+    augmented_and_preprocessed_input_batch=batch,
+    model_state=model_state,
+    mode=spec.ForwardPassMode.TRAIN,
+    rng=rng,
+    update_batch_norm=True,
+  )
 
   label_smoothing = (
-      hyperparameters.label_smoothing if hasattr(hyperparameters,
-                                                 'label_smoothing') else 0.0)
+    hyperparameters.label_smoothing
+    if hasattr(hyperparameters, 'label_smoothing')
+    else 0.0
+  )
   if hasattr(hyperparameters, 'grad_clip'):
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
 
   loss_dict = workload.loss_fn(
-      label_batch=batch['targets'],
-      logits_batch=logits_batch,
-      mask_batch=batch.get('weights'),
-      label_smoothing=label_smoothing)
+    label_batch=batch['targets'],
+    logits_batch=logits_batch,
+    mask_batch=batch.get('weights'),
+    label_smoothing=label_smoothing,
+  )
   summed_loss = loss_dict['summed']
   n_valid_examples = loss_dict['n_valid_examples']
   if USE_PYTORCH_DDP:
@@ -123,7 +134,8 @@ def update_params(
 
   if grad_clip is not None:
     torch.nn.utils.clip_grad_norm_(
-        current_model.parameters(), max_norm=grad_clip)
+      current_model.parameters(), max_norm=grad_clip
+    )
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
 
@@ -132,31 +144,38 @@ def update_params(
     with torch.no_grad():
       parameters = [p for p in current_model.parameters() if p.grad is not None]
       grad_norm = torch.norm(
-          torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2)
+        torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2
+      )
     if workload.metrics_logger is not None:
       workload.metrics_logger.append_scalar_metrics(
-          {
-              'loss': loss.item(),
-              'grad_norm': grad_norm.item(),
-          }, global_step)
-    logging.info('%d) loss = %0.3f, grad_norm = %0.3f',
-                 global_step,
-                 loss.item(),
-                 grad_norm.item())
+        {
+          'loss': loss.item(),
+          'grad_norm': grad_norm.item(),
+        },
+        global_step,
+      )
+    logging.info(
+      '%d) loss = %0.3f, grad_norm = %0.3f',
+      global_step,
+      loss.item(),
+      grad_norm.item(),
+    )
 
   return (optimizer_state, current_param_container, new_model_state)
 
 
-def prepare_for_eval(workload: spec.Workload,
-                     current_param_container: spec.ParameterContainer,
-                     current_params_types: spec.ParameterTypeTree,
-                     model_state: spec.ModelAuxiliaryState,
-                     hyperparameters: spec.Hyperparameters,
-                     loss_type: spec.LossType,
-                     optimizer_state: spec.OptimizerState,
-                     eval_results: List[Tuple[int, float]],
-                     global_step: int,
-                     rng: spec.RandomState) -> spec.UpdateReturn:
+def prepare_for_eval(
+  workload: spec.Workload,
+  current_param_container: spec.ParameterContainer,
+  current_params_types: spec.ParameterTypeTree,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  loss_type: spec.LossType,
+  optimizer_state: spec.OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: spec.RandomState,
+) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del workload
   del hyperparameters
@@ -196,14 +215,16 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(workload: spec.Workload,
-                   input_queue: Iterator[Dict[str, spec.Tensor]],
-                   optimizer_state: spec.OptimizerState,
-                   current_param_container: spec.ParameterContainer,
-                   model_state: spec.ModelAuxiliaryState,
-                   hyperparameters: spec.Hyperparameters,
-                   global_step: int,
-                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
+def data_selection(
+  workload: spec.Workload,
+  input_queue: Iterator[Dict[str, spec.Tensor]],
+  optimizer_state: spec.OptimizerState,
+  current_param_container: spec.ParameterContainer,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  global_step: int,
+  rng: spec.RandomState,
+) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """

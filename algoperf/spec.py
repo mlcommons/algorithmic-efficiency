@@ -5,10 +5,10 @@ import enum
 import functools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
-from absl import logging
 import jax
-from torch import nn
 import torch.nn.functional as F
+from absl import logging
+from torch import nn
 
 
 class LossType(enum.Enum):
@@ -53,7 +53,6 @@ Tensor = Any
 # Define this so that if using pytree iteration utilities, can iterate over the
 # model shapes pytree without iterating over the shape tuples.
 class ShapeTuple:
-
   def __init__(self, shape_tuple):
     self.shape_tuple = shape_tuple
 
@@ -64,19 +63,22 @@ class ShapeTuple:
     return self.shape_tuple == other.shape_tuple
 
 
-Shape = Union[Tuple[int],
-              Tuple[int, int],
-              Tuple[int, int, int],
-              Tuple[int, int, int, int],
-              ShapeTuple]
+Shape = Union[
+  Tuple[int],
+  Tuple[int, int],
+  Tuple[int, int, int],
+  Tuple[int, int, int, int],
+  ShapeTuple,
+]
 ParameterShapeTree = Dict[str, Dict[str, Shape]]
 
 # If necessary, these can be zipped together easily given they have the same
 # structure, to get an iterator over pairs of leaves.
 ParameterKey = str
 # Dicts can be arbitrarily nested.
-ParameterContainer = Union[Dict[ParameterKey, Dict[ParameterKey, Tensor]],
-                           nn.Module]
+ParameterContainer = Union[
+  Dict[ParameterKey, Dict[ParameterKey, Tensor]], nn.Module
+]
 ParameterTypeTree = Dict[ParameterKey, Dict[ParameterKey, ParameterType]]
 
 RandomState = Any  # Union[jax.random.PRNGKey, int, bytes, ...]
@@ -92,7 +94,6 @@ ModelInitState = Tuple[ParameterContainer, ModelAuxiliaryState]
 
 
 class Workload(metaclass=abc.ABCMeta):
-
   def __init__(self, *args, **kwargs) -> None:
     del args
     del kwargs
@@ -107,8 +108,9 @@ class Workload(metaclass=abc.ABCMeta):
     """The name of the target metric (useful for scoring/processing code)."""
 
   @abc.abstractmethod
-  def has_reached_validation_target(self, eval_result: Dict[str,
-                                                            float]) -> bool:
+  def has_reached_validation_target(
+    self, eval_result: Dict[str, float]
+  ) -> bool:
     """Return whether or not the workload validation goal has been reached."""
 
   @abc.abstractmethod
@@ -117,14 +119,15 @@ class Workload(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def _build_input_queue(
-      self,
-      data_rng: RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, Any]]:
+    self,
+    data_rng: RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ) -> Iterator[Dict[str, Any]]:
     """Build the input queue for the workload data.
 
     This is the only function that is NOT allowed to be called by submitters.
@@ -213,8 +216,9 @@ class Workload(metaclass=abc.ABCMeta):
     """The shapes of the parameters in the workload model."""
     if self._param_shapes is None:
       raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_shapes!')
+        'This should not happen, workload.init_model_fn() should be called '
+        'before workload.param_shapes!'
+      )
     return self._param_shapes
 
   @property
@@ -222,8 +226,9 @@ class Workload(metaclass=abc.ABCMeta):
     """The types of the parameters in the workload model."""
     if self._param_types is None:
       raise ValueError(
-          'This should not happen, workload.init_model_fn() should be called '
-          'before workload.param_types!')
+        'This should not happen, workload.init_model_fn() should be called '
+        'before workload.param_types!'
+      )
     return self._param_types
 
   @abc.abstractmethod
@@ -234,10 +239,12 @@ class Workload(metaclass=abc.ABCMeta):
   #     Tuple[RandomState, Optional[float], Optional[float]],
   #     ParameterContainer]
   @abc.abstractmethod
-  def init_model_fn(self,
-                    rng: RandomState,
-                    dropout_rate: Optional[float] = None,
-                    aux_dropout_rate: Optional[float] = None) -> ModelInitState:
+  def init_model_fn(
+    self,
+    rng: RandomState,
+    dropout_rate: Optional[float] = None,
+    aux_dropout_rate: Optional[float] = None,
+  ) -> ModelInitState:
     """Return (initial_params, initial_model_state)."""
 
   # ModelFn = Callable[
@@ -247,32 +254,39 @@ class Workload(metaclass=abc.ABCMeta):
   #         ModelAuxiliaryState,
   #         ForwardPassMode,
   #         RandomState,
-  #         bool],
+  #         bool,
+  #         float],
   #     Tensor]
   @abc.abstractmethod
-  def model_fn(self,
-               params: ParameterContainer,
-               augmented_and_preprocessed_input_batch: Dict[str, Tensor],
-               model_state: ModelAuxiliaryState,
-               mode: ForwardPassMode,
-               rng: RandomState,
-               update_batch_norm: bool) -> Tuple[Tensor, ModelAuxiliaryState]:
+  def model_fn(
+    self,
+    params: ParameterContainer,
+    augmented_and_preprocessed_input_batch: Dict[str, Tensor],
+    model_state: ModelAuxiliaryState,
+    mode: ForwardPassMode,
+    rng: RandomState,
+    update_batch_norm: bool,
+    dropout_rate: float,
+  ) -> Tuple[Tensor, ModelAuxiliaryState]:
     """Return logits_batch"""
     # Possible side effect of updating BN.
 
-  def output_activation_fn(self, logits_batch: Tensor,
-                           framework: str) -> Tensor:
+  def output_activation_fn(
+    self, logits_batch: Tensor, framework: str
+  ) -> Tensor:
     """Turn logits into probabilities, according to the loss_type property."""
     if framework not in ['pytorch', 'jax']:
       raise ValueError(
-          f'`framework` has to be either `pytorch` or `jax`, got {framework}.')
+        f'`framework` has to be either `pytorch` or `jax`, got {framework}.'
+      )
     activation_fn = {
-        LossType.MEAN_SQUARED_ERROR: lambda z: z,
-        LossType.MEAN_ABSOLUTE_ERROR: lambda z: z,
+      LossType.MEAN_SQUARED_ERROR: lambda z: z,
+      LossType.MEAN_ABSOLUTE_ERROR: lambda z: z,
     }
     is_pytorch = framework == 'pytorch'  # If False, framework == 'jax'.
     softmax_fn = (
-        functools.partial(F.softmax, dim=-1) if is_pytorch else jax.nn.softmax)
+      functools.partial(F.softmax, dim=-1) if is_pytorch else jax.nn.softmax
+    )
     sigmoid_fn = F.sigmoid if is_pytorch else jax.nn.sigmoid
     activation_fn[LossType.SOFTMAX_CROSS_ENTROPY] = softmax_fn
     activation_fn[LossType.SIGMOID_CROSS_ENTROPY] = sigmoid_fn
@@ -284,12 +298,13 @@ class Workload(metaclass=abc.ABCMeta):
   # `update_params`.
   @abc.abstractmethod
   def loss_fn(
-      self,
-      # Dense or one-hot labels, or a tuple of (tensor, padding) for speech.
-      label_batch: Union[Tuple[Tensor, Tensor], Tensor],
-      logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
-      mask_batch: Optional[Tensor] = None,
-      label_smoothing: float = 0.0) -> Dict[str, Tensor]:  # differentiable
+    self,
+    # Dense or one-hot labels, or a tuple of (tensor, padding) for speech.
+    label_batch: Union[Tuple[Tensor, Tensor], Tensor],
+    logits_batch: Union[Tuple[Tensor, Tensor], Tensor],
+    mask_batch: Optional[Tensor] = None,
+    label_smoothing: float = 0.0,
+  ) -> Dict[str, Tensor]:  # differentiable
     """Evaluate the (masked) loss function at (label_batch, logits_batch).
 
     Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
@@ -298,48 +313,54 @@ class Workload(metaclass=abc.ABCMeta):
     """
 
   @abc.abstractmethod
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: ParameterContainer,
-                           model_state: ModelAuxiliaryState,
-                           rng: RandomState,
-                           data_dir: str,
-                           global_step: int = 0) -> Dict[str, float]:
+  def _eval_model_on_split(
+    self,
+    split: str,
+    num_examples: int,
+    global_batch_size: int,
+    params: ParameterContainer,
+    model_state: ModelAuxiliaryState,
+    rng: RandomState,
+    data_dir: str,
+    global_step: int = 0,
+  ) -> Dict[str, float]:
     """Evaluate the model on a given dataset split, return final scalars."""
 
-  def eval_model(self,
-                 global_batch_size: int,
-                 params: ParameterContainer,
-                 model_state: ModelAuxiliaryState,
-                 rng: RandomState,
-                 data_dir: str,
-                 imagenet_v2_data_dir: Optional[str],
-                 global_step: int) -> Dict[str, float]:
+  def eval_model(
+    self,
+    global_batch_size: int,
+    params: ParameterContainer,
+    model_state: ModelAuxiliaryState,
+    rng: RandomState,
+    data_dir: str,
+    imagenet_v2_data_dir: Optional[str],
+    global_step: int,
+  ) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     logging.info('Evaluating on the training split.')
     train_metrics = self._eval_model_on_split(
-        split='eval_train',
-        num_examples=self.num_eval_train_examples,
-        global_batch_size=global_batch_size,
-        params=params,
-        model_state=model_state,
-        rng=rng,
-        data_dir=data_dir,
-        global_step=global_step)
+      split='eval_train',
+      num_examples=self.num_eval_train_examples,
+      global_batch_size=global_batch_size,
+      params=params,
+      model_state=model_state,
+      rng=rng,
+      data_dir=data_dir,
+      global_step=global_step,
+    )
     eval_metrics = {'train/' + k: v for k, v in train_metrics.items()}
     # We always require a validation set.
     logging.info('Evaluating on the validation split.')
     validation_metrics = self._eval_model_on_split(
-        'validation',
-        num_examples=self.num_validation_examples,
-        global_batch_size=global_batch_size,
-        params=params,
-        model_state=model_state,
-        rng=rng,
-        data_dir=data_dir,
-        global_step=global_step)
+      'validation',
+      num_examples=self.num_validation_examples,
+      global_batch_size=global_batch_size,
+      params=params,
+      model_state=model_state,
+      rng=rng,
+      data_dir=data_dir,
+      global_step=global_step,
+    )
     for k, v in validation_metrics.items():
       eval_metrics['validation/' + k] = v
     eval_metrics['validation/num_examples'] = self.num_validation_examples
@@ -348,14 +369,15 @@ class Workload(metaclass=abc.ABCMeta):
       if self.num_test_examples is not None:
         logging.info('Evaluating on the test split.')
         test_metrics = self._eval_model_on_split(
-            'test',
-            num_examples=self.num_test_examples,
-            global_batch_size=global_batch_size,
-            params=params,
-            model_state=model_state,
-            rng=rng,
-            data_dir=imagenet_v2_data_dir if imagenet_v2_data_dir else data_dir,
-            global_step=global_step)
+          'test',
+          num_examples=self.num_test_examples,
+          global_batch_size=global_batch_size,
+          params=params,
+          model_state=model_state,
+          rng=rng,
+          data_dir=imagenet_v2_data_dir if imagenet_v2_data_dir else data_dir,
+          global_step=global_step,
+        )
         for k, v in test_metrics.items():
           eval_metrics['test/' + k] = v
         eval_metrics['test/num_examples'] = self.num_test_examples
@@ -372,27 +394,32 @@ class TrainingCompleteError(Exception):
 # Training algorithm track submission functions, to be filled in by the
 # submitter.
 
-InitOptimizerFn = Callable[[
+InitOptimizerFn = Callable[
+  [
     Workload,
     ParameterContainer,
     ModelAuxiliaryState,
     Hyperparameters,
-    RandomState
-],
-                           OptimizerState]
+    RandomState,
+  ],
+  OptimizerState,
+]
 
 
-def init_optimizer_state(workload: Workload,
-                         model_params: ParameterContainer,
-                         model_state: ModelAuxiliaryState,
-                         hyperparameters: Hyperparameters,
-                         rng: RandomState) -> OptimizerState:
+def init_optimizer_state(
+  workload: Workload,
+  model_params: ParameterContainer,
+  model_state: ModelAuxiliaryState,
+  hyperparameters: Hyperparameters,
+  rng: RandomState,
+) -> OptimizerState:
   # return initial_optimizer_state
   pass
 
 
 UpdateReturn = Tuple[OptimizerState, ParameterContainer, ModelAuxiliaryState]
-UpdateParamsFn = Callable[[
+UpdateParamsFn = Callable[
+  [
     Workload,
     ParameterContainer,
     ParameterTypeTree,
@@ -404,9 +431,10 @@ UpdateParamsFn = Callable[[
     List[Tuple[int, float]],
     int,
     RandomState,
-    Optional[Dict[str, Any]]
-],
-                          UpdateReturn]
+    Optional[Dict[str, Any]],
+  ],
+  UpdateReturn,
+]
 
 
 # Each call to this function is considered a "step".
@@ -415,23 +443,26 @@ UpdateParamsFn = Callable[[
 # and if has not actually achieved the goal then it will be considered as not
 # achieved the goal and get an infinite time score. Most submissions will likely
 # wait until the next free eval and not use this functionality.
-def update_params(workload: Workload,
-                  current_param_container: ParameterContainer,
-                  current_params_types: ParameterTypeTree,
-                  model_state: ModelAuxiliaryState,
-                  hyperparameters: Hyperparameters,
-                  batch: Dict[str, Tensor],
-                  loss_type: LossType,
-                  optimizer_state: OptimizerState,
-                  eval_results: List[Tuple[int, float]],
-                  global_step: int,
-                  rng: RandomState,
-                  train_state: Optional[Dict[str, Any]] = None) -> UpdateReturn:
+def update_params(
+  workload: Workload,
+  current_param_container: ParameterContainer,
+  current_params_types: ParameterTypeTree,
+  model_state: ModelAuxiliaryState,
+  hyperparameters: Hyperparameters,
+  batch: Dict[str, Tensor],
+  loss_type: LossType,
+  optimizer_state: OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: RandomState,
+  train_state: Optional[Dict[str, Any]] = None,
+) -> UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
 
 
-PrepareForEvalFn = Callable[[
+PrepareForEvalFn = Callable[
+  [
     Workload,
     ParameterContainer,
     ParameterTypeTree,
@@ -441,27 +472,31 @@ PrepareForEvalFn = Callable[[
     OptimizerState,
     List[Tuple[int, float]],
     int,
-    RandomState
-],
-                            UpdateReturn]
+    RandomState,
+  ],
+  UpdateReturn,
+]
 
 
 # Prepare model and optimizer for evaluation.
-def prepare_for_eval(workload: Workload,
-                     current_param_container: ParameterContainer,
-                     current_params_types: ParameterTypeTree,
-                     model_state: ModelAuxiliaryState,
-                     hyperparameters: Hyperparameters,
-                     loss_type: LossType,
-                     optimizer_state: OptimizerState,
-                     eval_results: List[Tuple[int, float]],
-                     global_step: int,
-                     rng: RandomState) -> UpdateReturn:
+def prepare_for_eval(
+  workload: Workload,
+  current_param_container: ParameterContainer,
+  current_params_types: ParameterTypeTree,
+  model_state: ModelAuxiliaryState,
+  hyperparameters: Hyperparameters,
+  loss_type: LossType,
+  optimizer_state: OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: RandomState,
+) -> UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   pass
 
 
-DataSelectionFn = Callable[[
+DataSelectionFn = Callable[
+  [
     Workload,
     Iterator[Dict[str, Any]],
     OptimizerState,
@@ -469,21 +504,24 @@ DataSelectionFn = Callable[[
     LossType,
     Hyperparameters,
     int,
-    RandomState
-],
-                           Tuple[Tensor, Tensor]]
+    RandomState,
+  ],
+  Tuple[Tensor, Tensor],
+]
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
 # optimzier state.
-def data_selection(workload: Workload,
-                   input_queue: Iterator[Dict[str, Any]],
-                   optimizer_state: OptimizerState,
-                   current_param_container: ParameterContainer,
-                   model_state: ModelAuxiliaryState,
-                   hyperparameters: Hyperparameters,
-                   global_step: int,
-                   rng: RandomState) -> Dict[str, Tensor]:
+def data_selection(
+  workload: Workload,
+  input_queue: Iterator[Dict[str, Any]],
+  optimizer_state: OptimizerState,
+  current_param_container: ParameterContainer,
+  model_state: ModelAuxiliaryState,
+  hyperparameters: Hyperparameters,
+  global_step: int,
+  rng: RandomState,
+) -> Dict[str, Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
 
   Each element of the queue is a batch of training examples and labels.

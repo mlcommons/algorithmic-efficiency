@@ -1,0 +1,105 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+blueprint_name: algoperf-slurm-internal
+
+vars:
+  project_id: training-algorithms-external
+  deployment_name: algoperf-slurm-internal
+  region: europe-west4
+  zone: europe-west4-a
+  disk_size_gb: 3000
+  slurm_cluster_name: algoperf
+  image_name: algoperf-image-data-container-tkt
+
+# Recommended to use GCS backend for Terraform state
+# See https://github.com/GoogleCloudPlatform/hpc-toolkit/tree/main/examples#optional-setting-up-a-remote-terraform-state
+#
+# terraform_backend_defaults:
+#  type: gcs
+#  configuration:
+#    bucket: <<BUCKET_NAME>>
+
+deployment_groups:
+  - group: primary
+    modules:
+      - id: network
+        source: modules/network/vpc
+
+      - id: homefs
+        source: community/modules/file-system/nfs-server
+        use: [network]
+        settings:
+          local_mounts: [/home]
+          disk_size: 3000
+          zone: $(vars.zone)
+
+      - id: script
+        source: modules/scripts/startup-script
+        settings:
+
+  - group: cluster
+    modules:
+      - id: v100_nodeset
+        source: community/modules/compute/schedmd-slurm-gcp-v6-nodeset
+        use:
+          - network
+        settings:
+          node_count_dynamic_max: 25 # set to 0 if you want node to live forever
+          region: $(vars.region)
+          zone: $(vars.zone)
+          enable_placement: false
+          bandwidth_tier: gvnic_enabled
+          machine_type: n1-standard-64
+          guest_accelerator:
+            - type: nvidia-tesla-v100
+              count: 8
+          instance_image:
+            project: $(vars.project_id)
+            name: $(vars.image_name)
+          instance_image_custom: true
+
+      - id: v100_partition
+        source: community/modules/compute/schedmd-slurm-gcp-v6-partition
+        use: [v100_nodeset]
+        settings:
+          exclusive: false
+          partition_name: v100
+          is_default: true
+
+      - id: slurm_login
+        source: community/modules/scheduler/schedmd-slurm-gcp-v6-login
+        use: [network]
+        settings:
+          enable_login_public_ips: true
+          instance_image:
+            project: $(vars.project_id)
+            name: $(vars.image_name)
+          instance_image_custom: true
+          zone: $(vars.zone)
+
+      - id: slurm_controller
+        source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
+        use:
+          - network
+          - v100_partition
+          - homefs
+          - slurm_login
+        settings:
+          enable_controller_public_ips: true
+          instance_image:
+            project: $(vars.project_id)
+            name: $(vars.image_name)
+          instance_image_custom: true
+          region: $(vars.region)

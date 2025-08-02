@@ -9,10 +9,12 @@ import numpy as np
 import torch
 
 from algoperf import spec
-from algoperf.workloads.ogbg.ogbg_jax.workload import \
-    OgbgSiluWorkload as JaxWorkload
-from algoperf.workloads.ogbg.ogbg_pytorch.workload import \
-    OgbgSiluWorkload as PyTorchWorkload
+from algoperf.workloads.ogbg.ogbg_jax.workload import (
+  OgbgSiluWorkload as JaxWorkload,
+)
+from algoperf.workloads.ogbg.ogbg_pytorch.workload import (
+  OgbgSiluWorkload as PyTorchWorkload,
+)
 from tests.modeldiffs.diff import ModelDiffRunner
 
 # Todo: refactor tests to use workload properties in cleaner way
@@ -41,8 +43,8 @@ def key_transform(k):
       layer_index = int(i.split('_')[1])
       if graph_network:
         count = (
-            graph_index * 3 * hidden_dims + seq_index * hidden_dims +
-            layer_index)
+          graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
+        )
         i = 'Dense_' + str(count)
       elif layer_index == 0:
         i = 'node_embedding'
@@ -54,7 +56,8 @@ def key_transform(k):
     elif 'LayerNorm' in i:
       layer_index = int(i.split('_')[1])
       count = (
-          graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index)
+        graph_index * 3 * hidden_dims + seq_index * hidden_dims + layer_index
+      )
       i = 'LayerNorm_' + str(count)
     elif 'weight' in i:
       if bn or ln:
@@ -80,13 +83,14 @@ if __name__ == '__main__':
   pytorch_workload = PyTorchWorkload()
 
   pytorch_batch = dict(
-      n_node=torch.LongTensor([5]),
-      n_edge=torch.LongTensor([5]),
-      nodes=torch.randn(5, 9),
-      edges=torch.randn(5, 3),
-      globals=torch.randn(1, 128),
-      senders=torch.LongTensor(list(range(5))),
-      receivers=torch.LongTensor([(i + 1) % 5 for i in range(5)]))
+    n_node=torch.LongTensor([5]),
+    n_edge=torch.LongTensor([5]),
+    nodes=torch.randn(5, 9),
+    edges=torch.randn(5, 3),
+    globals=torch.randn(1, 128),
+    senders=torch.LongTensor(list(range(5))),
+    receivers=torch.LongTensor([(i + 1) % 5 for i in range(5)]),
+  )
 
   jax_batch = {k: np.array(v) for k, v in pytorch_batch.items()}
 
@@ -98,23 +102,26 @@ if __name__ == '__main__':
   pytorch_batch = {'inputs': graph_p}
 
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pytorch_batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=None,
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=pytorch_batch,
+    model_state=None,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=None,
+    update_batch_norm=False,
+  )
 
   jax_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=jax_batch,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=jax.random.PRNGKey(0),
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=jax_batch,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=jax.random.PRNGKey(0),
+    update_batch_norm=False,
+  )
 
   ModelDiffRunner(
-      jax_workload=jax_workload,
-      pytorch_workload=pytorch_workload,
-      jax_model_kwargs=jax_model_kwargs,
-      pytorch_model_kwargs=pytorch_model_kwargs,
-      key_transform=key_transform,
-      sd_transform=sd_transform,
-      out_transform=None).run()
+    jax_workload=jax_workload,
+    pytorch_workload=pytorch_workload,
+    jax_model_kwargs=jax_model_kwargs,
+    pytorch_model_kwargs=pytorch_model_kwargs,
+    key_transform=key_transform,
+    sd_transform=sd_transform,
+    out_transform=None,
+  ).run()
