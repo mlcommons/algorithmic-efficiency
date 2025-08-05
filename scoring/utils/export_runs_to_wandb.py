@@ -1,3 +1,7 @@
+"""
+Script to generate wandb runs from experiment logs.
+"""
+
 from absl import flags
 from absl import app
 from absl import logging
@@ -9,8 +13,7 @@ import wandb
 
 flags.DEFINE_string(
     'experiment_dir',
-    # '/home/kasimbeg/algoperf-runs-internal/experiments/jit_switch_debug_conformer_old_step_hint',
-    '/home/kasimbeg/algoperf-runs-internal/experiments/jit_switch_debug_deepspeech_nadamw_jit_branch',
+    '$HOME/submissions_algorithms/logs/external_tuning/baseline',
     'Path to experiment dir.')
 flags.DEFINE_string(
     'workloads',
@@ -18,7 +21,7 @@ flags.DEFINE_string(
     'Filter only for workload e.g. fastmri_jax. If None include all workloads in experiment.'
 )
 flags.DEFINE_string('project_name',
-                    'visualize-training-curves-legacy-stephint-deepspeech',
+                    'visualize-training-curves-legacy-stephint-deepspeech-jit-switch-final',
                     'Wandb project name.')
 flags.DEFINE_string('run_postfix', 'jit_legacy_lstm', 'Postfix for wandb runs.')
 
