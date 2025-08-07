@@ -1,6 +1,6 @@
 from __future__ import annotations
 import collections
-from typing import Tuple, Callable, Any, Dict, Iterator, List, Optional
+from typing import Tuple, Any, Dict, Iterator, List, Optional
 
 from absl import logging
 import torch
