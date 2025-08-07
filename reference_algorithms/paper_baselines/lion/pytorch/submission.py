@@ -1,15 +1,13 @@
 from __future__ import annotations
+
 import collections
-from typing import Tuple, Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from absl import logging
 import torch
-from torch.optim.optimizer import Optimizer
-
 import torch.distributed.nn as dist_nn
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.optim.lr_scheduler import LinearLR
-from torch.optim.lr_scheduler import SequentialLR
+from absl import logging
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+from torch.optim.optimizer import Optimizer
 
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
