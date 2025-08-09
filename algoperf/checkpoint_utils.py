@@ -7,36 +7,42 @@ https://github.com/google/init2winit/blob/master/init2winit/checkpoint.py.
 import os
 from typing import Sequence, Tuple
 
+import jax
+import numpy as np
+import torch
 from absl import logging
 from flax import jax_utils
 from flax.training import checkpoints as flax_checkpoints
 from flax.training.checkpoints import latest_checkpoint
 import numpy as np
 from tensorflow.io import gfile  # pytype: disable=import-error
-import torch
 
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
 
 _, _, DEVICE, _ = pytorch_setup()
-CheckpointReturn = Tuple[spec.OptimizerState,
-                         spec.ParameterContainer,
-                         spec.ModelAuxiliaryState,
-                         dict,
-                         list,
-                         int,
-                         int]
+CheckpointReturn = Tuple[
+  spec.OptimizerState,
+  spec.ParameterContainer,
+  spec.ModelAuxiliaryState,
+  dict,
+  list,
+  int,
+  int,
+]
 
 
-def maybe_restore_checkpoint(framework: str,
-                             optimizer_state: spec.OptimizerState,
-                             model_params: spec.ParameterContainer,
-                             model_state: spec.ModelAuxiliaryState,
-                             train_state: dict,
-                             eval_results: list,
-                             global_step: int,
-                             preemption_count: int,
-                             checkpoint_dir: str) -> CheckpointReturn:
+def maybe_restore_checkpoint(
+  framework: str,
+  optimizer_state: spec.OptimizerState,
+  model_params: spec.ParameterContainer,
+  model_state: spec.ModelAuxiliaryState,
+  train_state: dict,
+  eval_results: list,
+  global_step: int,
+  preemption_count: int,
+  checkpoint_dir: str,
+) -> CheckpointReturn:
   """Optionally restores from a checkpoint.
 
   The checkpoint logic is as follows: if there is a checkpoint in
@@ -68,20 +74,22 @@ def maybe_restore_checkpoint(framework: str,
   uninitialized_global_step = -1
   uninitialized_preemption_count = -1
   checkpoint_state = {
-      'model_params': model_params,
-      'optimizer_state': opt_state,
-      'model_state': model_state,
-      'train_state': train_state,
-      'eval_results': None,
-      'global_step': uninitialized_global_step,
-      'preemption_count': uninitialized_preemption_count,
+    'model_params': model_params,
+    'optimizer_state': opt_state,
+    'model_state': model_state,
+    'train_state': train_state,
+    'eval_results': None,
+    'global_step': uninitialized_global_step,
+    'preemption_count': uninitialized_preemption_count,
   }
 
   if framework == 'jax':
     latest_ckpt = flax_checkpoints.restore_checkpoint(
-        checkpoint_dir, target=checkpoint_state)
-    save_path = os.path.join(checkpoint_dir,
-                             'checkpoint_' + str(latest_ckpt['global_step']))
+      checkpoint_dir, target=checkpoint_state
+    )
+    save_path = os.path.join(
+      checkpoint_dir, 'checkpoint_' + str(latest_ckpt['global_step'])
+    )
   else:
     latest_ckpt = checkpoint_state
     save_path = latest_checkpoint(checkpoint_dir)
@@ -93,55 +101,64 @@ def maybe_restore_checkpoint(framework: str,
   found_checkpoint = latest_ckpt['global_step'] != uninitialized_global_step
 
   if not found_checkpoint:
-    return (optimizer_state,
-            model_params,
-            model_state,
-            train_state,
-            eval_results,
-            global_step,
-            preemption_count)
+    return (
+      optimizer_state,
+      model_params,
+      model_state,
+      train_state,
+      eval_results,
+      global_step,
+      preemption_count,
+    )
 
   # If there's the latest checkpoint in the checkpoint_dir, restore from that.
   if framework == 'jax':
     checkpoint_state = replicate_checkpoint(
-        latest_ckpt,
-        pytree_keys=[
-            'optimizer_state',
-            'model_params',
-            'model_state',
-        ])
-    checkpoint_state['optimizer_state'] = (checkpoint_state['optimizer_state'],
-                                           opt_update_fn)
+      latest_ckpt,
+      pytree_keys=[
+        'optimizer_state',
+        'model_params',
+        'model_state',
+      ],
+    )
+    checkpoint_state['optimizer_state'] = (
+      checkpoint_state['optimizer_state'],
+      opt_update_fn,
+    )
     checkpoint_state['eval_results'] = [
-        (value, key) for key, value in latest_ckpt['eval_results'].items()
+      (value, key) for key, value in latest_ckpt['eval_results'].items()
     ]
 
   else:
     checkpoint_state = latest_ckpt
     if isinstance(
-        model_params,
-        (torch.nn.DataParallel, torch.nn.parallel.DistributedDataParallel)):
+      model_params,
+      (torch.nn.DataParallel, torch.nn.parallel.DistributedDataParallel),
+    ):
       model_params = model_params.module
     model_params.load_state_dict(checkpoint_state['model_params'])
     checkpoint_state['model_params'] = model_params
     for key in optimizer_state.keys():
       optimizer_state[key].load_state_dict(
-          checkpoint_state['optimizer_state'][key])
+        checkpoint_state['optimizer_state'][key]
+      )
       checkpoint_state['optimizer_state'][key] = optimizer_state[key]
 
     logging.info(f'Loaded checkpoint from {save_path}.')
-  return (checkpoint_state['optimizer_state'],
-          checkpoint_state['model_params'],
-          checkpoint_state['model_state'],
-          checkpoint_state['train_state'],
-          list(checkpoint_state['eval_results']),
-          checkpoint_state['global_step'],
-          checkpoint_state['preemption_count'] + 1)
+  return (
+    checkpoint_state['optimizer_state'],
+    checkpoint_state['model_params'],
+    checkpoint_state['model_state'],
+    checkpoint_state['train_state'],
+    list(checkpoint_state['eval_results']),
+    checkpoint_state['global_step'],
+    checkpoint_state['preemption_count'] + 1,
+  )
 
 
-def replicate_checkpoint(latest: dict,
-                         pytree_keys: Sequence[str],
-                         replicate: bool = True) -> dict:
+def replicate_checkpoint(
+  latest: dict, pytree_keys: Sequence[str], replicate: bool = True
+) -> dict:
   """Restores from the provided checkpoint.
 
   Args:
@@ -162,16 +179,18 @@ def replicate_checkpoint(latest: dict,
   return pytree
 
 
-def save_checkpoint(framework: str,
-                    optimizer_state: spec.OptimizerState,
-                    model_params: spec.ParameterContainer,
-                    model_state: spec.ModelAuxiliaryState,
-                    train_state: dict,
-                    eval_results: list,
-                    global_step: int,
-                    preemption_count: int,
-                    checkpoint_dir: str,
-                    save_intermediate_checkpoints: bool) -> None:
+def save_checkpoint(
+  framework: str,
+  optimizer_state: spec.OptimizerState,
+  model_params: spec.ParameterContainer,
+  model_state: spec.ModelAuxiliaryState,
+  train_state: dict,
+  eval_results: list,
+  global_step: int,
+  preemption_count: int,
+  checkpoint_dir: str,
+  save_intermediate_checkpoints: bool,
+) -> None:
   """Save the checkpoint in `checkpoint_dir`.
 
   Args:
@@ -195,8 +214,9 @@ def save_checkpoint(framework: str,
     opt_state, _ = optimizer_state
   else:
     if isinstance(
-        model_params,
-        (torch.nn.DataParallel, torch.nn.parallel.DistributedDataParallel)):
+      model_params,
+      (torch.nn.DataParallel, torch.nn.parallel.DistributedDataParallel),
+    ):
       model_params = model_params.module
     model_params = model_params.state_dict()
     optimizer_state_dict = {}
@@ -205,33 +225,36 @@ def save_checkpoint(framework: str,
         optimizer_state_dict[key] = optimizer_state[key].state_dict()
       else:
         logging.warning(
-            f'The optimizer state for key {key} is not saved, because '
-            f'{type(optimizer_state[key])} has not implemented a state_dict() '
-            'method.')
+          f'The optimizer state for key {key} is not saved, because '
+          f'{type(optimizer_state[key])} has not implemented a state_dict() '
+          'method.'
+        )
     opt_state = optimizer_state_dict
 
   checkpoint_state = {
-      'model_params': model_params,
-      'optimizer_state': opt_state,
-      'model_state': model_state,
-      'train_state': train_state,
-      'eval_results': tuple(eval_results),
-      'global_step': global_step,
-      'preemption_count': preemption_count,
+    'model_params': model_params,
+    'optimizer_state': opt_state,
+    'model_state': model_state,
+    'train_state': train_state,
+    'eval_results': tuple(eval_results),
+    'global_step': global_step,
+    'preemption_count': preemption_count,
   }
 
   save_path = os.path.join(checkpoint_dir, f'checkpoint_{global_step}')
   if framework == 'jax':
     flax_checkpoints.save_checkpoint(
-        checkpoint_dir,
-        target=checkpoint_state,
-        step=global_step,
-        overwrite=True,
-        keep=np.inf if save_intermediate_checkpoints else 1)
+      checkpoint_dir,
+      target=checkpoint_state,
+      step=global_step,
+      overwrite=True,
+      keep=np.inf if save_intermediate_checkpoints else 1,
+    )
   else:
     if not save_intermediate_checkpoints:
       checkpoint_files = gfile.glob(
-          os.path.join(checkpoint_dir, 'checkpoint_*'))
+        os.path.join(checkpoint_dir, 'checkpoint_*')
+      )
       for path in checkpoint_files:
         logging.info('Removing checkpoint at %s', path)
         gfile.rmtree(path)

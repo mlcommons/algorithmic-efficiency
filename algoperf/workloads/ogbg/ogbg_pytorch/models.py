@@ -4,22 +4,26 @@ from functools import partial
 from typing import Callable, Optional, Tuple
 
 import jax.tree_util as tree
-from jraph import GraphsTuple
 import torch
+from jraph import GraphsTuple
 from torch import nn
 
 from algoperf import init_utils
+from algoperf.pytorch_utils import CustomDropout, SequentialWithDropout
+
+DROPOUT_RATE = 0.1
 
 
-def _make_mlp(in_dim, hidden_dims, dropout_rate, activation_fn):
+def _make_mlp(in_dim, hidden_dims, activation_fn):
   """Creates a MLP with specified dimensions."""
-  layers = nn.Sequential()
+  layers = SequentialWithDropout()
   for i, dim in enumerate(hidden_dims):
-    layers.add_module(f'dense_{i}',
-                      nn.Linear(in_features=in_dim, out_features=dim))
+    layers.add_module(
+      f'dense_{i}', nn.Linear(in_features=in_dim, out_features=dim)
+    )
     layers.add_module(f'norm_{i}', nn.LayerNorm(dim, eps=1e-6))
     layers.add_module(f'activation_fn_{i}', activation_fn())
-    layers.add_module(f'dropout_{i}', nn.Dropout(dropout_rate))
+    layers.add_module(f'dropout_{i}', CustomDropout())
     in_dim = dim
   return layers
 
@@ -31,20 +35,19 @@ class GNN(nn.Module):
   variables. The final prediction will be encoded in the globals.
   """
 
-  def __init__(self,
-               num_outputs: int = 128,
-               dropout_rate: Optional[float] = 0.1,
-               activation_fn_name: str = 'relu',
-               latent_dim: int = 256,
-               hidden_dims: Tuple[int] = (256,),
-               num_message_passing_steps: int = 5) -> None:
+  def __init__(
+    self,
+    num_outputs: int = 128,
+    activation_fn_name: str = 'relu',
+    latent_dim: int = 256,
+    hidden_dims: Tuple[int] = (256,),
+    num_message_passing_steps: int = 5,
+  ) -> None:
     super().__init__()
     self.latent_dim = latent_dim
     self.hidden_dims = hidden_dims
     self.num_message_passing_steps = num_message_passing_steps
     self.num_outputs = num_outputs
-    if dropout_rate is None:
-      dropout_rate = 0.1
     # in_features are specifically chosen for the ogbg workload.
     self.node_embedder = nn.Linear(in_features=9, out_features=self.latent_dim)
     self.edge_embedder = nn.Linear(in_features=3, out_features=self.latent_dim)
@@ -57,7 +60,8 @@ class GNN(nn.Module):
       activation_fn = nn.SiLU
     else:
       raise ValueError(
-          f'Invalid activation function name: {self.activation_fn_name}')
+        f'Invalid activation function name: {self.activation_fn_name}'
+      )
 
     graph_network_layers = []
     for st in range(self.num_message_passing_steps):
@@ -65,8 +69,9 @@ class GNN(nn.Module):
       # specifically update_edge_fn update_node_fn and update_global_fn.
       if st == 0:
         in_dim_edge_fn = self.latent_dim * 3 + self.num_outputs
-        in_dim_node_fn = self.latent_dim + self.hidden_dims[
-            -1] * 2 + self.num_outputs
+        in_dim_node_fn = (
+          self.latent_dim + self.hidden_dims[-1] * 2 + self.num_outputs
+        )
         last_in_dim = self.hidden_dims[-1] * 2 + self.num_outputs
       else:
         in_dim_edge_fn = self.hidden_dims[-1] * 4
@@ -74,36 +79,40 @@ class GNN(nn.Module):
         last_in_dim = self.hidden_dims[-1] * 3
 
       graph_network_layers.append(
-          GraphNetwork(
-              update_edge_fn=_make_mlp(in_dim_edge_fn,
-                                       self.hidden_dims,
-                                       dropout_rate,
-                                       activation_fn),
-              update_node_fn=_make_mlp(in_dim_node_fn,
-                                       self.hidden_dims,
-                                       dropout_rate,
-                                       activation_fn),
-              update_global_fn=_make_mlp(last_in_dim,
-                                         self.hidden_dims,
-                                         dropout_rate,
-                                         activation_fn)))
-    self.graph_network = nn.Sequential(*graph_network_layers)
+        GraphNetwork(
+          update_edge_fn=_make_mlp(
+            in_dim_edge_fn, self.hidden_dims, activation_fn
+          ),
+          update_node_fn=_make_mlp(
+            in_dim_node_fn, self.hidden_dims, activation_fn
+          ),
+          update_global_fn=_make_mlp(
+            last_in_dim, self.hidden_dims, activation_fn
+          ),
+        )
+      )
+    self.graph_network = SequentialWithDropout(*graph_network_layers)
 
     self.decoder = nn.Linear(
-        in_features=self.hidden_dims[-1], out_features=self.num_outputs)
+      in_features=self.hidden_dims[-1], out_features=self.num_outputs
+    )
 
     for m in self.modules():
       if isinstance(m, nn.Linear):
         init_utils.pytorch_default_init(m)
 
-  def forward(self, graph: GraphsTuple) -> torch.Tensor:
+  def forward(
+    self, graph: GraphsTuple, dropout_rate: float = DROPOUT_RATE
+  ) -> torch.Tensor:
     graph = graph._replace(
-        globals=torch.zeros([graph.n_node.shape[0], self.num_outputs],
-                            device=graph.n_node.device))
+      globals=torch.zeros(
+        [graph.n_node.shape[0], self.num_outputs], device=graph.n_node.device
+      )
+    )
     graph = graph._replace(nodes=self.node_embedder(graph.nodes))
     graph = graph._replace(edges=self.edge_embedder(graph.edges))
 
-    graph = self.graph_network(graph)
+    graph = self.graph_network(graph, dropout_rate)
 
     # Map globals to represent the final result
     graph = graph._replace(globals=self.decoder(graph.globals))
@@ -137,16 +146,19 @@ class GraphNetwork(nn.Module):
     A method that applies the configured GraphNetwork.
   """
 
-  def __init__(self,
-               update_edge_fn: Optional[Callable] = None,
-               update_node_fn: Optional[Callable] = None,
-               update_global_fn: Optional[Callable] = None) -> None:
+  def __init__(
+    self,
+    update_edge_fn: Optional[Callable] = None,
+    update_node_fn: Optional[Callable] = None,
+    update_global_fn: Optional[Callable] = None,
+  ) -> None:
     super().__init__()
     self.update_edge_fn = update_edge_fn
     self.update_node_fn = update_node_fn
     self.update_global_fn = update_global_fn
+    self._supports_custom_dropout = True  # supports SequentialWithDropout
 
-  def forward(self, graph: GraphsTuple) -> GraphsTuple:
+  def forward(self, graph: GraphsTuple, dropout_rate: float) -> GraphsTuple:
     """Applies a configured GraphNetwork to a graph.
     This implementation follows Algorithm 1 in https://arxiv.org/abs/1806.01261
     There is one difference. For the nodes update the class aggregates over the
@@ -159,42 +171,49 @@ class GraphNetwork(nn.Module):
     GraphNets, for more information please see the paper.
     Args:
       graph: a `GraphsTuple` containing the graph.
+      dropout_rate: dropout probability value.
     Returns:
       Updated `GraphsTuple`.
     """
     nodes, edges, receivers, senders, globals_, n_node, n_edge = graph
     sum_n_node = tree.tree_leaves(nodes)[0].shape[0]
     if not tree.tree_all(
-        tree.tree_map(lambda n: n.shape[0] == sum_n_node, nodes)):
+      tree.tree_map(lambda n: n.shape[0] == sum_n_node, nodes)
+    ):
       raise ValueError(
-          'All node arrays in nest must contain the same number of nodes.')
+        'All node arrays in nest must contain the same number of nodes.'
+      )
 
     sent_attributes = tree.tree_map(lambda n: n[senders], nodes)
     received_attributes = tree.tree_map(lambda n: n[receivers], nodes)
     # Here we scatter the global features to the corresponding edges,
     # giving us tensors of shape [num_edges, global_feat].
     global_edge_attributes = tree.tree_map(
-        lambda g: torch.repeat_interleave(g, n_edge, dim=0), globals_)
+      lambda g: torch.repeat_interleave(g, n_edge, dim=0), globals_
+    )
     if self.update_edge_fn:
       edge_fn_inputs = torch.cat(
-          [edges, sent_attributes, received_attributes, global_edge_attributes],
-          dim=-1)
-      edges = self.update_edge_fn(edge_fn_inputs)
+        [edges, sent_attributes, received_attributes, global_edge_attributes],
+        dim=-1,
+      )
+      edges = self.update_edge_fn(edge_fn_inputs, dropout_rate)
 
     if self.update_node_fn:
       sent_attributes = tree.tree_map(
-          lambda e: scatter_sum(e, senders, dim=0, dim_size=sum_n_node), edges)
+        lambda e: scatter_sum(e, senders, dim=0, dim_size=sum_n_node), edges
+      )
       received_attributes = tree.tree_map(
-          lambda e: scatter_sum(e, receivers, dim=0, dim_size=sum_n_node),
-          edges)
+        lambda e: scatter_sum(e, receivers, dim=0, dim_size=sum_n_node), edges
+      )
       # Here we scatter the global features to the corresponding nodes,
       # giving us tensors of shape [num_nodes, global_feat].
       global_attributes = tree.tree_map(
-          lambda g: torch.repeat_interleave(g, n_node, dim=0), globals_)
+        lambda g: torch.repeat_interleave(g, n_node, dim=0), globals_
+      )
       node_fn_inputs = torch.cat(
-          [nodes, sent_attributes, received_attributes, global_attributes],
-          dim=-1)
-      nodes = self.update_node_fn(node_fn_inputs)
+        [nodes, sent_attributes, received_attributes, global_attributes], dim=-1
+      )
+      nodes = self.update_node_fn(node_fn_inputs, dropout_rate)
 
     if self.update_global_fn:
       n_graph = n_node.shape[0]
@@ -207,31 +226,37 @@ class GraphNetwork(nn.Module):
       edge_gr_idx = torch.repeat_interleave(graph_idx, n_edge, dim=0)
       # We use the aggregation function to pool the nodes/edges per graph.
       node_attributes = tree.tree_map(
-          lambda n: scatter_sum(n, node_gr_idx, dim=0, dim_size=n_graph), nodes)
+        lambda n: scatter_sum(n, node_gr_idx, dim=0, dim_size=n_graph), nodes
+      )
       edge_attributes = tree.tree_map(
-          lambda e: scatter_sum(e, edge_gr_idx, dim=0, dim_size=n_graph), edges)
+        lambda e: scatter_sum(e, edge_gr_idx, dim=0, dim_size=n_graph), edges
+      )
       # These pooled nodes are the inputs to the global update fn.
-      global_fn_inputs = torch.cat([node_attributes, edge_attributes, globals_],
-                                   dim=-1)
-      globals_ = self.update_global_fn(global_fn_inputs)
+      global_fn_inputs = torch.cat(
+        [node_attributes, edge_attributes, globals_], dim=-1
+      )
+      globals_ = self.update_global_fn(global_fn_inputs, dropout_rate)
 
     return GraphsTuple(
-        nodes=nodes,
-        edges=edges,
-        receivers=receivers,
-        senders=senders,
-        globals=globals_,
-        n_node=n_node,
-        n_edge=n_edge)
+      nodes=nodes,
+      edges=edges,
+      receivers=receivers,
+      senders=senders,
+      globals=globals_,
+      n_node=n_node,
+      n_edge=n_edge,
+    )
 
 
 # Forked from
 # github.com/rusty1s/pytorch_scatter/blob/master/torch_scatter/scatter.py.
-def scatter_sum(src: torch.Tensor,
-                index: torch.Tensor,
-                dim: int = -1,
-                out: Optional[torch.Tensor] = None,
-                dim_size: Optional[int] = None) -> torch.Tensor:
+def scatter_sum(
+  src: torch.Tensor,
+  index: torch.Tensor,
+  dim: int = -1,
+  out: Optional[torch.Tensor] = None,
+  dim_size: Optional[int] = None,
+) -> torch.Tensor:
   r"""
   |
   .. image:: https://raw.githubusercontent.com/rusty1s/pytorch_scatter/

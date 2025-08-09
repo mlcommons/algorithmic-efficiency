@@ -7,24 +7,22 @@ import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algoperf import param_utils
-from algoperf import spec
+from algoperf import param_utils, spec
 from algoperf.pytorch_utils import pytorch_setup
 from algoperf.workloads.criteo1tb.criteo1tb_pytorch import models
-from algoperf.workloads.criteo1tb.workload import \
-    BaseCriteo1TbDlrmSmallWorkload
+from algoperf.workloads.criteo1tb.workload import BaseCriteo1TbDlrmSmallWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
 class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
-
   @property
   def eval_batch_size(self) -> int:
     return 8_192
 
   def _per_example_sigmoid_binary_cross_entropy(
-      self, logits: spec.Tensor, targets: spec.Tensor) -> spec.Tensor:
+    self, logits: spec.Tensor, targets: spec.Tensor
+  ) -> spec.Tensor:
     ls = torch.nn.LogSigmoid()
     log_p = ls(logits)
     log_not_p = ls(-logits)
@@ -35,11 +33,12 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
-      self,
-      label_batch: spec.Tensor,  # Dense (not one-hot) labels.
-      logits_batch: spec.Tensor,
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    self,
+    label_batch: spec.Tensor,  # Dense (not one-hot) labels.
+    logits_batch: spec.Tensor,
+    mask_batch: Optional[spec.Tensor] = None,
+    label_smoothing: float = 0.0,
+  ) -> Dict[str, spec.Tensor]:  # differentiable
     """Evaluate the (masked) loss function at (label_batch, logits_batch).
 
     Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
@@ -51,7 +50,8 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     label_batch = torch.reshape(label_batch, (batch_size,))
     logits_batch = torch.reshape(logits_batch, (batch_size,))
     per_example_losses = self._per_example_sigmoid_binary_cross_entropy(
-        logits=logits_batch, targets=label_batch)
+      logits=logits_batch, targets=label_batch
+    )
     if mask_batch is not None:
       mask_batch = torch.reshape(mask_batch, (batch_size,))
       per_example_losses *= mask_batch
@@ -60,18 +60,12 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       n_valid_examples = len(per_example_losses)
     summed_loss = per_example_losses.sum()
     return {
-        'summed': summed_loss,
-        'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
-        'per_example': per_example_losses,
+      'summed': summed_loss,
+      'n_valid_examples': torch.as_tensor(n_valid_examples, device=DEVICE),
+      'per_example': per_example_losses,
     }
 
-  def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
-    """Only dropout is used."""
-    del aux_dropout_rate
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])
     # Disable cudnn benchmark to avoid OOM errors.
     torch.backends.cudnn.benchmark = False
@@ -80,14 +74,14 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     else:
       model_class = models.DlrmSmall
     model = model_class(
-        vocab_size=self.vocab_size,
-        num_dense_features=self.num_dense_features,
-        mlp_bottom_dims=self.mlp_bottom_dims,
-        mlp_top_dims=self.mlp_top_dims,
-        embed_dim=self.embed_dim,
-        dropout_rate=dropout_rate,
-        use_layer_norm=self.use_layer_norm,
-        embedding_init_multiplier=self.embedding_init_multiplier)
+      vocab_size=self.vocab_size,
+      num_dense_features=self.num_dense_features,
+      mlp_bottom_dims=self.mlp_bottom_dims,
+      mlp_top_dims=self.mlp_top_dims,
+      embed_dim=self.embed_dim,
+      use_layer_norm=self.use_layer_norm,
+      embedding_init_multiplier=self.embedding_init_multiplier,
+    )
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -102,13 +96,15 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return param_key in ['top_mlp.4.weight', 'top_mlp.4.bias']
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    self,
+    params: spec.ParameterContainer,
+    augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    mode: spec.ForwardPassMode,
+    rng: spec.RandomState,
+    update_batch_norm: bool,
+    dropout_rate: float = models.DROPOUT_RATE,
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
@@ -123,24 +119,25 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       model.train()
 
     contexts = {
-        spec.ForwardPassMode.EVAL: torch.no_grad,
-        spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
+      spec.ForwardPassMode.EVAL: torch.no_grad,
+      spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
     with contexts[mode]():
-      logits_batch = model(inputs)
+      logits_batch = model(inputs, dropout_rate=dropout_rate)
 
     return logits_batch, None
 
   def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ) -> Iterator[Dict[str, spec.Tensor]]:
     not_train = split != 'train'
     per_device_batch_size = int(global_batch_size / N_GPUS)
 
@@ -148,35 +145,42 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     # avoid creating too many threads.
     if RANK == 0:
       np_iter = super()._build_input_queue(
-          data_rng=data_rng,
-          split=split,
-          data_dir=data_dir,
-          global_batch_size=global_batch_size,
-          num_batches=num_batches,
-          repeat_final_dataset=repeat_final_dataset)
+        data_rng=data_rng,
+        split=split,
+        data_dir=data_dir,
+        global_batch_size=global_batch_size,
+        num_batches=num_batches,
+        repeat_final_dataset=repeat_final_dataset,
+      )
     weights = None
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return
         inputs = torch.as_tensor(
-            batch['inputs'], dtype=torch.float32, device=DEVICE)
+          batch['inputs'], dtype=torch.float32, device=DEVICE
+        )
         targets = torch.as_tensor(
-            batch['targets'], dtype=torch.float32, device=DEVICE)
+          batch['targets'], dtype=torch.float32, device=DEVICE
+        )
         if not_train:
           weights = batch.get('weights')
           if weights is None:
-            weights = torch.ones((N_GPUS, per_device_batch_size, 1),
-                                 dtype=torch.float32,
-                                 device=DEVICE)
+            weights = torch.ones(
+              (N_GPUS, per_device_batch_size, 1),
+              dtype=torch.float32,
+              device=DEVICE,
+            )
           else:
             weights = torch.as_tensor(
-                weights, dtype=torch.float32, device=DEVICE)
+              weights, dtype=torch.float32, device=DEVICE
+            )
         # Send batch to other devices when using DDP.
         if USE_PYTORCH_DDP:
           if not_train:
             # During eval, the batch size of the remainder might be different.
             per_device_batch_size = torch.tensor(
-                len(targets[0]), dtype=torch.int32, device=DEVICE)
+              len(targets[0]), dtype=torch.int32, device=DEVICE
+            )
             dist.broadcast(per_device_batch_size, src=0)
             dist.broadcast(weights, src=0)
             weights = weights[0]
@@ -192,52 +196,57 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
       else:
         if not_train:
           # During eval, the batch size of the remainder might be different.
-          per_device_batch_size = torch.empty((1,),
-                                              dtype=torch.int32,
-                                              device=DEVICE)
+          per_device_batch_size = torch.empty(
+            (1,), dtype=torch.int32, device=DEVICE
+          )
           dist.broadcast(per_device_batch_size, src=0)
-          weights = torch.empty((N_GPUS, per_device_batch_size, 1),
-                                dtype=torch.float32,
-                                device=DEVICE)
+          weights = torch.empty(
+            (N_GPUS, per_device_batch_size, 1),
+            dtype=torch.float32,
+            device=DEVICE,
+          )
           dist.broadcast(weights, src=0)
           weights = weights[RANK]
 
-        inputs = torch.empty((N_GPUS, per_device_batch_size, 39),
-                             dtype=torch.float32,
-                             device=DEVICE)
+        inputs = torch.empty(
+          (N_GPUS, per_device_batch_size, 39),
+          dtype=torch.float32,
+          device=DEVICE,
+        )
         dist.broadcast(inputs, src=0)
         inputs = inputs[RANK]
-        targets = torch.empty((N_GPUS, per_device_batch_size, 1),
-                              dtype=torch.float32,
-                              device=DEVICE)
+        targets = torch.empty(
+          (N_GPUS, per_device_batch_size, 1), dtype=torch.float32, device=DEVICE
+        )
         dist.broadcast(targets, src=0)
         targets = targets[RANK]
 
       if weights is None:
         weights = torch.ones(per_device_batch_size, device=DEVICE)
       batch = {
-          'inputs': inputs,
-          'targets': targets,
-          'weights': weights,
+        'inputs': inputs,
+        'targets': targets,
+        'weights': weights,
       }
       yield batch
 
-  def _eval_batch(self,
-                  params: spec.ParameterContainer,
-                  batch: Dict[str, spec.Tensor]) -> spec.Tensor:
+  def _eval_batch(
+    self, params: spec.ParameterContainer, batch: Dict[str, spec.Tensor]
+  ) -> spec.Tensor:
     logits, _ = self.model_fn(
-        params,
-        batch,
-        model_state=None,
-        mode=spec.ForwardPassMode.EVAL,
-        rng=None,
-        update_batch_norm=False)
+      params,
+      batch,
+      model_state=None,
+      mode=spec.ForwardPassMode.EVAL,
+      rng=None,
+      update_batch_norm=False,
+    )
     weights = batch.get('weights')
     if weights is None:
       weights = torch.ones(len(logits), device=DEVICE)
     summed_loss = self.loss_fn(
-        label_batch=batch['targets'], logits_batch=logits,
-        mask_batch=weights)['summed']
+      label_batch=batch['targets'], logits_batch=logits, mask_batch=weights
+    )['summed']
     return summed_loss.to(dtype=torch.float64)
 
 
@@ -246,7 +255,6 @@ class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallLayerNormWorkload(Criteo1TbDlrmSmallWorkload):
-
   @property
   def use_layer_norm(self) -> bool:
     """Whether or not to use LayerNorm in the model."""
@@ -280,7 +288,6 @@ class Criteo1TbDlrmSmallResNetWorkload(Criteo1TbDlrmSmallWorkload):
 
 
 class Criteo1TbDlrmSmallEmbedInitWorkload(Criteo1TbDlrmSmallWorkload):
-
   @property
   def validation_target_value(self) -> float:
     return 0.129657

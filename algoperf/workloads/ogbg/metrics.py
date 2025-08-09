@@ -2,24 +2,23 @@
 # https://github.com/google/flax/blob/main/examples/ogbg_molpcba/train.py
 from typing import Any
 
-from clu import metrics
 import flax
 import jax
 import jax.numpy as jnp
 import numpy as np
-from sklearn.metrics import average_precision_score
 import torch
 import torch.distributed as dist
+from clu import metrics
+from sklearn.metrics import average_precision_score
 
 from algoperf.pytorch_utils import pytorch_setup
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
 
-def predictions_match_labels(*,
-                             logits: jnp.ndarray,
-                             labels: jnp.ndarray,
-                             **kwargs) -> jnp.ndarray:
+def predictions_match_labels(
+  *, logits: jnp.ndarray, labels: jnp.ndarray, **kwargs
+) -> jnp.ndarray:
   """Returns a binary array indicating where predictions match the labels."""
   del kwargs  # Unused.
   preds = logits > 0
@@ -28,7 +27,8 @@ def predictions_match_labels(*,
 
 @flax.struct.dataclass
 class MeanAveragePrecision(
-    metrics.CollectingMetric.from_outputs(('logits', 'labels', 'mask'))):
+  metrics.CollectingMetric.from_outputs(('logits', 'labels', 'mask'))
+):
   """Computes the mean average precision (mAP) over different tasks."""
 
   def compute(self):
@@ -37,6 +37,7 @@ class MeanAveragePrecision(
     labels = values['labels']
     logits = values['logits']
     mask = values['mask']
+    sigmoid = jax.nn.sigmoid
 
     if USE_PYTORCH_DDP:
       # Sync labels, logits, and masks across devices.
@@ -49,9 +50,14 @@ class MeanAveragePrecision(
         all_values[idx] = torch.cat(all_tensors).cpu().numpy()
       labels, logits, mask = all_values
 
+      def sigmoid_np(x):
+        return 1 / (1 + np.exp(-x))
+
+      sigmoid = sigmoid_np
+
     mask = mask.astype(bool)
 
-    probs = jax.nn.sigmoid(logits)
+    probs = sigmoid(logits)
     num_tasks = labels.shape[1]
     average_precisions = np.full(num_tasks, np.nan)
 
@@ -62,7 +68,8 @@ class MeanAveragePrecision(
       if np.sum(labels[:, task] == 0) > 0 and np.sum(labels[:, task] == 1) > 0:
         is_labeled = mask[:, task]
         average_precisions[task] = average_precision_score(
-            labels[is_labeled, task], probs[is_labeled, task])
+          labels[is_labeled, task], probs[is_labeled, task]
+        )
 
     # When all APs are NaNs, return NaN. This avoids raising a RuntimeWarning.
     if np.isnan(average_precisions).all():

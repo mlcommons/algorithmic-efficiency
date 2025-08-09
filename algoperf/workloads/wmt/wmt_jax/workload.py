@@ -1,24 +1,22 @@
 """WMT workload implemented in Jax."""
 
-from dataclasses import replace
 import functools
+from dataclasses import replace
 from typing import Any, Dict, Iterator, Optional, Tuple
 
-from absl import logging
-from flax import jax_utils
-from flax import linen as nn
-from flax.training import common_utils
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from absl import logging
+from flax import jax_utils
+from flax import linen as nn
+from flax.training import common_utils
 
-from algoperf import param_utils
-from algoperf import jax_sharding_utils
+from algoperf import jax_sharding_utils, param_utils
 from algoperf import spec
 from algoperf.workloads.wmt import bleu
-from algoperf.workloads.wmt.wmt_jax import decode
-from algoperf.workloads.wmt.wmt_jax import models
+from algoperf.workloads.wmt.wmt_jax import decode, models
 from algoperf.workloads.wmt.workload import BaseWmtWorkload
 
 
@@ -32,11 +30,12 @@ class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
 
   def compute_weighted_cross_entropy(
-      self,
-      logits: spec.Tensor,
-      targets: spec.Tensor,
-      weights: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.1) -> Dict[str, spec.Tensor]:  # differentiable
+    self,
+    logits: spec.Tensor,
+    targets: spec.Tensor,
+    weights: Optional[spec.Tensor] = None,
+    label_smoothing: float = 0.1,
+  ) -> Dict[str, spec.Tensor]:  # differentiable
     """Compute weighted cross entropy and entropy for log probs and targets.
 
     Args:
@@ -51,22 +50,26 @@ class WmtWorkload(BaseWmtWorkload):
       valid examples in batch, 'per_example': 1-d array of per-example losses}
     """
     if logits.ndim != targets.ndim + 1:
-      raise ValueError(f'Incorrect shapes. Got shape {logits.shape} logits and '
-                       f'{targets.shape} targets.')
+      raise ValueError(
+        f'Incorrect shapes. Got shape {logits.shape} logits and '
+        f'{targets.shape} targets.'
+      )
     smoothed_targets = optax.smooth_labels(
-        common_utils.onehot(targets, self._vocab_size), label_smoothing)
+      common_utils.onehot(targets, self._vocab_size), label_smoothing
+    )
 
     per_example_losses = -jnp.sum(
-        smoothed_targets * nn.log_softmax(logits), axis=-1)
+      smoothed_targets * nn.log_softmax(logits), axis=-1
+    )
     if weights is None:
       weights = jnp.ones_like(targets)
-    per_example_losses = jnp.where(weights, per_example_losses, 0.)
+    per_example_losses = jnp.where(weights, per_example_losses, 0.0)
     summed_loss = per_example_losses.sum()
     n_valid_examples = weights.sum()
     return {
-        'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses,
+      'summed': summed_loss,
+      'n_valid_examples': n_valid_examples,
+      'per_example': per_example_losses,
     }
 
   @functools.partial(
@@ -85,16 +88,16 @@ class WmtWorkload(BaseWmtWorkload):
     targets = batch['targets']
     weights = batch['weights']
     logits = self._eval_model.apply({'params': params}, inputs, targets)
-    summed_loss = self.compute_weighted_cross_entropy(logits,
-                                                      targets,
-                                                      weights,
-                                                      0.0)['summed']
+    summed_loss = self.compute_weighted_cross_entropy(
+      logits, targets, weights, 0.0
+    )['summed']
     acc_sum, weight_sum = self.compute_weighted_accuracy(
-        logits, targets, weights)
+      logits, targets, weights
+    )
     return {
-        'loss': summed_loss,
-        'accuracy': acc_sum,
-        'denominator': weight_sum,
+      'loss': summed_loss,
+      'accuracy': acc_sum,
+      'denominator': weight_sum,
     }
 
   @functools.partial(
@@ -136,27 +139,29 @@ class WmtWorkload(BaseWmtWorkload):
     # i.e. if we denote each batch element subtensor as el[n]:
     # [el0, el1, el2] --> beamsize=2 --> [el0,el0,el1,el1,el2,el2]
     encoded_inputs = decode.flat_batch_beam_expand(
-        models.Transformer(config).apply({'params': params},
-                                         inputs,
-                                         method=models.Transformer.encode),
-        beam_size)
+      models.Transformer(config).apply(
+        {'params': params}, inputs, method=models.Transformer.encode
+      ),
+      beam_size,
+    )
     raw_inputs = decode.flat_batch_beam_expand(inputs, beam_size)
 
     def tokens_ids_to_logits(
-        flat_ids: spec.Tensor, flat_cache: Dict[str, spec.Tensor]
+      flat_ids: spec.Tensor, flat_cache: Dict[str, spec.Tensor]
     ) -> Tuple[spec.Tensor, Dict[str, spec.Tensor]]:
       """Token slice to logits from decoder model."""
       # --> [batch * beam, 1, vocab]
       flat_logits, new_vars = models.Transformer(config).apply(
-          {
-              'params': params,
-              'cache': flat_cache,
-          },
-          encoded_inputs,
-          raw_inputs,  # only needed for input padding mask
-          flat_ids,
-          mutable=['cache'],
-          method=models.Transformer.decode)
+        {
+          'params': params,
+          'cache': flat_cache,
+        },
+        encoded_inputs,
+        raw_inputs,  # only needed for input padding mask
+        flat_ids,
+        mutable=['cache'],
+        method=models.Transformer.decode,
+      )
       new_flat_cache = new_vars['cache']
       # Remove singleton sequence-length dimension:
       # [batch * beam, 1, vocab] --> [batch * beam, vocab]
@@ -166,24 +171,27 @@ class WmtWorkload(BaseWmtWorkload):
     # Using the above-defined single-step decoder function, run a
     # beam search over possible sequences given input encoding.
     beam_seqs, _ = decode.beam_search(
-        inputs,
-        cache,
-        tokens_ids_to_logits,
-        beam_size=beam_size,
-        alpha=0.6,
-        eos_id=eos_id,
-        max_decode_len=max_decode_len)
+      inputs,
+      cache,
+      tokens_ids_to_logits,
+      beam_size=beam_size,
+      alpha=0.6,
+      eos_id=eos_id,
+      max_decode_len=max_decode_len,
+    )
 
     # Beam search returns [n_batch, n_beam, n_length + 1] with beam dimension
     # sorted in increasing order of log-probability.
     # Return the highest scoring beam sequence, drop first dummy 0 token.
     return beam_seqs[:, -1, 1:]
 
-  def translate_and_calculate_bleu(self,
-                                   params: spec.ParameterContainer,
-                                   ds_iter: Iterator,
-                                   num_batches: int,
-                                   max_predict_length: int) -> spec.Tensor:
+  def translate_and_calculate_bleu(
+    self,
+    params: spec.ParameterContainer,
+    ds_iter: Iterator,
+    num_batches: int,
+    max_predict_length: int,
+  ) -> spec.Tensor:
     """Translates the `predict_ds` and calculates the BLEU score."""
     logging.info('Translating evaluation dataset.')
     references, predictions = [], []
@@ -247,12 +255,11 @@ class WmtWorkload(BaseWmtWorkload):
       raise ValueError(f'Unknown activation function {self.activation}.')
 
     model_config = models.TransformerConfig(
-        dropout_rate=dropout_rate,
-        attention_dropout_rate=aux_dropout_rate,
-        pre_ln=self.pre_ln,
-        attention_temp=self.attention_temp,
-        activation=activation,
-        glu=self.glu)
+      pre_ln=self.pre_ln,
+      attention_temp=self.attention_temp,
+      activation=activation,
+      glu=self.glu,
+    )
     self._train_model = models.Transformer(model_config)
     eval_config = replace(model_config, deterministic=True)
     self._eval_model = models.Transformer(eval_config)
@@ -277,45 +284,54 @@ class WmtWorkload(BaseWmtWorkload):
     return param_key == 'shared_embedding'
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    self,
+    params: spec.ParameterContainer,
+    augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    mode: spec.ForwardPassMode,
+    rng: spec.RandomState,
+    update_batch_norm: bool,
+    dropout_rate: [float] = models.DROPOUT_RATE,
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del update_batch_norm
 
     inputs = augmented_and_preprocessed_input_batch.get('inputs', None)
     targets = augmented_and_preprocessed_input_batch.get('targets', None)
     inputs_positions = augmented_and_preprocessed_input_batch.get(
-        'inputs_position', None)
+      'inputs_position', None
+    )
     targets_positions = augmented_and_preprocessed_input_batch.get(
-        'targets_position', None)
+      'targets_position', None
+    )
     inputs_segmentations = augmented_and_preprocessed_input_batch.get(
-        'inputs_segmentation', None)
+      'inputs_segmentation', None
+    )
     targets_segmentations = augmented_and_preprocessed_input_batch.get(
-        'targets_segmentation', None)
+      'targets_segmentation', None
+    )
 
     if mode == spec.ForwardPassMode.TRAIN:
       model = self._train_model
     else:
       model = self._eval_model
 
-    logits_batch = model.apply({'params': params},
-                               inputs,
-                               targets,
-                               inputs_positions=inputs_positions,
-                               targets_positions=targets_positions,
-                               inputs_segmentation=inputs_segmentations,
-                               targets_segmentation=targets_segmentations,
-                               rngs={'dropout': rng})
+    logits_batch = model.apply(
+      {'params': params},
+      inputs,
+      targets,
+      inputs_positions=inputs_positions,
+      targets_positions=targets_positions,
+      inputs_segmentation=inputs_segmentations,
+      targets_segmentation=targets_segmentations,
+      rngs={'dropout': rng},
+      dropout_rate=dropout_rate,
+    )
     return logits_batch, None
 
   def _normalize_eval_metrics(
-      self, num_examples: int, total_metrics: Dict[str,
-                                                   Any]) -> Dict[str, float]:
+    self, num_examples: int, total_metrics: Dict[str, Any]
+  ) -> Dict[str, float]:
     """Normalize eval metrics."""
     del num_examples
     eval_denominator = total_metrics.pop('denominator')

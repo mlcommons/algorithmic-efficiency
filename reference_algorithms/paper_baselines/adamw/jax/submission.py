@@ -3,13 +3,13 @@
 import functools
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from flax import jax_utils
 import jax
-from jax import lax
 import jax.numpy as jnp
 from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec as P
 import optax
+from flax import jax_utils
+from jax import lax
 
 from algoperf import jax_sharding_utils
 from algoperf import spec
@@ -17,11 +17,13 @@ from algoperf import spec
 _GRAD_CLIP_EPS = 1e-6
 
 
-def init_optimizer_state(workload: spec.Workload,
-                         model_params: spec.ParameterContainer,
-                         model_state: spec.ModelAuxiliaryState,
-                         hyperparameters: spec.Hyperparameters,
-                         rng: spec.RandomState) -> spec.OptimizerState:
+def init_optimizer_state(
+  workload: spec.Workload,
+  model_params: spec.ParameterContainer,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  rng: spec.RandomState,
+) -> spec.OptimizerState:
   """Creates an AdamW optimizer and a learning rate schedule."""
   del model_params
   del model_state
@@ -31,26 +33,31 @@ def init_optimizer_state(workload: spec.Workload,
     # Create learning rate schedule.
     warmup_steps = int(hyperparameters.warmup_factor * step_hint)
     warmup_fn = optax.linear_schedule(
-        init_value=0.,
-        end_value=hyperparameters.learning_rate,
-        transition_steps=warmup_steps)
+      init_value=0.0,
+      end_value=hyperparameters.learning_rate,
+      transition_steps=warmup_steps,
+    )
     cosine_steps = max(step_hint - warmup_steps, 1)
     cosine_fn = optax.cosine_decay_schedule(
-        init_value=hyperparameters.learning_rate, decay_steps=cosine_steps)
+      init_value=hyperparameters.learning_rate, decay_steps=cosine_steps
+    )
     schedule_fn = optax.join_schedules(
-        schedules=[warmup_fn, cosine_fn], boundaries=[warmup_steps])
+      schedules=[warmup_fn, cosine_fn], boundaries=[warmup_steps]
+    )
     return schedule_fn
 
   # Create optimizer + LR schedule.
   lr_schedule_fn = jax_cosine_warmup(workload.step_hint, hyperparameters)
   opt_init_fn, opt_update_fn = optax.adamw(
-      learning_rate=lr_schedule_fn,
-      b1=1.0 - hyperparameters.one_minus_beta1,
-      b2=hyperparameters.beta2,
-      eps=1e-8,
-      weight_decay=hyperparameters.weight_decay)
-  params_zeros_like = jax.tree.map(lambda s: jnp.zeros(s.shape_tuple),
-                                   workload.param_shapes)
+    learning_rate=lr_schedule_fn,
+    b1=1.0 - hyperparameters.one_minus_beta1,
+    b2=hyperparameters.beta2,
+    eps=1e-8,
+    weight_decay=hyperparameters.weight_decay,
+  )
+  params_zeros_like = jax.tree.map(
+    lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes
+  )
   optimizer_state = opt_init_fn(params_zeros_like)
 
   return optimizer_state, opt_update_fn
@@ -76,10 +83,11 @@ def train_step(workload,
         rng,
         update_batch_norm=True,)
     loss_dict = workload.loss_fn(
-        label_batch=batch['targets'],
-        logits_batch=logits,
-        mask_batch=batch.get('weights'),
-        label_smoothing=label_smoothing)
+      label_batch=batch['targets'],
+      logits_batch=logits,
+      mask_batch=batch.get('weights'),
+      label_smoothing=label_smoothing,
+    )
     summed_loss = loss_dict['summed']
     n_valid_examples = loss_dict['n_valid_examples']
     return summed_loss, (n_valid_examples, new_model_state)
@@ -93,7 +101,8 @@ def train_step(workload,
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
   grad_norm = jnp.sqrt(
-      sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
+    sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad))
+  )
 
   if grad_clip is not None:
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
@@ -107,18 +116,19 @@ def train_step(workload,
 
 
 def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState,
-    train_state: Optional[Dict[str, Any]] = None) -> spec.UpdateReturn:
+  workload: spec.Workload,
+  current_param_container: spec.ParameterContainer,
+  current_params_types: spec.ParameterTypeTree,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  batch: Dict[str, spec.Tensor],
+  loss_type: spec.LossType,
+  optimizer_state: spec.OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: spec.RandomState,
+  train_state: Optional[Dict[str, Any]] = None,
+) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
@@ -183,16 +193,18 @@ def update_params(
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
-def prepare_for_eval(workload: spec.Workload,
-                     current_param_container: spec.ParameterContainer,
-                     current_params_types: spec.ParameterTypeTree,
-                     model_state: spec.ModelAuxiliaryState,
-                     hyperparameters: spec.Hyperparameters,
-                     loss_type: spec.LossType,
-                     optimizer_state: spec.OptimizerState,
-                     eval_results: List[Tuple[int, float]],
-                     global_step: int,
-                     rng: spec.RandomState) -> spec.UpdateReturn:
+def prepare_for_eval(
+  workload: spec.Workload,
+  current_param_container: spec.ParameterContainer,
+  current_params_types: spec.ParameterTypeTree,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  loss_type: spec.LossType,
+  optimizer_state: spec.OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: spec.RandomState,
+) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del workload
   del hyperparameters
@@ -234,14 +246,16 @@ def get_batch_size(workload_name):
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 
 
-def data_selection(workload: spec.Workload,
-                   input_queue: Iterator[Dict[str, spec.Tensor]],
-                   optimizer_state: spec.OptimizerState,
-                   current_param_container: spec.ParameterContainer,
-                   model_state: spec.ModelAuxiliaryState,
-                   hyperparameters: spec.Hyperparameters,
-                   global_step: int,
-                   rng: spec.RandomState) -> Dict[str, spec.Tensor]:
+def data_selection(
+  workload: spec.Workload,
+  input_queue: Iterator[Dict[str, spec.Tensor]],
+  optimizer_state: spec.OptimizerState,
+  current_param_container: spec.ParameterContainer,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  global_step: int,
+  rng: spec.RandomState,
+) -> Dict[str, spec.Tensor]:
   """Select data from the infinitely repeating, pre-shuffled input queue.
   Each element of the queue is a batch of training examples and labels.
   """

@@ -2,16 +2,16 @@
 
 from typing import Any, List, Union
 
-from absl import flags
-from absl import logging
 import numpy as np
+from absl import flags, logging
 
 try:
   import jax.random as jax_rng
 except (ImportError, ModuleNotFoundError):
   logging.warning(
-      'Could not import jax.random for the submission runner, falling back to '
-      'numpy random_utils.')
+    'Could not import jax.random for the submission runner, falling back to '
+    'numpy random_utils.'
+  )
   jax_rng = None
 
 FLAGS = flags.FLAGS
@@ -54,8 +54,9 @@ def _PRNGKey(seed: SeedType) -> SeedType:  # pylint: disable=invalid-name
 def _check_jax_install() -> None:
   if jax_rng is None:
     raise ValueError(
-        'Must install jax to use the jax RNG library, or use PyTorch and pass '
-        '--framework=pytorch to use the Numpy version instead.')
+      'Must install jax to use the jax RNG library, or use PyTorch and pass '
+      '--framework=pytorch to use the Numpy version instead.'
+    )
 
 
 def fold_in(seed: SeedType, data: Any) -> List[Union[SeedType, Any]]:

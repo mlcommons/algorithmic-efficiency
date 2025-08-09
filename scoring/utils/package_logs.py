@@ -3,11 +3,11 @@ Example usage:
 
 python3 package_logs.py --experiment_dir <experiment_dir> --destination_dir <destination_dir>
 """
+
 import os
 import shutil
 
-from absl import app
-from absl import flags
+from absl import app, flags
 
 flags.DEFINE_string('experiment_dir', None, 'Path to experiment.')
 flags.DEFINE_string('destination_dir', None, 'Path to save submission logs')
@@ -17,10 +17,10 @@ FLAGS = flags.FLAGS
 
 def move_logs(experiment_dir, destination_dir):
   """Copy files from experiment path to destination directory.
-    Args:
-        experiment_dir: Path to experiment dir.
-        destination_dir: Path to destination dir.
-    """
+  Args:
+      experiment_dir: Path to experiment dir.
+      destination_dir: Path to destination dir.
+  """
   if not os.path.exists(experiment_dir):
     raise IOError(f'Directory does not exist {destination_dir}')
 

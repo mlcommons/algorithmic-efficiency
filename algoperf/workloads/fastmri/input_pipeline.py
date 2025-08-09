@@ -16,12 +16,9 @@ _VAL_DIR = 'knee_singlecoil_val'
 _EVAL_SEED = 0
 
 
-def _process_example(kspace,
-                     kspace_shape,
-                     target,
-                     target_shape,
-                     volume_max,
-                     seed):
+def _process_example(
+  kspace, kspace_shape, target, target_shape, volume_max, seed
+):
   """Generate a single example (slice from mri image).
 
   Args:
@@ -45,15 +42,17 @@ def _process_example(kspace,
   acceleration = tf.convert_to_tensor(4.0, dtype=tf.float32)
 
   num_low_frequencies = tf.cast(
-      num_cols_float * center_fraction, dtype=tf.int32)
+    num_cols_float * center_fraction, dtype=tf.int32
+  )
 
   # calculate_center_mask
   mask = tf.zeros(num_cols, dtype=tf.float32)
   pad = (num_cols - num_low_frequencies + 1) // 2
   mask = tf.tensor_scatter_nd_update(
-      mask,
-      tf.reshape(tf.range(pad, pad + num_low_frequencies), (-1, 1)),
-      tf.ones(num_low_frequencies))
+    mask,
+    tf.reshape(tf.range(pad, pad + num_low_frequencies), (-1, 1)),
+    tf.ones(num_low_frequencies),
+  )
 
   # reshape_mask
   center_mask = tf.reshape(mask, (1, num_cols))
@@ -61,10 +60,12 @@ def _process_example(kspace,
   # calculate_acceleration_mask
   num_low_frequencies_float = tf.cast(num_low_frequencies, dtype=tf.float32)
   prob = (num_cols_float / acceleration - num_low_frequencies_float) / (
-      num_cols_float - num_low_frequencies_float)
+    num_cols_float - num_low_frequencies_float
+  )
 
   mask = tf.cast(
-      tf.random.stateless_uniform((num_cols,), seed) < prob, dtype=tf.float32)
+    tf.random.stateless_uniform((num_cols,), seed) < prob, dtype=tf.float32
+  )
   acceleration_mask = tf.reshape(mask, (1, num_cols))
 
   mask = tf.math.maximum(center_mask, acceleration_mask)
@@ -78,9 +79,11 @@ def _process_example(kspace,
   shifted_image = tf.signal.ifft2d(shifted_kspace)
   image = tf.signal.fftshift(shifted_image, axes=(0, 1))
   scaling_norm = tf.cast(
-      tf.math.sqrt(
-          tf.cast(tf.math.reduce_prod(tf.shape(kspace)[-2:]), 'float32')),
-      kspace.dtype)
+    tf.math.sqrt(
+      tf.cast(tf.math.reduce_prod(tf.shape(kspace)[-2:]), 'float32')
+    ),
+    kspace.dtype,
+  )
   image = image * scaling_norm
   image = tf.stack((tf.math.real(image), tf.math.imag(image)), axis=-1)
 
@@ -108,48 +111,58 @@ def _process_example(kspace,
   target = tf.clip_by_value(norm_target, -6, 6)
 
   return {
-      'inputs': image,
-      'targets': target,
-      'mean': mean,
-      'std': std,
-      'volume_max': volume_max,
+    'inputs': image,
+    'targets': target,
+    'mean': mean,
+    'std': std,
+    'volume_max': volume_max,
   }
 
 
 def _h5_to_examples(path, log=False):
   """Yield MRI slices from an hdf5 file containing a single MRI volume."""
   if log:
-    tf.print('fastmri_dataset._h5_to_examples call:',
-             path,
-             datetime.datetime.now().strftime('%H:%M:%S:%f'))
+    tf.print(
+      'fastmri_dataset._h5_to_examples call:',
+      path,
+      datetime.datetime.now().strftime('%H:%M:%S:%f'),
+    )
   with open(path, 'rb') as gf:
     with h5py.File(gf, 'r') as hf:
       # NOTE(dsuo): logic taken from reference code
       volume_max = hf.attrs.get('max', 0.0)
 
       for i in range(hf['kspace'].shape[0]):
-        yield hf['kspace'][i], hf['kspace'][i].shape, hf['reconstruction_esc'][
-            i], hf['reconstruction_esc'][i].shape, volume_max
+        yield (
+          hf['kspace'][i],
+          hf['kspace'][i].shape,
+          hf['reconstruction_esc'][i],
+          hf['reconstruction_esc'][i].shape,
+          volume_max,
+        )
 
 
 def _create_generator(filename):
   signature = (
-      tf.TensorSpec(shape=(640, None), dtype=tf.complex64),
-      tf.TensorSpec(shape=(2,), dtype=tf.int32),
-      tf.TensorSpec(shape=(320, 320), dtype=tf.float32),
-      tf.TensorSpec(shape=(2,), dtype=tf.int32),
-      tf.TensorSpec(shape=(), dtype=tf.float32),
+    tf.TensorSpec(shape=(640, None), dtype=tf.complex64),
+    tf.TensorSpec(shape=(2,), dtype=tf.int32),
+    tf.TensorSpec(shape=(320, 320), dtype=tf.float32),
+    tf.TensorSpec(shape=(2,), dtype=tf.int32),
+    tf.TensorSpec(shape=(), dtype=tf.float32),
   )
   return tf.data.Dataset.from_generator(
-      _h5_to_examples, args=(filename,), output_signature=signature)
+    _h5_to_examples, args=(filename,), output_signature=signature
+  )
 
 
-def load_fastmri_split(global_batch_size,
-                       split,
-                       data_dir,
-                       shuffle_rng,
-                       num_batches,
-                       repeat_final_eval_dataset):
+def load_fastmri_split(
+  global_batch_size,
+  split,
+  data_dir,
+  shuffle_rng,
+  num_batches,
+  repeat_final_eval_dataset,
+):
   """Creates a split from the FastMRI dataset using tf.data.
 
   NOTE: only creates knee singlecoil datasets.
@@ -169,11 +182,13 @@ def load_fastmri_split(global_batch_size,
 
   # Check if data directories exist because glob will not raise an error
   if not os.path.exists(os.path.join(data_dir, _TRAIN_DIR)):
-    raise NotADirectoryError('Directory not found: {}'.format(
-        os.path.join(data_dir, _TRAIN_DIR)))
+    raise NotADirectoryError(
+      'Directory not found: {}'.format(os.path.join(data_dir, _TRAIN_DIR))
+    )
   if not os.path.exists(os.path.join(data_dir, _VAL_DIR)):
-    raise NotADirectoryError('Directory not found: {}'.format(
-        os.path.join(data_dir, _VAL_DIR)))
+    raise NotADirectoryError(
+      'Directory not found: {}'.format(os.path.join(data_dir, _VAL_DIR))
+    )
 
   if split in ['train', 'eval_train']:
     file_pattern = os.path.join(data_dir, _TRAIN_DIR, '*.h5')
@@ -190,10 +205,8 @@ def load_fastmri_split(global_batch_size,
   shuffle = is_train or split == 'eval_train'
   ds = tf.data.Dataset.from_tensor_slices(h5_paths)
   ds = ds.interleave(
-      _create_generator,
-      cycle_length=32,
-      block_length=64,
-      num_parallel_calls=16)
+    _create_generator, cycle_length=32, block_length=64, num_parallel_calls=16
+  )
   if is_train:
     ds = ds.cache()
 
@@ -201,7 +214,8 @@ def load_fastmri_split(global_batch_size,
     if shuffle:
       process_rng = tf.cast(jax.random.fold_in(shuffle_rng, 0), tf.int64)
       process_rng = tf.random.experimental.stateless_fold_in(
-          process_rng, example_index)
+        process_rng, example_index
+      )
     else:
       # NOTE(dsuo): we use fixed randomness for eval.
       process_rng = tf.cast(jax.random.PRNGKey(_EVAL_SEED), tf.int64)
@@ -211,9 +225,8 @@ def load_fastmri_split(global_batch_size,
 
   if shuffle:
     ds = ds.shuffle(
-        16 * global_batch_size,
-        seed=shuffle_rng[0],
-        reshuffle_each_iteration=True)
+      16 * global_batch_size, seed=shuffle_rng[0], reshuffle_each_iteration=True
+    )
     if is_train:
       ds = ds.repeat()
 
@@ -231,7 +244,8 @@ def load_fastmri_split(global_batch_size,
       ds = ds.repeat()
     ds = ds.prefetch(10)
     return map(
-        functools.partial(
-            data_utils.shard_and_maybe_pad_np,
-            global_batch_size=global_batch_size),
-        ds)
+      functools.partial(
+        data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size
+      ),
+      ds,
+    )

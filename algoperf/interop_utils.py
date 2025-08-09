@@ -6,7 +6,8 @@ from algoperf import spec
 
 def jax_to_pytorch(x: spec.Tensor, take_ownership: bool = False) -> spec.Tensor:
   return torch.utils.dlpack.from_dlpack(
-      jax.dlpack.to_dlpack(x, take_ownership=take_ownership))
+    jax.dlpack.to_dlpack(x, take_ownership=take_ownership)
+  )
 
 
 def pytorch_to_jax(x: torch.Tensor) -> spec.Tensor:

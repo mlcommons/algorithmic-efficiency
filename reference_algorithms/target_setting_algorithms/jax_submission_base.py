@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import jax
 import jax.numpy as jnp
 import optax
+from jax import lax
 
 from algoperf import jax_sharding_utils
 from algoperf import spec
@@ -24,17 +25,19 @@ def train_step(workload,
   def _loss_fn(params):
     """Loss function used for training."""
     logits, new_model_state = workload.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        update_batch_norm=True)
+      params,
+      batch,
+      model_state,
+      spec.ForwardPassMode.TRAIN,
+      rng,
+      update_batch_norm=True,
+    )
     loss_dict = workload.loss_fn(
-        label_batch=batch['targets'],
-        logits_batch=logits,
-        mask_batch=batch.get('weights'),
-        label_smoothing=label_smoothing)
+      label_batch=batch['targets'],
+      logits_batch=logits,
+      mask_batch=batch.get('weights'),
+      label_smoothing=label_smoothing,
+    )
     summed_loss = loss_dict['summed']
     n_valid_examples = loss_dict['n_valid_examples']
     return summed_loss, (n_valid_examples, new_model_state)
@@ -47,32 +50,35 @@ def train_step(workload,
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
   grad_norm = jnp.sqrt(
-      sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
+    sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad))
+  )
 
   if grad_clip is not None:
     grad_scaling_factor = grad_clip / (grad_norm + _GRAD_CLIP_EPS)
     grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
     grad = jax.tree.map(lambda x: x * grad_scaling_factor, grad)
 
-  updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-                                               current_param_container)
+  updates, new_optimizer_state = opt_update_fn(
+    grad, optimizer_state, current_param_container
+  )
   updated_params = optax.apply_updates(current_param_container, updates)
   return new_optimizer_state, updated_params, new_model_state, loss, grad_norm
 
 
 def update_params(
-    workload: spec.Workload,
-    current_param_container: spec.ParameterContainer,
-    current_params_types: spec.ParameterTypeTree,
-    model_state: spec.ModelAuxiliaryState,
-    hyperparameters: spec.Hyperparameters,
-    batch: Dict[str, spec.Tensor],
-    loss_type: spec.LossType,
-    optimizer_state: spec.OptimizerState,
-    eval_results: List[Tuple[int, float]],
-    global_step: int,
-    rng: spec.RandomState,
-    train_state: Optional[Dict[str, Any]] = None) -> spec.UpdateReturn:
+  workload: spec.Workload,
+  current_param_container: spec.ParameterContainer,
+  current_params_types: spec.ParameterTypeTree,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  batch: Dict[str, spec.Tensor],
+  loss_type: spec.LossType,
+  optimizer_state: spec.OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: spec.RandomState,
+  train_state: Optional[Dict[str, Any]] = None,
+) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params, updated_model_state)."""
   del current_params_types
   del loss_type
@@ -129,8 +135,9 @@ def update_params(
       label_smoothing)
 
   # Log loss, grad_norm.
-  if ((global_step <= 100 or global_step % 500 == 0) and
-      workload.metrics_logger is not None):
+  if (
+    global_step <= 100 or global_step % 500 == 0
+  ) and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
         {
             'loss': loss.item(),
@@ -139,16 +146,18 @@ def update_params(
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 
-def prepare_for_eval(workload: spec.Workload,
-                     current_param_container: spec.ParameterContainer,
-                     current_params_types: spec.ParameterTypeTree,
-                     model_state: spec.ModelAuxiliaryState,
-                     hyperparameters: spec.Hyperparameters,
-                     loss_type: spec.LossType,
-                     optimizer_state: spec.OptimizerState,
-                     eval_results: List[Tuple[int, float]],
-                     global_step: int,
-                     rng: spec.RandomState) -> spec.UpdateReturn:
+def prepare_for_eval(
+  workload: spec.Workload,
+  current_param_container: spec.ParameterContainer,
+  current_params_types: spec.ParameterTypeTree,
+  model_state: spec.ModelAuxiliaryState,
+  hyperparameters: spec.Hyperparameters,
+  loss_type: spec.LossType,
+  optimizer_state: spec.OptimizerState,
+  eval_results: List[Tuple[int, float]],
+  global_step: int,
+  rng: spec.RandomState,
+) -> spec.UpdateReturn:
   """Return (updated_optimizer_state, updated_params)."""
   del workload
   del hyperparameters

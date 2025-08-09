@@ -12,7 +12,6 @@ import torch
 
 from algoperf import data_utils
 from algoperf import param_utils
-from algoperf import jax_sharding_utils
 from algoperf import spec
 from algoperf.workloads.librispeech_conformer import metrics
 from algoperf.workloads.librispeech_conformer import workload
@@ -22,10 +21,9 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax import models
 
 
 class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
-
-  def __init__(self,
-               tokenizer_vocab_path: Optional[str] = None,
-               use_specaug: bool = True) -> None:
+  def __init__(
+    self, tokenizer_vocab_path: Optional[str] = None, use_specaug: bool = True
+  ) -> None:
     super().__init__()
     self.metrics_bundle = metrics.get_metrics_bundle(tokenizer_vocab_path)
     self.use_specaug = use_specaug
@@ -37,7 +35,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
   def eval_num_workers(self) -> int:
     if self._eval_num_workers is None:
       raise ValueError(
-          'eval_num_workers property must be set before workload is used.')
+        'eval_num_workers property must be set before workload is used.'
+      )
     return self._eval_num_workers
 
   @eval_num_workers.setter
@@ -57,13 +56,12 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return 1.0
 
   def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    self,
+    rng: spec.RandomState,
+  ) -> spec.ModelInitState:
     """Conformer model init function.
 
-    Here we use dropout_rate as *_residual_dropout_rate, and aux_dropout_rate as
+    Here we use dropout_rate as *_residual_dropout_rate, and for
     input_dropout_rate.
     """
     if self.use_gelu:
@@ -71,24 +69,22 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     else:
       activation_function_name = 'swish'
     model_config = models.ConformerConfig(
-        attention_residual_dropout_rate=dropout_rate,
-        feed_forward_residual_dropout_rate=dropout_rate,
-        input_dropout_rate=aux_dropout_rate,
-        use_specaug=self.use_specaug,
-        attention_temperature=self.attention_temperature,
-        use_post_layer_norm=self.use_post_layer_norm,
-        activation_function_name=activation_function_name)
+      use_specaug=self.use_specaug,
+      attention_temperature=self.attention_temperature,
+      use_post_layer_norm=self.use_post_layer_norm,
+      activation_function_name=activation_function_name,
+    )
+
     self._model = models.Conformer(model_config)
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [np.zeros((2, *x), jnp.float32) for x in input_shape]
 
     model_init_fn = jax.jit(functools.partial(self._model.init, train=False))
 
-    params_rng, dropout_rng = jax.random.split(rng, 2)
-    variables = model_init_fn({'params': params_rng, 'dropout': dropout_rng},
-                              *fake_input_batch)
+    params_rng, _ = jax.random.split(rng, 2)
+    variables = model_init_fn({'params': params_rng}, *fake_input_batch)
 
-    model_state, params = pop(variables, "params")
+    model_state, params = pop(variables, 'params')
 
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
@@ -103,47 +99,52 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return param_key == 'Dense_0'
 
   def model_fn(
-      self,
-      params: spec.ParameterContainer,
-      augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      mode: spec.ForwardPassMode,
-      rng: spec.RandomState,
-      update_batch_norm: bool,
-      use_running_average_bn: Optional[bool] = None
+    self,
+    params: spec.ParameterContainer,
+    augmented_and_preprocessed_input_batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    mode: spec.ForwardPassMode,
+    rng: spec.RandomState,
+    update_batch_norm: bool,
+    use_running_average_bn: Optional[bool] = None,
+    dropout_rate: Optional[float] = models.DROPOUT_RATE,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     variables = {'params': params, **model_state}
     inputs, input_paddings = augmented_and_preprocessed_input_batch['inputs']
     is_train_mode = mode == spec.ForwardPassMode.TRAIN
     if update_batch_norm or is_train_mode:
       (logits, logit_paddings), new_model_state = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=True,
-          rngs={'dropout' : rng},
-          mutable=['batch_stats'],
-          use_running_average_bn=use_running_average_bn)
+        variables,
+        inputs,
+        input_paddings,
+        train=True,
+        rngs={'dropout': rng},
+        mutable=['batch_stats'],
+        use_running_average_bn=use_running_average_bn,
+        dropout_rate=dropout_rate,
+      )
       return (logits, logit_paddings), new_model_state
     else:
       logits, logit_paddings = self._model.apply(
-          variables,
-          inputs,
-          input_paddings,
-          train=False,
-          mutable=False,
-          use_running_average_bn=use_running_average_bn)
+        variables,
+        inputs,
+        input_paddings,
+        train=False,
+        mutable=False,
+        use_running_average_bn=use_running_average_bn,
+      )
       return (logits, logit_paddings), model_state
 
   def _build_input_queue(
-      self,
-      data_rng: spec.RandomState,
-      split: str,
-      data_dir: str,
-      global_batch_size: int,
-      cache: Optional[bool] = None,
-      repeat_final_dataset: Optional[bool] = None,
-      num_batches: Optional[int] = None) -> Iterator[Dict[str, spec.Tensor]]:
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ) -> Iterator[Dict[str, spec.Tensor]]:
     del data_rng
     del cache
     del repeat_final_dataset
@@ -162,39 +163,42 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     ds = LibriSpeechDataset(split=split, data_dir=data_dir)
 
     dataloader = data_utils.cycle(
-        torch.utils.data.DataLoader(
-            ds,
-            batch_size=global_batch_size,
-            shuffle=train,
-            sampler=None,
-            num_workers=4,
-            prefetch_factor=10,
-            pin_memory=False,
-            drop_last=train,
-        ))
+      torch.utils.data.DataLoader(
+        ds,
+        batch_size=global_batch_size,
+        shuffle=train,
+        sampler=None,
+        num_workers=4,
+        prefetch_factor=10,
+        pin_memory=False,
+        drop_last=train,
+      )
+    )
 
     for batch in iter(dataloader):
       inputs, input_paddings = batch['inputs']
       targets, target_paddings = batch['targets']
 
       numpy_batch = {
-          'inputs': (inputs.numpy(), input_paddings.numpy()),
-          'targets': (targets.numpy(), target_paddings.numpy()),
+        'inputs': (inputs.numpy(), input_paddings.numpy()),
+        'targets': (targets.numpy(), target_paddings.numpy()),
       }
 
       # Use data_utils.shard_and_maybe_pad_np to handle sharding
       padded_batch = data_utils.shard_and_maybe_pad_np(
-          numpy_batch, padding_value=1.0)
+        numpy_batch, padding_value=1.0
+      )
       yield padded_batch
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.
   def loss_fn(
-      self,
-      label_batch: Tuple[spec.Tensor, spec.Tensor],  # (label_batch, padding)
-      logits_batch: Tuple[spec.Tensor, spec.Tensor],  # (logits_batch, padding)
-      mask_batch: Optional[spec.Tensor] = None,
-      label_smoothing: float = 0.0) -> Dict[str, spec.Tensor]:  # differentiable
+    self,
+    label_batch: Tuple[spec.Tensor, spec.Tensor],  # (label_batch, padding)
+    logits_batch: Tuple[spec.Tensor, spec.Tensor],  # (logits_batch, padding)
+    mask_batch: Optional[spec.Tensor] = None,
+    label_smoothing: float = 0.0,
+  ) -> Dict[str, spec.Tensor]:  # differentiable
     """Evaluate the (masked) loss function at (label_batch, logits_batch).
 
     Return {'summed': scalar summed loss, 'n_valid_examples': scalar number of
@@ -205,10 +209,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     logits, logit_paddings = logits_batch
     targets, target_paddings = label_batch
     logprobs = nn.log_softmax(logits)
-    per_example_losses = self.ctc_loss(logprobs,
-                                       logit_paddings,
-                                       targets,
-                                       target_paddings)
+    per_example_losses = self.ctc_loss(
+      logprobs, logit_paddings, targets, target_paddings
+    )
     # mask_batch is assumed to be shape [batch].
     if mask_batch is not None:
       per_example_losses *= mask_batch
@@ -218,23 +221,26 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     n_valid_examples = jnp.maximum(mask_batch.sum(), 1)
     summed_loss = per_example_losses.sum()
     return {
-        'summed': summed_loss,
-        'n_valid_examples': n_valid_examples,
-        'per_example': per_example_losses,
+      'summed': summed_loss,
+      'n_valid_examples': n_valid_examples,
+      'per_example': per_example_losses,
     }
 
-  def ctc_loss(self,
-               logits: spec.Tensor,
-               logit_paddings: spec.Tensor,
-               labels: spec.Tensor,
-               label_paddings: spec.Tensor,
-               blank_id: int = 0) -> spec.Tensor:
+  def ctc_loss(
+    self,
+    logits: spec.Tensor,
+    logit_paddings: spec.Tensor,
+    labels: spec.Tensor,
+    label_paddings: spec.Tensor,
+    blank_id: int = 0,
+  ) -> spec.Tensor:
     return optax.ctc_loss(
-        logits=logits,
-        logit_paddings=logit_paddings,
-        labels=labels,
-        label_paddings=label_paddings,
-        blank_id=blank_id)
+      logits=logits,
+      logit_paddings=logit_paddings,
+      labels=labels,
+      label_paddings=label_paddings,
+      blank_id=blank_id,
+    )
 
   # Adapted from lingvo's greedy decoding logic here:
   # https://github.com/tensorflow/lingvo/blob/2ee26814c57b7dcead3f0382170f2f3da006f810/lingvo/jax/layers/ctc_objectives.py#L138.
@@ -245,21 +251,22 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     c = jnp.less_equal(b, lengths[:, jnp.newaxis]).astype(lengths.dtype)
     return c
 
-  def collapse_and_remove_blanks(self,
-                                 labels: spec.Tensor,
-                                 seq_length: spec.Tensor,
-                                 blank_id: int = 0) -> spec.Tensor:
+  def collapse_and_remove_blanks(
+    self, labels: spec.Tensor, seq_length: spec.Tensor, blank_id: int = 0
+  ) -> spec.Tensor:
     b, t = labels.shape
     # Zap out blank.
     blank_mask = 1 - jnp.equal(labels, blank_id)
     labels = (labels * blank_mask).astype(labels.dtype)
 
     # Mask labels that don't equal previous label.
-    label_mask = jnp.concatenate([
+    label_mask = jnp.concatenate(
+      [
         jnp.ones_like(labels[:, :1], dtype=jnp.int32),
         jnp.not_equal(labels[:, 1:], labels[:, :-1]),
-    ],
-                                 axis=1)
+      ],
+      axis=1,
+    )
 
     # Filter labels that aren't in the original sequence.
     maxlen = labels.shape[1]
@@ -295,12 +302,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     # Reshape back to square batch.
     batch_size = labels.shape[0]
     new_shape = [batch_size, new_maxlen]
-    return (jnp.reshape(flat, new_shape).astype(labels.dtype),
-            new_seq_len.astype(seq_length.dtype))
+    return (
+      jnp.reshape(flat, new_shape).astype(labels.dtype),
+      new_seq_len.astype(seq_length.dtype),
+    )
 
   def greedy_decode(
-      self, logits: spec.Tensor,
-      logit_paddings: spec.Tensor) -> Tuple[spec.Tensor, spec.Tensor]:
+    self, logits: spec.Tensor, logit_paddings: spec.Tensor
+  ) -> Tuple[spec.Tensor, spec.Tensor]:
     per_frame_max = jnp.argmax(logits, axis=-1)
     seqlen = jnp.sum(1.0 - logit_paddings, axis=-1)
     hyp, _ = self.collapse_and_remove_blanks(per_frame_max, seqlen, blank_id=0)
@@ -324,12 +333,13 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       model_state: spec.ModelAuxiliaryState,
       rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     (logits, logit_paddings), _ = self.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.EVAL,
-        rng,
-        update_batch_norm=False)
+      params,
+      batch,
+      model_state,
+      spec.ForwardPassMode.EVAL,
+      rng,
+      update_batch_norm=False,
+    )
 
     decoded, decoded_paddings = self.greedy_decode(logits, logit_paddings)
     loss = self.loss_fn(batch['targets'], (logits, logit_paddings))
@@ -373,22 +383,25 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
     return metrics_bundle
 
-  def _eval_model_on_split(self,
-                           split: str,
-                           num_examples: int,
-                           global_batch_size: int,
-                           params: spec.ParameterContainer,
-                           model_state: spec.ModelAuxiliaryState,
-                           rng: spec.RandomState,
-                           data_dir: str,
-                           global_step: int = 0) -> Dict[str, float]:
+  def _eval_model_on_split(
+    self,
+    split: str,
+    num_examples: int,
+    global_batch_size: int,
+    params: spec.ParameterContainer,
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+    data_dir: str,
+    global_step: int = 0,
+  ) -> Dict[str, float]:
     """Run a full evaluation of the model."""
     del global_step
 
     num_batches = int(math.ceil(num_examples / global_batch_size))
     if split not in self._eval_iters:
       self._eval_iters[split] = self._build_input_queue(
-          rng, split, data_dir, global_batch_size, num_batches=num_batches)
+        rng, split, data_dir, global_batch_size, num_batches=num_batches
+      )
 
     metrics_report = None
     for _ in range(num_batches):
@@ -407,8 +420,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
 
 
 class LibriSpeechConformerAttentionTemperatureWorkload(
-    LibriSpeechConformerWorkload):
-
+  LibriSpeechConformerWorkload
+):
   @property
   def attention_temperature(self) -> float:
     return 1.6
@@ -423,7 +436,6 @@ class LibriSpeechConformerAttentionTemperatureWorkload(
 
 
 class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
-
   @property
   def use_post_layer_norm(self) -> bool:
     return False
@@ -438,7 +450,6 @@ class LibriSpeechConformerLayerNormWorkload(LibriSpeechConformerWorkload):
 
 
 class LibriSpeechConformerGeluWorkload(LibriSpeechConformerWorkload):
-
   @property
   def use_gelu(self) -> bool:
     return True

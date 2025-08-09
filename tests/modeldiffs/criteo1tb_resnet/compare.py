@@ -9,10 +9,12 @@ import numpy as np
 import torch
 
 from algoperf import spec
-from algoperf.workloads.criteo1tb.criteo1tb_jax.workload import \
-    Criteo1TbDlrmSmallResNetWorkload as JaxWorkload
-from algoperf.workloads.criteo1tb.criteo1tb_pytorch.workload import \
-    Criteo1TbDlrmSmallResNetWorkload as PyTorchWorkload
+from algoperf.workloads.criteo1tb.criteo1tb_jax.workload import (
+  Criteo1TbDlrmSmallResNetWorkload as JaxWorkload,
+)
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.workload import (
+  Criteo1TbDlrmSmallResNetWorkload as PyTorchWorkload,
+)
 from tests.modeldiffs.diff import ModelDiffRunner
 
 
@@ -65,9 +67,9 @@ if __name__ == '__main__':
   pytorch_workload = PyTorchWorkload()
 
   pytorch_batch = {
-      'inputs': torch.ones((2, 13 + 26)),
-      'targets': torch.randint(low=0, high=1, size=(2,)),
-      'weights': torch.ones(2),
+    'inputs': torch.ones((2, 13 + 26)),
+    'targets': torch.randint(low=0, high=1, size=(2,)),
+    'weights': torch.ones(2),
   }
 
   init_fake_batch_size = 2
@@ -80,23 +82,26 @@ if __name__ == '__main__':
 
   # Test outputs for identical weights and inputs.
   pytorch_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=pytorch_batch,
-      model_state=None,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=None,
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=pytorch_batch,
+    model_state=None,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=None,
+    update_batch_norm=False,
+  )
 
   jax_model_kwargs = dict(
-      augmented_and_preprocessed_input_batch=jax_batch,
-      mode=spec.ForwardPassMode.EVAL,
-      rng=jax.random.PRNGKey(0),
-      update_batch_norm=False)
+    augmented_and_preprocessed_input_batch=jax_batch,
+    mode=spec.ForwardPassMode.EVAL,
+    rng=jax.random.PRNGKey(0),
+    update_batch_norm=False,
+  )
 
   ModelDiffRunner(
-      jax_workload=jax_workload,
-      pytorch_workload=pytorch_workload,
-      jax_model_kwargs=jax_model_kwargs,
-      pytorch_model_kwargs=pytorch_model_kwargs,
-      key_transform=key_transform,
-      sd_transform=sd_transform,
-      out_transform=None).run()
+    jax_workload=jax_workload,
+    pytorch_workload=pytorch_workload,
+    jax_model_kwargs=jax_model_kwargs,
+    pytorch_model_kwargs=pytorch_model_kwargs,
+    key_transform=key_transform,
+    sd_transform=sd_transform,
+    out_transform=None,
+  ).run()

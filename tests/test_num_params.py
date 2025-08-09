@@ -5,48 +5,59 @@ import jraph
 import pytest
 import torch
 
-from algoperf.workloads.criteo1tb.criteo1tb_jax.models import \
-    DlrmSmall as JaxDlrmSmall
-from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models import \
-    DlrmSmall as PyTorchDlrmSmall
-from algoperf.workloads.imagenet_resnet.imagenet_jax.models import \
-    ResNet18 as JaxResNet_c10
-from algoperf.workloads.imagenet_resnet.imagenet_jax.models import \
-    ResNet50 as JaxResNet
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
-    resnet18 as PyTorchResNet_c10
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import \
-    resnet50 as PyTorchResNet
+from algoperf.workloads.criteo1tb.criteo1tb_jax.models import (
+  DlrmSmall as JaxDlrmSmall,
+)
+from algoperf.workloads.criteo1tb.criteo1tb_pytorch.models import (
+  DlrmSmall as PyTorchDlrmSmall,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_jax.models import (
+  ResNet18 as JaxResNet_c10,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_jax.models import (
+  ResNet50 as JaxResNet,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import (
+  resnet18 as PyTorchResNet_c10,
+)
+from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import (
+  resnet50 as PyTorchResNet,
+)
 from algoperf.workloads.imagenet_vit.imagenet_jax.models import ViT as JaxViT
-from algoperf.workloads.imagenet_vit.imagenet_pytorch.models import \
-    ViT as PyTorchViT
-from algoperf.workloads.librispeech_conformer.librispeech_jax.models import \
-    Conformer as JaxConformer
-from algoperf.workloads.librispeech_conformer.librispeech_jax.models import \
-    ConformerConfig as JaxConformerConfig
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
-    ConformerConfig as PytorchConformerConfig
-from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import \
-    ConformerEncoderDecoder as PytorchConformer
+from algoperf.workloads.imagenet_vit.imagenet_pytorch.models import (
+  ViT as PyTorchViT,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_jax.models import (
+  Conformer as JaxConformer,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_jax.models import (
+  ConformerConfig as JaxConformerConfig,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import (
+  ConformerConfig as PytorchConformerConfig,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_pytorch.models import (
+  ConformerEncoderDecoder as PytorchConformer,
+)
 from algoperf.workloads.mnist.mnist_jax.workload import _Model as JaxMLP
-from algoperf.workloads.mnist.mnist_pytorch.workload import \
-    _Model as PyTorchMLP
+from algoperf.workloads.mnist.mnist_pytorch.workload import _Model as PyTorchMLP
 from algoperf.workloads.ogbg.ogbg_jax.models import GNN as JaxGNN
 from algoperf.workloads.ogbg.ogbg_pytorch.models import GNN as PyTorchGNN
 from algoperf.workloads.wmt.wmt_jax.models import Transformer as JaxTransformer
 from algoperf.workloads.wmt.wmt_jax.models import TransformerConfig
-from algoperf.workloads.wmt.wmt_pytorch.models import \
-    Transformer as PyTorchTransformer
+from algoperf.workloads.wmt.wmt_pytorch.models import (
+  Transformer as PyTorchTransformer,
+)
 
 WORKLOADS = [
-    'mnist',
-    'cifar',
-    'criteo1tb',
-    'imagenet_resnet',
-    'imagenet_vit',
-    'wmt',
-    'ogbg',
-    'librispeech_conformer',
+  'mnist',
+  'cifar',
+  'criteo1tb',
+  'imagenet_resnet',
+  'imagenet_vit',
+  'wmt',
+  'ogbg',
+  'librispeech_conformer',
 ]
 
 
@@ -56,7 +67,8 @@ def test_matching_num_params(workload):
   # Count parameters of both models.
   num_jax_params = sum(x.size for x in jax.tree_util.tree_leaves(jax_model))
   num_pytorch_params = sum(
-      p.numel() for p in pytorch_model.parameters() if p.requires_grad)
+    p.numel() for p in pytorch_model.parameters() if p.requires_grad
+  )
   assert num_jax_params == num_pytorch_params
 
 
@@ -72,8 +84,9 @@ def get_models(workload):
     # Init Jax model.
     input_shape = (1, 32, 32, 3)
     model_init = jax.jit(JaxResNet_c10(num_classes=10, dtype=jnp.float32).init)
-    jax_model = model_init(init_rngs, jnp.ones(input_shape,
-                                               jnp.float32))["params"]
+    jax_model = model_init(init_rngs, jnp.ones(input_shape, jnp.float32))[
+      'params'
+    ]
     # Init PyTorch model.
     pytorch_model = PyTorchResNet_c10(num_classes=10)
 
@@ -85,35 +98,38 @@ def get_models(workload):
     vocab_size = 32 * 128 * 1024
     input_shape = (1, 39)
     model_init = JaxDlrmSmall(
-        vocab_size=vocab_size,
-        num_dense_features=13,
-        mlp_bottom_dims=mlp_bottom_dims,
-        mlp_top_dims=mlp_top_dims,
-        embed_dim=embed_dim).init
-    jax_model = model_init(init_rngs, jnp.ones(input_shape, jnp.float32),
-                           False)['params']
+      vocab_size=vocab_size,
+      num_dense_features=13,
+      mlp_bottom_dims=mlp_bottom_dims,
+      mlp_top_dims=mlp_top_dims,
+      embed_dim=embed_dim,
+    ).init
+    jax_model = model_init(
+      init_rngs, jnp.ones(input_shape, jnp.float32), False
+    )['params']
     # Init PyTorch model.
     pytorch_model = PyTorchDlrmSmall(
-        vocab_size=vocab_size,
-        num_dense_features=13,
-        mlp_bottom_dims=mlp_bottom_dims,
-        mlp_top_dims=mlp_top_dims,
-        embed_dim=embed_dim)
+      vocab_size=vocab_size,
+      num_dense_features=13,
+      mlp_bottom_dims=mlp_bottom_dims,
+      mlp_top_dims=mlp_top_dims,
+      embed_dim=embed_dim,
+    )
 
   elif workload == 'imagenet_resnet':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
-    jax_model = JaxResNet(
-        num_classes=1000,
-        dtype=jnp.float32).init(init_rngs, jnp.ones(input_shape,
-                                                    jnp.float32))['params']
+    jax_model = JaxResNet(num_classes=1000, dtype=jnp.float32).init(
+      init_rngs, jnp.ones(input_shape, jnp.float32)
+    )['params']
     # Init PyTorch model.
     pytorch_model = PyTorchResNet()
   elif workload == 'imagenet_vit':
     # Init Jax model.
     input_shape = (1, 224, 224, 3)
     jax_model = JaxViT(num_classes=1000).init(
-        init_rngs, jnp.ones(input_shape, jnp.float32))['params']
+      init_rngs, jnp.ones(input_shape, jnp.float32)
+    )['params']
     # Init PyTorch model.
     pytorch_model = PyTorchViT()
   elif workload == 'librispeech_conformer':
@@ -123,8 +139,9 @@ def get_models(workload):
     # Init Jax model
     input_shape = [(320000,), (320000,)]
     fake_input_batch = [jnp.zeros((2, *x), jnp.float32) for x in input_shape]
-    jax_model = jax_model.init(
-        init_rngs, train=False, *fake_input_batch)["params"]
+    jax_model = jax_model.init(init_rngs, train=False, *fake_input_batch)[
+      'params'
+    ]
 
     # Run model once to initialize lazy layers
     wave = torch.randn(2, 320000)
@@ -136,23 +153,26 @@ def get_models(workload):
     input_shape = (16, 256)
     target_shape = (16, 256)
     jax_model = JaxTransformer(TransformerConfig).init(
-        init_rngs,
-        jnp.ones(input_shape, jnp.float32),
-        jnp.ones(target_shape, jnp.float32))['params']
+      init_rngs,
+      jnp.ones(input_shape, jnp.float32),
+      jnp.ones(target_shape, jnp.float32),
+    )['params']
     # Init PyTorch model.
     pytorch_model = PyTorchTransformer()
   elif workload == 'ogbg':
     # Init Jax model.
     fake_batch = jraph.GraphsTuple(
-        n_node=jnp.asarray([1]),
-        n_edge=jnp.asarray([1]),
-        nodes=jnp.ones((1, 9)),
-        edges=jnp.ones((1, 3)),
-        globals=jnp.zeros((1, 128)),
-        senders=jnp.asarray([0]),
-        receivers=jnp.asarray([0]))
+      n_node=jnp.asarray([1]),
+      n_edge=jnp.asarray([1]),
+      nodes=jnp.ones((1, 9)),
+      edges=jnp.ones((1, 3)),
+      globals=jnp.zeros((1, 128)),
+      senders=jnp.asarray([0]),
+      receivers=jnp.asarray([0]),
+    )
     jax_model = JaxGNN(num_outputs=128).init(
-        init_rngs, fake_batch, train=False)['params']
+      init_rngs, fake_batch, train=False
+    )['params']
     # Init PyTorch model.
     pytorch_model = PyTorchGNN(num_outputs=128)
   else:

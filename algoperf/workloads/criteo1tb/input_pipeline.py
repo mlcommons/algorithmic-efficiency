@@ -19,32 +19,32 @@ _NUM_DAY_23_FILES = 36
 # Raw vocab sizes from
 # https://cloud.google.com/tpu/docs/tutorials/dlrm-dcn-2.x#run-model.
 _VOCAB_SIZES = [
-    39884406,
-    39043,
-    17289,
-    7420,
-    20263,
-    3,
-    7120,
-    1543,
-    63,
-    38532951,
-    2953546,
-    403346,
-    10,
-    2208,
-    11938,
-    155,
-    4,
-    976,
-    14,
-    39979771,
-    25641295,
-    39664984,
-    585935,
-    12972,
-    108,
-    36,
+  39884406,
+  39043,
+  17289,
+  7420,
+  20263,
+  3,
+  7120,
+  1543,
+  63,
+  38532951,
+  2953546,
+  403346,
+  10,
+  2208,
+  11938,
+  155,
+  4,
+  976,
+  14,
+  39979771,
+  25641295,
+  39664984,
+  585935,
+  12972,
+  108,
+  36,
 ]
 
 
@@ -60,7 +60,8 @@ def _parse_example_fn(num_dense_features, example):
   categorical_defaults = [['00000000'] for _ in range(len(_VOCAB_SIZES))]
   record_defaults = label_defaults + int_defaults + categorical_defaults
   fields = tf.io.decode_csv(
-      example, record_defaults, field_delim='\t', na_value='-1')
+    example, record_defaults, field_delim='\t', na_value='-1'
+  )
 
   num_labels = 1
   features = {}
@@ -78,20 +79,24 @@ def _parse_example_fn(num_dense_features, example):
     # We append the column index to the string to make the same id in different
     # columns unique.
     cat_features.append(
-        tf.strings.to_hash_bucket_fast(field + str(idx), _VOCAB_SIZES[idx]))
+      tf.strings.to_hash_bucket_fast(field + str(idx), _VOCAB_SIZES[idx])
+    )
   cat_features = tf.cast(
-      tf.stack(cat_features, axis=1), dtype=int_features.dtype)
+    tf.stack(cat_features, axis=1), dtype=int_features.dtype
+  )
   features['inputs'] = tf.concat([int_features, cat_features], axis=1)
   return features
 
 
-def get_criteo1tb_dataset(split: str,
-                          shuffle_rng,
-                          data_dir: str,
-                          num_dense_features: int,
-                          global_batch_size: int,
-                          num_batches: Optional[int] = None,
-                          repeat_final_dataset: bool = False):
+def get_criteo1tb_dataset(
+  split: str,
+  shuffle_rng,
+  data_dir: str,
+  num_dense_features: int,
+  global_batch_size: int,
+  num_batches: Optional[int] = None,
+  repeat_final_dataset: bool = False,
+):
   """Get the Criteo 1TB dataset for a given split."""
   num_test_files = _NUM_DAY_23_FILES // 2 + 1
   if split in ['train', 'eval_train']:
@@ -99,19 +104,20 @@ def get_criteo1tb_dataset(split: str,
   elif split == 'validation':
     # Assumes files are of the format day_23_04.
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
-        for s in range(num_test_files, _NUM_DAY_23_FILES)
+      os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
+      for s in range(num_test_files, _NUM_DAY_23_FILES)
     ]
   else:
     file_paths = [
-        os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
-        for s in range(0, num_test_files)
+      os.path.join(data_dir, f'day_23_{str(s).zfill(2)}')
+      for s in range(0, num_test_files)
     ]
 
   is_training = split == 'train'
   shuffle = is_training or split == 'eval_train'
   ds = tf.data.Dataset.list_files(
-      file_paths, shuffle=shuffle, seed=shuffle_rng[0])
+    file_paths, shuffle=shuffle, seed=shuffle_rng[0]
+  )
 
   if shuffle:
     ds = ds.shuffle(buffer_size=1024)
@@ -132,9 +138,10 @@ def get_criteo1tb_dataset(split: str,
     ds = ds.repeat()
 
   ds = map(
-      functools.partial(
-          data_utils.shard_and_maybe_pad_np,
-          global_batch_size=global_batch_size),
-      ds)
+    functools.partial(
+      data_utils.shard_and_maybe_pad_np, global_batch_size=global_batch_size
+    ),
+    ds,
+  )
 
   return ds
