@@ -73,16 +73,16 @@ class WmtWorkload(BaseWmtWorkload):
     }
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(
-          jax_sharding_utils.get_replicate_sharding(),  # params
-          jax_sharding_utils.get_batch_dim_sharding(),  # batch
-      ),
-      static_argnums=(0,),  # self
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),  # params
+      jax_sharding_utils.get_batch_dim_sharding(),  # batch
+    ),
+    static_argnums=(0,),  # self
   )
-  def eval_step(self,
-                params: spec.ParameterContainer,
-                batch: Dict[str, spec.Tensor]) -> Dict[str, spec.Tensor]:
+  def eval_step(
+    self, params: spec.ParameterContainer, batch: Dict[str, spec.Tensor]
+  ) -> Dict[str, spec.Tensor]:
     """Calculate evaluation metrics on a batch."""
     inputs = batch['inputs']
     targets = batch['targets']
@@ -101,35 +101,41 @@ class WmtWorkload(BaseWmtWorkload):
     }
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(
-          jax_sharding_utils.get_batch_dim_sharding(),  # inputs
-      ),
-      static_argnums=(
-          0,
-          2,
-      ))
-  def initialize_cache(self,
-                       inputs: spec.Tensor,
-                       max_decode_len: int = 256) -> Dict[str, spec.Tensor]:
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_batch_dim_sharding(),  # inputs
+    ),
+    static_argnums=(
+      0,
+      2,
+    ),
+  )
+  def initialize_cache(
+    self, inputs: spec.Tensor, max_decode_len: int = 256
+  ) -> Dict[str, spec.Tensor]:
     """Initialize a cache for a given input shape and max decode length."""
     config = models.TransformerConfig(deterministic=True, decode=True)
     target_shape = (inputs.shape[0], max_decode_len) + inputs.shape[2:]
     dummy_inputs = jax_sharding_utils.shard_along_batch_dim(
-        jnp.ones(inputs.shape, jnp.float32))
+      jnp.ones(inputs.shape, jnp.float32)
+    )
     dummy_targets = jax_sharding_utils.shard_along_batch_dim(
-        jnp.ones(target_shape, jnp.float32))
+      jnp.ones(target_shape, jnp.float32)
+    )
     initial_variables = models.Transformer(config).init(
-        jax.random.PRNGKey(0), dummy_inputs, dummy_targets)
+      jax.random.PRNGKey(0), dummy_inputs, dummy_targets
+    )
     return initial_variables['cache']
 
-  def predict_step(self,
-                   inputs: spec.Tensor,
-                   params: spec.ParameterContainer,
-                   cache: Dict[str, spec.Tensor],
-                   eos_id: int,
-                   max_decode_len: int,
-                   beam_size: int = 4) -> spec.Tensor:
+  def predict_step(
+    self,
+    inputs: spec.Tensor,
+    params: spec.ParameterContainer,
+    cache: Dict[str, spec.Tensor],
+    eos_id: int,
+    max_decode_len: int,
+    beam_size: int = 4,
+  ) -> spec.Tensor:
     """Predict translation with fast decoding beam search on a batch."""
     config = replace(self._eval_model.config, decode=True)
     # Prepare transformer fast-decoder call for beam search: for beam search, we
@@ -201,22 +207,21 @@ class WmtWorkload(BaseWmtWorkload):
       cache = self.initialize_cache(pred_batch['inputs'])
       if jitted_predict_step is None:
         jitted_predict_step = jax.jit(
-            self.predict_step,
-            in_shardings=(
-                jax_sharding_utils.get_batch_dim_sharding(),  # inputs
-                jax_sharding_utils.get_replicate_sharding(),  # params
-                jax_sharding_utils.get_replicate_sharding(),  # cache
-            ),
-            static_argnums=(
-                3,  # eos_id
-                4,  # max_decode_len,
-                5,  # beam_size
-            ))
-      predicted = jitted_predict_step(pred_batch['inputs'],
-                                      params,
-                                      cache,
-                                      decode.EOS_ID,
-                                      max_predict_length)
+          self.predict_step,
+          in_shardings=(
+            jax_sharding_utils.get_batch_dim_sharding(),  # inputs
+            jax_sharding_utils.get_replicate_sharding(),  # params
+            jax_sharding_utils.get_replicate_sharding(),  # cache
+          ),
+          static_argnums=(
+            3,  # eos_id
+            4,  # max_decode_len,
+            5,  # beam_size
+          ),
+        )
+      predicted = jitted_predict_step(
+        pred_batch['inputs'], params, cache, decode.EOS_ID, max_predict_length
+      )
       # predicted = _to_host(predicted)
       # targets = _to_host(pred_batch['targets'])
       targets = pred_batch['targets']
@@ -237,10 +242,11 @@ class WmtWorkload(BaseWmtWorkload):
     return bleu_score
 
   def init_model_fn(
-      self,
-      rng: spec.RandomState,
-      dropout_rate: Optional[float] = None,
-      aux_dropout_rate: Optional[float] = None) -> spec.ModelInitState:
+    self,
+    rng: spec.RandomState,
+    dropout_rate: Optional[float] = None,
+    aux_dropout_rate: Optional[float] = None,
+  ) -> spec.ModelInitState:
     """aux_dropout_rate is used as attention_dropout_rate."""
 
     init_fake_batch_size = 8
@@ -269,10 +275,11 @@ class WmtWorkload(BaseWmtWorkload):
     sharded_inputs = jax_sharding_utils.shard_along_batch_dim(inputs)
     sharded_targets = jax_sharding_utils.shard_along_batch_dim(targets)
 
-    initial_variables = jax.jit(
-        self._eval_model.init)({'params': params_rng, 'dropout': dropout_rng},
-                               sharded_inputs,
-                               sharded_targets)
+    initial_variables = jax.jit(self._eval_model.init)(
+      {'params': params_rng, 'dropout': dropout_rng},
+      sharded_inputs,
+      sharded_targets,
+    )
 
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)

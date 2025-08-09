@@ -63,25 +63,27 @@ def init_optimizer_state(
   return optimizer_state, opt_update_fn
 
 
-def train_step(workload,
-               opt_update_fn,
-               model_state,
-               optimizer_state,
-               current_param_container,
-               batch,
-               rng,
-               grad_clip,
-               label_smoothing):
-
+def train_step(
+  workload,
+  opt_update_fn,
+  model_state,
+  optimizer_state,
+  current_param_container,
+  batch,
+  rng,
+  grad_clip,
+  label_smoothing,
+):
   def _loss_fn(params):
     """Loss function used for training."""
     logits, new_model_state = workload.model_fn(
-        params,
-        batch,
-        model_state,
-        spec.ForwardPassMode.TRAIN,
-        rng,
-        update_batch_norm=True,)
+      params,
+      batch,
+      model_state,
+      spec.ForwardPassMode.TRAIN,
+      rng,
+      update_batch_norm=True,
+    )
     loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
       logits_batch=logits,
@@ -94,7 +96,8 @@ def train_step(workload,
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
-      current_param_container)
+    current_param_container
+  )
 
   # Compute local loss and gradients
   loss = summed_loss / n_valid_examples
@@ -109,8 +112,9 @@ def train_step(workload,
     grad_scaling_factor = jax.lax.clamp(min=0.0, x=grad_scaling_factor, max=1.0)
     grad = jax.tree.map(lambda x: x * grad_scaling_factor, grad)
 
-  updates, new_optimizer_state = opt_update_fn(grad, optimizer_state,
-                                             current_param_container)
+  updates, new_optimizer_state = opt_update_fn(
+    grad, optimizer_state, current_param_container
+  )
   updated_params = optax.apply_updates(current_param_container, updates)
   return new_optimizer_state, updated_params, new_model_state, loss, grad_norm
 
@@ -151,45 +155,52 @@ def update_params(
   sharded = NamedSharding(mesh, P('batch'))  # Partition along batch dimension
 
   jitted_train_step = jax.jit(
-      train_step,
-      static_argnums=(0, 1),
-      donate_argnums=(2, 3, 4),
-      in_shardings=(
-          # workload is static
-          # opt_update_fn is static
-          replicated,  # model_state
-          replicated,  # optimizer_state
-          replicated,  # current_param_container
-          sharded,  # batch
-          replicated,  # rng
-          replicated,  # grad_clip
-          replicated  # label_smoothing
-      ),
-      out_shardings=(
-          replicated,  # new_optimizer_state
-          replicated,  # updated_params
-          replicated,  # new_model_state
-          replicated,  # loss
-          replicated  # grad_norm
-      ))
+    train_step,
+    static_argnums=(0, 1),
+    donate_argnums=(2, 3, 4),
+    in_shardings=(
+      # workload is static
+      # opt_update_fn is static
+      replicated,  # model_state
+      replicated,  # optimizer_state
+      replicated,  # current_param_container
+      sharded,  # batch
+      replicated,  # rng
+      replicated,  # grad_clip
+      replicated,  # label_smoothing
+    ),
+    out_shardings=(
+      replicated,  # new_optimizer_state
+      replicated,  # updated_params
+      replicated,  # new_model_state
+      replicated,  # loss
+      replicated,  # grad_norm
+    ),
+  )
   # print(batch)
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
-                              opt_update_fn,
-                              model_state,
-                              optimizer_state,
-                              current_param_container,
-                              batch,
-                              rng,
-                              grad_clip,
-                              label_smoothing)
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = (
+    jitted_train_step(
+      workload,
+      opt_update_fn,
+      model_state,
+      optimizer_state,
+      current_param_container,
+      batch,
+      rng,
+      grad_clip,
+      label_smoothing,
+    )
+  )
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
-        {
-            'loss': loss.item(),
-            'grad_norm': grad_norm.item(),
-        }, global_step)
+      {
+        'loss': loss.item(),
+        'grad_norm': grad_norm.item(),
+      },
+      global_step,
+    )
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

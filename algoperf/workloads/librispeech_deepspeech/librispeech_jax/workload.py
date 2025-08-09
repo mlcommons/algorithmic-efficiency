@@ -11,8 +11,9 @@ from flax import jax_utils
 from algoperf import param_utils
 from algoperf import spec
 from algoperf import jax_sharding_utils
-from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import \
-    LibriSpeechConformerWorkload
+from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import (
+  LibriSpeechConformerWorkload,
+)
 from algoperf.workloads.librispeech_deepspeech.librispeech_jax import models
 
 
@@ -43,8 +44,11 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
       *fake_input_batch,
     )
 
-    model_state = {'batch_stats': variables['batch_stats']
-                  } if not self.layernorm_everywhere else {}
+    model_state = (
+      {'batch_stats': variables['batch_stats']}
+      if not self.layernorm_everywhere
+      else {}
+    )
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)

@@ -171,18 +171,20 @@ flags.DEFINE_boolean(
   'If true, set pytorch max_split_size_mb to 256',
 )
 flags.DEFINE_integer(
-    'pytorch_eval_num_workers',
-    0,
-    'Number of workers for ImageNet PyTorch evaluation data loaders.'
-    'WARNING: Setting pytorch_eval_num_workers != 0, will result '
-    'in incorrect evals currently, see issues/732.')
+  'pytorch_eval_num_workers',
+  0,
+  'Number of workers for ImageNet PyTorch evaluation data loaders.'
+  'WARNING: Setting pytorch_eval_num_workers != 0, will result '
+  'in incorrect evals currently, see issues/732.',
+)
 flags.DEFINE_boolean(
-    'capture_jax_trace',
-    False,
-    'Captures jax profiler trace and writes to experiment directory.')
-flags.DEFINE_boolean('skip_evals',
-                     False,
-                     'Skip evals on train eval, validation and test splits.')
+  'capture_jax_trace',
+  False,
+  'Captures jax profiler trace and writes to experiment directory.',
+)
+flags.DEFINE_boolean(
+  'skip_evals', False, 'Skip evals on train eval, validation and test splits.'
+)
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -214,24 +216,24 @@ def _reset_cuda_mem():
 
 
 def train_once(
-    workload: spec.Workload,
-    workload_name: str,
-    global_batch_size: int,
-    global_eval_batch_size: int,
-    data_dir: str,
-    imagenet_v2_data_dir: str,
-    init_optimizer_state: spec.InitOptimizerFn,
-    update_params: spec.UpdateParamsFn,
-    data_selection: spec.DataSelectionFn,
-    prepare_for_eval: Optional[spec.PrepareForEvalFn],
-    hyperparameters: Optional[spec.Hyperparameters],
-    rng_seed: int,
-    rng: spec.RandomState,
-    profiler: Profiler,
-    max_global_steps: int = None,
-    log_dir: Optional[str] = None,
-    save_checkpoints: Optional[bool] = True,
-    skip_evals: Optional[bool] = False,
+  workload: spec.Workload,
+  workload_name: str,
+  global_batch_size: int,
+  global_eval_batch_size: int,
+  data_dir: str,
+  imagenet_v2_data_dir: str,
+  init_optimizer_state: spec.InitOptimizerFn,
+  update_params: spec.UpdateParamsFn,
+  data_selection: spec.DataSelectionFn,
+  prepare_for_eval: Optional[spec.PrepareForEvalFn],
+  hyperparameters: Optional[spec.Hyperparameters],
+  rng_seed: int,
+  rng: spec.RandomState,
+  profiler: Profiler,
+  max_global_steps: int = None,
+  log_dir: Optional[str] = None,
+  save_checkpoints: Optional[bool] = True,
+  skip_evals: Optional[bool] = False,
 ) -> Tuple[spec.Timing, Dict[str, Any]]:
   _reset_cuda_mem()
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
@@ -413,10 +415,11 @@ def train_once(
     )
 
     # Check if submission is eligible for an untimed eval.
-    if ((train_step_end_time - train_state['last_eval_time']) >=
-        workload.eval_period_time_sec or
-        train_state['training_complete']) and not skip_evals:
-
+    if (
+      (train_step_end_time - train_state['last_eval_time'])
+      >= workload.eval_period_time_sec
+      or train_state['training_complete']
+    ) and not skip_evals:
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
         with profiler.profile('Prepare for eval'):
@@ -583,23 +586,25 @@ def train_once(
   return train_state['accumulated_submission_time'], metrics
 
 
-def score_submission_on_workload(workload: spec.Workload,
-                                 workload_name: str,
-                                 submission_path: str,
-                                 data_dir: str,
-                                 tuning_ruleset: str,
-                                 profiler: Optional[Profiler] = None,
-                                 max_global_steps: Optional[int] = None,
-                                 imagenet_v2_data_dir: Optional[str] = None,
-                                 tuning_search_space: Optional[str] = None,
-                                 num_tuning_trials: Optional[int] = None,
-                                 log_dir: Optional[str] = None,
-                                 save_checkpoints: Optional[bool] = True,
-                                 hparam_start_index: Optional[bool] = None,
-                                 hparam_end_index: Optional[bool] = None,
-                                 rng_seed: Optional[int] = None,
-                                 capture_trace: Optional[bool] = False,
-                                 skip_evals: Optional[bool] = False):
+def score_submission_on_workload(
+  workload: spec.Workload,
+  workload_name: str,
+  submission_path: str,
+  data_dir: str,
+  tuning_ruleset: str,
+  profiler: Optional[Profiler] = None,
+  max_global_steps: Optional[int] = None,
+  imagenet_v2_data_dir: Optional[str] = None,
+  tuning_search_space: Optional[str] = None,
+  num_tuning_trials: Optional[int] = None,
+  log_dir: Optional[str] = None,
+  save_checkpoints: Optional[bool] = True,
+  hparam_start_index: Optional[bool] = None,
+  hparam_end_index: Optional[bool] = None,
+  rng_seed: Optional[int] = None,
+  capture_trace: Optional[bool] = False,
+  skip_evals: Optional[bool] = False,
+):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
   if imagenet_v2_data_dir:
@@ -688,22 +693,27 @@ def score_submission_on_workload(workload: spec.Workload,
       with profiler.profile('Train'):
         if capture_trace:
           logging.info(f'Capturing and saving jax trace to {log_dir}')
-          jax.profiler.start_trace(f'{log_dir}/traces'),
-        timing, metrics = train_once(workload, workload_name,
-                                     global_batch_size,
-                                     global_eval_batch_size,
-                                     data_dir, imagenet_v2_data_dir,
-                                     init_optimizer_state,
-                                     update_params, data_selection,
-                                     prepare_for_eval,
-                                     hyperparameters,
-                                     rng_seed,
-                                     rng,
-                                     profiler,
-                                     max_global_steps,
-                                     tuning_dir_name,
-                                     save_checkpoints=save_checkpoints,
-                                     skip_evals=skip_evals)
+          (jax.profiler.start_trace(f'{log_dir}/traces'),)
+        timing, metrics = train_once(
+          workload,
+          workload_name,
+          global_batch_size,
+          global_eval_batch_size,
+          data_dir,
+          imagenet_v2_data_dir,
+          init_optimizer_state,
+          update_params,
+          data_selection,
+          prepare_for_eval,
+          hyperparameters,
+          rng_seed,
+          rng,
+          profiler,
+          max_global_steps,
+          tuning_dir_name,
+          save_checkpoints=save_checkpoints,
+          skip_evals=skip_evals,
+        )
         if capture_trace:
           jax.profiler.stop_trace()
       all_timings[hi] = timing
@@ -732,14 +742,27 @@ def score_submission_on_workload(workload: spec.Workload,
       logger_utils.makedir(log_dir)
     with profiler.profile('Train'):
       if capture_trace:
-        jax.profiler.start_trace('/algoperf/traces'),
+        (jax.profiler.start_trace('/algoperf/traces'),)
         logging.info(f'Capturing and saving jax trace to {log_dir}')
       score, _ = train_once(
-          workload, workload_name, global_batch_size, global_eval_batch_size,
-          data_dir, imagenet_v2_data_dir,
-          init_optimizer_state, update_params, data_selection, prepare_for_eval,
-          None, rng_seed, rng, profiler, max_global_steps, log_dir,
-          save_checkpoints=save_checkpoints)
+        workload,
+        workload_name,
+        global_batch_size,
+        global_eval_batch_size,
+        data_dir,
+        imagenet_v2_data_dir,
+        init_optimizer_state,
+        update_params,
+        data_selection,
+        prepare_for_eval,
+        None,
+        rng_seed,
+        rng,
+        profiler,
+        max_global_steps,
+        log_dir,
+        save_checkpoints=save_checkpoints,
+      )
       if capture_trace:
         jax.profiler.stop_trace()
   return score
@@ -809,23 +832,23 @@ def main(_):
   )
 
   score = score_submission_on_workload(
-      workload=workload,
-      workload_name=FLAGS.workload,
-      submission_path=FLAGS.submission_path,
-      data_dir=FLAGS.data_dir,
-      tuning_ruleset=FLAGS.tuning_ruleset,
-      profiler=profiler,
-      max_global_steps=FLAGS.max_global_steps,
-      imagenet_v2_data_dir=FLAGS.imagenet_v2_data_dir,
-      tuning_search_space=FLAGS.tuning_search_space,
-      num_tuning_trials=FLAGS.num_tuning_trials,
-      log_dir=logging_dir_path,
-      save_checkpoints=FLAGS.save_checkpoints,
-      hparam_start_index=FLAGS.hparam_start_index,
-      hparam_end_index=FLAGS.hparam_end_index,
-      rng_seed=FLAGS.rng_seed,
-      capture_trace=FLAGS.capture_jax_trace,
-      skip_evals=FLAGS.skip_evals,
+    workload=workload,
+    workload_name=FLAGS.workload,
+    submission_path=FLAGS.submission_path,
+    data_dir=FLAGS.data_dir,
+    tuning_ruleset=FLAGS.tuning_ruleset,
+    profiler=profiler,
+    max_global_steps=FLAGS.max_global_steps,
+    imagenet_v2_data_dir=FLAGS.imagenet_v2_data_dir,
+    tuning_search_space=FLAGS.tuning_search_space,
+    num_tuning_trials=FLAGS.num_tuning_trials,
+    log_dir=logging_dir_path,
+    save_checkpoints=FLAGS.save_checkpoints,
+    hparam_start_index=FLAGS.hparam_start_index,
+    hparam_end_index=FLAGS.hparam_end_index,
+    rng_seed=FLAGS.rng_seed,
+    capture_trace=FLAGS.capture_jax_trace,
+    skip_evals=FLAGS.skip_evals,
   )
   logging.info(f'Final {FLAGS.workload} score: {score}')
 

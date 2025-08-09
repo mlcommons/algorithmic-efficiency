@@ -119,8 +119,9 @@ def get_summary_df(workload, workload_df, include_test_split=False):
     axis=1,
   )
 
-  summary_df['step_time (s)'] = (workload_df['accumulated_submission_time'] /
-                                 workload_df['global_step']).iloc[-1][-1]
+  summary_df['step_time (s)'] = (
+    workload_df['accumulated_submission_time'] / workload_df['global_step']
+  ).iloc[-1][-1]
 
   # test metrics
   if include_test_split:

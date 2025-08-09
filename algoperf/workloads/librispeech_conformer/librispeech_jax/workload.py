@@ -15,8 +15,9 @@ from algoperf import param_utils
 from algoperf import spec
 from algoperf.workloads.librispeech_conformer import metrics
 from algoperf.workloads.librispeech_conformer import workload
-from algoperf.workloads.librispeech_conformer.input_pipeline import \
-    LibriSpeechDataset
+from algoperf.workloads.librispeech_conformer.input_pipeline import (
+  LibriSpeechDataset,
+)
 from algoperf.workloads.librispeech_conformer.librispeech_jax import models
 
 
@@ -317,21 +318,23 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     return hyp, hyp_paddings
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(
-          jax_sharding_utils.get_replicate_sharding(),  # params
-          jax_sharding_utils.get_batch_dim_sharding(),  # batch
-          jax_sharding_utils.get_replicate_sharding(),  # model_state
-          jax_sharding_utils.get_replicate_sharding(),  # rng
-      ),
-      out_shardings=jax_sharding_utils.get_batch_dim_sharding(),
-      static_argnums=(0,))
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),  # params
+      jax_sharding_utils.get_batch_dim_sharding(),  # batch
+      jax_sharding_utils.get_replicate_sharding(),  # model_state
+      jax_sharding_utils.get_replicate_sharding(),  # rng
+    ),
+    out_shardings=jax_sharding_utils.get_batch_dim_sharding(),
+    static_argnums=(0,),
+  )
   def _eval_step(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
+    self,
+    params: spec.ParameterContainer,
+    batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+  ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     (logits, logit_paddings), _ = self.model_fn(
       params,
       batch,
@@ -346,40 +349,38 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     targets, target_paddings = batch['targets']
     # Convert metrics bundle to dictionary
     metrics_dict = {
-        'loss_per_example':
-            loss['per_example'],
-        'decoded':
-            decoded,
-        'decoded_paddings':
-            decoded_paddings,
-        'targets':
-            targets,
-        'target_paddings':
-            target_paddings,
-        'n_valid_examples':
-            jnp.zeros((len(jax.devices()), 1)) + loss['n_valid_examples']
+      'loss_per_example': loss['per_example'],
+      'decoded': decoded,
+      'decoded_paddings': decoded_paddings,
+      'targets': targets,
+      'target_paddings': target_paddings,
+      'n_valid_examples': jnp.zeros((len(jax.devices()), 1))
+      + loss['n_valid_examples'],
     }
     return metrics_dict
 
-  def eval_step(self,
-                params: spec.ParameterContainer,
-                batch: Dict[str, spec.Tensor],
-                model_state: spec.ModelAuxiliaryState,
-                rng: spec.RandomState):
+  def eval_step(
+    self,
+    params: spec.ParameterContainer,
+    batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+  ):
     """Evaluates the model and returns a metrics bundle."""
     metrics_dict = self._eval_step(params, batch, model_state, rng)
 
     # Convert dictionary back to metrics bundle
     metrics_bundle = self.metrics_bundle.single_from_model_output(
-        loss_dict={
-            'summed': metrics_dict['loss_per_example'].sum(),
-            'per_example': metrics_dict['loss_per_example'],
-            'n_valid_examples': metrics_dict['n_valid_examples'].sum()
-        },
-        decoded=metrics_dict['decoded'],
-        decoded_paddings=metrics_dict['decoded_paddings'],
-        targets=metrics_dict['targets'],
-        target_paddings=metrics_dict['target_paddings'])
+      loss_dict={
+        'summed': metrics_dict['loss_per_example'].sum(),
+        'per_example': metrics_dict['loss_per_example'],
+        'n_valid_examples': metrics_dict['n_valid_examples'].sum(),
+      },
+      decoded=metrics_dict['decoded'],
+      decoded_paddings=metrics_dict['decoded_paddings'],
+      targets=metrics_dict['targets'],
+      target_paddings=metrics_dict['target_paddings'],
+    )
 
     return metrics_bundle
 

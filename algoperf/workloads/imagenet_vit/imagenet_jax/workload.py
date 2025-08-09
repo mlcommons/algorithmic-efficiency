@@ -10,7 +10,7 @@ from flax.core import pop
 
 from algoperf import param_utils, spec, jax_sharding_utils
 from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import (
-    ImagenetResNetWorkload,
+  ImagenetResNetWorkload,
 )
 from algoperf.workloads.imagenet_vit.imagenet_jax import models
 from algoperf.workloads.imagenet_vit.workload import (

@@ -14,6 +14,7 @@ PRNGKey = Any
 Shape = Tuple[int]
 Dtype = Any
 
+
 @jax.vmap
 def flip_sequences(inputs: Array, lengths: Array) -> Array:
   """Flips a sequence of inputs along the time dimension.
@@ -63,6 +64,7 @@ class GenericRNNSequenceEncoder(nn.Module):
       greater than zero, you must use an RNN cell that implements
       `RecurrentDropoutCell` such as RecurrentDropoutOptimizedLSTMCell.
   """
+
   hidden_size: int
   cell_type: Type[nn.RNNCellBase]
   cell_kwargs: Mapping[str, Any] = flax.core.FrozenDict()
@@ -72,13 +74,19 @@ class GenericRNNSequenceEncoder(nn.Module):
     self.cell = self.cell_type(features=self.hidden_size, **self.cell_kwargs)
 
   @functools.partial(  # Repeatedly calls the below method to encode the inputs.
-      nn.transforms.scan,
-      variable_broadcast='params',
-      in_axes=(1, flax.core.axes_scan.broadcast, flax.core.axes_scan.broadcast),
-      out_axes=1,
-      split_rngs={'params': False})
-  def unroll_cell(self, cell_state: StateType, inputs: Array,
-                  recurrent_dropout_mask: Optional[Array], deterministic: bool):
+    nn.transforms.scan,
+    variable_broadcast='params',
+    in_axes=(1, flax.core.axes_scan.broadcast, flax.core.axes_scan.broadcast),
+    out_axes=1,
+    split_rngs={'params': False},
+  )
+  def unroll_cell(
+    self,
+    cell_state: StateType,
+    inputs: Array,
+    recurrent_dropout_mask: Optional[Array],
+    deterministic: bool,
+  ):
     """Unrolls a recurrent cell over an input sequence.
 
     Args:
@@ -99,12 +107,14 @@ class GenericRNNSequenceEncoder(nn.Module):
     new_cell_state, output = self.cell(cell_state, inputs)
     return new_cell_state, (new_cell_state, output)
 
-  def __call__(self,
-               inputs: Array,
-               lengths: Array,
-               initial_state: StateType,
-               reverse: bool = False,
-               deterministic: bool = False):
+  def __call__(
+    self,
+    inputs: Array,
+    lengths: Array,
+    initial_state: StateType,
+    reverse: bool = False,
+    deterministic: bool = False,
+  ):
     """Unrolls the RNN cell over the inputs.
 
     Arguments:
@@ -128,11 +138,12 @@ class GenericRNNSequenceEncoder(nn.Module):
       inputs = flip_sequences(inputs, lengths)
 
     recurrent_dropout_mask = None
-    _, (cell_states, outputs) = self.unroll_cell(initial_state, inputs,
-                                                 recurrent_dropout_mask,
-                                                 deterministic)
+    _, (cell_states, outputs) = self.unroll_cell(
+      initial_state, inputs, recurrent_dropout_mask, deterministic
+    )
     final_state = jax.tree.map(
-        lambda x: x[jnp.arange(inputs.shape[0]), lengths - 1], cell_states)
+      lambda x: x[jnp.arange(inputs.shape[0]), lengths - 1], cell_states
+    )
 
     if reverse:
       outputs = flip_sequences(outputs, lengths)
@@ -162,21 +173,22 @@ class GenericRNN(nn.Module):
       concatenate the outputs from the two directions.
     cell_kwargs: Optional keyword arguments to instantiate the cell with.
   """
+
   cell_type: Type[nn.RNNCellBase]
   hidden_size: int
   num_layers: int = 1
-  dropout_rate: float = 0.
-  recurrent_dropout_rate: float = 0.
+  dropout_rate: float = 0.0
+  recurrent_dropout_rate: float = 0.0
   bidirectional: bool = False
   cell_kwargs: Mapping[str, Any] = flax.core.FrozenDict()
 
   @nn.compact
   def __call__(
-      self,
-      inputs: Array,
-      lengths: Array,
-      initial_states: Optional[Sequence[StateType]] = None,
-      deterministic: bool = False
+    self,
+    inputs: Array,
+    lengths: Array,
+    initial_states: Optional[Sequence[StateType]] = None,
+    deterministic: bool = False,
   ) -> Tuple[Array, Sequence[StateType]]:
     """Processes the input sequence using the recurrent cell.
 
@@ -208,15 +220,13 @@ class GenericRNN(nn.Module):
     if initial_states is None:  # Initialize with zeros.
       rng = jax.random.PRNGKey(0)
       initial_states = [
-          self.cell_type(self.hidden_size).initialize_carry(
-              rng, (batch_size, 1)
-          )
-          for _ in range(num_cells)
+        self.cell_type(self.hidden_size).initialize_carry(rng, (batch_size, 1))
+        for _ in range(num_cells)
       ]
     if len(initial_states) != num_cells:
       raise ValueError(
-          f'Please provide {self.num_cells} (`num_layers`, *2 if bidirectional)'
-          'initial states.'
+        f'Please provide {self.num_cells} (`num_layers`, *2 if bidirectional)'
+        'initial states.'
       )
 
     # For each layer, apply the forward and optionally the backward RNN cell.
@@ -224,31 +234,35 @@ class GenericRNN(nn.Module):
     for _ in range(self.num_layers):
       # Unroll an RNN cell (forward direction) for this layer.
       outputs, final_state = GenericRNNSequenceEncoder(
-          cell_type=self.cell_type,
-          cell_kwargs=self.cell_kwargs,
-          hidden_size=self.hidden_size,
-          recurrent_dropout_rate=self.recurrent_dropout_rate,
-          name=f'{self.name}SequenceEncoder_{cell_idx}')(
-              inputs,
-              lengths,
-              initial_state=initial_states[cell_idx],
-              deterministic=deterministic)
+        cell_type=self.cell_type,
+        cell_kwargs=self.cell_kwargs,
+        hidden_size=self.hidden_size,
+        recurrent_dropout_rate=self.recurrent_dropout_rate,
+        name=f'{self.name}SequenceEncoder_{cell_idx}',
+      )(
+        inputs,
+        lengths,
+        initial_state=initial_states[cell_idx],
+        deterministic=deterministic,
+      )
       final_states.append(final_state)
       cell_idx += 1
 
       # Unroll an RNN cell (backward direction) for this layer.
       if self.bidirectional:
         backward_outputs, backward_final_state = GenericRNNSequenceEncoder(
-            cell_type=self.cell_type,
-            cell_kwargs=self.cell_kwargs,
-            hidden_size=self.hidden_size,
-            recurrent_dropout_rate=self.recurrent_dropout_rate,
-            name=f'{self.name}SequenceEncoder_{cell_idx}')(
-                inputs,
-                lengths,
-                initial_state=initial_states[cell_idx],
-                reverse=True,
-                deterministic=deterministic)
+          cell_type=self.cell_type,
+          cell_kwargs=self.cell_kwargs,
+          hidden_size=self.hidden_size,
+          recurrent_dropout_rate=self.recurrent_dropout_rate,
+          name=f'{self.name}SequenceEncoder_{cell_idx}',
+        )(
+          inputs,
+          lengths,
+          initial_state=initial_states[cell_idx],
+          reverse=True,
+          deterministic=deterministic,
+        )
         outputs = jnp.concatenate([outputs, backward_outputs], axis=-1)
         final_states.append(backward_final_state)
         cell_idx += 1
@@ -277,21 +291,23 @@ class LSTM(nn.Module):
       best for hidden sizes up to 2048.
     cell_kwargs: Optional keyword arguments to instantiate the cell with.
   """
+
   hidden_size: int
   num_layers: int = 1
-  dropout_rate: float = 0.
-  recurrent_dropout_rate: float = 0.
+  dropout_rate: float = 0.0
+  recurrent_dropout_rate: float = 0.0
   bidirectional: bool = False
   cell_type: Any = nn.OptimizedLSTMCell
   cell_kwargs: Mapping[str, Any] = flax.core.FrozenDict()
 
   @nn.compact
   def __call__(
-      self,
-      inputs: Array,
-      lengths: Array,
-      initial_states: Optional[Sequence[StateType]] = None,
-      deterministic: bool = False) -> Tuple[Array, Sequence[StateType]]:
+    self,
+    inputs: Array,
+    lengths: Array,
+    initial_states: Optional[Sequence[StateType]] = None,
+    deterministic: bool = False,
+  ) -> Tuple[Array, Sequence[StateType]]:
     """Processes an input sequence with an LSTM cell.
 
     Example usage:
@@ -317,15 +333,17 @@ class LSTM(nn.Module):
       and then by direction (first forward, then backward, if bidirectional).
     """
     return GenericRNN(
-        cell_type=self.cell_type,
-        hidden_size=self.hidden_size,
-        num_layers=self.num_layers,
-        dropout_rate=self.dropout_rate,
-        recurrent_dropout_rate=self.recurrent_dropout_rate,
-        bidirectional=self.bidirectional,
-        cell_kwargs=self.cell_kwargs,
-        name='LSTM')(
-            inputs,
-            lengths,
-            initial_states=initial_states,
-            deterministic=deterministic)
+      cell_type=self.cell_type,
+      hidden_size=self.hidden_size,
+      num_layers=self.num_layers,
+      dropout_rate=self.dropout_rate,
+      recurrent_dropout_rate=self.recurrent_dropout_rate,
+      bidirectional=self.bidirectional,
+      cell_kwargs=self.cell_kwargs,
+      name='LSTM',
+    )(
+      inputs,
+      lengths,
+      initial_states=initial_states,
+      deterministic=deterministic,
+    )

@@ -134,16 +134,17 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     return logits_batch, None
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(
-          jax_sharding_utils.get_replicate_sharding(),
-          jax_sharding_utils.get_batch_dim_sharding(),
-      ),
-      static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicate_sharding())
-  def _eval_batch_jitted(self,
-                         params: spec.ParameterContainer,
-                         batch: Dict[str, spec.Tensor]) -> spec.Tensor:
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),
+      jax_sharding_utils.get_batch_dim_sharding(),
+    ),
+    static_argnums=(0,),
+    out_shardings=jax_sharding_utils.get_replicate_sharding(),
+  )
+  def _eval_batch_jitted(
+    self, params: spec.ParameterContainer, batch: Dict[str, spec.Tensor]
+  ) -> spec.Tensor:
     logits, _ = self.model_fn(
       params,
       batch,

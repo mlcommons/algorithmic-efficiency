@@ -2,6 +2,7 @@
 
 Specifically this will test the model_init functions, and input_pipeline.
 """
+
 import copy
 import os
 import sys
@@ -36,13 +37,15 @@ class SubmissionRunnerTest(parameterized.TestCase):
     dataset_dir = f'/data/{workload_name}'
     workload_metadata = copy.deepcopy(WORKLOADS[workload_name])
     workload_metadata['workload_path'] = os.path.join(
-        BASE_WORKLOADS_DIR,
-        workload_metadata['workload_path'] + '_' + FRAMEWORK,
-        'workload.py')
+      BASE_WORKLOADS_DIR,
+      workload_metadata['workload_path'] + '_' + FRAMEWORK,
+      'workload.py',
+    )
     workload = import_workload(
-        workload_path=workload_metadata['workload_path'],
-        workload_class_name=workload_metadata['workload_class_name'],
-        workload_init_kwargs={})
+      workload_path=workload_metadata['workload_path'],
+      workload_class_name=workload_metadata['workload_class_name'],
+      workload_init_kwargs={},
+    )
 
     rng = jax.random.PRNGKey(0)
     initial_params, model_state = workload.init_model_fn(rng)
@@ -51,41 +54,44 @@ class SubmissionRunnerTest(parameterized.TestCase):
     inputs = batch['inputs']
 
     def forward_pass(
-        params,
+      params,
+      batch,
+      model_state,
+      rng,
+    ):
+      logits, _ = workload.model_fn(
+        initial_params,
         batch,
         model_state,
+        spec.ForwardPassMode.TRAIN,
         rng,
-    ):
-      logits, _ = workload.model_fn(initial_params,
-                              batch,
-                              model_state,
-                              spec.ForwardPassMode.TRAIN,
-                              rng,
-                              update_batch_norm=True)
+        update_batch_norm=True,
+      )
       return logits
 
     forward_pass_jitted = jax.jit(
-        forward_pass,
-        in_shardings=(
-            jax_sharding_utils.get_replicate_sharding(),
-            jax_sharding_utils.get_batch_dim_sharding(),
-            jax_sharding_utils.get_replicate_sharding(),
-            jax_sharding_utils.get_replicate_sharding(),
-        ),
-        out_shardings=jax_sharding_utils.get_batch_dim_sharding())
+      forward_pass,
+      in_shardings=(
+        jax_sharding_utils.get_replicate_sharding(),
+        jax_sharding_utils.get_batch_dim_sharding(),
+        jax_sharding_utils.get_replicate_sharding(),
+        jax_sharding_utils.get_replicate_sharding(),
+      ),
+      out_shardings=jax_sharding_utils.get_batch_dim_sharding(),
+    )
 
     logits = forward_pass(
-        initial_params,
-        batch,
-        model_state,
-        rng,
+      initial_params,
+      batch,
+      model_state,
+      rng,
     )
 
     logits_jitted = forward_pass_jitted(
-        initial_params,
-        batch,
-        model_state,
-        rng,
+      initial_params,
+      batch,
+      model_state,
+      rng,
     )
 
     jax.debug.visualize_array_sharding(logits_jitted)

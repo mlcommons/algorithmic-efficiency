@@ -8,7 +8,17 @@ paper : https://arxiv.org/abs/1512.02595
 # webpage : https://bastings.github.io/
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union, Type, Mapping, Sequence
+from typing import (
+  Any,
+  Dict,
+  List,
+  Optional,
+  Tuple,
+  Union,
+  Type,
+  Mapping,
+  Sequence,
+)
 from absl import logging
 
 import numpy as np
@@ -22,12 +32,13 @@ import jax.numpy as jnp
 from jax.experimental.shard_map import shard_map
 from jax.sharding import PartitionSpec as P
 
-from algoperf.workloads.librispeech_conformer.librispeech_jax import \
-    librispeech_preprocessor as preprocessor
-from algoperf.workloads.librispeech_conformer.librispeech_jax import \
-    spectrum_augmenter
-from algoperf.workloads.librispeech_deepspeech.librispeech_jax import \
-    lstm
+from algoperf.workloads.librispeech_conformer.librispeech_jax import (
+  librispeech_preprocessor as preprocessor,
+)
+from algoperf.workloads.librispeech_conformer.librispeech_jax import (
+  spectrum_augmenter,
+)
+from algoperf.workloads.librispeech_deepspeech.librispeech_jax import lstm
 
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]
@@ -319,7 +330,8 @@ class BatchNorm(nn.Module):
       mask = 1.0 - padding
       sum_v = jnp.sum(inputs * mask, axis=reduce_over_dims, keepdims=True)
       count_v = jnp.sum(
-          jnp.ones_like(inputs) * mask, axis=reduce_over_dims, keepdims=True)
+        jnp.ones_like(inputs) * mask, axis=reduce_over_dims, keepdims=True
+      )
 
       count_v = jnp.maximum(count_v, 1.0)
       mean = sum_v / count_v
@@ -458,20 +470,20 @@ class BatchRNN(nn.Module):
     config = self.config
     lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
 
-
     if config.layernorm_everywhere:
       inputs = LayerNorm(config.encoder_dim)(inputs)
     else:
-      inputs = BatchNorm(config.encoder_dim,
-                         config.dtype,
-                         config.batch_norm_momentum,
-                         config.batch_norm_epsilon)(inputs,
-                                                    input_paddings,
-                                                    train)
+      inputs = BatchNorm(
+        config.encoder_dim,
+        config.dtype,
+        config.batch_norm_momentum,
+        config.batch_norm_epsilon,
+      )(inputs, input_paddings, train)
     output, _ = lstm.LSTM(
-        hidden_size=config.encoder_dim // 2,
-        bidirectional=config.bidirectional,
-        num_layers=1)(inputs, lengths)
+      hidden_size=config.encoder_dim // 2,
+      bidirectional=config.bidirectional,
+      num_layers=1,
+    )(inputs, lengths)
 
     return output
 

@@ -107,33 +107,36 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     params = jax.tree.map(
-        lambda x: jax.device_put(x, jax_sharding_utils.get_replicate_sharding()
-                                ),
-        params)
+      lambda x: jax.device_put(x, jax_sharding_utils.get_replicate_sharding()),
+      params,
+    )
     model_state = jax.tree.map(
-        lambda x: jax.device_put(x, jax_sharding_utils.get_replicate_sharding()
-                                ),
-        model_state)
+      lambda x: jax.device_put(x, jax_sharding_utils.get_replicate_sharding()),
+      model_state,
+    )
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_0'
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(
-          jax_sharding_utils.get_replicate_sharding(),  # params
-          jax_sharding_utils.get_batch_dim_sharding(),  # batch
-          jax_sharding_utils.get_replicate_sharding(),  # model_state
-          jax_sharding_utils.get_replicate_sharding(),  # rng
-      ),
-      static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicate_sharding())
-  def _eval_model(self,
-                  params: spec.ParameterContainer,
-                  batch: Dict[str, spec.Tensor],
-                  model_state: spec.ModelAuxiliaryState,
-                  rng: spec.RandomState) -> Dict[str, spec.Tensor]:
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),  # params
+      jax_sharding_utils.get_batch_dim_sharding(),  # batch
+      jax_sharding_utils.get_replicate_sharding(),  # model_state
+      jax_sharding_utils.get_replicate_sharding(),  # rng
+    ),
+    static_argnums=(0,),
+    out_shardings=jax_sharding_utils.get_replicate_sharding(),
+  )
+  def _eval_model(
+    self,
+    params: spec.ParameterContainer,
+    batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+  ) -> Dict[str, spec.Tensor]:
     logits, _ = self.model_fn(
       params,
       batch,

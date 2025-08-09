@@ -176,35 +176,38 @@ class CifarWorkload(BaseCifarWorkload):
     return metrics
 
   def _eval_model(
-      self,
-      params: spec.ParameterContainer,
-      batch: Dict[str, spec.Tensor],
-      model_state: spec.ModelAuxiliaryState,
-      rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+    self,
+    params: spec.ParameterContainer,
+    batch: Dict[str, spec.Tensor],
+    model_state: spec.ModelAuxiliaryState,
+    rng: spec.RandomState,
+  ) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
 
     @functools.partial(
-        jax.jit,
-        in_shardings=(
-            jax_sharding_utils.get_replicate_sharding(),  # params
-            jax_sharding_utils.get_batch_dim_sharding(),  # batch
-            jax_sharding_utils.get_replicate_sharding(),  # model_state
-            jax_sharding_utils.get_batch_dim_sharding(),  # rng
-        ),
+      jax.jit,
+      in_shardings=(
+        jax_sharding_utils.get_replicate_sharding(),  # params
+        jax_sharding_utils.get_batch_dim_sharding(),  # batch
+        jax_sharding_utils.get_replicate_sharding(),  # model_state
+        jax_sharding_utils.get_batch_dim_sharding(),  # rng
+      ),
     )
     def _eval_model_jitted(
-        params: spec.ParameterContainer,
-        batch: Dict[str, spec.Tensor],
-        model_state: spec.ModelAuxiliaryState,
-        rng: spec.RandomState) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState,
+    ) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
       """Return the mean accuracy and loss as a dict."""
       logits, _ = self.model_fn(
-          params,
-          batch,
-          model_state,
-          spec.ForwardPassMode.EVAL,
-          rng,
-          update_batch_norm=False)
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False,
+      )
       weights = batch.get('weights')
       if weights is None:
         weights = jnp.ones(len(logits))

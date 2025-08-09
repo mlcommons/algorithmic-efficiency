@@ -20,7 +20,8 @@ def shard_along_batch_dim(x):
   """Shards a tensor across all devices."""
   mesh = jax.sharding.Mesh(jax.devices(), ('batch',))
   return jax.tree.map(
-      lambda x: jax.device_put(x, NamedSharding(mesh, P('batch'))), x)
+    lambda x: jax.device_put(x, NamedSharding(mesh, P('batch'))), x
+  )
 
 
 def replicate(x):
@@ -32,5 +33,7 @@ def replicate(x):
 def display_shard_info(x: jax.Array):
   """Displays shard info of a jax array."""
   for shard in x.addressable_shards:
-    print(f"shard.device: {shard.device}, index: {shard.index}, replica_id:"
-          f" {shard.replica_id}.\n")
+    print(
+      f'shard.device: {shard.device}, index: {shard.index}, replica_id:'
+      f' {shard.replica_id}.\n'
+    )

@@ -116,13 +116,15 @@ class OgbgWorkload(BaseOgbgWorkload):
     )
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(jax_sharding_utils.get_replicate_sharding(),
-                    jax_sharding_utils.get_batch_dim_sharding(),
-                    jax_sharding_utils.get_replicate_sharding(),
-                    jax_sharding_utils.get_replicate_sharding()),
-      static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicate_sharding(),
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),
+      jax_sharding_utils.get_batch_dim_sharding(),
+      jax_sharding_utils.get_replicate_sharding(),
+      jax_sharding_utils.get_replicate_sharding(),
+    ),
+    static_argnums=(0,),
+    out_shardings=jax_sharding_utils.get_replicate_sharding(),
   )
   def _eval_batch(self, params, batch, model_state, rng):
     return super()._eval_batch(params, batch, model_state, rng)

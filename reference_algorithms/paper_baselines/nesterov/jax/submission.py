@@ -97,16 +97,18 @@ def sgd(learning_rate, weight_decay, momentum=None, nesterov=False):
     ),
   )
 
-def train_step(workload,
-               opt_update_fn,
-               model_state,
-               optimizer_state,
-               current_param_container,
-               batch,
-               rng,
-               grad_clip,
-               label_smoothing):
 
+def train_step(
+  workload,
+  opt_update_fn,
+  model_state,
+  optimizer_state,
+  current_param_container,
+  batch,
+  rng,
+  grad_clip,
+  label_smoothing,
+):
   def _loss_fn(params):
     """Loss function used for training."""
     logits, new_model_state = workload.model_fn(
@@ -129,7 +131,8 @@ def train_step(workload,
 
   grad_fn = jax.value_and_grad(_loss_fn, has_aux=True)
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
-      current_param_container)
+    current_param_container
+  )
   # # Get correct global mean loss and grad.
   loss = summed_loss / n_valid_examples
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
@@ -187,47 +190,54 @@ def update_params(
 
   # Create the sharding rules for each argument
   arg_shardings = (
-      # workload is static
-      # opt_update_fn is static
-      replicated,  # model_state
-      replicated,  # optimizer_state
-      replicated,  # current_param_container
-      sharded,  # batch
-      replicated,  # rngs
-      replicated,  # grad_clip
-      replicated  # label_smoothing
+    # workload is static
+    # opt_update_fn is static
+    replicated,  # model_state
+    replicated,  # optimizer_state
+    replicated,  # current_param_container
+    sharded,  # batch
+    replicated,  # rngs
+    replicated,  # grad_clip
+    replicated,  # label_smoothing
   )
   out_shardings = (
-      replicated,  # new_optimizer_state
-      replicated,  # updated_params
-      replicated,  # new_model_state
-      replicated,  # loss
-      replicated  # grad_norm
+    replicated,  # new_optimizer_state
+    replicated,  # updated_params
+    replicated,  # new_model_state
+    replicated,  # loss
+    replicated,  # grad_norm
   )
   # Jit with shardings
   jitted_train_step = jax.jit(
-      train_step,
-      static_argnums=(0, 1),
-      donate_argnums=(2, 3, 4),
-      in_shardings=arg_shardings,
-      out_shardings=out_shardings)
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = jitted_train_step(workload,
-                              opt_update_fn,
-                              model_state,
-                              optimizer_state,
-                              current_param_container,
-                              batch,
-                              rng,
-                              grad_clip,
-                              label_smoothing)
+    train_step,
+    static_argnums=(0, 1),
+    donate_argnums=(2, 3, 4),
+    in_shardings=arg_shardings,
+    out_shardings=out_shardings,
+  )
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = (
+    jitted_train_step(
+      workload,
+      opt_update_fn,
+      model_state,
+      optimizer_state,
+      current_param_container,
+      batch,
+      rng,
+      grad_clip,
+      label_smoothing,
+    )
+  )
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
-        {
-            'loss': loss.item(),
-            'grad_norm': grad_norm.item(),
-        }, global_step)
+      {
+        'loss': loss.item(),
+        'grad_norm': grad_norm.item(),
+      },
+      global_step,
+    )
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
 

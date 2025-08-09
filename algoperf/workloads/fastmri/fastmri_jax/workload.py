@@ -101,16 +101,21 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
 
   @functools.partial(
-      jax.jit,
-      in_shardings=(jax_sharding_utils.get_replicate_sharding(),
-                    jax_sharding_utils.get_batch_dim_sharding(),
-                    jax_sharding_utils.get_replicate_sharding()),
-      static_argnums=(0,),
-      out_shardings=jax_sharding_utils.get_replicate_sharding())
-  def _eval_model(self,
-                  params: spec.Tensor,
-                  batch: Dict[str, spec.Tensor],
-                  rng: spec.RandomState) -> Dict[str, spec.Tensor]:
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),
+      jax_sharding_utils.get_batch_dim_sharding(),
+      jax_sharding_utils.get_replicate_sharding(),
+    ),
+    static_argnums=(0,),
+    out_shardings=jax_sharding_utils.get_replicate_sharding(),
+  )
+  def _eval_model(
+    self,
+    params: spec.Tensor,
+    batch: Dict[str, spec.Tensor],
+    rng: spec.RandomState,
+  ) -> Dict[str, spec.Tensor]:
     """Return the SSIM and loss as a dict."""
     logits, _ = self.model_fn(
       params,
@@ -166,13 +171,13 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         num_batches=num_batches,
       )
 
-    total_metrics = {'ssim': 0., 'loss': 0.}
+    total_metrics = {'ssim': 0.0, 'loss': 0.0}
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already sum these metrics across devices inside _eval_model.
       synced_metrics = self._eval_model(params, batch, model_rng)
       total_metrics = {
-          k: v + synced_metrics[k] for k, v in total_metrics.items()
+        k: v + synced_metrics[k] for k, v in total_metrics.items()
       }
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
 

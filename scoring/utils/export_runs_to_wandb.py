@@ -12,17 +12,20 @@ import os
 import wandb
 
 flags.DEFINE_string(
-    'experiment_dir',
-    '$HOME/submissions_algorithms/logs/external_tuning/baseline',
-    'Path to experiment dir.')
-flags.DEFINE_string(
-    'workloads',
-    'librispeech_deepspeech_jax',
-    'Filter only for workload e.g. fastmri_jax. If None include all workloads in experiment.'
+  'experiment_dir',
+  '$HOME/submissions_algorithms/logs/external_tuning/baseline',
+  'Path to experiment dir.',
 )
-flags.DEFINE_string('project_name',
-                    'visualize-training-curves-legacy-stephint-deepspeech-jit-switch-final',
-                    'Wandb project name.')
+flags.DEFINE_string(
+  'workloads',
+  'librispeech_deepspeech_jax',
+  'Filter only for workload e.g. fastmri_jax. If None include all workloads in experiment.',
+)
+flags.DEFINE_string(
+  'project_name',
+  'visualize-training-curves-legacy-stephint-deepspeech-jit-switch-final',
+  'Wandb project name.',
+)
 flags.DEFINE_string('run_postfix', 'jit_legacy_lstm', 'Postfix for wandb runs.')
 
 FLAGS = flags.FLAGS
@@ -43,8 +46,9 @@ def main(_):
     if not FLAGS.workloads:
       workload_dirs = os.listdir(os.path.join(experiment_dir, study_dir))
       workload_dirs = [
-          w for w in workload_dirs
-          if os.path.isdir(os.path.join(experiment_dir, study_dir, w))
+        w
+        for w in workload_dirs
+        if os.path.isdir(os.path.join(experiment_dir, study_dir, w))
       ]
       print(workload_dirs)
     else:
@@ -52,15 +56,14 @@ def main(_):
     for workload in workload_dirs:
       logging.info(os.path.join(experiment_dir, study_dir, workload))
       trial_dirs = [
-          t for t in os.listdir(
-              os.path.join(experiment_dir, study_dir, workload))
-          if re.match(TRIAL_DIR_REGEX, t)
+        t
+        for t in os.listdir(os.path.join(experiment_dir, study_dir, workload))
+        if re.match(TRIAL_DIR_REGEX, t)
       ]
       for trial in trial_dirs:
-        trial_dir = os.path.join(FLAGS.experiment_dir,
-                                 study_dir,
-                                 workload,
-                                 trial)
+        trial_dir = os.path.join(
+          FLAGS.experiment_dir, study_dir, workload, trial
+        )
         print(trial_dir)
         filename = get_filename(trial_dir)
         if not os.path.exists(filename):
@@ -68,11 +71,12 @@ def main(_):
 
         # Start a new W&B run
         run = wandb.init(
-            project=FLAGS.project_name,
-            name=(f'{workload}_{study_dir}_{trial}' + FLAGS.run_postfix))
+          project=FLAGS.project_name,
+          name=(f'{workload}_{study_dir}_{trial}' + FLAGS.run_postfix),
+        )
 
         # Log the CSV as a versioned Artifact
-        artifact = wandb.Artifact(name="training-data", type="dataset")
+        artifact = wandb.Artifact(name='training-data', type='dataset')
         artifact.add_file(filename)  # Directly add the file
         run.log_artifact(artifact)
 
@@ -80,7 +84,7 @@ def main(_):
         df = pd.read_csv(filename)
         for index, row in df.iterrows():
           metrics = {col: row[col] for col in df.columns}
-          wandb.log(metrics, step=int(row["global_step"]))
+          wandb.log(metrics, step=int(row['global_step']))
 
         # Finish the W&B run ---
         run.finish()
@@ -89,5 +93,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-
   app.run(main)
