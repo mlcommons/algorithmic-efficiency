@@ -14,7 +14,9 @@ import jax
 from absl import app, flags
 
 SUBMISSION_PATH = 'reference_algorithms/paper_baselines/adamw/jax/submission.py'
-TUNING_SEARCH_SPACE = 'reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
+TUNING_SEARCH_SPACE = (
+  'reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
+)
 NUM_TUNING_TRIALS = 3  # For external tuning ruleset
 NUM_STUDIES = 3
 
@@ -33,9 +35,11 @@ flags.DEFINE_string(
   'experiments',
   'Path to experiment dir where logs will be saved.',
 )
-flags.DEFINE_string('experiment_dir',
-                    'experiments/',
-                    'Path to experiment dir where logs will be saved.')
+flags.DEFINE_string(
+  'experiment_dir',
+  'experiments/',
+  'Path to experiment dir where logs will be saved.',
+)
 flags.DEFINE_enum(
   'framework',
   'jax',
@@ -50,7 +54,8 @@ flags.DEFINE_enum(
   help='Which tuning ruleset to score this submission on. Can be external or self.',
 )
 flags.DEFINE_string(
-    'workloads', None, help='Comma seperated list of workloads to run.')
+  'workloads', None, help='Comma seperated list of workloads to run.'
+)
 flags.DEFINE_integer('num_studies', NUM_STUDIES, help='Number of studies.')
 
 FLAGS = flags.FLAGS
