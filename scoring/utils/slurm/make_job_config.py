@@ -30,7 +30,7 @@ flags.DEFINE_string(
 )
 flags.DEFINE_string(
   'experiment_dir',
-  EXPERIMENT_DIR,
+  'experiments',
   'Path to experiment dir where logs will be saved.',
 )
 flags.DEFINE_string('experiment_dir',
@@ -38,24 +38,16 @@ flags.DEFINE_string('experiment_dir',
                     'Path to experiment dir where logs will be saved.')
 flags.DEFINE_enum(
   'framework',
-  FRAMEWORK,
+  'jax',
   enum_values=['jax', 'pytorch'],
   help='Can be either pytorch or jax.',
 )
-    'framework',
-    'jax',
-    enum_values=['jax', 'pytorch'],
-    help='Can be either pytorch or jax.')
 flags.DEFINE_integer('seed', 0, 'RNG seed to to generate study seeds from.')
 flags.DEFINE_enum(
   'tuning_ruleset',
-  TUNING_RULESET,
+  'self',
   enum_values=['external', 'self'],
   help='Which tuning ruleset to score this submission on. Can be external or self.',
-    'tuning_ruleset',
-    'external',
-    enum_values=['external', 'self'],
-    help='Which tuning ruleset to score this submission on. Can be external or self.'
 )
 flags.DEFINE_string(
     'workloads', None, help='Comma seperated list of workloads to run.')
