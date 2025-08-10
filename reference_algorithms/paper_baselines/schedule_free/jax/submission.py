@@ -10,7 +10,6 @@ from jax import lax
 import jax.numpy as jnp
 from optax.contrib import schedule_free_adamw
 from algoperf import spec
-from custom_pytorch_jax_converter import use_pytorch_weights, are_weights_equal
 
 _GRAD_CLIP_EPS = 1e-6
 
@@ -165,13 +164,6 @@ def update_params(workload: spec.Workload,
             'grad_norm': grad_norm[0],
         }, global_step)
     
-  # Log the number of parameters.
-  if global_step % 100 == 0:
-    date_ = "2025-07-01"
-    file_name = f"/results/schedule_free_pytorch_weights/criteo1tb_{date_}_after_{global_step}_steps.pth"
-    params = use_pytorch_weights(file_name=file_name)
-    are_weights_equal(new_params, params)
-    del params
 
   return (new_optimizer_state, opt_update_fn), new_params, new_model_state
 
