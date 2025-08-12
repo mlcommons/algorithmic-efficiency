@@ -282,7 +282,7 @@ class WmtWorkload(BaseWmtWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax_sharding_utils.shard_along_batch_dim(initial_params)
+    initial_params = jax_sharding_utils.shard_along_batch_dim(initial_params)
     return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:

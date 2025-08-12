@@ -169,7 +169,6 @@ def update_params(
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
   else:
@@ -221,7 +220,7 @@ def update_params(
     optimizer_state,
     current_param_container,
     batch,
-    per_device_rngs,
+    rng,
     grad_clip,
     label_smoothing,
   )

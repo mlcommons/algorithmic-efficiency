@@ -28,13 +28,13 @@ from typing import Any, Dict, Optional, Tuple
 
 import jax
 import tensorflow as tf
-
-# New PRNG implementation for correct sharding
-jax.config.update('jax_default_prng_impl', 'threefry2x32')
-jax.config.update('jax_threefry_partitionable', True)
 import torch
 import torch.distributed as dist
 from absl import app, flags, logging
+
+# New PRNG implementation for correct sharding, already default in JAX 0.5.0
+jax.config.update('jax_default_prng_impl', 'threefry2x32')
+jax.config.update('jax_threefry_partitionable', True)
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.

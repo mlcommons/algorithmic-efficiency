@@ -294,7 +294,6 @@ def update_params(
   hyperparameters = HPARAMS
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters['label_smoothing']
   else:

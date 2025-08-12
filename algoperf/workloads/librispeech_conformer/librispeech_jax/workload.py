@@ -10,7 +10,7 @@ import optax
 import torch
 from flax.core import pop
 
-from algoperf import data_utils, param_utils, spec
+from algoperf import data_utils, param_utils, spec, jax_sharding_utils
 from algoperf.workloads.librispeech_conformer import metrics, workload
 from algoperf.workloads.librispeech_conformer.input_pipeline import (
   LibriSpeechDataset,

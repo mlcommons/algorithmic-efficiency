@@ -17,11 +17,13 @@ from typing import (
   Union,
 )
 
+import jax
 import jax.numpy as jnp
 from flax import linen as nn
 from flax import struct
 from jax.experimental import rnn
 
+from algoperf.jax_utils import Dropout
 from algoperf.workloads.librispeech_conformer.librispeech_jax import (
   librispeech_preprocessor as preprocessor,
 )
