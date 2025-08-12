@@ -45,6 +45,10 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         repeat_final_dataset,
         num_batches,
       )
+      local_device_count = torch.cuda.device_count()
+      np_iter = map(
+        lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), np_iter
+      )
 
     while True:
       if RANK == 0:

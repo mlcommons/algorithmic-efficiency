@@ -71,6 +71,13 @@ class MnistWorkload(BaseMnistWorkload):
         num_batches,
         repeat_final_dataset,
       )
+      # Reshape (global_batch_size, ...) to
+      # (local_device_count, per_device_batch_size, ...).
+      # Assumes that `global_batch_size % local_device_count == 0`
+      local_device_count = torch.cuda.device_count()
+      np_iter = map(
+        lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), np_iter
+      )
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return

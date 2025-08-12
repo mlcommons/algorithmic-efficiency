@@ -296,13 +296,20 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     if split not in self._eval_iters:
       is_test = split == 'test'
       # These iterators repeat indefinitely.
-      self._eval_iters[split] = self._build_input_queue(
+      it = self._build_input_queue(
         data_rng,
         split=split,
         global_batch_size=global_batch_size,
         data_dir=data_dir,
         cache=is_test,
         repeat_final_dataset=is_test,
+      )
+      # Reshape (global_batch_size, ...) to
+      # (local_device_count, per_device_batch_size, ...).
+      # Assumes that `global_batch_size % local_device_count == 0`
+      local_device_count = torch.cuda.device_count()
+      self._eval_iters[split] = map(
+        lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), it
       )
 
     total_metrics = {
