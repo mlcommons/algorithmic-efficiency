@@ -8,7 +8,6 @@ from typing import Dict, Iterator, Tuple
 
 import jax
 import tensorflow_datasets as tfds
-import torch
 
 from algoperf import data_utils, jax_sharding_utils, spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax import input_pipeline
@@ -46,11 +45,7 @@ def get_imagenet_v2_iter(
   )
   it = map(shard_pad_fn, iter(ds))
   if framework == 'pytorch':
-    # Reshape (global_batch_size, ...) to
-    # (local_device_count, per_device_batch_size, ...).
-    # Assumes that `global_batch_size % local_device_count == 0`
-    local_device_count = torch.cuda.device_count()
-    it = map(lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), it)
+    it = map(data_utils.shard, it)
 
   elif framework == 'jax':
     f = functools.partial(

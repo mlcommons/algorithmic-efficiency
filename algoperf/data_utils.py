@@ -62,9 +62,17 @@ def shard_and_maybe_pad_np(
     if remainder_size != 0 or pad_to_global_batch_size:
       x = pad(x, pad_size, padding_value=padding_value)
 
+    # return x.reshape((local_device_count, -1, *x.shape[1:]))
     return x
 
   return jax.tree.map(_prepare, batch)
+
+
+def shard(batch):
+  local_device_count = max(torch.cuda.device_count(), jax.local_device_count())
+  return jax.tree.map(
+    lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), batch
+  )
 
 
 def pad(

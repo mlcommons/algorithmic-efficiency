@@ -190,13 +190,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False
     )
 
-    # Reshape (global_batch_size, ...) to
-    # (local_device_count, per_device_batch_size, ...).
-    # Assumes that `global_batch_size % local_device_count == 0`
-    local_device_count = torch.cuda.device_count()
-    dataloader = map(
-      lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), dataloader
-    )
+    dataloader = map(data_utils.shard, dataloader)
     return dataloader
 
   # Does NOT apply regularization, which is left to the submitter to do in
