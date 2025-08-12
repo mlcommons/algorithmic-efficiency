@@ -98,7 +98,9 @@ def _get_weights_by_nan_and_padding(labels, padding_mask):
   return replaced_labels, weights
 
 
-def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None, shard=False):
+def _get_batch_iterator(
+  dataset_iter, global_batch_size, num_shards=None, shard=False
+):
   """Turns a per-example iterator into a batched iterator.
 
   Constructs the batch from num_shards smaller batches, so that we can easily
@@ -160,8 +162,11 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None, shard=
           'weights': np.vstack(weights_shards),
         }
       else:
+
         def f(x):
-          return jax.tree.map(lambda *vals: np.stack(vals, axis=0), x[0], *x[1:])
+          return jax.tree.map(
+            lambda *vals: np.stack(vals, axis=0), x[0], *x[1:]
+          )
 
         graphs_shards = f(graphs_shards)
         labels_shards = f(labels_shards)
