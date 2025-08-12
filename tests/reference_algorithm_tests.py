@@ -304,10 +304,14 @@ def _make_one_batch_workload(
               ),
             }
             yield fake_batch
-
-        fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
-          _fake_iter(), global_batch_size
-        )
+        if framework == 'pytorch':
+          fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
+            _fake_iter(), global_batch_size, shard=True
+          )
+        else:
+          fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
+            _fake_iter(), global_batch_size
+          )
         fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
           fake_batch['inputs'] = _graph_map(_pytorch_map, fake_batch['inputs'])
