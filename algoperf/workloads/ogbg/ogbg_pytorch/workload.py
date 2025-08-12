@@ -77,7 +77,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     split: str,
     data_dir: str,
     global_batch_size: int,
-    shard: bool = True
+    shard: bool = True,
   ):
     # TODO: Check where the + 1 comes from.
     per_device_batch_size = int(global_batch_size / N_GPUS) + 1

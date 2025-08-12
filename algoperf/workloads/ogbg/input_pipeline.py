@@ -161,6 +161,7 @@ def _get_batch_iterator(
           'targets': np.vstack(labels_shards),
           'weights': np.vstack(weights_shards),
         }
+
       else:
 
         def f(x):
