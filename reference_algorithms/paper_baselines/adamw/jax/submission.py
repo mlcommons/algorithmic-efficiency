@@ -1,17 +1,13 @@
 """Submission file for an AdamW optimizer with warmup+cosine LR in Jax."""
 
-import functools
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+import optax
 from jax.sharding import NamedSharding
 from jax.sharding import PartitionSpec as P
-import optax
-from flax import jax_utils
-from jax import lax
 
-from algoperf import jax_sharding_utils
 from algoperf import spec
 
 _GRAD_CLIP_EPS = 1e-6

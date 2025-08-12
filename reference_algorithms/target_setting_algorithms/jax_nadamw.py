@@ -6,7 +6,6 @@ import chex
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
 
 from algoperf import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup

@@ -8,15 +8,13 @@ import os
 import sys
 
 from absl import flags
-from absl import logging
-from absl.testing import absltest
-from absl.testing import parameterized
+from absl.testing import absltest, parameterized
 
-from algoperf.profiler import PassThroughProfiler
-import submission_runner
-from algoperf.workloads.workloads import import_workload
-from algoperf.workloads.workloads import BASE_WORKLOADS_DIR
-from algoperf.workloads.workloads import WORKLOADS
+from algoperf.workloads.workloads import (
+  BASE_WORKLOADS_DIR,
+  WORKLOADS,
+  import_workload,
+)
 
 FLAGS = flags.FLAGS
 # Needed to avoid UnparsedFlagAccessError

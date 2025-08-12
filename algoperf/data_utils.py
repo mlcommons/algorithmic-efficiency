@@ -9,8 +9,7 @@ import torch.distributed as dist
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, DistributedSampler, Sampler
 
-from algoperf import jax_sharding_utils
-from algoperf import spec
+from algoperf import jax_sharding_utils, spec
 
 
 def shard_and_maybe_pad_np(

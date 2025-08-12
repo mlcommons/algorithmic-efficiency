@@ -6,11 +6,9 @@ from typing import Dict, Optional, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flax import jax_utils
 
-from algoperf import param_utils, spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.criteo1tb.criteo1tb_jax import models
-from algoperf import jax_sharding_utils
 from algoperf.workloads.criteo1tb.workload import BaseCriteo1TbDlrmSmallWorkload
 
 

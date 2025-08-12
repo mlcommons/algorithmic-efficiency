@@ -2,14 +2,12 @@
 Script to generate wandb runs from experiment logs.
 """
 
-from absl import flags
-from absl import app
-from absl import logging
-
-import re
-import pandas as pd
 import os
+import re
+
+import pandas as pd
 import wandb
+from absl import app, flags, logging
 
 flags.DEFINE_string(
   'experiment_dir',

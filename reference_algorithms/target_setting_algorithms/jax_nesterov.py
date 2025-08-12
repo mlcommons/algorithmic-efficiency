@@ -5,7 +5,6 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
 
 from algoperf import spec
 from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401

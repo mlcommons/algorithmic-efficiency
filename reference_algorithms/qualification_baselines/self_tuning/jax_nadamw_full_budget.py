@@ -1,6 +1,5 @@
 """Submission file for an NAdamW optimizer with warmup+cosine LR in Jax."""
 
-import functools
 from typing import (
   Any,
   Callable,
@@ -18,10 +17,8 @@ import jax
 import jax.numpy as jnp
 import optax
 from flax import jax_utils
-from jax import lax
 
-from algoperf import spec
-from algoperf import jax_sharding_utils
+from algoperf import jax_sharding_utils, spec
 
 _GRAD_CLIP_EPS = 1e-6
 

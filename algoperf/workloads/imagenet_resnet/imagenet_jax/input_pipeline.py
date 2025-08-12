@@ -10,7 +10,6 @@ from typing import Dict, Iterator, Tuple
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from flax import jax_utils
 
 from algoperf import data_utils, spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax import randaugment

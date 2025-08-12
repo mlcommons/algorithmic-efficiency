@@ -6,15 +6,9 @@ from typing import Any, Dict, Optional, Tuple
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
 from flax import linen as nn
-import jax
-import jax.numpy as jnp
-import optax
 
-from algoperf import param_utils
-from algoperf import jax_sharding_utils
-from algoperf import spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.mnist.workload import BaseMnistWorkload
 
 

@@ -15,22 +15,12 @@ from typing import (
   Optional,
   Tuple,
   Union,
-  Type,
-  Mapping,
-  Sequence,
 )
-from absl import logging
 
-import numpy as np
-
-import functools
-import flax
+import jax.numpy as jnp
 from flax import linen as nn
 from flax import struct
 from jax.experimental import rnn
-import jax.numpy as jnp
-from jax.experimental.shard_map import shard_map
-from jax.sharding import PartitionSpec as P
 
 from algoperf.workloads.librispeech_conformer.librispeech_jax import (
   librispeech_preprocessor as preprocessor,

@@ -2,8 +2,6 @@
 # https://github.com/google/init2winit/blob/master/init2winit/model_lib/gnn.py.
 from typing import Tuple
 
-import jax
-from flax import linen as nn
 import jax.numpy as jnp
 import jraph
 from flax import linen as nn

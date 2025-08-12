@@ -9,12 +9,10 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 from absl import logging
-from flax import jax_utils
 from flax import linen as nn
 from flax.training import common_utils
 
-from algoperf import jax_sharding_utils, param_utils
-from algoperf import spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.wmt import bleu
 from algoperf.workloads.wmt.wmt_jax import decode, models
 from algoperf.workloads.wmt.workload import BaseWmtWorkload

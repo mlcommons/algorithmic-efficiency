@@ -7,13 +7,11 @@ import jax
 import jax.numpy as jnp
 import optax
 import tensorflow_datasets as tfds
-from flax import jax_utils
 from flax import linen as nn
 from flax.core import pop
 from jax import lax
 
 from algoperf import jax_sharding_utils, param_utils, spec
-from algoperf import spec
 from algoperf.workloads.cifar.cifar_jax import models
 from algoperf.workloads.cifar.cifar_jax.input_pipeline import create_input_iter
 from algoperf.workloads.cifar.workload import BaseCifarWorkload

@@ -3,14 +3,9 @@ from typing import Dict, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from jax.experimental.shard_map import shard_map
-from jax.sharding import PartitionSpec as P
 import numpy as np
-from flax import jax_utils
 
-from algoperf import param_utils
-from algoperf import spec
-from algoperf import jax_sharding_utils
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.librispeech_conformer.librispeech_jax.workload import (
   LibriSpeechConformerWorkload,
 )

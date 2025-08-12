@@ -2,11 +2,9 @@ import functools
 from typing import Any, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import flax
-from flax import linen as nn
 import jax
 import jax.numpy as jnp
-
-from jax.sharding import PartitionSpec as P
+from flax import linen as nn
 
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]

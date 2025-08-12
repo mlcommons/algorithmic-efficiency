@@ -6,13 +6,9 @@ from typing import Dict, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from flax import jax_utils
 
-from algoperf import param_utils
-from algoperf import spec
-from algoperf import jax_sharding_utils
 import algoperf.random_utils as prng
-from algoperf import param_utils, spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.fastmri.fastmri_jax.models import DROPOUT_RATE, UNet
 from algoperf.workloads.fastmri.fastmri_jax.ssim import ssim
 from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload

@@ -4,11 +4,10 @@ from typing import Dict, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from flax import jax_utils
 from flax import linen as nn
 from flax.core import pop
 
-from algoperf import param_utils, spec, jax_sharding_utils
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax.workload import (
   ImagenetResNetWorkload,
 )

@@ -1,7 +1,8 @@
 """Utilities for dealing with sharding in JAX."""
 
 import jax
-from jax.sharding import NamedSharding, PartitionSpec as P
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 
 
 def get_replicate_sharding():

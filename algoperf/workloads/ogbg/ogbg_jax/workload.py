@@ -7,11 +7,8 @@ import jax
 import jax.numpy as jnp
 import jraph
 import optax
-from flax import jax_utils
 
-from algoperf import jax_sharding_utils
-from algoperf import param_utils
-from algoperf import spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.ogbg import metrics
 from algoperf.workloads.ogbg.ogbg_jax import models
 from algoperf.workloads.ogbg.workload import BaseOgbgWorkload

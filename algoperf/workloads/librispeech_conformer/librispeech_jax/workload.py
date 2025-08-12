@@ -2,19 +2,16 @@ import functools
 import math
 from typing import Dict, Iterator, Optional, Tuple
 
-from flax.core import pop
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
 import torch
+from flax.core import pop
 
-from algoperf import data_utils
-from algoperf import param_utils
-from algoperf import spec
-from algoperf.workloads.librispeech_conformer import metrics
-from algoperf.workloads.librispeech_conformer import workload
+from algoperf import data_utils, param_utils, spec
+from algoperf.workloads.librispeech_conformer import metrics, workload
 from algoperf.workloads.librispeech_conformer.input_pipeline import (
   LibriSpeechDataset,
 )
