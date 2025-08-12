@@ -77,6 +77,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     split: str,
     data_dir: str,
     global_batch_size: int,
+    shard: bool = True
   ):
     # TODO: Check where the + 1 comes from.
     per_device_batch_size = int(global_batch_size / N_GPUS) + 1
@@ -86,7 +87,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
       dataset_iter = super()._build_input_queue(
-        data_rng, split, data_dir, global_batch_size, shard=True
+        data_rng, split, data_dir, global_batch_size, shard
       )
 
     while True:
