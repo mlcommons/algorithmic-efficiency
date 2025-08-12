@@ -86,7 +86,7 @@ class OgbgWorkload(BaseOgbgWorkload):
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
       dataset_iter = super()._build_input_queue(
-        data_rng, split, data_dir, global_batch_size
+        data_rng, split, data_dir, global_batch_size, shard=True
       )
 
     while True:
