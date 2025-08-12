@@ -189,6 +189,14 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     dataloader = data_utils.cycle(
       dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False
     )
+
+    # Reshape (global_batch_size, ...) to
+    # (local_device_count, per_device_batch_size, ...).
+    # Assumes that `global_batch_size % local_device_count == 0`
+    local_device_count = torch.cuda.device_count()
+    dataloader = map(
+      lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), dataloader
+    )
     return dataloader
 
   # Does NOT apply regularization, which is left to the submitter to do in
@@ -288,15 +296,8 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     data_rng, model_rng = prng.split(rng, 2)
     if split not in self._eval_iters:
       # These iterators repeat indefinitely.
-      it = self._build_input_queue(
+      self._eval_iters[split] = self._build_input_queue(
         data_rng, split, data_dir, global_batch_size=global_batch_size
-      )
-      # Reshape (global_batch_size, ...) to
-      # (local_device_count, per_device_batch_size, ...).
-      # Assumes that `global_batch_size % local_device_count == 0`
-      local_device_count = torch.cuda.device_count()
-      self._eval_iters[split] = map(
-        lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), it
       )
 
     total_metrics = {

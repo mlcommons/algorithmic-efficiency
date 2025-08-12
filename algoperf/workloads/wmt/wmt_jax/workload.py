@@ -334,6 +334,30 @@ class WmtWorkload(BaseWmtWorkload):
     )
     return logits_batch, None
 
+  def _build_input_queue(
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ):
+    it = super()._build_input_queue(
+      data_rng,
+      split,
+      data_dir,
+      global_batch_size,
+      cache,
+      repeat_final_dataset,
+      num_batches,
+    )
+    f = functools.partial(
+      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
+    )
+    return map(f, it)
+
   def _normalize_eval_metrics(
     self, num_examples: int, total_metrics: Dict[str, Any]
   ) -> Dict[str, float]:

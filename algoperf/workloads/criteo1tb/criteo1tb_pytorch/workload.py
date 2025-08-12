@@ -153,6 +153,9 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         repeat_final_dataset=repeat_final_dataset,
       )
       local_device_count = torch.cuda.device_count()
+      # Reshape (global_batch_size, ...) to
+      # (local_device_count, per_device_batch_size, ...).
+      # Assumes that `global_batch_size % local_device_count == 0`
       np_iter = map(
         lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), np_iter
       )

@@ -186,6 +186,9 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
       padded_batch = data_utils.shard_and_maybe_pad_np(
         numpy_batch, padding_value=1.0
       )
+      padded_batch = jax.device_put(
+        padded_batch, jax_sharding_utils.get_batch_dim_sharding
+      )
       yield padded_batch
 
   # Does NOT apply regularization, which is left to the submitter to do in
