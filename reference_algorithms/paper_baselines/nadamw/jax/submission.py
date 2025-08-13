@@ -19,7 +19,6 @@ import chex
 import jax
 import jax.numpy as jnp
 import optax
-from jax import lax
 
 from algoperf import jax_sharding_utils, spec
 
@@ -241,10 +240,7 @@ def train_step(
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
     current_param_container
   )
-  # Get correct global mean loss and grad.
-  (summed_loss, n_valid_examples, grad) = lax.psum(
-    (summed_loss, n_valid_examples, grad), axis_name='batch'
-  )
+
   loss = summed_loss / n_valid_examples
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
