@@ -89,6 +89,4 @@ class BaseLibrispeechWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Approx. steps the baseline can do in the allowed runtime budget."""
-    # TODO(kasimbeg):rever tot 76000
-    # return 76_000
-    return 80_000
+    return 76_000
