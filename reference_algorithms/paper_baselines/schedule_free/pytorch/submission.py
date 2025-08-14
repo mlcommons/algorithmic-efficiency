@@ -5,9 +5,11 @@
 # LICENSE file in the root directory of this source tree.
 import math
 from typing import Dict, Iterator, List, Tuple
-from absl import logging
+
 import torch
 import torch.distributed.nn as dist_nn
+from absl import logging
+
 from algoperf import spec
 from algoperf.pytorch_utils import pytorch_setup
 
@@ -264,7 +266,7 @@ def update_params(workload: spec.Workload,
     loss.backward()
     return loss
 
-  loss = optimizer_state['optimizer'].step(closure)
+  _ = optimizer_state['optimizer'].step(closure)
 
   return (optimizer_state, current_param_container, new_model_state)
 

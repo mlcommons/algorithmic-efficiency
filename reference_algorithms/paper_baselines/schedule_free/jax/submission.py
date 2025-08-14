@@ -2,13 +2,14 @@
 
 import functools
 from typing import Dict, Iterator, List, Tuple
-import optax
 
-from flax import jax_utils
 import jax
-from jax import lax
 import jax.numpy as jnp
+import optax
+from flax import jax_utils
+from jax import lax
 from optax.contrib import schedule_free_adamw
+
 from algoperf import spec
 
 _GRAD_CLIP_EPS = 1e-6
@@ -101,9 +102,10 @@ def pmapped_train_step(workload,
       sum(jnp.sum(g**2) for g in jax.tree_util.tree_leaves(grad)))
 
   # Extract the leaves of the pytree
-  leaves = jax.tree_util.tree_leaves(grad)
+  # leaves = jax.tree_util.tree_leaves(grad)
+
   # Count the total number of elements in all leaves
-  total_size = sum(jnp.size(leaf) for leaf in leaves)
+  # total_size = sum(jnp.size(leaf) for leaf in leaves)
 
   # jax.debug.print('GRAD NORM {}', grad_norm)
   # jax.debug.print('NUM PARAMS {}', total_size)
