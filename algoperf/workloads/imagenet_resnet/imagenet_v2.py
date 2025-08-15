@@ -49,7 +49,7 @@ def get_imagenet_v2_iter(
 
   elif framework == 'jax':
     f = functools.partial(
-      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding
+      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
     )
     it = map(f, it)
 
