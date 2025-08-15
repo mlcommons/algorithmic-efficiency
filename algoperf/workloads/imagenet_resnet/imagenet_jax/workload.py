@@ -48,6 +48,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         stddev_rgb=self.train_stddev,
         image_size=self.center_crop_size,
         resize_size=self.resize_size,
+        framework='jax',
       )
       return itertools.cycle(np_iter)
 
