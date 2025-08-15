@@ -187,7 +187,7 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
         numpy_batch, padding_value=1.0
       )
       padded_batch = jax.device_put(
-        padded_batch, jax_sharding_utils.get_batch_dim_sharding
+        padded_batch, jax_sharding_utils.get_batch_dim_sharding()
       )
       yield padded_batch
 
