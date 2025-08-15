@@ -340,7 +340,6 @@ class WmtWorkload(BaseWmtWorkload):
     split: str,
     data_dir: str,
     global_batch_size: int,
-    cache: Optional[bool] = None,
     repeat_final_dataset: Optional[bool] = None,
     num_batches: Optional[int] = None,
   ):
@@ -349,7 +348,6 @@ class WmtWorkload(BaseWmtWorkload):
       split,
       data_dir,
       global_batch_size,
-      cache,
       repeat_final_dataset,
       num_batches,
     )
