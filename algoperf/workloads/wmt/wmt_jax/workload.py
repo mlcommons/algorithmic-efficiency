@@ -282,7 +282,6 @@ class WmtWorkload(BaseWmtWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    initial_params = jax_sharding_utils.shard_along_batch_dim(initial_params)
     return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -340,16 +339,16 @@ class WmtWorkload(BaseWmtWorkload):
     split: str,
     data_dir: str,
     global_batch_size: int,
-    repeat_final_dataset: Optional[bool] = None,
     num_batches: Optional[int] = None,
+    repeat_final_dataset: Optional[bool] = None,
   ):
     it = super()._build_input_queue(
       data_rng,
       split,
       data_dir,
       global_batch_size,
-      repeat_final_dataset,
       num_batches,
+      repeat_final_dataset,
     )
     f = functools.partial(
       jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
