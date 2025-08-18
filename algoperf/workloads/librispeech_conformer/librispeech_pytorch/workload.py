@@ -189,8 +189,6 @@ class LibriSpeechConformerWorkload(workload.BaseLibrispeechWorkload):
     dataloader = data_utils.cycle(
       dataloader, custom_sampler=USE_PYTORCH_DDP, use_mixup=False
     )
-
-    dataloader = map(data_utils.shard, dataloader)
     return dataloader
 
   # Does NOT apply regularization, which is left to the submitter to do in
