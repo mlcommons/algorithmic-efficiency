@@ -100,10 +100,9 @@ class BaseOgbgWorkload(spec.Workload):
     split: str,
     data_dir: str,
     global_batch_size: int,
-    shard: bool = False,
   ):
     dataset_iter = input_pipeline.get_dataset_iter(
-      split, data_rng, data_dir, global_batch_size, shard
+      split, data_rng, data_dir, global_batch_size
     )
     if split != 'train':
       # Note that this stores the entire val dataset in memory.

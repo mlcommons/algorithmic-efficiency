@@ -99,7 +99,7 @@ def _get_weights_by_nan_and_padding(labels, padding_mask):
 
 
 def _get_batch_iterator(
-  dataset_iter, global_batch_size, num_shards=None, shard=False
+  dataset_iter, global_batch_size, num_shards=None, shard_dim=False
 ):
   """Turns a per-example iterator into a batched iterator.
 
@@ -152,7 +152,7 @@ def _get_batch_iterator(
     weights_shards.append(weights)
 
     if count == num_shards:
-      if not shard:
+      if not shard_dim:
         # jraph.batch has a memory leak and OOMs
         # It is possible with jraph.batch_np we may have transferred the leak
         # to the cpu.
@@ -184,9 +184,11 @@ def _get_batch_iterator(
       weights_shards = []
 
 
-def get_dataset_iter(split, data_rng, data_dir, global_batch_size, shard):
+def get_dataset_iter(
+  split, data_rng, data_dir, global_batch_size, shard_dim=False
+):
   shuffle = split in ['train', 'eval_train']
   ds = _load_dataset(
     split, should_shuffle=shuffle, data_rng=data_rng, data_dir=data_dir
   )
-  return _get_batch_iterator(iter(ds), global_batch_size, shard)
+  return _get_batch_iterator(iter(ds), global_batch_size, shard_dim=shard_dim)
