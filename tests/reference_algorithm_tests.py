@@ -307,7 +307,7 @@ def _make_one_batch_workload(
 
         if framework == 'pytorch':
           fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
-            _fake_iter(), global_batch_size, shard=True
+            _fake_iter(), global_batch_size, shard_dim=True
           )
         else:
           fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
