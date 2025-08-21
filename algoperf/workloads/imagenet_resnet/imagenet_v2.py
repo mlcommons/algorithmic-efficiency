@@ -6,10 +6,9 @@ Uses TFDS https://www.tensorflow.org/datasets/catalog/imagenet_v2.
 import functools
 from typing import Dict, Iterator, Tuple
 
-import jax
 import tensorflow_datasets as tfds
 
-from algoperf import data_utils, jax_sharding_utils, spec
+from algoperf import data_utils, spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax import input_pipeline
 
 
@@ -46,11 +45,5 @@ def get_imagenet_v2_iter(
   it = map(shard_pad_fn, iter(ds))
   if framework == 'pytorch':
     it = map(data_utils.shard, it)
-
-  elif framework == 'jax':
-    f = functools.partial(
-      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
-    )
-    it = map(f, it)
 
   return it
