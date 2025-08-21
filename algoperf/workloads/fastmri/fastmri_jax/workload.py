@@ -6,10 +6,9 @@ from typing import Dict, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
-from flax import jax_utils
 
 import algoperf.random_utils as prng
-from algoperf import param_utils, spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.fastmri.fastmri_jax.models import DROPOUT_RATE, UNet
 from algoperf.workloads.fastmri.fastmri_jax.ssim import ssim
 from algoperf.workloads.fastmri.workload import BaseFastMRIWorkload
@@ -35,7 +34,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     params = variables['params']
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    params = jax_utils.replicate(params)
+    params = jax_sharding_utils.replicate(params)
     return params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -98,10 +97,14 @@ class FastMRIWorkload(BaseFastMRIWorkload):
     }
 
   @functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, 0, 0, 0),
-    static_broadcasted_argnums=(0,),
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),
+      jax_sharding_utils.get_batch_dim_sharding(),
+      jax_sharding_utils.get_replicate_sharding(),
+    ),
+    static_argnums=(0,),
+    out_shardings=jax_sharding_utils.get_replicate_sharding(),
   )
   def _eval_model(
     self,
@@ -135,8 +138,31 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       'ssim': ssim_sum,
       'loss': summed_loss,
     }
-    metrics = jax.lax.psum(metrics, axis_name='batch')
     return metrics
+
+  def _build_input_queue(
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ):
+    it = super()._build_input_queue(
+      data_rng,
+      split,
+      data_dir,
+      global_batch_size,
+      cache,
+      repeat_final_dataset,
+      num_batches,
+    )
+    f = functools.partial(
+      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
+    )
+    return map(f, it)
 
   def _eval_model_on_split(
     self,
@@ -166,13 +192,12 @@ class FastMRIWorkload(BaseFastMRIWorkload):
       )
 
     total_metrics = {'ssim': 0.0, 'loss': 0.0}
-    eval_rngs = prng.split(model_rng, jax.local_device_count())
     for _ in range(num_batches):
       batch = next(self._eval_iters[split])
       # We already sum these metrics across devices inside _eval_model.
-      synced_metrics = self._eval_model(params, batch, eval_rngs)
+      synced_metrics = self._eval_model(params, batch, model_rng)
       total_metrics = {
-        k: v + synced_metrics[k][0] for k, v in total_metrics.items()
+        k: v + synced_metrics[k] for k, v in total_metrics.items()
       }
     return {k: float(v.item() / num_examples) for k, v in total_metrics.items()}
 

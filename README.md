@@ -57,20 +57,16 @@ You can install this package and dependencies in a [Python virtual environment](
 We recommend using a Docker container (or alternatively, a Singularity/Apptainer container) to ensure a similar environment to our scoring and testing environments.
 Both options are described in detail in the [**Getting Started**](/docs/GETTING_STARTED.md) document.
 
-_TL;DR to install the Jax version for GPU run:_
+*TL;DR to install the Jax version for GPU and all workload dependencies run:*
 
 ```bash
-pip3 install -e '.[pytorch_cpu]'
-pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-pip3 install -e '.[full]'
+pip3 install -e '.[pytorch_cpu,jax_gpu,full]' --extra-index-url https://download.pytorch.org/whl/cpu
 ```
 
-_TL;DR to install the PyTorch version for GPU run:_
+*TL;DR to install the PyTorch version for GPU and all workload dependencies run:*
 
 ```bash
-pip3 install -e '.[jax_cpu]'
-pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
-pip3 install -e '.[full]'
+pip3 install -e '.[jax_cpu,pytorch_gpu,full]'
 ```
 
 ## Getting Started

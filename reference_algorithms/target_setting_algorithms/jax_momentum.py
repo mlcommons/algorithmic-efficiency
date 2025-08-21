@@ -5,7 +5,6 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
 
 from algoperf import spec
 from reference_algorithms.target_setting_algorithms.data_selection import (  # noqa: F401
@@ -49,7 +48,7 @@ def init_optimizer_state(
   )
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn
 
 
 def create_lr_schedule_fn(

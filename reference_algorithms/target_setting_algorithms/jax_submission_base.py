@@ -1,26 +1,17 @@
 """Update submission function in Jax."""
 
-import functools
 from typing import Any, Dict, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 import optax
-from jax import lax
 
-from algoperf import spec
+from algoperf import jax_sharding_utils, spec
 
 _GRAD_CLIP_EPS = 1e-6
 
 
-@functools.partial(
-  jax.pmap,
-  axis_name='batch',
-  in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
-  static_broadcasted_argnums=(0, 1),
-  donate_argnums=(2, 3, 4),
-)
-def pmapped_train_step(
+def train_step(
   workload,
   opt_update_fn,
   model_state,
@@ -55,10 +46,7 @@ def pmapped_train_step(
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
     current_param_container
   )
-  # Get correct global mean loss and grad.
-  (summed_loss, n_valid_examples, grad) = lax.psum(
-    (summed_loss, n_valid_examples, grad), axis_name='batch'
-  )
+  # Compute mean loss and grad
   loss = summed_loss / n_valid_examples
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
@@ -99,7 +87,6 @@ def update_params(
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
   else:
@@ -108,15 +95,50 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
+  # Create shardings for each argument
+  replicated = jax_sharding_utils.get_replicate_sharding()  # No partitioning
+  sharded = (
+    jax_sharding_utils.get_batch_dim_sharding()
+  )  # Partition along batch dimension
+
+  # Create the sharding rules for each argument
+  arg_shardings = (
+    # workload is static
+    # opt_update_fn is static
+    replicated,  # model_state
+    replicated,  # optimizer_state
+    replicated,  # current_param_container
+    sharded,  # batch
+    replicated,  # rng
+    replicated,  # grad_clip
+    replicated,  # label_smoothing
+  )
+  out_shardings = (
+    replicated,  # new_optimizer_state
+    replicated,  # updated_params
+    replicated,  # new_model_state
+    replicated,  # loss
+    replicated,  # grad_norm
+  )
+
+  # Jit with shardings
+  jitted_train_step = jax.jit(
+    train_step,
+    static_argnums=(0, 1),
+    donate_argnums=(2, 3, 4),
+    in_shardings=arg_shardings,
+    out_shardings=out_shardings,
+  )
+
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = (
-    pmapped_train_step(  # pylint: disable=line-too-long
+    jitted_train_step(
       workload,
       opt_update_fn,
       model_state,
       optimizer_state,
       current_param_container,
       batch,
-      per_device_rngs,
+      rng,
       grad_clip,
       label_smoothing,
     )
@@ -128,8 +150,8 @@ def update_params(
   ) and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
       {
-        'loss': loss[0],
-        'grad_norm': grad_norm[0],
+        'loss': loss.item(),
+        'grad_norm': grad_norm.item(),
       },
       global_step,
     )

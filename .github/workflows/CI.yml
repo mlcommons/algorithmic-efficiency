@@ -180,7 +180,7 @@ jobs:
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=ogbg     --framework=pytorch     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/pytorch_nesterov.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
         python tests/reference_algorithm_tests.py --workload=ogbg     --framework=jax     --global_batch_size=8     --submission_path=reference_algorithms/target_setting_algorithms/jax_nesterov.py     --tuning_search_space=reference_algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
-  pytest:
+  pytest-params:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

@@ -1,6 +1,7 @@
 """OGBG workload implemented in PyTorch."""
 
 import contextlib
+import itertools
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import jax
@@ -10,7 +11,7 @@ from jraph import GraphsTuple
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from algoperf import param_utils, pytorch_utils, spec
-from algoperf.workloads.ogbg import metrics
+from algoperf.workloads.ogbg import input_pipeline, metrics
 from algoperf.workloads.ogbg.ogbg_pytorch import models
 from algoperf.workloads.ogbg.ogbg_pytorch.models import GNN
 from algoperf.workloads.ogbg.workload import BaseOgbgWorkload
@@ -85,9 +86,12 @@ class OgbgWorkload(BaseOgbgWorkload):
     # avoid creating too many threads.
     if RANK == 0:
       data_rng = data_rng.astype('uint32')
-      dataset_iter = super()._build_input_queue(
-        data_rng, split, data_dir, global_batch_size
+      dataset_iter = input_pipeline.get_dataset_iter(
+        split, data_rng, data_dir, global_batch_size, shard_dim=True
       )
+      if split != 'train':
+        # Note that this stores the entire val dataset in memory.
+        dataset_iter = itertools.cycle(dataset_iter)
 
     while True:
       if RANK == 0:

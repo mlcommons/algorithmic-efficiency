@@ -229,7 +229,7 @@ def _make_one_batch_workload(
       del kwargs
 
       np.random.seed(42)
-      if framework == 'jax' or USE_PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         batch_shape = (n_gpus, global_batch_size // n_gpus)
       else:
         batch_shape = (global_batch_size,)
@@ -305,9 +305,14 @@ def _make_one_batch_workload(
             }
             yield fake_batch
 
-        fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
-          _fake_iter(), global_batch_size
-        )
+        if framework == 'pytorch':
+          fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
+            _fake_iter(), global_batch_size, shard_dim=True
+          )
+        else:
+          fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
+            _fake_iter(), global_batch_size
+          )
         fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
           fake_batch['inputs'] = _graph_map(_pytorch_map, fake_batch['inputs'])
@@ -432,6 +437,10 @@ def _test_submission(
     global_batch_size = FLAGS.global_batch_size
     if FLAGS.global_batch_size < 0:
       raise ValueError('Must set --global_batch_size.')
+    elif global_batch_size < n_gpus and FLAGS.framework == 'jax':
+      raise ValueError(
+        'Global batch size cannot be smaller than the number of GPUs when using JAX sharding.'
+      )
   workload = _make_one_batch_workload(
     workload_class,
     workload_name,

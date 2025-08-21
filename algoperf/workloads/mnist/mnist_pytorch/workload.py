@@ -4,6 +4,7 @@ import contextlib
 from collections import OrderedDict
 from typing import Any, Dict, Iterator, Optional, Tuple
 
+import jax
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -71,6 +72,19 @@ class MnistWorkload(BaseMnistWorkload):
         num_batches,
         repeat_final_dataset,
       )
+      # # Reshape (global_batch_size, ...) to
+      # # (local_device_count, per_device_batch_size, ...).
+      # # Assumes that `global_batch_size % local_device_count == 0`
+      local_device_count = max(
+        torch.cuda.device_count(), jax.local_device_count()
+      )
+
+      def shard(batch):
+        return jax.tree.map(
+          lambda x: x.reshape((local_device_count, -1, *x.shape[1:])), batch
+        )
+
+      np_iter = map(shard, np_iter)
     while True:
       if RANK == 0:
         batch = next(np_iter)  # pylint: disable=stop-iteration-return

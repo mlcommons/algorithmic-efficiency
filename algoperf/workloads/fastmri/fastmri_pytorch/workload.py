@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 import algoperf.random_utils as prng
-from algoperf import param_utils, pytorch_utils, spec
+from algoperf import data_utils, param_utils, pytorch_utils, spec
 from algoperf.workloads.fastmri.fastmri_pytorch import models
 from algoperf.workloads.fastmri.fastmri_pytorch.models import UNet
 from algoperf.workloads.fastmri.fastmri_pytorch.ssim import ssim
@@ -45,6 +45,7 @@ class FastMRIWorkload(BaseFastMRIWorkload):
         repeat_final_dataset,
         num_batches,
       )
+      np_iter = map(data_utils.shard, np_iter)
 
     while True:
       if RANK == 0:

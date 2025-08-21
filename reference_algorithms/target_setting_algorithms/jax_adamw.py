@@ -3,7 +3,6 @@
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
 
 from algoperf import spec
 from reference_algorithms.target_setting_algorithms import cosine_warmup
@@ -51,4 +50,4 @@ def init_optimizer_state(
   )
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn
