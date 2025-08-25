@@ -173,6 +173,7 @@ def update_params(
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
       update_batch_norm=update_batch_norm,
+      dropout_rate=hyperparameters.dropout_rate
     )
     label_smoothing = (
       hyperparameters.label_smoothing

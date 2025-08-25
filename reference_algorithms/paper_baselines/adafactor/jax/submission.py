@@ -78,6 +78,7 @@ def pmapped_train_step(
   rng,
   grad_clip,
   label_smoothing,
+  dropout_rate,
 ):
   def _loss_fn(params):
     """Loss function used for training."""
@@ -94,6 +95,7 @@ def pmapped_train_step(
       logits_batch=logits,
       mask_batch=batch.get('weights'),
       label_smoothing=label_smoothing,
+      dropout_rate=dropout_rate,
     )
     summed_loss = loss_dict['summed']
     n_valid_examples = loss_dict['n_valid_examples']
@@ -156,6 +158,7 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
+  dropout_rate = hyperparameters.dropout_rate
   outputs = pmapped_train_step(
     workload,
     opt_update_fn,
@@ -166,6 +169,7 @@ def update_params(
     per_device_rngs,
     grad_clip,
     label_smoothing,
+    dropout_rate
   )
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 
