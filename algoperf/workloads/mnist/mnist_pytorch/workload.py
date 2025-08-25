@@ -138,16 +138,7 @@ class MnistWorkload(BaseMnistWorkload):
       }
       yield batch
 
-  def init_model_fn(
-    self,
-    rng: spec.RandomState,
-    dropout_rate: Optional[float] = None,
-    aux_dropout_rate: Optional[float] = None,
-  ) -> spec.ModelInitState:
-    """Dropout is unused."""
-    del dropout_rate
-    del aux_dropout_rate
-
+  def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     if hasattr(self, '_model'):
       if isinstance(self._model, (DDP, torch.nn.DataParallel)):
         self._model.module.reset_parameters()
@@ -178,10 +169,12 @@ class MnistWorkload(BaseMnistWorkload):
     mode: spec.ForwardPassMode,
     rng: spec.RandomState,
     update_batch_norm: bool,
+    dropout_rate: float = 0.0,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
+    del dropout_rate
     model = params
     if mode == spec.ForwardPassMode.EVAL:
       model.eval()
