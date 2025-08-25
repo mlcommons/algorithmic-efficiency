@@ -14,9 +14,7 @@ def torch2jax(
   key_transform=None,
   sd_transform=None,
 ):
-  jax_params, model_state = jax_workload.init_model_fn(
-    jax.random.PRNGKey(0)
-  )
+  jax_params, model_state = jax_workload.init_model_fn(jax.random.PRNGKey(0))
   pytorch_model, _ = pytorch_workload.init_model_fn([0])
   if isinstance(jax_params, dict):
     jax_params = FrozenDict(jax_params)

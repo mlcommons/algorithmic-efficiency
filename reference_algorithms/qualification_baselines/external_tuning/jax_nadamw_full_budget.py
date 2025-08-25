@@ -339,7 +339,7 @@ def update_params(
       rng,
       grad_clip,
       label_smoothing,
-      dropout_rate
+      dropout_rate,
     )
   )
 

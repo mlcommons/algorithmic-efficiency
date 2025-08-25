@@ -306,7 +306,7 @@ def update_params(
     grad_clip = None
   dropout_rate = hyperparameters.dropout_rate
 
-    # Create shardings for each argument
+  # Create shardings for each argument
   mesh = jax.sharding.Mesh(jax.devices(), ('batch'))
   replicated = jax_sharding_utils.get_replicate_sharding(
     mesh
@@ -354,7 +354,7 @@ def update_params(
     rng,
     grad_clip,
     label_smoothing,
-    dropout_rate
+    dropout_rate,
   )
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 

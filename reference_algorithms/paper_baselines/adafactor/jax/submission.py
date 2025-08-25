@@ -169,7 +169,7 @@ def update_params(
     per_device_rngs,
     grad_clip,
     label_smoothing,
-    dropout_rate
+    dropout_rate,
   )
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 

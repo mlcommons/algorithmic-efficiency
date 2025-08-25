@@ -240,7 +240,6 @@ class WmtWorkload(BaseWmtWorkload):
     return bleu_score
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
-
     init_fake_batch_size = 8
     input_shape = (init_fake_batch_size, 256)
     target_shape = (init_fake_batch_size, 256)
