@@ -288,10 +288,7 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  if hasattr(hyperparameters, 'dropout_rate'):
-    dropout_rate = hyperparameters.dropout_rate
-  else:
-    dropout_rate = 0.0
+  dropout_rate = hyperparameters.dropout_rate
 
   # Create shardings for each argument
   replicated = jax_sharding_utils.get_replicate_sharding()  # No partitioning
