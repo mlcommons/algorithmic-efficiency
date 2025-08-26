@@ -48,10 +48,12 @@ class MnistWorkload(BaseMnistWorkload):
     mode: spec.ForwardPassMode,
     rng: spec.RandomState,
     update_batch_norm: bool,
+    dropout_rate: float = 0.0,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
+    del dropout_rate
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply(
       {'params': params},

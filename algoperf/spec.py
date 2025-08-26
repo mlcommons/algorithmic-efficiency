@@ -235,16 +235,9 @@ class Workload(metaclass=abc.ABCMeta):
   def is_output_params(self, param_key: ParameterKey) -> bool:
     """Whether a key in ParameterContainer is the output layer parameters."""
 
-  # InitModelFn = Callable[
-  #     Tuple[RandomState, Optional[float], Optional[float]],
-  #     ParameterContainer]
+  # InitModelFn = Callable[Optional[float]], ParameterContainer]
   @abc.abstractmethod
-  def init_model_fn(
-    self,
-    rng: RandomState,
-    dropout_rate: Optional[float] = None,
-    aux_dropout_rate: Optional[float] = None,
-  ) -> ModelInitState:
+  def init_model_fn(self, rng: RandomState) -> ModelInitState:
     """Return (initial_params, initial_model_state)."""
 
   # ModelFn = Callable[

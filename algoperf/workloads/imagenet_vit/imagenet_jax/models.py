@@ -186,7 +186,7 @@ class ViT(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   num_heads: int = 12
   rep_size: Union[int, bool] = True
-  dropout_rate: [float] = DROPOUT_RATE
+  dropout_rate: float = DROPOUT_RATE
   reinit: Optional[Sequence[str]] = None
   head_zeroinit: bool = True
   use_glu: bool = False

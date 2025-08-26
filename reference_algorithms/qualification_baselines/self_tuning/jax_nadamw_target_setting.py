@@ -228,6 +228,7 @@ def train_step(
   rng,
   grad_clip,
   label_smoothing,
+  dropout_rate,
 ):
   def _loss_fn(params):
     """Loss function used for training."""
@@ -238,6 +239,7 @@ def train_step(
       spec.ForwardPassMode.TRAIN,
       rng,
       update_batch_norm=True,
+      dropout_rate=dropout_rate,
     )
     loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
@@ -308,8 +310,9 @@ def update_params(
     grad_clip = hyperparameters['grad_clip']
   else:
     grad_clip = None
+  dropout_rate = hyperparameters.dropout_rate
 
-    # Create shardings for each argument
+  # Create shardings for each argument
   mesh = jax.sharding.Mesh(jax.devices(), ('batch'))
   replicated = jax_sharding_utils.get_replicate_sharding(
     mesh
@@ -329,6 +332,7 @@ def update_params(
     replicated,  # rng
     replicated,  # grad_clip
     replicated,  # label_smoothing
+    replicated,  # dropout_rate
   )
   out_shardings = (
     replicated,  # new_optimizer_state
@@ -356,6 +360,7 @@ def update_params(
     rng,
     grad_clip,
     label_smoothing,
+    dropout_rate,
   )
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 

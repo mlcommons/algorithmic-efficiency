@@ -104,12 +104,7 @@ def _build_input_queue(
 ###### Model initialization
 
 ```python
-def init_model_fn(
-    self,
-    rng: RandomState,
-    dropout_rate: Optional[float] = None,
-    aux_dropout_rate: Optional[float] = None
-) -> initial model parameters
+def init_model_fn(self, rng: RandomState) -> initial model parameters
 ```
 
 - Unlike in the *Model Track*, this function that initializes the parameters of the model, is fixed. While it can be called by the submission (e.g. to restart the model after a failed training effort) it cannot be changed.
@@ -125,7 +120,8 @@ def model_fn(
     mode: ForwardPassMode,  # mode \in {train, eval}
     rng: RandomState,
     hyperparameters: Hyperparameters,
-    update_batch_norm: bool
+    update_batch_norm: bool,
+    dropout_rate: float
 ) -> (logits_output_batch, new_model_state): Tuple[Tensor, ModelAuxiliaryState]
 ```
 
@@ -134,6 +130,7 @@ def model_fn(
 - `logits_output_batch` is before the output activation
 - `new_model_state` is for batch norm or similar side effects and will only be updated if `update_batch_norm` is set
 - `hyperparameters` will contain only dropout rates, which will be used in the models that support it. These can be tuned or will default to documented model-specific values. Note that adding additional dropout would be considered changing the model, which is not allowed, but the tuning of dropout in existing dropout layers can be considered a regularizer, so we allow it. There should be at most two dropout rates in a model (if there are more than two we will reuse the same values).
+- `dropout_rate` is used in the model forward pass. If not provided, the workload’s default value is used (see below for the list of defaults).
 
 ###### Loss function
 

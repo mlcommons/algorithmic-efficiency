@@ -101,6 +101,7 @@ if __name__ == '__main__':
     mode=spec.ForwardPassMode.EVAL,
     rng=None,
     update_batch_norm=False,
+    dropout_rate=0.0,
   )
 
   jax_model_kwargs = dict(
@@ -108,6 +109,7 @@ if __name__ == '__main__':
     mode=spec.ForwardPassMode.EVAL,
     rng=jax.random.PRNGKey(0),
     update_batch_norm=False,
+    dropout_rate=0.0,
   )
 
   ModelDiffRunner(
