@@ -415,20 +415,20 @@ Instead of independent samples from a search space, submitters can also provide 
 Within each study, we select the fastest trial that reaches the validation target. The median of the three per-study best times is the submission's official _per-workload score_. These $8$ _per-workload runtimes_ are used in the scoring procedure (see the [**Scoring submissions**](#scoring) section). Trials that do not reach the target within `max_runtime` receive $\infty$, (which participates in the median).
 Submissions may also perform on-the-clock self-tuning during timed training.
 
-> [!IMPORTANT] Summary
+> [!IMPORTANT]
 >
-> - **Trial**: One training run, with a fixed hyperparameter configuration until the target or `max_runtime` was reached. The first time the validation target is reached in a trial is denoted $\tilde{t}_{ij}$ (a miss scores $\tilde{t}_{ij} = \infty$).
+> - **Trial**: One training run, with a fixed hyperparameter configuration until the target or `max_runtime` was reached. The first time the validation target is reached in a trial is denoted $t_{i,j}$ (a miss scores $\infty$).
 > - **Study**: A set of $5$ trials, each run with distinct hyperparameter points. The studies are independent and capture variance. The study's score is the **fastest** (minimum) time among its trials.
-> - **Per-Workload Runtime**: The per-workload runtime is given by the median across the per-study scores, i.e., $t_w \;=\; \operatorname{median}_{j=1..3}\Big(\min_{i=1..5} \; \tilde{t}_{ij}\Big)$, with $\tilde{t}_{ij}$ the score of trial $i$ in study $j$, i.e.
->   $$\tilde{t}_{ij} \;=\;\begin{cases}\text{elapsed seconds to reach target}, & \text{if reached within } \texttt{max\_runtime} \\ \infty, & \text{otherwise} \end{cases}\,.$$
+> - **Per-Workload Runtime**: The per-workload runtime of a submission is given by the median across the per-study scores, i.e., $t_{s,w} = median_{j=1..3} \left( \min_{i=1..5} (t_{i,j}) \right)$, with $t_{i,j}$ the score of trial $i$ in study $j$, i.e.
+
 
 #### Self-Tuning Ruleset
 
 Submissions under this ruleset are not allowed to expose user-defined hyperparameters.
-Instead, submissions can either apply one "default" hyperparameter configuration for all workloads (e.g. Adam with default settings), or perform inner-loop tuning during their training run (e.g. SGD with line searches).
+Instead, submissions can either apply one "default" hyperparameter configuration for all workloads (e.g., Adam with default settings), or perform inner-loop tuning during their training run (e.g., SGD with line searches).
 All workload adaptations, e.g. inner-loop tuning, will be part of the submission's score.
 
-For each workload, a submission will run for **$3$ independent studies**, and the _per-workload score_ is the median time to reach the validation target, i.e., $t_{s,w} = \operatorname{median}_{j=1..3} \tilde{t}_j$.
+For each workload, a submission will run for **$3$ independent studies**, and the _per-workload score_ is the median time to reach the validation target, i.e., $t_{s,w} = median_{j=1..3} \left(t_{j}\right)$.
 To account for the lack of external tuning, submissions have a longer time budget to reach the target performance.
 Compared to the [**external tuning ruleset**](#external-tuning-ruleset), the `max_runtime` is $1.5\times$ longer (i.e. multiply the `max_runtimes` from the [**workload overview table**](#workloads) by $1.5$).
 As in the [**external tuning ruleset**](#external-tuning-ruleset), any run that fails to achieve the target within this window is assigned an infinite runtime.
@@ -477,7 +477,7 @@ To further reduce computational costs, the [**external tuning ruleset**](#extern
 ### Scoring
 
 Submissions are scored based on the training time needed to reach the target performance on each workload's validation set.
-The target metric may match the loss function or use another workload-specific metric such as error rate or BLEU score.
+The target metric may match the loss function or use another workload-specific metric, such as error rate or BLEU score.
 See the [**workload overview table**](#workloads) for the targets and metrics of each workload and the [**Defining target performance**](#defining-target-performance-and-max_runtime) section for how they were determined.
 The overall ranking is then determined by the scalar _AlgoPerf Benchmark Score_, which summarizes the _per-workload_ runtimes across all [**workloads**](#workloads), using integrated [**performance profiles**](#algoperf-benchmark-score-via-integrated-performance-profiles), as explained below.
 
@@ -509,7 +509,9 @@ This performance ratio $r_{s,w}$ expresses the "time spent by submission $s$ on 
 
 Next, we compute how often a submission is within a factor $\tau \in [1,\infty)$ of the optimal submission. For this, we determine the following function for every submission $\bar{s}$:
 
-$$\rho_{\bar{s}}(\tau) = \frac{1}{n} \!\cdot\mkern-28mu \underbrace{\left|\left\{w: \, r_{\bar{s},w}\leq \tau\right\}\right|}_{= \text{number of workloads with}\, r_{\bar{s},w}\leq \tau}$$
+$$
+\rho_{\bar{s}}(\tau) = \frac{1}{n} \cdot \left| \\{ w \text{ such that } r_{\bar{s},w}\leq \tau \\}\right| = \frac{1}{n} \cdot \left[\text{number of workloads where}\, r_{\bar{s},w}\leq \tau\right]
+$$
 
 In other words, we compute the fraction of workloads where a submission $\bar{s}$ is less than $\tau$ away from the optimal submission. The function $\rho_{\bar{s}}(\tau)$ is monotonically increasing with $\tau$ and bounded between $0$ and $1$.
 
