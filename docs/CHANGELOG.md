@@ -36,6 +36,7 @@ Improved and streamlined version of the benchmark which includes important bug f
 - [Rules] Modify the runtime budgets and step hints for each workload ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/838)/[Issue](https://github.com/mlcommons/algorithmic-efficiency/issues/836)).
 - [Code] Automatically determine the package version via the latest GitHub tag ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/831)).
 - [Code, Docs] Move all algorithms into a dedicated `algorithms` directory ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/876)).
+- [Code] Migrate from `pmap` to `jit` in JAX for better performance and scalability ([PR](https://github.com/mlcommons/algorithmic-efficiency/pull/848)).
 
 ### Fixed
 

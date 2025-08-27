@@ -161,15 +161,14 @@ Here is an overview of our key releases and the future roadmap. For a detailed l
     - A rolling leaderboard now allows for continuous submissions and updates.
     - Reduced computational cost via removing held-out workloads, 3 repetition studies (down from 5), and adjusted runtime budgets.
     - Includes important bug fixes (e.g., batch norm) and API improvements (e.g., `prepare_for_eval` function).
+    - Migrating from `pmap` to `jit` in JAX for better performance and scalability.
   - **Leaderboard:** The active (but currently limited) leaderboard can be found at [**AlgoPerf v0.6 Leaderboard**](https://github.com/mlcommons/submissions_algorithms).
   - **Rules:** For the current set of rules see [**AlgoPerf v0.6 Documentation**](/docs/DOCUMENTATION.md).
 
-> 🏗️ `v1.0` (Future) - Planned Long-Term Support Release <br> This will be the next major release of the benchmark and a "long-term support" version.
+> 🏗️ `v1.0` (Future) - Planned Long-Term Support Release <br> This will be the next major release of the benchmark and a "long-term support" version, with the following **anticipated features:**
 >
-> - **Anticipated Features:**
->   - Migrating from `pmap` to `jit` in JAX for better performance and scalability.
->   - Potentially adding a new language model (LM) workload.
->   - Stronger baselines, especially for the self-tuning leaderboard.
+> - Adding a new language model (LM) workload.
+> - Stronger baselines, especially for the self-tuning leaderboard.
 
 ## Training Algorithm Collection
 
