@@ -7,7 +7,7 @@ import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from algoperf import param_utils, spec
+from algoperf import data_utils, param_utils, spec
 from algoperf.pytorch_utils import pytorch_setup
 from algoperf.workloads.criteo1tb.criteo1tb_pytorch import models
 from algoperf.workloads.criteo1tb.workload import BaseCriteo1TbDlrmSmallWorkload
@@ -152,6 +152,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
         num_batches=num_batches,
         repeat_final_dataset=repeat_final_dataset,
       )
+      np_iter = map(data_utils.shard, np_iter)
     weights = None
     while True:
       if RANK == 0:

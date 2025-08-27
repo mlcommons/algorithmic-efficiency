@@ -7,7 +7,6 @@ https://github.com/google/init2winit/blob/master/init2winit/checkpoint.py.
 import os
 from typing import Sequence, Tuple
 
-import jax
 import numpy as np
 import torch
 from absl import logging
@@ -210,10 +209,7 @@ def save_checkpoint(
     train_state, eval_results, global_step, preemption_count).
   """
   if framework == 'jax':
-    model_params = jax.device_get(jax_utils.unreplicate(model_params))
     opt_state, _ = optimizer_state
-    opt_state = jax.device_get(jax_utils.unreplicate(opt_state))
-    model_state = jax.device_get(jax_utils.unreplicate(model_state))
   else:
     if isinstance(
       model_params,

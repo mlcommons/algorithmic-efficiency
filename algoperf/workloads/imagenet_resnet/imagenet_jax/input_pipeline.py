@@ -10,7 +10,6 @@ from typing import Dict, Iterator, Tuple
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from flax import jax_utils
 
 from algoperf import data_utils, spec
 from algoperf.workloads.imagenet_resnet.imagenet_jax import randaugment
@@ -430,6 +429,7 @@ def create_input_iter(
   )
 
   # Note(Dan S): On a Nvidia 2080 Ti GPU, this increased GPU utilization by 10%.
-  it = jax_utils.prefetch_to_device(it, 2)
+  # TODO (kasimbeg): put on device
+  # it = jax_utils.prefetch_to_device(it, 2)
 
   return iter(it)

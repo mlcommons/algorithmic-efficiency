@@ -5,7 +5,7 @@
 # docker build -t <image_name> --build-arg framework=pytorch
 
 # To build Docker image
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:12.9.0-cudnn-devel-ubuntu20.04
 
 # Installing machine packages
 RUN echo "Setting up machine"
@@ -69,24 +69,16 @@ RUN cd /algorithmic-efficiency && git checkout $branch
 RUN if [ "$framework" = "jax" ] ; then \
         echo "Installing Jax GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[pytorch_cpu]' -f https://download.pytorch.org/whl/cpu \
-        && pip install -e '.[jax_gpu]' -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre ; \
+        && pip install -e '.[pytorch_cpu, full]' --extra-index-url https://download.pytorch.org/whl/cpu \
+        && pip install -e '.[jax_gpu]'; \
     elif [ "$framework" = "pytorch" ] ; then \
         echo "Installing Pytorch GPU" \
         && cd /algorithmic-efficiency \
-        && pip install -e '.[pytorch_gpu]' \
-        && pip install -e '.[jax_cpu]'; \
-    elif [ "$framework" = "both" ] ; then \
-        echo "Installing Jax GPU and Pytorch GPU" \
-        && cd /algorithmic-efficiency \
-        && pip install -e '.[pytorch_gpu]' \
-        && pip install -e '.[jax_gpu]'  -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/ --pre ; \
+        && pip install -e '.[pytorch_gpu, jax_cpu, full]'; \
     else \
-        echo "Invalid build-arg $framework: framework should be either jax, pytorch or both." >&2 \
+        echo "Invalid build-arg $framework: framework should be either jax or pytorch." >&2 \
         && exit 1 ; \
     fi
-
-RUN cd /algorithmic-efficiency && pip install -e '.[full]'
 
 RUN cd /algorithmic-efficiency && git fetch origin 
 RUN cd /algorithmic-efficiency && git pull

@@ -175,6 +175,7 @@ def pmapped_train_step(
   rng,
   grad_clip,
   label_smoothing,
+  dropout_rate,
 ):
   def _loss_fn(params, update_batch_norm=True):
     """Loss function used for training."""
@@ -185,6 +186,7 @@ def pmapped_train_step(
       spec.ForwardPassMode.TRAIN,
       rng,
       update_batch_norm=update_batch_norm,
+      dropout_rate=dropout_rate,
     )
     loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
@@ -251,6 +253,7 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
+  dropout_rate = hyperparameters.dropout_rate
   outputs = pmapped_train_step(
     workload,
     opt_update_fn,
@@ -261,6 +264,7 @@ def update_params(
     per_device_rngs,
     grad_clip,
     label_smoothing,
+    dropout_rate,
   )
   new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
 

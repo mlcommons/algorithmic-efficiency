@@ -24,14 +24,10 @@ MAX_GLOBAL_STEPS = 5
 
 baselines = {
   'jax': [
-    'adafactor',
     'adamw',
-    'lamb',
     'momentum',
     'nadamw',
     'nesterov',
-    'sam',
-    'shampoo',
   ],
   'pytorch': [
     'adamw',

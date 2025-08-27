@@ -38,14 +38,15 @@ dependencies = [
   "docker==7.1.0",
   "numpy>=2.0.2",
   "pandas>=2.0.1",
-  "tensorflow==2.18.0",
-  "tensorflow-datasets==4.9.7",
+  "tensorflow==2.19.0",
+  "tensorflow-datasets==4.9.9",
   "tensorflow-probability==0.20.0",
   "gputil==1.4.0",
   "psutil==6.1.0",
   "clu==0.0.12",
   "matplotlib>=3.9.2",
   "tabulate==0.9.0",
+  "wandb==0.21.0"
 ]
 
 [build-system]
@@ -83,31 +84,38 @@ fastmri = ["h5py==3.12.0", "scikit-image==0.24.0"]
 ogbg = ["jraph==0.0.6.dev0", "scikit-learn==1.5.2"]
 librispeech_conformer = [
   "sentencepiece==0.2.0",
-  "tensorflow-text==2.18.0",
+  "tensorflow-text==2.19.0",
   "pydub==0.25.1",
 ]
-wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.18.0"]
+wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.19.0"]
 
 # Frameworks
 jax_core_deps = [
-  "flax==0.8.4",
+  "flax==0.10.7",
   "optax==0.2.2",
   "chex==0.1.86",
-  "ml_dtypes==0.4.1",
+  "ml_dtypes==0.5.1",
   "protobuf==4.25.5",
 ]
-jax_cpu = ["jax==0.4.28", "jaxlib==0.4.28", "algoperf[jax_core_deps]"]
-jax_gpu = [
-  "jax==0.4.28",
-  "jaxlib==0.4.28",
-  "jax-cuda12-plugin[with_cuda]==0.4.28",
-  "jax-cuda12-pjrt==0.4.28",
+jax_cpu = [
+  "jax==0.7.0",
   "algoperf[jax_core_deps]",
 ]
-pytorch_cpu = ["torch==2.5.1", "torchvision==0.20.1"]
-pytorch_gpu = ["torch==2.5.1", "torchvision==0.20.1"]
-# Note: omit the cuda suffix and installing from the appropriate wheel
-# will result in using locally installed CUDA.
+
+jax_gpu = [
+  "jax[cuda12]==0.7.0",
+  "algoperf[jax_core_deps]",
+  "nvidia-cudnn-cu12==9.10.2.21", # temporary workaround for https://github.com/jax-ml/jax/issues/30663
+]
+
+pytorch_cpu = [
+  "torch==2.5.1", 
+  "torchvision==0.20.1"
+]
+pytorch_gpu = [
+  "torch==2.5.1",
+  "torchvision==0.20.1",
+] # Note: omit the cuda suffix and installing from the appropriate wheel will result in using locally installed CUDA.
 
 ###############################################################################
 #                     Linting & Formatting Configurations                     #

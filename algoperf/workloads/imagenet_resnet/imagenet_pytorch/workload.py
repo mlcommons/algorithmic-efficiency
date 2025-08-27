@@ -86,6 +86,7 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
         stddev_rgb=self.train_stddev,
         image_size=self.center_crop_size,
         resize_size=self.resize_size,
+        framework='pytorch',
       )
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 

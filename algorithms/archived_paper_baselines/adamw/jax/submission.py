@@ -1,13 +1,12 @@
 """Submission file for an AdamW optimizer with warmup+cosine LR in Jax."""
 
-import functools
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
-from jax import lax
+from jax.sharding import NamedSharding
+from jax.sharding import PartitionSpec as P
 
 from algoperf import spec
 
@@ -57,17 +56,10 @@ def init_optimizer_state(
   )
   optimizer_state = opt_init_fn(params_zeros_like)
 
-  return jax_utils.replicate(optimizer_state), opt_update_fn
+  return optimizer_state, opt_update_fn
 
 
-@functools.partial(
-  jax.pmap,
-  axis_name='batch',
-  in_axes=(None, None, 0, 0, 0, 0, 0, None, None),
-  static_broadcasted_argnums=(0, 1),
-  donate_argnums=(2, 3, 4),
-)
-def pmapped_train_step(
+def train_step(
   workload,
   opt_update_fn,
   model_state,
@@ -77,6 +69,7 @@ def pmapped_train_step(
   rng,
   grad_clip,
   label_smoothing,
+  dropout_rate,
 ):
   def _loss_fn(params):
     """Loss function used for training."""
@@ -87,6 +80,7 @@ def pmapped_train_step(
       spec.ForwardPassMode.TRAIN,
       rng,
       update_batch_norm=True,
+      dropout_rate=dropout_rate,
     )
     loss_dict = workload.loss_fn(
       label_batch=batch['targets'],
@@ -102,10 +96,8 @@ def pmapped_train_step(
   (summed_loss, (n_valid_examples, new_model_state)), grad = grad_fn(
     current_param_container
   )
-  # Get correct global mean loss and grad.
-  (summed_loss, n_valid_examples, grad) = lax.psum(
-    (summed_loss, n_valid_examples, grad), axis_name='batch'
-  )
+
+  # Compute local loss and gradients
   loss = summed_loss / n_valid_examples
   grad = jax.tree.map(lambda x: x / n_valid_examples, grad)
 
@@ -146,7 +138,6 @@ def update_params(
   del eval_results
 
   optimizer_state, opt_update_fn = optimizer_state
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   if hasattr(hyperparameters, 'label_smoothing'):
     label_smoothing = hyperparameters.label_smoothing
   else:
@@ -155,25 +146,59 @@ def update_params(
     grad_clip = hyperparameters.grad_clip
   else:
     grad_clip = None
-  outputs = pmapped_train_step(
-    workload,
-    opt_update_fn,
-    model_state,
-    optimizer_state,
-    current_param_container,
-    batch,
-    per_device_rngs,
-    grad_clip,
-    label_smoothing,
+  dropout_rate = hyperparameters.dropout_rate
+
+  # Set up mesh and sharding
+  mesh = jax.sharding.Mesh(jax.devices(), ('batch'))
+  replicated = NamedSharding(mesh, P())  # No partitioning
+  sharded = NamedSharding(mesh, P('batch'))  # Partition along batch dimension
+
+  jitted_train_step = jax.jit(
+    train_step,
+    static_argnums=(0, 1),
+    donate_argnums=(2, 3, 4),
+    in_shardings=(
+      # workload is static
+      # opt_update_fn is static
+      replicated,  # model_state
+      replicated,  # optimizer_state
+      replicated,  # current_param_container
+      sharded,  # batch
+      replicated,  # rng
+      replicated,  # grad_clip
+      replicated,  # label_smoothing
+      replicated,  # dropout_rate
+    ),
+    out_shardings=(
+      replicated,  # new_optimizer_state
+      replicated,  # updated_params
+      replicated,  # new_model_state
+      replicated,  # loss
+      replicated,  # grad_norm
+    ),
   )
-  new_optimizer_state, new_params, new_model_state, loss, grad_norm = outputs
+  # print(batch)
+  new_optimizer_state, new_params, new_model_state, loss, grad_norm = (
+    jitted_train_step(
+      workload,
+      opt_update_fn,
+      model_state,
+      optimizer_state,
+      current_param_container,
+      batch,
+      rng,
+      grad_clip,
+      label_smoothing,
+      dropout_rate,
+    )
+  )
 
   # Log loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     workload.metrics_logger.append_scalar_metrics(
       {
-        'loss': loss[0],
-        'grad_norm': grad_norm[0],
+        'loss': loss.item(),
+        'grad_norm': grad_norm.item(),
       },
       global_step,
     )
@@ -227,6 +252,8 @@ def get_batch_size(workload_name):
     return 128
   elif workload_name == 'mnist':
     return 16
+  elif workload_name == 'cifar':
+    return 32
   else:
     raise ValueError(f'Unsupported workload name: {workload_name}.')
 

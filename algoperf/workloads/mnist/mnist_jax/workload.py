@@ -6,11 +6,9 @@ from typing import Any, Dict, Optional, Tuple
 import jax
 import jax.numpy as jnp
 import optax
-from flax import jax_utils
 from flax import linen as nn
-from jax import lax
 
-from algoperf import param_utils, spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.mnist.workload import BaseMnistWorkload
 
 
@@ -37,7 +35,7 @@ class MnistWorkload(BaseMnistWorkload):
     ]
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(initial_params), None
+    return initial_params, None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_1'
@@ -50,10 +48,12 @@ class MnistWorkload(BaseMnistWorkload):
     mode: spec.ForwardPassMode,
     rng: spec.RandomState,
     update_batch_norm: bool,
+    dropout_rate: float = 0.0,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del model_state
     del rng
     del update_batch_norm
+    del dropout_rate
     train = mode == spec.ForwardPassMode.TRAIN
     logits_batch = self._model.apply(
       {'params': params},
@@ -95,11 +95,39 @@ class MnistWorkload(BaseMnistWorkload):
       'per_example': per_example_losses,
     }
 
+  def _build_input_queue(
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ):
+    it = super()._build_input_queue(
+      data_rng,
+      split,
+      data_dir,
+      global_batch_size,
+      cache,
+      repeat_final_dataset,
+      num_batches,
+    )
+    f = functools.partial(
+      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
+    )
+    return map(f, it)
+
   @functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, 0, 0, 0, None),
-    static_broadcasted_argnums=(0,),
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),  # params
+      jax_sharding_utils.get_batch_dim_sharding(),  # batch
+      jax_sharding_utils.get_replicate_sharding(),  # model_state
+      jax_sharding_utils.get_batch_dim_sharding(),  # rng
+    ),
+    static_argnums=(0,),
   )
   def _eval_model(
     self,
@@ -124,11 +152,10 @@ class MnistWorkload(BaseMnistWorkload):
     )
     summed_loss = self.loss_fn(batch['targets'], logits, weights)['summed']
     metrics = {'accuracy': accuracy, 'loss': summed_loss}
-    metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
   def _normalize_eval_metrics(
     self, num_examples: int, total_metrics: Dict[str, Any]
   ) -> Dict[str, float]:
     """Normalize eval metrics."""
-    return jax.tree.map(lambda x: float(x[0] / num_examples), total_metrics)
+    return jax.tree.map(lambda x: float(x.item() / num_examples), total_metrics)

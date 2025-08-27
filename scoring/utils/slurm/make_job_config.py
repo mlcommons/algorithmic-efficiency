@@ -13,13 +13,12 @@ import os
 import jax
 from absl import app, flags
 
-SUBMISSION_PATH = 'submissions_algorithms/submissions/self_tuning/schedule_free_adamw_v2/submission.py'
-EXPERIMENT_DIR = (
-  'submissions/rolling_leaderboard/self_tuning/schedule_free_adamw_v2'
+SUBMISSION_PATH = 'reference_algorithms/paper_baselines/adamw/jax/submission.py'
+TUNING_SEARCH_SPACE = (
+  'reference_algorithms/paper_baselines/adamw/tuning_search_space.json'
 )
-TUNING_SEARCH_SPACE = None
-FRAMEWORK = 'pytorch'
-TUNING_RULESET = 'self'
+NUM_TUNING_TRIALS = 3  # For external tuning ruleset
+NUM_STUDIES = 3
 
 flags.DEFINE_string(
   'submission_path',
@@ -33,22 +32,31 @@ flags.DEFINE_string(
 )
 flags.DEFINE_string(
   'experiment_dir',
-  EXPERIMENT_DIR,
+  'experiments',
+  'Path to experiment dir where logs will be saved.',
+)
+flags.DEFINE_string(
+  'experiment_dir',
+  'experiments/',
   'Path to experiment dir where logs will be saved.',
 )
 flags.DEFINE_enum(
   'framework',
-  FRAMEWORK,
+  'jax',
   enum_values=['jax', 'pytorch'],
   help='Can be either pytorch or jax.',
 )
 flags.DEFINE_integer('seed', 0, 'RNG seed to to generate study seeds from.')
 flags.DEFINE_enum(
   'tuning_ruleset',
-  TUNING_RULESET,
+  'self',
   enum_values=['external', 'self'],
   help='Which tuning ruleset to score this submission on. Can be external or self.',
 )
+flags.DEFINE_string(
+  'workloads', None, help='Comma seperated list of workloads to run.'
+)
+flags.DEFINE_integer('num_studies', NUM_STUDIES, help='Number of studies.')
 
 FLAGS = flags.FLAGS
 
@@ -70,7 +78,11 @@ WORKLOADS = {
 
 
 def main(_):
-  workloads = WORKLOADS.keys()
+  if not FLAGS.workloads:
+    workloads = WORKLOADS.keys()
+  else:
+    workloads = FLAGS.workloads.split(',')
+
   key = jax.random.key(FLAGS.seed)
 
   jobs = []

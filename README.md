@@ -70,20 +70,16 @@ We recommend using the provided [**Docker container**](/docs/GETTING_STARTED.md#
 Alternatively, you can install the package and its dependencies in a Python virtual environment.
 Both options are described in more detail in the [**Getting Started**](/docs/GETTING_STARTED.md) document.
 
-_TL;DR: Install for JAX on GPU:_
+_TL;DR Install JAX version for GPU (with workload dependencies):_
 
 ```bash
-pip3 install -e '.[pytorch_cpu]'
-pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-pip3 install -e '.[full]'
+pip3 install -e '.[pytorch_cpu,jax_gpu,full]' --extra-index-url https://download.pytorch.org/whl/cpu
 ```
 
-_TL;DR: Install for PyTorch on GPU:_
+_TL;DR Install PyTorch version for GPU (with workload dependencies):_
 
 ```bash
-pip3 install -e '.[jax_cpu]'
-pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
-pip3 install -e '.[full]'
+pip3 install -e '.[jax_cpu,pytorch_gpu,full]'
 ```
 
 ### Run a Workload
