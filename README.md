@@ -157,7 +157,7 @@ Here is an overview of our key releases and the future roadmap. For a detailed l
   - **Rules:** The rules are archived at the [**AlgoPerf v0.5 Documentation**](https://github.com/mlcommons/algorithmic-efficiency/blob/v0.5.0/DOCUMENTATION.md).
 - `v0.6` - **Current Version** <br> The active and recommended version of the benchmark. It is an improved and streamlined version that fixes important bugs and modifying the benchmarking protocol based on the lessons learned from the competition. **This is the recommended version for all new submissions.**
 
-  - **Key Changes:**
+  - **Key Changes:** (see the [Changelog](/docs/CHANGELOG.md) for details, including links to discussions on rule changes.)
     - A rolling leaderboard now allows for continuous submissions and updates.
     - Reduced computational cost via removing held-out workloads, 3 repetition studies (down from 5), and adjusted runtime budgets.
     - Includes important bug fixes (e.g., batch norm) and API improvements (e.g., `prepare_for_eval` function).
