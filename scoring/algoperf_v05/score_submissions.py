@@ -7,7 +7,7 @@ to compare the performance.
 
 Example usage:
 python3 score_submissions.py \
-  --submission_directory $HOME/algorithmic-efficiency/prize_qualification_baselines/logs \
+  --submission_directory $HOME/algorithmic-efficiency/algorithms/baseline/logs \
   --strict True
   --compute_performance_profiles
 """

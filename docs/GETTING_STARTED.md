@@ -26,10 +26,10 @@ To get started you will have to make a few decisions and install the repository 
 
 1. Decide if you would like to develop your submission in either PyTorch or JAX.
 2. Set up your workstation or VM. We recommend to use a setup similar to the [benchmarking hardware](/DOCUMENTATION.md#benchmarking-hardware).
-The specs on the benchmarking machines are:
-    - 8xV100 16GB GPUs
-    - 240 GB in RAM
-    - 2 TB in storage (for datasets).
+   The specs on the benchmarking machines are:
+   - 8xV100 16GB GPUs
+   - 240 GB in RAM
+   - 2 TB in storage (for datasets).
 3. Install the `algoperf` package and dependencies either in a [Python virtual environment](#python-virtual-environment) or use a [Docker](#docker) (recommended) or [Singularity/Apptainer container](#using-singularityapptainer-instead-of-docker).
 
 ### Python Virtual Environment
@@ -44,42 +44,42 @@ To set up a virtual enviornment and install this repository
 
 1. Create new environment, e.g. via `conda` or `virtualenv`
 
-    ```bash
-    sudo apt-get install python3-venv
-    python3 -m venv env
-    source env/bin/activate
-    ```
+   ```bash
+   sudo apt-get install python3-venv
+   python3 -m venv env
+   source env/bin/activate
+   ```
 
 2. Clone this repository
 
-    ```bash
-    git clone https://github.com/mlcommons/algorithmic-efficiency.git
-    cd algorithmic-efficiency
-    ```
+   ```bash
+   git clone https://github.com/mlcommons/algorithmic-efficiency.git
+   cd algorithmic-efficiency
+   ```
 
 3. Run the following pip3 install commands based on your chosen framework to install `algoperf` and its dependencies.
 
-    For **JAX**:
+   For **JAX**:
 
-    ```bash
-    pip3 install -e '.[pytorch_cpu]'
-    pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-    pip3 install -e '.[full]'
-    ```
+   ```bash
+   pip3 install -e '.[pytorch_cpu]'
+   pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+   pip3 install -e '.[full]'
+   ```
 
-    For **PyTorch**
+   For **PyTorch**
 
-    Note: the below command assumes you have CUDA 12.1 installed locally.
-    This is the default in the provided Docker image.
-    We recommend you match this CUDA version but if you decide to run
-    with a different local CUDA version, please find the appropriate wheel
-    url to pass to the `pip install` command for `pytorch`.
+   Note: the below command assumes you have CUDA 12.1 installed locally.
+   This is the default in the provided Docker image.
+   We recommend you match this CUDA version but if you decide to run
+   with a different local CUDA version, please find the appropriate wheel
+   url to pass to the `pip install` command for `pytorch`.
 
-    ```bash
-    pip3 install -e '.[jax_cpu]'
-    pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
-    pip3 install -e '.[full]'
-    ```
+   ```bash
+   pip3 install -e '.[jax_cpu]'
+   pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
+   pip3 install -e '.[full]'
+   ```
 
 <details>
 <summary>
@@ -106,7 +106,7 @@ We recommend using a Docker container to ensure a similar environment to our sco
 > **Prerequisites:**
 >
 > - NVIDIA Driver version 535.104.05
-> - NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs. See instructions [here](https://github.com/NVIDIA/nvidia-docker).
+> - NVIDIA Container Toolkit so that the containers can locate the NVIDIA drivers and GPUs. See instructions in the [NVIDIA Docker documentation](https://github.com/NVIDIA/nvidia-docker).
 
 #### Building Docker Image
 
@@ -132,29 +132,29 @@ To use the Docker container as an interactive virtual environment, you can run a
 
 1. Run detached Docker container. The `container_id` will be printed if the container is run successfully.
 
-    ```bash
-    docker run -t -d \
-      -v $HOME/data/:/data/ \
-      -v $HOME/experiment_runs/:/experiment_runs \
-      -v $HOME/experiment_runs/logs:/logs \
-      -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
-      --gpus all \
-      --ipc=host \
-      <docker_image_name> \
-      --keep_container_alive true
-    ```
+   ```bash
+   docker run -t -d \
+     -v $HOME/data/:/data/ \
+     -v $HOME/experiment_runs/:/experiment_runs \
+     -v $HOME/experiment_runs/logs:/logs \
+     -v $HOME/algorithmic-efficiency:/algorithmic-efficiency \
+     --gpus all \
+     --ipc=host \
+     <docker_image_name> \
+     --keep_container_alive true
+   ```
 
-    > Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
-    >
-    > ```bash
-    > -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
-    > ```
-    >
-    > with
-    >
-    > ```bash
-    > -v $HOME"/algorithmic-efficiency:/algorithmic-efficiency" \
-    > ```
+   > Note: You may have to use double quotes around `algorithmic-efficiency` [path] in the mounting `-v` flag. If the above command fails try replacing the following line:
+   >
+   > ```bash
+   > -v $HOME/algorithmic-efficiency:/algorithmic-efficiency2 \
+   > ```
+   >
+   > with
+   >
+   > ```bash
+   > -v $HOME"/algorithmic-efficiency:/algorithmic-efficiency" \
+   > ```
 
 2. Open a bash terminal
 
@@ -177,7 +177,7 @@ singularity shell --bind $HOME/data:/data,$HOME/experiment_runs:/experiment_runs
     --nv <singularity_image_name>.sif
 ```
 
-Note the `--bind` flag which, similarly to Docker, allows to bind specific paths on the host system and the container, as explained [here](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
+Note the `--bind` flag which, similarly to Docker, allows to bind specific paths on the host system and the container, as explained in the [Singularity User Guide](https://docs.sylabs.io/guides/3.7/user-guide/bind_paths_and_mounts.html).
 
 Also note that we generated `Singularity.def` automatically from the `Dockerfile` using [spython](https://github.com/singularityhub/singularity-cli), as follows:
 
@@ -203,41 +203,42 @@ Make a submissions subdirectory to store your submission modules e.g. `algorithm
 
 ### Coding your Submission
 
-You can find examples of submission modules under `algorithmic-efficiency/prize_qualification_baselines` and `algorithmic-efficiency/reference_algorithms`. \
+You can find examples of submission modules under `algorithmic-efficiency/algorithms`. \
 A submission for the external ruleset will consist of a submission module and a tuning search space definition.
 
-1. Copy the template submission module `submissions/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
+1. Copy the template submission module `algorithms/template/submission.py` into your submissions directory e.g. in `algorithmic-efficiency/my_submissions`.
 2. Implement at least the methods in the template submission module. Feel free to use helper functions and/or modules as you see fit. Make sure you adhere to to the competition rules. Check out the guidelines for [allowed submissions](/DOCUMENTATION.md#allowed-submissions), [disallowed submissions](/DOCUMENTATION.md#allowed-submissions) and pay special attention to the [software dependencies rule](/DOCUMENTATION.md#software-dependencies).
 3. Add a tuning configuration e.g. `tuning_search_space.json` file to your submission directory. For the tuning search space you can either:
-    1. Define the set of feasible points by defining a value for "feasible_points" for the hyperparameters:
 
-        ```JSON
-        {
-            "learning_rate": {
-                "feasible_points": 0.999
-                },
-        }
-        ```
+   1. Define the set of feasible points by defining a value for "feasible_points" for the hyperparameters:
 
-        For a complete example see [tuning_search_space.json](/reference_algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
+      ```JSON
+      {
+          "learning_rate": {
+              "feasible_points": 0.999
+              },
+      }
+      ```
 
-    2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
+      For a complete example see [tuning_search_space.json](/algorithms/target_setting_algorithms/imagenet_resnet/tuning_search_space.json).
 
-        ```JSON
-        {
-            "weight_decay": {
-                "min": 5e-3, 
-                "max": 1.0, 
-                "scaling": "log",
-                }
-        }
-        ```
+   2. Define a range of values for quasirandom sampling by specifing a `min`, `max` and `scaling` keys for the hyperparameter:
 
-        For a complete example see [tuning_search_space.json](/reference_algorithms/paper_baselines/nadamw/tuning_search_space.json).
+      ```JSON
+      {
+          "weight_decay": {
+              "min": 5e-3,
+              "max": 1.0,
+              "scaling": "log",
+              }
+      }
+      ```
+
+      For a complete example see [tuning_search_space.json](/algorithms/archived_paper_baselines/nadamw/tuning_search_space.json).
 
 ## Run your Submission
 
-From your virtual environment or interactively running Docker container run your submission with `submission_runner.py`:  
+From your virtual environment or interactively running Docker container run your submission with `submission_runner.py`:
 
 **JAX**: to score your submission on a workload, from the algorithmic-efficency directory run:
 
@@ -328,13 +329,13 @@ This will print the container ID to the terminal.
 To find the container IDs of running containers
 
 ```bash
-docker ps 
+docker ps
 ```
 
 To see output of the entrypoint script
 
 ```bash
-docker logs <container_id> 
+docker logs <container_id>
 ```
 
 To enter a bash session in the container
@@ -345,23 +346,13 @@ docker exec -it <container_id> /bin/bash
 
 ## Score your Submission
 
-To score your submission we will score over all fixed workloads, held-out workloads and studies as described in the rules.
-We will sample 1 held-out workload per dataset for a total of 6 held-out workloads and will use the sampled held-out workloads in the scoring criteria for the matching fixed base workloads.
+To score your submission we will score over all workloads, studies, and trials as described in the rules.
 In other words, the total number of runs expected for official scoring is:
 
-- for external tuning ruleset: **350** = (8 (fixed workloads) + 6 (held-out workloads)) x 5 (studies) x 5 (trials)
-- for self-tuning ruleset: **70** = (8 (fixed workloads) + 6 (held-out workloads)) x 5 (studies)
+- for external tuning ruleset: **120** = 8 (workloads) x 3 (studies) x 5 (trials)
+- for self-tuning ruleset: **24** = 8 (workloads) x 3 (studies)
 
 ### Running workloads
-
-To run workloads for (a mock) scoring you may specify a "virtual" list of held-out workloads. It is important to note that the official set of held-out workloads will be sampled by the competition organizers during scoring time.
-
-An example config for held-out workloads is stored in `scoring/held_workloads_example.json`.
-To generate a new sample of held out workloads run:
-
-```bash
-python3 generate_held_out_workloads.py --seed <optional_rng_seed> --output_filename <output_filename>
-```
 
 To run a number of studies and trials over all workload using Docker containers for each run:
 
@@ -379,14 +370,14 @@ python scoring/run_workloads.py \
 
 Note that to run the above script you will need at least the `jax_cpu` and `pytorch_cpu` installations of the `algorithmic-efficiency` package.
 
-During submission development, it might be useful to do faster, approximate scoring (e.g. without `5` different studies or when some trials are missing) so the scoring scripts allow some flexibility.
+During submission development, it might be useful to do faster, approximate scoring (e.g. without `3` different studies or when some trials are missing) so the scoring scripts allow some flexibility.
 To simulate official scoring, pass the `--strict=True` flag in `score_submission.py`. To get the raw scores and performance profiles of group of submissions or single submission:
 
 ```bash
 python score_submissions.py --submission_directory <directory_with_submissions> --output_dir <output_dir> --compute_performance_profiles
 ```
 
-We provide the scores and performance profiles for the [paper baseline algorithms](/reference_algorithms/paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
+We provide the scores and performance profiles for the [paper baseline algorithms](/algorithms/archived_paper_baselines/) in the "Baseline Results" section in [Benchmarking Neural Network Training Algorithms](https://arxiv.org/abs/2306.07179).
 
 ## Submit your Submission
 
