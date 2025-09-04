@@ -223,7 +223,7 @@ class Encoder1DBlock(nn.Module):
       bias_init=cfg.bias_init,
       use_bias=False,
       broadcast_dropout=False,
-      dropout_rate=dropout_rate,
+      dropout_rate=0.0,
       deterministic=cfg.deterministic,
     )(cfg.attention_temp * x, x, mask=encoder_mask)
 
