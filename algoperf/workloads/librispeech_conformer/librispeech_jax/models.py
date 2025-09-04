@@ -428,7 +428,6 @@ class MultiHeadedSelfAttention(nn.Module):
       use_bias=True,
       broadcast_dropout=False,
       attention_fn=attention_fn,
-      dropout_rate=dropout_rate,
       deterministic=not train,
     )(inputs_q=inputs, mask=attention_mask)
 
