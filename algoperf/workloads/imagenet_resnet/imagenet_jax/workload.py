@@ -154,9 +154,11 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     rng: spec.RandomState,
     update_batch_norm: bool,
     use_running_average_bn: Optional[bool] = None,
+    dropout_rate: Optional[float] = None,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del mode
     del rng
+    del dropout_rate
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(

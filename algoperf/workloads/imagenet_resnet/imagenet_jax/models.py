@@ -89,10 +89,8 @@ class ResNet(nn.Module):
     x: spec.Tensor,
     update_batch_norm: bool = True,
     use_running_average_bn: Optional[bool] = None,
-    dropout_rate: float = 0.0,
   ) -> spec.Tensor:
     conv = functools.partial(nn.Conv, use_bias=False, dtype=self.dtype)
-    del dropout_rate  # unused
     # Preserve default behavior for backwards compatibility
     if use_running_average_bn is None:
       use_running_average_bn = not update_batch_norm
