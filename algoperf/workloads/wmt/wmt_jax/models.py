@@ -308,7 +308,7 @@ class EncoderDecoder1DBlock(nn.Module):
       bias_init=cfg.bias_init,
       use_bias=False,
       broadcast_dropout=False,
-      dropout_rate=dropout_rate,
+      dropout_rate=0.0,  # Dropout applied after attention
       deterministic=cfg.deterministic,
     )(cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
 
