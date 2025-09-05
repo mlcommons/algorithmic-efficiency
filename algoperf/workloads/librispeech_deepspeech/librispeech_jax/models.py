@@ -8,7 +8,14 @@ paper : https://arxiv.org/abs/1512.02595
 # webpage : https://bastings.github.io/
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import (
+  Any,
+  Dict,
+  List,
+  Optional,
+  Tuple,
+  Union,
+)
 
 import jax
 import jax.numpy as jnp
@@ -23,6 +30,7 @@ from algoperf.workloads.librispeech_conformer.librispeech_jax import (
 from algoperf.workloads.librispeech_conformer.librispeech_jax import (
   spectrum_augmenter,
 )
+from algoperf.workloads.librispeech_deepspeech.librispeech_jax import lstm
 
 Array = jnp.ndarray
 StateType = Union[Array, Tuple[Array, ...]]
@@ -317,16 +325,12 @@ class BatchNorm(nn.Module):
         jnp.ones_like(inputs) * mask, axis=reduce_over_dims, keepdims=True
       )
 
-      sum_v = jax.lax.psum(sum_v, axis_name='batch')
-      count_v = jax.lax.psum(count_v, axis_name='batch')
-
       count_v = jnp.maximum(count_v, 1.0)
       mean = sum_v / count_v
       variance = (inputs - mean) * (inputs - mean) * mask
 
       sum_vv = jnp.sum(variance, axis=reduce_over_dims, keepdims=True)
 
-      sum_vv = jax.lax.psum(sum_vv, axis_name='batch')
       var = sum_vv / count_v
 
       self.ra_mean.value = momentum * self.ra_mean.value + (1 - momentum) * mean
@@ -344,6 +348,7 @@ class BatchNorm(nn.Module):
     # return inputs
 
 
+# Note: This model is currently unused due to bug in gradient calculation.
 class CudnnLSTM(nn.Module):
   features: int
   num_layers: int = 1
@@ -455,6 +460,7 @@ class BatchRNN(nn.Module):
   @nn.compact
   def __call__(self, inputs, input_paddings, train):
     config = self.config
+    lengths = jnp.sum(1 - input_paddings, axis=-1, dtype=jnp.int32)
 
     if config.layernorm_everywhere:
       inputs = LayerNorm(config.encoder_dim)(inputs)
@@ -465,11 +471,11 @@ class BatchRNN(nn.Module):
         config.batch_norm_momentum,
         config.batch_norm_epsilon,
       )(inputs, input_paddings, train)
-    output = CudnnLSTM(
-      features=config.encoder_dim // 2,
+    output, _ = lstm.LSTM(
+      hidden_size=config.encoder_dim // 2,
       bidirectional=config.bidirectional,
       num_layers=1,
-    )(inputs, input_paddings)
+    )(inputs, lengths)
 
     return output
 

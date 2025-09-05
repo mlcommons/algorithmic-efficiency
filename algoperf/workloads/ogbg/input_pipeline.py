@@ -98,7 +98,9 @@ def _get_weights_by_nan_and_padding(labels, padding_mask):
   return replaced_labels, weights
 
 
-def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
+def _get_batch_iterator(
+  dataset_iter, global_batch_size, num_shards=None, shard_dim=False
+):
   """Turns a per-example iterator into a batched iterator.
 
   Constructs the batch from num_shards smaller batches, so that we can easily
@@ -150,18 +152,31 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
     weights_shards.append(weights)
 
     if count == num_shards:
+      if not shard_dim:
+        # jraph.batch has a memory leak and OOMs
+        # It is possible with jraph.batch_np we may have transferred the leak
+        # to the cpu.
+        yield {
+          'inputs': jraph.batch_np(graphs_shards),
+          'targets': np.vstack(labels_shards),
+          'weights': np.vstack(weights_shards),
+        }
 
-      def f(x):
-        return jax.tree.map(lambda *vals: np.stack(vals, axis=0), x[0], *x[1:])
+      else:
 
-      graphs_shards = f(graphs_shards)
-      labels_shards = f(labels_shards)
-      weights_shards = f(weights_shards)
-      yield {
-        'inputs': graphs_shards,
-        'targets': labels_shards,
-        'weights': weights_shards,
-      }
+        def f(x):
+          return jax.tree.map(
+            lambda *vals: np.stack(vals, axis=0), x[0], *x[1:]
+          )
+
+        graphs_shards = f(graphs_shards)
+        labels_shards = f(labels_shards)
+        weights_shards = f(weights_shards)
+        yield {
+          'inputs': graphs_shards,
+          'targets': labels_shards,
+          'weights': weights_shards,
+        }
 
       count = 0
       graphs_shards = []
@@ -169,9 +184,11 @@ def _get_batch_iterator(dataset_iter, global_batch_size, num_shards=None):
       weights_shards = []
 
 
-def get_dataset_iter(split, data_rng, data_dir, global_batch_size):
+def get_dataset_iter(
+  split, data_rng, data_dir, global_batch_size, shard_dim=False
+):
   shuffle = split in ['train', 'eval_train']
   ds = _load_dataset(
     split, should_shuffle=shuffle, data_rng=data_rng, data_dir=data_dir
   )
-  return _get_batch_iterator(iter(ds), global_batch_size)
+  return _get_batch_iterator(iter(ds), global_batch_size, shard_dim=shard_dim)

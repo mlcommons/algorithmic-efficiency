@@ -7,12 +7,11 @@ import jax
 import jax.numpy as jnp
 import optax
 import tensorflow_datasets as tfds
-from flax import jax_utils
 from flax import linen as nn
 from flax.core import pop
 from jax import lax
 
-from algoperf import param_utils, spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.cifar.cifar_jax import models
 from algoperf.workloads.cifar.cifar_jax.input_pipeline import create_input_iter
 from algoperf.workloads.cifar.workload import BaseCifarWorkload
@@ -29,6 +28,7 @@ class CifarWorkload(BaseCifarWorkload):
     repeat_final_dataset: Optional[bool] = None,
   ) -> Iterator[Dict[str, spec.Tensor]]:
     ds_builder = tfds.builder('cifar10:3.0.2', data_dir=data_dir)
+    ds_builder.download_and_prepare()
     train = split == 'train'
     assert self.num_train_examples + self.num_validation_examples == 50000
     if split in ['train', 'eval_train']:
@@ -89,8 +89,8 @@ class CifarWorkload(BaseCifarWorkload):
     model_state, params = pop(variables, 'params')
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_utils.replicate(model_state)
-    params = jax_utils.replicate(params)
+    model_state = jax_sharding_utils.replicate(params)
+    params = jax_sharding_utils.replicate(params)
     return params, model_state
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
@@ -105,9 +105,11 @@ class CifarWorkload(BaseCifarWorkload):
     rng: spec.RandomState,
     update_batch_norm: bool,
     use_running_average_bn: Optional[bool] = None,
+    dropout_rate: float = 0.0,
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del mode
     del rng
+    del dropout_rate
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
@@ -171,15 +173,8 @@ class CifarWorkload(BaseCifarWorkload):
       'loss': summed_loss,
       'accuracy': accuracy,
     }
-    metrics = lax.psum(metrics, axis_name='batch')
     return metrics
 
-  @functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, 0, 0, 0, None),
-    static_broadcasted_argnums=(0,),
-  )
   def _eval_model(
     self,
     params: spec.ParameterContainer,
@@ -188,21 +183,41 @@ class CifarWorkload(BaseCifarWorkload):
     rng: spec.RandomState,
   ) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
     """Return the mean accuracy and loss as a dict."""
-    logits, _ = self.model_fn(
-      params,
-      batch,
-      model_state,
-      spec.ForwardPassMode.EVAL,
-      rng,
-      update_batch_norm=False,
+
+    @functools.partial(
+      jax.jit,
+      in_shardings=(
+        jax_sharding_utils.get_replicate_sharding(),  # params
+        jax_sharding_utils.get_batch_dim_sharding(),  # batch
+        jax_sharding_utils.get_replicate_sharding(),  # model_state
+        jax_sharding_utils.get_batch_dim_sharding(),  # rng
+      ),
     )
-    weights = batch.get('weights')
-    if weights is None:
-      weights = jnp.ones(len(logits))
-    return self._compute_metrics(logits, batch['targets'], weights)
+    def _eval_model_jitted(
+      params: spec.ParameterContainer,
+      batch: Dict[str, spec.Tensor],
+      model_state: spec.ModelAuxiliaryState,
+      rng: spec.RandomState,
+    ) -> Dict[spec.Tensor, spec.ModelAuxiliaryState]:
+      """Return the mean accuracy and loss as a dict."""
+      logits, _ = self.model_fn(
+        params,
+        batch,
+        model_state,
+        spec.ForwardPassMode.EVAL,
+        rng,
+        update_batch_norm=False,
+      )
+      weights = batch.get('weights')
+      if weights is None:
+        weights = jnp.ones(len(logits))
+      return self._compute_metrics(logits, batch['targets'], weights)
+
+    metrics = _eval_model_jitted(params, batch, model_state, rng)
+    return jax.tree.map(lambda x: x.item(), metrics)
 
   def _normalize_eval_metrics(
     self, num_examples: int, total_metrics: Dict[str, Any]
   ) -> Dict[str, float]:
     """Normalize eval metrics."""
-    return jax.tree.map(lambda x: float(x[0] / num_examples), total_metrics)
+    return jax.tree_map(lambda x: x / num_examples, total_metrics)

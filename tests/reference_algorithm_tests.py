@@ -9,15 +9,15 @@ submission_runner_test.py.
 Assumes that each reference submission is using the external tuning ruleset and
 that it is defined in:
 # pylint: disable=line-too-long
-"reference_algorithms/target_setting_algorithms/{workload}/{workload}_{framework}/submission.py"
-"reference_algorithms/target_setting_algorithms/{workload}/tuning_search_space.json".
+"algorithms/target_setting_algorithms/{workload}/{workload}_{framework}/submission.py"
+"algorithms/target_setting_algorithms/{workload}/tuning_search_space.json".
 
 python3 tests/reference_algorithm_tests.py \
     --workload=criteo1tb \
     --framework=jax \
     --global_batch_size=16 \
-    --submission_path=reference_algorithms/target_setting_algorithms/jax_adamw.py \
-    --tuning_search_space=reference_algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
+    --submission_path=algorithms/target_setting_algorithms/jax_adamw.py \
+    --tuning_search_space=algorithms/target_setting_algorithms/criteo1tb/tuning_search_space.json
 """
 
 import copy
@@ -229,7 +229,7 @@ def _make_one_batch_workload(
       del kwargs
 
       np.random.seed(42)
-      if framework == 'jax' or USE_PYTORCH_DDP:
+      if USE_PYTORCH_DDP:
         batch_shape = (n_gpus, global_batch_size // n_gpus)
       else:
         batch_shape = (global_batch_size,)
@@ -305,9 +305,14 @@ def _make_one_batch_workload(
             }
             yield fake_batch
 
-        fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
-          _fake_iter(), global_batch_size
-        )
+        if framework == 'pytorch':
+          fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
+            _fake_iter(), global_batch_size, shard_dim=True
+          )
+        else:
+          fake_batch_iter = ogbg_input_pipeline._get_batch_iterator(
+            _fake_iter(), global_batch_size
+          )
         fake_batch = next(fake_batch_iter)  # pylint: disable=stop-iteration-return
         if framework == 'pytorch':
           fake_batch['inputs'] = _graph_map(_pytorch_map, fake_batch['inputs'])
@@ -432,6 +437,10 @@ def _test_submission(
     global_batch_size = FLAGS.global_batch_size
     if FLAGS.global_batch_size < 0:
       raise ValueError('Must set --global_batch_size.')
+    elif global_batch_size < n_gpus and FLAGS.framework == 'jax':
+      raise ValueError(
+        'Global batch size cannot be smaller than the number of GPUs when using JAX sharding.'
+      )
   workload = _make_one_batch_workload(
     workload_class,
     workload_name,
@@ -517,12 +526,11 @@ def _make_paths(repo_location, framework, workload_name):
   else:
     dataset_name = workload_name
   workload_dir = (
-    f'{repo_location}/reference_algorithms/target_setting_algorithms/'
-    f'{workload_name}'
+    f'{repo_location}/algorithms/target_setting_algorithms/{workload_name}'
   )
   search_space_path = f'{workload_dir}/tuning_search_space.json'
   submission_path = (
-    f'reference_algorithms/target_setting_algorithms/'
+    f'algorithms/target_setting_algorithms/'
     f'{workload_name}/{dataset_name}_{framework}/'
     'submission.py'
   )
@@ -554,9 +562,7 @@ class ReferenceSubmissionTest(absltest.TestCase):
         raise ValueError('Cannot set --submission_path and --all.')
       if FLAGS.tuning_search_space:
         raise ValueError('Cannot set --tuning_search_space and --all.')
-      references_dir = (
-        f'{repo_location}/reference_algorithms/target_setting_algorithms'
-      )
+      references_dir = f'{repo_location}/algorithms/target_setting_algorithms'
       for workload_name in os.listdir(references_dir):
         for framework in ['jax', 'pytorch']:
           if framework == 'pytorch':

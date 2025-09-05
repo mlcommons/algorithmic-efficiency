@@ -6,9 +6,9 @@ Example command:
 python3 submission_runner.py \
     --workload=mnist \
     --framework=jax \
-    --submission_path=reference_algorithms/development_algorithms/mnist/mnist_jax/submission.py \
+    --submission_path=algorithms/development_algorithms/mnist/mnist_jax/submission.py \
     --tuning_ruleset=external \
-    --tuning_search_space=reference_algorithms/development_algorithms/mnist/tuning_search_space.json \
+    --tuning_search_space=algorithms/development_algorithms/mnist/tuning_search_space.json \
     --num_tuning_trials=3 \
     --experiment_dir=/home/znado/experiment_dir \
     --experiment_name=baseline
@@ -31,6 +31,10 @@ import tensorflow as tf
 import torch
 import torch.distributed as dist
 from absl import app, flags, logging
+
+# New PRNG implementation for correct sharding, already default in JAX 0.5.0
+jax.config.update('jax_default_prng_impl', 'threefry2x32')
+jax.config.update('jax_threefry_partitionable', True)
 
 # Hide any GPUs form TensorFlow. Otherwise TF might reserve memory and make
 # it unavailable to JAX.
@@ -173,6 +177,14 @@ flags.DEFINE_integer(
   'WARNING: Setting pytorch_eval_num_workers != 0, will result '
   'in incorrect evals currently, see issues/732.',
 )
+flags.DEFINE_boolean(
+  'capture_jax_trace',
+  False,
+  'Captures jax profiler trace and writes to experiment directory.',
+)
+flags.DEFINE_boolean(
+  'skip_evals', False, 'Skip evals on train eval, validation and test splits.'
+)
 FLAGS = flags.FLAGS
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_setup()
 
@@ -221,6 +233,7 @@ def train_once(
   max_global_steps: int = None,
   log_dir: Optional[str] = None,
   save_checkpoints: Optional[bool] = True,
+  skip_evals: Optional[bool] = False,
 ) -> Tuple[spec.Timing, Dict[str, Any]]:
   _reset_cuda_mem()
   data_rng, opt_init_rng, model_init_rng, rng = prng.split(rng, 4)
@@ -403,8 +416,10 @@ def train_once(
 
     # Check if submission is eligible for an untimed eval.
     if (
-      train_step_end_time - train_state['last_eval_time']
-    ) >= workload.eval_period_time_sec or train_state['training_complete']:
+      (train_step_end_time - train_state['last_eval_time'])
+      >= workload.eval_period_time_sec
+      or train_state['training_complete']
+    ) and not skip_evals:
       # Prepare for evaluation (timed).
       if prepare_for_eval is not None:
         with profiler.profile('Prepare for eval'):
@@ -587,6 +602,8 @@ def score_submission_on_workload(
   hparam_start_index: Optional[bool] = None,
   hparam_end_index: Optional[bool] = None,
   rng_seed: Optional[int] = None,
+  capture_trace: Optional[bool] = False,
+  skip_evals: Optional[bool] = False,
 ):
   # Expand paths because '~' may not be recognized
   data_dir = os.path.expanduser(data_dir)
@@ -674,6 +691,9 @@ def score_submission_on_workload(
         tuning_search_space[hi] = hyperparameters
 
       with profiler.profile('Train'):
+        if capture_trace:
+          logging.info(f'Capturing and saving jax trace to {log_dir}')
+          (jax.profiler.start_trace(f'{log_dir}/traces'),)
         timing, metrics = train_once(
           workload,
           workload_name,
@@ -692,7 +712,10 @@ def score_submission_on_workload(
           max_global_steps,
           tuning_dir_name,
           save_checkpoints=save_checkpoints,
+          skip_evals=skip_evals,
         )
+        if capture_trace:
+          jax.profiler.stop_trace()
       all_timings[hi] = timing
       all_metrics[hi] = metrics
       logging.info(f'Tuning trial {hi + 1}/{num_tuning_trials}')
@@ -718,6 +741,9 @@ def score_submission_on_workload(
       logging.info(f'Creating directory at {log_dir}.')
       logger_utils.makedir(log_dir)
     with profiler.profile('Train'):
+      if capture_trace:
+        (jax.profiler.start_trace('/algoperf/traces'),)
+        logging.info(f'Capturing and saving jax trace to {log_dir}')
       score, _ = train_once(
         workload,
         workload_name,
@@ -737,6 +763,8 @@ def score_submission_on_workload(
         log_dir,
         save_checkpoints=save_checkpoints,
       )
+      if capture_trace:
+        jax.profiler.stop_trace()
   return score
 
 
@@ -819,6 +847,8 @@ def main(_):
     hparam_start_index=FLAGS.hparam_start_index,
     hparam_end_index=FLAGS.hparam_end_index,
     rng_seed=FLAGS.rng_seed,
+    capture_trace=FLAGS.capture_jax_trace,
+    skip_evals=FLAGS.skip_evals,
   )
   logging.info(f'Final {FLAGS.workload} score: {score}')
 

@@ -2,82 +2,92 @@
 
 <br />
 <p align="center">
-<a href="#"><img width="600" img src=".assets/mlc_logo.png" alt="MLCommons Logo"/></a>
+<a href="https://mlcommons.org/en/groups/research-algorithms/"><img width="600" img src=".assets/mlc_logo.png" alt="MLCommons Logo"/></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/mlcommons/submissions_algorithms">Leaderboard</a> •
-  <a href="/docs/GETTING_STARTED.md">Getting Started</a> •
-  <a href="https://github.com/mlcommons/submissions_algorithms">Submit</a> •
-  <a href="/docs/DOCUMENTATION.md">Documentation</a> •
-  <a href="/docs/CONTRIBUTING.md">Contributing</a> •
-  <a href="https://arxiv.org/abs/2306.07179" target="_blank">Benchmark</a>/<a href="https://openreview.net/forum?id=CtM5xjRSfm" target="_blank">Results</a> Paper
+  <strong><a href="https://github.com/mlcommons/submissions_algorithms">🏆 Leaderboard</a></strong> •
+  <strong><a href="/docs/GETTING_STARTED.md">🚀 Getting Started</a></strong> •
+  <strong><a href="https://github.com/mlcommons/submissions_algorithms">📥 Submit</a></strong> •
+  <strong><a href="/docs/DOCUMENTATION.md">📖 Docs/Rules</a></strong>
+  <br>
+  <strong><a href="https://arxiv.org/abs/2306.07179" target="_blank">📜 Benchmark Paper</a></strong> •
+  <strong><a href="https://openreview.net/forum?id=CtM5xjRSfm" target="_blank">📊 Results Paper</a></strong>
 </p>
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/mlcommons/algorithmic-efficiency/CI.yml?style=flat-square&logo=github&label=CI)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml)
-[![Linting Status](https://img.shields.io/github/actions/workflow/status/mlcommons/algorithmic-efficiency/linting.yml?style=flat-square&logo=github&label=Linting)](https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml)
-[![Code Style Ruff](https://img.shields.io/badge/Code%20Style-Ruff-brightgreen?style=flat-square&logo=ruff)](https://github.com/astral-sh/ruff)
-[![GitHub License](https://img.shields.io/github/license/mlcommons/algorithmic-efficiency?style=flat-square&label=License)](LICENSE.md)
-[![Discord](https://dcbadge.limes.pink/api/server/5FPXK7SMt6?style=flat-square)](https://discord.gg/5FPXK7SMt6)
+<p align="center">
+    <a href="https://github.com/mlcommons/algorithmic-efficiency/releases"><img alt="Version" src="https://img.shields.io/github/v/tag/mlcommons/algorithmic-efficiency?style=flat-square&label=Version"></a>
+    <a href="https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/CI.yml"><img alt="CI Status" src="https://img.shields.io/github/actions/workflow/status/mlcommons/algorithmic-efficiency/CI.yml?style=flat-square&logo=github&label=CI"></a>
+    <a href="https://github.com/mlcommons/algorithmic-efficiency/actions/workflows/linting.yml"><img alt="Linting Status" src="https://img.shields.io/github/actions/workflow/status/mlcommons/algorithmic-efficiency/linting.yml?style=flat-square&logo=github&label=Linting"></a>
+    <a href="https://github.com/astral-sh/ruff"><img alt="Code Style Ruff" src="https://img.shields.io/badge/Code%20Style-Ruff-brightgreen?style=flat-square&logo=ruff"></a>
+    <a href="LICENSE.md"><img alt="GitHub License" src="https://img.shields.io/github/license/mlcommons/algorithmic-efficiency?style=flat-square&label=License"></a>
+    <a href="https://discord.gg/5FPXK7SMt6"><img alt="Discord" src="https://dcbadge.limes.pink/api/server/5FPXK7SMt6?style=flat-square"></a>
+</p>
 
 ---
 
-Unlike benchmarks that focus on model architecture or hardware, the AlgoPerf benchmark isolates the training algorithm itself, measuring how quickly it can achieve target performance levels on a fixed set of representative deep learning tasks. These tasks span various domains, including image classification, speech recognition, machine translation, and more, all running on standardized hardware (8x NVIDIA V100 GPUs). The benchmark includes 8 base workloads, which are fully specified. In addition there are definitions for "randomized" workloads, which are variations of the fixed workloads, which are designed to discourage overfitting. These randomized workloads were used for scoring the AlgPerf competition but will not be used for future scoring.
+The MLCommons™ **AlgoPerf: Training Algorithms benchmark** is designed to find **training algorithms that can train neural networks faster** by rigorously measuring how quickly they reach a specific performance target across a diverse set of deep learning workloads.
 
-Submissions are evaluated based on their "time-to-result", i.e., the wall-clock time it takes to reach predefined validation and test set performance targets on each workload. Submissions are scored under one of two different tuning rulesets. The [external tuning rule set](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docs/DOCUMENTATION.md#external-tuning-ruleset) allows a limited amount of hyperparameter tuning (20 quasirandom trials) for each workload. The [self-tuning rule set](https://github.com/mlcommons/algorithmic-efficiency/blob/main/docs/DOCUMENTATION.md#self-tuning-ruleset) allows no external tuning, so any tuning is done "on-the-clock". For each submission, a single, overall benchmark score is computed by integrating its "performance profile" across all fixed workloads. The performance profile captures the relative training time of the submission to the best submission on each workload. Therefore the score of each submission is a function of other submissions in the submission pool. The higher the benchmark score, the better the submission's overall performance.
+When training neural nets, practitioners face many critical yet often opaque decisions: What optimizer to choose? How should its learning rate be tuned? What learning rate schedule should be used? These choices can make or break training, yet the community has lacked a clear, standardized way to identify the state of the art.
+Unlike benchmarks focused on hardware or model architecture, AlgoPerf isolates the **training algorithm** itself, which includes the optimizer, regularization, data selection, and hyperparameters like the learning rate schedule. By standardizing the benchmark process, AlgoPerf offers a meaningful apples-to-apples comparison of training algorithms and follows the following **key principles**:
 
----
-
-> This is the repository for the _AlgoPerf: Training Algorithms benchmark_ measuring neural network training speedups due to algorithmic improvements.
-> It is developed by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/).
-> This repository holds the benchmark code, the benchmark's [**technical documentation**](/docs/DOCUMENTATION.md) and [**getting started guides**](/docs/GETTING_STARTED.md). For a detailed description of the benchmark design, see our [**introductory paper**](https://arxiv.org/abs/2306.07179), for the results of the inaugural competition see our [**results paper**](https://openreview.net/forum?id=CtM5xjRSfm).
->
-> **See our [AlgoPerf Leaderboard](https://github.com/mlcommons/submissions_algorithms) for the latest results of the benchmark and to submit your algorithm.**
-
----
+- 🎯 **Fixed Target, Model & Hardware:** Submitted training algorithms must train a set of [**fixed models**](/docs/DOCUMENTATION.md#workloads) to a pre-defined validation performance target as fast as possible. All submissions use the same model architecture and are run on the same [**standardized hardware**](/docs/DOCUMENTATION.md#benchmarking-hardware) (8x NVIDIA V100 GPUs). This isolates the training algorithm's performance and allows a fair apples-to-apples comparison.
+- ⏱️ **Time-To-Result:** Submissions are evaluated based on the total wall-clock time required to reach the target, rewarding practical and efficient algorithms.
+- 🧠 **Diverse Workloads:** The benchmark includes [**8 diverse deep learning workloads**](/docs/DOCUMENTATION.md#workloads) across domains like image classification, speech recognition, and machine translation. A submission's score is computed by aggregating its performance, using [**performance profiles**](/docs/DOCUMENTATION.md#benchmark-score-using-performance-profiles), across all workloads to ensure general-purpose algorithms.
+- 📦 **Fully-Specified Algorithms:** Submissions must be complete procedures and thus hyperparameter tuning is treated as part of the algorithm. Submissions can either provide a search space for automated tuning ([**External tuning ruleset**](/docs/DOCUMENTATION.md#external-tuning-ruleset)) or be hyperparameter-free ([**Self-tuning ruleset**](/docs/DOCUMENTATION.md#self-tuning-ruleset)) with any tuning done automatically and "on the clock". This measures an algorithm's _total_ practical cost and provides practitioners with a complete method, eliminating the guesswork of how to apply it.
 
 > [!IMPORTANT]
-> For future iterations of the AlgoPerf: Training Algorithms benchmark competition, we are switching to a rolling leaderboard, making a few changes to the competition rules, and also run all selected submissions on our hardware. **To submit your algorithm to the next iteration of the benchmark, please see our [How to Submit](#how-to-submit) section and the [submission repository](https://github.com/mlcommons/submissions_algorithms) which hosts the up to date AlgoPerf leaderboard.**
+>
+> **We have moved to a rolling leaderboard!**
+> We invite you to submit your algorithm for evaluation, see our [**How to Submit**](#how-to-submit) section and the [**submission repository**](https://github.com/mlcommons/submissions_algorithms). The working group will review your submission and, if selected, run it on our hardware and add your results to the official [**AlgoPerf Leaderboard**](https://github.com/mlcommons/submissions_algorithms). **Note: we are currently focusing our efforts on the self-tuning leaderboard to strengthen its competitiveness.**
+
+---
 
 ## Table of Contents <!-- omit from toc -->
 
-- [Installation](#installation)
 - [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Run a Workload](#run-a-workload)
+  - [Develop Your Algorithm](#develop-your-algorithm)
 - [How to Submit](#how-to-submit)
-  - [Technical Documentation of the Benchmark \& FAQs](#technical-documentation-of-the-benchmark--faqs)
-- [Contributing](#contributing)
+- [Rules, Documentation \& FAQ](#rules-documentation--faq)
+- [Contributing \& Resources](#contributing--resources)
+- [Releases \& Roadmap](#releases--roadmap)
+- [Training Algorithm Collection](#training-algorithm-collection)
+- [Citing Our Work](#citing-our-work)
 - [License](#license)
-- [Paper and Citing the AlgoPerf Benchmark](#paper-and-citing-the-algoperf-benchmark)
-
-## Installation
-
-> [!TIP] > **If you have any questions about the benchmark competition or you run into any issues, please feel free to contact us.** Either [file an issue](https://github.com/mlcommons/algorithmic-efficiency/issues), ask a question on [our Discord](https://discord.gg/5FPXK7SMt6) or [join our weekly meetings](https://mlcommons.org/en/groups/research-algorithms/).
-
-You can install this package and dependencies in a [Python virtual environment](/docs/GETTING_STARTED.md#python-virtual-environment) or use a [Docker/Singularity/Apptainer container](/docs/GETTING_STARTED.md#docker) (recommended).
-We recommend using a Docker container (or alternatively, a Singularity/Apptainer container) to ensure a similar environment to our scoring and testing environments.
-Both options are described in detail in the [**Getting Started**](/docs/GETTING_STARTED.md) document.
-
-_TL;DR to install the Jax version for GPU run:_
-
-```bash
-pip3 install -e '.[pytorch_cpu]'
-pip3 install -e '.[jax_gpu]' -f 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-pip3 install -e '.[full]'
-```
-
-_TL;DR to install the PyTorch version for GPU run:_
-
-```bash
-pip3 install -e '.[jax_cpu]'
-pip3 install -e '.[pytorch_gpu]' -f 'https://download.pytorch.org/whl/cu121'
-pip3 install -e '.[full]'
-```
 
 ## Getting Started
 
-For detailed instructions on developing your own algorithm in the benchmark see the [Getting Started](/docs/GETTING_STARTED.md) document.
+Follow these steps to run a baseline algorithm and start developing your own submission.
+A more detailed guide can be found in the [**Getting Started**](/docs/GETTING_STARTED.md) document.
+If you run into any issues, please feel free to contact us.
+Either [**file an issue**](https://github.com/mlcommons/algorithmic-efficiency/issues), ask a question on [**our Discord**](https://discord.gg/5FPXK7SMt6) or [**join our weekly meetings**](https://mlcommons.org/en/groups/research-algorithms/).
 
-_TL;DR running a JAX workload:_
+### Installation
+
+We recommend using the provided [**Docker container**](/docs/GETTING_STARTED.md#docker) to ensure a reproducible environment similar to our scoring environment.
+Alternatively, you can install the package and its dependencies in a Python virtual environment.
+Both options are described in more detail in the [**Getting Started**](/docs/GETTING_STARTED.md) document.
+
+_TL;DR Install JAX version for GPU (with workload dependencies):_
+
+```bash
+pip3 install -e '.[pytorch_cpu,jax_gpu,full]' --extra-index-url https://download.pytorch.org/whl/cpu
+```
+
+_TL;DR Install PyTorch version for GPU (with workload dependencies):_
+
+```bash
+pip3 install -e '.[jax_cpu,pytorch_gpu,full]'
+```
+
+### Run a Workload
+
+Use the `submission_runner.py` to run an experiment, i.e., train a workload using a specific training algorithm.
+Here's how to run the AdamW baseline on the `mnist` workload.
+
+_TL;DR: Running a JAX workload:_
 
 ```bash
 python3 submission_runner.py \
@@ -85,11 +95,11 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/paper_baselines/adamw/jax/submission.py \
-    --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
+    --submission_path=algorithms/archived_paper_baselines/adamw/jax/submission.py \
+    --tuning_search_space=algorithms/archived_paper_baselines/adamw/tuning_search_space.json
 ```
 
-_TL;DR running a PyTorch workload:_
+_TL;DR: Running a PyTorch workload:_
 
 ```bash
 python3 submission_runner.py \
@@ -97,33 +107,81 @@ python3 submission_runner.py \
     --workload=mnist \
     --experiment_dir=$HOME/experiments \
     --experiment_name=my_first_experiment \
-    --submission_path=reference_algorithms/paper_baselines/adamw/pytorch/submission.py \
-    --tuning_search_space=reference_algorithms/paper_baselines/adamw/tuning_search_space.json
+    --submission_path=algorithms/archived_paper_baselines/adamw/pytorch/submission.py \
+    --tuning_search_space=algorithms/archived_paper_baselines/adamw/tuning_search_space.json
 ```
+
+### Develop Your Algorithm
+
+Now you're ready to create your own `submission.py`! For detailed instructions, FAQs, and technical details, please refer to our documentation:
+
+- [**Getting Started Guide**](/docs/GETTING_STARTED.md): A detailed walkthrough for developing your algorithm.
+- [**Benchmark Documentation**](/docs/DOCUMENTATION.md): The complete technical reference including the "benchmark rules" such as allowed and disallowed submissions, FAQs, and technical details such as the API.
 
 ## How to Submit
 
-Once you have developed your training algorithm, you can submit it to the benchmark by creating a pull request to the [submission repository](https://github.com/mlcommons/submissions_algorithms), which hosts the AlgoPerf leaderboard. The AlgoPerf working group will review your PR. Based on our available resources and the perceived potential of the method, it will be selected for a free evaluation. If selected, we will run your algorithm on our hardware and update the leaderboard with the results.
+Ready to see how your algorithm stacks up? Submit it to the official AlgoPerf leaderboard!
 
-### Technical Documentation of the Benchmark & FAQs
+1. **Develop Your Algorithm:** Create your training algorithm following the API and "rules" described in our [**documentation**](/docs/DOCUMENTATION.md).
+2. **Create a Pull Request:** Fork the [**submissions repository**](https://github.com/mlcommons/submissions_algorithms) and create a pull request with your algorithm.
+3. **Review and Evaluation:** The MLCommons Algorithms Working Group will review your PR. Based on its potential and our available resources, it may be selected for a **free, official evaluation** on our hardware.
+4. **See Your Results:** If selected, we will run your algorithm and add the results to the [**public leaderboard**](https://github.com/mlcommons/submissions_algorithms).
 
-We provide a technical documentation of the benchmark and answer frequently asked questions in a separate [**Documentation**](/docs/DOCUMENTATION.md) page. This includes which types of submissions are allowed. Please ensure that your submission is compliant with these rules before submitting. Suggestions, clarifications and questions can be raised via pull requests, creating an issue, or by sending an email to the [working group](mailto:algorithms@mlcommons.org).
+## Rules, Documentation & FAQ
 
-## Contributing
+We provide a technical documentation of the benchmark and answer frequently asked questions regarding the benchmarking protocol in a dedicated [**Documentation**](/docs/DOCUMENTATION.md) page. This includes which types of submissions are allowed, a description of the benchmark API, and the entire benchmarking protocol. Please ensure that your submission is compliant with these rules before submitting. Suggestions, clarifications, and questions can be raised via pull requests, by creating an issue, or by reaching out to the [**working group**](mailto:algorithms@mlcommons.org).
 
-We invite everyone to look through our rules, documentation, and codebase and submit issues and pull requests, e.g. for rules changes, clarifications, or any bugs you might encounter. If you are interested in contributing to the work of the working group and influence the benchmark's design decisions, please [join the weekly meetings](https://mlcommons.org/en/groups/research-algorithms/) and consider becoming a member of the working group.
+For a detailed description and motivation of the initial benchmark design, please refer to our [**Benchmark Paper**](/docs/DOCUMENTATION.md#benchmark-paper).
+For the results of the first AlgoPerf competition, please refer to our [**Competition Results Paper**](/docs/DOCUMENTATION.md#competition-results-paper).
+See our [**AlgoPerf Leaderboard**](https://github.com/mlcommons/submissions_algorithms) for the latest results of the benchmark and the option to submit your algorithm.
 
-Our [**Contributing**](/docs/CONTRIBUTING.md) document provides further MLCommons contributing guidelines and additional setup and workflow instructions.
+## Contributing & Resources
 
-## License
+AlgoPerf is an open, community-driven project organized by the [MLCommons Algorithms Working Group](https://mlcommons.org/en/groups/research-algorithms/). Whether you want to submit an algorithm, report a bug, or help shape the future of the benchmark, we welcome your contributions.
 
-The _AlgoPerf_ codebase is licensed under the [Apache License 2.0](/LICENSE.md).
+- 🏆 **Submit Your Algorithm:** Ready to compete? Create a pull request in the [**Submissions Repository**](https://github.com/mlcommons/submissions_algorithms).
+- 🐞 **Report a Bug:** Found an issue with the codebase? Please [**file an issue**](https://github.com/mlcommons/algorithmic-efficiency/issues) so we can take a look. This also includes any rules changes or clarifications you would like to see.
+- 🛠️ **Contribute to the Codebase:** We actively welcome pull requests! If you're interested in implementing new workloads, adding baselines, or fixing bugs please reach out to us. Our [**Contributing Guide**](/docs/CONTRIBUTING.md) offers further contributing guidelines and additional setup and workflow instructions.
+- 👥 **Influence the Benchmark:** To contribute to the benchmark's design and direction, please join the [**weekly working group meetings**](https://mlcommons.org/en/groups/research-algorithms/).
+- 💬 **Ask a Question:** Have a question or want to discuss ideas? Join the conversation on our [**Discord Server**](https://discord.gg/5FPXK7SMt6) or [**join our weekly meetings**](https://mlcommons.org/en/groups/research-algorithms/).
 
-## Paper and Citing the AlgoPerf Benchmark
+## Releases & Roadmap
 
-In our paper ["Benchmarking Neural Network Training Algorithms"](http://arxiv.org/abs/2306.07179) we motivate, describe, and justify the _AlgoPerf: Training Algorithms_ benchmark.
+The AlgoPerf benchmark is an actively evolving project designed to keep pace with the rapidly changing field of machine learning. To ensure clarity and reproducibility, we have adopted a unified versioning system: codebase, rules, and leaderboard all share the same `Major.Minor` version. `Patch` versions may differ for minor updates.
+All results produced under the same `Major.Minor` version are comparable, making it easy to cite "`AlgoPerf v0.X`" and know exactly which set of rules, code, and submissions are being referenced.
 
-If you are using the _AlgoPerf benchmark_, its codebase, baselines, or workloads, please consider citing our paper:
+Here is an overview of our key releases and the future roadmap. For a detailed list of changes in each release, see our [**Changelog**](docs/CHANGELOG.md).
+
+- `v0.5` - Inaugural Competition <br> The benchmark as it was run for the first AlgoPerf competition in 2024. The key findings and analysis from this competition are detailed in our [**ICLR 2025 Results Paper**](https://openreview.net/forum?id=CtM5xjRSfm). It serves as a historical reference.
+  - **Leaderboard:** Archived at [**AlgoPerf v0.5 Leaderboard**](https://github.com/mlcommons/submissions_algorithms/tree/main/previous_leaderboards/algoperf_v05).
+  - **Rules:** The rules are archived at the [**AlgoPerf v0.5 Documentation**](https://github.com/mlcommons/algorithmic-efficiency/blob/v0.5.0/DOCUMENTATION.md).
+- `v0.6` - **Current Version** <br> The active and recommended version of the benchmark. It is an improved and streamlined version that fixes important bugs and modifying the benchmarking protocol based on the lessons learned from the competition. **This is the recommended version for all new submissions.**
+
+  - **Key Changes:** (see the [Changelog](/docs/CHANGELOG.md) for details, including links to discussions on rule changes.)
+    - A rolling leaderboard now allows for continuous submissions and updates.
+    - Reduced computational cost via removing held-out workloads, 3 repetition studies (down from 5), and adjusted runtime budgets.
+    - Includes important bug fixes (e.g., batch norm) and API improvements (e.g., `prepare_for_eval` function).
+    - Migrating from `pmap` to `jit` in JAX for better performance and scalability.
+  - **Leaderboard:** The active (but currently limited) leaderboard can be found at [**AlgoPerf v0.6 Leaderboard**](https://github.com/mlcommons/submissions_algorithms).
+  - **Rules:** For the current set of rules see [**AlgoPerf v0.6 Documentation**](/docs/DOCUMENTATION.md).
+
+> 🏗️ `v1.0` (Future) - Planned Long-Term Support Release <br> This will be the next major release of the benchmark and a "long-term support" version, with the following **anticipated features:**
+>
+> - Adding a new language model (LM) workload.
+> - Stronger baselines, especially for the self-tuning leaderboard.
+
+## Training Algorithm Collection
+
+This repository also provides a collection of implemented training algorithms with different purposes. These include [**submission templates**](./algorithms/template), [**development examples**](./algorithms/development_algorithms), [**target-setting algorithms**](./algorithms/target_setting_algorithms), [**historical baselines**](./algorithms/archived_paper_baselines), and [**current baselines**](./algorithms/baselines). For a detailed overview of these algorithms and their organization, please refer to the [`algorithms/README.md`](./algorithms/README.md) file. You can also find all benchmark submissions and their results on the official [**Leaderboard**](https://github.com/mlcommons/submissions_algorithms).
+These algorithms provide a starting point for developing your own training algorithm and are a great resource for understanding the AlgoPerf benchmark and its API.
+
+## Citing Our Work
+
+If you use the AlgoPerf benchmark, its codebase, or results in your research, please cite our papers.
+
+**Benchmark Paper:**
+
+In this paper, we motivate, describe, and justify the _AlgoPerf: Training Algorithms_ benchmark.
 
 > [Dahl, Schneider, Nado, et al.<br/> > **Benchmarking Neural Network Training Algorithms**<br/> > _arXiv 2306.07179_](http://arxiv.org/abs/2306.07179)
 
@@ -137,10 +195,11 @@ If you are using the _AlgoPerf benchmark_, its codebase, baselines, or workloads
 }
 ```
 
-If you use the results from the first _AlgoPerf competition_, please consider citing the results paper, as well as the relevant submissions:
+**Competition Results Paper:**
 
-> [Kasimbeg, Schneider, Eschenhagen, et al.<br/> > **Accelerating neural network training: An analysis of the AlgoPerf competition**<br/>
-> ICLR 2025](https://openreview.net/forum?id=CtM5xjRSfm)
+In this paper, we analyze the results of the first AlgoPerf competition.
+
+> [Kasimbeg, Schneider, Eschenhagen, et al.<br/> > **Accelerating neural network training: An analysis of the AlgoPerf competition**<br/> > _ICLR 2025_](https://openreview.net/forum?id=CtM5xjRSfm)
 
 ```bibtex
 @inproceedings{Kasimbeg2025AlgoPerfResults,
@@ -151,3 +210,13 @@ year            = {2025},
 url             = {https://openreview.net/forum?id=CtM5xjRSfm}
 }
 ```
+
+## License
+
+The _AlgoPerf_ codebase is licensed under the [**Apache License 2.0**](/LICENSE.md). All AlgoPerf benchmark submissions must likewise be open-source under the same [**Apache License 2.0**](https://www.apache.org/licenses/LICENSE-2.0).
+
+---
+
+<p align="center">
+<b>MLCommons™ Algorithms Working Group</b> • <a href="https://mlcommons.org/en/groups/research-algorithms/"><strong>Join us!</strong></a>
+</p>

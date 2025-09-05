@@ -44,12 +44,12 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean('local', False, 'Mount local algorithmic-efficiency repo.')
 flags.DEFINE_string(
   'submission_path',
-  'prize_qualification_baselines/external_tuning/jax_nadamw_full_budget.py',
+  'algorithms/baseline/external_tuning/jax_nadamw_full_budget.py',
   'Path to reference submission.',
 )
 flags.DEFINE_string(
   'tuning_search_space',
-  'prize_qualification_baselines/external_tuning/tuning_search_space.json',
+  'algorithms/baseline/external_tuning/tuning_search_space.json',
   'Path to tuning search space.',
 )
 flags.DEFINE_string('framework', 'jax', 'Can be either PyTorch or JAX.')
@@ -65,7 +65,7 @@ flags.DEFINE_enum(
   enum_values=['external', 'self'],
   help='Can be either external of self.',
 )
-flags.DEFINE_integer('num_studies', 5, 'Number of studies to run')
+flags.DEFINE_integer('num_studies', 3, 'Number of studies to run')
 flags.DEFINE_integer('study_start_index', None, 'Start index for studies.')
 flags.DEFINE_integer('study_end_index', None, 'End index for studies.')
 flags.DEFINE_integer('num_tuning_trials', 5, 'Number of tuning trials.')

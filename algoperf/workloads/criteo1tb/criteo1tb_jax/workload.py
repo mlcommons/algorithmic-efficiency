@@ -6,9 +6,8 @@ from typing import Dict, Optional, Tuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from flax import jax_utils
 
-from algoperf import param_utils, spec
+from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.criteo1tb.criteo1tb_jax import models
 from algoperf.workloads.criteo1tb.workload import BaseCriteo1TbDlrmSmallWorkload
 
@@ -106,7 +105,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     initial_params = initial_variables['params']
     self._param_shapes = param_utils.jax_param_shapes(initial_params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    return jax_utils.replicate(initial_params), None
+    return jax_sharding_utils.replicate(initial_params), None
 
   def is_output_params(self, param_key: spec.ParameterKey) -> bool:
     return param_key == 'Dense_7'
@@ -132,13 +131,40 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
     logits_batch = self._model.apply({'params': params}, inputs, **apply_kwargs)
     return logits_batch, None
 
+  def _build_input_queue(
+    self,
+    data_rng: spec.RandomState,
+    split: str,
+    data_dir: str,
+    global_batch_size: int,
+    cache: Optional[bool] = None,
+    repeat_final_dataset: Optional[bool] = None,
+    num_batches: Optional[int] = None,
+  ):
+    it = super()._build_input_queue(
+      data_rng,
+      split,
+      data_dir,
+      global_batch_size,
+      cache,
+      repeat_final_dataset,
+      num_batches,
+    )
+    f = functools.partial(
+      jax.device_put, device=jax_sharding_utils.get_batch_dim_sharding()
+    )
+    return map(f, it)
+
   @functools.partial(
-    jax.pmap,
-    axis_name='batch',
-    in_axes=(None, 0, 0),
-    static_broadcasted_argnums=(0,),
+    jax.jit,
+    in_shardings=(
+      jax_sharding_utils.get_replicate_sharding(),
+      jax_sharding_utils.get_batch_dim_sharding(),
+    ),
+    static_argnums=(0,),
+    out_shardings=jax_sharding_utils.get_replicate_sharding(),
   )
-  def _eval_batch_pmapped(
+  def _eval_batch_jitted(
     self, params: spec.ParameterContainer, batch: Dict[str, spec.Tensor]
   ) -> spec.Tensor:
     logits, _ = self.model_fn(
@@ -162,9 +188,7 @@ class Criteo1TbDlrmSmallWorkload(BaseCriteo1TbDlrmSmallWorkload):
   ) -> spec.Tensor:
     # We do NOT psum inside of _eval_batch_pmapped, so the returned tensor of
     # shape (local_device_count,) will all be different values.
-    return np.array(
-      self._eval_batch_pmapped(params, batch).sum(), dtype=np.float64
-    )
+    return np.array(self._eval_batch_jitted(params, batch), dtype=np.float64)
 
 
 class Criteo1TbDlrmSmallTestWorkload(Criteo1TbDlrmSmallWorkload):

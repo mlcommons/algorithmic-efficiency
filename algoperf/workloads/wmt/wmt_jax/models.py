@@ -223,7 +223,7 @@ class Encoder1DBlock(nn.Module):
       bias_init=cfg.bias_init,
       use_bias=False,
       broadcast_dropout=False,
-      dropout_rate=dropout_rate,
+      dropout_rate=0.0,  # The dropout is applied at the end of this layer
       deterministic=cfg.deterministic,
     )(cfg.attention_temp * x, x, mask=encoder_mask)
 
@@ -286,7 +286,7 @@ class EncoderDecoder1DBlock(nn.Module):
       bias_init=cfg.bias_init,
       use_bias=False,
       broadcast_dropout=False,
-      dropout_rate=dropout_rate,
+      dropout_rate=0.0,  # Dropout applied after MultiHeadDotProductAttention
       deterministic=cfg.deterministic,
       decode=cfg.decode,
     )(cfg.attention_temp * x, x, mask=decoder_mask)
@@ -308,7 +308,7 @@ class EncoderDecoder1DBlock(nn.Module):
       bias_init=cfg.bias_init,
       use_bias=False,
       broadcast_dropout=False,
-      dropout_rate=dropout_rate,
+      dropout_rate=0.0,  # Dropout applied after attention
       deterministic=cfg.deterministic,
     )(cfg.attention_temp * y, encoded, mask=encoder_decoder_mask)
 
