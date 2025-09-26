@@ -123,7 +123,7 @@ We recommend using a Docker container to ensure a similar environment to our sco
    docker build -t <docker_image_name> . --build-arg framework=<framework>
    ```
 
-   The `framework` flag can be either `pytorch`, `jax` or `both`. Specifying the framework will install the framework specific dependencies.
+   The `framework` flag can be either `pytorch` or `jax`. Specifying the framework will install the framework specific dependencies.
    The `docker_image_name` is arbitrary.
 
 #### Running Docker Container (Interactive)
