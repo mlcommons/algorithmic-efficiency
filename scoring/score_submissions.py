@@ -119,9 +119,13 @@ def get_summary_df(workload, workload_df, include_test_split=False):
     axis=1,
   )
 
-  summary_df['step_time (s)'] = (
-    workload_df['accumulated_submission_time'] / workload_df['global_step']
-  ).iloc[-1][-1]
+  # compute the step times
+  def delta(series):
+    return series.shift(1, fill_value=0) - series
+  accumulated_time_intervals = delta(workload_df['accumulated_submission_time'])
+  step_intervals = delta(workload_df['global_step'])
+
+  summary_df['step_time (s)'] = np.median((accumulated_time_intervals / step_intervals).iloc[0])
 
   summary_df['step_hint'] = scoring_utils.get_workload_stephint(workload)
 
