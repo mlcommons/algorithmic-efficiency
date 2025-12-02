@@ -26,14 +26,24 @@ class ModelConfig:
   qknorm_epsilon: float = 1e-6
   use_residual_scaling: bool = True
   tie_embeddings: bool = True
+  compute_dtype: torch.dtype = torch.bfloat16
+  param_dtype: torch.dtype = torch.float32
 
 
 class MLP(nn.Module):
-  def __init__(self, dim: int, hidden_dim: int, multiple_of: int = 256):
+  def __init__(
+    self,
+    dim: int,
+    hidden_dim: int,
+    multiple_of: int = 256,
+    dtype: torch.dtype = torch.float32,
+  ):
     super().__init__()
-    hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
-    self.fc1 = nn.Linear(dim, 2 * hidden_dim, bias=False)
-    self.fc2 = nn.Linear(hidden_dim, dim, bias=False)
+    hidden_dim = int(
+      multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
+    )
+    self.fc1 = nn.Linear(dim, 2 * hidden_dim, bias=False, dtype=dtype)
+    self.fc2 = nn.Linear(hidden_dim, dim, bias=False, dtype=dtype)
     self.glu = nn.GLU(dim=2)
     nn.init.normal_(self.fc1.weight, std=0.02)
     nn.init.normal_(self.fc2.weight, std=0.02)
@@ -88,8 +98,12 @@ class Attention(nn.Module):
     self.n_heads = cfg.num_heads
     self.head_dim = cfg.model_dim // cfg.num_heads
 
-    self.w_qkv = nn.Linear(cfg.model_dim, 3 * cfg.model_dim, bias=False)
-    self.w_out = nn.Linear(cfg.model_dim, cfg.model_dim, bias=False)
+    self.w_qkv = nn.Linear(
+      cfg.model_dim, 3 * cfg.model_dim, bias=False, dtype=cfg.param_dtype
+    )
+    self.w_out = nn.Linear(
+      cfg.model_dim, cfg.model_dim, bias=False, dtype=cfg.param_dtype
+    )
     # Split into Q, K, V sections
     wq, wk, wv = torch.chunk(self.w_qkv.weight, 3, dim=0)
     for w in [wq, wk, wv]:
@@ -99,7 +113,9 @@ class Attention(nn.Module):
     self.eps = cfg.qknorm_epsilon  # e.g., 1e-6
     seq_len = cfg.seq_len
     attn_scale0 = math.log2(seq_len**2 - seq_len)
-    self.attn_scale = nn.Parameter(torch.tensor(attn_scale0))
+    self.attn_scale = nn.Parameter(
+      torch.tensor(attn_scale0, dtype=cfg.param_dtype)
+    )
 
   def forward(self, x, freqs_cis):
     bsz, seqlen, d = x.shape  # (bsz, seqlen, d)
@@ -142,13 +158,18 @@ class Block(nn.Module):
   def __init__(self, layer_id: int, cfg: ModelConfig):
     super().__init__()
     self.attn = Attention(cfg)
-    self.attn_norm = nn.RMSNorm(cfg.model_dim, eps=cfg.rmsnorm_epsilon)
+    self.attn_norm = nn.RMSNorm(
+      cfg.model_dim, eps=cfg.rmsnorm_epsilon, dtype=cfg.param_dtype
+    )
     self.mlp = MLP(
       dim=cfg.model_dim,
       hidden_dim=cfg.expanded_model_dim,
       multiple_of=cfg.multiple_of,
+      dtype=cfg.param_dtype,
     )
-    self.mlp_norm = nn.RMSNorm(cfg.model_dim, eps=cfg.rmsnorm_epsilon)
+    self.mlp_norm = nn.RMSNorm(
+      cfg.model_dim, eps=cfg.rmsnorm_epsilon, dtype=cfg.param_dtype
+    )
     self.layer_id = layer_id
 
   def forward(self, x, freqs_cis):
@@ -166,12 +187,18 @@ class Transformer(nn.Module):
     head_dim = cfg.model_dim // cfg.num_heads
     assert cfg.model_dim % cfg.num_heads == 0
 
-    self.embed_tokens = nn.Embedding(cfg.vocab_size, cfg.model_dim)
+    self.embed_tokens = nn.Embedding(
+      cfg.vocab_size, cfg.model_dim, dtype=cfg.param_dtype
+    )
     self.layers = nn.ModuleList(
       [Block(idx, cfg) for idx in range(cfg.num_layers)]
     )
-    self.out_norm = nn.RMSNorm(cfg.model_dim, eps=cfg.rmsnorm_epsilon)
-    self.lm_head = nn.Linear(cfg.model_dim, cfg.vocab_size, bias=False)
+    self.out_norm = nn.RMSNorm(
+      cfg.model_dim, eps=cfg.rmsnorm_epsilon, dtype=cfg.param_dtype
+    )
+    self.lm_head = nn.Linear(
+      cfg.model_dim, cfg.vocab_size, bias=False, dtype=cfg.param_dtype
+    )
 
     # Initialize freqs_cis on CPU first (more memory efficient)
     self.register_buffer(
@@ -215,6 +242,7 @@ class Transformer(nn.Module):
     for layer in self.layers:
       x = layer(x, freqs_cis)  # (bsz, seqlen, dim)
     out = self.lm_head(self.out_norm(x))  # (bsz, seqlen, vocab_size)
+
     if targets is not None:
       loss = F.cross_entropy(
         out.view(-1, out.size(-1)), targets.view(-1), ignore_index=-100
@@ -232,40 +260,43 @@ class Transformer(nn.Module):
     Returns:
         Tuple of (input_ids, predicted_ids)
     """
+    # Determine device type for autocast
+    device_type = 'cuda' if x.is_cuda else 'cpu'
 
-    # Store original input
-    original_input = x.clone()
-    generated_input = x.clone()
+    with torch.autocast(device_type=device_type, dtype=self.cfg.compute_dtype):
+      # Store original input
+      original_input = x.clone()
+      generated_input = x.clone()
 
-    # Generate k tokens autoregressively
-    for i in range(k):
-      # Get logits for the entire sequence
-      logits = self(generated_input)
+      # Generate k tokens autoregressively
+      for i in range(k):
+        # Get logits for the entire sequence
+        logits = self(generated_input)
 
-      # Get the logits for the last token in each sequence
-      next_token_logits = logits[:, -1, :]
+        # Get the logits for the last token in each sequence
+        next_token_logits = logits[:, -1, :]
 
-      # Zero out the last token ID to prevent repetition
-      # This is a common issue - the model gets stuck repeating the last token
-      last_token_id = generated_input[:, -1]
-      next_token_logits.scatter_(1, last_token_id.unsqueeze(1), float('-inf'))
+        # Zero out the last token ID to prevent repetition
+        # This is a common issue - the model gets stuck repeating the last token
+        last_token_id = generated_input[:, -1]
+        next_token_logits.scatter_(1, last_token_id.unsqueeze(1), float('-inf'))
 
-      # Get the most likely token
-      next_token = torch.argmax(next_token_logits, dim=-1)
+        # Get the most likely token
+        next_token = torch.argmax(next_token_logits, dim=-1)
 
-      # Append the predicted token to the sequence
-      next_token = next_token.unsqueeze(1)  # Add sequence dimension
-      generated_input = torch.cat([generated_input, next_token], dim=1)
+        # Append the predicted token to the sequence
+        next_token = next_token.unsqueeze(1)  # Add sequence dimension
+        generated_input = torch.cat([generated_input, next_token], dim=1)
 
-    # For debugging, print predictions for the first item in the batch
-    print('\nPyTorch detailed prediction (first item in batch):')
-    predicted_sequence = generated_input[0, -k:].tolist()
-    print(f'  Predicted token IDs: {predicted_sequence}')
-    for i, token_id in enumerate(predicted_sequence):
-      print(f'  Step {i + 1}: Predicted token {token_id}')
+      # For debugging, print predictions for the first item in the batch
+      print('\nPyTorch detailed prediction (first item in batch):')
+      predicted_sequence = generated_input[0, -k:].tolist()
+      print(f'  Predicted token IDs: {predicted_sequence}')
+      for i, token_id in enumerate(predicted_sequence):
+        print(f'  Step {i + 1}: Predicted token {token_id}')
 
-    # Return all tokens, not just the last k
-    return original_input, generated_input[:, -k:]
+      # Return all tokens, not just the last k
+      return original_input, generated_input[:, -k:]
 
   def _init_weights(self, module):
     if isinstance(module, nn.Linear):
@@ -318,6 +349,8 @@ def main():
   # Instantiate the model
   model = Transformer(config)
   print(f'Model has {model.count_params():,} parameters.')
+  for n, p in model.named_parameters():
+    print(f'{n}.dtype == {p.dtype}')
 
   # Create some random input data
   batch_size = 2
@@ -330,6 +363,7 @@ def main():
   # Run a forward pass
   print(f'Running forward pass with input shape: {input_ids.shape}')
   logits = model(input_ids)
+  print(f'Output logits dtype: {logits.dtype}')
   print(f'Output logits shape: {logits.shape}')
 
   # Run prediction

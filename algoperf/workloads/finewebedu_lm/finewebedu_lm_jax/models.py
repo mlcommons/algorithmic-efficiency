@@ -8,6 +8,7 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import jmp
 from flax import linen as nn
 
 
@@ -26,17 +27,23 @@ class ModelConfig:
   use_residual_scaling: bool = True
   tie_embeddings: bool = True  # Whether to tie input and output embed
   qknorm_epsilon: float = 1e-6
-
-  dtype: jnp.dtype = jnp.float32
   attention_init: nn.initializers.Initializer = nn.initializers.normal(
     stddev=0.02
   )
   linear_init: nn.initializers.Initializer = nn.initializers.normal(stddev=0.02)
   embed_init: nn.initializers.Initializer = nn.initializers.normal(stddev=0.02)
+  param_dtype: jnp.dtype = jnp.float32
+  compute_dtype: jnp.dtype = jnp.bfloat16
+  output_dtype: jnp.dtype = jnp.bfloat16
 
   def __post_init__(self):
     self.residual_init = nn.initializers.normal(
       stddev=0.02 / jnp.sqrt(2 * self.num_layers)
+    )
+    self.mp_policy = jmp.Policy(
+      compute_dtype=self.compute_dtype,
+      param_dtype=self.param_dtype,
+      output_dtype=self.output_dtype,
     )
 
 
@@ -49,7 +56,11 @@ class Mlp(nn.Module):
   def __call__(self, x_BxLxD: jax.Array):
     cfg = self.cfg
     linear = partial(
-      nn.Dense, kernel_init=cfg.linear_init, use_bias=False, dtype=cfg.dtype
+      nn.Dense,
+      kernel_init=cfg.linear_init,
+      use_bias=False,
+      dtype=cfg.compute_dtype,
+      param_dtype=cfg.param_dtype,
     )
     #  Adjust hidden dimension to keep the number of parameters invariant to
     # the activation function used since the GLU MLP has 3 * hidden_dim * D
@@ -65,7 +76,8 @@ class Mlp(nn.Module):
     x_BxLxD = nn.Dense(
       cfg.model_dim,
       use_bias=False,
-      dtype=cfg.dtype,
+      dtype=cfg.compute_dtype,
+      param_dtype=cfg.param_dtype,
       kernel_init=cfg.residual_init
       if cfg.use_residual_scaling
       else cfg.linear_init,
@@ -96,7 +108,7 @@ def apply_rope(q, k, freqs_cis):
 
   def rotate_tensor(x):
     # Split into real and imaginary parts
-    x_r2 = x.reshape(*x.shape[:-1], -1, 2)
+    x_r2 = x.reshape(*x.shape[:-1], -1, 2).astype(jnp.float32)
     L = x.shape[1]
     freqs = freqs_cis[:, :L, :, :, :]
 
@@ -109,7 +121,7 @@ def apply_rope(q, k, freqs_cis):
       axis=-1,
     )
 
-    return rotated_x_r2.reshape(*x.shape)
+    return rotated_x_r2.reshape(*x.shape).astype(x.dtype)
 
   # Apply rotation to Q and K separately
   rotated_q = rotate_tensor(q)
@@ -141,7 +153,8 @@ class CausalAttn(nn.Module):
       features=(cfg.num_heads, self.Dh),
       kernel_init=cfg.attention_init,
       use_bias=False,
-      dtype=cfg.dtype,
+      dtype=cfg.compute_dtype,
+      param_dtype=cfg.param_dtype,
     )
     self.multilinear_query = self.multilinear(name='query')
     self.multilinear_key = self.multilinear(name='key')
@@ -150,7 +163,9 @@ class CausalAttn(nn.Module):
     seq_len = cfg.seq_len
     attn_scale0 = jnp.log2(seq_len**2 - seq_len)
     self.attn_scale = self.param(
-      'attn_scale', nn.initializers.constant(attn_scale0), ()
+      'attn_scale',
+      nn.initializers.constant(attn_scale0, dtype=cfg.compute_dtype),
+      (),
     )
     self.output_projection = nn.DenseGeneral(
       features=cfg.model_dim,
@@ -160,7 +175,8 @@ class CausalAttn(nn.Module):
       if cfg.use_residual_scaling
       else cfg.linear_init,
       use_bias=False,
-      dtype=cfg.dtype,
+      dtype=cfg.compute_dtype,
+      param_dtype=cfg.param_dtype,
     )
 
   def __call__(self, x_BxLxD: jax.Array):
@@ -177,32 +193,17 @@ class CausalAttn(nn.Module):
     # Apply QK normalization
     q_BxLxHxDh /= jnp.linalg.norm(q_BxLxHxDh, axis=-1, keepdims=True) + self.eps
     k_BxLxHxDh /= jnp.linalg.norm(k_BxLxHxDh, axis=-1, keepdims=True) + self.eps
-
-    # Compute attention scores
-    att_BxHxLxL = jnp.einsum('...qhd,...khd->...hqk', q_BxLxHxDh, k_BxLxHxDh)
-
-    # Causal attention mask
-    L = x_BxLxD.shape[1]
-    mask_1x1xLxL = jnp.tril(jnp.ones((1, 1, L, L), dtype=jnp.bool_))
-
-    # Apply mask and softmax
-    _NEG_INF = jnp.finfo(cfg.dtype).min
-    att_BxHxLxL = jnp.where(mask_1x1xLxL, att_BxHxLxL, _NEG_INF)
-    att_BxHxLxL = (
-      self.attn_scale * att_BxHxLxL
-    )  # Learned scaling factor for QK norm
-    att_BxHxLxL = jax.nn.softmax(att_BxHxLxL, axis=-1)
-    att_BxHxLxL = att_BxHxLxL.astype(cfg.dtype)
-
-    # Compute attention output
-    out_BxLxHxDh = jnp.einsum('...hqk,...khd->...qhd', att_BxHxLxL, v_BxLxHxDh)
-
-    # Reshape and project output
+    q_BxLxHxDh *= self.attn_scale
+    out_BxLxHxDh = jax.nn.dot_product_attention(
+      query=q_BxLxHxDh,
+      key=k_BxLxHxDh,
+      value=v_BxLxHxDh,
+      is_causal=True,
+      scale=1.0,
+      implementation='cudnn' if cfg.compute_dtype is not jnp.float32 else None,
+    )
     out_BxLxD = out_BxLxHxDh.reshape(*x_BxLxD.shape)
-
-    # Output projection
     out_BxLxD = self.output_projection(out_BxLxD)
-
     return out_BxLxD
 
 
@@ -216,16 +217,16 @@ class TBlock(nn.Module):
     cfg = self.docfg
 
     # x = x + attn( attn_norm(x) )
-    x_BxLxD = nn.RMSNorm(param_dtype=cfg.dtype, epsilon=cfg.rmsnorm_epsilon)(
-      in_BxLxD
-    )
+    x_BxLxD = nn.RMSNorm(
+      param_dtype=cfg.param_dtype, epsilon=cfg.rmsnorm_epsilon
+    )(in_BxLxD)
     x_BxLxD = CausalAttn(cfg)(x_BxLxD)
     x_BxLxD += in_BxLxD
 
     # x = x + mlp( mlp_norm(x) )
-    z_BxLxD = nn.RMSNorm(param_dtype=cfg.dtype, epsilon=cfg.rmsnorm_epsilon)(
-      x_BxLxD
-    )
+    z_BxLxD = nn.RMSNorm(
+      param_dtype=cfg.param_dtype, epsilon=cfg.rmsnorm_epsilon
+    )(x_BxLxD)
     z_BxLxD = Mlp(cfg)(z_BxLxD)
 
     return x_BxLxD + z_BxLxD
@@ -242,19 +243,24 @@ class TransformerDo(nn.Module):
       num_embeddings=cfg.vocab_size,
       features=cfg.model_dim,
       embedding_init=cfg.embed_init,
+      dtype=cfg.compute_dtype,
+      param_dtype=cfg.param_dtype,
     )
 
     self.blocks = [TBlock(cfg) for _ in range(cfg.num_layers)]
-    self.out_ln = nn.RMSNorm(param_dtype=cfg.dtype, epsilon=cfg.rmsnorm_epsilon)
+    self.out_ln = nn.RMSNorm(
+      param_dtype=cfg.param_dtype, epsilon=cfg.rmsnorm_epsilon
+    )
 
     # Output projection - tied to input embeddings if configured
     if cfg.tie_embeddings:
-      self.output_proj = lambda x: self.embed.attend(x.astype(jnp.float32))
+      self.output_proj = lambda x: self.embed.attend(x)
     else:
       self.output_proj = nn.Dense(
         cfg.vocab_size,
         kernel_init=cfg.embed_init,
-        dtype=cfg.dtype,
+        dtype=cfg.compute_dtype,
+        param_dtype=cfg.param_dtype,
         name='output_proj',
       )
 
@@ -357,6 +363,7 @@ def main():
 
   # Make a prediction (forward pass)
   print('\nRunning forward pass...')
+  params, x_BxL = cfg.mp_policy.cast_to_compute((params, x_BxL))
   logits = model.apply(params, x_BxL)
 
   # Print output shape and sample values

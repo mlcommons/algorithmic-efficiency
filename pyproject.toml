@@ -90,7 +90,7 @@ librispeech_conformer = [
   "pydub==0.25.1",
 ]
 wmt = ["sentencepiece==0.2.0", "tensorflow-text==2.19.0"]
-lm = ["transformers==4.26", "datasets==3.6.0"]
+lm = ["transformers==4.26.0", "datasets==3.6.0"]
 
 # Frameworks
 jax_core_deps = [
@@ -99,6 +99,7 @@ jax_core_deps = [
   "chex==0.1.86",
   "ml_dtypes==0.5.1",
   "protobuf==4.25.5",
+  "jmp>=0.0.4"
 ]
 jax_cpu = [
   "jax==0.7.0",

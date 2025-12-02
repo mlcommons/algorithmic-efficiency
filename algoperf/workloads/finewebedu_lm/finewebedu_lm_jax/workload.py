@@ -1,9 +1,11 @@
 """LM workload implemented in Jax."""
 
+from functools import partial
 from typing import Any, Dict, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+import jmp
 
 from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf.workloads.finewebedu_lm.finewebedu_lm_jax.models import (
@@ -13,9 +15,32 @@ from algoperf.workloads.finewebedu_lm.finewebedu_lm_jax.models import (
 from algoperf.workloads.finewebedu_lm.input_pipeline import get_data_iter
 from algoperf.workloads.finewebedu_lm.workload import BaseLmWorkload
 
+replicated_sharding = jax_sharding_utils.get_replicate_sharding()
+batch_sharding = jax_sharding_utils.get_batch_dim_sharding()
+
+# Dtype mapping from string to JAX dtype
+DTYPE_MAP = {
+  'float32': jnp.float32,
+  'float16': jnp.float16,
+  'bfloat16': jnp.bfloat16,
+}
+
 
 class LmWorkload(BaseLmWorkload):
   """LM JAX workload."""
+
+  # Convert dtype strings from base class to JAX dtypes
+  @property
+  def _compute_dtype(self) -> Any:
+    return DTYPE_MAP[self._compute_dtype_str]
+
+  @property
+  def _param_dtype(self) -> Any:
+    return DTYPE_MAP[self._param_dtype_str]
+
+  @property
+  def _output_dtype(self) -> Any:
+    return DTYPE_MAP[self._output_dtype_str]
 
   def _build_input_queue(
     self,
@@ -53,8 +78,14 @@ class LmWorkload(BaseLmWorkload):
       num_layers=self._n_layers,  # num layers
       vocab_size=self._vocab_size,
       expanded_model_dim=self._mlp_dim,  # feedforward dim
-      dtype=jnp.float32,
+      rmsnorm_epsilon=self._rmsnorm_epsilon,
+      qknorm_epsilon=self._qknorm_epsilon,
+      tie_embeddings=self._tie_embeddings,
+      param_dtype=self._param_dtype,
+      compute_dtype=self._compute_dtype,
+      output_dtype=self._output_dtype,
     )
+    self._mp_policy: jmp.Policy = cfg.mp_policy
     self._model = TransformerDo(cfg)
     input_shape = (1, self._seq_len)  # For token IDs
 
@@ -66,8 +97,7 @@ class LmWorkload(BaseLmWorkload):
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
     params = jax_sharding_utils.replicate(params)
-    model_state = None
-    return params, model_state
+    return params, None
 
   def model_fn(
     self,
@@ -81,10 +111,12 @@ class LmWorkload(BaseLmWorkload):
   ) -> Tuple[spec.Tensor, spec.ModelAuxiliaryState]:
     del mode, rng, update_batch_norm, model_state, dropout_rate
     inputs = batch['inputs']
+    params, inputs = self._mp_policy.cast_to_compute((params, inputs))
     # Convert one-hot inputs to token IDs if needed
     if inputs.ndim == 3:  # one-hot encoded
       inputs = jnp.argmax(inputs, axis=-1)
     logits = self._model.apply({'params': params}, inputs)
+    logits = self._mp_policy.cast_to_output(logits)
     return logits, None
 
   def loss_fn(
@@ -139,6 +171,17 @@ class LmWorkload(BaseLmWorkload):
       'per_example': per_example_losses,
     }
 
+  @partial(
+    jax.jit,
+    static_argnums=(0,),
+    in_shardings=(
+      replicated_sharding,
+      batch_sharding,
+      replicated_sharding,
+      replicated_sharding,
+    ),
+    out_shardings=(replicated_sharding),
+  )
   def _eval_batch(
     self,
     params: spec.ParameterContainer,

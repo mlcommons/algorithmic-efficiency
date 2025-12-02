@@ -27,6 +27,16 @@ class BaseLmWorkload(spec.Workload):
   _mlp_dim: int = 4096
   warmup_factor: float = 0.1
 
+  # Model configuration
+  _rmsnorm_epsilon: float = 1e-6
+  _qknorm_epsilon: float = 1e-6
+  _tie_embeddings: bool = True
+
+  # Dtype configuration (as strings, to be converted by framework-specific subclasses)
+  _compute_dtype_str: str = 'bfloat16'
+  _param_dtype_str: str = 'float32'
+  _output_dtype_str: str = 'bfloat16'  # Only used by JAX
+
   def __init__(self) -> None:
     super().__init__()
     self._param_shapes = None
@@ -85,11 +95,11 @@ class BaseLmWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 31_967 # 8.9 hours
+    return 31_967  # 8.9 hours
 
   @property
   def eval_period_time_sec(self) -> int:
-    return 2_571 # approximately 25 evals
+    return 2_571  # approximately 25 evals
 
   @property
   def step_hint(self) -> int:
@@ -164,9 +174,12 @@ class BaseLmWorkload(spec.Workload):
       eval_batch = next(self._eval_iters[split])
       metrics = self._eval_batch(params, eval_batch, model_state, rng)
       for metric_name, metric_value in metrics.items():
-        if metric_name not in eval_metrics:
-          eval_metrics[metric_name] = 0.0
-        eval_metrics[metric_name] += metric_value
+        eval_metrics.update(
+          {metric_name: eval_metrics.get(metric_name, 0.0) + metric_value}
+        )
+      print(
+        f"Completed eval batch {_ + 1}/{num_batches} for split '{split}' at global step {global_step}."
+      )
 
     eval_results = self._normalize_eval_metrics(num_examples, eval_metrics)
     eval_results['ppl'] = np.exp(eval_results['loss']).item()

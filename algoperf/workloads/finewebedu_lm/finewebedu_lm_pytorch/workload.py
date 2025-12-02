@@ -19,9 +19,24 @@ from algoperf.workloads.finewebedu_lm.workload import BaseLmWorkload
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 
+# Dtype mapping from string to PyTorch dtype
+DTYPE_MAP = {
+  'float32': torch.float32,
+  'float16': torch.float16,
+  'bfloat16': torch.bfloat16,
+}
+
 
 class LmWorkload(BaseLmWorkload):
   """LM PyTorch workload."""
+
+  @property
+  def _compute_dtype(self) -> torch.dtype:
+    return DTYPE_MAP[self._compute_dtype_str]
+
+  @property
+  def _param_dtype(self) -> torch.dtype:
+    return DTYPE_MAP[self._param_dtype_str]
 
   def init_model_fn(
     self,
@@ -40,11 +55,14 @@ class LmWorkload(BaseLmWorkload):
       vocab_size=self._vocab_size,
       seq_len=self._seq_len,
       model_dim=self._emb_dim,  # Model dimension
-      expanded_model_dim=self._mlp_dim,  # MLP expansion factor
-      num_layers=self._n_layers,  # Number of transformer layers
-      num_heads=self._n_heads,  # Number of attention heads
-      rmsnorm_epsilon=1e-6,
-      tie_embeddings=True,
+      expanded_model_dim=self._mlp_dim,  # MLP expanded dim
+      num_layers=self._n_layers,
+      num_heads=self._n_heads,
+      rmsnorm_epsilon=self._rmsnorm_epsilon,
+      qknorm_epsilon=self._qknorm_epsilon,
+      tie_embeddings=self._tie_embeddings,
+      compute_dtype=self._compute_dtype,
+      param_dtype=self._param_dtype,
     )
     self._model = Transformer(cfg)
     self._param_shapes = param_utils.pytorch_param_shapes(self._model)
@@ -81,13 +99,18 @@ class LmWorkload(BaseLmWorkload):
       spec.ForwardPassMode.EVAL: torch.no_grad,
       spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
-    with contexts[mode]():
-      # Convert one-hot inputs to token IDs if needed
-      inputs = augmented_and_preprocessed_input_batch['inputs']
-      if inputs.dim() == 3:  # one-hot encoded
-        inputs = inputs.argmax(dim=-1)
 
-      logits = model(inputs)
+    # Determine device type for autocast
+    device_type = 'cuda' if DEVICE.type == 'cuda' else 'cpu'
+
+    with contexts[mode]():
+      with torch.autocast(device_type=device_type, dtype=self._compute_dtype):
+        # Convert one-hot inputs to token IDs if needed
+        inputs = augmented_and_preprocessed_input_batch['inputs']
+        if inputs.dim() == 3:  # one-hot encoded
+          inputs = inputs.argmax(dim=-1)
+
+        logits = model(inputs)
 
     return logits, None
 
@@ -121,7 +144,7 @@ class LmWorkload(BaseLmWorkload):
           batch['targets'], device=DEVICE, dtype=torch.int64
         ),
         'weights': torch.tensor(
-          batch['weights'], device=DEVICE, dtype=torch.float32
+          batch['weights'], device=DEVICE, dtype=self._param_dtype
         )
         if batch['weights'] is not None
         else None,
@@ -157,29 +180,35 @@ class LmWorkload(BaseLmWorkload):
         - 'n_valid_examples': Scalar tensor with the count of valid (non-masked) examples.
         - 'per_example': Tensor of shape [batch, length] with individual losses per example.
     """
-    vocab_size = logits_batch.size(-1)
+    # Determine device type for autocast
+    device_type = 'cuda' if logits_batch.is_cuda else 'cpu'
 
-    # Compute cross-entropy loss with label smoothing
-    per_example_losses = torch.nn.functional.cross_entropy(
-      logits_batch.view(-1, vocab_size),
-      label_batch.view(-1),
-      reduction='none',
-      label_smoothing=label_smoothing,
-    )
-    per_example_losses = per_example_losses.view_as(label_batch)
+    with torch.autocast(device_type=device_type, dtype=self._compute_dtype):
+      vocab_size = logits_batch.size(-1)
 
-    # Apply weights if provided
-    if mask_batch is not None:
-      per_example_losses = per_example_losses * mask_batch
-
-    # Calculate number of valid examples
-    n_valid_examples = (
-      mask_batch.sum()
-      if mask_batch is not None
-      else torch.tensor(
-        label_batch.numel(), dtype=torch.float32, device=label_batch.device
+      # Compute cross-entropy loss with label smoothing
+      per_example_losses = torch.nn.functional.cross_entropy(
+        logits_batch.view(-1, vocab_size),
+        label_batch.view(-1),
+        reduction='none',
+        label_smoothing=label_smoothing,
       )
-    )
+      per_example_losses = per_example_losses.view_as(label_batch)
+
+      # Apply weights if provided
+      if mask_batch is not None:
+        per_example_losses = per_example_losses * mask_batch
+
+      # Calculate number of valid examples
+      n_valid_examples = (
+        mask_batch.sum()
+        if mask_batch is not None
+        else torch.tensor(
+          label_batch.numel(),
+          dtype=self._param_dtype,
+          device=label_batch.device,
+        )
+      )
 
     return {
       'summed': per_example_losses.sum(),
