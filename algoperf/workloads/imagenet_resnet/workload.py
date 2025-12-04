@@ -8,6 +8,8 @@ from algoperf import spec
 
 class BaseImagenetResNetWorkload(spec.Workload):
   _num_classes: int = 1000
+  _compute_dtype: spec.DTYPE = spec.DTYPE.BFLOAT16
+  _param_dtype: spec.DTYPE = spec.DTYPE.FLOAT32
 
   @property
   def target_metric_name(self) -> str:

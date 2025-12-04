@@ -20,6 +20,7 @@ def conv3x3(
   stride: int = 1,
   groups: int = 1,
   dilation: int = 1,
+  dtype: torch.dtype = torch.float32,
 ) -> nn.Conv2d:
   """3x3 convolution with padding."""
   return nn.Conv2d(
@@ -31,13 +32,24 @@ def conv3x3(
     groups=groups,
     bias=False,
     dilation=dilation,
+    dtype=dtype,
   )
 
 
-def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
+def conv1x1(
+  in_planes: int,
+  out_planes: int,
+  stride: int = 1,
+  dtype: torch.dtype = torch.float32,
+) -> nn.Conv2d:
   """1x1 convolution."""
   return nn.Conv2d(
-    in_planes, out_planes, kernel_size=1, stride=stride, bias=False
+    in_planes,
+    out_planes,
+    kernel_size=1,
+    stride=stride,
+    bias=False,
+    dtype=dtype,
   )
 
 
@@ -57,6 +69,7 @@ class BasicBlock(nn.Module):
     dilation: int = 1,
     norm_layer: Optional[Callable[..., nn.Module]] = None,
     act_fnc: nn.Module = nn.ReLU(inplace=True),
+    dtype: torch.dtype = torch.float32,
   ) -> None:
     super().__init__()
     if norm_layer is None:
@@ -67,10 +80,10 @@ class BasicBlock(nn.Module):
       raise NotImplementedError('Dilation > 1 not supported in BasicBlock')
     # Both self.conv1 and self.downsample layers downsample
     # the input when stride != 1.
-    self.conv1 = conv3x3(inplanes, planes, stride)
+    self.conv1 = conv3x3(inplanes, planes, stride, dtype=dtype)
     self.bn1 = norm_layer(planes)
     self.act_fnc = act_fnc
-    self.conv2 = conv3x3(planes, planes)
+    self.conv2 = conv3x3(planes, planes, dtype=dtype)
     self.bn2 = norm_layer(planes)
     self.downsample = downsample
     self.stride = stride
@@ -110,6 +123,7 @@ class Bottleneck(nn.Module):
     dilation: int = 1,
     norm_layer: Optional[Callable[..., nn.Module]] = None,
     act_fnc: nn.Module = nn.ReLU(inplace=True),
+    dtype: torch.dtype = torch.float32,
   ) -> None:
     super().__init__()
     if norm_layer is None:
@@ -117,11 +131,11 @@ class Bottleneck(nn.Module):
     width = int(planes * (base_width / 64.0)) * groups
     # Both self.conv2 and self.downsample layers downsample
     # the input when stride != 1.
-    self.conv1 = conv1x1(inplanes, width)
+    self.conv1 = conv1x1(inplanes, width, dtype=dtype)
     self.bn1 = norm_layer(width)
-    self.conv2 = conv3x3(width, width, stride, groups, dilation)
+    self.conv2 = conv3x3(width, width, stride, groups, dilation, dtype=dtype)
     self.bn2 = norm_layer(width)
-    self.conv3 = conv1x1(width, planes * self.expansion)
+    self.conv3 = conv1x1(width, planes * self.expansion, dtype=dtype)
     self.bn3 = norm_layer(planes * self.expansion)
     self.act_fnc = act_fnc
     self.downsample = downsample
@@ -163,11 +177,13 @@ class ResNet(nn.Module):
     norm_layer: Optional[Callable[..., nn.Module]] = None,
     act_fnc: nn.Module = nn.ReLU(inplace=True),
     bn_init_scale: float = 0.0,
+    dtype: torch.dtype = torch.float32,
   ) -> None:
     super().__init__()
     if norm_layer is None:
       norm_layer = nn.BatchNorm2d
     self._norm_layer = norm_layer
+    self.dtype = dtype
 
     self.inplanes = 64
     self.dilation = 1
@@ -183,7 +199,13 @@ class ResNet(nn.Module):
     self.groups = groups
     self.base_width = width_per_group
     self.conv1 = nn.Conv2d(
-      3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
+      3,
+      self.inplanes,
+      kernel_size=7,
+      stride=2,
+      padding=3,
+      bias=False,
+      dtype=dtype,
     )
     self.bn1 = norm_layer(self.inplanes)
     self.act_fnc = act_fnc
@@ -214,7 +236,7 @@ class ResNet(nn.Module):
       dilate=replace_stride_with_dilation[2],
     )
     self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-    self.fc = nn.Linear(512 * block.expansion, num_classes)
+    self.fc = nn.Linear(512 * block.expansion, num_classes, dtype=dtype)
 
     for m in self.modules():
       if isinstance(m, nn.Conv2d):
@@ -256,7 +278,15 @@ class ResNet(nn.Module):
       downsample = torch.nn.Sequential(
         collections.OrderedDict(
           [
-            ('conv', conv1x1(self.inplanes, planes * block.expansion, stride)),
+            (
+              'conv',
+              conv1x1(
+                self.inplanes,
+                planes * block.expansion,
+                stride,
+                dtype=self.dtype,
+              ),
+            ),
             ('bn', norm_layer(planes * block.expansion)),
           ]
         )
@@ -274,6 +304,7 @@ class ResNet(nn.Module):
         previous_dilation,
         norm_layer,
         act_fnc,
+        dtype=self.dtype,
       )
     )
     self.inplanes = planes * block.expansion
@@ -287,6 +318,7 @@ class ResNet(nn.Module):
           dilation=self.dilation,
           norm_layer=norm_layer,
           act_fnc=act_fnc,
+          dtype=self.dtype,
         )
       )
 

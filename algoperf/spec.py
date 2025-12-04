@@ -6,9 +6,32 @@ import functools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import jax
+import jax.numpy as jnp
+import torch
 import torch.nn.functional as F
 from absl import logging
 from torch import nn
+
+
+class DTYPE(enum.Enum):
+  FLOAT32 = 0
+  FLOAT16 = 1
+  BFLOAT16 = 2
+
+
+# Mapping from DTYPE enum to JAX dtypes
+JAX_DTYPE_MAP = {
+  DTYPE.FLOAT32: jnp.float32,
+  DTYPE.FLOAT16: jnp.float16,
+  DTYPE.BFLOAT16: jnp.bfloat16,
+}
+
+# Mapping from DTYPE enum to PyTorch dtypes
+PYTORCH_DTYPE_MAP = {
+  DTYPE.FLOAT32: torch.float32,
+  DTYPE.FLOAT16: torch.float16,
+  DTYPE.BFLOAT16: torch.bfloat16,
+}
 
 
 class LossType(enum.Enum):

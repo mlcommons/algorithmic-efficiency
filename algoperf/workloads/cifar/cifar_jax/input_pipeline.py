@@ -11,7 +11,6 @@ from typing import Dict, Iterator, Tuple
 import jax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from flax import jax_utils
 
 from algoperf import spec
 from algoperf.data_utils import shard_and_maybe_pad_np
@@ -186,5 +185,4 @@ def create_input_iter(
     ),
     ds,
   )
-  it = jax_utils.prefetch_to_device(it, 2)
   return it

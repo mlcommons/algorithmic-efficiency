@@ -267,6 +267,7 @@ def train_once(
         'ogbg',
         'wmt',
         'finewebedu_lm',
+        'cifar',
       ]
       base_workload = workloads.get_base_workload_name(workload_name)
       if base_workload in compile_error_workloads:
@@ -410,10 +411,15 @@ def train_once(
       train_state['training_complete'] = True
 
     train_step_end_time = get_time()
-
-    train_state['accumulated_submission_time'] += (
-      train_step_end_time - train_state['last_step_end_time']
-    )
+    step_time = train_step_end_time - train_state['last_step_end_time']
+    train_state['accumulated_submission_time'] += step_time
+    # Log training progress periodically
+    if global_step % 10 == 0:
+      logging.info(
+        f'Step: {global_step}, '
+        f'\tLast step time: {step_time:.4f}s, '
+        f'\tTotal time: {train_state["accumulated_submission_time"]:.2f}s'
+      )
 
     # Check if submission is eligible for an untimed eval.
     if (
@@ -513,10 +519,19 @@ def train_once(
             latest_eval_result['accumulated_logging_time'] = train_state[
               'accumulated_logging_time'
             ]
+            # Calculate average per-step time
+            avg_per_step_time = (
+              train_state['accumulated_submission_time'] / global_step
+              if global_step > 0
+              else 0.0
+            )
+            latest_eval_result['avg_per_step_time'] = avg_per_step_time
             time_since_start = latest_eval_result['total_duration']
             logging.info(
               f'Time since start: {time_since_start:.2f}s, '
-              f'\tStep: {global_step}, \t{latest_eval_result}'
+              f'\tStep: {global_step}, '
+              f'\tAvg per-step time: {avg_per_step_time:.4f}s, '
+              f'\t{latest_eval_result}'
             )
             eval_results.append((global_step, latest_eval_result))
 

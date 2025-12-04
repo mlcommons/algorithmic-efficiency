@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterator, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+import jmp
 import optax
 import tensorflow_datasets as tfds
 from flax import linen as nn
@@ -18,6 +19,17 @@ from algoperf.workloads.cifar.workload import BaseCifarWorkload
 
 
 class CifarWorkload(BaseCifarWorkload):
+  def __init__(self, *args, **kwargs) -> None:
+    super().__init__(*args, **kwargs)
+    compute_dtype = spec.JAX_DTYPE_MAP[self._compute_dtype]
+    param_dtype = spec.JAX_DTYPE_MAP[self._param_dtype]
+    output_dtype = compute_dtype
+    self._mp_policy = jmp.Policy(
+      compute_dtype=compute_dtype,
+      param_dtype=param_dtype,
+      output_dtype=output_dtype,
+    )
+
   def _build_cifar_dataset(
     self,
     data_rng: spec.RandomState,
@@ -80,7 +92,8 @@ class CifarWorkload(BaseCifarWorkload):
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     """Dropout is unused."""
     model_cls = getattr(models, 'ResNet18')
-    model = model_cls(num_classes=self._num_classes, dtype=jnp.float32)
+    param_dtype = spec.JAX_DTYPE_MAP[self._param_dtype]
+    model = model_cls(num_classes=self._num_classes, dtype=param_dtype)
     self._model = model
     input_shape = (1, 32, 32, 3)
     variables = jax.jit(model.init)(
@@ -89,7 +102,7 @@ class CifarWorkload(BaseCifarWorkload):
     model_state, params = pop(variables, 'params')
     self._param_shapes = param_utils.jax_param_shapes(params)
     self._param_types = param_utils.jax_param_types(self._param_shapes)
-    model_state = jax_sharding_utils.replicate(params)
+    model_state = jax_sharding_utils.replicate(model_state)
     params = jax_sharding_utils.replicate(params)
     return params, model_state
 
@@ -110,24 +123,32 @@ class CifarWorkload(BaseCifarWorkload):
     del mode
     del rng
     del dropout_rate
+    # Cast params and inputs to compute dtype
+    params, inputs = self._mp_policy.cast_to_compute(
+      (params, augmented_and_preprocessed_input_batch['inputs'])
+    )
     variables = {'params': params, **model_state}
     if update_batch_norm:
       logits, new_model_state = self._model.apply(
         variables,
-        augmented_and_preprocessed_input_batch['inputs'],
+        inputs,
         update_batch_norm=update_batch_norm,
         mutable=['batch_stats'],
         use_running_average_bn=use_running_average_bn,
       )
+      # Cast logits to output dtype
+      logits = self._mp_policy.cast_to_output(logits)
       return logits, new_model_state
     else:
       logits = self._model.apply(
         variables,
-        augmented_and_preprocessed_input_batch['inputs'],
+        inputs,
         update_batch_norm=update_batch_norm,
         mutable=False,
         use_running_average_bn=use_running_average_bn,
       )
+      # Cast logits to output dtype
+      logits = self._mp_policy.cast_to_output(logits)
       return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in

@@ -42,6 +42,7 @@ class MlpBlock(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim.
   use_glu: bool = False
   dropout_rate: float = DROPOUT_RATE
+  dtype: jnp.dtype = jnp.float32
 
   @nn.compact
   def __call__(
@@ -54,15 +55,15 @@ class MlpBlock(nn.Module):
     }
 
     d = x.shape[2]
-    x = nn.Dense(self.mlp_dim or 4 * d, **inits)(x)
+    x = nn.Dense(self.mlp_dim or 4 * d, param_dtype=self.dtype, **inits)(x)
     x = nn.gelu(x)
 
     if self.use_glu:
-      y = nn.Dense(self.mlp_dim, **inits)(x)
+      y = nn.Dense(self.mlp_dim, param_dtype=self.dtype, **inits)(x)
       x = x * y
 
     x = Dropout(dropout_rate)(x, train, rate=dropout_rate)
-    x = nn.Dense(d, **inits)(x)
+    x = nn.Dense(d, param_dtype=self.dtype, **inits)(x)
     return x
 
 
@@ -74,25 +75,30 @@ class Encoder1DBlock(nn.Module):
   use_glu: bool = False
   use_post_layer_norm: bool = False
   dropout_rate: float = 0.0
+  dtype: jnp.dtype = jnp.float32
 
   @nn.compact
   def __call__(
     self, x: spec.Tensor, train: bool = True, dropout_rate=dropout_rate
   ) -> spec.Tensor:
     if not self.use_post_layer_norm:
-      y = nn.LayerNorm(name='LayerNorm_0')(x)
+      y = nn.LayerNorm(name='LayerNorm_0', param_dtype=self.dtype)(x)
       y = nn.MultiHeadDotProductAttention(
         num_heads=self.num_heads,
         kernel_init=nn.initializers.xavier_uniform(),
         deterministic=train,
         name='MultiHeadDotProductAttention_1',
+        param_dtype=self.dtype,
       )(y)
       y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
 
-      y = nn.LayerNorm(name='LayerNorm_2')(x)
+      y = nn.LayerNorm(name='LayerNorm_2', param_dtype=self.dtype)(x)
       y = MlpBlock(
-        mlp_dim=self.mlp_dim, use_glu=self.use_glu, name='MlpBlock_3'
+        mlp_dim=self.mlp_dim,
+        use_glu=self.use_glu,
+        dtype=self.dtype,
+        name='MlpBlock_3',
       )(y, train, dropout_rate=dropout_rate)
       y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
@@ -103,21 +109,23 @@ class Encoder1DBlock(nn.Module):
         kernel_init=nn.initializers.xavier_uniform(),
         deterministic=train,
         name='MultiHeadDotProductAttention_1',
+        param_dtype=self.dtype,
       )(y)
       y = Dropout(dropout_rate)(y, train, rate=dropout_rate)
       x = x + y
-      x = nn.LayerNorm(name='LayerNorm_0')(x)
+      x = nn.LayerNorm(name='LayerNorm_0', param_dtype=self.dtype)(x)
 
       y = x
       y = MlpBlock(
         mlp_dim=self.mlp_dim,
         use_glu=self.use_glu,
+        dtype=self.dtype,
         name='MlpBlock_3',
         dropout_rate=dropout_rate,
       )(y, train, dropout_rate=dropout_rate)
       y = Dropout(dropout_rate)(y, train)(rate=dropout_rate)
       x = x + y
-      x = nn.LayerNorm(name='LayerNorm_2')(x)
+      x = nn.LayerNorm(name='LayerNorm_2', param_dtype=self.dtype)(x)
 
     return x
 
@@ -130,6 +138,7 @@ class Encoder(nn.Module):
   num_heads: int = 12
   use_glu: bool = False
   use_post_layer_norm: bool = False
+  dtype: jnp.dtype = jnp.float32
 
   @nn.compact
   def __call__(
@@ -143,9 +152,10 @@ class Encoder(nn.Module):
         num_heads=self.num_heads,
         use_glu=self.use_glu,
         use_post_layer_norm=self.use_post_layer_norm,
+        dtype=self.dtype,
       )(x, train=train, dropout_rate=dropout_rate)
     if not self.use_post_layer_norm:
-      return nn.LayerNorm(name='encoder_layernorm')(x)
+      return nn.LayerNorm(name='encoder_layernorm', param_dtype=self.dtype)(x)
     else:
       return x
 
@@ -156,12 +166,13 @@ class MAPHead(nn.Module):
   mlp_dim: Optional[int] = None  # Defaults to 4x input dim
   num_heads: int = 12
   dropout_rate: float = 0.0
+  dtype: jnp.dtype = jnp.float32
 
   @nn.compact
   def __call__(self, x, dropout_rate=DROPOUT_RATE):
     n, _, d = x.shape
     probe = self.param(
-      'probe', nn.initializers.xavier_uniform(), (1, 1, d), x.dtype
+      'probe', nn.initializers.xavier_uniform(), (1, 1, d), self.dtype
     )
     probe = jnp.tile(probe, [n, 1, 1])
 
@@ -169,10 +180,13 @@ class MAPHead(nn.Module):
       num_heads=self.num_heads,
       use_bias=True,
       kernel_init=nn.initializers.xavier_uniform(),
+      param_dtype=self.dtype,
     )(probe, x)
 
-    y = nn.LayerNorm()(x)
-    x = x + MlpBlock(mlp_dim=self.mlp_dim, dropout_rate=dropout_rate)(y)
+    y = nn.LayerNorm(param_dtype=self.dtype)(x)
+    x = x + MlpBlock(
+      mlp_dim=self.mlp_dim, dropout_rate=dropout_rate, dtype=self.dtype
+    )(y)
     return x[:, 0]
 
 
@@ -192,6 +206,7 @@ class ViT(nn.Module):
   use_glu: bool = False
   use_post_layer_norm: bool = False
   use_map: bool = False
+  dtype: jnp.dtype = jnp.float32
 
   def get_posemb(
     self, seqshape: tuple, width: int, dtype: jnp.dtype = jnp.float32
@@ -209,6 +224,7 @@ class ViT(nn.Module):
       strides=self.patch_size,
       padding='VALID',
       name='conv_patch_extract',
+      param_dtype=self.dtype,
     )(x)
 
     n, h, w, c = x.shape
@@ -225,6 +241,7 @@ class ViT(nn.Module):
       num_heads=self.num_heads,
       use_glu=self.use_glu,
       use_post_layer_norm=self.use_post_layer_norm,
+      dtype=self.dtype,
       name='Transformer',
     )(x, train=not train, dropout_rate=dropout_rate)
 
@@ -233,18 +250,21 @@ class ViT(nn.Module):
         num_heads=self.num_heads,
         mlp_dim=self.mlp_dim,
         dropout_rate=dropout_rate,
+        dtype=self.dtype,
       )(x, dropout_rate=dropout_rate)
     else:
       x = jnp.mean(x, axis=1)
 
     if self.rep_size:
       rep_size = self.width if self.rep_size is True else self.rep_size
-      hid = nn.Dense(rep_size, name='pre_logits')
+      hid = nn.Dense(rep_size, name='pre_logits', param_dtype=self.dtype)
       x = nn.tanh(hid(x))
 
     if self.num_classes:
       kw = {'kernel_init': nn.initializers.zeros} if self.head_zeroinit else {}
-      head = nn.Dense(self.num_classes, name='head', **kw)
+      head = nn.Dense(
+        self.num_classes, name='head', param_dtype=self.dtype, **kw
+      )
       x = head(x)
 
     return x

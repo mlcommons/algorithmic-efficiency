@@ -16,6 +16,8 @@ USE_PYTORCH_DDP, _, _, _ = pytorch_setup()
 
 class BaseCifarWorkload(spec.Workload):
   _num_classes: int = 10
+  _compute_dtype: spec.DTYPE = spec.DTYPE.BFLOAT16
+  _param_dtype: spec.DTYPE = spec.DTYPE.FLOAT32
 
   @property
   def target_metric_name(self) -> str:

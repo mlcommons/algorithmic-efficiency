@@ -11,6 +11,7 @@ from typing import Dict, Iterator, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+import jmp
 import optax
 import tensorflow_datasets as tfds
 from flax import linen as nn
@@ -29,6 +30,17 @@ from algoperf.workloads.imagenet_resnet.workload import (
 
 
 class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
+  def __init__(self, *args, **kwargs) -> None:
+    super().__init__(*args, **kwargs)
+    compute_dtype = spec.JAX_DTYPE_MAP[self._compute_dtype]
+    param_dtype = spec.JAX_DTYPE_MAP[self._param_dtype]
+    output_dtype = compute_dtype
+    self._mp_policy = jmp.Policy(
+      compute_dtype=compute_dtype,
+      param_dtype=param_dtype,
+      output_dtype=output_dtype,
+    )
+
   def _build_dataset(
     self,
     data_rng: spec.RandomState,
@@ -89,11 +101,12 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       act_fnc = nn.relu
 
+    param_dtype = spec.JAX_DTYPE_MAP[self._param_dtype]
     model = model_cls(
       num_classes=self._num_classes,
       act=act_fnc,
       bn_init_scale=self.bn_init_scale,
-      dtype=jnp.float32,
+      dtype=param_dtype,
     )
     self._model = model
     input_shape = (1, 224, 224, 3)
@@ -159,25 +172,28 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     del mode
     del rng
     del dropout_rate
+    params, inputs = self._mp_policy.cast_to_compute(
+      (params, augmented_and_preprocessed_input_batch['inputs'])
+    )
     variables = {'params': params, **model_state}
     if update_batch_norm:
-      logits, new_model_state = self._model.apply(
+      logits, model_state = self._model.apply(
         variables,
-        augmented_and_preprocessed_input_batch['inputs'],
+        inputs,
         update_batch_norm=update_batch_norm,
         mutable=['batch_stats'],
         use_running_average_bn=use_running_average_bn,
       )
-      return logits, new_model_state
     else:
       logits = self._model.apply(
         variables,
-        augmented_and_preprocessed_input_batch['inputs'],
+        inputs,
         update_batch_norm=update_batch_norm,
         mutable=False,
         use_running_average_bn=use_running_average_bn,
       )
-      return logits, model_state
+    logits = self._mp_policy.cast_to_output(logits)
+    return logits, model_state
 
   # Does NOT apply regularization, which is left to the submitter to do in
   # `update_params`.

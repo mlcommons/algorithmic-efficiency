@@ -25,6 +25,8 @@ class CifarWorkload(BaseCifarWorkload):
     # Is set in submission_runner.py for workloads with PyTorch evaluation
     # data loaders via the `eval_num_workers` property.
     self._eval_num_workers = None
+    self._param_dtype_pt = spec.PYTORCH_DTYPE_MAP[self._param_dtype]
+    self._compute_dtype_pt = spec.PYTORCH_DTYPE_MAP[self._compute_dtype]
 
   @property
   def eval_num_workers(self) -> int:
@@ -128,7 +130,9 @@ class CifarWorkload(BaseCifarWorkload):
       return self._model, None
 
     torch.random.manual_seed(rng[0])
-    self._model = resnet18(num_classes=self._num_classes)
+    self._model = resnet18(
+      num_classes=self._num_classes, dtype=self._param_dtype_pt
+    )
     self._param_shapes = param_utils.pytorch_param_shapes(self._model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     self._model.to(DEVICE)
@@ -175,7 +179,8 @@ class CifarWorkload(BaseCifarWorkload):
       spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      with torch.autocast(device_type='cuda', dtype=self._compute_dtype_pt):
+        logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
     return logits_batch, None
 
   # Does NOT apply regularization, which is left to the submitter to do in

@@ -178,7 +178,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     else:
       act_fnc = torch.nn.ReLU(inplace=True)
 
-    model = resnet50(act_fnc=act_fnc, bn_init_scale=self.bn_init_scale)
+    param_dtype = spec.PYTORCH_DTYPE_MAP[self._param_dtype]
+    model = resnet50(
+      act_fnc=act_fnc, bn_init_scale=self.bn_init_scale, dtype=param_dtype
+    )
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
     model.to(DEVICE)
@@ -229,8 +232,10 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       spec.ForwardPassMode.TRAIN: contextlib.nullcontext,
     }
 
+    compute_dtype = spec.PYTORCH_DTYPE_MAP[self._compute_dtype]
     with contexts[mode]():
-      logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
+      with torch.autocast(device_type='cuda', dtype=compute_dtype):
+        logits_batch = model(augmented_and_preprocessed_input_batch['inputs'])
 
     return logits_batch, None
 
