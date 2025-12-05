@@ -52,7 +52,7 @@ class BaseLmWorkload(spec.Workload):
 
   @property
   def validation_target_value(self) -> float:
-    return 22.432  # Target perplexity
+    return 22.2995  # Target perplexity
 
   def has_reached_test_target(self, eval_result: Dict[str, float]) -> bool:
     return True  # No test targets
