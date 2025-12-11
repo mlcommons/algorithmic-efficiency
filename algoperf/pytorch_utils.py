@@ -20,6 +20,7 @@ from algoperf.workloads.librispeech_deepspeech.librispeech_pytorch.models import
 
 
 def pytorch_setup() -> Tuple[bool, int, torch.device, int]:
+  torch.set_float32_matmul_precision('high')
   use_pytorch_ddp = 'LOCAL_RANK' in os.environ
   rank = int(os.environ['LOCAL_RANK']) if use_pytorch_ddp else 0
   device = torch.device(f'cuda:{rank}' if torch.cuda.is_available() else 'cpu')

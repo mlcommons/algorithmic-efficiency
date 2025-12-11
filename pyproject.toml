@@ -96,6 +96,7 @@ jax_core_deps = [
   "chex==0.1.86",
   "ml_dtypes==0.5.1",
   "protobuf==4.25.5",
+  "jmp",
 ]
 jax_cpu = [
   "jax==0.7.0",
