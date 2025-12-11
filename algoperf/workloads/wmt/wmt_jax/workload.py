@@ -6,6 +6,7 @@ from typing import Any, Dict, Iterator, Optional, Tuple
 
 import jax
 import jax.numpy as jnp
+import jmp
 import numpy as np
 import optax
 from absl import logging
@@ -26,6 +27,17 @@ def _to_host(x: spec.Tensor) -> spec.Tensor:
 
 class WmtWorkload(BaseWmtWorkload):
   """WMT Jax workload."""
+
+  def __init__(self) -> None:
+    super().__init__()
+    compute_dtype = spec.JAX_DTYPE_MAP[self._compute_dtype]
+    param_dtype = spec.JAX_DTYPE_MAP[self._param_dtype]
+    output_dtype = compute_dtype
+    self._mp_policy = jmp.Policy(
+      compute_dtype=compute_dtype,
+      param_dtype=param_dtype,
+      output_dtype=output_dtype,
+    )
 
   def compute_weighted_cross_entropy(
     self,
@@ -251,11 +263,13 @@ class WmtWorkload(BaseWmtWorkload):
     else:
       raise ValueError(f'Unknown activation function {self.activation}.')
 
+    param_dtype = spec.JAX_DTYPE_MAP[self._param_dtype]
     model_config = models.TransformerConfig(
       pre_ln=self.pre_ln,
       attention_temp=self.attention_temp,
       activation=activation,
       glu=self.glu,
+      dtype=param_dtype,
     )
     self._train_model = models.Transformer(model_config)
     eval_config = replace(model_config, deterministic=True)
@@ -313,6 +327,9 @@ class WmtWorkload(BaseWmtWorkload):
     else:
       model = self._eval_model
 
+    # Cast params to compute dtype
+    params = self._mp_policy.cast_to_compute(params)
+
     logits_batch = model.apply(
       {'params': params},
       inputs,
@@ -324,6 +341,8 @@ class WmtWorkload(BaseWmtWorkload):
       rngs={'dropout': rng},
       dropout_rate=dropout_rate,
     )
+    # Cast logits to output dtype
+    logits_batch = self._mp_policy.cast_to_output(logits_batch)
     return logits_batch, None
 
   def _build_input_queue(

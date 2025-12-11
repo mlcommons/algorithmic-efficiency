@@ -22,6 +22,8 @@ class BaseWmtWorkload(spec.Workload):
   """A WMT workload."""
 
   _vocab_size: int = 32000
+  _compute_dtype: spec.DTYPE = spec.DTYPE.BFLOAT16
+  _param_dtype: spec.DTYPE = spec.DTYPE.FLOAT32
 
   def __init__(self) -> None:
     super().__init__()

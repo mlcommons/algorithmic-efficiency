@@ -24,6 +24,11 @@ USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
 class WmtWorkload(BaseWmtWorkload):
   """WMT PyTorch workload."""
 
+  def __init__(self) -> None:
+    super().__init__()
+    self._param_dtype_pt = spec.PYTORCH_DTYPE_MAP[self._param_dtype]
+    self._compute_dtype_pt = spec.PYTORCH_DTYPE_MAP[self._compute_dtype]
+
   def compute_weighted_cross_entropy(
     self,
     logits: spec.Tensor,
@@ -189,6 +194,7 @@ class WmtWorkload(BaseWmtWorkload):
       attention_temp=self.attention_temp,
       activation=activation,
       glu=self.glu,
+      dtype=self._param_dtype_pt,
     )
     self._param_shapes = param_utils.pytorch_param_shapes(model)
     self._param_types = param_utils.pytorch_param_types(self._param_shapes)
@@ -228,23 +234,24 @@ class WmtWorkload(BaseWmtWorkload):
     }
 
     with contexts[mode]():
-      logits_batch = model(
-        src=augmented_and_preprocessed_input_batch['inputs'],
-        tgt=augmented_and_preprocessed_input_batch['targets'],
-        inputs_positions=augmented_and_preprocessed_input_batch.get(
-          'inputs_position', None
-        ),
-        targets_positions=augmented_and_preprocessed_input_batch.get(
-          'targets_position', None
-        ),
-        inputs_segmentation=augmented_and_preprocessed_input_batch.get(
-          'inputs_segmentation', None
-        ),
-        targets_segmentation=augmented_and_preprocessed_input_batch.get(
-          'targets_segmentation', None
-        ),
-        dropout_rate=dropout_rate,
-      )
+      with torch.autocast(device_type='cuda', dtype=self._compute_dtype_pt):
+        logits_batch = model(
+          src=augmented_and_preprocessed_input_batch['inputs'],
+          tgt=augmented_and_preprocessed_input_batch['targets'],
+          inputs_positions=augmented_and_preprocessed_input_batch.get(
+            'inputs_position', None
+          ),
+          targets_positions=augmented_and_preprocessed_input_batch.get(
+            'targets_position', None
+          ),
+          inputs_segmentation=augmented_and_preprocessed_input_batch.get(
+            'inputs_segmentation', None
+          ),
+          targets_segmentation=augmented_and_preprocessed_input_batch.get(
+            'targets_segmentation', None
+          ),
+          dropout_rate=dropout_rate,
+        )
 
     return logits_batch, None
 

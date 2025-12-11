@@ -364,6 +364,7 @@ class Encoder(nn.Module):
       input_embed = nn.Embed(
         num_embeddings=cfg.vocab_size,
         features=cfg.emb_dim,
+        dtype=cfg.dtype,
         embedding_init=nn.initializers.normal(stddev=1.0),
       )
     else:
@@ -437,6 +438,7 @@ class Decoder(nn.Module):
       output_embed = nn.Embed(
         num_embeddings=cfg.vocab_size,
         features=cfg.emb_dim,
+        dtype=cfg.dtype,
         embedding_init=nn.initializers.normal(stddev=1.0),
       )
     else:
@@ -497,6 +499,7 @@ class Transformer(nn.Module):
       self.shared_embedding = nn.Embed(
         num_embeddings=cfg.vocab_size,
         features=cfg.emb_dim,
+        dtype=cfg.dtype,
         embedding_init=nn.initializers.normal(stddev=1.0),
       )
     else:

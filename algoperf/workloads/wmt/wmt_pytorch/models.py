@@ -116,10 +116,11 @@ class Transformer(nn.Module):
     layer_norm_eps: float = 1e-6,
     attention_temp: float = 1.0,
     pre_ln: bool = True,
+    dtype: torch.dtype = torch.float32,
   ):
     super().__init__()
-    self.pos_encoder = PositionalEncoding(d_model)
-    self.shared_embedding = nn.Embedding(ntoken, d_model)
+    self.pos_encoder = PositionalEncoding(d_model, dtype=dtype)
+    self.shared_embedding = nn.Embedding(ntoken, d_model, dtype=dtype)
     self.encoder = Encoder(
       d_model,
       nhead,
@@ -130,6 +131,7 @@ class Transformer(nn.Module):
       layer_norm_eps,
       attention_temp,
       pre_ln,
+      dtype=dtype,
     )
     self.decoder = Decoder(
       d_model,
@@ -141,6 +143,7 @@ class Transformer(nn.Module):
       layer_norm_eps,
       attention_temp,
       pre_ln,
+      dtype=dtype,
     )
     # Share positional encoding and embedding between encoder and decoder.
     self.encoder.pos_encoder = self.pos_encoder
@@ -287,6 +290,7 @@ class Encoder(nn.Module):
     layer_norm_eps: float = 1e-6,
     attention_temp: float = 1.0,
     pre_ln: bool = True,
+    dtype: torch.dtype = torch.float32,
   ):
     super().__init__()
     self.nhead = nhead
@@ -301,8 +305,11 @@ class Encoder(nn.Module):
       layer_norm_eps=layer_norm_eps,
       attention_temp=attention_temp,
       pre_ln=pre_ln,
+      dtype=dtype,
     )
-    encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None
+    encoder_norm = (
+      nn.LayerNorm(d_model, eps=layer_norm_eps, dtype=dtype) if pre_ln else None
+    )
     self.encoder = TransformerEncoder(encoder_layer, nlayers, encoder_norm)
 
   def forward(
@@ -332,6 +339,7 @@ class Decoder(nn.Module):
     layer_norm_eps: float = 1e-6,
     attention_temp: float = 1.0,
     pre_ln: bool = True,
+    dtype: torch.dtype = torch.float32,
   ):
     super().__init__()
     self.nhead = nhead
@@ -347,6 +355,7 @@ class Decoder(nn.Module):
       nlayers,
       attention_temp,
       pre_ln,
+      dtype=dtype,
     )
 
   def forward(
@@ -398,13 +407,18 @@ class Decoder(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
-  def __init__(self, d_model: int, max_len: int = 256):
+  def __init__(
+    self,
+    d_model: int,
+    max_len: int = 256,
+    dtype: torch.dtype = torch.float32,
+  ):
     super().__init__()
 
     position = torch.arange(max_len).unsqueeze(1)
     scale_factor = -math.log(10000.0) / (d_model // 2 - 1)
     div_term = torch.exp(torch.arange(d_model // 2) * scale_factor)
-    pe = torch.zeros(1, max_len, d_model)
+    pe = torch.zeros(1, max_len, d_model, dtype=dtype)
     pe[0, :, : d_model // 2] = torch.sin(position * div_term)
     pe[0, :, d_model // 2 : 2 * (d_model // 2)] = torch.cos(position * div_term)
     self.register_buffer('pe', pe)
@@ -599,6 +613,7 @@ class TransformerDecoder(nn.Module):
     num_layers,
     attention_temp,
     pre_ln,
+    dtype: torch.dtype = torch.float32,
   ):
     super().__init__()
     self.layers = nn.ModuleList(
@@ -612,12 +627,15 @@ class TransformerDecoder(nn.Module):
           layer_norm_eps=layer_norm_eps,
           attention_temp=attention_temp,
           pre_ln=pre_ln,
+          dtype=dtype,
         )
         for _ in range(num_layers)
       ]
     )
     self.num_layers = num_layers
-    self.norm = nn.LayerNorm(d_model, eps=layer_norm_eps) if pre_ln else None
+    self.norm = (
+      nn.LayerNorm(d_model, eps=layer_norm_eps, dtype=dtype) if pre_ln else None
+    )
 
   def forward(
     self,
