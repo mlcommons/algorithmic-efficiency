@@ -144,7 +144,7 @@ class BaseOgbgWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Approx. steps the baseline can do in the allowed runtime budget."""
-    return 52_000
+    return 80_000
 
   @abc.abstractmethod
   def _normalize_eval_metrics(

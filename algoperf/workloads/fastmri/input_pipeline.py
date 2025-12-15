@@ -11,8 +11,8 @@ import tensorflow as tf
 
 from algoperf import data_utils
 
-_TRAIN_DIR = 'fastmri/knee_singlecoil_train'
-_VAL_DIR = 'fastmri/knee_singlecoil_val'
+_TRAIN_DIR = 'knee_singlecoil_train'
+_VAL_DIR = 'knee_singlecoil_val'
 _EVAL_SEED = 0
 
 

@@ -124,16 +124,11 @@ class AdamWScheduleFree(torch.optim.Optimizer):
             bias_correction2 = 1 - beta2 ** (k+1)
             step_size = lr * math.sqrt(bias_correction2)
 
-            num_params = 0
-            grad_norm = 0
             for p in group['params']:
                 if p.grad is None:
                     continue
                 grad = p.grad.data
-
-                grad_norm = grad_norm + torch.sum(grad**2)
-                num_params = num_params + torch.numel(p)
-
+                
                 state = self.state[p]
 
                 exp_avg_sq = state['exp_avg_sq']
@@ -158,10 +153,6 @@ class AdamWScheduleFree(torch.optim.Optimizer):
                 p.data.lerp_(end=z, weight=ckp1)
 
             group['k'] = k+1
-            grad_norm = torch.sqrt(grad_norm)
-            print('GRAD NORM', grad_norm)
-            print('NUM_PARAMS', num_params)
-
         return loss
 
 def init_optimizer_state(workload: spec.Workload,
@@ -284,7 +275,7 @@ def get_batch_size(workload_name):
   if workload_name == 'criteo1tb':
     return 262_144
   elif workload_name == 'fastmri':
-    return 32
+    return 16
   elif workload_name == 'imagenet_resnet':
     return 1024
   elif workload_name == 'imagenet_vit':

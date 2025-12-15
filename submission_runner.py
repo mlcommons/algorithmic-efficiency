@@ -19,10 +19,10 @@ import gc
 import importlib
 import itertools
 import json
-import jax
 import os
 import struct
 import time
+import optax
 from inspect import signature
 from types import MappingProxyType
 from typing import Any, Dict, Optional, Tuple
@@ -861,6 +861,8 @@ def main(_):
 
 
 if __name__ == '__main__':
+  print(optax.__version__)
+  print("!!!!")
   flags.mark_flag_as_required('workload')
   flags.mark_flag_as_required('framework')
   flags.mark_flag_as_required('submission_path')

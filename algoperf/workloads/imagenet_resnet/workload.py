@@ -145,4 +145,4 @@ class BaseImagenetResNetWorkload(spec.Workload):
   @property
   def step_hint(self) -> int:
     """Approx. steps the baseline can do in the allowed runtime budget."""
-    return 195_999
+    return 186_666

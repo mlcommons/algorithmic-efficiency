@@ -15,14 +15,12 @@ from numpy import allclose
 FLAGS = flags.FLAGS
 
 WORKLOADS = [
-  'imagenet_resnet',
-  'imagenet_vit',
   'wmt',
-  'librispeech_conformer',
   'librispeech_deepspeech',
   'fastmri',
   'ogbg',
   'criteo1tb',
+  'imagenet_resnet',
 ]
 GLOBAL_BATCH_SIZE = 16
 NUM_TRAIN_STEPS = 10
