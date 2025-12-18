@@ -18,11 +18,8 @@ from flax.core import pop
 
 from algoperf import jax_sharding_utils, param_utils, spec
 from algoperf import random_utils as prng
-from algoperf.workloads.imagenet_resnet import imagenet_v2
-from algoperf.workloads.imagenet_resnet.imagenet_jax import (
-  input_pipeline,
-  models,
-)
+from algoperf.workloads.imagenet_resnet import imagenet_v2, input_pipeline
+from algoperf.workloads.imagenet_resnet.imagenet_jax import models
 from algoperf.workloads.imagenet_resnet.workload import (
   BaseImagenetResNetWorkload,
 )

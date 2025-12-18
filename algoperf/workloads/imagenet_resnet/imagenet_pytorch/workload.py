@@ -3,130 +3,26 @@
 import contextlib
 import functools
 import itertools
-import json
 import math
-import os
-import random
-import time
-from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Union
+from typing import Dict, Iterator, Optional, Tuple
 
+import jax
 import numpy as np
+import tensorflow_datasets as tfds
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torchvision import transforms
-from torchvision.datasets.folder import (
-  IMG_EXTENSIONS,
-  ImageFolder,
-  default_loader,
-)
 
 import algoperf.random_utils as prng
-from algoperf import data_utils, param_utils, pytorch_utils, spec
-from algoperf.workloads.imagenet_resnet import imagenet_v2
-from algoperf.workloads.imagenet_resnet.imagenet_pytorch import randaugment
+from algoperf import param_utils, pytorch_utils, spec
+from algoperf.workloads.imagenet_resnet import imagenet_v2, input_pipeline
 from algoperf.workloads.imagenet_resnet.imagenet_pytorch.models import resnet50
 from algoperf.workloads.imagenet_resnet.workload import (
   BaseImagenetResNetWorkload,
 )
 
 USE_PYTORCH_DDP, RANK, DEVICE, N_GPUS = pytorch_utils.pytorch_setup()
-
-
-class CachedImageFolder(ImageFolder):
-  """ImageFolder that caches the file listing to avoid repeated filesystem scans."""
-
-  def __init__(
-    self,
-    root: Union[str, Path],
-    cache_file: Optional[Union[str, Path]] = None,
-    transform: Optional[Callable] = None,
-    target_transform: Optional[Callable] = None,
-    loader: Callable[[str], Any] = default_loader,
-    is_valid_file: Optional[Callable[[str], bool]] = None,
-    allow_empty: bool = False,
-    rebuild_cache: bool = False,
-    cache_build_timeout_minutes: int = 30,
-  ):
-    self.root = os.path.expanduser(root)
-    self.transform = transform
-    self.target_transform = target_transform
-    self.loader = loader
-    self.extensions = IMG_EXTENSIONS if is_valid_file is None else None
-
-    # Default cache location: .cache_index.json in the root directory
-    if cache_file is None:
-      cache_file = os.path.join(self.root, '.cache_index.json')
-    self.cache_file = cache_file
-
-    is_distributed = dist.is_available() and dist.is_initialized()
-    rank = dist.get_rank() if is_distributed else 0
-
-    cache_exists = os.path.exists(self.cache_file)
-    needs_rebuild = rebuild_cache or not cache_exists
-
-    if needs_rebuild:
-      # We only want one process to build the cache
-      # and others to wait for it to finish.
-      if rank == 0:
-        self._build_and_save_cache(is_valid_file, allow_empty)
-      if is_distributed:
-        self._wait_for_cache(timeout_minutes=cache_build_timeout_minutes)
-        dist.barrier()
-
-    self._load_from_cache()
-
-    self.targets = [s[1] for s in self.samples]
-    self.imgs = self.samples
-
-  def _wait_for_cache(self, timeout_minutes: int):
-    """Poll for cache file to exist."""
-    timeout_seconds = timeout_minutes * 60
-    poll_interval = 5
-    elapsed = 0
-
-    while not os.path.exists(self.cache_file):
-      if elapsed >= timeout_seconds:
-        raise TimeoutError(
-          f'Timed out waiting for cache file after {timeout_minutes} minutes: {self.cache_file}'
-        )
-      time.sleep(poll_interval)
-      elapsed += poll_interval
-
-  def _load_from_cache(self):
-    """Load classes and samples from cache file."""
-    with open(os.path.abspath(self.cache_file), 'r') as f:
-      cache = json.load(f)
-    self.classes = cache['classes']
-    self.class_to_idx = cache['class_to_idx']
-    # Convert relative paths back to absolute
-    self.samples = [
-      (os.path.join(self.root, rel_path), idx)
-      for rel_path, idx in cache['samples']
-    ]
-
-  def _build_and_save_cache(self, is_valid_file, allow_empty):
-    """Scan filesystem, build index, and save to cache."""
-    self.classes, self.class_to_idx = self.find_classes(self.root)
-    self.samples = self.make_dataset(
-      self.root,
-      class_to_idx=self.class_to_idx,
-      extensions=self.extensions,
-      is_valid_file=is_valid_file,
-      allow_empty=allow_empty,
-    )
-
-    cache = {
-      'classes': self.classes,
-      'class_to_idx': self.class_to_idx,
-      'samples': [
-        (os.path.relpath(path, self.root), idx) for path, idx in self.samples
-      ],
-    }
-    with open(os.path.abspath(self.cache_file), 'w') as f:
-      json.dump(cache, f)
 
 
 def imagenet_v2_to_torch(
@@ -177,8 +73,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
     use_mixup: bool = False,
     use_randaug: bool = False,
   ) -> Iterator[Dict[str, spec.Tensor]]:
-    del cache
-    del repeat_final_dataset
     if split == 'test':
       np_iter = imagenet_v2.get_imagenet_v2_iter(
         data_dir,
@@ -191,83 +85,48 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       )
       return map(imagenet_v2_to_torch, itertools.cycle(np_iter))
 
-    is_train = split == 'train'
-    normalize = transforms.Normalize(
-      mean=[i / 255.0 for i in self.train_mean],
-      std=[i / 255.0 for i in self.train_stddev],
-    )
-    if is_train:
-      transform_config = [
-        transforms.RandomResizedCrop(
-          self.center_crop_size,
-          scale=self.scale_ratio_range,
-          ratio=self.aspect_ratio_range,
-        ),
-        transforms.RandomHorizontalFlip(),
-      ]
-      if use_randaug:
-        transform_config.append(randaugment.RandAugment())
-      transform_config.extend([transforms.ToTensor(), normalize])
-      transform_config = transforms.Compose(transform_config)
-    else:
-      transform_config = transforms.Compose(
-        [
-          transforms.Resize(self.resize_size),
-          transforms.CenterCrop(self.center_crop_size),
-          transforms.ToTensor(),
-          normalize,
-        ]
-      )
+    # Use shared TFDS-based input pipeline (same TFRecords as JAX)
+    ds_builder = tfds.builder('imagenet2012:5.1.0', data_dir=data_dir)
+    train = split == 'train'
 
-    folder = 'train' if 'train' in split else 'val'
-    dataset = CachedImageFolder(
-      os.path.join(data_dir, folder),
-      transform=transform_config,
-      cache_file='.imagenet_cache_index.json',
-    )
-
-    if split == 'eval_train':
-      indices = list(range(self.num_train_examples))
-      random.Random(int(data_rng[0])).shuffle(indices)
-      dataset = torch.utils.data.Subset(
-        dataset, indices[: self.num_eval_train_examples]
-      )
-
-    sampler = None
+    # Calculate per-device batch size for DDP
     if USE_PYTORCH_DDP:
-      per_device_batch_size = global_batch_size // N_GPUS
-      ds_iter_batch_size = per_device_batch_size
+      batch_size = global_batch_size // N_GPUS
     else:
-      ds_iter_batch_size = global_batch_size
-    if USE_PYTORCH_DDP:
-      if is_train:
-        sampler = torch.utils.data.distributed.DistributedSampler(
-          dataset, num_replicas=N_GPUS, rank=RANK, shuffle=True
-        )
-      else:
-        sampler = data_utils.DistributedEvalSampler(
-          dataset, num_replicas=N_GPUS, rank=RANK, shuffle=False
-        )
+      batch_size = global_batch_size
+    
 
-    dataloader = torch.utils.data.DataLoader(
-      dataset,
-      batch_size=ds_iter_batch_size,
-      shuffle=not USE_PYTORCH_DDP and is_train,
-      sampler=sampler,
-      num_workers=4 if is_train else self.eval_num_workers,
-      pin_memory=True,
-      drop_last=is_train,
-      persistent_workers=is_train,
-    )
-    dataloader = data_utils.PrefetchedWrapper(dataloader, DEVICE)
-    dataloader = data_utils.cycle(
-      dataloader,
-      custom_sampler=USE_PYTORCH_DDP,
+    ds = input_pipeline.create_split(
+      split,
+      ds_builder,
+      jax.tree.map(lambda x: x.astype(np.uint32), data_rng),
+      batch_size,
+      train=train,
+      image_size=self.center_crop_size,
+      resize_size=self.resize_size,
+      mean_rgb=self.train_mean,
+      stddev_rgb=self.train_stddev,
+      cache=not train if cache is None else cache,
+      repeat_final_dataset=repeat_final_dataset if repeat_final_dataset is not None else train,
+      aspect_ratio_range=self.aspect_ratio_range,
+      area_range=self.scale_ratio_range,
       use_mixup=use_mixup,
       mixup_alpha=0.2,
+      use_randaug=use_randaug,
+      image_format='NCHW',
+      threadpool_size=12 if USE_PYTORCH_DDP else 48,
     )
 
-    return dataloader
+    # Wrap to convert TF tensors to PyTorch tensors on device
+    def tf_to_pytorch_iter(tf_ds) -> Iterator[Dict[str, spec.Tensor]]:
+      for batch in tf_ds:
+        inputs = torch.from_numpy(batch['inputs'].numpy()).to(DEVICE)
+        targets = torch.from_numpy(batch['targets'].numpy()).to(
+          DEVICE, dtype=torch.long
+        )
+        yield {'inputs': inputs, 'targets': targets}
+
+    return tf_to_pytorch_iter(ds)
 
   def init_model_fn(self, rng: spec.RandomState) -> spec.ModelInitState:
     torch.random.manual_seed(rng[0])

@@ -301,25 +301,15 @@ def update_params(
   optimizer_state['scheduler'].step()
 
   # Log training metrics - loss, grad_norm, batch_size.
-  if global_step <= 100 or global_step % 500 == 0:
+
+  if global_step % 100 == 0 and workload.metrics_logger is not None:
     with torch.no_grad():
       parameters = [p for p in current_model.parameters() if p.grad is not None]
       grad_norm = torch.norm(
         torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters]), 2
       )
-    if workload.metrics_logger is not None:
-      workload.metrics_logger.append_scalar_metrics(
-        {
-          'loss': loss.item(),
-          'grad_norm': grad_norm.item(),
-        },
-        global_step,
-      )
-    logging.info(
-      '%d) loss = %0.3f, grad_norm = %0.3f',
-      global_step,
-      loss.item(),
-      grad_norm.item(),
+    workload.metrics_logger.append_scalar_metrics(
+      {'loss': loss.item(), 'grad_norm': grad_norm.item()}, global_step
     )
 
   return (optimizer_state, current_param_container, new_model_state)
