@@ -240,3 +240,23 @@ def get_workload_metrics_and_targets(workload, split='validation'):
     metric = f'test/{metric_name}'
     target = workload_obj.test_target_value
   return metric, target
+
+
+def get_workload_stephint(workload):
+  workload_name = re.match(WORKLOAD_NAME_PATTERN, workload).group(1)
+  framework = re.match(WORKLOAD_NAME_PATTERN, workload).group(2)
+  workload_metadata = copy.copy(WORKLOADS[workload_name])
+
+  # Extend path according to framework.
+  workload_metadata['workload_path'] = os.path.join(
+    BASE_WORKLOADS_DIR,
+    workload_metadata['workload_path'] + f'{framework}',
+    'workload.py',
+  )
+  workload_init_kwargs = {}
+  workload_obj = workloads_registry.import_workload(
+    workload_path=workload_metadata['workload_path'],
+    workload_class_name=workload_metadata['workload_class_name'],
+    workload_init_kwargs=workload_init_kwargs,
+  )
+  return workload_obj.step_hint

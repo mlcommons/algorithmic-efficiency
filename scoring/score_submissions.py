@@ -123,6 +123,8 @@ def get_summary_df(workload, workload_df, include_test_split=False):
     workload_df['accumulated_submission_time'] / workload_df['global_step']
   ).iloc[-1][-1]
 
+  summary_df['step_hint'] = scoring_utils.get_workload_stephint(workload)
+
   # test metrics
   if include_test_split:
     test_metric, test_target = scoring_utils.get_workload_metrics_and_targets(
@@ -157,7 +159,7 @@ def get_summary_df(workload, workload_df, include_test_split=False):
   return summary_df
 
 
-def get_submission_summary(df, include_test_split=True):
+def get_submission_summary(df, include_test_split=False):
   """Summarizes the submission results into metric and time tables
   organized by workload.
   """

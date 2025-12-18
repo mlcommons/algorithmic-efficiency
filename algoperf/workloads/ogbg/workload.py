@@ -88,11 +88,11 @@ class BaseOgbgWorkload(spec.Workload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 12_011  # ~3.3 hours
+    return 11_303  # ~3.1 hours
 
   @property
   def eval_period_time_sec(self) -> int:
-    return 4 * 60
+    return 452 # approx 25 evals
 
   def _build_input_queue(
     self,

@@ -241,7 +241,8 @@ def main(_):
 
     # For each runnable workload check if there are any containers running and if not launch next container command
     for workload in workloads:
-      run_key = prng.fold_in(rng_subkey, hash(workload))
+      workload_foldin = hash(workload) % 9
+      run_key = prng.fold_in(rng_subkey, workload_foldin)
       run_seed = run_key[0]  # arbitrary
       base_workload_name = get_base_workload_name(workload)
       wait_until_container_not_running()
@@ -270,6 +271,7 @@ def main(_):
         'docker run -t -d -v /home/kasimbeg/data/:/data/ '
         '-v /home/kasimbeg/experiment_runs/:/experiment_runs '
         '-v /home/kasimbeg/experiment_runs/logs:/logs '
+        '-v /home/kasimbeg/algorithmic-efficiency:/algorithmic-efficiency '
         f'{mount_repo_flag}'
         '--gpus all --ipc=host '
         f'{docker_image_url} '

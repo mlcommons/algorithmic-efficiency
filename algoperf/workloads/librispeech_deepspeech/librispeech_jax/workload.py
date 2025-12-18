@@ -100,7 +100,11 @@ class LibriSpeechDeepSpeechWorkload(LibriSpeechConformerWorkload):
 
   @property
   def max_allowed_runtime_sec(self) -> int:
-    return 44_405  # ~12.3 hours
+    return 36_949  # ~12.3 hours
+
+  @property
+  def eval_period_time_sec(self) -> int:
+    return 1447  # approx 25 evals
 
   @property
   def use_tanh(self) -> bool:

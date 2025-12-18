@@ -27,7 +27,7 @@ then
 GIT_BRANCH='main' # Set default argument
 fi 
 
-FRAMEWORKS=( "jax" "pythorch" "both" )
+FRAMEWORKS=( "jax" "pytorch")
 
 if [[ -n "$FRAMEWORK" ]];
 then

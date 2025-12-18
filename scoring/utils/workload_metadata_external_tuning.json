@@ -24,7 +24,7 @@
     "dataset": "librispeech"
   },
   "criteo1tb": {
-    "max_steps": 10666,
+    "max_steps": 15666,
     "dataset": "criteo1tb"
   },
   "librispeech_conformer": {
