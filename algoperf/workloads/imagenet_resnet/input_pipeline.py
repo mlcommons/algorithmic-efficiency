@@ -396,9 +396,13 @@ def create_split(
       batch['inputs'] = tf.transpose(batch['inputs'], [0, 3, 1, 2])
       return batch
 
-    ds = ds.map(transpose_batch, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds = ds.map(
+      transpose_batch, num_parallel_calls=tf.data.experimental.AUTOTUNE
+    )
   elif image_format != 'NHWC':
-    raise ValueError(f"image_format must be 'NHWC' or 'NCHW', got {image_format}")
+    raise ValueError(
+      f"image_format must be 'NHWC' or 'NCHW', got {image_format}"
+    )
 
   ds = ds.prefetch(10)
 

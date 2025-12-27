@@ -312,6 +312,8 @@ def train_once(
     'accumulated_logging_time': 0,
     'last_step_end_time': None,
   }
+  # Step time tracking (separate from train_state to avoid checkpoint issues)
+  step_time_ema = None  # EMA of step time in milliseconds
   global_step = 0
   eval_results = []
   preemption_count = 0
@@ -409,6 +411,24 @@ def train_once(
       train_state['training_complete'] = True
 
     train_step_end_time = get_time()
+
+    # Calculate step time and update EMA (includes data loading)
+    if train_state['last_step_end_time'] is not None:
+      current_step_time_ms = (
+        train_step_end_time - train_state['last_step_end_time']
+      ) * 1000.0
+      if step_time_ema is None:
+        step_time_ema = current_step_time_ms
+      else:
+        step_time_ema = 0.9 * step_time_ema + 0.1 * current_step_time_ms
+
+    # Log step time every 100 steps
+    # Note: global_step was incremented, so use (global_step - 1) to match
+    if (global_step - 1) % 100 == 0 and workload.metrics_logger is not None:
+      workload.metrics_logger.append_scalar_metrics(
+        {'step_time_ms': step_time_ema if step_time_ema is not None else 0.0},
+        global_step - 1,
+      )
 
     train_state['accumulated_submission_time'] += (
       train_step_end_time - train_state['last_step_end_time']

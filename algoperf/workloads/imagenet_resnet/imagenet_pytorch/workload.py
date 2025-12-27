@@ -94,7 +94,6 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       batch_size = global_batch_size // N_GPUS
     else:
       batch_size = global_batch_size
-    
 
     ds = input_pipeline.create_split(
       split,
@@ -107,7 +106,9 @@ class ImagenetResNetWorkload(BaseImagenetResNetWorkload):
       mean_rgb=self.train_mean,
       stddev_rgb=self.train_stddev,
       cache=not train if cache is None else cache,
-      repeat_final_dataset=repeat_final_dataset if repeat_final_dataset is not None else train,
+      repeat_final_dataset=repeat_final_dataset
+      if repeat_final_dataset is not None
+      else train,
       aspect_ratio_range=self.aspect_ratio_range,
       area_range=self.scale_ratio_range,
       use_mixup=use_mixup,

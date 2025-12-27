@@ -18,14 +18,14 @@ SCALE_RATIO_RANGE = (0.08, 1.0)
 
 
 def main():
-  data_dir = '/home/ak4605/algoperf-data/imagenet/jax'
+  data_dir = '/home/ak4605/data/imagenet/jax'
   global_batch_size = 1024
   num_batches = 100
 
   rng = jax.random.PRNGKey(0)
   ds_builder = tfds.builder('imagenet2012:5.1.0', data_dir=data_dir)
 
-  print(f'Creating JAX ImageNet dataloader...')
+  print('Creating JAX ImageNet dataloader...')
   print(f'Batch size: {global_batch_size}')
   print(f'Num devices: {jax.local_device_count()}')
 
@@ -56,7 +56,7 @@ def main():
     start = time.perf_counter()
     batch = next(ds_iter)
     end = time.perf_counter()
-    print(f'  Warmup batch {i+1}/5: {(end - start)*1000:.2f}ms')
+    print(f'  Warmup batch {i + 1}/5: {(end - start) * 1000:.2f}ms')
 
   print(f"Batch 'inputs' shape: {batch['inputs'].shape}")
 
@@ -71,19 +71,19 @@ def main():
     end = time.perf_counter()
     times.append(end - start)
     if (i + 1) % 20 == 0:
-      print(f'  Batch {i+1}/{num_batches}: {times[-1]*1000:.2f}ms')
+      print(f'  Batch {i + 1}/{num_batches}: {times[-1] * 1000:.2f}ms')
 
   times = np.array(times)
-  print(f'\n=== JAX DataLoader Results ===')
-  print(f'Mean time per batch: {times.mean()*1000:.2f}ms')
-  print(f'Std time per batch: {times.std()*1000:.2f}ms')
-  print(f'Min time per batch: {times.min()*1000:.2f}ms')
-  print(f'Max time per batch: {times.max()*1000:.2f}ms')
+  print('\n=== JAX DataLoader Results ===')
+  print(f'Mean time per batch: {times.mean() * 1000:.2f}ms')
+  print(f'Std time per batch: {times.std() * 1000:.2f}ms')
+  print(f'Min time per batch: {times.min() * 1000:.2f}ms')
+  print(f'Max time per batch: {times.max() * 1000:.2f}ms')
   print(f'Throughput: {global_batch_size / times.mean():.2f} images/sec')
 
   # Print machine-readable results for the fish script
-  print(f'\n=== RESULTS ===')
-  print(f'MEAN_MS={times.mean()*1000:.2f}')
+  print('\n=== RESULTS ===')
+  print(f'MEAN_MS={times.mean() * 1000:.2f}')
   print(f'THROUGHPUT={global_batch_size / times.mean():.2f}')
 
 

@@ -56,7 +56,7 @@ allowed open at once using `ulimit -n 8192`.
 
 Example command:
 
-python3 datasets/dataset_setup.py \
+python3 algoperf/datasets/dataset_setup.py \
   --data_dir=~/data \
   --temp_dir=/tmp/mlcommons_data
   --imagenet \
@@ -73,8 +73,8 @@ from torchvision.datasets import CIFAR10
 
 from algoperf.workloads.wmt import tokenizer
 from algoperf.workloads.wmt.input_pipeline import normalize_feature_names
-from datasets import librispeech_preprocess
-from datasets import librispeech_tokenizer
+from algoperf.datasets import librispeech_preprocess
+from algoperf.datasets import librispeech_tokenizer
 
 import functools
 import os

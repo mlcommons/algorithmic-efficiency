@@ -5,7 +5,6 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import torch
 import torch.distributed.nn as dist_nn
-from absl import logging
 from torch import Tensor
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
@@ -300,8 +299,7 @@ def update_params(
   optimizer_state['optimizer'].step()
   optimizer_state['scheduler'].step()
 
-  # Log training metrics - loss, grad_norm, batch_size.
-
+  # Log training metrics - loss, grad_norm.
   if global_step % 100 == 0 and workload.metrics_logger is not None:
     with torch.no_grad():
       parameters = [p for p in current_model.parameters() if p.grad is not None]

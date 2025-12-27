@@ -5,13 +5,14 @@ import time
 import jax
 import numpy as np
 import tensorflow as tf
-tf.config.set_visible_devices([], 'GPU')  # Disable TF GPU usage
-import tensorflow_datasets as tfds
-import torch
-import torch.distributed as dist
 
-from algoperf import pytorch_utils
-from algoperf.workloads.imagenet_resnet import input_pipeline
+tf.config.set_visible_devices([], 'GPU')  # Disable TF GPU usage
+import tensorflow_datasets as tfds  # noqa: E402
+import torch  # noqa: E402
+import torch.distributed as dist  # noqa: E402
+
+from algoperf import pytorch_utils  # noqa: E402
+from algoperf.workloads.imagenet_resnet import input_pipeline  # noqa: E402
 
 # ImageNet constants (same as workload)
 TRAIN_MEAN = (0.485 * 255, 0.456 * 255, 0.406 * 255)
@@ -30,12 +31,12 @@ def main():
     torch.cuda.set_device(RANK)
     dist.init_process_group('nccl')
 
-  data_dir = '/home/ak4605/algoperf-data/imagenet/jax'
+  data_dir = '/home/ak4605/data/imagenet/jax'
   global_batch_size = 1024
   num_batches = 100
 
   if RANK == 0:
-    print(f'Creating PyTorch ImageNet dataloader (shared TFDS pipeline)...')
+    print('Creating PyTorch ImageNet dataloader (shared TFDS pipeline)...')
     print(f'Batch size: {global_batch_size}')
     print(f'Num GPUs: {N_GPUS}')
     print(f'USE_PYTORCH_DDP: {USE_PYTORCH_DDP}')
@@ -77,7 +78,9 @@ def main():
   def get_batch():
     batch = next(ds_iter)
     inputs = torch.from_numpy(batch['inputs'].numpy()).to(DEVICE)
-    targets = torch.from_numpy(batch['targets'].numpy()).to(DEVICE, dtype=torch.long)
+    targets = torch.from_numpy(batch['targets'].numpy()).to(
+      DEVICE, dtype=torch.long
+    )
     return {'inputs': inputs, 'targets': targets}
 
   # Warmup
@@ -88,7 +91,7 @@ def main():
     batch = get_batch()
     end = time.perf_counter()
     if RANK == 0:
-      print(f'  Warmup batch {i+1}/5: {(end - start)*1000:.2f}ms')
+      print(f'  Warmup batch {i + 1}/5: {(end - start) * 1000:.2f}ms')
 
   if RANK == 0:
     print(f"Batch 'inputs' shape: {batch['inputs'].shape}")
@@ -109,20 +112,20 @@ def main():
     end = time.perf_counter()
     times.append(end - start)
     if RANK == 0 and (i + 1) % 20 == 0:
-      print(f'  Batch {i+1}/{num_batches}: {times[-1]*1000:.2f}ms')
+      print(f'  Batch {i + 1}/{num_batches}: {times[-1] * 1000:.2f}ms')
 
   times = np.array(times)
   if RANK == 0:
-    print(f'\n=== PyTorch DataLoader Results ===')
-    print(f'Mean time per batch: {times.mean()*1000:.2f}ms')
-    print(f'Std time per batch: {times.std()*1000:.2f}ms')
-    print(f'Min time per batch: {times.min()*1000:.2f}ms')
-    print(f'Max time per batch: {times.max()*1000:.2f}ms')
+    print('\n=== PyTorch DataLoader Results ===')
+    print(f'Mean time per batch: {times.mean() * 1000:.2f}ms')
+    print(f'Std time per batch: {times.std() * 1000:.2f}ms')
+    print(f'Min time per batch: {times.min() * 1000:.2f}ms')
+    print(f'Max time per batch: {times.max() * 1000:.2f}ms')
     print(f'Throughput: {global_batch_size / times.mean():.2f} images/sec')
 
     # Print machine-readable results for the fish script
-    print(f'\n=== RESULTS ===')
-    print(f'MEAN_MS={times.mean()*1000:.2f}')
+    print('\n=== RESULTS ===')
+    print(f'MEAN_MS={times.mean() * 1000:.2f}')
     print(f'THROUGHPUT={global_batch_size / times.mean():.2f}')
 
   if USE_PYTORCH_DDP:
