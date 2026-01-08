@@ -174,7 +174,7 @@ fi
 
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
-                "wmt" "mnist")
+                "wmt" "mnist" "fineweb_edu_10B")
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
                  "imagenet_resnet_large_bn_init" "imagenet_vit" "imagenet_vit_glu" \
                  "imagenet_vit_post_ln" "imagenet_vit_map" "fastmri" "ogbg" \
@@ -185,7 +185,7 @@ VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_
                  "librispeech_conformer_gelu" "fastmri_model_size" "fastmri_tanh" \
                  "librispeech_deepspeech_tanh" \
                  "librispeech_deepspeech_no_resnet" "librispeech_deepspeech_norm_and_spec_aug"
-                 "fastmri_layernorm" "ogbg_gelu" "ogbg_silu" "ogbg_model_size")
+                 "fastmri_layernorm" "ogbg_gelu" "ogbg_silu" "ogbg_model_size" "finewebedu_lm")
 VALID_RULESETS=("self" "external")
 
 # Set data and experiment paths
@@ -221,7 +221,7 @@ TUNING_RULESET_FLAG="--tuning_ruleset=${TUNING_RULESET}"
 if [[ "${FRAMEWORK}" == "jax" ]]; then
     COMMAND_PREFIX="python"
 else 
-    COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0,4:0,5:0,6:0,7:0 --standalone --nnodes=1 --nproc_per_node=8"
+    COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0 --standalone --nnodes=1 --nproc_per_node=4"
 fi
 
 # Set data directory and bucket (bucket is only relevant in internal mode)
