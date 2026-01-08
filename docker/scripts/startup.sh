@@ -226,8 +226,8 @@ fi
 
 # Set data directory and bucket (bucket is only relevant in internal mode)
 if [[ "${DATASET}" == "imagenet" ]]; then 
-    DATA_DIR="${ROOT_DATA_DIR}/${DATASET}/${FRAMEWORK}"
-    DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/${FRAMEWORK}"
+    DATA_DIR="${ROOT_DATA_DIR}/${DATASET}/jax"
+    DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}/jax"
 elif [[ ! -z "${DATASET}" ]]; then
     DATA_DIR="${ROOT_DATA_DIR}/${DATASET}"
     DATA_BUCKET="${ROOT_DATA_BUCKET}/${DATASET}"
