@@ -56,14 +56,11 @@ Use the gcloud credential helper as documented in the [Google Cloud documentatio
 
 ## Installation
 
-If you have not installed the package and dependencies yet see [Installation](/README.md#installation).
-
+```md
 To use the development tools such as `pytest` or `pylint` use the `dev` option:
 
 ```bash
 pip3 install -e '.[dev]'
-pre-commit install
-```
 
 To get an installation with the requirements for all workloads and development, use the argument `[full_dev]`.
 
