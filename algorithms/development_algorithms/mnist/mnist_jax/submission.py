@@ -4,15 +4,12 @@ import functools
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import jax
-import jax.numpy as jnp
 import optax
-from flax import jax_utils
-from jax import lax
 
-from algoperf import spec
+from algoperf import jax_sharding_utils, spec
 
 
-def get_batch_size(workload_name):
+def get_batch_size(workload_name: str) -> int:
   # Return the global batch size.
   batch_sizes = {'mnist': 1024}
   return batch_sizes[workload_name]
@@ -25,12 +22,9 @@ def init_optimizer_state(
   hyperparameters: spec.Hyperparameters,
   rng: spec.RandomState,
 ) -> spec.OptimizerState:
-  del model_params
+  # Unused parameters
   del model_state
   del rng
-  params_zeros_like = jax.tree.map(
-    lambda s: jnp.zeros(s.shape_tuple), workload.param_shapes
-  )
   opt_init_fn, opt_update_fn = optax.chain(
     optax.scale_by_adam(
       b1=1.0 - hyperparameters.one_minus_beta_1,
@@ -39,30 +33,42 @@ def init_optimizer_state(
     ),
     optax.scale(-hyperparameters.learning_rate),
   )
-  return jax_utils.replicate(opt_init_fn(params_zeros_like)), opt_update_fn
+  return (opt_init_fn(model_params), opt_update_fn)
 
 
-# We need to jax.pmap here instead of inside update_params because the latter
-# would recompile the function every step.
+# `functools.partial` here to avoid re-compiling and hitting / thrashing jit cache on every invocation
 @functools.partial(
-  jax.pmap,
-  axis_name='batch',
-  in_axes=(None, None, 0, 0, None, 0, 0, 0),
-  static_broadcasted_argnums=(0, 1),
+  jax.jit,
+  # First two arguments of function, not "jax-relevant" args
+  static_argnums=(0, 1),
+  # Args at idxs 2, 3, 4 won't be used again after invocation, and memory is recycled
+  donate_argnums=(2, 3, 4),
+  # How to split input args 2, 3, 4, 5, 6 across multiple devices
+  # `replicate` means to duplicate it, batch_dim_sharding is doing the actual paralleization by the batch dimension
+  in_shardings=(
+    jax_sharding_utils.get_replicate_sharding(),  # model_state
+    jax_sharding_utils.get_replicate_sharding(),  # optimizer_state
+    jax_sharding_utils.get_replicate_sharding(),  # current_param_container
+    jax_sharding_utils.get_batch_dim_sharding(),  # batch
+    jax_sharding_utils.get_replicate_sharding(),  # rng
+  ),
+  # How to handle output args (replicate across all devices)
+  out_shardings=(
+    jax_sharding_utils.get_replicate_sharding(),  # new_optimizer_state
+    jax_sharding_utils.get_replicate_sharding(),  # updated_params
+    jax_sharding_utils.get_replicate_sharding(),  # new_model_state
+  ),
 )
-def pmapped_update_params(
+def _train_step(
   workload: spec.Workload,
-  opt_update_fn,
-  current_param_container: spec.ParameterContainer,
+  opt_update_fn: optax.TransformUpdateFn,
   model_state: spec.ModelAuxiliaryState,
-  hyperparameters: spec.Hyperparameters,
-  batch: Dict[str, spec.Tensor],
   optimizer_state: spec.OptimizerState,
+  current_param_container: spec.ParameterContainer,
+  batch: Dict[str, spec.Tensor],
   rng: spec.RandomState,
-) -> spec.UpdateReturn:
-  del hyperparameters
-
-  def loss_fn(params):
+) -> Tuple[spec.OptimizerState, spec.ParameterContainer, spec.ModelAuxiliaryState]:
+  def loss_fn(params: spec.ParameterContainer) -> tuple[float, spec.ModelAuxiliaryState]:
     logits_batch, new_model_state = workload.model_fn(
       params=params,
       augmented_and_preprocessed_input_batch=batch,
@@ -70,6 +76,7 @@ def pmapped_update_params(
       mode=spec.ForwardPassMode.TRAIN,
       rng=rng,
       update_batch_norm=True,
+      dropout_rate=0.0,  # MNIST model has no dropout and this is ignored
     )
     loss_dict = workload.loss_fn(batch['targets'], logits_batch)
     loss = loss_dict['summed'] / loss_dict['n_valid_examples']
@@ -77,7 +84,6 @@ def pmapped_update_params(
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
   (_, new_model_state), grad = grad_fn(current_param_container)
-  grad = lax.pmean(grad, axis_name='batch')
   updates, new_optimizer_state = opt_update_fn(
     grad, optimizer_state, current_param_container
   )
@@ -106,17 +112,15 @@ def update_params(
   del eval_results
   del global_step
 
-  per_device_rngs = jax.random.split(rng, jax.local_device_count())
   optimizer_state, opt_update_fn = optimizer_state
-  new_optimizer_state, updated_params, new_model_state = pmapped_update_params(
+  new_optimizer_state, updated_params, new_model_state = _train_step(
     workload,
     opt_update_fn,
-    current_param_container,
     model_state,
-    hyperparameters,
-    batch,
     optimizer_state,
-    per_device_rngs,
+    current_param_container,
+    batch,
+    rng,
   )
   return (new_optimizer_state, opt_update_fn), updated_params, new_model_state
 
@@ -145,7 +149,7 @@ def prepare_for_eval(
 
 
 # Not allowed to update the model parameters, hyperparameters, global step, or
-# optimzier state.
+# optimizer state.
 def data_selection(
   workload: spec.Workload,
   input_queue: Iterator[Dict[str, spec.Tensor]],
