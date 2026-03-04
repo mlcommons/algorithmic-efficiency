@@ -154,6 +154,14 @@ You can also use the above script to build images from a different branch.
     bash docker/build_docker_images.sh -b <branch>
     ```
 
+This script defaults to building `jax`, `pytorch`, and `both`. A CPU-only
+`minimal` image can be built on demand by setting both the framework and base
+image explicitly:
+
+```bash
+bash docker/build_docker_images.sh -b <branch> -f minimal -i ubuntu:20.04
+```
+
 ### GCP Data and Experiment Integration
 
 The Docker entrypoint script can transfer data to and from our GCP buckets on

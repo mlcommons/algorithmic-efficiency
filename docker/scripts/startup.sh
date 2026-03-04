@@ -217,11 +217,20 @@ if [[ -n ${TUNING_RULESET+x} ]]; then
 fi
 TUNING_RULESET_FLAG="--tuning_ruleset=${TUNING_RULESET}"
 
-# Set run command prefix depending on framework
+# Set run command prefix depending on framework and available GPUs
+N_GPUS=0
 if [[ "${FRAMEWORK}" == "jax" ]]; then
     COMMAND_PREFIX="python"
-else 
-    COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0 --standalone --nnodes=1 --nproc_per_node=4"
+elif [[ "${FRAMEWORK}" == "pytorch" ]]; then
+    # Detect number of GPUs; fall back to single-process python if none found
+    N_GPUS=$(python -c "import torch; print(torch.cuda.device_count())" 2>/dev/null || echo "0")
+    if [[ "$N_GPUS" -gt 1 ]]; then
+        COMMAND_PREFIX="torchrun --redirects 1:0,2:0,3:0 --standalone --nnodes=1 --nproc_per_node=$N_GPUS"
+    else
+        COMMAND_PREFIX="python"
+    fi
+else
+    COMMAND_PREFIX="python"
 fi
 
 # Set data directory and bucket (bucket is only relevant in internal mode)
@@ -277,8 +286,8 @@ if [[ ! -z ${SUBMISSION_PATH+x} ]]; then
         SPECIAL_FLAGS="--librispeech_tokenizer_vocab_path=${DATA_DIR}/spm_model.vocab"
     fi 
 
-    # Optionally run torch compile
-    if [[ ${FRAMEWORK} == "pytorch" ]]; then
+    # Optionally run torch compile (only with GPU)
+    if [[ ${FRAMEWORK} == "pytorch" ]] && [[ "$N_GPUS" -gt 0 ]]; then
         TORCH_COMPILE_FLAG="--torch_compile=true"
     fi
 

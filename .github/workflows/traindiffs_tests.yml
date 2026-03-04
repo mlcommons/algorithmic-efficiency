@@ -21,6 +21,18 @@ jobs:
         if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
         docker tag $IMAGE_NAME us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
         docker push us-central1-docker.pkg.dev/training-algorithms-external/mlcommons-docker-repo/$IMAGE_NAME
+  build_minimal_docker_image:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build minimal (CPU-only) docker image
+      run: |
+        GIT_BRANCH=${{ github.head_ref || github.ref_name }}
+        IMAGE_NAME="algoperf_minimal_${GIT_BRANCH}"
+        cd $HOME/algorithmic-efficiency/docker
+        docker build --no-cache -t $IMAGE_NAME . --build-arg framework=minimal --build-arg BASE_IMAGE=ubuntu:20.04 --build-arg branch=$GIT_BRANCH
+        BUILD_RETURN=$?
+        if [[ ${BUILD_RETURN} != 0 ]]; then exit ${BUILD_RETURN}; fi
   traindiffs_tests:
       runs-on: self-hosted
       needs: build_and_push_docker_image

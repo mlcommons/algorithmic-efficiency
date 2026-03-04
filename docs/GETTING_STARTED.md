@@ -134,9 +134,25 @@ container can also be used (see instructions below).
     docker build -t <docker_image_name> . --build-arg framework=<framework>
     ```
 
-    The `framework` flag can be either `pytorch`, `jax` or `both`. Specifying
-    the framework will install the framework specific dependencies. The
-    `docker_image_name` is arbitrary.
+    The `framework` flag can be `jax`, `pytorch`, `both`, or `minimal`:
+
+    -   `jax` — JAX GPU + PyTorch CPU
+    -   `pytorch` — PyTorch GPU + JAX CPU
+    -   `both` — Both JAX GPU and PyTorch GPU
+    -   `minimal` — CPU-only (both JAX and PyTorch, no GPU dependencies)
+
+    For `minimal`, also pass a CPU-only base image:
+
+    ```bash
+    docker build -t <docker_image_name> . \
+      --build-arg framework=minimal \
+      --build-arg BASE_IMAGE=ubuntu:20.04
+    ```
+
+    Note that this is the image build framework selection. At runtime, the
+    container entrypoint `--framework` flag remains `jax` or `pytorch`.
+
+    The `docker_image_name` is arbitrary.
 
 #### Running Docker Container (Interactive)
 
@@ -160,6 +176,8 @@ submission.
       --keep_container_alive true
     ```
 
+    > Note: For CPU-only (`minimal`) images, omit `--gpus all` and `--ipc=host`.
+    >
     > Note: You may have to use double quotes around `algorithmic-efficiency`
     > [path] in the mounting `-v` flag. If the above command fails try replacing
     > the following line:
@@ -357,7 +375,9 @@ The container entrypoint script provides the following flags:
 -   `--framework` framework: can be either 'pytorch' or 'jax'. If you just want
     to download data, this flag is required for `-d imagenet` since we have two
     versions of data for imagenet. This flag is also required for running a
-    submission.
+    submission. Even when the image was built with `framework=both` or
+    `framework=minimal`, runtime framework is still selected here as `jax` or
+    `pytorch`.
 -   `--submission_path` submission_path: path to submission file on container
     filesystem. If this flag is set, the container will run a submission, so it
     is required for running a submission.
@@ -393,6 +413,8 @@ docker run -t -d \
 ```
 
 This will print the container ID to the terminal.
+
+> Note: For CPU-only (`minimal`) images, omit `--gpus all` and `--ipc=host`.
 
 #### Docker Tips
 
