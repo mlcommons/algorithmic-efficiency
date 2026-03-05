@@ -14,13 +14,14 @@ from absl.testing import absltest, parameterized
 
 import submission_runner
 from algoperf.profiler import PassThroughProfiler
+from algoperf.workloads import workloads
 
 FLAGS = flags.FLAGS
 # Needed to avoid UnparsedFlagAccessError
 # (see https://github.com/google/model_search/pull/8).
 FLAGS(sys.argv)
 
-_MNIST_DEV_ALGO_DIR = 'reference_algorithms/development_algorithms/mnist'
+_MNIST_DEV_ALGO_DIR = 'algorithms/development_algorithms/mnist'
 
 
 class SubmissionRunnerTest(parameterized.TestCase):
@@ -52,7 +53,7 @@ class SubmissionRunnerTest(parameterized.TestCase):
       workload_metadata['workload_path'] + '_' + framework,
       'workload.py',
     )
-    workload_obj = submission_runner.import_workload(
+    workload_obj = workloads.import_workload(
       workload_path=workload_metadata['workload_path'],
       workload_class_name=workload_metadata['workload_class_name'],
       workload_init_kwargs={},
@@ -73,7 +74,7 @@ class SubmissionRunnerTest(parameterized.TestCase):
   def test_convert_filepath_to_module(self):
     """Sample test for the `convert_filepath_to_module` function."""
     test_path = os.path.abspath(__file__)
-    module_path = submission_runner.convert_filepath_to_module(test_path)
+    module_path = workloads.convert_filepath_to_module(test_path)
     self.assertNotIn('.py', module_path)
     self.assertNotIn('/', module_path)
     self.assertIsInstance(module_path, str)

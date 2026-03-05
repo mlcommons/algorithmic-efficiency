@@ -40,6 +40,7 @@ dependencies = [
   "pandas>=2.0.1",
   "tensorflow==2.19.0",
   "tensorflow-datasets==4.9.9",
+  "importlib_resources>=5.12.0",
   "tensorflow-probability==0.20.0",
   "gputil==1.4.0",
   "psutil==6.1.0",

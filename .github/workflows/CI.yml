@@ -180,6 +180,23 @@ jobs:
         pip install -e .
         python tests/reference_algorithm_tests.py --workload=ogbg     --framework=pytorch     --global_batch_size=8     --submission_path=algorithms/target_setting_algorithms/pytorch_nesterov.py     --tuning_search_space=algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
         python tests/reference_algorithm_tests.py --workload=ogbg     --framework=jax     --global_batch_size=8     --submission_path=algorithms/target_setting_algorithms/jax_nesterov.py     --tuning_search_space=algorithms/target_setting_algorithms/ogbg/tuning_search_space.json
+  mnist:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.11.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11.10
+        cache: 'pip' # Cache pip dependencies\.
+        cache-dependency-path: '**/setup.py'
+    - name: Install Modules and Run
+      run: |
+        pip install .[jax_cpu]
+        pip install .[pytorch_cpu]
+        pip install .[full]
+        pip install -e .
+        python tests/submission_runner_test.py
   pytest-params:
     runs-on: ubuntu-latest
     steps:
