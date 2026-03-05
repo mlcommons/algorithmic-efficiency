@@ -1,0 +1,23 @@
+{
+  "include": ["algoperf", "algorithms", "submission_runner.py"],
+  "exclude": ["**/node_modules", "**/__pycache__", "build", "dist"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownLambdaType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownReturnType": false,
+  "reportArgumentType": false,
+  "reportReturnType": false,
+  "reportAssignmentType": false,
+  "reportCallIssue": false,
+  "reportGeneralTypeIssues": "warning",
+  "reportOptionalMemberAccess": "warning",
+  "reportUnusedImport": "warning",
+  "reportUnusedVariable": "warning",
+  "reportUndefinedVariable": "error"
+}
