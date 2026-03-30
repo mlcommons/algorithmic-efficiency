@@ -174,7 +174,7 @@ fi
 
 # Check if arguments are valid
 VALID_DATASETS=("criteo1tb" "imagenet"  "fastmri" "ogbg" "librispeech" \
-                "wmt" "mnist" "fineweb_edu_10B")
+                "wmt" "mnist" "finewebedu")
 VALID_WORKLOADS=("criteo1tb" "imagenet_resnet" "imagenet_resnet_silu" "imagenet_resnet_gelu" \
                  "imagenet_resnet_large_bn_init" "imagenet_vit" "imagenet_vit_glu" \
                  "imagenet_vit_post_ln" "imagenet_vit_map" "fastmri" "ogbg" \

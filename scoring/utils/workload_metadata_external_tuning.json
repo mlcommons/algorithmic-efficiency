@@ -33,6 +33,6 @@
   },
   "finewebedu_lm" : {
     "max_steps": 55000,
-    "dataset":"fineweb_edu_10B"
+    "dataset":"finewebedu"
   }
 }

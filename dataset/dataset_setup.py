@@ -782,7 +782,7 @@ def download_finewebedu(
 ):
   """Download FineWebEdu-10B."""
 
-  data_dir = os.path.join(data_dir, 'fineweb_edu_10B')
+  data_dir = os.path.join(data_dir, 'finewebedu')
   _maybe_mkdir(data_dir)
   _maybe_mkdir(tmp_dir)
 

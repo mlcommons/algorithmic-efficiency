@@ -67,7 +67,7 @@ WORKLOADS = {
   'librispeech_deepspeech': {'dataset': 'librispeech'},
   'criteo1tb': {'dataset': 'criteo1tb'},
   'librispeech_conformer': {'dataset': 'librispeech'},
-  'finewebedu_lm': {'dataset': 'fineweb_edu_10B'},
+  'finewebedu_lm': {'dataset': 'finewebedu'},
 }
 
 RULESET_CONFIGS = {
